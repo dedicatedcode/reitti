@@ -14,13 +14,15 @@ Reitti is a Spring Boot application for tracking and visualizing location data o
 
 - Java 17 or higher
 - Maven 3.6 or higher
+- Docker and Docker Compose
 
 ### Running the Application
 
 1. Clone the repository
 2. Navigate to the project directory
-3. Run `mvn spring-boot:run`
-4. Access the application at `http://localhost:8080`
+3. Start the infrastructure services with `docker-compose up -d`
+4. Run `mvn spring-boot:run`
+5. Access the application at `http://localhost:8080`
 
 ## API Endpoints
 
@@ -30,5 +32,7 @@ Reitti is a Spring Boot application for tracking and visualizing location data o
 
 - Spring Boot
 - Spring Data JPA
-- H2 Database
+- PostgreSQL with PostGIS and TimescaleDB extensions
+- Redis for caching
+- RabbitMQ for message queuing
 - Lombok
