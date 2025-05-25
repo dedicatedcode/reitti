@@ -8,7 +8,5 @@ CREATE EXTENSION IF NOT EXISTS timescaledb;
 CREATE SCHEMA IF NOT EXISTS reitti;
 
 -- Grant privileges
--- The reitti user is already created by PostgreSQL using the POSTGRES_USER environment variable
-GRANT ALL PRIVILEGES ON SCHEMA reitti TO reitti;
 GRANT ALL PRIVILEGES ON DATABASE reittidb TO reitti;
 ALTER USER reitti WITH SUPERUSER;
