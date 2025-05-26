@@ -1,13 +1,21 @@
 package com.dedicatedcode.reitti.controller;
 
+import com.dedicatedcode.reitti.model.RawLocationPoint;
+import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
+import com.dedicatedcode.reitti.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,6 +24,16 @@ import java.util.Map;
 
 @Controller
 public class TimelineViewController {
+
+    private final RawLocationPointRepository rawLocationPointRepository;
+    private final UserRepository userRepository;
+
+    @Autowired
+    public TimelineViewController(RawLocationPointRepository rawLocationPointRepository, 
+                                 UserRepository userRepository) {
+        this.rawLocationPointRepository = rawLocationPointRepository;
+        this.userRepository = userRepository;
+    }
 
     @GetMapping("/timeline")
     public String getTimeline(@RequestParam(required = false) LocalDate selectedDate, Model model) {
@@ -69,36 +87,38 @@ public class TimelineViewController {
     
     @GetMapping("/api/raw-location-points")
     @ResponseBody
-    public List<Map<String, Object>> getRawLocationPoints(@RequestParam(required = false) LocalDate selectedDate) {
+    public List<Map<String, Object>> getRawLocationPoints(
+            @RequestParam(required = false) LocalDate selectedDate,
+            @RequestParam(required = false, defaultValue = "1") Long userId) {
+        
         // Default to today if no date is provided
         LocalDate date = selectedDate != null ? selectedDate : LocalDate.now();
         
-        // Mock data - in a real application, this would come from a service
+        // Find the user
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        
+        // Convert LocalDate to Instant at start of day in UTC
+        Instant dateInstant = date.atStartOfDay(ZoneOffset.UTC).toInstant();
+        
+        // Get raw location points for the user and date
+        List<RawLocationPoint> locationPoints = rawLocationPointRepository.findByUserAndDate(user, dateInstant);
+        
+        // Convert to format expected by the frontend
         List<Map<String, Object>> rawPoints = new ArrayList<>();
-        
-        // Generate some sample location points for the selected date
-        LocalDateTime startTime = date.atTime(7, 0);
-        
-        // Create a path with multiple points
-        for (int i = 0; i < 50; i++) {
-            LocalDateTime pointTime = startTime.plusMinutes(i * 5);
+        for (RawLocationPoint point : locationPoints) {
+            Map<String, Object> pointMap = new HashMap<>();
+            pointMap.put("id", point.getId());
+            pointMap.put("latitude", point.getLatitude());
+            pointMap.put("longitude", point.getLongitude());
+            pointMap.put("timestamp", point.getTimestamp().toEpochMilli());
+            pointMap.put("accuracyMeters", point.getAccuracyMeters());
             
-            // Create a path that moves around Helsinki
-            double baseLatitude = 60.1699;
-            double baseLongitude = 24.9384;
+            if (point.getActivityProvided() != null) {
+                pointMap.put("activity", point.getActivityProvided());
+            }
             
-            // Add some variation to create a path
-            double latOffset = Math.sin(i * 0.1) * 0.005;
-            double lngOffset = Math.cos(i * 0.1) * 0.008;
-            
-            Map<String, Object> point = new HashMap<>();
-            point.put("id", "point-" + i);
-            point.put("latitude", baseLatitude + latOffset);
-            point.put("longitude", baseLongitude + lngOffset);
-            point.put("timestamp", pointTime.toInstant(ZoneOffset.UTC).toEpochMilli());
-            point.put("accuracyMeters", 10.0 + (Math.random() * 20.0));
-            
-            rawPoints.add(point);
+            rawPoints.add(pointMap);
         }
         
         return rawPoints;
