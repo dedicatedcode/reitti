@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+    <div th:fragment="timeline">
+        <div class="timeline-date" th:text="${#temporals.format(date, 'EEEE, MMMM d, yyyy')}">Monday, October 2, 2023</div>
+        
+        <div th:each="entry : ${timelineEntries}" 
+             th:class="'timeline-entry ' + ${entry.type}"
+             th:data-id="${entry.id}"
+             th:data-lat="${entry.type == 'place' ? entry.latitude : ''}"
+             th:data-lng="${entry.type == 'place' ? entry.longitude : ''}"
+             th:data-start-lat="${entry.type == 'trip' ? entry.startLatitude : ''}"
+             th:data-start-lng="${entry.type == 'trip' ? entry.startLongitude : ''}"
+             th:data-end-lat="${entry.type == 'trip' ? entry.endLatitude : ''}"
+             th:data-end-lng="${entry.type == 'trip' ? entry.endLongitude : ''}">
+            
+            <div class="entry-time">
+                <span th:text="${entry.startTime}">07:00</span> - 
+                <span th:text="${entry.endTime}">08:30</span>
+            </div>
+            
+            <div class="entry-description" th:text="${entry.description}">Home</div>
+            
+            <div th:if="${entry.type == 'trip'}" class="entry-transport-mode">
+                <span th:text="${entry.transportMode}">Walking</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
