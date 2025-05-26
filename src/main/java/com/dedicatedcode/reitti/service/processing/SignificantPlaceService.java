@@ -6,12 +6,15 @@ import com.dedicatedcode.reitti.model.Visit;
 import com.dedicatedcode.reitti.repository.SignificantPlaceRepository;
 import com.dedicatedcode.reitti.repository.VisitRepository;
 import com.dedicatedcode.reitti.service.geocoding.GeoCodingService;
+import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
+import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,15 +36,18 @@ public class SignificantPlaceService {
     private final VisitRepository visitRepository;
     private final GeometryFactory geometryFactory;
     private final GeoCodingService geoCodingService;
+    private final RabbitTemplate rabbitTemplate;
     
     @Autowired
     public SignificantPlaceService(
             SignificantPlaceRepository significantPlaceRepository,
             VisitRepository visitRepository,
-            GeoCodingService geoCodingService) {
+            GeoCodingService geoCodingService,
+            RabbitTemplate rabbitTemplate) {
         this.significantPlaceRepository = significantPlaceRepository;
         this.visitRepository = visitRepository;
         this.geoCodingService = geoCodingService;
+        this.rabbitTemplate = rabbitTemplate;
         this.geometryFactory = new GeometryFactory(new PrecisionModel(), SRID);
     }
     
@@ -66,6 +72,9 @@ public class SignificantPlaceService {
                 
                 updatedPlaces.add(newPlace);
                 logger.info("Created new significant place at ({}, {})", stayPoint.getLatitude(), stayPoint.getLongitude());
+            
+                // Publish event for the new place
+                publishSignificantPlaceCreatedEvent(newPlace);
             } else {
                 // Update the existing place
                 SignificantPlace existingPlace = nearbyPlaces.get(0);
@@ -136,5 +145,16 @@ public class SignificantPlaceService {
         visit.setDurationSeconds(stayPoint.getDurationSeconds());
         
         return visit;
+    }
+    
+    // Add a new method to publish the event
+    private void publishSignificantPlaceCreatedEvent(SignificantPlace place) {
+        SignificantPlaceCreatedEvent event = new SignificantPlaceCreatedEvent(
+                place.getId(),
+                place.getLatitudeCentroid(),
+                place.getLongitudeCentroid()
+        );
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.SIGNIFICANT_PLACE_ROUTING_KEY, event);
+        logger.info("Published SignificantPlaceCreatedEvent for place ID: {}", place.getId());
     }
 }

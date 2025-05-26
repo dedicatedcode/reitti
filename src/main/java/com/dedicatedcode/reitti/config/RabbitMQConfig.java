@@ -16,6 +16,8 @@ public class RabbitMQConfig {
     public static final String EXCHANGE_NAME = "reitti-exchange";
     public static final String LOCATION_DATA_QUEUE = "location-data-queue";
     public static final String LOCATION_DATA_ROUTING_KEY = "location.data";
+    public static final String SIGNIFICANT_PLACE_QUEUE = "significant-place-queue";
+    public static final String SIGNIFICANT_PLACE_ROUTING_KEY = "significant.place.created";
 
     @Bean
     public TopicExchange exchange() {
@@ -30,6 +32,16 @@ public class RabbitMQConfig {
     @Bean
     public Binding locationDataBinding(Queue locationDataQueue, TopicExchange exchange) {
         return BindingBuilder.bind(locationDataQueue).to(exchange).with(LOCATION_DATA_ROUTING_KEY);
+    }
+    
+    @Bean
+    public Queue significantPlaceQueue() {
+        return new Queue(SIGNIFICANT_PLACE_QUEUE, true);
+    }
+
+    @Bean
+    public Binding significantPlaceBinding(Queue significantPlaceQueue, TopicExchange exchange) {
+        return BindingBuilder.bind(significantPlaceQueue).to(exchange).with(SIGNIFICANT_PLACE_ROUTING_KEY);
     }
 
     @Bean
