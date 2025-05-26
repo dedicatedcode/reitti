@@ -192,4 +192,11 @@ public class SignificantPlace {
     public void addDuration(Long durationSeconds) {
         this.totalDurationSeconds += durationSeconds;
     }
+    
+    public Long getAverageDurationSeconds() {
+        if (visitCount == 0) {
+            return 0L;
+        }
+        return totalDurationSeconds / visitCount;
+    }
 }
