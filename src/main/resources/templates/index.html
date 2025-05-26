@@ -21,6 +21,12 @@
                 "sidebar map";
         }
         
+        .map-controls {
+            padding: 10px 15px;
+            background-color: #f0f0f0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
         header {
             grid-area: header;
             background-color: #4a89dc;
@@ -144,6 +150,13 @@
             <span class="htmx-indicator">Loading...</span>
         </div>
         
+        <div class="map-controls">
+            <label>
+                <input type="checkbox" id="show-raw-points" checked> 
+                Show raw location points
+            </label>
+        </div>
+        
         <div id="timeline-container" 
              class="timeline-container"
              hx-get="/timeline" 
@@ -198,11 +211,42 @@
         // Set today's date in the date picker
         document.getElementById('date-picker').valueAsDate = new Date();
         
+        // Load raw location points
+        function loadRawLocationPoints() {
+            const datePicker = document.getElementById('date-picker');
+            const selectedDate = datePicker.value;
+            
+            fetch(`/api/raw-location-points?selectedDate=${selectedDate}`)
+                .then(response => response.json())
+                .then(data => {
+                    updateMapWithRawPoints(data);
+                })
+                .catch(error => console.error('Error loading raw location points:', error));
+        }
+        
         // Listen for HTMX after-swap events to update the map
         document.body.addEventListener('htmx:afterSwap', function(event) {
             if (event.detail.target.id === 'timeline-container') {
                 updateMapWithNewData(event.detail.target);
+                // Reload raw points when timeline changes
+                loadRawLocationPoints();
             }
+        });
+        
+        // Listen for checkbox changes
+        document.addEventListener('DOMContentLoaded', function() {
+            const showRawPointsCheckbox = document.getElementById('show-raw-points');
+            showRawPointsCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    loadRawLocationPoints();
+                } else {
+                    // Remove raw points layer if exists
+                    if (map.getSource('raw-points')) {
+                        map.removeLayer('raw-points-layer');
+                        map.removeSource('raw-points');
+                    }
+                }
+            });
         });
         
         function updateMapWithNewData(container) {
@@ -215,6 +259,13 @@
             if (map.getSource('trips')) {
                 map.removeLayer('trips-layer');
                 map.removeSource('trips');
+            }
+            
+            // Keep raw points layer if it exists and checkbox is checked
+            const showRawPoints = document.getElementById('show-raw-points').checked;
+            if (!showRawPoints && map.getSource('raw-points')) {
+                map.removeLayer('raw-points-layer');
+                map.removeSource('raw-points');
             }
             
             // Collect place points
@@ -345,6 +396,109 @@
                 });
             }
         }
+        
+        function updateMapWithRawPoints(points) {
+            // Remove existing raw points layer if it exists
+            if (map.getSource('raw-points')) {
+                map.removeLayer('raw-points-layer');
+                map.removeSource('raw-points');
+            }
+            
+            if (points.length === 0) return;
+            
+            // Convert points to GeoJSON features
+            const features = points.map(point => ({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [point.longitude, point.latitude]
+                },
+                properties: {
+                    id: point.id,
+                    timestamp: point.timestamp,
+                    accuracyMeters: point.accuracyMeters
+                }
+            }));
+            
+            // Create a line connecting all points in chronological order
+            const sortedPoints = [...points].sort((a, b) => a.timestamp - b.timestamp);
+            const lineFeature = {
+                type: 'Feature',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: sortedPoints.map(p => [p.longitude, p.latitude])
+                },
+                properties: {
+                    type: 'raw-path'
+                }
+            };
+            
+            // Add the raw points to the map
+            map.addSource('raw-points', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: [...features, lineFeature]
+                }
+            });
+            
+            // Add the line layer first (so it's underneath the points)
+            map.addLayer({
+                id: 'raw-points-path',
+                type: 'line',
+                source: 'raw-points',
+                filter: ['==', ['get', 'type'], 'raw-path'],
+                paint: {
+                    'line-color': '#3bb2d0',
+                    'line-width': 2,
+                    'line-opacity': 0.7
+                }
+            });
+            
+            // Add the points layer
+            map.addLayer({
+                id: 'raw-points-layer',
+                type: 'circle',
+                source: 'raw-points',
+                filter: ['has', 'timestamp'],
+                paint: {
+                    'circle-radius': 4,
+                    'circle-color': '#3bb2d0',
+                    'circle-stroke-width': 1,
+                    'circle-stroke-color': '#fff'
+                }
+            });
+            
+            // Add popups for raw points
+            map.on('click', 'raw-points-layer', (e) => {
+                const coordinates = e.features[0].geometry.coordinates.slice();
+                const timestamp = new Date(e.features[0].properties.timestamp).toLocaleString();
+                const accuracy = e.features[0].properties.accuracyMeters.toFixed(1);
+                
+                new maplibregl.Popup()
+                    .setLngLat(coordinates)
+                    .setHTML(`
+                        <h4>Raw Location Point</h4>
+                        <p>Time: ${timestamp}</p>
+                        <p>Accuracy: ${accuracy} meters</p>
+                    `)
+                    .addTo(map);
+            });
+            
+            // Change cursor on hover
+            map.on('mouseenter', 'raw-points-layer', () => {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+            
+            map.on('mouseleave', 'raw-points-layer', () => {
+                map.getCanvas().style.cursor = '';
+            });
+        }
+        
+        // Load raw points on initial page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadRawLocationPoints();
+        });
     </script>
 </body>
 </html>
