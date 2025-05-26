@@ -12,7 +12,7 @@ Reitti is a Spring Boot application for tracking and visualizing location data o
 
 ### Prerequisites
 
-- Java 17 or higher
+- Java 24 or higher
 - Maven 3.6 or higher
 - Docker and Docker Compose
 
