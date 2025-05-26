@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.model.Visit;
 import com.dedicatedcode.reitti.repository.SignificantPlaceRepository;
 import com.dedicatedcode.reitti.repository.VisitRepository;
+import com.dedicatedcode.reitti.service.geocoding.GeoCodingService;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -31,13 +32,16 @@ public class SignificantPlaceService {
     private final SignificantPlaceRepository significantPlaceRepository;
     private final VisitRepository visitRepository;
     private final GeometryFactory geometryFactory;
+    private final GeoCodingService geoCodingService;
     
     @Autowired
     public SignificantPlaceService(
             SignificantPlaceRepository significantPlaceRepository,
-            VisitRepository visitRepository) {
+            VisitRepository visitRepository,
+            GeoCodingService geoCodingService) {
         this.significantPlaceRepository = significantPlaceRepository;
         this.visitRepository = visitRepository;
+        this.geoCodingService = geoCodingService;
         this.geometryFactory = new GeometryFactory(new PrecisionModel(), SRID);
     }
     
@@ -91,7 +95,7 @@ public class SignificantPlaceService {
     private SignificantPlace createSignificantPlace(User user, StayPoint stayPoint) {
         // Create a point geometry
         Point point = geometryFactory.createPoint(new Coordinate(stayPoint.getLongitude(), stayPoint.getLatitude()));
-        
+
         return new SignificantPlace(
                 user,
                 null, // name will be set later through reverse geocoding or user input
