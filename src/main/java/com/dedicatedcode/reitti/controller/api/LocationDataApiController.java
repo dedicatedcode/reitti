@@ -36,7 +36,6 @@ public class LocationDataApiController {
     private static final int BATCH_SIZE = 100; // Process locations in batches of 100
     
     private final ApiTokenService apiTokenService;
-    private final LocationDataService locationDataService;
     private final ObjectMapper objectMapper;
     private final RabbitTemplate rabbitTemplate;
     
@@ -47,7 +46,6 @@ public class LocationDataApiController {
             ObjectMapper objectMapper,
             RabbitTemplate rabbitTemplate) {
         this.apiTokenService = apiTokenService;
-        this.locationDataService = locationDataService;
         this.objectMapper = objectMapper;
         this.rabbitTemplate = rabbitTemplate;
     }
