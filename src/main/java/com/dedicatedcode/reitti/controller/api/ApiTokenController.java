@@ -1,7 +1,6 @@
-package com.dedicatedcode.reitti.controller;
+package com.dedicatedcode.reitti.controller.api;
 
 import com.dedicatedcode.reitti.model.ApiToken;
-import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.UserRepository;
 import com.dedicatedcode.reitti.service.ApiTokenService;
 import org.springframework.beans.factory.annotation.Autowired;

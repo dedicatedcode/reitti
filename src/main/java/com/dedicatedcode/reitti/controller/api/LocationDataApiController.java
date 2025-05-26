@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.controller;
+package com.dedicatedcode.reitti.controller.api;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.model.RawLocationPoint;
