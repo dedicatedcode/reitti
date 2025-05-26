@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface RawLocationPointRepository extends JpaRepository<RawLocationPoint, Long> {
@@ -18,4 +19,6 @@ public interface RawLocationPointRepository extends JpaRepository<RawLocationPoi
     
     @Query("SELECT r FROM RawLocationPoint r WHERE r.user = ?1 AND DATE(r.timestamp) = DATE(?2) ORDER BY r.timestamp ASC")
     List<RawLocationPoint> findByUserAndDate(User user, Instant date);
+    
+    Optional<RawLocationPoint> findByUserAndTimestamp(User user, Instant timestamp);
 }
