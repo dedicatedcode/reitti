@@ -158,14 +158,43 @@
         // Initialize the map
         const map = new maplibregl.Map({
             container: 'map',
-            style: 'https://demotiles.maplibre.org/style.json',
+            style: {
+                'id': 'raster',
+                'version': 8,
+                'name': 'Raster tiles',
+                'center': [0, 0],
+                'zoom': 0,
+                'sources': {
+                    'raster-tiles': {
+                        'type': 'raster',
+                        'tiles': ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                        'tileSize': 256,
+                        'minzoom': 0,
+                        'maxzoom': 19
+                    }
+                },
+                'layers': [
+                    {
+                        'id': 'background',
+                        'type': 'background',
+                        'paint': {
+                            'background-color': '#e0dfdf'
+                        }
+                    },
+                    {
+                        'id': 'simple-tiles',
+                        'type': 'raster',
+                        'source': 'raster-tiles'
+                    }
+                ]
+            },
             center: [24.9384, 60.1699], // Helsinki coordinates
             zoom: 12
         });
         
         // Add navigation controls
         map.addControl(new maplibregl.NavigationControl());
-        
+
         // Set today's date in the date picker
         document.getElementById('date-picker').valueAsDate = new Date();
         
