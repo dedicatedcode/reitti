@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # PostgreSQL with PostGIS and TimescaleDB extensions
   postgis:
-    image: timescale/timescaledb-postgis:latest-pg14
+    image: timescale/timescaledb-ha:pg17
     container_name: reitti-postgis
     environment:
       POSTGRES_USER: reitti

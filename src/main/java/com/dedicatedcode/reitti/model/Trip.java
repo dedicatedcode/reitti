@@ -1,18 +1,12 @@
 package com.dedicatedcode.reitti.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.Duration;
 import java.time.Instant;
 
 @Entity
 @Table(name = "trips")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class Trip {
     
     @Id
@@ -45,10 +39,91 @@ public class Trip {
     
     @Column
     private String transportModeInferred;
-    
-    // This would be a PostGIS linestring in a real implementation
-    // For now, we'll omit the path geometry
-    
+
+    public Trip() {}
+
+    public Trip(User user, SignificantPlace startPlace, SignificantPlace endPlace, Instant startTime, Instant endTime, Double estimatedDistanceMeters, String transportModeInferred) {
+        this.user = user;
+        this.startPlace = startPlace;
+        this.endPlace = endPlace;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.estimatedDistanceMeters = estimatedDistanceMeters;
+        this.transportModeInferred = transportModeInferred;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public SignificantPlace getStartPlace() {
+        return startPlace;
+    }
+
+    public void setStartPlace(SignificantPlace startPlace) {
+        this.startPlace = startPlace;
+    }
+
+    public SignificantPlace getEndPlace() {
+        return endPlace;
+    }
+
+    public void setEndPlace(SignificantPlace endPlace) {
+        this.endPlace = endPlace;
+    }
+
+    public Instant getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(Instant startTime) {
+        this.startTime = startTime;
+    }
+
+    public Instant getEndTime() {
+        return endTime;
+    }
+
+    public void setEndTime(Instant endTime) {
+        this.endTime = endTime;
+    }
+
+    public Long getDurationSeconds() {
+        return durationSeconds;
+    }
+
+    public void setDurationSeconds(Long durationSeconds) {
+        this.durationSeconds = durationSeconds;
+    }
+
+    public Double getEstimatedDistanceMeters() {
+        return estimatedDistanceMeters;
+    }
+
+    public void setEstimatedDistanceMeters(Double estimatedDistanceMeters) {
+        this.estimatedDistanceMeters = estimatedDistanceMeters;
+    }
+
+    public String getTransportModeInferred() {
+        return transportModeInferred;
+    }
+
+    public void setTransportModeInferred(String transportModeInferred) {
+        this.transportModeInferred = transportModeInferred;
+    }
+
     @PrePersist
     @PreUpdate
     private void calculateDuration() {
@@ -56,4 +131,6 @@ public class Trip {
             durationSeconds = Duration.between(startTime, endTime).getSeconds();
         }
     }
+
+
 }

@@ -5,7 +5,6 @@ import com.dedicatedcode.reitti.model.RawLocationPoint;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
 import com.dedicatedcode.reitti.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,12 +19,16 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1")
-@RequiredArgsConstructor
 public class TimelineController {
     
     private final UserRepository userRepository;
     private final RawLocationPointRepository locationPointRepository;
-    
+
+    public TimelineController(UserRepository userRepository, RawLocationPointRepository locationPointRepository) {
+        this.userRepository = userRepository;
+        this.locationPointRepository = locationPointRepository;
+    }
+
     @GetMapping("/timeline")
     public ResponseEntity<TimelineResponse> getTimeline(
             @RequestParam String userId,

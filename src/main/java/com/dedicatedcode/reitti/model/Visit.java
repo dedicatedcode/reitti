@@ -1,18 +1,12 @@
 package com.dedicatedcode.reitti.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.Duration;
 import java.time.Instant;
 
 @Entity
 @Table(name = "visits")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class Visit {
     
     @Id
@@ -35,7 +29,63 @@ public class Visit {
     
     @Column(nullable = false)
     private Long durationSeconds;
-    
+
+    public Visit() {}
+    public Visit(User user, SignificantPlace place, Instant startTime, Instant endTime) {
+        this.user = user;
+        this.place = place;
+        this.startTime = startTime;
+        this.endTime = endTime;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public SignificantPlace getPlace() {
+        return place;
+    }
+
+    public void setPlace(SignificantPlace place) {
+        this.place = place;
+    }
+
+    public Instant getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(Instant startTime) {
+        this.startTime = startTime;
+    }
+
+    public Instant getEndTime() {
+        return endTime;
+    }
+
+    public void setEndTime(Instant endTime) {
+        this.endTime = endTime;
+    }
+
+    public Long getDurationSeconds() {
+        return durationSeconds;
+    }
+
+    public void setDurationSeconds(Long durationSeconds) {
+        this.durationSeconds = durationSeconds;
+    }
+
     @PrePersist
     @PreUpdate
     private void calculateDuration() {

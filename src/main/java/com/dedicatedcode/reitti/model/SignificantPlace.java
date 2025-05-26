@@ -1,9 +1,6 @@
 package com.dedicatedcode.reitti.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -11,9 +8,6 @@ import java.util.List;
 
 @Entity
 @Table(name = "significant_places")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class SignificantPlace {
     
     @Id
@@ -47,7 +41,96 @@ public class SignificantPlace {
     
     @OneToMany(mappedBy = "place", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Visit> visits = new ArrayList<>();
-    
-    // This would be a PostGIS geometry polygon or point in a real implementation
-    // For now, we'll use latitude and longitude centroid directly
+
+    public SignificantPlace() {}
+    public SignificantPlace(User user, String name, String address, Double latitudeCentroid, Double longitudeCentroid, String category, Instant firstSeen, Instant lastSeen) {
+        this.user = user;
+        this.name = name;
+        this.address = address;
+        this.latitudeCentroid = latitudeCentroid;
+        this.longitudeCentroid = longitudeCentroid;
+        this.category = category;
+        this.firstSeen = firstSeen;
+        this.lastSeen = lastSeen;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public Double getLatitudeCentroid() {
+        return latitudeCentroid;
+    }
+
+    public void setLatitudeCentroid(Double latitudeCentroid) {
+        this.latitudeCentroid = latitudeCentroid;
+    }
+
+    public Double getLongitudeCentroid() {
+        return longitudeCentroid;
+    }
+
+    public void setLongitudeCentroid(Double longitudeCentroid) {
+        this.longitudeCentroid = longitudeCentroid;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public Instant getFirstSeen() {
+        return firstSeen;
+    }
+
+    public void setFirstSeen(Instant firstSeen) {
+        this.firstSeen = firstSeen;
+    }
+
+    public Instant getLastSeen() {
+        return lastSeen;
+    }
+
+    public void setLastSeen(Instant lastSeen) {
+        this.lastSeen = lastSeen;
+    }
+
+    public List<Visit> getVisits() {
+        return visits;
+    }
+
+    public void setVisits(List<Visit> visits) {
+        this.visits = visits;
+    }
 }

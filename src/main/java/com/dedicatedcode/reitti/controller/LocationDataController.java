@@ -6,7 +6,6 @@ import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
 import com.dedicatedcode.reitti.repository.UserRepository;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,12 +20,16 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1")
-@RequiredArgsConstructor
 public class LocationDataController {
     
     private final UserRepository userRepository;
     private final RawLocationPointRepository locationPointRepository;
-    
+
+    public LocationDataController(UserRepository userRepository, RawLocationPointRepository locationPointRepository) {
+        this.userRepository = userRepository;
+        this.locationPointRepository = locationPointRepository;
+    }
+
     @PostMapping("/location-data")
     public ResponseEntity<String> receiveLocationData(@Valid @RequestBody LocationDataRequest request) {
         User user = userRepository.findByUsername(request.getUserId())

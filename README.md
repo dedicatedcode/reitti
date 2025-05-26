@@ -26,7 +26,7 @@ Reitti is a Spring Boot application for tracking and visualizing location data o
 
 ## API Endpoints
 
-- `GET /api/timeline` - Get all timeline locations
+- `GET /api/v1/timeline` - Get all timeline locations
 
 ## Technologies
 
