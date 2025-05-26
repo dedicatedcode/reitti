@@ -82,7 +82,7 @@ public class StayPointDetectionService {
                         points.get(i).getLatitude(), points.get(i).getLongitude(),
                         points.get(j).getLatitude(), points.get(j).getLongitude());
 
-                if (distance > DISTANCE_THRESHOLD) {
+                if (distance < DISTANCE_THRESHOLD) {
                     // Check if the time spent at this location exceeds the threshold
                     long timeSpent = Duration.between(
                             points.get(i).getTimestamp(),
@@ -93,9 +93,6 @@ public class StayPointDetectionService {
                         StayPoint stayPoint = createStayPoint(points.subList(i, j));
                         stayPoints.add(stayPoint);
                     }
-
-                    i = j;
-                    break;
                 }
 
                 j++;
