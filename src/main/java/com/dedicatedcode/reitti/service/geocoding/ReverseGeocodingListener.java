@@ -77,7 +77,7 @@ public class ReverseGeocodingListener {
                 place.setAddress(label);
                 
                 // Save the updated place
-                significantPlaceRepository.save(place);
+                significantPlaceRepository.saveAndFlush(place);
                 logger.info("Updated place ID: {} with geocoding data: {}", place.getId(), label);
             } else {
                 logger.warn("No geocoding results found for place ID: {}", place.getId());

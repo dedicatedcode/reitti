@@ -36,7 +36,6 @@ public class LocationProcessingPipeline {
         this.significantPlaceService = significantPlaceService;
     }
     
-    @Transactional
     public void processLocationData(LocationDataEvent event) {
         logger.info("Starting processing pipeline for user {} with {} points", 
                 event.getUsername(), event.getPoints().size());

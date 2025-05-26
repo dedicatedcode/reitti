@@ -20,14 +20,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class SignificantPlaceService {
     private static final Logger logger = LoggerFactory.getLogger(SignificantPlaceService.class);
 
     // Parameters for significant place detection
-    private static final double PLACE_MERGE_DISTANCE = 20.0; // meters
-    private static final int SRID = 4326; // WGS84
+    private static final double PLACE_MERGE_DISTANCE = 0.001; // degrees
+    private static final int SRID = 4326;
 
     private final SignificantPlaceRepository significantPlaceRepository;
     private final VisitRepository visitRepository;
@@ -45,7 +46,6 @@ public class SignificantPlaceService {
         this.geometryFactory = new GeometryFactory(new PrecisionModel(), SRID);
     }
 
-    @Transactional
     public List<SignificantPlace> processStayPoints(User user, List<StayPoint> stayPoints) {
         logger.info("Processing {} stay points for user {}", stayPoints.size(), user.getUsername());
 
@@ -58,7 +58,7 @@ public class SignificantPlaceService {
             if (nearbyPlaces.isEmpty()) {
                 // Create a new significant place
                 SignificantPlace newPlace = createSignificantPlace(user, stayPoint);
-                significantPlaceRepository.save(newPlace);
+                significantPlaceRepository.saveAndFlush(newPlace);
 
                 // Create a visit for this place
                 Visit visit = createVisit(user, newPlace, stayPoint);
@@ -70,17 +70,18 @@ public class SignificantPlaceService {
                 // Publish event for the new place
                 publishSignificantPlaceCreatedEvent(newPlace);
             } else {
-                // Update the existing place
-                SignificantPlace existingPlace = nearbyPlaces.get(0);
-                updateSignificantPlace(existingPlace, stayPoint);
-                significantPlaceRepository.save(existingPlace);
+                // Update the first existing place
+                Optional<SignificantPlace> existingPlace = this.significantPlaceRepository.findById(nearbyPlaces.get(0).getId());
+                existingPlace.ifPresent(place -> {
+                    updateSignificantPlace(place, stayPoint);
+                    significantPlaceRepository.saveAndFlush(place);
 
-                // Create a visit for this place
-                Visit visit = createVisit(user, existingPlace, stayPoint);
-                visitRepository.save(visit);
-
-                updatedPlaces.add(existingPlace);
-                logger.info("Updated existing significant place at ({}, {})", existingPlace.getLatitudeCentroid(), existingPlace.getLongitudeCentroid());
+                    // Create a visit for this place
+                    Visit visit = createVisit(user, place, stayPoint);
+                    visitRepository.save(visit);
+                    updatedPlaces.add(place);
+                    logger.info("Updated existing significant place at ({}, {})", place.getLatitudeCentroid(), place.getLongitudeCentroid());
+                });
             }
         }
 
