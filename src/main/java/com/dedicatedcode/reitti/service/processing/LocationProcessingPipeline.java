@@ -23,17 +23,20 @@ public class LocationProcessingPipeline {
     private final LocationDataService locationDataService;
     private final StayPointDetectionService stayPointDetectionService;
     private final SignificantPlaceService significantPlaceService;
+    private final TripDetectionService tripDetectionService;
     
     @Autowired
     public LocationProcessingPipeline(
             UserRepository userRepository,
             LocationDataService locationDataService,
             StayPointDetectionService stayPointDetectionService,
-            SignificantPlaceService significantPlaceService) {
+            SignificantPlaceService significantPlaceService,
+            TripDetectionService tripDetectionService) {
         this.userRepository = userRepository;
         this.locationDataService = locationDataService;
         this.stayPointDetectionService = stayPointDetectionService;
         this.significantPlaceService = significantPlaceService;
+        this.tripDetectionService = tripDetectionService;
     }
     
     public void processLocationData(LocationDataEvent event) {
@@ -69,8 +72,11 @@ public class LocationProcessingPipeline {
             List<SignificantPlace> updatedPlaces = significantPlaceService.processStayPoints(user, stayPoints);
             logger.info("Updated {} significant places", updatedPlaces.size());
             
+            // Step 4: Detect trips between significant places
+            int tripCount = tripDetectionService.detectTrips(user, updatedPlaces);
+            logger.info("Detected {} trips between significant places", tripCount);
+            
             // Future steps:
-            // - Detect trips between significant places
             // - Reverse geocode significant places to get addresses
         }
         
