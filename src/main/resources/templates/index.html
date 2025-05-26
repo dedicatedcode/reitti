@@ -398,12 +398,6 @@
         }
         
         function updateMapWithRawPoints(points) {
-            // Remove existing raw points layer if it exists
-            if (map.getSource('raw-points')) {
-                map.removeLayer('raw-points-layer');
-                map.removeSource('raw-points');
-            }
-            
             if (points.length === 0) return;
             
             // Convert points to GeoJSON features

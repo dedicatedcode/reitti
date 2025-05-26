@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
@@ -36,7 +37,7 @@ public class ReverseGeocodingListener {
     }
     
     @RabbitListener(queues = RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE)
-    @Transactional
+    @Transactional(isolation = Isolation.READ_UNCOMMITTED)
     public void handleSignificantPlaceCreated(SignificantPlaceCreatedEvent event) {
         logger.info("Received SignificantPlaceCreatedEvent for place ID: {}", event.getPlaceId());
         
@@ -55,7 +56,7 @@ public class ReverseGeocodingListener {
             JsonNode root = objectMapper.readTree(response);
             JsonNode features = root.path("features");
             
-            if (features.isArray() && features.size() > 0) {
+            if (features.isArray() && !features.isEmpty()) {
                 JsonNode geocoding = features.get(0).path("properties").path("geocoding");
                 
                 String label = geocoding.path("label").asText("");

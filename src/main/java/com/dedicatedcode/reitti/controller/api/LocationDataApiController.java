@@ -5,7 +5,6 @@ import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.service.ApiTokenService;
-import com.dedicatedcode.reitti.service.LocationDataService;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
@@ -33,7 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class LocationDataApiController {
     
     private static final Logger logger = LoggerFactory.getLogger(LocationDataApiController.class);
-    private static final int BATCH_SIZE = 100; // Process locations in batches of 100
+    private static final int BATCH_SIZE = 10; // Process locations in batches of 100
     
     private final ApiTokenService apiTokenService;
     private final ObjectMapper objectMapper;
@@ -41,8 +40,7 @@ public class LocationDataApiController {
     
     @Autowired
     public LocationDataApiController(
-            ApiTokenService apiTokenService, 
-            LocationDataService locationDataService, 
+            ApiTokenService apiTokenService,
             ObjectMapper objectMapper,
             RabbitTemplate rabbitTemplate) {
         this.apiTokenService = apiTokenService;
