@@ -240,34 +240,13 @@
                 if (this.checked) {
                     loadRawLocationPoints();
                 } else {
-                    // Remove raw points layer if exists
-                    if (map.getSource('raw-points')) {
-                        map.removeLayer('raw-points-layer');
-                        map.removeSource('raw-points');
-                    }
+
                 }
             });
         });
         
         function updateMapWithNewData(container) {
-            // Clear existing map data
-            if (map.getSource('places')) {
-                map.removeLayer('places-layer');
-                map.removeSource('places');
-            }
-            
-            if (map.getSource('trips')) {
-                map.removeLayer('trips-layer');
-                map.removeSource('trips');
-            }
-            
-            // Keep raw points layer if it exists and checkbox is checked
-            const showRawPoints = document.getElementById('show-raw-points').checked;
-            if (!showRawPoints && map.getSource('raw-points')) {
-                map.removeLayer('raw-points-layer');
-                map.removeSource('raw-points');
-            }
-            
+
             // Collect place points
             const placeEntries = container.querySelectorAll('.timeline-entry.place');
             const places = Array.from(placeEntries).map(entry => {
