@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.event.LocationDataEvent;
-import com.dedicatedcode.reitti.model.RawLocationPoint;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.UserRepository;
 import org.slf4j.Logger;
@@ -9,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -38,7 +36,6 @@ public class LocationDataProcessingService {
         }
     }
     
-    @Transactional
     public void processLocationData(LocationDataEvent event) {
         Optional<User> userOpt = userRepository.findById(event.getUserId());
         
