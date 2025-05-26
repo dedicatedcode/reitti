@@ -1,7 +1,8 @@
 package com.dedicatedcode.reitti.controller.api;
 
+import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
-import com.dedicatedcode.reitti.model.RawLocationPoint;
+import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.service.ApiTokenService;
 import com.dedicatedcode.reitti.service.LocationDataService;
@@ -13,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,12 +38,18 @@ public class LocationDataApiController {
     private final ApiTokenService apiTokenService;
     private final LocationDataService locationDataService;
     private final ObjectMapper objectMapper;
+    private final RabbitTemplate rabbitTemplate;
     
     @Autowired
-    public LocationDataApiController(ApiTokenService apiTokenService, LocationDataService locationDataService, ObjectMapper objectMapper) {
+    public LocationDataApiController(
+            ApiTokenService apiTokenService, 
+            LocationDataService locationDataService, 
+            ObjectMapper objectMapper,
+            RabbitTemplate rabbitTemplate) {
         this.apiTokenService = apiTokenService;
         this.locationDataService = locationDataService;
         this.objectMapper = objectMapper;
+        this.rabbitTemplate = rabbitTemplate;
     }
     
     @PostMapping("/location-data")
@@ -60,16 +68,26 @@ public class LocationDataApiController {
         }
 
         try {
-            // Process the location data
-            List<RawLocationPoint> savedPoints = locationDataService.processLocationData(user, request.getPoints());
+            // Create and publish event to RabbitMQ
+            LocationDataEvent event = new LocationDataEvent(
+                    user.getId(), 
+                    user.getUsername(), 
+                    request.getPoints()
+            );
             
-            logger.info("Successfully processed {} location points for user {}", 
-                    savedPoints.size(), user.getUsername());
+            rabbitTemplate.convertAndSend(
+                RabbitMQConfig.EXCHANGE_NAME,
+                RabbitMQConfig.LOCATION_DATA_ROUTING_KEY,
+                event
+            );
             
-            return ResponseEntity.ok(Map.of(
+            logger.info("Successfully received and queued {} location points for user {}", 
+                    request.getPoints().size(), user.getUsername());
+            
+            return ResponseEntity.accepted().body(Map.of(
                     "success", true,
-                    "message", "Successfully processed " + savedPoints.size() + " location points",
-                    "pointsProcessed", savedPoints.size()
+                    "message", "Successfully queued " + request.getPoints().size() + " location points for processing",
+                    "pointsReceived", request.getPoints().size()
             ));
             
         } catch (Exception e) {
@@ -137,8 +155,20 @@ public class LocationDataApiController {
                                     
                                     // Process in batches to avoid memory issues
                                     if (batch.size() >= BATCH_SIZE) {
-                                        locationDataService.processLocationData(user, batch);
-                                        logger.info("Processed batch of {} locations", batch.size());
+                                        // Create and publish event to RabbitMQ
+                                        LocationDataEvent event = new LocationDataEvent(
+                                                user.getId(), 
+                                                user.getUsername(), 
+                                                new ArrayList<>(batch) // Create a copy to avoid reference issues
+                                        );
+                                        
+                                        rabbitTemplate.convertAndSend(
+                                            RabbitMQConfig.EXCHANGE_NAME,
+                                            RabbitMQConfig.LOCATION_DATA_ROUTING_KEY,
+                                            event
+                                        );
+                                        
+                                        logger.info("Queued batch of {} locations for processing", batch.size());
                                         batch.clear();
                                     }
                                 }
@@ -151,21 +181,33 @@ public class LocationDataApiController {
                     
                     // Process any remaining locations
                     if (!batch.isEmpty()) {
-                        locationDataService.processLocationData(user, batch);
-                        logger.info("Processed final batch of {} locations", batch.size());
+                        // Create and publish event to RabbitMQ
+                        LocationDataEvent event = new LocationDataEvent(
+                                user.getId(), 
+                                user.getUsername(), 
+                                new ArrayList<>(batch) // Create a copy to avoid reference issues
+                        );
+                        
+                        rabbitTemplate.convertAndSend(
+                            RabbitMQConfig.EXCHANGE_NAME,
+                            RabbitMQConfig.LOCATION_DATA_ROUTING_KEY,
+                            event
+                        );
+                        
+                        logger.info("Queued final batch of {} locations for processing", batch.size());
                     }
                     
                     break; // We've processed the locations array, no need to continue
                 }
             }
             
-            logger.info("Successfully imported {} location points from Google Takeout for user {}", 
+            logger.info("Successfully imported and queued {} location points from Google Takeout for user {}", 
                     processedCount.get(), user.getUsername());
             
-            return ResponseEntity.ok(Map.of(
+            return ResponseEntity.accepted().body(Map.of(
                     "success", true,
-                    "message", "Successfully imported " + processedCount.get() + " location points",
-                    "pointsProcessed", processedCount.get()
+                    "message", "Successfully queued " + processedCount.get() + " location points for processing",
+                    "pointsReceived", processedCount.get()
             ));
             
         } catch (IOException e) {
