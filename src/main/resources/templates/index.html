@@ -102,28 +102,77 @@
             border-bottom: 1px solid #e0e0e0;
             cursor: pointer;
             transition: background-color 0.2s;
+            margin: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
         }
         
         .timeline-entry:hover {
             background-color: #f0f0f0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         }
         
-        .timeline-entry.place {
+        .timeline-entry.visit {
             border-left: 4px solid #4a89dc;
+            background-color: rgba(74, 137, 220, 0.05);
         }
         
         .timeline-entry.trip {
             border-left: 4px solid #e67e22;
+            background-color: rgba(230, 126, 34, 0.05);
         }
         
         .entry-time {
             font-size: 0.8em;
             color: #666;
+            background-color: rgba(0,0,0,0.03);
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 8px;
         }
         
         .entry-description {
             font-weight: bold;
             margin: 5px 0;
+            font-size: 1.1em;
+        }
+        
+        .entry-details {
+            margin-top: 8px;
+            font-size: 0.9em;
+            color: #555;
+        }
+        
+        .entry-icon {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .visit .entry-icon {
+            background-color: #4a89dc;
+        }
+        
+        .trip .entry-icon {
+            background-color: #e67e22;
+        }
+        
+        .entry-duration {
+            font-size: 0.8em;
+            color: #777;
+            margin-top: 5px;
         }
         
         .htmx-indicator {
