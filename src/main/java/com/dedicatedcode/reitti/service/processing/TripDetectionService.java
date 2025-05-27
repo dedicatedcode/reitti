@@ -108,6 +108,11 @@ public class TripDetectionService {
             return null;
         }
         
+        // Get location points between the two visits
+        List<RawLocationPoint> tripPoints = rawLocationPointRepository
+                .findByUserAndTimestampBetweenOrderByTimestampAsc(
+                        user, tripStartTime, tripEndTime);
+        
         // Create a new trip
         Trip trip = new Trip();
         trip.setUser(user);
@@ -123,9 +128,19 @@ public class TripDetectionService {
                 startVisit.getPlace(), endVisit.getPlace());
         trip.setEstimatedDistanceMeters(distanceMeters);
         
+        // Calculate travelled distance (sum of distances between consecutive points)
+        double travelledDistanceMeters = calculateTripDistance(tripPoints);
+        trip.setTravelledDistanceMeters(travelledDistanceMeters);
+        
         // Infer transport mode based on speed and distance
-        String transportMode = inferTransportMode(distanceMeters, tripStartTime, tripEndTime);
+        // Use travelled distance if available, otherwise use estimated distance
+        double distanceForSpeed = travelledDistanceMeters > 0 ? travelledDistanceMeters : distanceMeters;
+        String transportMode = inferTransportMode(distanceForSpeed, tripStartTime, tripEndTime);
         trip.setTransportModeInferred(transportMode);
+        
+        logger.debug("Created trip from {} to {}: estimated distance={}m, travelled distance={}m, mode={}", 
+                startVisit.getPlace().getName(), endVisit.getPlace().getName(),
+                Math.round(distanceMeters), Math.round(travelledDistanceMeters), transportMode);
         
         // Save and return the trip
         return tripRepository.save(trip);
@@ -135,6 +150,25 @@ public class TripDetectionService {
         return calculateHaversineDistance(
                 place1.getLatitudeCentroid(), place1.getLongitudeCentroid(),
                 place2.getLatitudeCentroid(), place2.getLongitudeCentroid());
+    }
+    
+    private double calculateTripDistance(List<RawLocationPoint> points) {
+        if (points.size() < 2) {
+            return 0.0;
+        }
+        
+        double totalDistance = 0.0;
+        
+        for (int i = 0; i < points.size() - 1; i++) {
+            RawLocationPoint p1 = points.get(i);
+            RawLocationPoint p2 = points.get(i + 1);
+            
+            totalDistance += calculateHaversineDistance(
+                    p1.getLatitude(), p1.getLongitude(),
+                    p2.getLatitude(), p2.getLongitude());
+        }
+        
+        return totalDistance;
     }
     
     private double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2) {
