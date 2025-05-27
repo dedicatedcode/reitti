@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reitti - Your Location Timeline</title>
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
-    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -264,21 +264,19 @@
             });
             
             // Initialize the map
-            const map = new maplibregl.Map({
-                container: 'map',
-                style: 'https://demotiles.maplibre.org/style.json', // Default style
-                center: [24.9384, 60.1699], // Helsinki coordinates as default
-                zoom: 12
-            });
+            const map = L.map('map').setView([60.1699, 24.9384], 12); // Helsinki coordinates as default
             
-            // Add navigation controls
-            map.addControl(new maplibregl.NavigationControl(), 'top-right');
+            // Add tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19
+            }).addTo(map);
             
-            // Add scale
-            map.addControl(new maplibregl.ScaleControl({
-                maxWidth: 100,
-                unit: 'metric'
-            }), 'bottom-left');
+            // Add scale control
+            L.control.scale({
+                imperial: false,
+                metric: true
+            }).addTo(map);
             
             // Function to load timeline data
             function loadTimelineData(date) {
@@ -310,23 +308,10 @@
                 timelineContainer.innerHTML = '';
                 timelineContainer.appendChild(loadingIndicator);
                 
-                // Clear existing markers if any
-                const existingMarkers = document.querySelectorAll('.maplibregl-marker');
-                existingMarkers.forEach(marker => marker.remove());
-                
-                // Remove existing path layers
-                const existingLayers = map.getStyle().layers;
-                existingLayers.forEach(layer => {
-                    if (layer.id.startsWith('path-layer-')) {
-                        map.removeLayer(layer.id);
-                    }
-                });
-                
-                // Remove existing sources
-                const existingSources = Object.keys(map.getStyle().sources);
-                existingSources.forEach(source => {
-                    if (source.startsWith('path-')) {
-                        map.removeSource(source);
+                // Clear existing markers and paths
+                map.eachLayer(layer => {
+                    if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+                        map.removeLayer(layer);
                     }
                 });
                 
@@ -338,7 +323,7 @@
                     return;
                 }
                 
-                const bounds = new maplibregl.LngLatBounds();
+                const bounds = L.latLngBounds();
                 let hasValidCoords = false;
                 
                 // Create timeline entries
@@ -448,29 +433,28 @@
                     const lng = parseFloat(entryElement.dataset.lng);
                     
                     if (!isNaN(lat) && !isNaN(lng)) {
-                        // Create marker element
-                        const markerEl = document.createElement('div');
-                        markerEl.className = 'marker';
-                        markerEl.style.width = '15px';
-                        markerEl.style.height = '15px';
-                        markerEl.style.borderRadius = '50%';
+                        // Determine marker color based on entry type
+                        const markerColor = entry.type === 'VISIT' ? '#4a89dc' : '#e67e22';
                         
-                        // Color based on entry type
-                        if (entry.type === 'VISIT') {
-                            markerEl.style.backgroundColor = '#4a89dc';
-                        } else if (entry.type === 'TRIP') {
-                            markerEl.style.backgroundColor = '#e67e22';
-                        } else {
-                            markerEl.style.backgroundColor = '#95a5a6';
-                        }
+                        // Create marker with custom icon
+                        const marker = L.circleMarker([lat, lng], {
+                            radius: 8,
+                            fillColor: markerColor,
+                            color: '#fff',
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        }).addTo(map);
                         
-                        // Add marker to map
-                        new maplibregl.Marker(markerEl)
-                            .setLngLat([lng, lat])
-                            .addTo(map);
+                        // Add popup with basic info
+                        const popupContent = entry.type === 'VISIT' 
+                            ? `<b>${entry.place?.name || 'Unknown Place'}</b><br>${timeElement.textContent}`
+                            : `<b>Trip</b><br>${timeElement.textContent}`;
+                        
+                        marker.bindPopup(popupContent);
                             
                         // Extend bounds for map fitting
-                        bounds.extend([lng, lat]);
+                        bounds.extend([lat, lng]);
                         hasValidCoords = true;
                     }
                     
@@ -479,31 +463,24 @@
                         try {
                             const pathData = JSON.parse(entryElement.dataset.path);
                             
-                            map.addSource('path-' + entry.id, {
-                                'type': 'geojson',
-                                'data': pathData
-                            });
-                            
-                            map.addLayer({
-                                'id': 'path-layer-' + entry.id,
-                                'type': 'line',
-                                'source': 'path-' + entry.id,
-                                'layout': {
-                                    'line-join': 'round',
-                                    'line-cap': 'round'
-                                },
-                                'paint': {
-                                    'line-color': '#e67e22',
-                                    'line-width': 4
-                                }
-                            });
-                            
-                            // If path has coordinates, extend bounds
                             if (pathData.features && pathData.features.length > 0) {
                                 pathData.features.forEach(feature => {
-                                    if (feature.geometry && feature.geometry.coordinates) {
-                                        feature.geometry.coordinates.forEach(coord => {
-                                            bounds.extend(coord);
+                                    if (feature.geometry && feature.geometry.type === 'LineString') {
+                                        // Convert GeoJSON coordinates [lng, lat] to Leaflet format [lat, lng]
+                                        const latlngs = feature.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                                        
+                                        // Create polyline
+                                        const polyline = L.polyline(latlngs, {
+                                            color: '#e67e22',
+                                            weight: 4,
+                                            opacity: 0.8,
+                                            lineJoin: 'round',
+                                            lineCap: 'round'
+                                        }).addTo(map);
+                                        
+                                        // Extend bounds with all path points
+                                        latlngs.forEach(latlng => {
+                                            bounds.extend(latlng);
                                             hasValidCoords = true;
                                         });
                                     }
@@ -516,9 +493,9 @@
                 });
                 
                 // Fit map to bounds if we have valid coordinates
-                if (hasValidCoords) {
+                if (hasValidCoords && !bounds.isEmpty()) {
                     map.fitBounds(bounds, {
-                        padding: 50,
+                        padding: [50, 50],
                         maxZoom: 16
                     });
                 }
@@ -532,10 +509,8 @@
                     const lng = parseFloat(entry.dataset.lng);
                     
                     if (!isNaN(lat) && !isNaN(lng)) {
-                        map.flyTo({
-                            center: [lng, lat],
-                            zoom: 15,
-                            essential: true
+                        map.flyTo([lat, lng], 15, {
+                            duration: 1
                         });
                     }
                 }
