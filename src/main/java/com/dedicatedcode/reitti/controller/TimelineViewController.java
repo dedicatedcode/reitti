@@ -118,14 +118,14 @@ public class TimelineViewController {
             tripEntry.put("endTime", formatTime(trip.getEndTime()));
             
             // Get origin and destination coordinates if available
-            if (trip.getOriginPlace() != null) {
-                tripEntry.put("startLatitude", trip.getOriginPlace().getLatitudeCentroid());
-                tripEntry.put("startLongitude", trip.getOriginPlace().getLongitudeCentroid());
+            if (trip.getStartPlace() != null) {
+                tripEntry.put("startLatitude", trip.getStartPlace().getLatitudeCentroid());
+                tripEntry.put("startLongitude", trip.getStartPlace().getLongitudeCentroid());
             }
             
-            if (trip.getDestinationPlace() != null) {
-                tripEntry.put("endLatitude", trip.getDestinationPlace().getLatitudeCentroid());
-                tripEntry.put("endLongitude", trip.getDestinationPlace().getLongitudeCentroid());
+            if (trip.getEndPlace() != null) {
+                tripEntry.put("endLatitude", trip.getEndPlace().getLatitudeCentroid());
+                tripEntry.put("endLongitude", trip.getEndPlace().getLongitudeCentroid());
             }
             
             if (trip.getTransportModeInferred() != null) {
@@ -150,44 +150,5 @@ public class TimelineViewController {
         model.addAttribute("timelineEntries", timelineEntries);
         
         return "fragments/timeline :: timeline";
-    }
-    
-    @GetMapping("/api/raw-location-points")
-    @ResponseBody
-    public List<Map<String, Object>> getRawLocationPoints(
-            @RequestParam(required = false) LocalDate selectedDate,
-            @RequestParam(required = false, defaultValue = "1") Long userId) {
-        
-        // Default to today if no date is provided
-        LocalDate date = selectedDate != null ? selectedDate : LocalDate.now();
-        
-        // Find the user
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        
-        // Convert LocalDate to Instant at start of day in UTC
-        Instant dateInstant = date.atStartOfDay(ZoneOffset.UTC).toInstant();
-        
-        // Get raw location points for the user and date
-        List<RawLocationPoint> locationPoints = rawLocationPointRepository.findByUserAndDate(user, dateInstant);
-        
-        // Convert to format expected by the frontend
-        List<Map<String, Object>> rawPoints = new ArrayList<>();
-        for (RawLocationPoint point : locationPoints) {
-            Map<String, Object> pointMap = new HashMap<>();
-            pointMap.put("id", point.getId());
-            pointMap.put("latitude", point.getLatitude());
-            pointMap.put("longitude", point.getLongitude());
-            pointMap.put("timestamp", point.getTimestamp().toEpochMilli());
-            pointMap.put("accuracyMeters", point.getAccuracyMeters());
-            
-            if (point.getActivityProvided() != null) {
-                pointMap.put("activity", point.getActivityProvided());
-            }
-            
-            rawPoints.add(pointMap);
-        }
-        
-        return rawPoints;
     }
 }
