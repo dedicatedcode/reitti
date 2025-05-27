@@ -1,0 +1,215 @@
+package com.dedicatedcode.reitti.service.processing;
+
+import com.dedicatedcode.reitti.model.GeoUtils;
+import com.dedicatedcode.reitti.model.RawLocationPoint;
+import com.dedicatedcode.reitti.model.Trip;
+import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
+import com.dedicatedcode.reitti.repository.TripRepository;
+import com.dedicatedcode.reitti.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Service
+public class TripMergingService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(TripMergingService.class);
+    
+    private final TripRepository tripRepository;
+    private final UserRepository userRepository;
+    private final RawLocationPointRepository rawLocationPointRepository;
+    
+    @Autowired
+    public TripMergingService(TripRepository tripRepository,
+                             UserRepository userRepository,
+                             RawLocationPointRepository rawLocationPointRepository) {
+        this.tripRepository = tripRepository;
+        this.userRepository = userRepository;
+        this.rawLocationPointRepository = rawLocationPointRepository;
+    }
+    
+    @Transactional
+    public List<Trip> mergeDuplicateTripsForAllUsers() {
+        logger.info("Starting to merge duplicate trips for all users");
+        List<User> users = userRepository.findAll();
+        List<Trip> mergedTrips = new ArrayList<>();
+        
+        for (User user : users) {
+            List<Trip> userMergedTrips = mergeDuplicateTripsForUser(user);
+            mergedTrips.addAll(userMergedTrips);
+        }
+        
+        logger.info("Completed merging duplicate trips for all users. Total merged trips: {}", mergedTrips.size());
+        return mergedTrips;
+    }
+    
+    @Transactional
+    public List<Trip> mergeDuplicateTripsForUser(User user) {
+        logger.info("Merging duplicate trips for user: {}", user.getUsername());
+        
+        // Get all trips for the user
+        List<Trip> allTrips = tripRepository.findByUser(user);
+        
+        if (allTrips.isEmpty()) {
+            logger.info("No trips found for user: {}", user.getUsername());
+            return new ArrayList<>();
+        }
+        
+        // Group trips by start place, end place, and similar time range
+        Map<String, List<Trip>> tripGroups = groupSimilarTrips(allTrips);
+        
+        // Process each group to merge duplicates
+        List<Trip> mergedTrips = new ArrayList<>();
+        List<Trip> tripsToDelete = new ArrayList<>();
+        
+        for (List<Trip> tripGroup : tripGroups.values()) {
+            if (tripGroup.size() > 1) {
+                // We have potential duplicates
+                Trip mergedTrip = mergeTrips(tripGroup, user);
+                mergedTrips.add(mergedTrip);
+                tripsToDelete.addAll(tripGroup);
+            }
+        }
+        
+        // Delete the original trips that were merged
+        if (!tripsToDelete.isEmpty()) {
+            tripRepository.deleteAll(tripsToDelete);
+            logger.info("Deleted {} duplicate trips for user: {}", tripsToDelete.size(), user.getUsername());
+        }
+        
+        logger.info("Merged {} trip groups into {} trips for user: {}", 
+                tripGroups.size(), mergedTrips.size(), user.getUsername());
+        
+        return mergedTrips;
+    }
+    
+    private Map<String, List<Trip>> groupSimilarTrips(List<Trip> trips) {
+        Map<String, List<Trip>> tripGroups = new HashMap<>();
+        
+        for (Trip trip : trips) {
+            // Create a key based on start place, end place, and approximate time
+            // We use minute precision for time to allow for small differences
+            String key = createTripGroupKey(trip);
+            
+            tripGroups.computeIfAbsent(key, k -> new ArrayList<>()).add(trip);
+        }
+        
+        return tripGroups;
+    }
+    
+    private String createTripGroupKey(Trip trip) {
+        // Create a key that identifies similar trips
+        // Format: userId_startPlaceId_endPlaceId_startTimeMinute_endTimeMinute
+        long startTimeMinutes = trip.getStartTime().getEpochSecond() / 60;
+        long endTimeMinutes = trip.getEndTime().getEpochSecond() / 60;
+        
+        Long startPlaceId = trip.getStartPlace() != null ? trip.getStartPlace().getId() : 0;
+        Long endPlaceId = trip.getEndPlace() != null ? trip.getEndPlace().getId() : 0;
+        
+        return String.format("%d_%d_%d_%d_%d", 
+                trip.getUser().getId(), 
+                startPlaceId, 
+                endPlaceId, 
+                startTimeMinutes, 
+                endTimeMinutes);
+    }
+    
+    private Trip mergeTrips(List<Trip> trips, User user) {
+        // Use the first trip as a base
+        Trip baseTrip = trips.get(0);
+        
+        // Find the earliest start time and latest end time
+        Instant earliestStart = baseTrip.getStartTime();
+        Instant latestEnd = baseTrip.getEndTime();
+        
+        for (Trip trip : trips) {
+            if (trip.getStartTime().isBefore(earliestStart)) {
+                earliestStart = trip.getStartTime();
+            }
+            if (trip.getEndTime().isAfter(latestEnd)) {
+                latestEnd = trip.getEndTime();
+            }
+        }
+        
+        // Create a new merged trip
+        Trip mergedTrip = new Trip();
+        mergedTrip.setUser(user);
+        mergedTrip.setStartPlace(baseTrip.getStartPlace());
+        mergedTrip.setEndPlace(baseTrip.getEndPlace());
+        mergedTrip.setStartTime(earliestStart);
+        mergedTrip.setEndTime(latestEnd);
+        
+        // Recalculate distance based on raw location points
+        recalculateDistance(mergedTrip);
+        
+        // Set transport mode (use the most common one from the trips)
+        mergedTrip.setTransportModeInferred(getMostCommonTransportMode(trips));
+        
+        // Save the merged trip
+        return tripRepository.save(mergedTrip);
+    }
+    
+    private void recalculateDistance(Trip trip) {
+        // Get all raw location points for this user within the trip's time range
+        List<RawLocationPoint> points = rawLocationPointRepository.findByUserAndTimestampBetweenOrderByTimestampAsc(
+                trip.getUser(), trip.getStartTime(), trip.getEndTime());
+        
+        if (points.size() < 2) {
+            // Not enough points to calculate distance
+            trip.setTravelledDistanceMeters(0.0);
+            return;
+        }
+        
+        // Calculate total distance
+        double totalDistance = 0.0;
+        for (int i = 0; i < points.size() - 1; i++) {
+            RawLocationPoint p1 = points.get(i);
+            RawLocationPoint p2 = points.get(i + 1);
+            
+            double distance = GeoUtils.calculateHaversineDistance(
+                    p1.getLatitude(), p1.getLongitude(),
+                    p2.getLatitude(), p2.getLongitude());
+            
+            totalDistance += distance;
+        }
+        
+        trip.setTravelledDistanceMeters(totalDistance);
+        
+        // Also update the estimated distance
+        if (trip.getStartPlace() != null && trip.getEndPlace() != null) {
+            double directDistance = GeoUtils.calculateHaversineDistance(
+                    trip.getStartPlace().getLatitudeCentroid(), trip.getStartPlace().getLongitudeCentroid(),
+                    trip.getEndPlace().getLatitudeCentroid(), trip.getEndPlace().getLongitudeCentroid());
+            trip.setEstimatedDistanceMeters(directDistance);
+        } else {
+            trip.setEstimatedDistanceMeters(totalDistance);
+        }
+    }
+    
+    private String getMostCommonTransportMode(List<Trip> trips) {
+        Map<String, Integer> modeCounts = new HashMap<>();
+        
+        for (Trip trip : trips) {
+            String mode = trip.getTransportModeInferred();
+            if (mode != null) {
+                modeCounts.put(mode, modeCounts.getOrDefault(mode, 0) + 1);
+            }
+        }
+        
+        // Find the mode with the highest count
+        return modeCounts.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse("UNKNOWN");
+    }
+}
