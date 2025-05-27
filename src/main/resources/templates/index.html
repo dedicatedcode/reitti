@@ -208,6 +208,10 @@
         <h1>Reitti</h1>
         <nav>
             <a href="/" class="nav-link">Home</a>
+            <span class="nav-link" th:if="${username}" th:text="${username}"></span>
+            <form th:action="@{/logout}" method="post" style="display: inline;">
+                <button type="submit" class="nav-link" style="background: none; border: none; cursor: pointer;">Logout</button>
+            </form>
         </nav>
     </header>
 

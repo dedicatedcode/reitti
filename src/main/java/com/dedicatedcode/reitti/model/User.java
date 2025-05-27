@@ -17,6 +17,9 @@ public class User {
     private String username;
     
     @Column(nullable = false)
+    private String password;
+    
+    @Column(nullable = false)
     private String displayName;
     
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -59,6 +62,14 @@ public class User {
 
     public void setDisplayName(String displayName) {
         this.displayName = displayName;
+    }
+    
+    public String getPassword() {
+        return password;
+    }
+    
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public List<RawLocationPoint> getLocationPoints() {
