@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
@@ -14,6 +15,16 @@ import java.util.List;
 public interface ProcessedVisitRepository extends JpaRepository<ProcessedVisit, Long> {
     
     List<ProcessedVisit> findByUser(User user);
+    
+    @Query("SELECT pv FROM ProcessedVisit pv WHERE pv.user = :user AND pv.place = :place " +
+           "AND ((pv.startTime <= :endTime AND pv.endTime >= :startTime) OR " +
+           "(pv.startTime >= :startTime AND pv.startTime <= :endTime) OR " +
+           "(pv.endTime >= :startTime AND pv.endTime <= :endTime))")
+    List<ProcessedVisit> findByUserAndPlaceAndTimeOverlap(
+            @Param("user") User user,
+            @Param("place") SignificantPlace place,
+            @Param("startTime") Instant startTime,
+            @Param("endTime") Instant endTime);
     
     List<ProcessedVisit> findByUserAndStartTimeBetweenOrderByStartTimeAsc(
             User user, Instant startTime, Instant endTime);

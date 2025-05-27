@@ -5,10 +5,12 @@ import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.model.Visit;
 import com.dedicatedcode.reitti.repository.ProcessedVisitRepository;
+import com.dedicatedcode.reitti.repository.SignificantPlaceRepository;
 import com.dedicatedcode.reitti.repository.UserRepository;
 import com.dedicatedcode.reitti.repository.VisitRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,21 +28,34 @@ public class VisitMergingService {
     private final VisitRepository visitRepository;
     private final ProcessedVisitRepository processedVisitRepository;
     private final UserRepository userRepository;
+    private final SignificantPlaceRepository significantPlaceRepository;
+    
+    private final Logger log = LoggerFactory.getLogger(VisitMergingService.class);
     
     @Value("${reitti.visit.merge-threshold-seconds:300}")
     private long mergeThresholdSeconds;
     
+    @Autowired
     public VisitMergingService(VisitRepository visitRepository, 
                               ProcessedVisitRepository processedVisitRepository,
-                              UserRepository userRepository) {
+                              UserRepository userRepository,
+                              SignificantPlaceRepository significantPlaceRepository) {
         this.visitRepository = visitRepository;
         this.processedVisitRepository = processedVisitRepository;
         this.userRepository = userRepository;
+        this.significantPlaceRepository = significantPlaceRepository;
     }
     
     @Transactional
     public List<ProcessedVisit> processAndMergeVisits(User user) {
-        logger.info("Processing and merging visits for user: {}", user.getUsername());
+        log.info("Processing and merging visits for user: {}", user.getUsername());
+        
+        // Check if we've already processed visits for this user
+        List<ProcessedVisit> existingProcessedVisits = processedVisitRepository.findByUser(user);
+        if (!existingProcessedVisits.isEmpty()) {
+            log.info("ProcessedVisits already exist for user {}, skipping processing", user.getUsername());
+            return existingProcessedVisits;
+        }
         
         // Get all visits for the user
         List<Visit> allVisits = visitRepository.findByUser(user);
@@ -64,7 +79,13 @@ public class VisitMergingService {
     
     @Transactional
     public List<ProcessedVisit> processAndMergeVisitsForAllUsers() {
-        logger.info("Processing and merging visits for all users");
+        log.info("Processing and merging visits for all users");
+        
+        // First, check if we've already processed visits
+        if (processedVisitRepository.count() > 0) {
+            log.info("ProcessedVisits already exist, skipping processing");
+            return processedVisitRepository.findAll();
+        }
         
         List<User> allUsers = userRepository.findAll();
         List<ProcessedVisit> allProcessedVisits = new ArrayList<>();
@@ -140,16 +161,50 @@ public class VisitMergingService {
     private ProcessedVisit createProcessedVisit(User user, SignificantPlace place, 
                                               Instant startTime, Instant endTime, 
                                               Set<Long> originalVisitIds) {
-        ProcessedVisit processedVisit = new ProcessedVisit(user, place, startTime, endTime);
-        processedVisit.setMergedCount(originalVisitIds.size());
+        // Check if a processed visit already exists for this time range and place
+        List<ProcessedVisit> existingVisits = processedVisitRepository.findByUserAndPlaceAndTimeOverlap(
+                user, place, startTime, endTime);
         
-        // Store original visit IDs as comma-separated string
-        String visitIdsStr = originalVisitIds.stream()
-                .map(Object::toString)
-                .collect(Collectors.joining(","));
-        processedVisit.setOriginalVisitIds(visitIdsStr);
-        
-        return processedVisitRepository.save(processedVisit);
+        if (!existingVisits.isEmpty()) {
+            // Use the existing processed visit
+            ProcessedVisit existingVisit = existingVisits.get(0);
+            log.debug("Found existing processed visit for place ID {}", place.getId());
+            
+            // Update the existing visit if needed (e.g., extend time range)
+            if (startTime.isBefore(existingVisit.getStartTime())) {
+                existingVisit.setStartTime(startTime);
+            }
+            if (endTime.isAfter(existingVisit.getEndTime())) {
+                existingVisit.setEndTime(endTime);
+            }
+            
+            // Add original visit IDs to the existing one
+            String existingIds = existingVisit.getOriginalVisitIds();
+            String newIds = originalVisitIds.stream()
+                    .map(Object::toString)
+                    .collect(Collectors.joining(","));
+            
+            if (existingIds == null || existingIds.isEmpty()) {
+                existingVisit.setOriginalVisitIds(newIds);
+            } else {
+                existingVisit.setOriginalVisitIds(existingIds + "," + newIds);
+            }
+            
+            existingVisit.setMergedCount(existingVisit.getMergedCount() + originalVisitIds.size());
+            return processedVisitRepository.save(existingVisit);
+        } else {
+            // Create a new processed visit
+            ProcessedVisit processedVisit = new ProcessedVisit(user, place, startTime, endTime);
+            processedVisit.setMergedCount(originalVisitIds.size());
+            
+            // Store original visit IDs as comma-separated string
+            String visitIdsStr = originalVisitIds.stream()
+                    .map(Object::toString)
+                    .collect(Collectors.joining(","));
+            processedVisit.setOriginalVisitIds(visitIdsStr);
+            
+            return processedVisitRepository.save(processedVisit);
+        }
     }
     
     @Transactional
