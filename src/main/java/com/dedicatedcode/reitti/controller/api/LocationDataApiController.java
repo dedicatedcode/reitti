@@ -32,7 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class LocationDataApiController {
     
     private static final Logger logger = LoggerFactory.getLogger(LocationDataApiController.class);
-    private static final int BATCH_SIZE = 10; // Process locations in batches of 100
+    private static final int BATCH_SIZE = 100; // Process locations in batches of 100
     
     private final ApiTokenService apiTokenService;
     private final ObjectMapper objectMapper;
@@ -239,23 +239,7 @@ public class LocationDataApiController {
         if (locationNode.has("accuracy")) {
             point.setAccuracyMeters(locationNode.get("accuracy").asDouble());
         } else {
-            // Default accuracy if not provided
             point.setAccuracyMeters(100.0);
-        }
-        
-        // Extract activity if available
-        if (locationNode.has("activity") && locationNode.get("activity").isArray() && 
-            locationNode.get("activity").size() > 0) {
-            
-            JsonNode activityNode = locationNode.get("activity").get(0);
-            if (activityNode.has("activity") && activityNode.get("activity").isArray() && 
-                activityNode.get("activity").size() > 0) {
-                
-                JsonNode activityTypeNode = activityNode.get("activity").get(0);
-                if (activityTypeNode.has("type")) {
-                    point.setActivity(activityTypeNode.get("type").asText());
-                }
-            }
         }
         
         return point;

@@ -128,14 +128,15 @@
     <div class="sidebar">
         <div class="date-navigation">
             <button hx-get="/timeline" 
-                    hx-vals='{"selectedDate": "2023-10-01"}'
+                    hx-vals='{"selectedDate": "2013-04-15"}'
                     hx-target="#timeline-container">
                 Previous
             </button>
             
             <input type="date" 
                    id="date-picker" 
-                   name="selectedDate" 
+                   name="selectedDate"
+                   value="2013-04-15"
                    hx-get="/timeline" 
                    hx-include="this" 
                    hx-target="#timeline-container"
@@ -201,7 +202,6 @@
                     }
                 ]
             },
-            center: [24.9384, 60.1699], // Helsinki coordinates
             zoom: 12
         });
         
@@ -209,42 +209,15 @@
         map.addControl(new maplibregl.NavigationControl());
 
         // Set today's date in the date picker
-        document.getElementById('date-picker').valueAsDate = new Date();
-        
-        // Load raw location points
-        function loadRawLocationPoints() {
-            const datePicker = document.getElementById('date-picker');
-            const selectedDate = datePicker.value;
-            
-            fetch(`/api/raw-location-points?selectedDate=${selectedDate}`)
-                .then(response => response.json())
-                .then(data => {
-                    updateMapWithRawPoints(data);
-                })
-                .catch(error => console.error('Error loading raw location points:', error));
-        }
-        
+        document.getElementById('date-picker').valueAsDate = new Date('2013-04-15');
+
         // Listen for HTMX after-swap events to update the map
         document.body.addEventListener('htmx:afterSwap', function(event) {
             if (event.detail.target.id === 'timeline-container') {
                 updateMapWithNewData(event.detail.target);
-                // Reload raw points when timeline changes
-                loadRawLocationPoints();
             }
         });
-        
-        // Listen for checkbox changes
-        document.addEventListener('DOMContentLoaded', function() {
-            const showRawPointsCheckbox = document.getElementById('show-raw-points');
-            showRawPointsCheckbox.addEventListener('change', function() {
-                if (this.checked) {
-                    loadRawLocationPoints();
-                } else {
 
-                }
-            });
-        });
-        
         function updateMapWithNewData(container) {
 
             // Collect place points

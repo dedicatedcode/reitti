@@ -100,10 +100,8 @@ public class TripMergingService {
             // Create a key based on start place, end place, and approximate time
             // We use minute precision for time to allow for small differences
             String key = createTripGroupKey(trip);
-            
             tripGroups.computeIfAbsent(key, k -> new ArrayList<>()).add(trip);
         }
-        
         return tripGroups;
     }
     
@@ -111,17 +109,15 @@ public class TripMergingService {
         // Create a key that identifies similar trips
         // Format: userId_startPlaceId_endPlaceId_startTimeMinute_endTimeMinute
         long startTimeMinutes = trip.getStartTime().getEpochSecond() / 60;
-        long endTimeMinutes = trip.getEndTime().getEpochSecond() / 60;
-        
+
         Long startPlaceId = trip.getStartPlace() != null ? trip.getStartPlace().getId() : 0;
         Long endPlaceId = trip.getEndPlace() != null ? trip.getEndPlace().getId() : 0;
         
-        return String.format("%d_%d_%d_%d_%d", 
+        return String.format("%d_%d_%d_%d",
                 trip.getUser().getId(), 
                 startPlaceId, 
-                endPlaceId, 
-                startTimeMinutes, 
-                endTimeMinutes);
+                endPlaceId,
+                startTimeMinutes);
     }
     
     private Trip mergeTrips(List<Trip> trips, User user) {

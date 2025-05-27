@@ -10,6 +10,18 @@ Content-Type: application/json
 
 
 ###
+# @name Upload Whole Google Takeout Records.json
+POST http://localhost:8080/api/v1/import/google-takeout
+Content-Type: multipart/form-data; boundary=boundary
+X-API-Token: d8a3e1ed-33ad-4e6c-b517-757b54d03833
+
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="Records.json"
+
+< /home/daniel/Downloads/takeout-20250422T152421Z-001/Takeout/Zeitachse/Records.json
+
+###
 # @name Upload Google Takeout Records.json
 POST http://localhost:8080/api/v1/import/google-takeout
 Content-Type: multipart/form-data; boundary=boundary
@@ -71,3 +83,8 @@ Content-Disposition: form-data; name="file"; filename="Records.json"
 <> 2025-05-26T105220.500.json
 <> 2025-05-26T105116.400.json
 <> 2025-05-26T105039.400.json
+
+
+###
+# @name Merge Trips
+POST http://localhost:8080/api/v1/trips/merge/user/1
