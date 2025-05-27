@@ -1,10 +1,14 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.model.ApiToken;
+import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.service.ApiTokenService;
+import com.dedicatedcode.reitti.service.PlaceService;
 import com.dedicatedcode.reitti.service.QueueStatsService;
 import com.dedicatedcode.reitti.service.UserService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -21,15 +25,20 @@ public class SettingsController {
     private final ApiTokenService apiTokenService;
     private final UserService userService;
     private final QueueStatsService queueStatsService;
+    private final PlaceService placeService;
 
-    public SettingsController(ApiTokenService apiTokenService, UserService userService, QueueStatsService queueStatsService) {
+    public SettingsController(ApiTokenService apiTokenService, UserService userService, 
+                             QueueStatsService queueStatsService, PlaceService placeService) {
         this.apiTokenService = apiTokenService;
         this.userService = userService;
         this.queueStatsService = queueStatsService;
+        this.placeService = placeService;
     }
 
     @GetMapping
-    public String settings(Authentication authentication, Model model) {
+    public String settings(Authentication authentication, Model model,
+                          @RequestParam(defaultValue = "0") int page,
+                          @RequestParam(required = false) String tab) {
         User currentUser = userService.getUserByUsername(authentication.getName());
         
         // Load API tokens
@@ -40,11 +49,20 @@ public class SettingsController {
         List<User> users = userService.getAllUsers();
         model.addAttribute("users", users);
         
+        // Load significant places with pagination (20 per page)
+        Page<SignificantPlace> places = placeService.getPlacesForUser(currentUser, PageRequest.of(page, 20));
+        model.addAttribute("places", places);
+        
         // Load queue stats
         Map<String, Object> queueStats = queueStatsService.getQueueStats();
         model.addAttribute("queueStats", queueStats);
         
         model.addAttribute("username", authentication.getName());
+        
+        // Set active tab if provided
+        if (tab != null) {
+            model.addAttribute("activeTab", tab);
+        }
         
         return "settings";
     }
@@ -99,5 +117,25 @@ public class SettingsController {
         }
         
         return "redirect:/settings";
+    }
+    
+    @PostMapping("/places/{placeId}/update")
+    public String updatePlace(@PathVariable Long placeId, 
+                             @RequestParam String name,
+                             Authentication authentication, 
+                             RedirectAttributes redirectAttributes,
+                             @RequestParam(defaultValue = "0") int page) {
+        try {
+            User currentUser = userService.getUserByUsername(authentication.getName());
+            placeService.updatePlaceName(placeId, name, currentUser);
+            
+            redirectAttributes.addFlashAttribute("placeMessage", "Place updated successfully");
+            redirectAttributes.addFlashAttribute("placeSuccess", true);
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("placeMessage", "Error updating place: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("placeSuccess", false);
+        }
+        
+        return "redirect:/settings?tab=places-management&page=" + page;
     }
 }
