@@ -5,7 +5,6 @@ import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.model.Visit;
 import com.dedicatedcode.reitti.repository.ProcessedVisitRepository;
-import com.dedicatedcode.reitti.repository.SignificantPlaceRepository;
 import com.dedicatedcode.reitti.repository.UserRepository;
 import com.dedicatedcode.reitti.repository.VisitRepository;
 import org.slf4j.Logger;
@@ -28,8 +27,7 @@ public class VisitMergingService {
     private final VisitRepository visitRepository;
     private final ProcessedVisitRepository processedVisitRepository;
     private final UserRepository userRepository;
-    private final SignificantPlaceRepository significantPlaceRepository;
-    
+
     private final Logger log = LoggerFactory.getLogger(VisitMergingService.class);
     
     @Value("${reitti.visit.merge-threshold-seconds:300}")
@@ -38,25 +36,16 @@ public class VisitMergingService {
     @Autowired
     public VisitMergingService(VisitRepository visitRepository, 
                               ProcessedVisitRepository processedVisitRepository,
-                              UserRepository userRepository,
-                              SignificantPlaceRepository significantPlaceRepository) {
+                              UserRepository userRepository) {
         this.visitRepository = visitRepository;
         this.processedVisitRepository = processedVisitRepository;
         this.userRepository = userRepository;
-        this.significantPlaceRepository = significantPlaceRepository;
     }
     
     @Transactional
     public List<ProcessedVisit> processAndMergeVisits(User user) {
         log.info("Processing and merging visits for user: {}", user.getUsername());
-        
-        // Check if we've already processed visits for this user
-        List<ProcessedVisit> existingProcessedVisits = processedVisitRepository.findByUser(user);
-        if (!existingProcessedVisits.isEmpty()) {
-            log.info("ProcessedVisits already exist for user {}, skipping processing", user.getUsername());
-            return existingProcessedVisits;
-        }
-        
+
         // Get all visits for the user
         List<Visit> allVisits = visitRepository.findByUser(user);
         
