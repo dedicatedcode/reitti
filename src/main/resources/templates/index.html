@@ -38,6 +38,23 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
+        nav {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        
+        .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
         .sidebar {
             grid-area: sidebar;
             overflow-y: auto;
@@ -123,6 +140,10 @@
 <body>
     <header>
         <h1>Reitti</h1>
+        <nav>
+            <a href="/" class="nav-link">Home</a>
+            <a href="/settings" class="nav-link">Settings</a>
+        </nav>
     </header>
     
     <div class="sidebar">
