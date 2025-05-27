@@ -37,6 +37,9 @@ public class Trip {
     @Column
     private Double estimatedDistanceMeters;
     
+    @Column(name = "travelled_distance_meters")
+    private Double travelledDistanceMeters;
+    
     @Column
     private String transportModeInferred;
 
@@ -114,6 +117,14 @@ public class Trip {
 
     public void setEstimatedDistanceMeters(Double estimatedDistanceMeters) {
         this.estimatedDistanceMeters = estimatedDistanceMeters;
+    }
+    
+    public Double getTravelledDistanceMeters() {
+        return travelledDistanceMeters;
+    }
+
+    public void setTravelledDistanceMeters(Double travelledDistanceMeters) {
+        this.travelledDistanceMeters = travelledDistanceMeters;
     }
 
     public String getTransportModeInferred() {
