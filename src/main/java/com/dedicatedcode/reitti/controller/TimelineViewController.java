@@ -1,15 +1,15 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.dto.TimelineResponse;
+import com.dedicatedcode.reitti.model.ProcessedVisit;
 import com.dedicatedcode.reitti.model.RawLocationPoint;
 import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.model.Trip;
 import com.dedicatedcode.reitti.model.User;
-import com.dedicatedcode.reitti.model.Visit;
+import com.dedicatedcode.reitti.repository.ProcessedVisitRepository;
 import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
 import com.dedicatedcode.reitti.repository.TripRepository;
 import com.dedicatedcode.reitti.repository.UserRepository;
-import com.dedicatedcode.reitti.repository.VisitRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
@@ -33,17 +33,17 @@ public class TimelineViewController {
 
     private final RawLocationPointRepository rawLocationPointRepository;
     private final UserRepository userRepository;
-    private final VisitRepository visitRepository;
+    private final ProcessedVisitRepository processedVisitRepository;
     private final TripRepository tripRepository;
 
     @Autowired
     public TimelineViewController(RawLocationPointRepository rawLocationPointRepository, 
                                  UserRepository userRepository,
-                                 VisitRepository visitRepository,
+                                 ProcessedVisitRepository processedVisitRepository,
                                  TripRepository tripRepository) {
         this.rawLocationPointRepository = rawLocationPointRepository;
         this.userRepository = userRepository;
-        this.visitRepository = visitRepository;
+        this.processedVisitRepository = processedVisitRepository;
         this.tripRepository = tripRepository;
     }
     
@@ -74,8 +74,8 @@ public class TimelineViewController {
         Instant startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant();
         Instant endOfDay = date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().minusMillis(1);
         
-        // Get visits and trips for the user and date range
-        List<Visit> visits = visitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(
+        // Get processed visits and trips for the user and date range
+        List<ProcessedVisit> processedVisits = processedVisitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(
                 user, startOfDay, endOfDay);
         List<Trip> trips = tripRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(
                 user, startOfDay, endOfDay);
@@ -83,8 +83,8 @@ public class TimelineViewController {
         // Convert to format expected by the frontend
         List<Map<String, Object>> timelineEntries = new ArrayList<>();
         
-        // Add visits to timeline
-        for (Visit visit : visits) {
+        // Add processed visits to timeline
+        for (ProcessedVisit visit : processedVisits) {
             SignificantPlace place = visit.getPlace();
             if (place != null) {
                 Map<String, Object> visitEntry = new HashMap<>();
