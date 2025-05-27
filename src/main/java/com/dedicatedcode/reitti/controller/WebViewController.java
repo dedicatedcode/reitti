@@ -20,9 +20,5 @@ public class WebViewController {
     public String login() {
         return "login";
     }
-    
-    @GetMapping("/settings")
-    public String redirectToSettings() {
-        return "redirect:/settings";
-    }
+
 }

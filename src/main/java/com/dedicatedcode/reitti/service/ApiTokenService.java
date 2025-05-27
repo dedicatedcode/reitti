@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -40,9 +41,12 @@ public class ApiTokenService {
         apiTokenRepository.deleteById(tokenId);
     }
 
-    @Transactional
     private ApiToken updateLastUsed(ApiToken token) {
         token.setLastUsedAt(Instant.now());
         return apiTokenRepository.save(token);
+    }
+
+    public List<ApiToken> getTokensForUser(User currentUser) {
+        return this.apiTokenRepository.findByUser(currentUser);
     }
 }

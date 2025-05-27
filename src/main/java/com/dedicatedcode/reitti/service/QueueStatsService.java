@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.service;
 
-import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -23,6 +23,7 @@ public class QueueStatsService {
     private static final String VISIT_QUEUE = "visit-detection";
     private static final String TRIP_QUEUE = "trip-detection";
 
+    @Autowired
     public QueueStatsService(RabbitAdmin rabbitAdmin) {
         this.rabbitAdmin = rabbitAdmin;
     }
