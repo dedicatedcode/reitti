@@ -161,9 +161,27 @@
             <a href="/" class="nav-link">Home</a>
         </nav>
     </header>
-
     
     <div id="map"></div>
+    
+    <div class="timeline">
+        <div class="date-navigation">
+            <button id="prev-day" hx-get="/api/timeline/prev-day" hx-target=".timeline-container">
+                &laquo; Previous
+            </button>
+            <input type="date" id="date-picker" name="selected_date" 
+                   hx-get="/api/timeline" hx-include="this" 
+                   hx-target=".timeline-container" hx-indicator=".htmx-indicator">
+            <button id="next-day" hx-get="/api/timeline/next-day" hx-target=".timeline-container">
+                Next &raquo;
+            </button>
+        </div>
+        
+        <div class="timeline-container" hx-get="/api/timeline/today" hx-trigger="load">
+            <div class="htmx-indicator">Loading...</div>
+            <!-- Timeline entries will be loaded here -->
+        </div>
+    </div>
 
 </body>
 </html>
