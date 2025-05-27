@@ -10,9 +10,4 @@ public class WebViewController {
     public String index() {
         return "index";
     }
-    
-    @GetMapping("/settings")
-    public String settings() {
-        return "settings";
-    }
 }

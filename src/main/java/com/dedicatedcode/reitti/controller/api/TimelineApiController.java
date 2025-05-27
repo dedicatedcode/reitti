@@ -1,11 +1,9 @@
-package com.dedicatedcode.reitti.controller;
+package com.dedicatedcode.reitti.controller.api;
 
 import com.dedicatedcode.reitti.dto.TimelineResponse;
-import com.dedicatedcode.reitti.model.ProcessedVisit;
-import com.dedicatedcode.reitti.model.SignificantPlace;
-import com.dedicatedcode.reitti.model.Trip;
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.ProcessedVisitRepository;
+import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
 import com.dedicatedcode.reitti.repository.TripRepository;
 import com.dedicatedcode.reitti.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +16,6 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/timeline")
@@ -27,14 +24,16 @@ public class TimelineApiController {
     private final UserRepository userRepository;
     private final ProcessedVisitRepository processedVisitRepository;
     private final TripRepository tripRepository;
+    private final RawLocationPointRepository rawLocationPointRepository;
 
     @Autowired
     public TimelineApiController(UserRepository userRepository,
-                                ProcessedVisitRepository processedVisitRepository,
-                                TripRepository tripRepository) {
+                                 ProcessedVisitRepository processedVisitRepository,
+                                 TripRepository tripRepository, RawLocationPointRepository rawLocationPointRepository) {
         this.userRepository = userRepository;
         this.processedVisitRepository = processedVisitRepository;
         this.tripRepository = tripRepository;
+        this.rawLocationPointRepository = rawLocationPointRepository;
     }
 
     @GetMapping
@@ -87,6 +86,7 @@ public class TimelineApiController {
                         null,
                         null,
                         null,
+                        null,
                         null
                 ));
             }
@@ -120,7 +120,7 @@ public class TimelineApiController {
                         end.getLongitudeCentroid()
                 );
             }
-            
+            List<RawLocationPoint> path = this.rawLocationPointRepository.findByUserAndTimestampBetweenOrderByTimestampAsc(trip.getUser(), trip.getStartTime(), trip.getEndTime());
             entries.add(new TimelineResponse.TimelineEntry(
                     "TRIP",
                     trip.getId(),
@@ -131,7 +131,9 @@ public class TimelineApiController {
                     startPlace,
                     endPlace,
                     trip.getEstimatedDistanceMeters(),
-                    trip.getTransportModeInferred()
+                    trip.getTransportModeInferred(),
+                    path.stream().map(p -> new TimelineResponse.PointInfo(p.getLatitude(), p.getLongitude(), p.getTimestamp(), p.getAccuracyMeters())).toList()
+
             ));
         }
         

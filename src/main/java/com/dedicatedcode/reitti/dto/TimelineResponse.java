@@ -1,6 +1,8 @@
 package com.dedicatedcode.reitti.dto;
 
 
+import org.springframework.data.geo.Point;
+
 import java.time.Instant;
 import java.util.List;
 
@@ -30,8 +32,9 @@ public class TimelineResponse {
         private final PlaceInfo endPlace;
         private final Double distanceMeters;
         private final String transportMode;
+        private final List<PointInfo> path;
 
-        public TimelineEntry(String type, Long id, Instant startTime, Instant endTime, Long durationSeconds, PlaceInfo place, PlaceInfo startPlace, PlaceInfo endPlace, Double distanceMeters, String transportMode) {
+        public TimelineEntry(String type, Long id, Instant startTime, Instant endTime, Long durationSeconds, PlaceInfo place, PlaceInfo startPlace, PlaceInfo endPlace, Double distanceMeters, String transportMode, List<PointInfo> path) {
             this.type = type;
             this.id = id;
             this.startTime = startTime;
@@ -42,6 +45,7 @@ public class TimelineResponse {
             this.endPlace = endPlace;
             this.distanceMeters = distanceMeters;
             this.transportMode = transportMode;
+            this.path = path;
         }
 
         public String getType() {
@@ -84,46 +88,14 @@ public class TimelineResponse {
             return transportMode;
         }
 
-        public static class PlaceInfo {
-            private final Long id;
-            private final String name;
-            private final String address;
-            private final String category;
-            private final Double latitude;
-            private final Double longitude;
-
-            public PlaceInfo(Long id, String name, String address, String category, Double latitude, Double longitude) {
-                this.id = id;
-                this.name = name;
-                this.address = address;
-                this.category = category;
-                this.latitude = latitude;
-                this.longitude = longitude;
-            }
-
-            public Long getId() {
-                return id;
-            }
-
-            public String getName() {
-                return name;
-            }
-
-            public String getAddress() {
-                return address;
-            }
-
-            public String getCategory() {
-                return category;
-            }
-
-            public Double getLatitude() {
-                return latitude;
-            }
-
-            public Double getLongitude() {
-                return longitude;
-            }
+        public List<PointInfo> getPath() {
+            return path;
         }
+    }
+
+    public record PointInfo(Double latitude, Double longitude, Instant timestamp, Double accuracy) {
+    }
+
+    public record PlaceInfo(Long id, String name, String address, String category, Double latitude, Double longitude) {
     }
 }

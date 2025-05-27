@@ -18,7 +18,7 @@ public class LocationDataProcessingService {
         this.processingPipeline = processingPipeline;
     }
     
-    @RabbitListener(queues = RabbitMQConfig.LOCATION_DATA_QUEUE)
+    @RabbitListener(queues = RabbitMQConfig.LOCATION_DATA_QUEUE, concurrency = "1")
     public void handleLocationDataEvent(LocationDataEvent event) {
         logger.info("Received location data event from RabbitMQ for user {} with {} points", 
                 event.getUsername(), event.getPoints().size());
@@ -27,8 +27,7 @@ public class LocationDataProcessingService {
             processingPipeline.processLocationData(event);
         } catch (Exception e) {
             logger.error("Error processing location data event", e);
-            // In a production system, you might want to implement a dead letter queue
-            // for failed messages
+            throw new RuntimeException(e);
         }
     }
 }

@@ -15,13 +15,13 @@
             height: 100vh;
             overflow: hidden;
         }
-        
+
         .map-controls {
             padding: 10px 15px;
             background-color: #f0f0f0;
             border-bottom: 1px solid #e0e0e0;
         }
-        
+
         header {
             position: absolute;
             top: 0;
@@ -38,12 +38,12 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             height: 60px;
         }
-        
+
         nav {
             display: flex;
             gap: 20px;
         }
-        
+
         .nav-link {
             color: white;
             text-decoration: none;
@@ -51,18 +51,18 @@
             border-radius: 4px;
             transition: background-color 0.2s;
         }
-        
+
         .nav-link:hover {
             background-color: rgba(255, 255, 255, 0.2);
         }
-        
+
         .sidebar {
             grid-area: sidebar;
             overflow-y: auto;
             border-right: 1px solid #e0e0e0;
             background-color: #f9f9f9;
         }
-        
+
         .date-navigation {
             padding: 15px;
             display: flex;
@@ -70,7 +70,7 @@
             justify-content: space-between;
             border-bottom: 1px solid #e0e0e0;
         }
-        
+
         #map {
             position: absolute;
             top: 0;
@@ -79,7 +79,7 @@
             height: 100%;
             z-index: 1;
         }
-        
+
         .timeline {
             position: absolute;
             top: 60px;
@@ -92,11 +92,11 @@
             border-right: 1px solid #e0e0e0;
             box-shadow: 2px 0 5px rgba(0,0,0,0.1);
         }
-        
+
         .timeline-container {
             padding: 0;
         }
-        
+
         .timeline-entry {
             padding: 15px;
             border-bottom: 1px solid #e0e0e0;
@@ -108,23 +108,23 @@
             position: relative;
             overflow: hidden;
         }
-        
+
         .timeline-entry:hover {
             background-color: #f0f0f0;
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         }
-        
+
         .timeline-entry.visit {
             border-left: 4px solid #4a89dc;
             background-color: rgba(74, 137, 220, 0.05);
         }
-        
+
         .timeline-entry.trip {
             border-left: 4px solid #e67e22;
             background-color: rgba(230, 126, 34, 0.05);
         }
-        
+
         .entry-time {
             font-size: 0.8em;
             color: #666;
@@ -134,19 +134,19 @@
             display: inline-block;
             margin-bottom: 8px;
         }
-        
+
         .entry-description {
             font-weight: bold;
             margin: 5px 0;
             font-size: 1.1em;
         }
-        
+
         .entry-details {
             margin-top: 8px;
             font-size: 0.9em;
             color: #555;
         }
-        
+
         .entry-icon {
             position: absolute;
             top: 10px;
@@ -160,29 +160,29 @@
             color: white;
             font-weight: bold;
         }
-        
+
         .visit .entry-icon {
             background-color: #4a89dc;
         }
-        
+
         .trip .entry-icon {
             background-color: #e67e22;
         }
-        
+
         .entry-duration {
             font-size: 0.8em;
             color: #777;
             margin-top: 5px;
         }
-        
+
         .htmx-indicator {
             display: none;
         }
-        
+
         .htmx-request .htmx-indicator {
             display: inline;
         }
-        
+
         button {
             background-color: #4a89dc;
             color: white;
@@ -191,11 +191,11 @@
             border-radius: 4px;
             cursor: pointer;
         }
-        
+
         button:hover {
             background-color: #3a70c0;
         }
-        
+
         input[type="date"] {
             padding: 8px;
             border: 1px solid #ddd;
@@ -210,9 +210,9 @@
             <a href="/" class="nav-link">Home</a>
         </nav>
     </header>
-    
+
     <div id="map"></div>
-    
+
     <div class="timeline">
         <div class="date-navigation">
             <button id="prev-day">
@@ -223,7 +223,7 @@
                 Next &raquo;
             </button>
         </div>
-        
+
         <div class="timeline-container">
             <div id="loading-indicator" style="display: none;">Loading...</div>
             <!-- Timeline entries will be loaded here -->
@@ -236,7 +236,7 @@
             const today = new Date();
             const formattedDate = today.toISOString().split('T')[0]; // YYYY-MM-DD format
             document.getElementById('date-picker').value = formattedDate;
-            
+
             // Handle previous day button
             document.getElementById('prev-day').addEventListener('click', function() {
                 const datePicker = document.getElementById('date-picker');
@@ -244,12 +244,12 @@
                 currentDate.setDate(currentDate.getDate() - 1);
                 const newDate = currentDate.toISOString().split('T')[0];
                 datePicker.value = newDate;
-                
+
                 // Trigger HTMX request
                 htmx.trigger(datePicker, 'change');
                 htmx.trigger(datePicker, 'htmx:trigger');
             });
-            
+
             // Handle next day button
             document.getElementById('next-day').addEventListener('click', function() {
                 const datePicker = document.getElementById('date-picker');
@@ -257,32 +257,32 @@
                 currentDate.setDate(currentDate.getDate() + 1);
                 const newDate = currentDate.toISOString().split('T')[0];
                 datePicker.value = newDate;
-                
+
                 // Trigger HTMX request
                 htmx.trigger(datePicker, 'change');
                 htmx.trigger(datePicker, 'htmx:trigger');
             });
-            
+
             // Initialize the map
             const map = L.map('map').setView([60.1699, 24.9384], 12); // Helsinki coordinates as default
-            
+
             // Add tile layer
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                 maxZoom: 19
             }).addTo(map);
-            
+
             // Add scale control
             L.control.scale({
                 imperial: false,
                 metric: true
             }).addTo(map);
-            
+
             // Function to load timeline data
             function loadTimelineData(date) {
                 const loadingIndicator = document.getElementById('loading-indicator');
                 loadingIndicator.style.display = 'block';
-                
+
                 fetch(`/api/timeline?selectedDate=${date}`)
                     .then(response => {
                         if (!response.ok) {
@@ -299,22 +299,28 @@
                         loadingIndicator.style.display = 'none';
                     });
             }
-            
+            const selectedPath = L.polyline([], {
+                color: '#ff984f',
+                weight: 4,
+                opacity: 1,
+                lineJoin: 'round',
+                lineCap: 'round'
+            })
+
             // Function to update the timeline with fetched data
             function updateTimeline(data) {
                 const timelineContainer = document.querySelector('.timeline-container');
-                // Clear existing content except loading indicator
                 const loadingIndicator = document.getElementById('loading-indicator');
                 timelineContainer.innerHTML = '';
                 timelineContainer.appendChild(loadingIndicator);
-                
+
                 // Clear existing markers and paths
                 map.eachLayer(layer => {
-                    if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+                    if (!layer._url) {
                         map.removeLayer(layer);
                     }
                 });
-                
+
                 if (!data || !data.entries || data.entries.length === 0) {
                     const noDataMsg = document.createElement('div');
                     noDataMsg.className = 'timeline-entry';
@@ -322,16 +328,17 @@
                     timelineContainer.appendChild(noDataMsg);
                     return;
                 }
-                
+
                 const bounds = L.latLngBounds();
+
                 let hasValidCoords = false;
-                
+
                 // Create timeline entries
                 data.entries.forEach(entry => {
                     const entryElement = document.createElement('div');
                     entryElement.className = `timeline-entry ${entry.type.toLowerCase()}`;
                     entryElement.dataset.id = entry.id;
-                    
+
                     // Set coordinates based on entry type
                     if (entry.type === 'VISIT' && entry.place) {
                         entryElement.dataset.lat = entry.place.latitude;
@@ -342,58 +349,58 @@
                             entryElement.dataset.lat = entry.startPlace.latitude;
                             entryElement.dataset.lng = entry.startPlace.longitude;
                         }
-                        
+
                         // If trip has path data, add it
                         if (entry.path) {
                             entryElement.dataset.path = JSON.stringify(entry.path);
                         }
                     }
-                    
+
                     // Create icon element
                     const iconElement = document.createElement('div');
                     iconElement.className = 'entry-icon';
                     iconElement.textContent = entry.type === 'VISIT' ? 'P' : 'T';
-                    
+
                     // Create time element
                     const timeElement = document.createElement('div');
                     timeElement.className = 'entry-time';
                     const startTime = new Date(entry.startTime);
                     const endTime = new Date(entry.endTime);
                     timeElement.textContent = `${startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
-                    
+
                     // Calculate duration
                     const durationMs = endTime - startTime;
                     const durationMinutes = Math.floor(durationMs / 60000);
                     const durationHours = Math.floor(durationMinutes / 60);
                     const remainingMinutes = durationMinutes % 60;
-                    
+
                     let durationText = '';
                     if (durationHours > 0) {
                         durationText = `${durationHours}h ${remainingMinutes}m`;
                     } else {
                         durationText = `${durationMinutes}m`;
                     }
-                    
+
                     const durationElement = document.createElement('div');
                     durationElement.className = 'entry-duration';
                     durationElement.textContent = `Duration: ${durationText}`;
-                    
+
                     // Create description element
                     const descElement = document.createElement('div');
                     descElement.className = 'entry-description';
-                    
+
                     // Create details element
                     const detailsElement = document.createElement('div');
                     detailsElement.className = 'entry-details';
-                    
+
                     if (entry.type === 'VISIT') {
                         const placeName = entry.place ? entry.place.name || 'Unknown Place' : 'Unknown Place';
                         descElement.textContent = placeName;
-                        
+
                         if (entry.place && entry.place.address) {
                             detailsElement.textContent = entry.place.address;
                         }
-                        
+
                         if (entry.place && entry.place.category) {
                             const categorySpan = document.createElement('span');
                             categorySpan.style.display = 'block';
@@ -407,7 +414,7 @@
                         const endName = entry.endPlace ? entry.endPlace.name || 'Unknown' : 'Unknown';
                         descElement.textContent = `Trip`;
                         detailsElement.innerHTML = `<strong>From:</strong> ${startName}<br><strong>To:</strong> ${endName}`;
-                        
+
                         // Add distance if available
                         if (entry.travelledDistanceMeters) {
                             const distanceKm = (entry.travelledDistanceMeters / 1000).toFixed(1);
@@ -417,25 +424,25 @@
                             detailsElement.appendChild(distanceElement);
                         }
                     }
-                    
+
                     // Add elements to entry
                     entryElement.appendChild(iconElement);
                     entryElement.appendChild(timeElement);
                     entryElement.appendChild(descElement);
                     entryElement.appendChild(detailsElement);
                     entryElement.appendChild(durationElement);
-                    
+
                     // Add entry to timeline
                     timelineContainer.appendChild(entryElement);
-                    
+
                     // Add markers for each entry with coordinates
                     const lat = parseFloat(entryElement.dataset.lat);
                     const lng = parseFloat(entryElement.dataset.lng);
-                    
+
                     if (!isNaN(lat) && !isNaN(lng)) {
                         // Determine marker color based on entry type
                         const markerColor = entry.type === 'VISIT' ? '#4a89dc' : '#e67e22';
-                        
+
                         // Create marker with custom icon
                         const marker = L.circleMarker([lat, lng], {
                             radius: 8,
@@ -445,85 +452,89 @@
                             opacity: 1,
                             fillOpacity: 0.8
                         }).addTo(map);
-                        
+
                         // Add popup with basic info
-                        const popupContent = entry.type === 'VISIT' 
+                        const popupContent = entry.type === 'VISIT'
                             ? `<b>${entry.place?.name || 'Unknown Place'}</b><br>${timeElement.textContent}`
                             : `<b>Trip</b><br>${timeElement.textContent}`;
-                        
+
                         marker.bindPopup(popupContent);
-                            
+
                         // Extend bounds for map fitting
                         bounds.extend([lat, lng]);
                         hasValidCoords = true;
                     }
-                    
+
                     // If entry has a path, add it to the map
                     if (entryElement.dataset.path) {
                         try {
                             const pathData = JSON.parse(entryElement.dataset.path);
-                            
-                            if (pathData.features && pathData.features.length > 0) {
-                                pathData.features.forEach(feature => {
-                                    if (feature.geometry && feature.geometry.type === 'LineString') {
-                                        // Convert GeoJSON coordinates [lng, lat] to Leaflet format [lat, lng]
-                                        const latlngs = feature.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-                                        
-                                        // Create polyline
-                                        const polyline = L.polyline(latlngs, {
-                                            color: '#e67e22',
-                                            weight: 4,
-                                            opacity: 0.8,
-                                            lineJoin: 'round',
-                                            lineCap: 'round'
-                                        }).addTo(map);
-                                        
-                                        // Extend bounds with all path points
-                                        latlngs.forEach(latlng => {
-                                            bounds.extend(latlng);
-                                            hasValidCoords = true;
-                                        });
-                                    }
-                                });
-                            }
+                            const latlngs = pathData.map(coord => [coord.latitude, coord.longitude]);
+
+                            // Create polyline
+                            L.polyline(latlngs, {
+                                color: '#4f73ff',
+                                weight: 2,
+                                opacity: 0.8,
+                                lineJoin: 'round',
+                                lineCap: 'round'
+                            }).addTo(map);
+
+                            // Extend bounds with all path points
+                            latlngs.forEach(latlng => {
+                                bounds.extend(latlng);
+                                hasValidCoords = true;
+                            });
                         } catch (e) {
                             console.error("Error parsing path data:", e);
                         }
                     }
                 });
-                
+
                 // Fit map to bounds if we have valid coordinates
-                if (hasValidCoords && !bounds.isEmpty()) {
+                if (hasValidCoords) {
                     map.fitBounds(bounds, {
                         padding: [50, 50],
                         maxZoom: 16
                     });
                 }
             }
-            
+
             // Handle clicks on timeline entries
             document.querySelector('.timeline-container').addEventListener('click', function(event) {
                 const entry = event.target.closest('.timeline-entry');
                 if (entry) {
+                    selectedPath.remove();
+                    const newBounds = L.latLngBounds();
+
                     const lat = parseFloat(entry.dataset.lat);
                     const lng = parseFloat(entry.dataset.lng);
-                    
-                    if (!isNaN(lat) && !isNaN(lng)) {
-                        map.flyTo([lat, lng], 15, {
-                            duration: 1
+
+                    if (entry.dataset.path) {
+                        const pathData = JSON.parse(entry.dataset.path);
+                        const latlngs = pathData.map(coord => [coord.latitude, coord.longitude]);
+                        latlngs.forEach(latlng => {
+                            newBounds.extend(latlng);
                         });
+                        selectedPath.setLatLngs(latlngs);
+                        selectedPath.addTo(map)
                     }
+                    newBounds.extend([lat, lng]);
+                    map.flyToBounds(newBounds, {
+                        padding: [50, 50],
+                        maxZoom: 16
+                    });
                 }
             });
-            
+
             // Set up date picker and navigation
             const datePicker = document.getElementById('date-picker');
-            
+
             // Load initial data
             datePicker.addEventListener('change', function() {
                 loadTimelineData(this.value);
             });
-            
+
             // Handle previous day button
             document.getElementById('prev-day').addEventListener('click', function() {
                 const currentDate = new Date(datePicker.value);
@@ -532,7 +543,7 @@
                 datePicker.value = newDate;
                 loadTimelineData(newDate);
             });
-            
+
             // Handle next day button
             document.getElementById('next-day').addEventListener('click', function() {
                 const currentDate = new Date(datePicker.value);
@@ -541,7 +552,7 @@
                 datePicker.value = newDate;
                 loadTimelineData(newDate);
             });
-            
+
             // Load initial timeline data
             loadTimelineData(formattedDate);
         });
