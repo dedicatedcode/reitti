@@ -183,5 +183,140 @@
         </div>
     </div>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize the map
+            const map = new maplibregl.Map({
+                container: 'map',
+                style: 'https://demotiles.maplibre.org/style.json', // Default style
+                center: [24.9384, 60.1699], // Helsinki coordinates as default
+                zoom: 12
+            });
+            
+            // Add navigation controls
+            map.addControl(new maplibregl.NavigationControl(), 'top-right');
+            
+            // Add scale
+            map.addControl(new maplibregl.ScaleControl({
+                maxWidth: 100,
+                unit: 'metric'
+            }), 'bottom-left');
+            
+            // Handle timeline entry clicks to update the map
+            document.body.addEventListener('htmx:afterSwap', function(event) {
+                if (event.detail.target.classList.contains('timeline-container')) {
+                    // Process timeline entries after they're loaded
+                    const entries = document.querySelectorAll('.timeline-entry');
+                    
+                    // Clear existing markers if any
+                    const existingMarkers = document.querySelectorAll('.maplibregl-marker');
+                    existingMarkers.forEach(marker => marker.remove());
+                    
+                    // Add markers for each entry with coordinates
+                    entries.forEach(entry => {
+                        const lat = parseFloat(entry.dataset.lat);
+                        const lng = parseFloat(entry.dataset.lng);
+                        
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            // Create marker element
+                            const markerEl = document.createElement('div');
+                            markerEl.className = 'marker';
+                            markerEl.style.width = '15px';
+                            markerEl.style.height = '15px';
+                            markerEl.style.borderRadius = '50%';
+                            
+                            // Color based on entry type
+                            if (entry.classList.contains('place')) {
+                                markerEl.style.backgroundColor = '#4a89dc';
+                            } else if (entry.classList.contains('trip')) {
+                                markerEl.style.backgroundColor = '#e67e22';
+                            } else {
+                                markerEl.style.backgroundColor = '#95a5a6';
+                            }
+                            
+                            // Add marker to map
+                            new maplibregl.Marker(markerEl)
+                                .setLngLat([lng, lat])
+                                .addTo(map);
+                        }
+                        
+                        // If entry has a path, add it to the map
+                        if (entry.dataset.path) {
+                            try {
+                                const pathData = JSON.parse(entry.dataset.path);
+                                
+                                // Check if the source already exists
+                                if (!map.getSource('path-' + entry.dataset.id)) {
+                                    map.addSource('path-' + entry.dataset.id, {
+                                        'type': 'geojson',
+                                        'data': pathData
+                                    });
+                                    
+                                    map.addLayer({
+                                        'id': 'path-layer-' + entry.dataset.id,
+                                        'type': 'line',
+                                        'source': 'path-' + entry.dataset.id,
+                                        'layout': {
+                                            'line-join': 'round',
+                                            'line-cap': 'round'
+                                        },
+                                        'paint': {
+                                            'line-color': '#e67e22',
+                                            'line-width': 4
+                                        }
+                                    });
+                                } else {
+                                    // Update existing source
+                                    map.getSource('path-' + entry.dataset.id).setData(pathData);
+                                }
+                            } catch (e) {
+                                console.error("Error parsing path data:", e);
+                            }
+                        }
+                    });
+                    
+                    // If we have entries with coordinates, fit the map to show them all
+                    if (entries.length > 0) {
+                        const bounds = new maplibregl.LngLatBounds();
+                        let hasValidCoords = false;
+                        
+                        entries.forEach(entry => {
+                            const lat = parseFloat(entry.dataset.lat);
+                            const lng = parseFloat(entry.dataset.lng);
+                            
+                            if (!isNaN(lat) && !isNaN(lng)) {
+                                bounds.extend([lng, lat]);
+                                hasValidCoords = true;
+                            }
+                        });
+                        
+                        if (hasValidCoords) {
+                            map.fitBounds(bounds, {
+                                padding: 50,
+                                maxZoom: 16
+                            });
+                        }
+                    }
+                }
+            });
+            
+            // Handle clicks on timeline entries
+            document.querySelector('.timeline-container').addEventListener('click', function(event) {
+                const entry = event.target.closest('.timeline-entry');
+                if (entry) {
+                    const lat = parseFloat(entry.dataset.lat);
+                    const lng = parseFloat(entry.dataset.lng);
+                    
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        map.flyTo({
+                            center: [lng, lat],
+                            zoom: 15,
+                            essential: true
+                        });
+                    }
+                }
+            });
+        });
+    </script>
 </body>
 </html>
