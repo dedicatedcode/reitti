@@ -170,14 +170,14 @@
                 &laquo; Previous
             </button>
             <input type="date" id="date-picker" name="selectedDate" 
-                   hx-get="/timeline" hx-include="this" 
+                   hx-get="/api/timeline" hx-include="this" 
                    hx-target=".timeline-container" hx-indicator=".htmx-indicator">
             <button id="next-day">
                 Next &raquo;
             </button>
         </div>
         
-        <div class="timeline-container" hx-get="/timeline" hx-trigger="load">
+        <div class="timeline-container" hx-get="/api/timeline" hx-trigger="load">
             <div class="htmx-indicator">Loading...</div>
             <!-- Timeline entries will be loaded here -->
         </div>
