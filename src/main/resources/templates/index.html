@@ -364,28 +364,81 @@
                         }
                     }
                     
+                    // Create icon element
+                    const iconElement = document.createElement('div');
+                    iconElement.className = 'entry-icon';
+                    iconElement.textContent = entry.type === 'VISIT' ? 'P' : 'T';
+                    
                     // Create time element
                     const timeElement = document.createElement('div');
                     timeElement.className = 'entry-time';
                     const startTime = new Date(entry.startTime);
                     const endTime = new Date(entry.endTime);
-                    timeElement.textContent = `${startTime.toLocaleTimeString()} - ${endTime.toLocaleTimeString()}`;
+                    timeElement.textContent = `${startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+                    
+                    // Calculate duration
+                    const durationMs = endTime - startTime;
+                    const durationMinutes = Math.floor(durationMs / 60000);
+                    const durationHours = Math.floor(durationMinutes / 60);
+                    const remainingMinutes = durationMinutes % 60;
+                    
+                    let durationText = '';
+                    if (durationHours > 0) {
+                        durationText = `${durationHours}h ${remainingMinutes}m`;
+                    } else {
+                        durationText = `${durationMinutes}m`;
+                    }
+                    
+                    const durationElement = document.createElement('div');
+                    durationElement.className = 'entry-duration';
+                    durationElement.textContent = `Duration: ${durationText}`;
                     
                     // Create description element
                     const descElement = document.createElement('div');
                     descElement.className = 'entry-description';
                     
+                    // Create details element
+                    const detailsElement = document.createElement('div');
+                    detailsElement.className = 'entry-details';
+                    
                     if (entry.type === 'VISIT') {
-                        descElement.textContent = entry.place ? entry.place.name || 'Unknown Place' : 'Unknown Place';
+                        const placeName = entry.place ? entry.place.name || 'Unknown Place' : 'Unknown Place';
+                        descElement.textContent = placeName;
+                        
+                        if (entry.place && entry.place.address) {
+                            detailsElement.textContent = entry.place.address;
+                        }
+                        
+                        if (entry.place && entry.place.category) {
+                            const categorySpan = document.createElement('span');
+                            categorySpan.style.display = 'block';
+                            categorySpan.style.marginTop = '5px';
+                            categorySpan.style.fontStyle = 'italic';
+                            categorySpan.textContent = entry.place.category;
+                            detailsElement.appendChild(categorySpan);
+                        }
                     } else if (entry.type === 'TRIP') {
                         const startName = entry.startPlace ? entry.startPlace.name || 'Unknown' : 'Unknown';
                         const endName = entry.endPlace ? entry.endPlace.name || 'Unknown' : 'Unknown';
-                        descElement.textContent = `Trip: ${startName} → ${endName}`;
+                        descElement.textContent = `Trip`;
+                        detailsElement.innerHTML = `<strong>From:</strong> ${startName}<br><strong>To:</strong> ${endName}`;
+                        
+                        // Add distance if available
+                        if (entry.travelledDistanceMeters) {
+                            const distanceKm = (entry.travelledDistanceMeters / 1000).toFixed(1);
+                            const distanceElement = document.createElement('div');
+                            distanceElement.style.marginTop = '5px';
+                            distanceElement.textContent = `Distance: ${distanceKm} km`;
+                            detailsElement.appendChild(distanceElement);
+                        }
                     }
                     
                     // Add elements to entry
+                    entryElement.appendChild(iconElement);
                     entryElement.appendChild(timeElement);
                     entryElement.appendChild(descElement);
+                    entryElement.appendChild(detailsElement);
+                    entryElement.appendChild(durationElement);
                     
                     // Add entry to timeline
                     timelineContainer.appendChild(entryElement);
