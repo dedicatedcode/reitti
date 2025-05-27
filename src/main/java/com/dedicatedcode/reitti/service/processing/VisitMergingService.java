@@ -46,8 +46,8 @@ public class VisitMergingService {
     public List<ProcessedVisit> processAndMergeVisits(User user) {
         log.info("Processing and merging visits for user: {}", user.getUsername());
 
-        // Get all visits for the user
-        List<Visit> allVisits = visitRepository.findByUser(user);
+        // Get all unprocessed visits for the user
+        List<Visit> allVisits = visitRepository.findByUserAndProcessedFalse(user);
         
         if (allVisits.isEmpty()) {
             logger.info("No visits found for user: {}", user.getUsername());
@@ -59,6 +59,13 @@ public class VisitMergingService {
         
         // Process all visits chronologically to avoid overlaps
         List<ProcessedVisit> processedVisits = mergeVisitsChronologically(user, allVisits);
+        
+        // Mark all visits as processed
+        if (!allVisits.isEmpty()) {
+            allVisits.forEach(visit -> visit.setProcessed(true));
+            visitRepository.saveAll(allVisits);
+            logger.info("Marked {} visits as processed for user: {}", allVisits.size(), user.getUsername());
+        }
         
         logger.info("Processed {} visits into {} merged visits for user: {}", 
                 allVisits.size(), processedVisits.size(), user.getUsername());

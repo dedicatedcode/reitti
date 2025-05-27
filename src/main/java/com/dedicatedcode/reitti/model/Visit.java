@@ -29,6 +29,9 @@ public class Visit {
     
     @Column(nullable = false)
     private Long durationSeconds;
+    
+    @Column(nullable = false)
+    private boolean processed = false;
 
     public Visit() {}
     public Visit(User user, SignificantPlace place, Instant startTime, Instant endTime) {
@@ -84,6 +87,14 @@ public class Visit {
 
     public void setDurationSeconds(Long durationSeconds) {
         this.durationSeconds = durationSeconds;
+    }
+    
+    public boolean isProcessed() {
+        return processed;
+    }
+    
+    public void setProcessed(boolean processed) {
+        this.processed = processed;
     }
 
     @PrePersist
