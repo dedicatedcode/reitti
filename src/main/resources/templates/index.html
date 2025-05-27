@@ -166,18 +166,18 @@
     
     <div class="timeline">
         <div class="date-navigation">
-            <button id="prev-day" hx-get="/api/timeline/prev-day" hx-target=".timeline-container">
+            <button id="prev-day">
                 &laquo; Previous
             </button>
-            <input type="date" id="date-picker" name="selected_date" 
-                   hx-get="/api/timeline" hx-include="this" 
+            <input type="date" id="date-picker" name="selectedDate" 
+                   hx-get="/timeline" hx-include="this" 
                    hx-target=".timeline-container" hx-indicator=".htmx-indicator">
-            <button id="next-day" hx-get="/api/timeline/next-day" hx-target=".timeline-container">
+            <button id="next-day">
                 Next &raquo;
             </button>
         </div>
         
-        <div class="timeline-container" hx-get="/api/timeline/today" hx-trigger="load">
+        <div class="timeline-container" hx-get="/timeline" hx-trigger="load">
             <div class="htmx-indicator">Loading...</div>
             <!-- Timeline entries will be loaded here -->
         </div>
@@ -185,6 +185,37 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Set date picker to today's date
+            const today = new Date();
+            const formattedDate = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+            document.getElementById('date-picker').value = formattedDate;
+            
+            // Handle previous day button
+            document.getElementById('prev-day').addEventListener('click', function() {
+                const datePicker = document.getElementById('date-picker');
+                const currentDate = new Date(datePicker.value);
+                currentDate.setDate(currentDate.getDate() - 1);
+                const newDate = currentDate.toISOString().split('T')[0];
+                datePicker.value = newDate;
+                
+                // Trigger HTMX request
+                htmx.trigger(datePicker, 'change');
+                htmx.trigger(datePicker, 'htmx:trigger');
+            });
+            
+            // Handle next day button
+            document.getElementById('next-day').addEventListener('click', function() {
+                const datePicker = document.getElementById('date-picker');
+                const currentDate = new Date(datePicker.value);
+                currentDate.setDate(currentDate.getDate() + 1);
+                const newDate = currentDate.toISOString().split('T')[0];
+                datePicker.value = newDate;
+                
+                // Trigger HTMX request
+                htmx.trigger(datePicker, 'change');
+                htmx.trigger(datePicker, 'htmx:trigger');
+            });
+            
             // Initialize the map
             const map = new maplibregl.Map({
                 container: 'map',
