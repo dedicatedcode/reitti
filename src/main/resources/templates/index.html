@@ -169,16 +169,14 @@
             <button id="prev-day">
                 &laquo; Previous
             </button>
-            <input type="date" id="date-picker" name="selectedDate" 
-                   hx-get="/api/timeline" hx-include="this" 
-                   hx-target=".timeline-container" hx-indicator=".htmx-indicator">
+            <input type="date" id="date-picker" name="selectedDate">
             <button id="next-day">
                 Next &raquo;
             </button>
         </div>
         
-        <div class="timeline-container" hx-get="/api/timeline" hx-trigger="load">
-            <div class="htmx-indicator">Loading...</div>
+        <div class="timeline-container">
+            <div id="loading-indicator" style="display: none;">Loading...</div>
             <!-- Timeline entries will be loaded here -->
         </div>
     </div>
@@ -233,103 +231,196 @@
                 unit: 'metric'
             }), 'bottom-left');
             
-            // Handle timeline entry clicks to update the map
-            document.body.addEventListener('htmx:afterSwap', function(event) {
-                if (event.detail.target.classList.contains('timeline-container')) {
-                    // Process timeline entries after they're loaded
-                    const entries = document.querySelectorAll('.timeline-entry');
-                    
-                    // Clear existing markers if any
-                    const existingMarkers = document.querySelectorAll('.maplibregl-marker');
-                    existingMarkers.forEach(marker => marker.remove());
-                    
-                    // Add markers for each entry with coordinates
-                    entries.forEach(entry => {
-                        const lat = parseFloat(entry.dataset.lat);
-                        const lng = parseFloat(entry.dataset.lng);
-                        
-                        if (!isNaN(lat) && !isNaN(lng)) {
-                            // Create marker element
-                            const markerEl = document.createElement('div');
-                            markerEl.className = 'marker';
-                            markerEl.style.width = '15px';
-                            markerEl.style.height = '15px';
-                            markerEl.style.borderRadius = '50%';
-                            
-                            // Color based on entry type
-                            if (entry.classList.contains('place')) {
-                                markerEl.style.backgroundColor = '#4a89dc';
-                            } else if (entry.classList.contains('trip')) {
-                                markerEl.style.backgroundColor = '#e67e22';
-                            } else {
-                                markerEl.style.backgroundColor = '#95a5a6';
-                            }
-                            
-                            // Add marker to map
-                            new maplibregl.Marker(markerEl)
-                                .setLngLat([lng, lat])
-                                .addTo(map);
+            // Function to load timeline data
+            function loadTimelineData(date) {
+                const loadingIndicator = document.getElementById('loading-indicator');
+                loadingIndicator.style.display = 'block';
+                
+                fetch(`/api/timeline?selectedDate=${date}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
                         }
-                        
-                        // If entry has a path, add it to the map
-                        if (entry.dataset.path) {
-                            try {
-                                const pathData = JSON.parse(entry.dataset.path);
-                                
-                                // Check if the source already exists
-                                if (!map.getSource('path-' + entry.dataset.id)) {
-                                    map.addSource('path-' + entry.dataset.id, {
-                                        'type': 'geojson',
-                                        'data': pathData
-                                    });
-                                    
-                                    map.addLayer({
-                                        'id': 'path-layer-' + entry.dataset.id,
-                                        'type': 'line',
-                                        'source': 'path-' + entry.dataset.id,
-                                        'layout': {
-                                            'line-join': 'round',
-                                            'line-cap': 'round'
-                                        },
-                                        'paint': {
-                                            'line-color': '#e67e22',
-                                            'line-width': 4
-                                        }
-                                    });
-                                } else {
-                                    // Update existing source
-                                    map.getSource('path-' + entry.dataset.id).setData(pathData);
-                                }
-                            } catch (e) {
-                                console.error("Error parsing path data:", e);
-                            }
-                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        updateTimeline(data);
+                        loadingIndicator.style.display = 'none';
+                    })
+                    .catch(error => {
+                        console.error('Error fetching timeline data:', error);
+                        loadingIndicator.style.display = 'none';
                     });
+            }
+            
+            // Function to update the timeline with fetched data
+            function updateTimeline(data) {
+                const timelineContainer = document.querySelector('.timeline-container');
+                // Clear existing content except loading indicator
+                const loadingIndicator = document.getElementById('loading-indicator');
+                timelineContainer.innerHTML = '';
+                timelineContainer.appendChild(loadingIndicator);
+                
+                // Clear existing markers if any
+                const existingMarkers = document.querySelectorAll('.maplibregl-marker');
+                existingMarkers.forEach(marker => marker.remove());
+                
+                // Remove existing path layers
+                const existingLayers = map.getStyle().layers;
+                existingLayers.forEach(layer => {
+                    if (layer.id.startsWith('path-layer-')) {
+                        map.removeLayer(layer.id);
+                    }
+                });
+                
+                // Remove existing sources
+                const existingSources = Object.keys(map.getStyle().sources);
+                existingSources.forEach(source => {
+                    if (source.startsWith('path-')) {
+                        map.removeSource(source);
+                    }
+                });
+                
+                if (!data || !data.entries || data.entries.length === 0) {
+                    const noDataMsg = document.createElement('div');
+                    noDataMsg.className = 'timeline-entry';
+                    noDataMsg.textContent = 'No timeline data available for this date.';
+                    timelineContainer.appendChild(noDataMsg);
+                    return;
+                }
+                
+                const bounds = new maplibregl.LngLatBounds();
+                let hasValidCoords = false;
+                
+                // Create timeline entries
+                data.entries.forEach(entry => {
+                    const entryElement = document.createElement('div');
+                    entryElement.className = `timeline-entry ${entry.type.toLowerCase()}`;
+                    entryElement.dataset.id = entry.id;
                     
-                    // If we have entries with coordinates, fit the map to show them all
-                    if (entries.length > 0) {
-                        const bounds = new maplibregl.LngLatBounds();
-                        let hasValidCoords = false;
+                    // Set coordinates based on entry type
+                    if (entry.type === 'VISIT' && entry.place) {
+                        entryElement.dataset.lat = entry.place.latitude;
+                        entryElement.dataset.lng = entry.place.longitude;
+                    } else if (entry.type === 'TRIP') {
+                        // For trips, use start place coordinates
+                        if (entry.startPlace) {
+                            entryElement.dataset.lat = entry.startPlace.latitude;
+                            entryElement.dataset.lng = entry.startPlace.longitude;
+                        }
                         
-                        entries.forEach(entry => {
-                            const lat = parseFloat(entry.dataset.lat);
-                            const lng = parseFloat(entry.dataset.lng);
-                            
-                            if (!isNaN(lat) && !isNaN(lng)) {
-                                bounds.extend([lng, lat]);
-                                hasValidCoords = true;
-                            }
-                        });
-                        
-                        if (hasValidCoords) {
-                            map.fitBounds(bounds, {
-                                padding: 50,
-                                maxZoom: 16
-                            });
+                        // If trip has path data, add it
+                        if (entry.path) {
+                            entryElement.dataset.path = JSON.stringify(entry.path);
                         }
                     }
+                    
+                    // Create time element
+                    const timeElement = document.createElement('div');
+                    timeElement.className = 'entry-time';
+                    const startTime = new Date(entry.startTime);
+                    const endTime = new Date(entry.endTime);
+                    timeElement.textContent = `${startTime.toLocaleTimeString()} - ${endTime.toLocaleTimeString()}`;
+                    
+                    // Create description element
+                    const descElement = document.createElement('div');
+                    descElement.className = 'entry-description';
+                    
+                    if (entry.type === 'VISIT') {
+                        descElement.textContent = entry.place ? entry.place.name || 'Unknown Place' : 'Unknown Place';
+                    } else if (entry.type === 'TRIP') {
+                        const startName = entry.startPlace ? entry.startPlace.name || 'Unknown' : 'Unknown';
+                        const endName = entry.endPlace ? entry.endPlace.name || 'Unknown' : 'Unknown';
+                        descElement.textContent = `Trip: ${startName} → ${endName}`;
+                    }
+                    
+                    // Add elements to entry
+                    entryElement.appendChild(timeElement);
+                    entryElement.appendChild(descElement);
+                    
+                    // Add entry to timeline
+                    timelineContainer.appendChild(entryElement);
+                    
+                    // Add markers for each entry with coordinates
+                    const lat = parseFloat(entryElement.dataset.lat);
+                    const lng = parseFloat(entryElement.dataset.lng);
+                    
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        // Create marker element
+                        const markerEl = document.createElement('div');
+                        markerEl.className = 'marker';
+                        markerEl.style.width = '15px';
+                        markerEl.style.height = '15px';
+                        markerEl.style.borderRadius = '50%';
+                        
+                        // Color based on entry type
+                        if (entry.type === 'VISIT') {
+                            markerEl.style.backgroundColor = '#4a89dc';
+                        } else if (entry.type === 'TRIP') {
+                            markerEl.style.backgroundColor = '#e67e22';
+                        } else {
+                            markerEl.style.backgroundColor = '#95a5a6';
+                        }
+                        
+                        // Add marker to map
+                        new maplibregl.Marker(markerEl)
+                            .setLngLat([lng, lat])
+                            .addTo(map);
+                            
+                        // Extend bounds for map fitting
+                        bounds.extend([lng, lat]);
+                        hasValidCoords = true;
+                    }
+                    
+                    // If entry has a path, add it to the map
+                    if (entryElement.dataset.path) {
+                        try {
+                            const pathData = JSON.parse(entryElement.dataset.path);
+                            
+                            map.addSource('path-' + entry.id, {
+                                'type': 'geojson',
+                                'data': pathData
+                            });
+                            
+                            map.addLayer({
+                                'id': 'path-layer-' + entry.id,
+                                'type': 'line',
+                                'source': 'path-' + entry.id,
+                                'layout': {
+                                    'line-join': 'round',
+                                    'line-cap': 'round'
+                                },
+                                'paint': {
+                                    'line-color': '#e67e22',
+                                    'line-width': 4
+                                }
+                            });
+                            
+                            // If path has coordinates, extend bounds
+                            if (pathData.features && pathData.features.length > 0) {
+                                pathData.features.forEach(feature => {
+                                    if (feature.geometry && feature.geometry.coordinates) {
+                                        feature.geometry.coordinates.forEach(coord => {
+                                            bounds.extend(coord);
+                                            hasValidCoords = true;
+                                        });
+                                    }
+                                });
+                            }
+                        } catch (e) {
+                            console.error("Error parsing path data:", e);
+                        }
+                    }
+                });
+                
+                // Fit map to bounds if we have valid coordinates
+                if (hasValidCoords) {
+                    map.fitBounds(bounds, {
+                        padding: 50,
+                        maxZoom: 16
+                    });
                 }
-            });
+            }
             
             // Handle clicks on timeline entries
             document.querySelector('.timeline-container').addEventListener('click', function(event) {
@@ -347,6 +438,35 @@
                     }
                 }
             });
+            
+            // Set up date picker and navigation
+            const datePicker = document.getElementById('date-picker');
+            
+            // Load initial data
+            datePicker.addEventListener('change', function() {
+                loadTimelineData(this.value);
+            });
+            
+            // Handle previous day button
+            document.getElementById('prev-day').addEventListener('click', function() {
+                const currentDate = new Date(datePicker.value);
+                currentDate.setDate(currentDate.getDate() - 1);
+                const newDate = currentDate.toISOString().split('T')[0];
+                datePicker.value = newDate;
+                loadTimelineData(newDate);
+            });
+            
+            // Handle next day button
+            document.getElementById('next-day').addEventListener('click', function() {
+                const currentDate = new Date(datePicker.value);
+                currentDate.setDate(currentDate.getDate() + 1);
+                const newDate = currentDate.toISOString().split('T')[0];
+                datePicker.value = newDate;
+                loadTimelineData(newDate);
+            });
+            
+            // Load initial timeline data
+            loadTimelineData(formattedDate);
         });
     </script>
 </body>
