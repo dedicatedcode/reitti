@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reitti - Settings</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -404,15 +406,6 @@
                         <div class="progress-fill" th:style="'width:' + ${queueStats.visitProgress} + '%'"></div>
                     </div>
                 </div>
-                
-                <div class="queue-card">
-                    <div class="queue-name">Trip Detection</div>
-                    <div class="queue-count" th:text="${queueStats.tripCount}">0</div>
-                    <div class="queue-time" th:text="'Est. processing time: ' + ${queueStats.tripTime}">Est. processing time: 0 min</div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" th:style="'width:' + ${queueStats.tripProgress} + '%'"></div>
-                    </div>
-                </div>
             </div>
             
             <div style="margin-top: 20px;">
@@ -423,28 +416,6 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Tab navigation
-            const navItems = document.querySelectorAll('.settings-nav-item');
-            const sections = document.querySelectorAll('.settings-section');
-            
-            navItems.forEach(item => {
-                item.addEventListener('click', function() {
-                    const target = this.getAttribute('data-target');
-                    
-                    // Update active nav item
-                    navItems.forEach(nav => nav.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    // Show target section
-                    sections.forEach(section => {
-                        section.classList.remove('active');
-                        if (section.id === target) {
-                            section.classList.add('active');
-                        }
-                    });
-                });
-            });
-            
             // Tab navigation
             const navItems = document.querySelectorAll('.settings-nav-item');
             const sections = document.querySelectorAll('.settings-section');
@@ -471,7 +442,7 @@
                     }
                 });
             }
-            
+
             navItems.forEach(item => {
                 item.addEventListener('click', function() {
                     const target = this.getAttribute('data-target');
@@ -510,9 +481,6 @@
                             document.querySelector('.queue-card:nth-child(2) .queue-time').textContent = 'Est. processing time: ' + data.visitTime;
                             document.querySelector('.queue-card:nth-child(2) .progress-fill').style.width = data.visitProgress + '%';
                             
-                            document.querySelector('.queue-card:nth-child(3) .queue-count').textContent = data.tripCount;
-                            document.querySelector('.queue-card:nth-child(3) .queue-time').textContent = 'Est. processing time: ' + data.tripTime;
-                            document.querySelector('.queue-card:nth-child(3) .progress-fill').style.width = data.tripProgress + '%';
                         })
                         .catch(error => console.error('Error fetching queue stats:', error));
                 });

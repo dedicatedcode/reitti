@@ -19,9 +19,8 @@ public class QueueStatsService {
     private static final long AVG_TRIP_PROCESSING_TIME = 3000;    // 3s per trip
     
     // Queue names
-    private static final String LOCATION_QUEUE = "location-data";
-    private static final String VISIT_QUEUE = "visit-detection";
-    private static final String TRIP_QUEUE = "trip-detection";
+    private static final String LOCATION_QUEUE = " location-data-queue";
+    private static final String VISIT_QUEUE = "significant-place-queue";
 
     @Autowired
     public QueueStatsService(RabbitAdmin rabbitAdmin) {
@@ -34,31 +33,25 @@ public class QueueStatsService {
         // Get queue counts
         int locationCount = getMessageCount(LOCATION_QUEUE);
         int visitCount = getMessageCount(VISIT_QUEUE);
-        int tripCount = getMessageCount(TRIP_QUEUE);
-        
+
         // Calculate estimated processing times
         String locationTime = formatProcessingTime(locationCount * AVG_LOCATION_PROCESSING_TIME);
         String visitTime = formatProcessingTime(visitCount * AVG_VISIT_PROCESSING_TIME);
-        String tripTime = formatProcessingTime(tripCount * AVG_TRIP_PROCESSING_TIME);
-        
+
         // Calculate progress percentages (assuming some max values)
         int locationProgress = calculateProgress(locationCount, 1000);
         int visitProgress = calculateProgress(visitCount, 100);
-        int tripProgress = calculateProgress(tripCount, 50);
-        
+
         // Populate stats map
         stats.put("locationDataCount", locationCount);
         stats.put("visitCount", visitCount);
-        stats.put("tripCount", tripCount);
-        
+
         stats.put("locationDataTime", locationTime);
         stats.put("visitTime", visitTime);
-        stats.put("tripTime", tripTime);
-        
+
         stats.put("locationDataProgress", locationProgress);
         stats.put("visitProgress", visitProgress);
-        stats.put("tripProgress", tripProgress);
-        
+
         return stats;
     }
     
