@@ -119,6 +119,14 @@
             transition: font-size 0.5s ease-in-out;
         }
 
+        .timeline-entry .entry-icon {
+            padding: 8px;
+        }
+
+        .timeline-entry .entry-time {
+            padding: 0 32px;
+        }
+
         .timeline-entry.active .entry-description {
             font-family: "Fraunces";
             font-size: 5rem;
@@ -131,7 +139,7 @@
 
         button {
             background-color: transparent;
-            color: white;
+            color: wheat;
             border: none;
             padding: 8px 12px;
             border-radius: 4px;
@@ -142,12 +150,6 @@
             background-color: #959595;
         }
 
-        input[type="date"] {
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-
         .timeline-header {
             display: inline-flex;
             align-items: baseline;
@@ -155,6 +157,16 @@
             border-bottom: 1px black;
             margin-left: 2rem;
             pointer-events: auto;
+        }
+
+        .date-label {
+            padding: 8px;
+            color: wheat;
+            font-family: "Fraunces";
+        }
+        .timeline-header {
+            position: sticky;
+            font-size: 1.4rem;
         }
     </style>
 </head>
@@ -168,7 +180,7 @@
             <button id="prev-day">
                 <i class="fas fa-arrow-left"></i>
             </button>
-            <span id="date-display" style="padding: 8px; background-color: rgba(255, 255, 255, 0.1); border-radius: 4px;"></span>
+            <span id="date-display" class="date-label"></span>
             <input type="hidden" id="date-picker" name="selectedDate">
             <button id="next-day">
                 <i class="fas fa-arrow-right"></i>
@@ -361,12 +373,12 @@
                 }
 
                 // Create icon element
-                const iconElement = document.createElement('div');
+                const iconElement = document.createElement('span');
                 iconElement.className = 'entry-icon';
-                iconElement.textContent = entry.type === 'VISIT' ? 'P' : 'T';
+                iconElement.innerHTML = entry.type === 'VISIT' ? '<i class="fas fa-map-marker-alt"></i>' : '<i class="fas fa-route"></i>';
 
                 // Create time element
-                const timeElement = document.createElement('span');
+                const timeElement = document.createElement('div');
                 timeElement.className = 'entry-time';
                 const startTime = new Date(entry.startTime);
                 const endTime = new Date(entry.endTime);
@@ -384,7 +396,7 @@
                 const durationMs = endTime - startTime;
                 const durationText = humanizeDuration(durationMs, {units: ["h", "m"], round: true });
 
-                const durationElement = document.createElement('div');
+                const durationElement = document.createElement('span');
                 durationElement.className = 'entry-duration';
                 durationElement.textContent = `Duration: ${durationText}`;
 
@@ -421,14 +433,13 @@
                     // Add distance if available
                     if (entry.distanceMeters) {
                         const distanceKm = (entry.distanceMeters / 1000).toFixed(1);
-                        const distanceElement = document.createElement('div');
                         durationElement.textContent = `Distance: ${distanceKm} km`;
                     }
                 }
 
                 // Add elements to entry
-                // entryElement.appendChild(iconElement);
                 entryElement.appendChild(descElement);
+                entryElement.appendChild(iconElement);
                 entryElement.appendChild(durationElement);
                 entryElement.appendChild(timeElement);
 

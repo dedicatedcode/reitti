@@ -70,14 +70,11 @@ public class TripMergingService {
         Map<String, List<Trip>> tripGroups = groupSimilarTrips(allTrips, withStart);
 
         // Process each group to merge duplicates
-        List<Trip> mergedTrips = new ArrayList<>();
         List<Trip> tripsToDelete = new ArrayList<>();
 
         for (List<Trip> tripGroup : tripGroups.values()) {
             if (tripGroup.size() > 1) {
-                // We have potential duplicates
-                Trip mergedTrip = mergeTrips(tripGroup, user);
-                mergedTrips.add(mergedTrip);
+                mergeTrips(tripGroup, user);
                 tripsToDelete.addAll(tripGroup);
             }
         }
@@ -87,9 +84,6 @@ public class TripMergingService {
             tripRepository.deleteAll(tripsToDelete);
             logger.info("Deleted {} duplicate trips for user: {}", tripsToDelete.size(), user.getUsername());
         }
-
-        logger.info("Merged {} trip groups into {} trips for user: {}",
-                tripGroups.size(), mergedTrips.size(), user.getUsername());
     }
 
     private Map<String, List<Trip>> groupSimilarTrips(List<Trip> trips, boolean withStart) {
