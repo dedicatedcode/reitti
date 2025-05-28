@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.service;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.UserRepository;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,9 +13,11 @@ import java.util.List;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final BCryptPasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public User getUserByUsername(String username) {
@@ -36,7 +39,7 @@ public class UserService {
         User user = new User();
         user.setUsername(username);
         user.setDisplayName(displayName);
-        user.setPassword(password); // Note: In a real application, this should be encoded
+        user.setPassword(passwordEncoder.encode(password));
         return userRepository.save(user);
     }
 }
