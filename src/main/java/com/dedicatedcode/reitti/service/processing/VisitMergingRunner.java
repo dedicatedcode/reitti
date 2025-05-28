@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
+import com.dedicatedcode.reitti.event.MergeVisitEvent;
 import com.dedicatedcode.reitti.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +11,8 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+
+import java.time.temporal.ChronoUnit;
 
 @Component
 public class VisitMergingRunner  {
@@ -31,13 +34,13 @@ public class VisitMergingRunner  {
         this.rabbitTemplate = rabbitTemplate;
     }
 
-    @Scheduled(fixedDelay = 1000 * 60)
+    @Scheduled(cron = "${reitti.process-visits-trips.schedule}")
     public void run() {
         if (processVisitsOnStartup) {
             userService.getAllUsers().forEach(user -> {
                 logger.info("Schedule visit merging process for user {}", user.getUsername());
-                rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, user.getId());
-                rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_TRIP_ROUTING_KEY, user.getId());
+                rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new MergeVisitEvent(user.getId(), null, null));
+                rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_TRIP_ROUTING_KEY, new MergeVisitEvent(user.getId(), null, null));
             });
         } else {
             logger.info("Visit merging on startup is disabled. Set reitti.process-visits-on-startup=true to enable.");

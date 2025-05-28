@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
+import com.dedicatedcode.reitti.event.MergeVisitEvent;
 import com.dedicatedcode.reitti.model.ProcessedVisit;
 import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.model.User;
@@ -11,7 +12,6 @@ import com.dedicatedcode.reitti.repository.VisitRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.rabbit.core.RabbitMessageOperations;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,15 +51,20 @@ public class VisitMergingService {
     @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE)
     @Transactional
     public void mergeVisits(MergeVisitEvent event) {
-        processAndMergeVisits(userRepository.findById(event.userId()).orElseThrow(), event.startTime(), event.endTime());
+        processAndMergeVisits(userRepository.findById(event.getUserId()).orElseThrow(), event.getStartTime(), event.getEndTime());
     }
 
-    private List<ProcessedVisit> processAndMergeVisits(User user, Instant startTime, Instant endTime) {
+    private List<ProcessedVisit> processAndMergeVisits(User user, Long startTime, Long endTime) {
         logger.info("Processing and merging visits for user: {}", user.getUsername());
 
-        // Get all unprocessed visits for the user
-        List<Visit> allVisits = visitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user, startTime, endTime);
+        List<Visit> allVisits;
 
+        // Get all unprocessed visits for the user
+        if (startTime == null || endTime == null) {
+            allVisits = this.visitRepository.findByUserAndProcessedFalse(user);
+        } else {
+            allVisits = this.visitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user, Instant.ofEpochMilli(startTime), Instant.ofEpochMilli(endTime));
+        }
         if (allVisits.isEmpty()) {
             logger.info("No visits found for user: {}", user.getUsername());
             return Collections.emptyList();
@@ -82,7 +87,7 @@ public class VisitMergingService {
                 allVisits.size(), processedVisits.size(), user.getUsername());
 
         if (!processedVisits.isEmpty() && detectTripsAfterMerging) {
-            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, user.getId());
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, new MergeVisitEvent(user.getId(), startTime, endTime));
 
         }
         return processedVisits;

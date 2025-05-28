@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
+import com.dedicatedcode.reitti.event.MergeVisitEvent;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.ProcessedVisitRepository;
 import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
@@ -40,20 +41,16 @@ public class TripDetectionService {
     @Transactional
     @RabbitListener(queues = RabbitMQConfig.DETECT_TRIP_QUEUE)
     public void detectTripsForUser(MergeVisitEvent event) {
-        User user = this.userRepository.findById(event.userId()).orElseThrow(() -> new IllegalArgumentException("Unknown user id: " + event.userId()));
+        User user = this.userRepository.findById(event.getUserId()).orElseThrow(() -> new IllegalArgumentException("Unknown user id: " + event.getUserId()));
         logger.info("Detecting trips for user: {}", user.getUsername());
         // Get all processed visits for the user, sorted by start time
-        List<ProcessedVisit> visits = processedVisitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user, event.startTime(), event.endTime());
+        List<ProcessedVisit> visits;
+        if (event.getStartTime() == null || event.getEndTime() == null) {
+            visits = processedVisitRepository.findByUser(user);
+        } else {
+            visits = processedVisitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user, Instant.ofEpochMilli(event.getStartTime()), Instant.ofEpochMilli(event.getEndTime()));
+        }
         findDetectedTrips(user, visits);
-    }
-
-    @Transactional
-    public List<Trip> detectTripsForUser(User user, Instant startTime, Instant endTime) {
-        logger.info("Detecting trips for user: {} between {} and {}", user.getUsername(), startTime, endTime);
-
-        // Get all processed visits for the user, sorted by start time
-        List<ProcessedVisit> visits = processedVisitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user, startTime, endTime);
-        return findDetectedTrips(user, visits);
     }
 
     private List<Trip> findDetectedTrips(User user, List<ProcessedVisit> visits) {

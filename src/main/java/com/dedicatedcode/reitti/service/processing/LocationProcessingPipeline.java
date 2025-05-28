@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.LocationDataEvent;
+import com.dedicatedcode.reitti.event.MergeVisitEvent;
 import com.dedicatedcode.reitti.model.RawLocationPoint;
 import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.model.User;
@@ -11,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitMessageOperations;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -27,6 +29,7 @@ public class LocationProcessingPipeline {
     private final StayPointDetectionService stayPointDetectionService;
     private final SignificantPlaceService significantPlaceService;
     private final RabbitMessageOperations rabbitTemplate;
+    private final int tripVisitMergeTimeRange;
 
     @Autowired
     public LocationProcessingPipeline(
@@ -34,12 +37,14 @@ public class LocationProcessingPipeline {
             LocationDataService locationDataService,
             StayPointDetectionService stayPointDetectionService,
             SignificantPlaceService significantPlaceService,
-            RabbitMessageOperations rabbitTemplate) {
+            RabbitMessageOperations rabbitTemplate,
+            @Value("${reitti.process-visits-trips.merge-time-range:1}") int tripVisitMergeTimeRange) {
         this.userRepository = userRepository;
         this.locationDataService = locationDataService;
         this.stayPointDetectionService = stayPointDetectionService;
         this.significantPlaceService = significantPlaceService;
         this.rabbitTemplate = rabbitTemplate;
+        this.tripVisitMergeTimeRange = tripVisitMergeTimeRange;
     }
 
     public void processLocationData(LocationDataEvent event) {
@@ -77,8 +82,10 @@ public class LocationProcessingPipeline {
 
             Instant startTime = savedPoints.stream().map(RawLocationPoint::getTimestamp).min(Instant::compareTo).orElse(Instant.now());
             Instant endTime = savedPoints.stream().map(RawLocationPoint::getTimestamp).max(Instant::compareTo).orElse(Instant.now());
-            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new MergeVisitEvent(user.getId(), startTime.minus(1, ChronoUnit.DAYS), endTime.plus(1, ChronoUnit.DAYS)));
-            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, new MergeVisitEvent(user.getId(), startTime.minus(1, ChronoUnit.DAYS), endTime.plus(1, ChronoUnit.DAYS)));
+            long searchStart = startTime.minus(tripVisitMergeTimeRange, ChronoUnit.DAYS).toEpochMilli();
+            long searchEnd = endTime.plus(tripVisitMergeTimeRange, ChronoUnit.DAYS).toEpochMilli();
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new MergeVisitEvent(user.getId(), searchStart, searchEnd));
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, new MergeVisitEvent(user.getId(), searchStart, searchEnd));
         }
 
         logger.info("Completed processing pipeline for user {}", user.getUsername());

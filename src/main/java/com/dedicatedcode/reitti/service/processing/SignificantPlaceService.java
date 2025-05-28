@@ -58,7 +58,7 @@ public class SignificantPlaceService {
             if (nearbyPlaces.isEmpty()) {
                 // Create a new significant place
                 SignificantPlace newPlace = createSignificantPlace(user, stayPoint);
-                significantPlaceRepository.saveAndFlush(newPlace);
+                significantPlaceRepository.save(newPlace);
 
                 // Create a visit for this place
                 Visit visit = createVisit(user, newPlace, stayPoint);

@@ -18,7 +18,7 @@ public class LocationDataProcessingService {
         this.processingPipeline = processingPipeline;
     }
     
-    @RabbitListener(queues = RabbitMQConfig.LOCATION_DATA_QUEUE, concurrency = "1")
+    @RabbitListener(queues = RabbitMQConfig.LOCATION_DATA_QUEUE, concurrency = "4-16")
     public void handleLocationDataEvent(LocationDataEvent event) {
         logger.info("Received location data event from RabbitMQ for user {} with {} points", 
                 event.getUsername(), event.getPoints().size());
