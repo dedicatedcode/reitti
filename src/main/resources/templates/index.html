@@ -4,9 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reitti - Your Location Timeline</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel= "stylesheet" href= "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" >
+    <link rel= "stylesheet" href= "/css/main.css" >
+    <script src="/js/HumanizeDuration.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -16,27 +24,21 @@
             overflow: hidden;
         }
 
-        .map-controls {
-            padding: 10px 15px;
-            background-color: #f0f0f0;
-            border-bottom: 1px solid #e0e0e0;
-        }
-
         header {
             position: absolute;
             top: 0;
-            left: 0;
-            right: 0;
+            left: 40%;
             z-index: 10;
-            background-color: rgba(74, 137, 220, 0.85);
-            backdrop-filter: blur(5px);
+            background: rgba(59, 59, 59, 0.62);
+            backdrop-filter: blur(10px);
             color: white;
             padding: 0 20px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             height: 60px;
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
         }
 
         nav {
@@ -56,19 +58,13 @@
             background-color: rgba(255, 255, 255, 0.2);
         }
 
-        .sidebar {
-            grid-area: sidebar;
-            overflow-y: auto;
-            border-right: 1px solid #e0e0e0;
-            background-color: #f9f9f9;
-        }
 
         .date-navigation {
             padding: 15px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid #e0e0e0;
+            bottom: 0;
         }
 
         #map {
@@ -80,103 +76,52 @@
             z-index: 1;
         }
 
+
+        .timeline::-webkit-scrollbar {
+            display: none;
+        }
+
         .timeline {
             position: absolute;
-            top: 60px;
-            left: 0;
-            width: 350px;
+            top: 0;
+            width: 50%;
             bottom: 0;
-            background-color: rgba(249, 249, 249, 0.95);
+            background: #3b3b3b;
+            background: linear-gradient(90deg, rgb(17, 17, 17) 0%, rgba(59, 59, 59, 0.49) 76%, rgba(255, 255, 255, 0) 100%);
             z-index: 5;
             overflow-y: auto;
-            border-right: 1px solid #e0e0e0;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            pointer-events: none;
+            -ms-overflow-style: none; /* IE and Edge */
+            scrollbar-width: none; /* Firefox */
+
         }
 
         .timeline-container {
-            padding: 0;
+            pointer-events: all;
+            width: 350px;
         }
 
         .timeline-entry {
-            padding: 15px;
-            border-bottom: 1px solid #e0e0e0;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            margin: 10px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            position: relative;
-            overflow: hidden;
+            color: #bfbfbf;
+            padding: 1rem 2rem;
+            transition: color, padding 0.5s ease-in-out;
+        }
+        .timeline-entry.active {
+            color: #f8f8f8;
+            padding: 1rem 2.5rem;
+            transition: color, padding 0.5s ease-in-out;
         }
 
-        .timeline-entry:hover {
-            background-color: #f0f0f0;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        .timeline-entry .entry-description {
+            font-family: "Fraunces";
+            font-size: 3rem;
+            transition: font-size 0.5s ease-in-out;
         }
 
-        .timeline-entry.visit {
-            border-left: 4px solid #4a89dc;
-            background-color: rgba(74, 137, 220, 0.05);
-        }
-
-        .timeline-entry.trip {
-            border-left: 4px solid #e67e22;
-            background-color: rgba(230, 126, 34, 0.05);
-        }
-
-        .entry-time {
-            font-size: 0.8em;
-            color: #666;
-            background-color: rgba(0,0,0,0.03);
-            padding: 4px 8px;
-            border-radius: 4px;
-            display: inline-block;
-            margin-bottom: 8px;
-        }
-
-        .entry-description {
-            font-weight: bold;
-            margin: 5px 0;
-            font-size: 1.1em;
-        }
-
-        .entry-details {
-            margin-top: 8px;
-            font-size: 0.9em;
-            color: #555;
-        }
-
-        .entry-icon {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-        }
-
-        .visit .entry-icon {
-            background-color: #4a89dc;
-        }
-
-        .trip .entry-icon {
-            background-color: #e67e22;
-        }
-
-        .entry-duration {
-            font-size: 0.8em;
-            color: #777;
-            margin-top: 5px;
-        }
-
-        .htmx-indicator {
-            display: none;
+        .timeline-entry.active .entry-description {
+            font-family: "Fraunces";
+            font-size: 5rem;
+            transition: font-size 0.5s ease-in-out;
         }
 
         .htmx-request .htmx-indicator {
@@ -184,7 +129,7 @@
         }
 
         button {
-            background-color: #4a89dc;
+            background-color: transparent;
             color: white;
             border: none;
             padding: 8px 12px;
@@ -193,7 +138,7 @@
         }
 
         button:hover {
-            background-color: #3a70c0;
+            background-color: #959595;
         }
 
         input[type="date"] {
@@ -204,399 +149,393 @@
     </style>
 </head>
 <body>
-    <header>
-        <h1>Reitti</h1>
-        <nav>
-            <a href="/" class="nav-link">Home</a>
-            <a href="/settings" class="nav-link">Settings</a>
-            <span class="nav-link" th:if="${username}" th:text="${username}"></span>
-            <form th:action="@{/logout}" method="post" style="display: inline;">
-                <button type="submit" class="nav-link" style="background: none; border: none; cursor: pointer;">Logout</button>
-            </form>
-        </nav>
-    </header>
-
-    <div id="map"></div>
-
-    <div class="timeline">
+<header>
+    <a href="/" class="nav-link"><i class="fas fa-house-flag"></i></a>
         <div class="date-navigation">
             <button id="prev-day">
-                &laquo; Previous
+               <i class="fas fa-arrow-left"></i>
             </button>
             <input type="date" id="date-picker" name="selectedDate">
             <button id="next-day">
-                Next &raquo;
+                <i class="fas fa-arrow-right"></i>
             </button>
         </div>
+        <a href="/settings" class="nav-link"><i class="fas fa-cog"></i></a>
+        <form th:action="@{/logout}" method="post" style="display: inline;">
+            <button type="submit" class="nav-link" style="background: none; border: none; cursor: pointer;"><i class="fas fa-right-from-bracket"></i>
+            </button>
+        </form>
+</header>
 
-        <div class="timeline-container">
-            <div id="loading-indicator" style="display: none;">Loading...</div>
-            <!-- Timeline entries will be loaded here -->
-        </div>
+<div id="map"></div>
+
+<div class="timeline">
+
+    <div class="timeline-container">
+        <div id="loading-indicator" style="display: none;">Loading...</div>
+        <!-- Timeline entries will be loaded here -->
     </div>
+</div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Check if date is in URL parameters
-            const urlParams = new URLSearchParams(window.location.search);
-            let initialDate;
-            
-            if (urlParams.has('date')) {
-                initialDate = urlParams.get('date');
-                // Validate date format (YYYY-MM-DD)
-                if (!/^\d{4}-\d{2}-\d{2}$/.test(initialDate)) {
-                    initialDate = null;
-                }
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Check if date is in URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        let initialDate;
+
+        if (urlParams.has('date')) {
+            initialDate = urlParams.get('date');
+            // Validate date format (YYYY-MM-DD)
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(initialDate)) {
+                initialDate = null;
             }
-            
-            // Set date picker to URL date or today's date
-            const today = new Date();
-            const formattedDate = initialDate || today.toISOString().split('T')[0]; // YYYY-MM-DD format
-            document.getElementById('date-picker').value = formattedDate;
+        }
 
-            // Function to update URL with date parameter
-            function updateUrlWithDate(date) {
-                const url = new URL(window.location);
-                url.searchParams.set('date', date);
-                window.history.pushState({}, '', url);
-            }
-            
-            // Handle previous day button
-            document.getElementById('prev-day').addEventListener('click', function() {
-                const datePicker = document.getElementById('date-picker');
-                const currentDate = new Date(datePicker.value);
-                currentDate.setDate(currentDate.getDate() - 1);
-                const newDate = currentDate.toISOString().split('T')[0];
-                datePicker.value = newDate;
-                
-                // Update URL with new date
-                updateUrlWithDate(newDate);
+        // Set date picker to URL date or today's date
+        const today = new Date();
+        const formattedDate = initialDate || today.toISOString().split('T')[0]; // YYYY-MM-DD format
+        document.getElementById('date-picker').value = formattedDate;
 
-                // Trigger HTMX request
-                htmx.trigger(datePicker, 'change');
-                htmx.trigger(datePicker, 'htmx:trigger');
-            });
+        // Function to update URL with date parameter
+        function updateUrlWithDate(date) {
+            const url = new URL(window.location);
+            url.searchParams.set('date', date);
+            window.history.pushState({}, '', url);
+        }
 
-            // Handle next day button
-            document.getElementById('next-day').addEventListener('click', function() {
-                const datePicker = document.getElementById('date-picker');
-                const currentDate = new Date(datePicker.value);
-                currentDate.setDate(currentDate.getDate() + 1);
-                const newDate = currentDate.toISOString().split('T')[0];
-                datePicker.value = newDate;
-                
-                // Update URL with new date
-                updateUrlWithDate(newDate);
-
-                // Trigger HTMX request
-                htmx.trigger(datePicker, 'change');
-                htmx.trigger(datePicker, 'htmx:trigger');
-            });
-
-            // Initialize the map
-            const map = L.map('map').setView([60.1699, 24.9384], 12); // Helsinki coordinates as default
-
-            // Add tile layer
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                maxZoom: 19
-            }).addTo(map);
-
-            // Add scale control
-            L.control.scale({
-                imperial: false,
-                metric: true
-            }).addTo(map);
-
-            // Function to load timeline data
-            function loadTimelineData(date) {
-                const loadingIndicator = document.getElementById('loading-indicator');
-                loadingIndicator.style.display = 'block';
-
-                fetch(`/api/timeline?selectedDate=${date}`)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok');
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        updateTimeline(data);
-                        loadingIndicator.style.display = 'none';
-                    })
-                    .catch(error => {
-                        console.error('Error fetching timeline data:', error);
-                        loadingIndicator.style.display = 'none';
-                    });
-            }
-            const selectedPath = L.polyline([], {
-                color: '#ff984f',
-                weight: 4,
-                opacity: 1,
-                lineJoin: 'round',
-                lineCap: 'round'
-            })
-
-            // Function to update the timeline with fetched data
-            function updateTimeline(data) {
-                const timelineContainer = document.querySelector('.timeline-container');
-                const loadingIndicator = document.getElementById('loading-indicator');
-                timelineContainer.innerHTML = '';
-                timelineContainer.appendChild(loadingIndicator);
-
-                // Clear existing markers and paths
-                map.eachLayer(layer => {
-                    if (!layer._url) {
-                        map.removeLayer(layer);
-                    }
-                });
-
-                if (!data || !data.entries || data.entries.length === 0) {
-                    const noDataMsg = document.createElement('div');
-                    noDataMsg.className = 'timeline-entry';
-                    noDataMsg.textContent = 'No timeline data available for this date.';
-                    timelineContainer.appendChild(noDataMsg);
-                    return;
-                }
-
-                const bounds = L.latLngBounds();
-
-                let hasValidCoords = false;
-
-                // Create timeline entries
-                data.entries.forEach(entry => {
-                    const entryElement = document.createElement('div');
-                    entryElement.className = `timeline-entry ${entry.type.toLowerCase()}`;
-                    entryElement.dataset.id = entry.id;
-
-                    // Set coordinates based on entry type
-                    if (entry.type === 'VISIT' && entry.place) {
-                        entryElement.dataset.lat = entry.place.latitude;
-                        entryElement.dataset.lng = entry.place.longitude;
-                    } else if (entry.type === 'TRIP') {
-                        // For trips, use start place coordinates
-                        if (entry.startPlace) {
-                            entryElement.dataset.lat = entry.startPlace.latitude;
-                            entryElement.dataset.lng = entry.startPlace.longitude;
-                        }
-
-                        // If trip has path data, add it
-                        if (entry.path) {
-                            entryElement.dataset.path = JSON.stringify(entry.path);
-                        }
-                    }
-
-                    // Create icon element
-                    const iconElement = document.createElement('div');
-                    iconElement.className = 'entry-icon';
-                    iconElement.textContent = entry.type === 'VISIT' ? 'P' : 'T';
-
-                    // Create time element
-                    const timeElement = document.createElement('div');
-                    timeElement.className = 'entry-time';
-                    const startTime = new Date(entry.startTime);
-                    const endTime = new Date(entry.endTime);
-                    timeElement.textContent = `${startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
-
-                    // Calculate duration
-                    const durationMs = endTime - startTime;
-                    const durationMinutes = Math.floor(durationMs / 60000);
-                    const durationHours = Math.floor(durationMinutes / 60);
-                    const remainingMinutes = durationMinutes % 60;
-
-                    let durationText = '';
-                    if (durationHours > 0) {
-                        durationText = `${durationHours}h ${remainingMinutes}m`;
-                    } else {
-                        durationText = `${durationMinutes}m`;
-                    }
-
-                    const durationElement = document.createElement('div');
-                    durationElement.className = 'entry-duration';
-                    durationElement.textContent = `Duration: ${durationText}`;
-
-                    // Create description element
-                    const descElement = document.createElement('div');
-                    descElement.className = 'entry-description';
-
-                    // Create details element
-                    const detailsElement = document.createElement('div');
-                    detailsElement.className = 'entry-details';
-
-                    if (entry.type === 'VISIT') {
-                        const placeName = entry.place ? entry.place.name || 'Unknown Place' : 'Unknown Place';
-                        descElement.textContent = placeName;
-
-                        if (entry.place && entry.place.address) {
-                            detailsElement.textContent = entry.place.address;
-                        }
-
-                        if (entry.place && entry.place.category) {
-                            const categorySpan = document.createElement('span');
-                            categorySpan.style.display = 'block';
-                            categorySpan.style.marginTop = '5px';
-                            categorySpan.style.fontStyle = 'italic';
-                            categorySpan.textContent = entry.place.category;
-                            detailsElement.appendChild(categorySpan);
-                        }
-                    } else if (entry.type === 'TRIP') {
-                        const startName = entry.startPlace ? entry.startPlace.name || 'Unknown' : 'Unknown';
-                        const endName = entry.endPlace ? entry.endPlace.name || 'Unknown' : 'Unknown';
-                        descElement.textContent = `Trip`;
-                        detailsElement.innerHTML = `<strong>From:</strong> ${startName}<br><strong>To:</strong> ${endName}`;
-
-                        // Add distance if available
-                        if (entry.travelledDistanceMeters) {
-                            const distanceKm = (entry.travelledDistanceMeters / 1000).toFixed(1);
-                            const distanceElement = document.createElement('div');
-                            distanceElement.style.marginTop = '5px';
-                            distanceElement.textContent = `Distance: ${distanceKm} km`;
-                            detailsElement.appendChild(distanceElement);
-                        }
-                    }
-
-                    // Add elements to entry
-                    entryElement.appendChild(iconElement);
-                    entryElement.appendChild(timeElement);
-                    entryElement.appendChild(descElement);
-                    entryElement.appendChild(detailsElement);
-                    entryElement.appendChild(durationElement);
-
-                    // Add entry to timeline
-                    timelineContainer.appendChild(entryElement);
-
-                    // Add markers for each entry with coordinates
-                    const lat = parseFloat(entryElement.dataset.lat);
-                    const lng = parseFloat(entryElement.dataset.lng);
-
-                    if (!isNaN(lat) && !isNaN(lng)) {
-                        // Determine marker color based on entry type
-                        const markerColor = entry.type === 'VISIT' ? '#4a89dc' : '#e67e22';
-
-                        // Create marker with custom icon
-                        const marker = L.circleMarker([lat, lng], {
-                            radius: 8,
-                            fillColor: markerColor,
-                            color: '#fff',
-                            weight: 1,
-                            opacity: 1,
-                            fillOpacity: 0.8
-                        }).addTo(map);
-
-                        L.circle([lat, lng], {
-                            color: '#4a89dc',
-                            fillColor: '#6098e3',
-                            fillOpacity: 0.1,
-                            radius: 30
-                        }).addTo(map);
-
-                        // Add popup with basic info
-                        const popupContent = entry.type === 'VISIT'
-                            ? `<b>${entry.place?.name || 'Unknown Place'}</b><br>${timeElement.textContent}`
-                            : `<b>Trip</b><br>${timeElement.textContent}`;
-
-                        marker.bindPopup(popupContent);
-
-                        // Extend bounds for map fitting
-                        bounds.extend([lat, lng]);
-                        hasValidCoords = true;
-                    }
-
-                    // If entry has a path, add it to the map
-                    if (entryElement.dataset.path) {
-                        try {
-                            const pathData = JSON.parse(entryElement.dataset.path);
-                            const latlngs = pathData.map(coord => [coord.latitude, coord.longitude]);
-
-                            // Create polyline
-                            L.polyline(latlngs, {
-                                color: '#4f73ff',
-                                weight: 2,
-                                opacity: 0.8,
-                                lineJoin: 'round',
-                                lineCap: 'round'
-                            }).addTo(map);
-
-                            // Extend bounds with all path points
-                            latlngs.forEach(latlng => {
-                                bounds.extend(latlng);
-                                hasValidCoords = true;
-                            });
-                        } catch (e) {
-                            console.error("Error parsing path data:", e);
-                        }
-                    }
-                });
-
-                // Fit map to bounds if we have valid coordinates
-                if (hasValidCoords) {
-                    map.fitBounds(bounds, {
-                        padding: [50, 50],
-                        maxZoom: 16
-                    });
-                }
-            }
-
-            // Handle clicks on timeline entries
-            document.querySelector('.timeline-container').addEventListener('click', function(event) {
-                const entry = event.target.closest('.timeline-entry');
-                if (entry) {
-                    selectedPath.remove();
-                    const newBounds = L.latLngBounds();
-
-                    const lat = parseFloat(entry.dataset.lat);
-                    const lng = parseFloat(entry.dataset.lng);
-
-                    if (entry.dataset.path) {
-                        const pathData = JSON.parse(entry.dataset.path);
-                        const latlngs = pathData.map(coord => [coord.latitude, coord.longitude]);
-                        latlngs.forEach(latlng => {
-                            newBounds.extend(latlng);
-                        });
-                        selectedPath.setLatLngs(latlngs);
-                        selectedPath.addTo(map)
-                    }
-                    newBounds.extend([lat, lng]);
-                    map.flyToBounds(newBounds, {
-                        padding: [50, 50],
-                        maxZoom: 16
-                    });
-                }
-            });
-
-            // Set up date picker and navigation
+        // Handle previous day button
+        document.getElementById('prev-day').addEventListener('click', function () {
             const datePicker = document.getElementById('date-picker');
+            const currentDate = new Date(datePicker.value);
+            currentDate.setDate(currentDate.getDate() - 1);
+            const newDate = currentDate.toISOString().split('T')[0];
+            datePicker.value = newDate;
 
-            // Load initial data
-            datePicker.addEventListener('change', function() {
-                updateUrlWithDate(this.value);
-                loadTimelineData(this.value);
+            // Update URL with new date
+            updateUrlWithDate(newDate);
+
+            // Trigger HTMX request
+            htmx.trigger(datePicker, 'change');
+            htmx.trigger(datePicker, 'htmx:trigger');
+        });
+
+        // Handle next day button
+        document.getElementById('next-day').addEventListener('click', function () {
+            const datePicker = document.getElementById('date-picker');
+            const currentDate = new Date(datePicker.value);
+            currentDate.setDate(currentDate.getDate() + 1);
+            const newDate = currentDate.toISOString().split('T')[0];
+            datePicker.value = newDate;
+
+            // Update URL with new date
+            updateUrlWithDate(newDate);
+
+            // Trigger HTMX request
+            htmx.trigger(datePicker, 'change');
+            htmx.trigger(datePicker, 'htmx:trigger');
+        });
+
+        // Initialize the map
+        const map = L.map('map').setView([60.1699, 24.9384], 12); // Helsinki coordinates as default
+        //
+        // // Add tile layer
+        // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        //     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        //     maxZoom: 19
+        // }).addTo(map);
+        // // Add tile layer
+        L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20,
+            attribution: '&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
+        }).addTo(map);
+
+        // Add scale control
+        L.control.scale({
+            imperial: false,
+            metric: true
+        }).addTo(map);
+
+        // Function to load timeline data
+        function loadTimelineData(date) {
+            const loadingIndicator = document.getElementById('loading-indicator');
+            loadingIndicator.style.display = 'block';
+
+            fetch(`/api/timeline?selectedDate=${date}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    updateTimeline(data);
+                    loadingIndicator.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error fetching timeline data:', error);
+                    loadingIndicator.style.display = 'none';
+                });
+        }
+
+        const selectedPath = L.polyline([], {
+            color: '#ff984f',
+            weight: 6,
+            opacity: 1,
+            lineJoin: 'round',
+            lineCap: 'round'
+        })
+
+        // Function to update the timeline with fetched data
+        function updateTimeline(data) {
+            const timelineContainer = document.querySelector('.timeline-container');
+            const loadingIndicator = document.getElementById('loading-indicator');
+            timelineContainer.innerHTML = '';
+            timelineContainer.appendChild(loadingIndicator);
+
+            // Clear existing markers and paths
+            map.eachLayer(layer => {
+                if (!layer._url) {
+                    map.removeLayer(layer);
+                }
             });
 
-            // Handle previous day button
-            document.getElementById('prev-day').addEventListener('click', function() {
-                const currentDate = new Date(datePicker.value);
-                currentDate.setDate(currentDate.getDate() - 1);
-                const newDate = currentDate.toISOString().split('T')[0];
-                datePicker.value = newDate;
-                loadTimelineData(newDate);
+            if (!data || !data.entries || data.entries.length === 0) {
+                const noDataMsg = document.createElement('div');
+                noDataMsg.className = 'timeline-entry';
+                noDataMsg.textContent = 'No timeline data available for this date.';
+                timelineContainer.appendChild(noDataMsg);
+                return;
+            }
+
+            const bounds = L.latLngBounds();
+
+            let hasValidCoords = false;
+
+            // Create timeline entries
+            data.entries.forEach(entry => {
+                const entryElement = document.createElement('div');
+                entryElement.className = `timeline-entry ${entry.type.toLowerCase()}`;
+                entryElement.dataset.id = entry.id;
+
+                // Set coordinates based on entry type
+                if (entry.type === 'VISIT' && entry.place) {
+                    entryElement.dataset.lat = entry.place.latitude;
+                    entryElement.dataset.lng = entry.place.longitude;
+                } else if (entry.type === 'TRIP') {
+                    // For trips, use start place coordinates
+                    if (entry.startPlace) {
+                        entryElement.dataset.lat = entry.startPlace.latitude;
+                        entryElement.dataset.lng = entry.startPlace.longitude;
+                    }
+
+                    // If trip has path data, add it
+                    if (entry.path) {
+                        entryElement.dataset.path = JSON.stringify(entry.path);
+                    }
+                }
+
+                // Create icon element
+                const iconElement = document.createElement('div');
+                iconElement.className = 'entry-icon';
+                iconElement.textContent = entry.type === 'VISIT' ? 'P' : 'T';
+
+                // Create time element
+                const timeElement = document.createElement('span');
+                timeElement.className = 'entry-time';
+                const startTime = new Date(entry.startTime);
+                const endTime = new Date(entry.endTime);
+                timeElement.textContent = `${startTime.toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                })} - ${endTime.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}`;
+
+                // Calculate duration
+                const durationMs = endTime - startTime;
+                const durationText = humanizeDuration(durationMs, {units: ["h", "m"], round: true });
+
+                const durationElement = document.createElement('div');
+                durationElement.className = 'entry-duration';
+                durationElement.textContent = `Duration: ${durationText}`;
+
+                // Create description element
+                const descElement = document.createElement('div');
+                descElement.className = 'entry-description';
+
+                // Create details element
+                const detailsElement = document.createElement('div');
+                detailsElement.className = 'entry-details';
+
+                if (entry.type === 'VISIT') {
+                    const placeName = entry.place ? entry.place.name || 'Unknown Place' : 'Unknown Place';
+                    descElement.textContent = placeName;
+
+                    if (entry.place && entry.place.address) {
+                        detailsElement.textContent = entry.place.address;
+                    }
+
+                    if (entry.place && entry.place.category) {
+                        const categorySpan = document.createElement('span');
+                        categorySpan.style.display = 'block';
+                        categorySpan.style.marginTop = '5px';
+                        categorySpan.style.fontStyle = 'italic';
+                        categorySpan.textContent = entry.place.category;
+                        detailsElement.appendChild(categorySpan);
+                    }
+                } else if (entry.type === 'TRIP') {
+                    const startName = entry.startPlace ? entry.startPlace.name || 'Unknown' : 'Unknown';
+                    const endName = entry.endPlace ? entry.endPlace.name || 'Unknown' : 'Unknown';
+                    descElement.textContent = `Trip`;
+                    detailsElement.innerHTML = `<strong>From:</strong> ${startName}<br><strong>To:</strong> ${endName}`;
+
+                    // Add distance if available
+                    if (entry.distanceMeters) {
+                        const distanceKm = (entry.distanceMeters / 1000).toFixed(1);
+                        const distanceElement = document.createElement('div');
+                        durationElement.textContent = `Distance: ${distanceKm} km`;
+                    }
+                }
+
+                // Add elements to entry
+                // entryElement.appendChild(iconElement);
+                entryElement.appendChild(descElement);
+                entryElement.appendChild(durationElement);
+                entryElement.appendChild(timeElement);
+
+                // Add entry to timeline
+                timelineContainer.appendChild(entryElement);
+
+                // Add markers for each entry with coordinates
+                const lat = parseFloat(entryElement.dataset.lat);
+                const lng = parseFloat(entryElement.dataset.lng);
+
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    // Determine marker color based on entry type
+                    const markerColor = entry.type === 'VISIT' ? '#4a89dc' : '#e67e22';
+
+                    // Create marker with custom icon
+                    const marker = L.circleMarker([lat, lng], {
+                        radius: 8,
+                        fillColor: markerColor,
+                        color: '#fff',
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+
+                    L.circle([lat, lng], {
+                        color: '#4a89dc',
+                        fillColor: '#6098e3',
+                        fillOpacity: 0.1,
+                        radius: 30
+                    }).addTo(map);
+
+                    // Add popup with basic info
+                    const popupContent = entry.type === 'VISIT'
+                        ? `<b>${entry.place?.name || 'Unknown Place'}</b><br>${timeElement.textContent}`
+                        : `<b>Trip</b><br>${timeElement.textContent}`;
+
+                    marker.bindPopup(popupContent);
+
+                    // Extend bounds for map fitting
+                    bounds.extend([lat, lng]);
+                    hasValidCoords = true;
+                }
+
+                // If entry has a path, add it to the map
+                if (entryElement.dataset.path) {
+                    try {
+                        const pathData = JSON.parse(entryElement.dataset.path);
+                        const latlngs = pathData.map(coord => [coord.latitude, coord.longitude]);
+
+                        // Create polyline
+                        L.polyline(latlngs, {
+                            color: '#4f73ff',
+                            weight: 2,
+                            opacity: 0.8,
+                            lineJoin: 'round',
+                            lineCap: 'round'
+                        }).addTo(map);
+
+                        // Extend bounds with all path points
+                        latlngs.forEach(latlng => {
+                            bounds.extend(latlng);
+                            hasValidCoords = true;
+                        });
+                    } catch (e) {
+                        console.error("Error parsing path data:", e);
+                    }
+                }
             });
 
-            // Handle next day button
-            document.getElementById('next-day').addEventListener('click', function() {
-                const currentDate = new Date(datePicker.value);
-                currentDate.setDate(currentDate.getDate() + 1);
-                const newDate = currentDate.toISOString().split('T')[0];
-                datePicker.value = newDate;
-                loadTimelineData(newDate);
-            });
+            // Fit map to bounds if we have valid coordinates
+            if (hasValidCoords) {
+                map.fitBounds(bounds, {
+                    padding: [50, 50],
+                    maxZoom: 16
+                });
+            }
+        }
 
-            // Load initial timeline data and update URL if needed
-            loadTimelineData(formattedDate);
-            if (!urlParams.has('date')) {
-                updateUrlWithDate(formattedDate);
+        // Handle clicks on timeline entries
+        document.querySelector('.timeline-container').addEventListener('click', function (event) {
+            document.querySelectorAll('.timeline-container .timeline-entry')
+                .forEach(entry => entry.classList.remove('active'));
+            const entry = event.target.closest('.timeline-entry');
+            entry.classList.add('active');
+            if (entry) {
+                selectedPath.remove();
+                const newBounds = L.latLngBounds();
+
+                const lat = parseFloat(entry.dataset.lat);
+                const lng = parseFloat(entry.dataset.lng);
+
+                if (entry.dataset.path) {
+                    const pathData = JSON.parse(entry.dataset.path);
+                    const latlngs = pathData.map(coord => [coord.latitude, coord.longitude]);
+                    latlngs.forEach(latlng => {
+                        newBounds.extend(latlng);
+                    });
+                    selectedPath.setLatLngs(latlngs);
+
+                    selectedPath.addTo(map)
+                }
+                newBounds.extend([lat, lng]);
+                map.flyToBounds(newBounds, {
+                    padding: [50, 50],
+                    maxZoom: 16
+                });
             }
         });
-    </script>
+
+        // Set up date picker and navigation
+        const datePicker = document.getElementById('date-picker');
+
+        // Load initial data
+        datePicker.addEventListener('change', function () {
+            updateUrlWithDate(this.value);
+            loadTimelineData(this.value);
+        });
+
+        // Handle previous day button
+        document.getElementById('prev-day').addEventListener('click', function () {
+            const currentDate = new Date(datePicker.value);
+            currentDate.setDate(currentDate.getDate() - 1);
+            const newDate = currentDate.toISOString().split('T')[0];
+            datePicker.value = newDate;
+            loadTimelineData(newDate);
+        });
+
+        // Handle next day button
+        document.getElementById('next-day').addEventListener('click', function () {
+            const currentDate = new Date(datePicker.value);
+            currentDate.setDate(currentDate.getDate() + 1);
+            const newDate = currentDate.toISOString().split('T')[0];
+            datePicker.value = newDate;
+            loadTimelineData(newDate);
+        });
+
+        loadTimelineData(formattedDate);
+    });
+</script>
 </body>
 </html>
