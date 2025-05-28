@@ -27,21 +27,7 @@ public class VisitProcessingController {
         this.visitMergingService = visitMergingService;
         this.userRepository = userRepository;
     }
-    
-    @PostMapping("/merge-all")
-    public ResponseEntity<?> mergeAllVisits() {
-        logger.info("Received request to merge all visits");
-        
-        List<ProcessedVisit> processedVisits = visitMergingService.processAndMergeVisitsForAllUsers();
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("status", "success");
-        response.put("message", "Processed and merged visits for all users");
-        response.put("totalProcessedVisits", processedVisits.size());
-        
-        return ResponseEntity.ok(response);
-    }
-    
+
     @PostMapping("/merge/{userId}")
     public ResponseEntity<?> mergeVisitsForUser(@PathVariable Long userId) {
         logger.info("Received request to merge visits for user ID: {}", userId);

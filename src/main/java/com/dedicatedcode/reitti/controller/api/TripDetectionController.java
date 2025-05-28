@@ -27,41 +27,7 @@ public class TripDetectionController {
         this.tripDetectionService = tripDetectionService;
         this.userRepository = userRepository;
     }
-    
-    @PostMapping("/detect-all")
-    public ResponseEntity<?> detectAllTrips() {
-        logger.info("Received request to detect trips for all users");
-        
-        List<Trip> detectedTrips = tripDetectionService.detectTripsForAllUsers();
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("status", "success");
-        response.put("message", "Detected trips for all users");
-        response.put("totalDetectedTrips", detectedTrips.size());
-        
-        return ResponseEntity.ok(response);
-    }
-    
-    @PostMapping("/detect/{userId}")
-    public ResponseEntity<?> detectTripsForUser(@PathVariable Long userId) {
-        logger.info("Received request to detect trips for user ID: {}", userId);
-        
-        Optional<User> userOpt = userRepository.findById(userId);
-        
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        
-        List<Trip> detectedTrips = tripDetectionService.detectTripsForUser(userOpt.get());
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("status", "success");
-        response.put("message", "Detected trips for user: " + userOpt.get().getUsername());
-        response.put("userId", userId);
-        response.put("detectedTrips", detectedTrips.size());
-        
-        return ResponseEntity.ok(response);
-    }
+
     
     @DeleteMapping("/clear-all")
     public ResponseEntity<?> clearAllTrips() {

@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.service.processing;
 
+import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.model.GeoUtils;
 import com.dedicatedcode.reitti.model.RawLocationPoint;
 import com.dedicatedcode.reitti.model.Trip;
@@ -9,6 +10,7 @@ import com.dedicatedcode.reitti.repository.TripRepository;
 import com.dedicatedcode.reitti.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,24 +39,11 @@ public class TripMergingService {
         this.userRepository = userRepository;
         this.rawLocationPointRepository = rawLocationPointRepository;
     }
-    
+
     @Transactional
-    public List<Trip> mergeDuplicateTripsForAllUsers() {
-        logger.info("Starting to merge duplicate trips for all users");
-        List<User> users = userRepository.findAll();
-        List<Trip> mergedTrips = new ArrayList<>();
-        
-        for (User user : users) {
-            List<Trip> userMergedTrips = mergeDuplicateTripsForUser(user);
-            mergedTrips.addAll(userMergedTrips);
-        }
-        
-        logger.info("Completed merging duplicate trips for all users. Total merged trips: {}", mergedTrips.size());
-        return mergedTrips;
-    }
-    
-    @Transactional
-    public List<Trip> mergeDuplicateTripsForUser(User user) {
+    @RabbitListener(queues = RabbitMQConfig.MERGE_TRIP_QUEUE)
+    public void mergeDuplicateTripsForUser(Long userId) {
+        User user = this.userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("Unknown user id: " + userId));
         logger.info("Merging duplicate trips for user: {}", user.getUsername());
         
         // Get all trips for the user
@@ -62,7 +51,7 @@ public class TripMergingService {
         
         if (allTrips.isEmpty()) {
             logger.info("No trips found for user: {}", user.getUsername());
-            return new ArrayList<>();
+            return;
         }
         
         // Group trips by start place, end place, and similar time range
@@ -90,7 +79,6 @@ public class TripMergingService {
         logger.info("Merged {} trip groups into {} trips for user: {}", 
                 tripGroups.size(), mergedTrips.size(), user.getUsername());
         
-        return mergedTrips;
     }
     
     private Map<String, List<Trip>> groupSimilarTrips(List<Trip> trips) {

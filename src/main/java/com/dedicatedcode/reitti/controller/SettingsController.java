@@ -54,8 +54,7 @@ public class SettingsController {
         model.addAttribute("places", places);
         
         // Load queue stats
-        Map<String, Object> queueStats = queueStatsService.getQueueStats();
-        model.addAttribute("queueStats", queueStats);
+        model.addAttribute("queueStats", queueStatsService.getQueueStats());
         
         model.addAttribute("username", authentication.getName());
         

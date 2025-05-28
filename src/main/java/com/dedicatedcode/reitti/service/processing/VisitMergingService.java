@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.service.processing;
 
+import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.model.ProcessedVisit;
 import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.model.User;
@@ -9,6 +10,9 @@ import com.dedicatedcode.reitti.repository.UserRepository;
 import com.dedicatedcode.reitti.repository.VisitRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.core.RabbitMessageOperations;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -27,24 +31,32 @@ public class VisitMergingService {
     private final VisitRepository visitRepository;
     private final ProcessedVisitRepository processedVisitRepository;
     private final UserRepository userRepository;
+    private final RabbitTemplate rabbitTemplate;
 
-    private final Logger log = LoggerFactory.getLogger(VisitMergingService.class);
-    
     @Value("${reitti.visit.merge-threshold-seconds:300}")
     private long mergeThresholdSeconds;
-    
+    @Value("${reitti.detect-trips-after-merging:true}")
+    private boolean detectTripsAfterMerging;
+
     @Autowired
-    public VisitMergingService(VisitRepository visitRepository, 
-                              ProcessedVisitRepository processedVisitRepository,
-                              UserRepository userRepository) {
+    public VisitMergingService(VisitRepository visitRepository,
+                               ProcessedVisitRepository processedVisitRepository,
+                               UserRepository userRepository, RabbitTemplate rabbitTemplate) {
         this.visitRepository = visitRepository;
         this.processedVisitRepository = processedVisitRepository;
         this.userRepository = userRepository;
+        this.rabbitTemplate = rabbitTemplate;
     }
-    
+
+    @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE)
+    @Transactional
+    public void mergeVisits(Long userId) {
+        processAndMergeVisits(userRepository.findById(userId).orElseThrow());
+    }
+
     @Transactional
     public List<ProcessedVisit> processAndMergeVisits(User user) {
-        log.info("Processing and merging visits for user: {}", user.getUsername());
+        logger.info("Processing and merging visits for user: {}", user.getUsername());
 
         // Get all unprocessed visits for the user
         List<Visit> allVisits = visitRepository.findByUserAndProcessedFalse(user);
@@ -69,34 +81,14 @@ public class VisitMergingService {
         
         logger.info("Processed {} visits into {} merged visits for user: {}", 
                 allVisits.size(), processedVisits.size(), user.getUsername());
-        
+
+        if (!processedVisits.isEmpty() && detectTripsAfterMerging) {
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, user.getId());
+
+        }
         return processedVisits;
     }
-    
-    @Transactional
-    public List<ProcessedVisit> processAndMergeVisitsForAllUsers() {
-        log.info("Processing and merging visits for all users");
-        
-        // First, check if we've already processed visits
-        if (processedVisitRepository.count() > 0) {
-            log.info("ProcessedVisits already exist, skipping processing");
-            return processedVisitRepository.findAll();
-        }
-        
-        List<User> allUsers = userRepository.findAll();
-        List<ProcessedVisit> allProcessedVisits = new ArrayList<>();
-        
-        for (User user : allUsers) {
-            List<ProcessedVisit> userProcessedVisits = processAndMergeVisits(user);
-            allProcessedVisits.addAll(userProcessedVisits);
-        }
-        
-        logger.info("Completed processing for all users. Total processed visits: {}", 
-                allProcessedVisits.size());
-        
-        return allProcessedVisits;
-    }
-    
+
     private List<ProcessedVisit> mergeVisitsChronologically(User user, List<Visit> visits) {
         List<ProcessedVisit> result = new ArrayList<>();
         
@@ -164,7 +156,7 @@ public class VisitMergingService {
         if (!existingVisits.isEmpty()) {
             // Use the existing processed visit
             ProcessedVisit existingVisit = existingVisits.get(0);
-            log.debug("Found existing processed visit for place ID {}", place.getId());
+            logger.debug("Found existing processed visit for place ID {}", place.getId());
             
             // Update the existing visit if needed (e.g., extend time range)
             if (startTime.isBefore(existingVisit.getStartTime())) {

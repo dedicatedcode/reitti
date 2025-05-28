@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.service.processing;
 
+import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.ProcessedVisitRepository;
 import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
@@ -7,6 +8,7 @@ import com.dedicatedcode.reitti.repository.TripRepository;
 import com.dedicatedcode.reitti.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,12 +38,13 @@ public class TripDetectionService {
     }
     
     @Transactional
-    public List<Trip> detectTripsForUser(User user) {
+    @RabbitListener(queues = RabbitMQConfig.DETECT_TRIP_QUEUE)
+    public void detectTripsForUser(Long userId) {
+        User user = this.userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("Unknown user id: " + userId));
         logger.info("Detecting trips for user: {}", user.getUsername());
-        
         // Get all processed visits for the user, sorted by start time
         List<ProcessedVisit> visits = processedVisitRepository.findByUser(user);
-        return findDetectedTrips(user, visits);
+        findDetectedTrips(user, visits);
     }
 
     @Transactional
@@ -79,24 +82,6 @@ public class TripDetectionService {
         return detectedTrips;
     }
 
-    @Transactional
-    public List<Trip> detectTripsForAllUsers() {
-        logger.info("Detecting trips for all users");
-        
-        List<User> allUsers = userRepository.findAll();
-        List<Trip> allDetectedTrips = new ArrayList<>();
-        
-        for (User user : allUsers) {
-            List<Trip> userTrips = detectTripsForUser(user);
-            allDetectedTrips.addAll(userTrips);
-        }
-        
-        logger.info("Completed trip detection for all users. Total detected trips: {}", 
-                allDetectedTrips.size());
-        
-        return allDetectedTrips;
-    }
-    
     private Trip createTripBetweenVisits(User user, ProcessedVisit startVisit, ProcessedVisit endVisit) {
         // Trip starts when the first visit ends
         Instant tripStartTime = startVisit.getEndTime();

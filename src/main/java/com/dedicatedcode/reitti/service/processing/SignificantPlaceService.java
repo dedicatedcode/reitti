@@ -142,7 +142,6 @@ public class SignificantPlaceService {
         return visit;
     }
 
-    // Add a new method to publish the event
     private void publishSignificantPlaceCreatedEvent(SignificantPlace place) {
         SignificantPlaceCreatedEvent event = new SignificantPlaceCreatedEvent(
                 place.getId(),

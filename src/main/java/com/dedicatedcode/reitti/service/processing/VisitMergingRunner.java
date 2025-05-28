@@ -1,7 +1,10 @@
 package com.dedicatedcode.reitti.service.processing;
 
+import com.dedicatedcode.reitti.config.RabbitMQConfig;
+import com.dedicatedcode.reitti.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
@@ -12,34 +15,29 @@ import org.springframework.stereotype.Component;
 public class VisitMergingRunner implements CommandLineRunner {
 
     private static final Logger logger = LoggerFactory.getLogger(VisitMergingRunner.class);
-    
-    private final VisitMergingService visitMergingService;
+
+    private final UserService userService;
     private final TripDetectionService tripDetectionService;
-    
+    private final RabbitTemplate rabbitTemplate;
     @Value("${reitti.process-visits-on-startup:false}")
     private boolean processVisitsOnStartup;
-    
-    @Value("${reitti.detect-trips-after-merging:true}")
-    private boolean detectTripsAfterMerging;
-    
-    public VisitMergingRunner(VisitMergingService visitMergingService, 
-                             TripDetectionService tripDetectionService) {
-        this.visitMergingService = visitMergingService;
+
+
+
+    public VisitMergingRunner(UserService userService,
+                              TripDetectionService tripDetectionService, RabbitTemplate rabbitTemplate) {
+        this.userService = userService;
         this.tripDetectionService = tripDetectionService;
+        this.rabbitTemplate = rabbitTemplate;
     }
-    
+
     @Override
     public void run(String... args) {
         if (processVisitsOnStartup) {
-            logger.info("Starting visit merging process on application startup");
-            visitMergingService.processAndMergeVisitsForAllUsers();
-            logger.info("Completed visit merging process");
-            
-            if (detectTripsAfterMerging) {
-                logger.info("Starting trip detection process after visit merging");
-                tripDetectionService.detectTripsForAllUsers();
-                logger.info("Completed trip detection process");
-            }
+            userService.getAllUsers().forEach(user -> {
+                logger.info("Schedule visit merging process for user {}", user.getUsername());
+                rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, user.getId());
+            });
         } else {
             logger.info("Visit merging on startup is disabled. Set reitti.process-visits-on-startup=true to enable.");
         }

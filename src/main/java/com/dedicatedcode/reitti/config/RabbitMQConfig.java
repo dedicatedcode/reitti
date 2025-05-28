@@ -19,6 +19,13 @@ public class RabbitMQConfig {
     public static final String LOCATION_DATA_ROUTING_KEY = "location.data";
     public static final String SIGNIFICANT_PLACE_QUEUE = "significant-place-queue";
     public static final String SIGNIFICANT_PLACE_ROUTING_KEY = "significant.place.created";
+    public static final String DETECT_TRIP_QUEUE = "detect-trip-queue";
+    public static final String DETECT_TRIP_ROUTING_KEY = "detect.trip.created";
+    public static final String MERGE_TRIP_QUEUE = "merge-trip-queue";
+    public static final String MERGE_TRIP_ROUTING_KEY = "merge.trip.created";
+
+    public static final String MERGE_VISIT_QUEUE = "merge-visit-queue";
+    public static final String MERGE_VISIT_ROUTING_KEY = "merge.visit.created";
 
     @Bean
     public TopicExchange exchange() {
@@ -31,18 +38,48 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Binding locationDataBinding(Queue locationDataQueue, TopicExchange exchange) {
-        return BindingBuilder.bind(locationDataQueue).to(exchange).with(LOCATION_DATA_ROUTING_KEY);
+    public Queue detectTripQueue() {
+        return new Queue(DETECT_TRIP_QUEUE, true);
     }
-    
+
+    @Bean
+    public Queue mergeTripQueue() {
+        return new Queue(MERGE_TRIP_QUEUE, true);
+    }
+
+    @Bean
+    public Queue mergeVisitQueue() {
+        return new Queue(MERGE_VISIT_QUEUE, true);
+    }
+
     @Bean
     public Queue significantPlaceQueue() {
         return new Queue(SIGNIFICANT_PLACE_QUEUE, true);
     }
 
     @Bean
+    public Binding locationDataBinding(Queue locationDataQueue, TopicExchange exchange) {
+        return BindingBuilder.bind(locationDataQueue).to(exchange).with(LOCATION_DATA_ROUTING_KEY);
+    }
+
+    @Bean
     public Binding significantPlaceBinding(Queue significantPlaceQueue, TopicExchange exchange) {
         return BindingBuilder.bind(significantPlaceQueue).to(exchange).with(SIGNIFICANT_PLACE_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding mergeVisitBinding(Queue mergeVisitQueue, TopicExchange exchange) {
+        return BindingBuilder.bind(mergeVisitQueue).to(exchange).with(MERGE_VISIT_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding detectTripBinding(Queue detectTripQueue, TopicExchange exchange) {
+        return BindingBuilder.bind(detectTripQueue).to(exchange).with(DETECT_TRIP_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding mergeTripBinding(Queue mergeTripQueue, TopicExchange exchange) {
+        return BindingBuilder.bind(mergeTripQueue).to(exchange).with(MERGE_TRIP_ROUTING_KEY);
     }
 
     @Bean
@@ -54,6 +91,7 @@ public class RabbitMQConfig {
     public RabbitAdmin rabbitAdmin(ConnectionFactory connectionFactory) {
         return new RabbitAdmin(connectionFactory);
     }
+
     @Bean
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory, Jackson2JsonMessageConverter messageConverter) {
         RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);

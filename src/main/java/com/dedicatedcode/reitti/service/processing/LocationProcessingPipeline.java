@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.service.processing;
 
+import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.model.*;
@@ -7,6 +8,7 @@ import com.dedicatedcode.reitti.repository.UserRepository;
 import com.dedicatedcode.reitti.service.LocationDataService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitMessageOperations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,7 @@ public class LocationProcessingPipeline {
     private final TripDetectionService tripDetectionService;
     private final TripMergingService tripMergingService;
     private final VisitMergingService visitMergingService;
+    private final RabbitMessageOperations rabbitTemplate;
 
     @Autowired
     public LocationProcessingPipeline(
@@ -36,7 +39,8 @@ public class LocationProcessingPipeline {
             SignificantPlaceService significantPlaceService,
             TripDetectionService tripDetectionService,
             TripMergingService tripMergingService,
-            VisitMergingService visitMergingService) {
+            VisitMergingService visitMergingService,
+            RabbitMessageOperations rabbitTemplate) {
         this.userRepository = userRepository;
         this.locationDataService = locationDataService;
         this.stayPointDetectionService = stayPointDetectionService;
@@ -44,6 +48,7 @@ public class LocationProcessingPipeline {
         this.tripDetectionService = tripDetectionService;
         this.tripMergingService = tripMergingService;
         this.visitMergingService = visitMergingService;
+        this.rabbitTemplate = rabbitTemplate;
     }
 
     public void processLocationData(LocationDataEvent event) {
@@ -83,16 +88,11 @@ public class LocationProcessingPipeline {
 
             long start = System.nanoTime();
             // Step 4: update Processed Visits
-            List<ProcessedVisit> processedVisits = visitMergingService.processAndMergeVisits(user);
-            logger.info("Updated {} processedVisits in {}s", processedVisits.size(), (System.nanoTime() - start) / 1000000000.0);
-            start = System.nanoTime();
-            // Step 5: Detect trips between significant places
-            List<Trip> tripCount = tripDetectionService.detectTripsForUser(user, minTime.minus(1, ChronoUnit.DAYS), maxTime.plus(1, ChronoUnit.DAYS));
-            logger.info("Detected {} trips between significant places in {}s", tripCount.size(), (System.nanoTime() - start) / 1000000000.0);
-            start = System.nanoTime();
-            // Step 5: Merge trips for user
-            List<Trip> mergedTrips = tripMergingService.mergeDuplicateTripsForUser(user);
-            logger.info("Merged {} trips between significant places in {}s", mergedTrips.size(), (System.nanoTime() - start) / 1000000000.0);
+
+            visitMergingService.processAndMergeVisits(user);
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, user.getId());
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, user.getId());
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_TRIP_ROUTING_KEY, user.getId());
 
         }
 
