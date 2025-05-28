@@ -105,6 +105,7 @@
             color: #bfbfbf;
             padding: 1rem 2rem;
             transition: color, padding 0.5s ease-in-out;
+            font-weight: lighter;
         }
         .timeline-entry.active {
             color: #f8f8f8;
@@ -146,14 +147,26 @@
             border: 1px solid #ddd;
             border-radius: 4px;
         }
+
+        .timeline-header {
+            display: inline-flex;
+            align-items: baseline;
+            padding: 8px;
+            border-bottom: 1px black;
+            margin-left: 2rem;
+            pointer-events: auto;
+        }
     </style>
 </head>
 <body>
-<header>
-    <a href="/" class="nav-link"><i class="fas fa-house-flag"></i></a>
+<div id="map"></div>
+
+<div class="timeline">
+    <span class="timeline-header">
+        <a href="/" class="nav-link"><i class="fas fa-house-flag"></i></a>
         <div class="date-navigation">
             <button id="prev-day">
-               <i class="fas fa-arrow-left"></i>
+                <i class="fas fa-arrow-left"></i>
             </button>
             <input type="date" id="date-picker" name="selectedDate">
             <button id="next-day">
@@ -165,11 +178,7 @@
             <button type="submit" class="nav-link" style="background: none; border: none; cursor: pointer;"><i class="fas fa-right-from-bracket"></i>
             </button>
         </form>
-</header>
-
-<div id="map"></div>
-
-<div class="timeline">
+    </span>
 
     <div class="timeline-container">
         <div id="loading-indicator" style="display: none;">Loading...</div>
