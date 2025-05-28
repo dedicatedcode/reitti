@@ -390,9 +390,6 @@
                                 <div><strong>Address:</strong> <span th:text="${place.address ?: 'Not available'}"></span></div>
                                 <div><strong>Category:</strong> <span th:text="${place.category ?: 'Not categorized'}"></span></div>
                                 <div><strong>Coordinates:</strong> <span th:text="${place.latitudeCentroid + ', ' + place.longitudeCentroid}"></span></div>
-                                <div><strong>First seen:</strong> <span th:text="${#temporals.format(place.firstSeen, 'yyyy-MM-dd HH:mm')}"></span></div>
-                                <div><strong>Last seen:</strong> <span th:text="${#temporals.format(place.lastSeen, 'yyyy-MM-dd HH:mm')}"></span></div>
-                                <div><strong>Visit count:</strong> <span th:text="${place.visitCount}"></span></div>
                             </div>
                             <button type="submit" class="btn">Update</button>
                         </form>
@@ -504,7 +501,7 @@
             function startQueueStatsAutoRefresh() {
                 if (document.getElementById('job-status').classList.contains('active')) {
                     refreshQueueStats(); // Refresh immediately
-                    queueStatsInterval = setInterval(refreshQueueStats, 5000); // Then every 5 seconds
+                    queueStatsInterval = setInterval(refreshQueueStats, 1000); // Then every 5 seconds
                 } else {
                     stopQueueStatsAutoRefresh();
                 }

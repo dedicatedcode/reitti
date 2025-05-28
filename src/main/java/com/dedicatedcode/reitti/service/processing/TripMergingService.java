@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 public class TripMergingService {
@@ -45,22 +44,28 @@ public class TripMergingService {
     public void mergeDuplicateTripsForUser(Long userId) {
         User user = this.userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("Unknown user id: " + userId));
         logger.info("Merging duplicate trips for user: {}", user.getUsername());
-        
+
+        mergeTrips(user, true);
+        mergeTrips(user, false);
+
+    }
+
+    private void mergeTrips(User user, boolean withStart) {
         // Get all trips for the user
         List<Trip> allTrips = tripRepository.findByUser(user);
-        
+
         if (allTrips.isEmpty()) {
             logger.info("No trips found for user: {}", user.getUsername());
             return;
         }
-        
+
         // Group trips by start place, end place, and similar time range
-        Map<String, List<Trip>> tripGroups = groupSimilarTrips(allTrips);
-        
+        Map<String, List<Trip>> tripGroups = groupSimilarTrips(allTrips, withStart);
+
         // Process each group to merge duplicates
         List<Trip> mergedTrips = new ArrayList<>();
         List<Trip> tripsToDelete = new ArrayList<>();
-        
+
         for (List<Trip> tripGroup : tripGroups.values()) {
             if (tripGroup.size() > 1) {
                 // We have potential duplicates
@@ -69,34 +74,33 @@ public class TripMergingService {
                 tripsToDelete.addAll(tripGroup);
             }
         }
-        
+
         // Delete the original trips that were merged
         if (!tripsToDelete.isEmpty()) {
             tripRepository.deleteAll(tripsToDelete);
             logger.info("Deleted {} duplicate trips for user: {}", tripsToDelete.size(), user.getUsername());
         }
-        
-        logger.info("Merged {} trip groups into {} trips for user: {}", 
+
+        logger.info("Merged {} trip groups into {} trips for user: {}",
                 tripGroups.size(), mergedTrips.size(), user.getUsername());
-        
     }
-    
-    private Map<String, List<Trip>> groupSimilarTrips(List<Trip> trips) {
+
+    private Map<String, List<Trip>> groupSimilarTrips(List<Trip> trips, boolean withStart) {
         Map<String, List<Trip>> tripGroups = new HashMap<>();
         
         for (Trip trip : trips) {
             // Create a key based on start place, end place, and approximate time
             // We use minute precision for time to allow for small differences
-            String key = createTripGroupKey(trip);
+            String key = createTripGroupKey(trip, withStart);
             tripGroups.computeIfAbsent(key, k -> new ArrayList<>()).add(trip);
         }
         return tripGroups;
     }
     
-    private String createTripGroupKey(Trip trip) {
+    private String createTripGroupKey(Trip trip, boolean withStart) {
         // Create a key that identifies similar trips
         // Format: userId_startPlaceId_endPlaceId_startTimeMinute_endTimeMinute
-        long startTimeMinutes = trip.getStartTime().getEpochSecond() / 60;
+        long timeKey = withStart ? trip.getStartTime().getEpochSecond() / 60 : trip.getEndTime().getEpochSecond() / 60;
 
         Long startPlaceId = trip.getStartPlace() != null ? trip.getStartPlace().getId() : 0;
         Long endPlaceId = trip.getEndPlace() != null ? trip.getEndPlace().getId() : 0;
@@ -105,7 +109,7 @@ public class TripMergingService {
                 trip.getUser().getId(), 
                 startPlaceId, 
                 endPlaceId,
-                startTimeMinutes);
+                timeKey);
     }
     
     private Trip mergeTrips(List<Trip> trips, User user) {

@@ -52,7 +52,7 @@ public class LocationProcessingPipeline {
     }
 
     public void processLocationData(LocationDataEvent event) {
-        logger.info("Starting processing pipeline for user {} with {} points",
+        logger.debug("Starting processing pipeline for user {} with {} points",
                 event.getUsername(), event.getPoints().size());
 
         Optional<User> userOpt = userRepository.findById(event.getUserId());
@@ -62,15 +62,13 @@ public class LocationProcessingPipeline {
             return;
         }
 
-        Instant minTime = event.getPoints().stream().map(LocationDataRequest.LocationPoint::getTimestamp).map(Instant::parse).min(Instant::compareTo).orElse(null);
-        Instant maxTime = event.getPoints().stream().map(LocationDataRequest.LocationPoint::getTimestamp).map(Instant::parse).max(Instant::compareTo).orElse(null);
         User user = userOpt.get();
 
         // Step 1: Save raw location points (with duplicate checking)
         List<RawLocationPoint> savedPoints = locationDataService.processLocationData(user, event.getPoints());
 
         if (savedPoints.isEmpty()) {
-            logger.info("No new points to process for user {}", user.getUsername());
+            logger.debug("No new points to process for user {}", user.getUsername());
             return;
         }
 
@@ -80,11 +78,11 @@ public class LocationProcessingPipeline {
         List<StayPoint> stayPoints = stayPointDetectionService.detectStayPoints(user, savedPoints);
 
         if (!stayPoints.isEmpty()) {
-            logger.info("Detected {} stay points", stayPoints.size());
+            logger.trace("Detected {} stay points", stayPoints.size());
 
             // Step 3: Update significant places based on stay points
             List<SignificantPlace> updatedPlaces = significantPlaceService.processStayPoints(user, stayPoints);
-            logger.info("Updated {} significant places", updatedPlaces.size());
+            logger.trace("Updated {} significant places", updatedPlaces.size());
 
             long start = System.nanoTime();
             // Step 4: update Processed Visits

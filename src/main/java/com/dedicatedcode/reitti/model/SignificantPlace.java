@@ -36,37 +36,19 @@ public class SignificantPlace {
     
     @Column
     private String category;
-    
-    @Column(nullable = false)
-    private Instant firstSeen;
-    
-    @Column(nullable = false)
-    private Instant lastSeen;
-    
-    @Column(name = "visit_count")
-    private Integer visitCount = 0;
-    
-    @Column(name = "total_duration_seconds")
-    private Long totalDurationSeconds = 0L;
-    
+
     @OneToMany(mappedBy = "place", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Visit> visits = new ArrayList<>();
 
     public SignificantPlace() {}
-    public SignificantPlace(User user, String name, String address, Double latitudeCentroid, Double longitudeCentroid, String category, Instant firstSeen, Instant lastSeen) {
-        this.user = user;
-        this.name = name;
-        this.address = address;
-        this.latitudeCentroid = latitudeCentroid;
-        this.longitudeCentroid = longitudeCentroid;
-        this.category = category;
-        this.firstSeen = firstSeen;
-        this.lastSeen = lastSeen;
-        this.visitCount = 1;
-        this.totalDurationSeconds = 0L;
-    }
-    
-    public SignificantPlace(User user, String name, String address, Double latitudeCentroid, Double longitudeCentroid, Point geom, String category, Instant firstSeen, Instant lastSeen) {
+
+    public SignificantPlace(User user,
+                            String name,
+                            String address,
+                            Double latitudeCentroid,
+                            Double longitudeCentroid,
+                            Point geom,
+                            String category) {
         this.user = user;
         this.name = name;
         this.address = address;
@@ -74,10 +56,6 @@ public class SignificantPlace {
         this.longitudeCentroid = longitudeCentroid;
         this.geom = geom;
         this.category = category;
-        this.firstSeen = firstSeen;
-        this.lastSeen = lastSeen;
-        this.visitCount = 1;
-        this.totalDurationSeconds = 0L;
     }
 
     public Long getId() {
@@ -136,22 +114,6 @@ public class SignificantPlace {
         this.category = category;
     }
 
-    public Instant getFirstSeen() {
-        return firstSeen;
-    }
-
-    public void setFirstSeen(Instant firstSeen) {
-        this.firstSeen = firstSeen;
-    }
-
-    public Instant getLastSeen() {
-        return lastSeen;
-    }
-
-    public void setLastSeen(Instant lastSeen) {
-        this.lastSeen = lastSeen;
-    }
-
     public List<Visit> getVisits() {
         return visits;
     }
@@ -166,36 +128,5 @@ public class SignificantPlace {
     
     public void setGeom(Point geom) {
         this.geom = geom;
-    }
-    
-    public Integer getVisitCount() {
-        return visitCount;
-    }
-    
-    public void setVisitCount(Integer visitCount) {
-        this.visitCount = visitCount;
-    }
-    
-    public Long getTotalDurationSeconds() {
-        return totalDurationSeconds;
-    }
-    
-    public void setTotalDurationSeconds(Long totalDurationSeconds) {
-        this.totalDurationSeconds = totalDurationSeconds;
-    }
-    
-    public void incrementVisitCount() {
-        this.visitCount++;
-    }
-    
-    public void addDuration(Long durationSeconds) {
-        this.totalDurationSeconds += durationSeconds;
-    }
-    
-    public Long getAverageDurationSeconds() {
-        if (visitCount == 0) {
-            return 0L;
-        }
-        return totalDurationSeconds / visitCount;
     }
 }

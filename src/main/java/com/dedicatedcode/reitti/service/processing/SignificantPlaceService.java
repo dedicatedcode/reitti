@@ -73,14 +73,10 @@ public class SignificantPlaceService {
                 // Update the first existing place
                 Optional<SignificantPlace> existingPlace = this.significantPlaceRepository.findById(nearbyPlaces.get(0).getId());
                 existingPlace.ifPresent(place -> {
-                    updateSignificantPlace(place, stayPoint);
-                    significantPlaceRepository.saveAndFlush(place);
-
                     // Create a visit for this place
                     Visit visit = createVisit(user, place, stayPoint);
                     visitRepository.save(visit);
                     updatedPlaces.add(place);
-                    logger.info("Updated existing significant place at ({}, {})", place.getLatitudeCentroid(), place.getLongitudeCentroid());
                 });
             }
         }
@@ -107,28 +103,8 @@ public class SignificantPlaceService {
                 stayPoint.getLatitude(),
                 stayPoint.getLongitude(),
                 point,
-                null, // category will be set later
-                stayPoint.getArrivalTime(),
-                stayPoint.getDepartureTime()
+                null
         );
-    }
-
-    private void updateSignificantPlace(SignificantPlace place, StayPoint stayPoint) {
-        // Update the last seen time if this stay point is more recent
-        if (stayPoint.getDepartureTime().isAfter(place.getLastSeen())) {
-            place.setLastSeen(stayPoint.getDepartureTime());
-        }
-
-        // Update the first seen time if this stay point is earlier
-        if (stayPoint.getArrivalTime().isBefore(place.getFirstSeen())) {
-            place.setFirstSeen(stayPoint.getArrivalTime());
-        }
-
-        // Increment visit count
-        place.incrementVisitCount();
-
-        // Add duration
-        place.addDuration(stayPoint.getDurationSeconds());
     }
 
     private Visit createVisit(User user, SignificantPlace place, StayPoint stayPoint) {
@@ -138,7 +114,6 @@ public class SignificantPlaceService {
         visit.setStartTime(stayPoint.getArrivalTime());
         visit.setEndTime(stayPoint.getDepartureTime());
         visit.setDurationSeconds(stayPoint.getDurationSeconds());
-
         return visit;
     }
 

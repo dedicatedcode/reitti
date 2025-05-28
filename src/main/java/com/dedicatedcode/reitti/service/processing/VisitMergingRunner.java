@@ -37,6 +37,7 @@ public class VisitMergingRunner implements CommandLineRunner {
             userService.getAllUsers().forEach(user -> {
                 logger.info("Schedule visit merging process for user {}", user.getUsername());
                 rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, user.getId());
+                rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_TRIP_ROUTING_KEY, user.getId());
             });
         } else {
             logger.info("Visit merging on startup is disabled. Set reitti.process-visits-on-startup=true to enable.");
