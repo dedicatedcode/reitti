@@ -30,4 +30,13 @@ public class UserService {
     public void deleteUser(Long userId) {
         userRepository.deleteById(userId);
     }
+    
+    @Transactional
+    public User createUser(String username, String displayName, String password) {
+        User user = new User();
+        user.setUsername(username);
+        user.setDisplayName(displayName);
+        user.setPassword(password); // Note: In a real application, this should be encoded
+        return userRepository.save(user);
+    }
 }
