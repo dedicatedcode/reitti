@@ -321,23 +321,6 @@
             
             <div th:if="${userMessage}" class="alert" th:classappend="${userSuccess ? 'alert-success' : 'alert-danger'}" th:text="${userMessage}"></div>
             
-            <form th:action="@{/settings/users}" method="post" style="margin-bottom: 20px;">
-                <h3>Add New User</h3>
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" required placeholder="Enter username">
-                </div>
-                <div class="form-group">
-                    <label for="displayName">Display Name</label>
-                    <input type="text" id="displayName" name="displayName" required placeholder="Enter display name">
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required placeholder="Enter password">
-                </div>
-                <button type="submit" class="btn">Create User</button>
-            </form>
-            
             <h3>Existing Users</h3>
             <table th:if="${!#lists.isEmpty(users)}">
                 <thead>
@@ -360,7 +343,24 @@
                     </tr>
                 </tbody>
             </table>
-            <p th:if="${#lists.isEmpty(users)}">No users found. Create one using the form above.</p>
+            <p th:if="${#lists.isEmpty(users)}">No users found.</p>
+            
+            <form th:action="@{/settings/users}" method="post" style="margin-top: 30px;">
+                <h3>Add New User</h3>
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required placeholder="Enter username">
+                </div>
+                <div class="form-group">
+                    <label for="displayName">Display Name</label>
+                    <input type="text" id="displayName" name="displayName" required placeholder="Enter display name">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required placeholder="Enter password">
+                </div>
+                <button type="submit" class="btn">Create User</button>
+            </form>
         </div>
 
         <!-- Places Management Section -->

@@ -138,4 +138,21 @@ public class SettingsController {
         
         return "redirect:/settings?tab=places-management&page=" + page;
     }
+    
+    @PostMapping("/users")
+    public String createUser(@RequestParam String username,
+                            @RequestParam String displayName,
+                            @RequestParam String password,
+                            RedirectAttributes redirectAttributes) {
+        try {
+            userService.createUser(username, displayName, password);
+            redirectAttributes.addFlashAttribute("userMessage", "User created successfully");
+            redirectAttributes.addFlashAttribute("userSuccess", true);
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("userMessage", "Error creating user: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("userSuccess", false);
+        }
+        
+        return "redirect:/settings?tab=user-management";
+    }
 }
