@@ -1,9 +1,10 @@
 package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
-import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.event.LocationDataEvent;
-import com.dedicatedcode.reitti.model.*;
+import com.dedicatedcode.reitti.model.RawLocationPoint;
+import com.dedicatedcode.reitti.model.SignificantPlace;
+import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.UserRepository;
 import com.dedicatedcode.reitti.service.LocationDataService;
 import org.slf4j.Logger;
@@ -11,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitMessageOperations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -26,9 +26,6 @@ public class LocationProcessingPipeline {
     private final LocationDataService locationDataService;
     private final StayPointDetectionService stayPointDetectionService;
     private final SignificantPlaceService significantPlaceService;
-    private final TripDetectionService tripDetectionService;
-    private final TripMergingService tripMergingService;
-    private final VisitMergingService visitMergingService;
     private final RabbitMessageOperations rabbitTemplate;
 
     @Autowired
@@ -37,17 +34,11 @@ public class LocationProcessingPipeline {
             LocationDataService locationDataService,
             StayPointDetectionService stayPointDetectionService,
             SignificantPlaceService significantPlaceService,
-            TripDetectionService tripDetectionService,
-            TripMergingService tripMergingService,
-            VisitMergingService visitMergingService,
             RabbitMessageOperations rabbitTemplate) {
         this.userRepository = userRepository;
         this.locationDataService = locationDataService;
         this.stayPointDetectionService = stayPointDetectionService;
         this.significantPlaceService = significantPlaceService;
-        this.tripDetectionService = tripDetectionService;
-        this.tripMergingService = tripMergingService;
-        this.visitMergingService = visitMergingService;
         this.rabbitTemplate = rabbitTemplate;
     }
 
@@ -84,14 +75,10 @@ public class LocationProcessingPipeline {
             List<SignificantPlace> updatedPlaces = significantPlaceService.processStayPoints(user, stayPoints);
             logger.trace("Updated {} significant places", updatedPlaces.size());
 
-            long start = System.nanoTime();
-            // Step 4: update Processed Visits
-
-            visitMergingService.processAndMergeVisits(user);
-            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, user.getId());
-            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, user.getId());
-            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_TRIP_ROUTING_KEY, user.getId());
-
+            Instant startTime = savedPoints.stream().map(RawLocationPoint::getTimestamp).min(Instant::compareTo).orElse(Instant.now());
+            Instant endTime = savedPoints.stream().map(RawLocationPoint::getTimestamp).max(Instant::compareTo).orElse(Instant.now());
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new MergeVisitEvent(user.getId(), startTime.minus(1, ChronoUnit.DAYS), endTime.plus(1, ChronoUnit.DAYS)));
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, new MergeVisitEvent(user.getId(), startTime.minus(1, ChronoUnit.DAYS), endTime.plus(1, ChronoUnit.DAYS)));
         }
 
         logger.info("Completed processing pipeline for user {}", user.getUsername());

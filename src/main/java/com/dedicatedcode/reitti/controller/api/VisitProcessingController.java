@@ -28,27 +28,6 @@ public class VisitProcessingController {
         this.userRepository = userRepository;
     }
 
-    @PostMapping("/merge/{userId}")
-    public ResponseEntity<?> mergeVisitsForUser(@PathVariable Long userId) {
-        logger.info("Received request to merge visits for user ID: {}", userId);
-        
-        Optional<User> userOpt = userRepository.findById(userId);
-        
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        
-        List<ProcessedVisit> processedVisits = visitMergingService.processAndMergeVisits(userOpt.get());
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("status", "success");
-        response.put("message", "Processed and merged visits for user: " + userOpt.get().getUsername());
-        response.put("userId", userId);
-        response.put("processedVisits", processedVisits.size());
-        
-        return ResponseEntity.ok(response);
-    }
-    
     @DeleteMapping("/clear-all")
     public ResponseEntity<?> clearAllProcessedVisits() {
         logger.info("Received request to clear all processed visits");

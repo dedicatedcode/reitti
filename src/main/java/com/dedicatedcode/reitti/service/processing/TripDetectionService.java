@@ -39,11 +39,11 @@ public class TripDetectionService {
     
     @Transactional
     @RabbitListener(queues = RabbitMQConfig.DETECT_TRIP_QUEUE)
-    public void detectTripsForUser(Long userId) {
-        User user = this.userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("Unknown user id: " + userId));
+    public void detectTripsForUser(MergeVisitEvent event) {
+        User user = this.userRepository.findById(event.userId()).orElseThrow(() -> new IllegalArgumentException("Unknown user id: " + event.userId()));
         logger.info("Detecting trips for user: {}", user.getUsername());
         // Get all processed visits for the user, sorted by start time
-        List<ProcessedVisit> visits = processedVisitRepository.findByUser(user);
+        List<ProcessedVisit> visits = processedVisitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user, event.startTime(), event.endTime());
         findDetectedTrips(user, visits);
     }
 

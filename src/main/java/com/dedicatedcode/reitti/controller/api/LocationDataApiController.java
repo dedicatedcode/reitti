@@ -32,7 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class LocationDataApiController {
     
     private static final Logger logger = LoggerFactory.getLogger(LocationDataApiController.class);
-    private static final int BATCH_SIZE = 1; // Process locations in batches of 100
+    private static final int BATCH_SIZE = 100; // Process locations in batches of 100
     
     private final ApiTokenService apiTokenService;
     private final ObjectMapper objectMapper;

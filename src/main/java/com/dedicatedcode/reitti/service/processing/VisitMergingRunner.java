@@ -8,11 +8,11 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile("!test")
-public class VisitMergingRunner implements CommandLineRunner {
+public class VisitMergingRunner  {
 
     private static final Logger logger = LoggerFactory.getLogger(VisitMergingRunner.class);
 
@@ -31,8 +31,8 @@ public class VisitMergingRunner implements CommandLineRunner {
         this.rabbitTemplate = rabbitTemplate;
     }
 
-    @Override
-    public void run(String... args) {
+    @Scheduled(fixedDelay = 1000 * 60)
+    public void run() {
         if (processVisitsOnStartup) {
             userService.getAllUsers().forEach(user -> {
                 logger.info("Schedule visit merging process for user {}", user.getUsername());
