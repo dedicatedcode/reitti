@@ -346,8 +346,13 @@
                 const endTime = new Date(entry.endTime);
                 timeElement.textContent = `${startTime.toLocaleTimeString([], {
                     hour: '2-digit',
-                    minute: '2-digit'
-                })} - ${endTime.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}`;
+                    minute: '2-digit',
+                    hour12: false
+                })} - ${endTime.toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                })}`;
 
                 // Calculate duration
                 const durationMs = endTime - startTime;
