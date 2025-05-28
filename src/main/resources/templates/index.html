@@ -237,11 +237,30 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Set date picker to today's date
+            // Check if date is in URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            let initialDate;
+            
+            if (urlParams.has('date')) {
+                initialDate = urlParams.get('date');
+                // Validate date format (YYYY-MM-DD)
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(initialDate)) {
+                    initialDate = null;
+                }
+            }
+            
+            // Set date picker to URL date or today's date
             const today = new Date();
-            const formattedDate = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+            const formattedDate = initialDate || today.toISOString().split('T')[0]; // YYYY-MM-DD format
             document.getElementById('date-picker').value = formattedDate;
 
+            // Function to update URL with date parameter
+            function updateUrlWithDate(date) {
+                const url = new URL(window.location);
+                url.searchParams.set('date', date);
+                window.history.pushState({}, '', url);
+            }
+            
             // Handle previous day button
             document.getElementById('prev-day').addEventListener('click', function() {
                 const datePicker = document.getElementById('date-picker');
@@ -249,6 +268,9 @@
                 currentDate.setDate(currentDate.getDate() - 1);
                 const newDate = currentDate.toISOString().split('T')[0];
                 datePicker.value = newDate;
+                
+                // Update URL with new date
+                updateUrlWithDate(newDate);
 
                 // Trigger HTMX request
                 htmx.trigger(datePicker, 'change');
@@ -262,6 +284,9 @@
                 currentDate.setDate(currentDate.getDate() + 1);
                 const newDate = currentDate.toISOString().split('T')[0];
                 datePicker.value = newDate;
+                
+                // Update URL with new date
+                updateUrlWithDate(newDate);
 
                 // Trigger HTMX request
                 htmx.trigger(datePicker, 'change');
@@ -544,6 +569,7 @@
 
             // Load initial data
             datePicker.addEventListener('change', function() {
+                updateUrlWithDate(this.value);
                 loadTimelineData(this.value);
             });
 
@@ -565,8 +591,11 @@
                 loadTimelineData(newDate);
             });
 
-            // Load initial timeline data
+            // Load initial timeline data and update URL if needed
             loadTimelineData(formattedDate);
+            if (!urlParams.has('date')) {
+                updateUrlWithDate(formattedDate);
+            }
         });
     </script>
 </body>
