@@ -187,7 +187,7 @@
             background-color: #3b3b3b;
             border-radius: 10px;
             padding: 20px;
-            max-width: 900px;
+            max-width: 1200px;
             margin: 60px auto;
             color: #f8f8f8;
             display: flex;
@@ -197,7 +197,7 @@
         }
         
         .month-container {
-            width: 280px;
+            width: 250px;
         }
         
         .calendar-header {
@@ -221,9 +221,10 @@
         
         .calendar-day {
             text-align: center;
-            padding: 10px;
+            padding: 8px;
             border-radius: 4px;
             cursor: pointer;
+            font-size: 0.9rem;
         }
         
         .calendar-day:hover {
@@ -330,7 +331,7 @@
         const nextMonthBtn = document.getElementById('next-month');
         
         let currentCalendarDate = new Date(formattedDate);
-        const numberOfMonthsToShow = 3; // Show 3 months at a time
+        const numberOfMonthsToShow = 6; // Show 6 months at a time
         
         // Show calendar when clicking on date display
         dateDisplay.addEventListener('click', function() {
