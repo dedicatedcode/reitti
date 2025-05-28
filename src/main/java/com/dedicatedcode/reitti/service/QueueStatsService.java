@@ -19,7 +19,7 @@ public class QueueStatsService {
     private static final long AVG_TRIP_PROCESSING_TIME = 3000;    // 3s per trip
     
     // Queue names
-    private static final String LOCATION_QUEUE = " location-data-queue";
+    private static final String LOCATION_QUEUE = "location-data-queue";
     private static final String VISIT_QUEUE = "significant-place-queue";
 
     @Autowired

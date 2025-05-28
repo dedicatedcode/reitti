@@ -458,6 +458,13 @@
                             fillOpacity: 0.8
                         }).addTo(map);
 
+                        L.circle([lat, lng], {
+                            color: '#4a89dc',
+                            fillColor: '#6098e3',
+                            fillOpacity: 0.1,
+                            radius: 30
+                        }).addTo(map);
+
                         // Add popup with basic info
                         const popupContent = entry.type === 'VISIT'
                             ? `<b>${entry.place?.name || 'Unknown Place'}</b><br>${timeElement.textContent}`
