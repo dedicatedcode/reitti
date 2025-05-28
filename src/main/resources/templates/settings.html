@@ -472,26 +472,58 @@
                     const url = new URL(window.location);
                     url.searchParams.set('tab', target);
                     window.history.pushState({}, '', url);
+                    
+                    // Start or stop queue stats auto-refresh based on tab
+                    if (target === 'job-status') {
+                        startQueueStatsAutoRefresh();
+                    } else {
+                        stopQueueStatsAutoRefresh();
+                    }
                 });
             });
 
             // Refresh job status
             const refreshButton = document.getElementById('refreshStatus');
+            let queueStatsInterval;
+            
+            function refreshQueueStats() {
+                fetch('/api/v1/queue-stats')
+                    .then(response => response.json())
+                    .then(data => {
+                        for (let i = 0; i < data.length; i++) {
+                            const queue = data[i];
+                            document.querySelector(`.queue-card:nth-child(${i+1}) .queue-count`).textContent = queue.count;
+                            document.querySelector(`.queue-card:nth-child(${i+1}) .queue-time`).textContent = 'Est. processing time: ' + queue.estimatedTime;
+                            document.querySelector(`.queue-card:nth-child(${i+1}) .progress-fill`).style.width = queue.rate + '%';
+                        }
+                    })
+                    .catch(error => console.error('Error fetching queue stats:', error));
+            }
+            
+            // Start auto-refresh when job status tab becomes visible
+            function startQueueStatsAutoRefresh() {
+                if (document.getElementById('job-status').classList.contains('active')) {
+                    refreshQueueStats(); // Refresh immediately
+                    queueStatsInterval = setInterval(refreshQueueStats, 5000); // Then every 5 seconds
+                } else {
+                    stopQueueStatsAutoRefresh();
+                }
+            }
+            
+            // Stop auto-refresh when tab is not visible
+            function stopQueueStatsAutoRefresh() {
+                if (queueStatsInterval) {
+                    clearInterval(queueStatsInterval);
+                    queueStatsInterval = null;
+                }
+            }
+            
+            // Initial check
+            startQueueStatsAutoRefresh();
+            
+            // Manual refresh button
             if (refreshButton) {
-                refreshButton.addEventListener('click', function() {
-                    fetch('/api/v1/queue-stats')
-                        .then(response => response.json())
-                        .then(data => {
-                            for (let i = 0; i < data.length; i++) {
-                                const queue = data[i];
-                                document.querySelector(`.queue-card:nth-child(${i+1}) .queue-count`).textContent = queue.count;
-                                document.querySelector(`.queue-card:nth-child(${i+1}) .queue-time`).textContent = 'Est. processing time: ' + queue.estimatedTime;
-                                document.querySelector(`.queue-card:nth-child(${i+1}) .progress-fill`).style.width = queue.rate + '%';
-                            }
-
-                        })
-                        .catch(error => console.error('Error fetching queue stats:', error));
-                });
+                refreshButton.addEventListener('click', refreshQueueStats);
             }
 
             // Initialize maps for places
