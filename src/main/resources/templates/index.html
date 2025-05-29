@@ -503,7 +503,15 @@
             // No min/max date for infinite scrolling
             onDateSelect: (date, formattedDate) => {
                 // Update hidden date picker value
+                const hiddenInput = document.getElementById('date-picker');
+                if (hiddenInput) {
+                    hiddenInput.value = formattedDate;
+                }
+                
+                // Update URL
                 updateUrlWithDate(formattedDate);
+                
+                // Load timeline data
                 loadTimelineData(formattedDate);
             }
         });
