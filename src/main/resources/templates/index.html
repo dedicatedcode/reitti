@@ -857,6 +857,25 @@
         });
 
         loadTimelineData(formattedDate);
+        
+        // Initialize horizontal date picker
+        const datePicker = new HorizontalDatePicker({
+            container: document.getElementById('horizontal-date-picker-container'),
+            selectedDate: new Date(formattedDate),
+            onDateSelect: (date, formattedDate) => {
+                // Update hidden date picker value
+                document.getElementById('date-picker').value = formattedDate;
+                
+                // Update URL
+                updateUrlWithDate(formattedDate);
+                
+                // Update date display
+                updateDateDisplay(formattedDate);
+                
+                // Load timeline data
+                loadTimelineData(formattedDate);
+            }
+        });
     });
 </script>
 </body>
