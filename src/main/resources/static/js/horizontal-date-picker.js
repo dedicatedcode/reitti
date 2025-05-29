@@ -87,9 +87,10 @@ class HorizontalDatePicker {
     populateDates() {
         this.dateContainer.innerHTML = '';
         
-        const today = new Date();
-        const startDate = new Date(today);
-        startDate.setDate(today.getDate() - this.options.daysBeforeToday);
+        // Use the selected date as the center point instead of today
+        const centerDate = this.options.selectedDate;
+        const startDate = new Date(centerDate);
+        startDate.setDate(centerDate.getDate() - this.options.daysBeforeToday);
         
         // Always show exactly daysToShow days
         for (let i = 0; i < this.options.daysToShow; i++) {
