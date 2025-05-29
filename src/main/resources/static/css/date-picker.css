@@ -1,0 +1,104 @@
+.horizontal-date-picker {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: rgba(59, 59, 59, 0.9);
+    backdrop-filter: blur(10px);
+    padding: 10px 0;
+    z-index: 50;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.date-picker-container {
+    display: flex;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 10px;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+.date-picker-container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+
+.date-item {
+    flex: 0 0 auto;
+    padding: 8px 12px;
+    margin: 0 4px;
+    text-align: center;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #f8f8f8;
+    min-width: 80px;
+    user-select: none;
+}
+
+.date-item:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.date-item.selected {
+    background-color: #4a89dc;
+    color: white;
+}
+
+.date-item .day-name {
+    font-size: 0.8rem;
+    opacity: 0.8;
+    display: block;
+}
+
+.date-item .day-number {
+    font-size: 1.2rem;
+    font-weight: bold;
+    display: block;
+}
+
+.date-item .month-name {
+    font-size: 0.7rem;
+    display: block;
+}
+
+.date-nav-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(74, 137, 220, 0.8);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 51;
+}
+
+.date-nav-button:hover {
+    background-color: rgba(74, 137, 220, 1);
+}
+
+.date-nav-prev {
+    left: 10px;
+}
+
+.date-nav-next {
+    right: 10px;
+}
+
+@media (max-width: 768px) {
+    .date-item {
+        min-width: 60px;
+        padding: 6px 8px;
+    }
+    
+    .date-item .day-number {
+        font-size: 1rem;
+    }
+}
