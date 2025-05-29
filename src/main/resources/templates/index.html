@@ -515,7 +515,7 @@
             }
         });
         
-        // Tab navigation in settings
+        // Tab navigation in settings with htmx
         const navItems = document.querySelectorAll('.settings-nav-item');
         const sections = document.querySelectorAll('.settings-section');
         
@@ -534,17 +534,6 @@
                         section.classList.add('active');
                     }
                 });
-                
-                // Load section-specific data
-                if (target === 'api-tokens') {
-                    loadTokens();
-                } else if (target === 'user-management') {
-                    loadUsers();
-                } else if (target === 'places-management') {
-                    loadPlaces(0);
-                } else if (target === 'job-status') {
-                    loadQueueStats();
-                }
             });
         });
         
