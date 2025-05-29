@@ -108,6 +108,7 @@
 /* Month row styles */
 .month-row-container {
     display: flex;
+    flex-direction: column;
     overflow-x: auto;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
@@ -118,6 +119,46 @@
 }
 
 .month-row-container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+
+.year-row {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.year-item {
+    padding: 4px 16px;
+    margin: 0 8px;
+    text-align: center;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: #f8f8f8;
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+.year-item:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.year-item.selected {
+    background-color: #4a89dc;
+    color: white;
+}
+
+.month-row {
+    display: flex;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+.month-row::-webkit-scrollbar {
     display: none; /* Chrome, Safari, Opera */
 }
 

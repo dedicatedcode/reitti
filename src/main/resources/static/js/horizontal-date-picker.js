@@ -692,6 +692,43 @@ class HorizontalDatePicker {
         
         const selectedYear = this.options.selectedDate.getFullYear();
         
+        // Create year row
+        const yearRow = document.createElement('div');
+        yearRow.className = 'year-row';
+        
+        // Add previous year
+        const prevYearItem = document.createElement('div');
+        prevYearItem.className = 'year-item';
+        prevYearItem.textContent = selectedYear - 1;
+        prevYearItem.dataset.year = selectedYear - 1;
+        prevYearItem.addEventListener('click', () => {
+            this.selectYear(selectedYear - 1);
+        });
+        yearRow.appendChild(prevYearItem);
+        
+        // Add current year (selected)
+        const currentYearItem = document.createElement('div');
+        currentYearItem.className = 'year-item selected';
+        currentYearItem.textContent = selectedYear;
+        currentYearItem.dataset.year = selectedYear;
+        yearRow.appendChild(currentYearItem);
+        
+        // Add next year
+        const nextYearItem = document.createElement('div');
+        nextYearItem.className = 'year-item';
+        nextYearItem.textContent = selectedYear + 1;
+        nextYearItem.dataset.year = selectedYear + 1;
+        nextYearItem.addEventListener('click', () => {
+            this.selectYear(selectedYear + 1);
+        });
+        yearRow.appendChild(nextYearItem);
+        
+        this.monthRowContainer.appendChild(yearRow);
+        
+        // Create month row
+        const monthRow = document.createElement('div');
+        monthRow.className = 'month-row';
+        
         // Show all 12 months of the selected year
         for (let month = 0; month < 12; month++) {
             let year = selectedYear;
@@ -729,8 +766,10 @@ class HorizontalDatePicker {
                 this.selectMonth(year, month);
             });
             
-            this.monthRowContainer.appendChild(monthItem);
+            monthRow.appendChild(monthItem);
         }
+        
+        this.monthRowContainer.appendChild(monthRow);
     }
     
     // Select a month
@@ -754,6 +793,28 @@ class HorizontalDatePicker {
         this.highlightSelectedMonth();
     }
     
+    // Select a year
+    selectYear(year) {
+        // Get the current month and day from the selected date
+        const currentMonth = this.options.selectedDate.getMonth();
+        const currentDay = this.options.selectedDate.getDate();
+        
+        // Create a new date with the selected year
+        const newDate = new Date(year, currentMonth, 1);
+        
+        // Get the last day of the selected month in the new year
+        const lastDayOfMonth = new Date(year, currentMonth + 1, 0).getDate();
+        
+        // Set the day to either the current day or the last day of the month if the current day exceeds it
+        newDate.setDate(Math.min(currentDay, lastDayOfMonth));
+        
+        // Update the selected date
+        this.setDate(newDate);
+        
+        // Repopulate the month row to show the new year
+        this.populateMonthRow();
+    }
+    
     // Highlight the selected month in the month row
     highlightSelectedMonth() {
         if (!this.options.showMonthRow) return;
@@ -762,43 +823,50 @@ class HorizontalDatePicker {
         const selectedYear = this.options.selectedDate.getFullYear();
         const selectedMonth = this.options.selectedDate.getMonth();
         
-        let selectedMonthVisible = false;
-        const monthItems = this.monthRowContainer.querySelectorAll('.month-item');
+        // Update year selection
+        const yearItems = this.monthRowContainer.querySelectorAll('.year-item');
+        let yearVisible = false;
         
-        for (const item of monthItems) {
+        yearItems.forEach(item => {
             const itemYear = parseInt(item.dataset.year);
-            const itemMonth = parseInt(item.dataset.month);
+            item.classList.remove('selected');
             
-            if (itemYear === selectedYear && itemMonth === selectedMonth) {
-                selectedMonthVisible = true;
-                break;
+            if (itemYear === selectedYear) {
+                item.classList.add('selected');
+                yearVisible = true;
             }
-        }
+        });
         
-        // If selected month is not visible, repopulate the month row
-        if (!selectedMonthVisible) {
+        // If selected year is not visible, repopulate the month row
+        if (!yearVisible) {
             this.populateMonthRow();
             return;
         }
         
+        // Update month selection
+        let selectedMonthVisible = false;
+        const monthItems = this.monthRowContainer.querySelectorAll('.month-item');
+        
         // Remove selected class from all month items
         monthItems.forEach(item => {
             item.classList.remove('selected');
-        });
-        
-        // Find and highlight the selected month
-        for (const item of monthItems) {
+            
             const itemYear = parseInt(item.dataset.year);
             const itemMonth = parseInt(item.dataset.month);
             
             if (itemYear === selectedYear && itemMonth === selectedMonth) {
                 item.classList.add('selected');
                 this.selectedMonthElement = item;
+                selectedMonthVisible = true;
                 
                 // Scroll to the selected month
                 item.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                break;
             }
+        });
+        
+        // If selected month is not visible, repopulate the month row
+        if (!selectedMonthVisible) {
+            this.populateMonthRow();
         }
     }
     
