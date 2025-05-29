@@ -165,8 +165,22 @@ class HorizontalDatePicker {
             dateItems.forEach(item => {
                 if (item === closestItem) {
                     item.classList.add('selected');
+                    
+                    // Add month and year to the selected item
+                    if (!item.querySelector('.month-year-name')) {
+                        const date = this.parseDate(item.dataset.date);
+                        const monthYearName = document.createElement('span');
+                        monthYearName.className = 'month-year-name';
+                        monthYearName.textContent = `${this.getMonthName(date)} ${date.getFullYear()}`;
+                        item.appendChild(monthYearName);
+                    }
                 } else {
                     item.classList.remove('selected');
+                    // Remove month-year-name from non-selected items
+                    const monthYearEl = item.querySelector('.month-year-name');
+                    if (monthYearEl) {
+                        item.removeChild(monthYearEl);
+                    }
                 }
             });
         }
@@ -313,10 +327,23 @@ class HorizontalDatePicker {
         
         if (this.selectedElement) {
             this.selectedElement.classList.remove('selected');
+            // Remove month-year-name from previously selected item
+            const monthYearEl = this.selectedElement.querySelector('.month-year-name');
+            if (monthYearEl) {
+                this.selectedElement.removeChild(monthYearEl);
+            }
         }
         
         dateItem.classList.add('selected');
         this.selectedElement = dateItem;
+        
+        // Add month and year to the selected item
+        if (!dateItem.querySelector('.month-year-name')) {
+            const monthYearName = document.createElement('span');
+            monthYearName.className = 'month-year-name';
+            monthYearName.textContent = `${this.getMonthName(dateToSelect)} ${dateToSelect.getFullYear()}`;
+            dateItem.appendChild(monthYearName);
+        }
         
         this.options.selectedDate = dateToSelect;
         
