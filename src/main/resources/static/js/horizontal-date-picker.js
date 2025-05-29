@@ -109,8 +109,19 @@ class HorizontalDatePicker {
         // Scroll event handling
         let scrollTimeout;
         let isScrolling = false;
+        let lastScrollTime = 0;
+        
+        // Initialize property for tracking date additions
+        this._isAddingDates = false;
         
         this.dateContainer.addEventListener('scroll', () => {
+            // Throttle scroll events for better performance
+            const now = Date.now();
+            if (now - lastScrollTime < 16) { // ~60fps
+                return;
+            }
+            lastScrollTime = now;
+            
             // If this is the start of scrolling, deselect current date
             if (!isScrolling && this.options.autoSelectOnScroll) {
                 isScrolling = true;
@@ -125,9 +136,11 @@ class HorizontalDatePicker {
             // Check if we need to add more dates
             this.checkScrollPosition();
             
-            // Update selection during scrolling
+            // Update selection during scrolling - use requestAnimationFrame for smoother updates
             if (this.options.autoSelectOnScroll) {
-                this.updateSelectionDuringScroll();
+                requestAnimationFrame(() => {
+                    this.updateSelectionDuringScroll();
+                });
             }
             
             // Set a timeout to detect when scrolling stops
@@ -135,7 +148,7 @@ class HorizontalDatePicker {
                 isScrolling = false;
                 this.handleScrollEnd();
             }, 150);
-        });
+        }, { passive: true }); // Add passive flag for better performance
     }
     
     // Update selection during scrolling
@@ -147,9 +160,15 @@ class HorizontalDatePicker {
         let closestItem = null;
         let closestDistance = Infinity;
         
+        // Use more efficient selector and limit the number of items we check
+        // Get only visible items for better performance
+        const visibleItems = Array.from(this.dateContainer.children).filter(item => {
+            const rect = item.getBoundingClientRect();
+            return rect.left < containerRect.right && rect.right > containerRect.left;
+        });
+        
         // Find the closest date item to the center
-        const dateItems = this.dateContainer.querySelectorAll('.date-item');
-        dateItems.forEach(item => {
+        visibleItems.forEach(item => {
             const itemRect = item.getBoundingClientRect();
             const itemCenter = itemRect.left + itemRect.width / 2;
             const distance = Math.abs(containerCenter - itemCenter);
@@ -162,57 +181,47 @@ class HorizontalDatePicker {
         
         // Highlight the closest date without fully selecting it
         if (closestItem) {
-            dateItems.forEach(item => {
-                if (item === closestItem) {
-                    // Add a smooth transition when adding the selected class
-                    if (!item.classList.contains('selected')) {
-                        item.style.transition = 'all 0.3s ease';
-                    }
-                    item.classList.add('selected');
-                    
-                    // Add month and year to the selected item
-                    if (!item.querySelector('.month-year-name')) {
-                        const date = this.parseDate(item.dataset.date);
-                        const monthYearName = document.createElement('span');
-                        monthYearName.className = 'month-year-name';
-                        monthYearName.textContent = `${this.getMonthName(date)} ${date.getFullYear()}`;
-                        monthYearName.style.opacity = '0';
-                        item.appendChild(monthYearName);
-                        
-                        // Remove month-name if it exists to avoid duplication
-                        const monthNameEl = item.querySelector('.month-name');
-                        if (monthNameEl) {
-                            if (item.contains(monthNameEl)) {
-                                item.removeChild(monthNameEl);
-                            }
-                        }
-                    }
-                } else {
-                    // Add a smooth transition when removing the selected class
-                    if (item.classList.contains('selected')) {
-                        item.style.transition = 'all 0.3s ease';
-                    }
-                    item.classList.remove('selected');
-                    
-                    // Remove month-year-name from non-selected items with fade-out effect
-                    const monthYearEl = item.querySelector('.month-year-name');
-                    if (monthYearEl) {
-                            if (item.contains(monthYearEl)) {
-                                item.removeChild(monthYearEl);
-                            }
-                            
-                            // Restore month-name for first day of month
-                            const date = this.parseDate(item.dataset.date);
-                            if (date.getDate() === 1 && !item.querySelector('.month-name')) {
-                                const monthName = document.createElement('span');
-                                monthName.className = 'month-name';
-                                monthName.textContent = this.getMonthName(date);
-                                monthName.style.opacity = '1';
-                                item.appendChild(monthName);
-                            }
-                    }
+            // Only update the classes for the closest item and previously selected item
+            // to minimize DOM operations
+            const previouslySelected = this.dateContainer.querySelector('.date-item.selected');
+            
+            if (previouslySelected && previouslySelected !== closestItem) {
+                previouslySelected.classList.remove('selected');
+                
+                // Remove month-year-name from previously selected item
+                const monthYearEl = previouslySelected.querySelector('.month-year-name');
+                if (monthYearEl && previouslySelected.contains(monthYearEl)) {
+                    previouslySelected.removeChild(monthYearEl);
                 }
-            });
+                
+                // Restore month-name for first day of month
+                const date = this.parseDate(previouslySelected.dataset.date);
+                if (date.getDate() === 1 && !previouslySelected.querySelector('.month-name')) {
+                    const monthName = document.createElement('span');
+                    monthName.className = 'month-name';
+                    monthName.textContent = this.getMonthName(date);
+                    previouslySelected.appendChild(monthName);
+                }
+            }
+            
+            // Add selected class to closest item
+            closestItem.classList.add('selected');
+            
+            // Add month and year to the selected item
+            if (!closestItem.querySelector('.month-year-name')) {
+                const date = this.parseDate(closestItem.dataset.date);
+                const monthYearName = document.createElement('span');
+                monthYearName.className = 'month-year-name';
+                monthYearName.textContent = `${this.getMonthName(date)} ${date.getFullYear()}`;
+                
+                // Remove month-name if it exists to avoid duplication
+                const monthNameEl = closestItem.querySelector('.month-name');
+                if (monthNameEl && closestItem.contains(monthNameEl)) {
+                    closestItem.removeChild(monthNameEl);
+                }
+                
+                closestItem.appendChild(monthYearName);
+            }
         }
     }
     
@@ -223,14 +232,25 @@ class HorizontalDatePicker {
         const scrollWidth = container.scrollWidth;
         const clientWidth = container.clientWidth;
         
+        // Use a debounce mechanism to prevent multiple rapid additions
+        if (this._isAddingDates) return;
+        
         // If we're near the start, add more dates at the beginning
         if (scrollLeft < clientWidth * 0.2) {
+            this._isAddingDates = true;
             this.addMoreDatesAtStart();
+            setTimeout(() => {
+                this._isAddingDates = false;
+            }, 200);
         }
         
         // If we're near the end, add more dates at the end
         if (scrollLeft + clientWidth > scrollWidth - clientWidth * 0.2) {
+            this._isAddingDates = true;
             this.addMoreDatesAtEnd();
+            setTimeout(() => {
+                this._isAddingDates = false;
+            }, 200);
         }
     }
     
@@ -243,9 +263,16 @@ class HorizontalDatePicker {
         const firstDate = this.parseDate(firstDateElement.dataset.date);
         const currentScrollPosition = this.dateContainer.scrollLeft;
         
+        // Temporarily disable smooth scrolling to prevent jank
+        this.dateContainer.style.scrollBehavior = 'auto';
+        
         // Add 7 more days before the current first date
         const fragment = document.createDocumentFragment();
-        const newDates = [];
+        
+        // Pre-calculate the width of new items (using a fixed width for consistency)
+        const estimatedItemWidth = 88; // 80px width + 8px margin
+        const itemsToAdd = 7;
+        const estimatedAddedWidth = estimatedItemWidth * itemsToAdd;
         
         for (let i = 7; i > 0; i--) {
             const date = new Date(firstDate);
@@ -258,21 +285,22 @@ class HorizontalDatePicker {
             
             const dateItem = this.createDateElement(date);
             fragment.appendChild(dateItem);
-            newDates.push(dateItem);
         }
         
         // Insert at the beginning
         if (fragment.childNodes && fragment.childNodes.length > 0) {
-            this.dateContainer.insertBefore(fragment, this.dateContainer.firstChild);
-            
-            // Calculate the width of added elements
-            let addedWidth = 0;
-            newDates.forEach(item => {
-                addedWidth += item.offsetWidth + 8; // 8px for margins
+            // Batch DOM operations
+            requestAnimationFrame(() => {
+                this.dateContainer.insertBefore(fragment, this.dateContainer.firstChild);
+                
+                // Adjust scroll position to keep the same dates visible
+                this.dateContainer.scrollLeft = currentScrollPosition + estimatedAddedWidth;
+                
+                // Re-enable smooth scrolling after a short delay
+                setTimeout(() => {
+                    this.dateContainer.style.scrollBehavior = 'smooth';
+                }, 50);
             });
-            
-            // Adjust scroll position to keep the same dates visible
-            this.dateContainer.scrollLeft = currentScrollPosition + addedWidth;
         }
     }
     
@@ -283,6 +311,9 @@ class HorizontalDatePicker {
         if (!lastDateElement) return;
         
         const lastDate = this.parseDate(lastDateElement.dataset.date);
+        
+        // Temporarily disable smooth scrolling to prevent jank
+        this.dateContainer.style.scrollBehavior = 'auto';
         
         // Add 7 more days after the current last date
         const fragment = document.createDocumentFragment();
@@ -299,8 +330,15 @@ class HorizontalDatePicker {
             fragment.appendChild(dateItem);
         }
         
-        // Append at the end
-        this.dateContainer.appendChild(fragment);
+        // Append at the end - use requestAnimationFrame for smoother rendering
+        requestAnimationFrame(() => {
+            this.dateContainer.appendChild(fragment);
+            
+            // Re-enable smooth scrolling after a short delay
+            setTimeout(() => {
+                this.dateContainer.style.scrollBehavior = 'smooth';
+            }, 50);
+        });
     }
     
     // Create a date element
