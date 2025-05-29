@@ -66,23 +66,16 @@ class HorizontalDatePicker {
         const startDate = new Date(today);
         startDate.setDate(today.getDate() - this.options.daysBeforeToday);
         
-        // Count how many days we've added to ensure we always show exactly daysToShow
-        // (unless constrained by min/max dates)
-        let daysAdded = 0;
-        let i = 0;
-        
-        while (daysAdded < this.options.daysToShow) {
+        // Always show exactly daysToShow days
+        for (let i = 0; i < this.options.daysToShow; i++) {
             const date = new Date(startDate);
             date.setDate(startDate.getDate() + i);
-            i++;
             
             // Skip dates outside of min/max range if specified
             if ((this.options.minDate && date < new Date(this.options.minDate)) || 
                 (this.options.maxDate && date > new Date(this.options.maxDate))) {
                 continue;
             }
-            
-            daysAdded++;
             
             const dateItem = document.createElement('div');
             dateItem.className = 'date-item';

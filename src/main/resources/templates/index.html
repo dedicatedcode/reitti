@@ -865,8 +865,7 @@
             autoSelectOnScroll: true, // Enable auto-select on scroll
             showNavButtons: true, // Show navigation buttons
             daysToShow: 21, // Show more days
-            minDate: '2020-01-01', // Set minimum date
-            maxDate: new Date().toISOString().split('T')[0], // Set maximum date to today
+            // No min/max date for infinite scrolling
             onDateSelect: (date, formattedDate) => {
                 // Update hidden date picker value
                 document.getElementById('date-picker').value = formattedDate;
