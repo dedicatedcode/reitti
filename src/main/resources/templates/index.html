@@ -165,6 +165,18 @@
             transform: scale(1.05);
             box-shadow: unset;
         }
+
+        .horizontal-date-picker {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: rgba(59, 59, 59, 0.04);
+            backdrop-filter: blur(10px);
+            padding: 10px 0;
+            z-index: 50;
+            box-shadow: unset;
+        }
     </style>
 </head>
 <body>
@@ -502,12 +514,6 @@
             daysToShow: 21, // Show more days
             // No min/max date for infinite scrolling
             onDateSelect: (date, formattedDate) => {
-                // Update hidden date picker value
-                const hiddenInput = document.getElementById('date-picker');
-                if (hiddenInput) {
-                    hiddenInput.value = formattedDate;
-                }
-                
                 // Update URL
                 updateUrlWithDate(formattedDate);
                 
