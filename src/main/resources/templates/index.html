@@ -877,14 +877,7 @@
             onDateSelect: (date, formattedDate) => {
                 // Update hidden date picker value
                 document.getElementById('date-picker').value = formattedDate;
-                //
-                // // Update URL
-                // updateUrlWithDate(formattedDate);
-                //
-                // // Update date display
-                // updateDateDisplay(formattedDate);
-                //
-                // Load timeline data
+                updateUrlWithDate(formattedDate);
                 loadTimelineData(formattedDate);
             }
         });
