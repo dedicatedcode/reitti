@@ -686,23 +686,10 @@ class HorizontalDatePicker {
         this.monthRowContainer.innerHTML = '';
         
         const selectedYear = this.options.selectedDate.getFullYear();
-        const selectedMonth = this.options.selectedDate.getMonth();
         
-        // Show only 12 months centered around the selected month
-        const startMonth = selectedMonth - 5;
-        
-        for (let i = 0; i < 12; i++) {
-            let month = startMonth + i;
+        // Show all 12 months of the selected year
+        for (let month = 0; month < 12; month++) {
             let year = selectedYear;
-            
-            // Adjust year if month is out of range
-            if (month < 0) {
-                month += 12;
-                year -= 1;
-            } else if (month > 11) {
-                month -= 12;
-                year += 1;
-            }
             
             const monthDate = new Date(year, month, 1);
             
