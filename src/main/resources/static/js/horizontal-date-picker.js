@@ -12,6 +12,8 @@ class HorizontalDatePicker {
             selectedDate: new Date(),
             autoSelectOnScroll: false, // Option to auto-select date when scrolling
             showNavButtons: true, // Option to show/hide navigation buttons
+            minDate: null, // Minimum selectable date
+            maxDate: null, // Maximum selectable date
             ...options
         };
         
@@ -67,6 +69,12 @@ class HorizontalDatePicker {
         for (let i = 0; i < this.options.daysToShow; i++) {
             const date = new Date(startDate);
             date.setDate(startDate.getDate() + i);
+            
+            // Skip dates outside of min/max range if specified
+            if ((this.options.minDate && date < new Date(this.options.minDate)) || 
+                (this.options.maxDate && date > new Date(this.options.maxDate))) {
+                continue;
+            }
             
             const dateItem = document.createElement('div');
             dateItem.className = 'date-item';
@@ -136,6 +144,14 @@ class HorizontalDatePicker {
     }
     
     selectDate(dateItem) {
+        // Check if date is within min/max range
+        const dateToSelect = this.parseDate(dateItem.dataset.date);
+        
+        if ((this.options.minDate && dateToSelect < new Date(this.options.minDate)) || 
+            (this.options.maxDate && dateToSelect > new Date(this.options.maxDate))) {
+            return; // Don't select dates outside the allowed range
+        }
+        
         if (this.selectedElement) {
             this.selectedElement.classList.remove('selected');
         }
@@ -143,18 +159,17 @@ class HorizontalDatePicker {
         dateItem.classList.add('selected');
         this.selectedElement = dateItem;
         
-        const selectedDate = this.parseDate(dateItem.dataset.date);
-        this.options.selectedDate = selectedDate;
+        this.options.selectedDate = dateToSelect;
         
         // Call onDateSelect callback if provided
         if (typeof this.options.onDateSelect === 'function') {
-            this.options.onDateSelect(selectedDate, dateItem.dataset.date);
+            this.options.onDateSelect(dateToSelect, dateItem.dataset.date);
         }
         
         // Dispatch custom event
         const event = new CustomEvent('dateSelected', {
             detail: {
-                date: selectedDate,
+                date: dateToSelect,
                 formattedDate: dateItem.dataset.date
             }
         });
@@ -169,6 +184,26 @@ class HorizontalDatePicker {
         const newStartDate = new Date(firstDate);
         newStartDate.setDate(newStartDate.getDate() + offset);
         
+        // Check if navigation would go beyond min/max dates
+        if (this.options.minDate) {
+            const minDate = new Date(this.options.minDate);
+            if (newStartDate < minDate) {
+                newStartDate.setTime(minDate.getTime());
+            }
+        }
+        
+        if (this.options.maxDate) {
+            const maxDate = new Date(this.options.maxDate);
+            const lastVisibleDate = new Date(newStartDate);
+            lastVisibleDate.setDate(lastVisibleDate.getDate() + this.options.daysToShow - 1);
+            
+            if (lastVisibleDate > maxDate) {
+                // Adjust start date so that max date is the last visible date
+                newStartDate.setTime(maxDate.getTime());
+                newStartDate.setDate(newStartDate.getDate() - this.options.daysToShow + 1);
+            }
+        }
+        
         // Clear the container
         this.dateContainer.innerHTML = '';
         
@@ -176,6 +211,12 @@ class HorizontalDatePicker {
         for (let i = 0; i < this.options.daysToShow; i++) {
             const date = new Date(newStartDate);
             date.setDate(newStartDate.getDate() + i);
+            
+            // Skip dates outside of min/max range if specified
+            if ((this.options.minDate && date < new Date(this.options.minDate)) || 
+                (this.options.maxDate && date > new Date(this.options.maxDate))) {
+                continue;
+            }
             
             const dateItem = document.createElement('div');
             dateItem.className = 'date-item';
@@ -297,7 +338,16 @@ class HorizontalDatePicker {
     
     // Public methods
     setDate(date) {
-        this.options.selectedDate = new Date(date);
+        const newDate = new Date(date);
+        
+        // Check if date is within min/max range
+        if ((this.options.minDate && newDate < new Date(this.options.minDate)) || 
+            (this.options.maxDate && newDate > new Date(this.options.maxDate))) {
+            console.warn('Date is outside of allowed min/max range');
+            return;
+        }
+        
+        this.options.selectedDate = newDate;
         this.populateDates();
         this.scrollToSelectedDate(true);
     }

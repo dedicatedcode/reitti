@@ -863,8 +863,10 @@
             container: document.getElementById('horizontal-date-picker-container'),
             selectedDate: new Date(formattedDate),
             autoSelectOnScroll: true, // Enable auto-select on scroll
-            showNavButtons: false, // Show navigation buttons
+            showNavButtons: true, // Show navigation buttons
             daysToShow: 21, // Show more days
+            minDate: '2020-01-01', // Set minimum date
+            maxDate: new Date().toISOString().split('T')[0], // Set maximum date to today
             onDateSelect: (date, formattedDate) => {
                 // Update hidden date picker value
                 document.getElementById('date-picker').value = formattedDate;
