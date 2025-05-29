@@ -17,6 +17,7 @@ class HorizontalDatePicker {
             showMonthRow: false, // Option to show month selection row
             showYearRow: true, // Option to show year selection row
             yearsToShow: 3, // Number of years to show in the year row
+            allowFutureDates: true, // Option to allow selection of future dates
             ...options
         };
         
@@ -442,6 +443,16 @@ class HorizontalDatePicker {
             return; // Don't select dates outside the allowed range
         }
         
+        // Check if future dates are allowed
+        if (!this.options.allowFutureDates) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            if (dateToSelect > today) {
+                return; // Don't select future dates if not allowed
+            }
+        }
+        
         // If we're already selecting this date and it's not a manual selection, skip
         if (this.selectedElement === dateItem && !isManualSelection) {
             return;
@@ -781,6 +792,16 @@ class HorizontalDatePicker {
         // Create a new date with the selected month and year
         const newDate = new Date(year, month, 1);
         
+        // Check if future dates are allowed
+        if (!this.options.allowFutureDates) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            if (newDate > today) {
+                return; // Don't select future months if not allowed
+            }
+        }
+        
         // Get the last day of the selected month
         const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
         
@@ -817,6 +838,16 @@ class HorizontalDatePicker {
         
         // Create a new date with the selected year
         const newDate = new Date(year, currentMonth, 1);
+        
+        // Check if future dates are allowed
+        if (!this.options.allowFutureDates) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            if (newDate > today) {
+                return; // Don't select future years if not allowed
+            }
+        }
         
         // Get the last day of the selected month in the new year
         const lastDayOfMonth = new Date(year, currentMonth + 1, 0).getDate();
