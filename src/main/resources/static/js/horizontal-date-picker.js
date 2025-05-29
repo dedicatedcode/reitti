@@ -164,6 +164,10 @@ class HorizontalDatePicker {
         if (closestItem) {
             dateItems.forEach(item => {
                 if (item === closestItem) {
+                    // Add a smooth transition when adding the selected class
+                    if (!item.classList.contains('selected')) {
+                        item.style.transition = 'all 0.3s ease';
+                    }
                     item.classList.add('selected');
                     
                     // Add month and year to the selected item
@@ -172,14 +176,32 @@ class HorizontalDatePicker {
                         const monthYearName = document.createElement('span');
                         monthYearName.className = 'month-year-name';
                         monthYearName.textContent = `${this.getMonthName(date)} ${date.getFullYear()}`;
+                        monthYearName.style.opacity = '0';
                         item.appendChild(monthYearName);
+                        
+                        // Animate the month-year-name appearance
+                        setTimeout(() => {
+                            monthYearName.style.transition = 'opacity 0.3s ease';
+                            monthYearName.style.opacity = '1';
+                        }, 10);
                     }
                 } else {
+                    // Add a smooth transition when removing the selected class
+                    if (item.classList.contains('selected')) {
+                        item.style.transition = 'all 0.3s ease';
+                    }
                     item.classList.remove('selected');
-                    // Remove month-year-name from non-selected items
+                    
+                    // Remove month-year-name from non-selected items with fade-out effect
                     const monthYearEl = item.querySelector('.month-year-name');
                     if (monthYearEl) {
-                        item.removeChild(monthYearEl);
+                        monthYearEl.style.transition = 'opacity 0.2s ease';
+                        monthYearEl.style.opacity = '0';
+                        setTimeout(() => {
+                            if (item.contains(monthYearEl)) {
+                                item.removeChild(monthYearEl);
+                            }
+                        }, 200);
                     }
                 }
             });
@@ -439,6 +461,15 @@ class HorizontalDatePicker {
                 left: scrollPosition,
                 behavior: smooth ? 'smooth' : 'auto'
             });
+            
+            // Add animation effect to the selected element
+            if (smooth) {
+                this.selectedElement.style.transition = 'transform 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease';
+                this.selectedElement.style.transform = 'scale(1.05)';
+                setTimeout(() => {
+                    this.selectedElement.style.transform = '';
+                }, 300);
+            }
         }
     }
     

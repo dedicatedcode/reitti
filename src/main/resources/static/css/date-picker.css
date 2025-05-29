@@ -18,6 +18,7 @@
     padding: 0 10px;
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* IE and Edge */
+    scroll-snap-type: x mandatory;
 }
 
 .date-picker-container::-webkit-scrollbar {
@@ -31,10 +32,11 @@
     text-align: center;
     border-radius: 20px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
     color: #f8f8f8;
     min-width: 80px;
     user-select: none;
+    scroll-snap-align: center;
 }
 
 .date-item:hover {
@@ -44,6 +46,8 @@
 .date-item.selected {
     background-color: #4a89dc;
     color: white;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .date-item .day-name {
