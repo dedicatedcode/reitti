@@ -60,14 +60,6 @@
         }
 
 
-        .date-navigation {
-            padding: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            bottom: 0;
-        }
-
         #map {
             position: absolute;
             top: 0;
@@ -182,15 +174,6 @@
 <div class="timeline">
     <span class="timeline-header">
         <a href="/" class="nav-link"><i class="fas fa-house-flag"></i></a>
-        <div class="date-navigation">
-            <button id="prev-day">
-                <i class="fas fa-arrow-left"></i>
-            </button>
-            <input type="hidden" id="date-picker" name="selectedDate">
-            <button id="next-day">
-                <i class="fas fa-arrow-right"></i>
-            </button>
-        </div>
         <a href="/settings" class="nav-link"><i class="fas fa-cog"></i></a>
         <form th:action="@{/logout}" method="post" style="display: inline;">
             <button type="submit" class="nav-link" style="background: none; border: none; cursor: pointer;"><i class="fas fa-right-from-bracket"></i>
@@ -224,10 +207,6 @@
         // Set date picker to URL date or today's date
         const today = new Date();
         const formattedDate = initialDate || today.toISOString().split('T')[0]; // YYYY-MM-DD format
-        document.getElementById('date-picker').value = formattedDate;
-        
-        
-        const dateDisplay = document.getElementById('date-display');
 
         // Function to update URL with date parameter
         function updateUrlWithDate(date) {
@@ -235,40 +214,6 @@
             url.searchParams.set('date', date);
             window.history.pushState({}, '', url);
         }
-
-        // Handle previous day button
-        document.getElementById('prev-day').addEventListener('click', function () {
-            const datePicker = document.getElementById('date-picker');
-            const currentDate = new Date(datePicker.value);
-            currentDate.setDate(currentDate.getDate() - 1);
-            const newDate = currentDate.toISOString().split('T')[0];
-            datePicker.value = newDate;
-
-            // Update URL with new date
-            updateUrlWithDate(newDate);
-            
-
-            // Trigger HTMX request
-            htmx.trigger(datePicker, 'change');
-            htmx.trigger(datePicker, 'htmx:trigger');
-        });
-
-        // Handle next day button
-        document.getElementById('next-day').addEventListener('click', function () {
-            const datePicker = document.getElementById('date-picker');
-            const currentDate = new Date(datePicker.value);
-            currentDate.setDate(currentDate.getDate() + 1);
-            const newDate = currentDate.toISOString().split('T')[0];
-            datePicker.value = newDate;
-
-            // Update URL with new date
-            updateUrlWithDate(newDate);
-            
-
-            // Trigger HTMX request
-            htmx.trigger(datePicker, 'change');
-            htmx.trigger(datePicker, 'htmx:trigger');
-        });
 
         // Initialize the map
         const map = L.map('map').setView([60.1699, 24.9384], 12); // Helsinki coordinates as default
@@ -546,37 +491,10 @@
             }
         });
 
-        // Set up date picker and navigation
-        const datePicker = document.getElementById('date-picker');
-
-        // Load initial data
-        datePicker.addEventListener('change', function () {
-            updateUrlWithDate(this.value);
-            loadTimelineData(this.value);
-        });
-
-        // Handle previous day button
-        document.getElementById('prev-day').addEventListener('click', function () {
-            const currentDate = new Date(datePicker.value);
-            currentDate.setDate(currentDate.getDate() - 1);
-            const newDate = currentDate.toISOString().split('T')[0];
-            datePicker.value = newDate;
-            loadTimelineData(newDate);
-        });
-
-        // Handle next day button
-        document.getElementById('next-day').addEventListener('click', function () {
-            const currentDate = new Date(datePicker.value);
-            currentDate.setDate(currentDate.getDate() + 1);
-            const newDate = currentDate.toISOString().split('T')[0];
-            datePicker.value = newDate;
-            loadTimelineData(newDate);
-        });
-
         loadTimelineData(formattedDate);
         
         // Initialize horizontal date picker
-        const datePicker2 = new HorizontalDatePicker({
+        new HorizontalDatePicker({
             container: document.getElementById('horizontal-date-picker-container'),
             selectedDate: new Date(formattedDate),
             autoSelectOnScroll: true, // Enable auto-select on scroll
@@ -585,7 +503,6 @@
             // No min/max date for infinite scrolling
             onDateSelect: (date, formattedDate) => {
                 // Update hidden date picker value
-                document.getElementById('date-picker').value = formattedDate;
                 updateUrlWithDate(formattedDate);
                 loadTimelineData(formattedDate);
             }
