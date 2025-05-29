@@ -10,6 +10,7 @@ class HorizontalDatePicker {
             daysBeforeToday: 7,
             onDateSelect: null,
             selectedDate: new Date(),
+            autoSelectOnScroll: false, // New option to auto-select date when scrolling
             ...options
         };
         
@@ -112,6 +113,18 @@ class HorizontalDatePicker {
         this.nextButton.addEventListener('click', () => {
             this.navigateDates(7);
         });
+        
+        // Scroll event handling
+        let scrollTimeout;
+        this.dateContainer.addEventListener('scroll', () => {
+            // Clear the previous timeout
+            clearTimeout(scrollTimeout);
+            
+            // Set a timeout to detect when scrolling stops
+            scrollTimeout = setTimeout(() => {
+                this.handleScrollEnd();
+            }, 150);
+        });
     }
     
     selectDate(dateItem) {
@@ -194,6 +207,36 @@ class HorizontalDatePicker {
         return date1.getDate() === date2.getDate() && 
                date1.getMonth() === date2.getMonth() && 
                date1.getFullYear() === date2.getFullYear();
+    }
+    
+    // Handle scroll end event
+    handleScrollEnd() {
+        if (this.options.autoSelectOnScroll) {
+            // Find the date item closest to the center of the container
+            const containerRect = this.dateContainer.getBoundingClientRect();
+            const containerCenter = containerRect.left + containerRect.width / 2;
+            
+            let closestItem = null;
+            let closestDistance = Infinity;
+            
+            // Find the closest date item to the center
+            const dateItems = this.dateContainer.querySelectorAll('.date-item');
+            dateItems.forEach(item => {
+                const itemRect = item.getBoundingClientRect();
+                const itemCenter = itemRect.left + itemRect.width / 2;
+                const distance = Math.abs(containerCenter - itemCenter);
+                
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestItem = item;
+                }
+            });
+            
+            // Select the closest date if it's not already selected
+            if (closestItem && !closestItem.classList.contains('selected')) {
+                this.selectDate(closestItem);
+            }
+        }
     }
     
     // Public methods
