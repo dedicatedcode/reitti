@@ -112,17 +112,22 @@ class HorizontalDatePicker {
         this.dateContainer.addEventListener('click', (e) => {
             const dateItem = e.target.closest('.date-item');
             if (dateItem) {
+                // Check if this date is already selected
+                if (dateItem.classList.contains('selected')) {
+                    return; // Do nothing if clicking on already selected date
+                }
+            
                 // Prevent auto-selection from interfering with manual clicks
                 this._isManualSelection = true;
-                
+            
                 // Clear any pending auto-selection
                 if (this._autoSelectTimeout) {
                     clearTimeout(this._autoSelectTimeout);
                 }
-                
+            
                 // Force selection of the clicked date
                 this.selectDate(dateItem, true);
-                
+            
                 // Reset the manual selection flag after a delay
                 setTimeout(() => {
                     this._isManualSelection = false;
@@ -716,6 +721,11 @@ class HorizontalDatePicker {
             
             // Add click event
             monthItem.addEventListener('click', () => {
+                // Check if this month is already selected
+                if (year === this.options.selectedDate.getFullYear() && 
+                    month === this.options.selectedDate.getMonth()) {
+                    return; // Do nothing if clicking on already selected month
+                }
                 this.selectMonth(year, month);
             });
             
