@@ -63,6 +63,13 @@
     display: block;
 }
 
+.date-item .month-year-name {
+    font-size: 0.7rem;
+    display: block;
+    font-weight: bold;
+    margin-top: 2px;
+}
+
 .date-nav-button {
     position: absolute;
     top: 50%;

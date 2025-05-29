@@ -291,6 +291,14 @@ class HorizontalDatePicker {
             dateItem.appendChild(monthName);
         }
         
+        // Add month and year for selected date
+        if (this.isSameDay(date, this.options.selectedDate)) {
+            const monthYearName = document.createElement('span');
+            monthYearName.className = 'month-year-name';
+            monthYearName.textContent = `${this.getMonthName(date)} ${date.getFullYear()}`;
+            dateItem.appendChild(monthYearName);
+        }
+        
         return dateItem;
     }
     
