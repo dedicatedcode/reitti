@@ -534,10 +534,19 @@
 
         loadTimelineData(formattedDate);
         
+        // Parse the initial date properly to ensure correct date picker initialization
+        let dateToUse = new Date();
+        if (initialDate) {
+            // Parse the date from URL parameter (YYYY-MM-DD format)
+            const [year, month, day] = initialDate.split('-').map(Number);
+            // Note: month is 0-indexed in JavaScript Date
+            dateToUse = new Date(year, month - 1, day);
+        }
+        
         // Initialize horizontal date picker
         new HorizontalDatePicker({
             container: document.getElementById('horizontal-date-picker-container'),
-            selectedDate: new Date(formattedDate),
+            selectedDate: dateToUse,
             autoSelectOnScroll: true, // Enable auto-select on scroll
             showNavButtons: false, // Show navigation buttons
             daysToShow: 21, // Show more days
