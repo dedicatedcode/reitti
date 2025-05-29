@@ -822,24 +822,40 @@ class HorizontalDatePicker {
         // Set the day to either the current day or the last day of the month if the current day exceeds it
         newDate.setDate(Math.min(currentDay, lastDayOfMonth));
         
+        // Store the exact date we want to select
+        const exactSelectedDate = new Date(newDate);
+        
         // Completely recreate the date picker with the new date as the center
-        this.options.selectedDate = newDate;
+        this.options.selectedDate = exactSelectedDate;
         this.options.daysBeforeToday = Math.floor(this.options.daysToShow / 2);
         this.populateDates();
         
-        // Highlight the selected month
-        this.highlightSelectedMonth();
+        // Find and force select the exact date we want
+        setTimeout(() => {
+            const dateItems = this.dateContainer.querySelectorAll('.date-item');
+            const formattedExactDate = this.formatDate(exactSelectedDate);
+            
+            for (const item of dateItems) {
+                if (item.dataset.date === formattedExactDate) {
+                    this.selectDate(item, true);
+                    break;
+                }
+            }
+            
+            // Highlight the selected month
+            this.highlightSelectedMonth();
+        }, 0);
         
         // Call onDateSelect callback if provided
-        const formattedDate = this.formatDate(newDate);
+        const formattedDate = this.formatDate(exactSelectedDate);
         if (typeof this.options.onDateSelect === 'function') {
-            this.options.onDateSelect(newDate, formattedDate);
+            this.options.onDateSelect(exactSelectedDate, formattedDate);
         }
         
         // Dispatch custom event
         const event = new CustomEvent('dateSelected', {
             detail: {
-                date: newDate,
+                date: exactSelectedDate,
                 formattedDate: formattedDate
             }
         });
@@ -874,24 +890,40 @@ class HorizontalDatePicker {
             newDate.setDate(lastDayOfMonth);
         }
         
+        // Store the exact date we want to select
+        const exactSelectedDate = new Date(newDate);
+        
         // Completely recreate the date picker with the new date as the center
-        this.options.selectedDate = newDate;
+        this.options.selectedDate = exactSelectedDate;
         this.options.daysBeforeToday = Math.floor(this.options.daysToShow / 2);
         this.populateDates();
         
-        // Repopulate the month row to show the new year
-        this.populateMonthRow();
+        // Find and force select the exact date we want
+        setTimeout(() => {
+            const dateItems = this.dateContainer.querySelectorAll('.date-item');
+            const formattedExactDate = this.formatDate(exactSelectedDate);
+            
+            for (const item of dateItems) {
+                if (item.dataset.date === formattedExactDate) {
+                    this.selectDate(item, true);
+                    break;
+                }
+            }
+            
+            // Repopulate the month row to show the new year
+            this.populateMonthRow();
+        }, 0);
         
         // Call onDateSelect callback if provided
-        const formattedDate = this.formatDate(newDate);
+        const formattedDate = this.formatDate(exactSelectedDate);
         if (typeof this.options.onDateSelect === 'function') {
-            this.options.onDateSelect(newDate, formattedDate);
+            this.options.onDateSelect(exactSelectedDate, formattedDate);
         }
         
         // Dispatch custom event
         const event = new CustomEvent('dateSelected', {
             detail: {
-                date: newDate,
+                date: exactSelectedDate,
                 formattedDate: formattedDate
             }
         });
