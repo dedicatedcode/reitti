@@ -14,6 +14,7 @@ class HorizontalDatePicker {
             showNavButtons: true, // Option to show/hide navigation buttons
             minDate: null, // Minimum selectable date
             maxDate: null, // Maximum selectable date
+            showMonthRow: false, // Option to show month selection row
             ...options
         };
         
@@ -30,12 +31,27 @@ class HorizontalDatePicker {
         this.populateDates();
         this.attachEventListeners();
         this.scrollToSelectedDate(false);
+        
+        // Highlight the current month in the month row
+        if (this.options.showMonthRow) {
+            this.highlightSelectedMonth();
+        }
     }
     
     createElements() {
         // Create main container
         this.element = document.createElement('div');
         this.element.className = 'horizontal-date-picker';
+        
+        // Create month row if enabled
+        if (this.options.showMonthRow) {
+            this.monthRowContainer = document.createElement('div');
+            this.monthRowContainer.className = 'month-row-container';
+            this.element.appendChild(this.monthRowContainer);
+            
+            // Populate months
+            this.populateMonthRow();
+        }
         
         // Create date container
         this.dateContainer = document.createElement('div');
@@ -660,6 +676,109 @@ class HorizontalDatePicker {
         }
     }
     
+    // Populate the month row
+    populateMonthRow() {
+        this.monthRowContainer.innerHTML = '';
+        
+        const currentYear = new Date().getFullYear();
+        const selectedYear = this.options.selectedDate.getFullYear();
+        
+        // Show current year and previous/next year
+        const yearsToShow = [selectedYear - 1, selectedYear, selectedYear + 1];
+        
+        yearsToShow.forEach(year => {
+            for (let month = 0; month < 12; month++) {
+                const monthDate = new Date(year, month, 1);
+                
+                // Skip months outside min/max range if specified
+                if ((this.options.minDate && monthDate < new Date(this.options.minDate)) || 
+                    (this.options.maxDate && monthDate > new Date(this.options.maxDate))) {
+                    continue;
+                }
+                
+                const monthItem = document.createElement('div');
+                monthItem.className = 'month-item';
+                monthItem.dataset.year = year;
+                monthItem.dataset.month = month;
+                
+                // Check if this is the selected month
+                if (year === this.options.selectedDate.getFullYear() && 
+                    month === this.options.selectedDate.getMonth()) {
+                    monthItem.classList.add('selected');
+                    this.selectedMonthElement = monthItem;
+                }
+                
+                // Add month name
+                monthItem.textContent = this.getMonthName(monthDate);
+                
+                // Add year if it's January
+                if (month === 0) {
+                    const yearSpan = document.createElement('span');
+                    yearSpan.className = 'year-label';
+                    yearSpan.textContent = year;
+                    monthItem.appendChild(yearSpan);
+                }
+                
+                // Add click event
+                monthItem.addEventListener('click', () => {
+                    this.selectMonth(year, month);
+                });
+                
+                this.monthRowContainer.appendChild(monthItem);
+            }
+        });
+    }
+    
+    // Select a month
+    selectMonth(year, month) {
+        // Get the current day from the selected date
+        const currentDay = this.options.selectedDate.getDate();
+        
+        // Create a new date with the selected month and year
+        const newDate = new Date(year, month, 1);
+        
+        // Get the last day of the selected month
+        const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+        
+        // Set the day to either the current day or the last day of the month if the current day exceeds it
+        newDate.setDate(Math.min(currentDay, lastDayOfMonth));
+        
+        // Update the selected date
+        this.setDate(newDate);
+        
+        // Highlight the selected month
+        this.highlightSelectedMonth();
+    }
+    
+    // Highlight the selected month in the month row
+    highlightSelectedMonth() {
+        if (!this.options.showMonthRow) return;
+        
+        // Remove selected class from all month items
+        const monthItems = this.monthRowContainer.querySelectorAll('.month-item');
+        monthItems.forEach(item => {
+            item.classList.remove('selected');
+        });
+        
+        // Find and highlight the selected month
+        const selectedYear = this.options.selectedDate.getFullYear();
+        const selectedMonth = this.options.selectedDate.getMonth();
+        
+        for (const item of monthItems) {
+            const itemYear = parseInt(item.dataset.year);
+            const itemMonth = parseInt(item.dataset.month);
+            
+            if (itemYear === selectedYear && itemMonth === selectedMonth) {
+                item.classList.add('selected');
+                this.selectedMonthElement = item;
+                
+                // Scroll to the selected month
+                item.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                break;
+            }
+        }
+    }
+    
     // Public methods
     setDate(date) {
         const newDate = new Date(date);
@@ -689,6 +808,11 @@ class HorizontalDatePicker {
         }
         
         this.populateDates();
+        
+        // Update the month row if enabled
+        if (this.options.showMonthRow) {
+            this.highlightSelectedMonth();
+        }
         
         // Find and mark the selected date element
         setTimeout(() => {
