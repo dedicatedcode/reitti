@@ -802,8 +802,9 @@ class HorizontalDatePicker {
         // Get the current day from the selected date
         const currentDay = this.options.selectedDate.getDate();
         
-        // Create a new date with the selected month and year
-        const newDate = new Date(year, month, 1);
+        // Create a new date with the selected month and current year
+        const newDate = new Date(this.options.selectedDate);
+        newDate.setMonth(month);
         
         // Check if future dates are allowed
         if (!this.options.allowFutureDates) {
@@ -816,7 +817,7 @@ class HorizontalDatePicker {
         }
         
         // Get the last day of the selected month
-        const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+        const lastDayOfMonth = new Date(newDate.getFullYear(), month + 1, 0).getDate();
         
         // Set the day to either the current day or the last day of the month if the current day exceeds it
         newDate.setDate(Math.min(currentDay, lastDayOfMonth));
@@ -846,11 +847,11 @@ class HorizontalDatePicker {
     // Select a year
     selectYear(year) {
         // Get the current month and day from the selected date
-        const currentMonth = this.options.selectedDate.getMonth();
-        const currentDay = this.options.selectedDate.getDate();
+        const currentDate = new Date(this.options.selectedDate);
         
-        // Create a new date with the selected year
-        const newDate = new Date(year, currentMonth, 1);
+        // Create a new date with the selected year but keep month and day
+        const newDate = new Date(currentDate);
+        newDate.setFullYear(year);
         
         // Check if future dates are allowed
         if (!this.options.allowFutureDates) {
@@ -863,10 +864,13 @@ class HorizontalDatePicker {
         }
         
         // Get the last day of the selected month in the new year
-        const lastDayOfMonth = new Date(year, currentMonth + 1, 0).getDate();
+        const month = newDate.getMonth();
+        const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
         
         // Set the day to either the current day or the last day of the month if the current day exceeds it
-        newDate.setDate(Math.min(currentDay, lastDayOfMonth));
+        if (currentDate.getDate() > lastDayOfMonth) {
+            newDate.setDate(lastDayOfMonth);
+        }
         
         // Update the selected date
         this.setDate(newDate);
