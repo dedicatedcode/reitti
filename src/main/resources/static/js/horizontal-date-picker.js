@@ -822,8 +822,10 @@ class HorizontalDatePicker {
         // Set the day to either the current day or the last day of the month if the current day exceeds it
         newDate.setDate(Math.min(currentDay, lastDayOfMonth));
         
-        // Update the selected date
-        this.setDate(newDate);
+        // Completely recreate the date picker with the new date as the center
+        this.options.selectedDate = newDate;
+        this.options.daysBeforeToday = Math.floor(this.options.daysToShow / 2);
+        this.populateDates();
         
         // Highlight the selected month
         this.highlightSelectedMonth();
@@ -872,8 +874,10 @@ class HorizontalDatePicker {
             newDate.setDate(lastDayOfMonth);
         }
         
-        // Update the selected date
-        this.setDate(newDate);
+        // Completely recreate the date picker with the new date as the center
+        this.options.selectedDate = newDate;
+        this.options.daysBeforeToday = Math.floor(this.options.daysToShow / 2);
+        this.populateDates();
         
         // Repopulate the month row to show the new year
         this.populateMonthRow();
