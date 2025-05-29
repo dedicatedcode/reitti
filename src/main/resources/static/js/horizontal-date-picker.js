@@ -479,6 +479,11 @@ class HorizontalDatePicker {
         
         this.options.selectedDate = dateToSelect;
         
+        // Update the month row to highlight the correct month
+        if (this.options.showMonthRow) {
+            this.highlightSelectedMonth();
+        }
+        
         // First center the selected date to ensure it's visible
         this.scrollToSelectedDate(true);
         
@@ -680,53 +685,55 @@ class HorizontalDatePicker {
     populateMonthRow() {
         this.monthRowContainer.innerHTML = '';
         
-        const currentYear = new Date().getFullYear();
         const selectedYear = this.options.selectedDate.getFullYear();
+        const selectedMonth = this.options.selectedDate.getMonth();
         
-        // Show current year and previous/next year
-        const yearsToShow = [selectedYear - 1, selectedYear, selectedYear + 1];
+        // Show only 12 months centered around the selected month
+        const startMonth = selectedMonth - 5;
         
-        yearsToShow.forEach(year => {
-            for (let month = 0; month < 12; month++) {
-                const monthDate = new Date(year, month, 1);
-                
-                // Skip months outside min/max range if specified
-                if ((this.options.minDate && monthDate < new Date(this.options.minDate)) || 
-                    (this.options.maxDate && monthDate > new Date(this.options.maxDate))) {
-                    continue;
-                }
-                
-                const monthItem = document.createElement('div');
-                monthItem.className = 'month-item';
-                monthItem.dataset.year = year;
-                monthItem.dataset.month = month;
-                
-                // Check if this is the selected month
-                if (year === this.options.selectedDate.getFullYear() && 
-                    month === this.options.selectedDate.getMonth()) {
-                    monthItem.classList.add('selected');
-                    this.selectedMonthElement = monthItem;
-                }
-                
-                // Add month name
-                monthItem.textContent = this.getMonthName(monthDate);
-                
-                // Add year if it's January
-                if (month === 0) {
-                    const yearSpan = document.createElement('span');
-                    yearSpan.className = 'year-label';
-                    yearSpan.textContent = year;
-                    monthItem.appendChild(yearSpan);
-                }
-                
-                // Add click event
-                monthItem.addEventListener('click', () => {
-                    this.selectMonth(year, month);
-                });
-                
-                this.monthRowContainer.appendChild(monthItem);
+        for (let i = 0; i < 12; i++) {
+            let month = startMonth + i;
+            let year = selectedYear;
+            
+            // Adjust year if month is out of range
+            if (month < 0) {
+                month += 12;
+                year -= 1;
+            } else if (month > 11) {
+                month -= 12;
+                year += 1;
             }
-        });
+            
+            const monthDate = new Date(year, month, 1);
+            
+            // Skip months outside min/max range if specified
+            if ((this.options.minDate && monthDate < new Date(this.options.minDate)) || 
+                (this.options.maxDate && monthDate > new Date(this.options.maxDate))) {
+                continue;
+            }
+            
+            const monthItem = document.createElement('div');
+            monthItem.className = 'month-item';
+            monthItem.dataset.year = year;
+            monthItem.dataset.month = month;
+            
+            // Check if this is the selected month
+            if (year === this.options.selectedDate.getFullYear() && 
+                month === this.options.selectedDate.getMonth()) {
+                monthItem.classList.add('selected');
+                this.selectedMonthElement = monthItem;
+            }
+            
+            // Add month name
+            monthItem.textContent = this.getMonthName(monthDate);
+            
+            // Add click event
+            monthItem.addEventListener('click', () => {
+                this.selectMonth(year, month);
+            });
+            
+            this.monthRowContainer.appendChild(monthItem);
+        }
     }
     
     // Select a month
@@ -754,16 +761,35 @@ class HorizontalDatePicker {
     highlightSelectedMonth() {
         if (!this.options.showMonthRow) return;
         
-        // Remove selected class from all month items
+        // Check if we need to repopulate the month row to keep the selected month visible
+        const selectedYear = this.options.selectedDate.getFullYear();
+        const selectedMonth = this.options.selectedDate.getMonth();
+        
+        let selectedMonthVisible = false;
         const monthItems = this.monthRowContainer.querySelectorAll('.month-item');
+        
+        for (const item of monthItems) {
+            const itemYear = parseInt(item.dataset.year);
+            const itemMonth = parseInt(item.dataset.month);
+            
+            if (itemYear === selectedYear && itemMonth === selectedMonth) {
+                selectedMonthVisible = true;
+                break;
+            }
+        }
+        
+        // If selected month is not visible, repopulate the month row
+        if (!selectedMonthVisible) {
+            this.populateMonthRow();
+            return;
+        }
+        
+        // Remove selected class from all month items
         monthItems.forEach(item => {
             item.classList.remove('selected');
         });
         
         // Find and highlight the selected month
-        const selectedYear = this.options.selectedDate.getFullYear();
-        const selectedMonth = this.options.selectedDate.getMonth();
-        
         for (const item of monthItems) {
             const itemYear = parseInt(item.dataset.year);
             const itemMonth = parseInt(item.dataset.month);
