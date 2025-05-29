@@ -9,14 +9,17 @@ import com.dedicatedcode.reitti.service.QueueStatsService;
 import com.dedicatedcode.reitti.service.UserService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/settings")
@@ -35,6 +38,7 @@ public class SettingsController {
         this.placeService = placeService;
     }
 
+    // Original method kept for backward compatibility
     @GetMapping
     public String settings(Authentication authentication, Model model,
                           @RequestParam(defaultValue = "0") int page,
@@ -66,92 +70,136 @@ public class SettingsController {
         return "settings";
     }
     
+    // API endpoints for the overlay
+    @GetMapping("/api-tokens")
+    @ResponseBody
+    public List<ApiToken> getApiTokens(Authentication authentication) {
+        User currentUser = userService.getUserByUsername(authentication.getName());
+        return apiTokenService.getTokensForUser(currentUser);
+    }
+    
+    @GetMapping("/users")
+    @ResponseBody
+    public List<Map<String, Object>> getUsers(Authentication authentication) {
+        String currentUsername = authentication.getName();
+        return userService.getAllUsers().stream()
+            .map(user -> {
+                Map<String, Object> userMap = new HashMap<>();
+                userMap.put("id", user.getId());
+                userMap.put("username", user.getUsername());
+                userMap.put("displayName", user.getDisplayName());
+                userMap.put("currentUser", user.getUsername().equals(currentUsername));
+                return userMap;
+            })
+            .collect(Collectors.toList());
+    }
+    
+    @GetMapping("/places")
+    @ResponseBody
+    public Page<SignificantPlace> getPlaces(Authentication authentication, 
+                                           @RequestParam(defaultValue = "0") int page) {
+        User currentUser = userService.getUserByUsername(authentication.getName());
+        return placeService.getPlacesForUser(currentUser, PageRequest.of(page, 20));
+    }
+    
     @PostMapping("/tokens")
-    public String createToken(Authentication authentication, @RequestParam String name, RedirectAttributes redirectAttributes) {
+    @ResponseBody
+    public Map<String, Object> createToken(Authentication authentication, @RequestParam String name) {
+        Map<String, Object> response = new HashMap<>();
         User user = userService.getUserByUsername(authentication.getName());
         
         try {
             ApiToken token = apiTokenService.createToken(user, name);
-            redirectAttributes.addFlashAttribute("tokenMessage", "Token created successfully");
-            redirectAttributes.addFlashAttribute("tokenSuccess", true);
+            response.put("message", "Token created successfully");
+            response.put("success", true);
+            response.put("token", token);
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("tokenMessage", "Error creating token: " + e.getMessage());
-            redirectAttributes.addFlashAttribute("tokenSuccess", false);
+            response.put("message", "Error creating token: " + e.getMessage());
+            response.put("success", false);
         }
         
-        return "redirect:/settings";
+        return response;
     }
     
     @PostMapping("/tokens/{tokenId}/delete")
-    public String deleteToken(@PathVariable Long tokenId, RedirectAttributes redirectAttributes) {
+    @ResponseBody
+    public Map<String, Object> deleteToken(@PathVariable Long tokenId) {
+        Map<String, Object> response = new HashMap<>();
+        
         try {
             apiTokenService.deleteToken(tokenId);
-            redirectAttributes.addFlashAttribute("tokenMessage", "Token deleted successfully");
-            redirectAttributes.addFlashAttribute("tokenSuccess", true);
+            response.put("message", "Token deleted successfully");
+            response.put("success", true);
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("tokenMessage", "Error deleting token: " + e.getMessage());
-            redirectAttributes.addFlashAttribute("tokenSuccess", false);
+            response.put("message", "Error deleting token: " + e.getMessage());
+            response.put("success", false);
         }
         
-        return "redirect:/settings";
+        return response;
     }
     
     @PostMapping("/users/{userId}/delete")
-    public String deleteUser(@PathVariable Long userId, Authentication authentication, RedirectAttributes redirectAttributes) {
+    @ResponseBody
+    public Map<String, Object> deleteUser(@PathVariable Long userId, Authentication authentication) {
+        Map<String, Object> response = new HashMap<>();
+        
         try {
             // Prevent self-deletion
             User currentUser = userService.getUserByUsername(authentication.getName());
             if (currentUser.getId().equals(userId)) {
-                redirectAttributes.addFlashAttribute("userMessage", "You cannot delete your own account");
-                redirectAttributes.addFlashAttribute("userSuccess", false);
-                return "redirect:/settings";
+                response.put("message", "You cannot delete your own account");
+                response.put("success", false);
+                return response;
             }
             
             userService.deleteUser(userId);
-            redirectAttributes.addFlashAttribute("userMessage", "User deleted successfully");
-            redirectAttributes.addFlashAttribute("userSuccess", true);
+            response.put("message", "User deleted successfully");
+            response.put("success", true);
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("userMessage", "Error deleting user: " + e.getMessage());
-            redirectAttributes.addFlashAttribute("userSuccess", false);
+            response.put("message", "Error deleting user: " + e.getMessage());
+            response.put("success", false);
         }
         
-        return "redirect:/settings";
+        return response;
     }
     
     @PostMapping("/places/{placeId}/update")
-    public String updatePlace(@PathVariable Long placeId, 
-                             @RequestParam String name,
-                             Authentication authentication, 
-                             RedirectAttributes redirectAttributes,
-                             @RequestParam(defaultValue = "0") int page) {
+    @ResponseBody
+    public Map<String, Object> updatePlace(@PathVariable Long placeId, 
+                                         @RequestParam String name,
+                                         Authentication authentication) {
+        Map<String, Object> response = new HashMap<>();
+        
         try {
             User currentUser = userService.getUserByUsername(authentication.getName());
             placeService.updatePlaceName(placeId, name, currentUser);
             
-            redirectAttributes.addFlashAttribute("placeMessage", "Place updated successfully");
-            redirectAttributes.addFlashAttribute("placeSuccess", true);
+            response.put("message", "Place updated successfully");
+            response.put("success", true);
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("placeMessage", "Error updating place: " + e.getMessage());
-            redirectAttributes.addFlashAttribute("placeSuccess", false);
+            response.put("message", "Error updating place: " + e.getMessage());
+            response.put("success", false);
         }
         
-        return "redirect:/settings?tab=places-management&page=" + page;
+        return response;
     }
     
     @PostMapping("/users")
-    public String createUser(@RequestParam String username,
-                            @RequestParam String displayName,
-                            @RequestParam String password,
-                            RedirectAttributes redirectAttributes) {
+    @ResponseBody
+    public Map<String, Object> createUser(@RequestParam String username,
+                                        @RequestParam String displayName,
+                                        @RequestParam String password) {
+        Map<String, Object> response = new HashMap<>();
+        
         try {
             userService.createUser(username, displayName, password);
-            redirectAttributes.addFlashAttribute("userMessage", "User created successfully");
-            redirectAttributes.addFlashAttribute("userSuccess", true);
+            response.put("message", "User created successfully");
+            response.put("success", true);
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("userMessage", "Error creating user: " + e.getMessage());
-            redirectAttributes.addFlashAttribute("userSuccess", false);
+            response.put("message", "Error creating user: " + e.getMessage());
+            response.put("success", false);
         }
         
-        return "redirect:/settings?tab=user-management";
+        return response;
     }
 }
