@@ -792,6 +792,21 @@ class HorizontalDatePicker {
         
         // Highlight the selected month
         this.highlightSelectedMonth();
+        
+        // Call onDateSelect callback if provided
+        const formattedDate = this.formatDate(newDate);
+        if (typeof this.options.onDateSelect === 'function') {
+            this.options.onDateSelect(newDate, formattedDate);
+        }
+        
+        // Dispatch custom event
+        const event = new CustomEvent('dateSelected', {
+            detail: {
+                date: newDate,
+                formattedDate: formattedDate
+            }
+        });
+        this.element.dispatchEvent(event);
     }
     
     // Select a year
@@ -814,6 +829,21 @@ class HorizontalDatePicker {
         
         // Repopulate the month row to show the new year
         this.populateMonthRow();
+        
+        // Call onDateSelect callback if provided
+        const formattedDate = this.formatDate(newDate);
+        if (typeof this.options.onDateSelect === 'function') {
+            this.options.onDateSelect(newDate, formattedDate);
+        }
+        
+        // Dispatch custom event
+        const event = new CustomEvent('dateSelected', {
+            detail: {
+                date: newDate,
+                formattedDate: formattedDate
+            }
+        });
+        this.element.dispatchEvent(event);
     }
     
     // Highlight the selected month in the month row
