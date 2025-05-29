@@ -10,7 +10,8 @@ class HorizontalDatePicker {
             daysBeforeToday: 7,
             onDateSelect: null,
             selectedDate: new Date(),
-            autoSelectOnScroll: false, // New option to auto-select date when scrolling
+            autoSelectOnScroll: false, // Option to auto-select date when scrolling
+            showNavButtons: true, // Option to show/hide navigation buttons
             ...options
         };
         
@@ -33,19 +34,24 @@ class HorizontalDatePicker {
         this.dateContainer = document.createElement('div');
         this.dateContainer.className = 'date-picker-container';
         
-        // Create navigation buttons
-        this.prevButton = document.createElement('button');
-        this.prevButton.className = 'date-nav-button date-nav-prev';
-        this.prevButton.innerHTML = '<i class="fas fa-chevron-left"></i>';
+        // Create navigation buttons if enabled
+        if (this.options.showNavButtons) {
+            // Create navigation buttons
+            this.prevButton = document.createElement('button');
+            this.prevButton.className = 'date-nav-button date-nav-prev';
+            this.prevButton.innerHTML = '<i class="fas fa-chevron-left"></i>';
+            
+            this.nextButton = document.createElement('button');
+            this.nextButton.className = 'date-nav-button date-nav-next';
+            this.nextButton.innerHTML = '<i class="fas fa-chevron-right"></i>';
+            
+            // Append navigation buttons
+            this.element.appendChild(this.prevButton);
+            this.element.appendChild(this.nextButton);
+        }
         
-        this.nextButton = document.createElement('button');
-        this.nextButton.className = 'date-nav-button date-nav-next';
-        this.nextButton.innerHTML = '<i class="fas fa-chevron-right"></i>';
-        
-        // Append elements
-        this.element.appendChild(this.prevButton);
+        // Append date container
         this.element.appendChild(this.dateContainer);
-        this.element.appendChild(this.nextButton);
         
         // Append to container
         this.options.container.appendChild(this.element);
@@ -105,14 +111,16 @@ class HorizontalDatePicker {
             }
         });
         
-        // Navigation buttons
-        this.prevButton.addEventListener('click', () => {
-            this.navigateDates(-7);
-        });
-        
-        this.nextButton.addEventListener('click', () => {
-            this.navigateDates(7);
-        });
+        // Navigation buttons (if enabled)
+        if (this.options.showNavButtons) {
+            this.prevButton.addEventListener('click', () => {
+                this.navigateDates(-7);
+            });
+            
+            this.nextButton.addEventListener('click', () => {
+                this.navigateDates(7);
+            });
+        }
         
         // Scroll event handling
         let scrollTimeout;
@@ -157,13 +165,61 @@ class HorizontalDatePicker {
         const firstDateElement = this.dateContainer.firstElementChild;
         const firstDate = this.parseDate(firstDateElement.dataset.date);
         
-        firstDate.setDate(firstDate.getDate() + offset);
+        // Create a new start date by adding the offset to the first date
+        const newStartDate = new Date(firstDate);
+        newStartDate.setDate(newStartDate.getDate() + offset);
         
-        const today = new Date();
-        const startDate = new Date(firstDate);
+        // Clear the container
+        this.dateContainer.innerHTML = '';
         
-        this.populateDates();
-        this.scrollToSelectedDate(true);
+        // Generate new dates starting from the new start date
+        for (let i = 0; i < this.options.daysToShow; i++) {
+            const date = new Date(newStartDate);
+            date.setDate(newStartDate.getDate() + i);
+            
+            const dateItem = document.createElement('div');
+            dateItem.className = 'date-item';
+            dateItem.dataset.date = this.formatDate(date);
+            
+            // Check if this date is selected
+            if (this.isSameDay(date, this.options.selectedDate)) {
+                dateItem.classList.add('selected');
+                this.selectedElement = dateItem;
+            }
+            
+            // Add day name (Mon, Tue, etc)
+            const dayName = document.createElement('span');
+            dayName.className = 'day-name';
+            dayName.textContent = this.getDayName(date);
+            dateItem.appendChild(dayName);
+            
+            // Add day number
+            const dayNumber = document.createElement('span');
+            dayNumber.className = 'day-number';
+            dayNumber.textContent = date.getDate();
+            dateItem.appendChild(dayNumber);
+            
+            // Add month name for first day of month or first day in view
+            if (date.getDate() === 1 || i === 0) {
+                const monthName = document.createElement('span');
+                monthName.className = 'month-name';
+                monthName.textContent = this.getMonthName(date);
+                dateItem.appendChild(monthName);
+            }
+            
+            this.dateContainer.appendChild(dateItem);
+        }
+        
+        // Scroll to the selected date if it's visible, otherwise to the middle
+        if (this.selectedElement) {
+            this.scrollToSelectedDate(true);
+        } else {
+            // Scroll to the middle of the container
+            this.dateContainer.scrollTo({
+                left: this.dateContainer.scrollWidth / 2 - this.dateContainer.clientWidth / 2,
+                behavior: 'smooth'
+            });
+        }
     }
     
     scrollToSelectedDate(smooth = true) {

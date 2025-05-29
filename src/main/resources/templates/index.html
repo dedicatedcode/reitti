@@ -863,6 +863,8 @@
             container: document.getElementById('horizontal-date-picker-container'),
             selectedDate: new Date(formattedDate),
             autoSelectOnScroll: true, // Enable auto-select on scroll
+            showNavButtons: true, // Show navigation buttons
+            daysToShow: 21, // Show more days
             onDateSelect: (date, formattedDate) => {
                 // Update hidden date picker value
                 document.getElementById('date-picker').value = formattedDate;
