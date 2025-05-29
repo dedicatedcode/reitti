@@ -179,6 +179,18 @@ class HorizontalDatePicker {
                         monthYearName.style.opacity = '0';
                         item.appendChild(monthYearName);
                         
+                        // Remove month-name if it exists to avoid duplication
+                        const monthNameEl = item.querySelector('.month-name');
+                        if (monthNameEl) {
+                            monthNameEl.style.transition = 'opacity 0.2s ease';
+                            monthNameEl.style.opacity = '0';
+                            setTimeout(() => {
+                                if (item.contains(monthNameEl)) {
+                                    item.removeChild(monthNameEl);
+                                }
+                            }, 200);
+                        }
+                        
                         // Animate the month-year-name appearance
                         setTimeout(() => {
                             monthYearName.style.transition = 'opacity 0.3s ease';
@@ -200,6 +212,21 @@ class HorizontalDatePicker {
                         setTimeout(() => {
                             if (item.contains(monthYearEl)) {
                                 item.removeChild(monthYearEl);
+                            }
+                            
+                            // Restore month-name for first day of month
+                            const date = this.parseDate(item.dataset.date);
+                            if (date.getDate() === 1 && !item.querySelector('.month-name')) {
+                                const monthName = document.createElement('span');
+                                monthName.className = 'month-name';
+                                monthName.textContent = this.getMonthName(date);
+                                monthName.style.opacity = '0';
+                                item.appendChild(monthName);
+                                
+                                setTimeout(() => {
+                                    monthName.style.transition = 'opacity 0.3s ease';
+                                    monthName.style.opacity = '1';
+                                }, 10);
                             }
                         }, 200);
                     }
@@ -319,8 +346,9 @@ class HorizontalDatePicker {
         dayNumber.textContent = date.getDate();
         dateItem.appendChild(dayNumber);
         
-        // Add month name for first day of month or first day in view
-        if (date.getDate() === 1) {
+        // Add month name for first day of month, but not if it's the selected date
+        // to avoid duplication with month-year-name
+        if (date.getDate() === 1 && !this.isSameDay(date, this.options.selectedDate)) {
             const monthName = document.createElement('span');
             monthName.className = 'month-name';
             monthName.textContent = this.getMonthName(date);
@@ -354,10 +382,25 @@ class HorizontalDatePicker {
             if (monthYearEl) {
                 this.selectedElement.removeChild(monthYearEl);
             }
+            
+            // Restore month-name for first day of month on previously selected item
+            const prevDate = this.parseDate(this.selectedElement.dataset.date);
+            if (prevDate.getDate() === 1 && !this.selectedElement.querySelector('.month-name')) {
+                const monthName = document.createElement('span');
+                monthName.className = 'month-name';
+                monthName.textContent = this.getMonthName(prevDate);
+                this.selectedElement.appendChild(monthName);
+            }
         }
         
         dateItem.classList.add('selected');
         this.selectedElement = dateItem;
+        
+        // Remove month-name if it exists to avoid duplication
+        const monthNameEl = dateItem.querySelector('.month-name');
+        if (monthNameEl) {
+            dateItem.removeChild(monthNameEl);
+        }
         
         // Add month and year to the selected item
         if (!dateItem.querySelector('.month-year-name')) {
