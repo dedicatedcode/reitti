@@ -15,6 +15,8 @@ class HorizontalDatePicker {
             minDate: null, // Minimum selectable date
             maxDate: null, // Maximum selectable date
             showMonthRow: false, // Option to show month selection row
+            showYearRow: true, // Option to show year selection row
+            yearsToShow: 3, // Number of years to show in the year row
             ...options
         };
         
@@ -692,38 +694,37 @@ class HorizontalDatePicker {
         
         const selectedYear = this.options.selectedDate.getFullYear();
         
-        // Create year row
-        const yearRow = document.createElement('div');
-        yearRow.className = 'year-row';
-        
-        // Add previous year
-        const prevYearItem = document.createElement('div');
-        prevYearItem.className = 'year-item';
-        prevYearItem.textContent = selectedYear - 1;
-        prevYearItem.dataset.year = selectedYear - 1;
-        prevYearItem.addEventListener('click', () => {
-            this.selectYear(selectedYear - 1);
-        });
-        yearRow.appendChild(prevYearItem);
-        
-        // Add current year (selected)
-        const currentYearItem = document.createElement('div');
-        currentYearItem.className = 'year-item selected';
-        currentYearItem.textContent = selectedYear;
-        currentYearItem.dataset.year = selectedYear;
-        yearRow.appendChild(currentYearItem);
-        
-        // Add next year
-        const nextYearItem = document.createElement('div');
-        nextYearItem.className = 'year-item';
-        nextYearItem.textContent = selectedYear + 1;
-        nextYearItem.dataset.year = selectedYear + 1;
-        nextYearItem.addEventListener('click', () => {
-            this.selectYear(selectedYear + 1);
-        });
-        yearRow.appendChild(nextYearItem);
-        
-        this.monthRowContainer.appendChild(yearRow);
+        // Create year row if enabled
+        if (this.options.showYearRow) {
+            const yearRow = document.createElement('div');
+            yearRow.className = 'year-row';
+            
+            // Calculate how many years to show before and after the selected year
+            const yearsToShow = this.options.yearsToShow;
+            const halfYears = Math.floor(yearsToShow / 2);
+            const startYear = selectedYear - halfYears;
+            
+            // Add years to the row
+            for (let i = 0; i < yearsToShow; i++) {
+                const year = startYear + i;
+                const yearItem = document.createElement('div');
+                yearItem.className = 'year-item';
+                yearItem.textContent = year;
+                yearItem.dataset.year = year;
+                
+                // Mark selected year
+                if (year === selectedYear) {
+                    yearItem.classList.add('selected');
+                }
+                
+                yearItem.addEventListener('click', () => {
+                    this.selectYear(year);
+                });
+                yearRow.appendChild(yearItem);
+            }
+            
+            this.monthRowContainer.appendChild(yearRow);
+        }
         
         // Create month row
         const monthRow = document.createElement('div');
