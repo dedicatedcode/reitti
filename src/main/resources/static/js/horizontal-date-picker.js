@@ -447,7 +447,7 @@ class HorizontalDatePicker {
         // Check if future dates are allowed
         if (!this.options.allowFutureDates) {
             const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            today.setHours(23, 59, 59, 59);
             
             if (dateToSelect > today) {
                 return; // Don't select future dates if not allowed
@@ -807,7 +807,7 @@ class HorizontalDatePicker {
         // Check if future dates are allowed
         if (!this.options.allowFutureDates) {
             const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            today.setHours(23, 59, 59, 59);
             
             if (newDate > today) {
                 return; // Don't select future months if not allowed
@@ -854,7 +854,7 @@ class HorizontalDatePicker {
         // Check if future dates are allowed
         if (!this.options.allowFutureDates) {
             const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            today.setHours(23, 59, 59, 59);
             
             if (newDate > today) {
                 return; // Don't select future years if not allowed
@@ -1006,7 +1006,7 @@ class HorizontalDatePicker {
         
         // Check if future dates are allowed
         if (!this.options.allowFutureDates) {
-            today.setHours(0, 0, 0, 0);
+            today.setHours(23, 59, 59, 59);
         }
         
         // Reset daysBeforeToday to default
