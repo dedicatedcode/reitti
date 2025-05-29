@@ -66,15 +66,23 @@ class HorizontalDatePicker {
         const startDate = new Date(today);
         startDate.setDate(today.getDate() - this.options.daysBeforeToday);
         
-        for (let i = 0; i < this.options.daysToShow; i++) {
+        // Count how many days we've added to ensure we always show exactly daysToShow
+        // (unless constrained by min/max dates)
+        let daysAdded = 0;
+        let i = 0;
+        
+        while (daysAdded < this.options.daysToShow) {
             const date = new Date(startDate);
             date.setDate(startDate.getDate() + i);
+            i++;
             
             // Skip dates outside of min/max range if specified
             if ((this.options.minDate && date < new Date(this.options.minDate)) || 
                 (this.options.maxDate && date > new Date(this.options.maxDate))) {
                 continue;
             }
+            
+            daysAdded++;
             
             const dateItem = document.createElement('div');
             dateItem.className = 'date-item';
@@ -144,7 +152,7 @@ class HorizontalDatePicker {
     }
     
     selectDate(dateItem) {
-        // Check if date is within min/max range
+        // Check if date is within min/max range, but only if they are set
         const dateToSelect = this.parseDate(dateItem.dataset.date);
         
         if ((this.options.minDate && dateToSelect < new Date(this.options.minDate)) || 
@@ -184,7 +192,7 @@ class HorizontalDatePicker {
         const newStartDate = new Date(firstDate);
         newStartDate.setDate(newStartDate.getDate() + offset);
         
-        // Check if navigation would go beyond min/max dates
+        // Check if navigation would go beyond min/max dates, but only if they are set
         if (this.options.minDate) {
             const minDate = new Date(this.options.minDate);
             if (newStartDate < minDate) {
@@ -340,7 +348,7 @@ class HorizontalDatePicker {
     setDate(date) {
         const newDate = new Date(date);
         
-        // Check if date is within min/max range
+        // Check if date is within min/max range, but only if they are set
         if ((this.options.minDate && newDate < new Date(this.options.minDate)) || 
             (this.options.maxDate && newDate > new Date(this.options.maxDate))) {
             console.warn('Date is outside of allowed min/max range');
@@ -348,6 +356,22 @@ class HorizontalDatePicker {
         }
         
         this.options.selectedDate = newDate;
+        
+        // Adjust daysBeforeToday to center the selected date
+        const today = new Date();
+        if (newDate < today || newDate > today) {
+            // Calculate days difference between selected date and today
+            const diffTime = Math.abs(newDate - today);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            // Center the selected date in the view
+            if (newDate < today) {
+                this.options.daysBeforeToday = diffDays + Math.floor(this.options.daysToShow / 2);
+            } else {
+                this.options.daysBeforeToday = Math.floor(this.options.daysToShow / 2) - diffDays;
+            }
+        }
+        
         this.populateDates();
         this.scrollToSelectedDate(true);
     }
