@@ -70,7 +70,15 @@ public class SettingsController {
         return "settings";
     }
     
-    // API endpoints for the overlay
+    // HTMX endpoints for the settings overlay
+    @GetMapping("/api-tokens-content")
+    public String getApiTokensContent(Authentication authentication, Model model) {
+        User currentUser = userService.getUserByUsername(authentication.getName());
+        model.addAttribute("tokens", apiTokenService.getTokensForUser(currentUser));
+        return "fragments/settings :: api-tokens-content";
+    }
+    
+    // Original JSON endpoint kept for compatibility
     @GetMapping("/api-tokens")
     @ResponseBody
     public List<ApiToken> getApiTokens(Authentication authentication) {
@@ -78,6 +86,16 @@ public class SettingsController {
         return apiTokenService.getTokensForUser(currentUser);
     }
     
+    @GetMapping("/users-content")
+    public String getUsersContent(Authentication authentication, Model model) {
+        String currentUsername = authentication.getName();
+        List<User> users = userService.getAllUsers();
+        model.addAttribute("users", users);
+        model.addAttribute("currentUsername", currentUsername);
+        return "fragments/settings :: users-content";
+    }
+    
+    // Original JSON endpoint kept for compatibility
     @GetMapping("/users")
     @ResponseBody
     public List<Map<String, Object>> getUsers(Authentication authentication) {
@@ -94,6 +112,17 @@ public class SettingsController {
             .collect(Collectors.toList());
     }
     
+    @GetMapping("/places-content")
+    public String getPlacesContent(Authentication authentication, 
+                                  @RequestParam(defaultValue = "0") int page,
+                                  Model model) {
+        User currentUser = userService.getUserByUsername(authentication.getName());
+        Page<SignificantPlace> places = placeService.getPlacesForUser(currentUser, PageRequest.of(page, 20));
+        model.addAttribute("places", places);
+        return "fragments/settings :: places-content";
+    }
+    
+    // Original JSON endpoint kept for compatibility
     @GetMapping("/places")
     @ResponseBody
     public Page<SignificantPlace> getPlaces(Authentication authentication, 
@@ -201,5 +230,10 @@ public class SettingsController {
         }
         
         return response;
+    }
+    @GetMapping("/queue-stats-content")
+    public String getQueueStatsContent(Model model) {
+        model.addAttribute("queueStats", queueStatsService.getQueueStats());
+        return "fragments/settings :: queue-stats-content";
     }
 }

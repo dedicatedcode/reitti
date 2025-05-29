@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- API Tokens Content Fragment -->
+<div th:fragment="api-tokens-content">
+    <h2>API Tokens</h2>
+
+    <div id="token-message" class="alert" style="display: none;"></div>
+
+    <form hx-post="/settings/tokens" hx-swap="none" class="token-form" style="margin-bottom: 20px;">
+        <div class="form-group">
+            <label for="tokenName">Token Name</label>
+            <input type="text" id="tokenName" name="name" required placeholder="Enter a name for this token">
+        </div>
+        <button type="submit" class="btn">Create New Token</button>
+    </form>
+
+    <div th:if="${tokens.isEmpty()}">
+        <p>No API tokens found. Create one to get started.</p>
+    </div>
+    
+    <table th:if="${!tokens.isEmpty()}">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Token</th>
+                <th>Created</th>
+                <th>Last Used</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="token : ${tokens}">
+                <td th:text="${token.name}"></td>
+                <td th:text="${token.token}"></td>
+                <td th:text="${#temporals.format(token.createdAt, 'yyyy-MM-dd HH:mm')}"></td>
+                <td th:text="${token.lastUsedAt != null ? #temporals.format(token.lastUsedAt, 'yyyy-MM-dd HH:mm') : 'Never'}"></td>
+                <td>
+                    <button class="btn btn-danger" 
+                            th:attr="hx-post=@{/settings/tokens/{id}/delete(id=${token.id})}"
+                            hx-confirm="Are you sure you want to delete this token?"
+                            hx-target="#api-tokens"
+                            hx-swap="innerHTML">Delete</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <script>
+        // Handle token form submission
+        document.querySelector('.token-form').addEventListener('htmx:afterRequest', function(event) {
+            if (event.detail.successful) {
+                // Clear the form
+                document.getElementById('tokenName').value = '';
+                
+                // Show success message
+                const data = JSON.parse(event.detail.xhr.responseText);
+                const messageEl = document.getElementById('token-message');
+                messageEl.textContent = data.message;
+                messageEl.className = data.success ? 'alert alert-success' : 'alert alert-danger';
+                messageEl.style.display = 'block';
+                
+                // Hide message after 5 seconds
+                setTimeout(() => {
+                    messageEl.style.display = 'none';
+                }, 5000);
+                
+                // Refresh the tokens list
+                htmx.trigger('#api-tokens', 'revealed');
+            }
+        });
+    </script>
+</div>
+
+<!-- Users Content Fragment -->
+<div th:fragment="users-content">
+    <h2>User Management</h2>
+
+    <div id="user-message" class="alert" style="display: none;"></div>
+
+    <h3>Existing Users</h3>
+    <div th:if="${users.isEmpty()}">
+        <p>No users found.</p>
+    </div>
+    
+    <table th:if="${!users.isEmpty()}">
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Display Name</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="user : ${users}">
+                <td th:text="${user.username}"></td>
+                <td th:text="${user.displayName}"></td>
+                <td>
+                    <span th:if="${user.username == currentUsername}">(Current User)</span>
+                    <button th:if="${user.username != currentUsername}" 
+                            class="btn btn-danger"
+                            th:attr="hx-post=@{/settings/users/{id}/delete(id=${user.id})}"
+                            hx-confirm="Are you sure you want to delete this user? This will delete all their data."
+                            hx-target="#user-management"
+                            hx-swap="innerHTML">Delete</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <form hx-post="/settings/users" hx-swap="none" class="user-form" style="margin-top: 30px;">
+        <h3>Add New User</h3>
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required placeholder="Enter username">
+        </div>
+        <div class="form-group">
+            <label for="displayName">Display Name</label>
+            <input type="text" id="displayName" name="displayName" required placeholder="Enter display name">
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required placeholder="Enter password">
+        </div>
+        <button type="submit" class="btn">Create User</button>
+    </form>
+    
+    <script>
+        // Handle user form submission
+        document.querySelector('.user-form').addEventListener('htmx:afterRequest', function(event) {
+            if (event.detail.successful) {
+                // Clear the form
+                document.getElementById('username').value = '';
+                document.getElementById('displayName').value = '';
+                document.getElementById('password').value = '';
+                
+                // Show success message
+                const data = JSON.parse(event.detail.xhr.responseText);
+                const messageEl = document.getElementById('user-message');
+                messageEl.textContent = data.message;
+                messageEl.className = data.success ? 'alert alert-success' : 'alert alert-danger';
+                messageEl.style.display = 'block';
+                
+                // Hide message after 5 seconds
+                setTimeout(() => {
+                    messageEl.style.display = 'none';
+                }, 5000);
+                
+                // Refresh the users list
+                htmx.trigger('#user-management', 'revealed');
+            }
+        });
+    </script>
+</div>
+
+<!-- Places Content Fragment -->
+<div th:fragment="places-content">
+    <h2>Significant Places</h2>
+
+    <div id="place-message" class="alert" style="display: none;"></div>
+
+    <div class="pagination-controls">
+        <span>Page <span th:text="${places.number + 1}"></span> of <span th:text="${places.totalPages}"></span></span>
+        <div class="pagination-buttons">
+            <button th:if="${places.number > 0}" 
+                    class="btn"
+                    th:attr="hx-get=@{/settings/places-content(page=${places.number - 1})}"
+                    hx-target="#places-management"
+                    hx-swap="innerHTML">Previous</button>
+            <button th:if="${places.number < places.totalPages - 1}" 
+                    class="btn"
+                    th:attr="hx-get=@{/settings/places-content(page=${places.number + 1})}"
+                    hx-target="#places-management"
+                    hx-swap="innerHTML">Next</button>
+        </div>
+    </div>
+
+    <div class="places-grid" th:if="${!places.isEmpty()}">
+        <div class="place-card" th:each="place : ${places}">
+            <div class="place-map" th:id="'map-' + ${place.id}"></div>
+            <div class="place-details">
+                <form th:id="'place-form-' + ${place.id}" 
+                      th:attr="hx-post=@{/settings/places/{id}/update(id=${place.id})}"
+                      hx-swap="none">
+                    <div class="form-group">
+                        <label th:for="'name-' + ${place.id}">Name</label>
+                        <input type="text" th:id="'name-' + ${place.id}" name="name" th:value="${place.name}" required>
+                    </div>
+                    <div class="place-info">
+                        <div><strong>Address:</strong> <span th:text="${place.address ?: 'Not available'}"></span></div>
+                        <div><strong>Category:</strong> <span th:text="${place.category ?: 'Not categorized'}"></span></div>
+                        <div><strong>Coordinates:</strong> <span th:text="${place.latitudeCentroid + ', ' + place.longitudeCentroid}"></span></div>
+                    </div>
+                    <button type="submit" class="btn">Update</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <p th:if="${places.isEmpty()}">No significant places found.</p>
+    
+    <script th:inline="javascript">
+        // Initialize maps for places
+        document.addEventListener('DOMContentLoaded', function() {
+            const places = /*[[${places.content}]]*/ [];
+            
+            places.forEach(place => {
+                initPlaceMap(place.id, place.latitudeCentroid, place.longitudeCentroid);
+            });
+            
+            // Handle place form submissions
+            document.querySelectorAll('form[id^="place-form-"]').forEach(form => {
+                form.addEventListener('htmx:afterRequest', function(event) {
+                    if (event.detail.successful) {
+                        // Show success message
+                        const data = JSON.parse(event.detail.xhr.responseText);
+                        const messageEl = document.getElementById('place-message');
+                        messageEl.textContent = data.message;
+                        messageEl.className = data.success ? 'alert alert-success' : 'alert alert-danger';
+                        messageEl.style.display = 'block';
+                        
+                        // Hide message after 5 seconds
+                        setTimeout(() => {
+                            messageEl.style.display = 'none';
+                        }, 5000);
+                    }
+                });
+            });
+        });
+        
+        function initPlaceMap(placeId, lat, lng) {
+            const mapContainer = document.getElementById(`map-${placeId}`);
+            if (!mapContainer) return;
+            
+            // Initialize map
+            const placeMap = L.map(`map-${placeId}`).setView([lat, lng], 15);
+            
+            // Add tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19
+            }).addTo(placeMap);
+            
+            // Add marker
+            L.marker([lat, lng]).addTo(placeMap);
+            
+            // Add circle to show approximate area
+            L.circle([lat, lng], {
+                color: '#4a89dc',
+                fillColor: '#4a89dc',
+                fillOpacity: 0.2,
+                radius: 50 // 50 meters radius
+            }).addTo(placeMap);
+        }
+    </script>
+</div>
+
+<!-- Queue Stats Content Fragment -->
+<div th:fragment="queue-stats-content">
+    <h2>Job Status</h2>
+
+    <div class="queue-status">
+        <div class="queue-card" th:each="queue : ${queueStats}">
+            <div class="queue-name" th:text="${queue.name()}">Queue Name</div>
+            <div class="queue-count" th:text="${queue.count()}">0</div>
+            <div class="queue-time" th:text="'Est. processing time: ' + ${queue.estimatedTime()}">Est. processing time: 0 min</div>
+            <div class="progress-bar">
+                <div class="progress-fill" th:style="'width:' + ${queue.rate()} + '%'"></div>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-top: 20px;">
+        <button class="btn" 
+                hx-get="/settings/queue-stats-content" 
+                hx-target="#job-status" 
+                hx-swap="innerHTML">Refresh Status</button>
+    </div>
+</div>
+
+</body>
+</html>
