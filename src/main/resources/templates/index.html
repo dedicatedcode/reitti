@@ -93,6 +93,7 @@
             pointer-events: all;
             width: 350px;
             font-family: "Serif";
+            padding-bottom: 250px;
         }
         .timeline-entry {
             color: #bfbfbf;
@@ -156,8 +157,6 @@
             position: sticky;
             font-size: 1.4rem;
         }
-        
-
 
         .date-item.selected {
             background-color: unset;
@@ -165,7 +164,15 @@
             transform: scale(1.05);
             box-shadow: unset;
         }
+
         .month-item.selected {
+            background-color: #4a89dc;
+            color: wheat;
+            font-weight: bolder;
+            background: unset;
+        }
+
+        .year-item.selected {
             background-color: #4a89dc;
             color: wheat;
             font-weight: bolder;
@@ -178,7 +185,7 @@
             bottom: 0;
             left: 0;
             width: 100%;
-            background-color: rgba(59, 59, 59, 0.04);
+            background-color: rgba(59, 59, 59, 0.68);
             backdrop-filter: blur(10px);
             padding: 10px 0;
             z-index: 50;
