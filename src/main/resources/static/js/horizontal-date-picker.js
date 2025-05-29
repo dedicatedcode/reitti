@@ -21,8 +21,10 @@ class HorizontalDatePicker {
     }
     
     init() {
-        // Flag to prevent multiple simultaneous selections
+        // Flags to prevent selection issues
         this._isSelecting = false;
+        this._isManualSelection = false;
+        this._autoSelectTimeout = null;
         
         this.createElements();
         this.populateDates();
@@ -94,7 +96,21 @@ class HorizontalDatePicker {
         this.dateContainer.addEventListener('click', (e) => {
             const dateItem = e.target.closest('.date-item');
             if (dateItem) {
-                this.selectDate(dateItem);
+                // Prevent auto-selection from interfering with manual clicks
+                this._isManualSelection = true;
+                
+                // Clear any pending auto-selection
+                if (this._autoSelectTimeout) {
+                    clearTimeout(this._autoSelectTimeout);
+                }
+                
+                // Force selection of the clicked date
+                this.selectDate(dateItem, true);
+                
+                // Reset the manual selection flag after a delay
+                setTimeout(() => {
+                    this._isManualSelection = false;
+                }, 500);
             }
         });
         
@@ -114,8 +130,10 @@ class HorizontalDatePicker {
         let isScrolling = false;
         let lastScrollTime = 0;
         
-        // Initialize property for tracking date additions
+        // Initialize properties for tracking
         this._isAddingDates = false;
+        this._isManualSelection = false;
+        this._autoSelectTimeout = null;
         
         this.dateContainer.addEventListener('scroll', () => {
             // Throttle scroll events for better performance
@@ -125,8 +143,8 @@ class HorizontalDatePicker {
             }
             lastScrollTime = now;
             
-            // If this is the start of scrolling, deselect current date
-            if (!isScrolling && this.options.autoSelectOnScroll) {
+            // If this is the start of scrolling and not a manual selection, deselect current date
+            if (!isScrolling && this.options.autoSelectOnScroll && !this._isManualSelection) {
                 isScrolling = true;
                 if (this.selectedElement) {
                     this.selectedElement.classList.remove('selected');
@@ -140,7 +158,7 @@ class HorizontalDatePicker {
             this.checkScrollPosition();
             
             // Update selection during scrolling - use requestAnimationFrame for smoother updates
-            if (this.options.autoSelectOnScroll) {
+            if (this.options.autoSelectOnScroll && !this._isManualSelection) {
                 requestAnimationFrame(() => {
                     this.updateSelectionDuringScroll();
                 });
@@ -149,7 +167,11 @@ class HorizontalDatePicker {
             // Set a timeout to detect when scrolling stops
             scrollTimeout = setTimeout(() => {
                 isScrolling = false;
-                this.handleScrollEnd();
+                
+                // Only handle scroll end if not in manual selection mode
+                if (!this._isManualSelection) {
+                    this.handleScrollEnd();
+                }
             }, 150);
         }, { passive: true }); // Add passive flag for better performance
     }
@@ -388,7 +410,7 @@ class HorizontalDatePicker {
         return dateItem;
     }
     
-    selectDate(dateItem) {
+    selectDate(dateItem, isManualSelection = false) {
         // Check if date is within min/max range, but only if they are set
         const dateToSelect = this.parseDate(dateItem.dataset.date);
         
@@ -397,6 +419,12 @@ class HorizontalDatePicker {
             return; // Don't select dates outside the allowed range
         }
         
+        // If we're already selecting this date and it's not a manual selection, skip
+        if (this.selectedElement === dateItem && !isManualSelection) {
+            return;
+        }
+        
+        // Clear any existing selection
         if (this.selectedElement) {
             this.selectedElement.classList.remove('selected');
             // Remove month-year-name from previously selected item
@@ -415,6 +443,7 @@ class HorizontalDatePicker {
             }
         }
         
+        // Mark the new date as selected
         dateItem.classList.add('selected');
         this.selectedElement = dateItem;
         
@@ -437,9 +466,8 @@ class HorizontalDatePicker {
         // First center the selected date to ensure it's visible
         this.scrollToSelectedDate(true);
         
-        // Then call the callback after a short delay to ensure the UI has updated
-        setTimeout(() => {
-            // Call onDateSelect callback if provided
+        // For manual selections, call the callback immediately
+        if (isManualSelection) {
             if (typeof this.options.onDateSelect === 'function') {
                 this.options.onDateSelect(dateToSelect, dateItem.dataset.date);
             }
@@ -452,7 +480,31 @@ class HorizontalDatePicker {
                 }
             });
             this.element.dispatchEvent(event);
-        }, 100);
+        } else {
+            // For auto-selections, use a delay to prevent rapid changes
+            if (this._autoSelectTimeout) {
+                clearTimeout(this._autoSelectTimeout);
+            }
+            
+            this._autoSelectTimeout = setTimeout(() => {
+                // Only trigger if this is still the selected element
+                if (this.selectedElement === dateItem) {
+                    // Call onDateSelect callback if provided
+                    if (typeof this.options.onDateSelect === 'function') {
+                        this.options.onDateSelect(dateToSelect, dateItem.dataset.date);
+                    }
+                    
+                    // Dispatch custom event
+                    const event = new CustomEvent('dateSelected', {
+                        detail: {
+                            date: dateToSelect,
+                            formattedDate: dateItem.dataset.date
+                        }
+                    });
+                    this.element.dispatchEvent(event);
+                }
+            }, 300);
+        }
     }
     
     navigateDates(offset) {
@@ -571,7 +623,7 @@ class HorizontalDatePicker {
     
     // Handle scroll end event
     handleScrollEnd() {
-        if (this.options.autoSelectOnScroll) {
+        if (this.options.autoSelectOnScroll && !this._isManualSelection) {
             // Find the date item closest to the center of the container
             const containerRect = this.dateContainer.getBoundingClientRect();
             const containerCenter = containerRect.left + containerRect.width / 2;
@@ -598,7 +650,7 @@ class HorizontalDatePicker {
                 if (this._isSelecting) return;
                 
                 this._isSelecting = true;
-                this.selectDate(closestItem);
+                this.selectDate(closestItem, false); // false = not manual selection
                 
                 // Reset the selection flag after a delay
                 setTimeout(() => {
