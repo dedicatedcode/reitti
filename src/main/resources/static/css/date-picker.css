@@ -126,6 +126,26 @@
     display: flex;
     justify-content: center;
     margin-bottom: 8px;
+    position: relative;
+}
+
+.today-button {
+    position: absolute;
+    left: 10px;
+    padding: 4px 12px;
+    background-color: rgba(74, 137, 220, 0.8);
+    color: white;
+    border-radius: 16px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.today-button:hover {
+    background-color: rgba(74, 137, 220, 1);
 }
 
 .year-item {

@@ -18,6 +18,7 @@ class HorizontalDatePicker {
             showYearRow: true, // Option to show year selection row
             yearsToShow: 3, // Number of years to show in the year row
             allowFutureDates: true, // Option to allow selection of future dates
+            showTodayButton: false, // Option to show a "Today" button
             ...options
         };
         
@@ -710,6 +711,17 @@ class HorizontalDatePicker {
             const yearRow = document.createElement('div');
             yearRow.className = 'year-row';
             
+            // Add Today button if enabled
+            if (this.options.showTodayButton) {
+                const todayButton = document.createElement('div');
+                todayButton.className = 'today-button';
+                todayButton.innerHTML = '<i class="fas fa-calendar-day"></i> Today';
+                todayButton.addEventListener('click', () => {
+                    this.goToToday();
+                });
+                yearRow.appendChild(todayButton);
+            }
+            
             // Calculate how many years to show before and after the selected year
             const yearsToShow = this.options.yearsToShow;
             const halfYears = Math.floor(yearsToShow / 2);
@@ -986,6 +998,37 @@ class HorizontalDatePicker {
             // Center the selected date
             this.scrollToSelectedDate(false);
         }, 0);
+    }
+    
+    // Go to today's date
+    goToToday() {
+        const today = new Date();
+        
+        // Check if future dates are allowed
+        if (!this.options.allowFutureDates) {
+            today.setHours(0, 0, 0, 0);
+        }
+        
+        // Reset daysBeforeToday to default
+        this.options.daysBeforeToday = Math.floor(this.options.daysToShow / 2);
+        
+        // Set date to today
+        this.setDate(today);
+        
+        // Call onDateSelect callback
+        const formattedDate = this.formatDate(today);
+        if (typeof this.options.onDateSelect === 'function') {
+            this.options.onDateSelect(today, formattedDate);
+        }
+        
+        // Dispatch custom event
+        const event = new CustomEvent('dateSelected', {
+            detail: {
+                date: today,
+                formattedDate: formattedDate
+            }
+        });
+        this.element.dispatchEvent(event);
     }
     
     getSelectedDate() {
