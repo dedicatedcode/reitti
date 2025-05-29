@@ -21,6 +21,9 @@ class HorizontalDatePicker {
     }
     
     init() {
+        // Flag to prevent multiple simultaneous selections
+        this._isSelecting = false;
+        
         this.createElements();
         this.populateDates();
         this.attachEventListeners();
@@ -431,22 +434,25 @@ class HorizontalDatePicker {
         
         this.options.selectedDate = dateToSelect;
         
-        // Call onDateSelect callback if provided
-        if (typeof this.options.onDateSelect === 'function') {
-            this.options.onDateSelect(dateToSelect, dateItem.dataset.date);
-        }
-        
-        // Dispatch custom event
-        const event = new CustomEvent('dateSelected', {
-            detail: {
-                date: dateToSelect,
-                formattedDate: dateItem.dataset.date
-            }
-        });
-        this.element.dispatchEvent(event);
-        
-        // Center the selected date
+        // First center the selected date to ensure it's visible
         this.scrollToSelectedDate(true);
+        
+        // Then call the callback after a short delay to ensure the UI has updated
+        setTimeout(() => {
+            // Call onDateSelect callback if provided
+            if (typeof this.options.onDateSelect === 'function') {
+                this.options.onDateSelect(dateToSelect, dateItem.dataset.date);
+            }
+            
+            // Dispatch custom event
+            const event = new CustomEvent('dateSelected', {
+                detail: {
+                    date: dateToSelect,
+                    formattedDate: dateItem.dataset.date
+                }
+            });
+            this.element.dispatchEvent(event);
+        }, 100);
     }
     
     navigateDates(offset) {
@@ -588,10 +594,16 @@ class HorizontalDatePicker {
             
             // Select the closest date
             if (closestItem) {
+                // First ensure we're not in the middle of another selection
+                if (this._isSelecting) return;
+                
+                this._isSelecting = true;
                 this.selectDate(closestItem);
                 
-                // Center the selected date
-                this.scrollToSelectedDate(true);
+                // Reset the selection flag after a delay
+                setTimeout(() => {
+                    this._isSelecting = false;
+                }, 200);
             }
         }
     }
