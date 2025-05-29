@@ -77,38 +77,13 @@ class HorizontalDatePicker {
                 continue;
             }
             
-            const dateItem = document.createElement('div');
-            dateItem.className = 'date-item';
-            dateItem.dataset.date = this.formatDate(date);
-            
-            // Check if this date is selected
-            if (this.isSameDay(date, this.options.selectedDate)) {
-                dateItem.classList.add('selected');
-                this.selectedElement = dateItem;
-            }
-            
-            // Add day name (Mon, Tue, etc)
-            const dayName = document.createElement('span');
-            dayName.className = 'day-name';
-            dayName.textContent = this.getDayName(date);
-            dateItem.appendChild(dayName);
-            
-            // Add day number
-            const dayNumber = document.createElement('span');
-            dayNumber.className = 'day-number';
-            dayNumber.textContent = date.getDate();
-            dateItem.appendChild(dayNumber);
-            
-            // Add month name for first day of month or first day in view
-            if (date.getDate() === 1 || i === 0) {
-                const monthName = document.createElement('span');
-                monthName.className = 'month-name';
-                monthName.textContent = this.getMonthName(date);
-                dateItem.appendChild(monthName);
-            }
-            
+            const dateItem = this.createDateElement(date);
             this.dateContainer.appendChild(dateItem);
         }
+        
+        // Add extra dates at both ends for continuous scrolling
+        this.addMoreDatesAtStart();
+        this.addMoreDatesAtEnd();
     }
     
     attachEventListeners() {
@@ -137,11 +112,128 @@ class HorizontalDatePicker {
             // Clear the previous timeout
             clearTimeout(scrollTimeout);
             
+            // Check if we need to add more dates
+            this.checkScrollPosition();
+            
             // Set a timeout to detect when scrolling stops
             scrollTimeout = setTimeout(() => {
                 this.handleScrollEnd();
             }, 150);
         });
+    }
+    
+    // Check scroll position and add more dates if needed
+    checkScrollPosition() {
+        const container = this.dateContainer;
+        const scrollLeft = container.scrollLeft;
+        const scrollWidth = container.scrollWidth;
+        const clientWidth = container.clientWidth;
+        
+        // If we're near the start, add more dates at the beginning
+        if (scrollLeft < clientWidth * 0.2) {
+            this.addMoreDatesAtStart();
+        }
+        
+        // If we're near the end, add more dates at the end
+        if (scrollLeft + clientWidth > scrollWidth - clientWidth * 0.2) {
+            this.addMoreDatesAtEnd();
+        }
+    }
+    
+    // Add more dates at the beginning of the container
+    addMoreDatesAtStart() {
+        // Get the first date currently displayed
+        const firstDateElement = this.dateContainer.firstElementChild;
+        if (!firstDateElement) return;
+        
+        const firstDate = this.parseDate(firstDateElement.dataset.date);
+        const currentScrollPosition = this.dateContainer.scrollLeft;
+        const currentFirstElementWidth = firstDateElement.offsetWidth;
+        
+        // Add 7 more days before the current first date
+        const fragment = document.createDocumentFragment();
+        for (let i = 7; i > 0; i--) {
+            const date = new Date(firstDate);
+            date.setDate(date.getDate() - i);
+            
+            // Skip dates outside of min/max range if specified
+            if ((this.options.minDate && date < new Date(this.options.minDate))) {
+                continue;
+            }
+            
+            const dateItem = this.createDateElement(date);
+            fragment.appendChild(dateItem);
+        }
+        
+        // Insert at the beginning
+        if (fragment.children && fragment.children.length > 0) {
+            this.dateContainer.insertBefore(fragment, this.dateContainer.firstChild);
+            
+            // Adjust scroll position to keep the same dates visible
+            this.dateContainer.scrollLeft = currentScrollPosition + (firstDateElement.offsetWidth * 7);
+        }
+    }
+    
+    // Add more dates at the end of the container
+    addMoreDatesAtEnd() {
+        // Get the last date currently displayed
+        const lastDateElement = this.dateContainer.lastElementChild;
+        if (!lastDateElement) return;
+        
+        const lastDate = this.parseDate(lastDateElement.dataset.date);
+        
+        // Add 7 more days after the current last date
+        const fragment = document.createDocumentFragment();
+        for (let i = 1; i <= 7; i++) {
+            const date = new Date(lastDate);
+            date.setDate(date.getDate() + i);
+            
+            // Skip dates outside of min/max range if specified
+            if ((this.options.maxDate && date > new Date(this.options.maxDate))) {
+                continue;
+            }
+            
+            const dateItem = this.createDateElement(date);
+            fragment.appendChild(dateItem);
+        }
+        
+        // Append at the end
+        this.dateContainer.appendChild(fragment);
+    }
+    
+    // Create a date element
+    createDateElement(date) {
+        const dateItem = document.createElement('div');
+        dateItem.className = 'date-item';
+        dateItem.dataset.date = this.formatDate(date);
+        
+        // Check if this date is selected
+        if (this.isSameDay(date, this.options.selectedDate)) {
+            dateItem.classList.add('selected');
+            this.selectedElement = dateItem;
+        }
+        
+        // Add day name (Mon, Tue, etc)
+        const dayName = document.createElement('span');
+        dayName.className = 'day-name';
+        dayName.textContent = this.getDayName(date);
+        dateItem.appendChild(dayName);
+        
+        // Add day number
+        const dayNumber = document.createElement('span');
+        dayNumber.className = 'day-number';
+        dayNumber.textContent = date.getDate();
+        dateItem.appendChild(dayNumber);
+        
+        // Add month name for first day of month or first day in view
+        if (date.getDate() === 1) {
+            const monthName = document.createElement('span');
+            monthName.className = 'month-name';
+            monthName.textContent = this.getMonthName(date);
+            dateItem.appendChild(monthName);
+        }
+        
+        return dateItem;
     }
     
     selectDate(dateItem) {
@@ -219,38 +311,13 @@ class HorizontalDatePicker {
                 continue;
             }
             
-            const dateItem = document.createElement('div');
-            dateItem.className = 'date-item';
-            dateItem.dataset.date = this.formatDate(date);
-            
-            // Check if this date is selected
-            if (this.isSameDay(date, this.options.selectedDate)) {
-                dateItem.classList.add('selected');
-                this.selectedElement = dateItem;
-            }
-            
-            // Add day name (Mon, Tue, etc)
-            const dayName = document.createElement('span');
-            dayName.className = 'day-name';
-            dayName.textContent = this.getDayName(date);
-            dateItem.appendChild(dayName);
-            
-            // Add day number
-            const dayNumber = document.createElement('span');
-            dayNumber.className = 'day-number';
-            dayNumber.textContent = date.getDate();
-            dateItem.appendChild(dayNumber);
-            
-            // Add month name for first day of month or first day in view
-            if (date.getDate() === 1 || i === 0) {
-                const monthName = document.createElement('span');
-                monthName.className = 'month-name';
-                monthName.textContent = this.getMonthName(date);
-                dateItem.appendChild(monthName);
-            }
-            
+            const dateItem = this.createDateElement(date);
             this.dateContainer.appendChild(dateItem);
         }
+        
+        // Add extra dates at both ends for continuous scrolling
+        this.addMoreDatesAtStart();
+        this.addMoreDatesAtEnd();
         
         // Scroll to the selected date if it's visible, otherwise to the middle
         if (this.selectedElement) {
