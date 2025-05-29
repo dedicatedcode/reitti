@@ -108,18 +108,68 @@ class HorizontalDatePicker {
         
         // Scroll event handling
         let scrollTimeout;
+        let isScrolling = false;
+        
         this.dateContainer.addEventListener('scroll', () => {
+            // If this is the start of scrolling, deselect current date
+            if (!isScrolling && this.options.autoSelectOnScroll) {
+                isScrolling = true;
+                if (this.selectedElement) {
+                    this.selectedElement.classList.remove('selected');
+                }
+            }
+            
             // Clear the previous timeout
             clearTimeout(scrollTimeout);
             
             // Check if we need to add more dates
             this.checkScrollPosition();
             
+            // Update selection during scrolling
+            if (this.options.autoSelectOnScroll) {
+                this.updateSelectionDuringScroll();
+            }
+            
             // Set a timeout to detect when scrolling stops
             scrollTimeout = setTimeout(() => {
+                isScrolling = false;
                 this.handleScrollEnd();
             }, 150);
         });
+    }
+    
+    // Update selection during scrolling
+    updateSelectionDuringScroll() {
+        // Find the date item closest to the center of the container
+        const containerRect = this.dateContainer.getBoundingClientRect();
+        const containerCenter = containerRect.left + containerRect.width / 2;
+        
+        let closestItem = null;
+        let closestDistance = Infinity;
+        
+        // Find the closest date item to the center
+        const dateItems = this.dateContainer.querySelectorAll('.date-item');
+        dateItems.forEach(item => {
+            const itemRect = item.getBoundingClientRect();
+            const itemCenter = itemRect.left + itemRect.width / 2;
+            const distance = Math.abs(containerCenter - itemCenter);
+            
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestItem = item;
+            }
+        });
+        
+        // Highlight the closest date without fully selecting it
+        if (closestItem) {
+            dateItems.forEach(item => {
+                if (item === closestItem) {
+                    item.classList.add('selected');
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+        }
     }
     
     // Check scroll position and add more dates if needed
@@ -148,10 +198,11 @@ class HorizontalDatePicker {
         
         const firstDate = this.parseDate(firstDateElement.dataset.date);
         const currentScrollPosition = this.dateContainer.scrollLeft;
-        const currentFirstElementWidth = firstDateElement.offsetWidth;
         
         // Add 7 more days before the current first date
         const fragment = document.createDocumentFragment();
+        const newDates = [];
+        
         for (let i = 7; i > 0; i--) {
             const date = new Date(firstDate);
             date.setDate(date.getDate() - i);
@@ -163,14 +214,21 @@ class HorizontalDatePicker {
             
             const dateItem = this.createDateElement(date);
             fragment.appendChild(dateItem);
+            newDates.push(dateItem);
         }
         
         // Insert at the beginning
-        if (fragment.children && fragment.children.length > 0) {
+        if (fragment.childNodes && fragment.childNodes.length > 0) {
             this.dateContainer.insertBefore(fragment, this.dateContainer.firstChild);
             
+            // Calculate the width of added elements
+            let addedWidth = 0;
+            newDates.forEach(item => {
+                addedWidth += item.offsetWidth + 8; // 8px for margins
+            });
+            
             // Adjust scroll position to keep the same dates visible
-            this.dateContainer.scrollLeft = currentScrollPosition + (firstDateElement.offsetWidth * 7);
+            this.dateContainer.scrollLeft = currentScrollPosition + addedWidth;
         }
     }
     
@@ -267,6 +325,9 @@ class HorizontalDatePicker {
             }
         });
         this.element.dispatchEvent(event);
+        
+        // Center the selected date
+        this.scrollToSelectedDate(true);
     }
     
     navigateDates(offset) {
@@ -397,9 +458,12 @@ class HorizontalDatePicker {
                 }
             });
             
-            // Select the closest date if it's not already selected
-            if (closestItem && !closestItem.classList.contains('selected')) {
+            // Select the closest date
+            if (closestItem) {
                 this.selectDate(closestItem);
+                
+                // Center the selected date
+                this.scrollToSelectedDate(true);
             }
         }
     }
@@ -433,7 +497,26 @@ class HorizontalDatePicker {
         }
         
         this.populateDates();
-        this.scrollToSelectedDate(true);
+        
+        // Find and mark the selected date element
+        setTimeout(() => {
+            const dateItems = this.dateContainer.querySelectorAll('.date-item');
+            const formattedDate = this.formatDate(newDate);
+            
+            for (const item of dateItems) {
+                if (item.dataset.date === formattedDate) {
+                    if (this.selectedElement) {
+                        this.selectedElement.classList.remove('selected');
+                    }
+                    item.classList.add('selected');
+                    this.selectedElement = item;
+                    break;
+                }
+            }
+            
+            // Center the selected date
+            this.scrollToSelectedDate(false);
+        }, 0);
     }
     
     getSelectedDate() {
