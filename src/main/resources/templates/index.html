@@ -191,7 +191,6 @@
             <button id="prev-day">
                 <i class="fas fa-arrow-left"></i>
             </button>
-            <span id="date-display" class="date-label"></span>
             <input type="hidden" id="date-picker" name="selectedDate">
             <button id="next-day">
                 <i class="fas fa-arrow-right"></i>
@@ -232,15 +231,6 @@
         const formattedDate = initialDate || today.toISOString().split('T')[0]; // YYYY-MM-DD format
         document.getElementById('date-picker').value = formattedDate;
         
-        // Update the date display with a formatted date
-        function updateDateDisplay(dateString) {
-            const date = new Date(dateString);
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            document.getElementById('date-display').textContent = date.toLocaleDateString(undefined, options);
-        }
-        
-        // Initialize date display
-        updateDateDisplay(formattedDate);
         
         const dateDisplay = document.getElementById('date-display');
 
@@ -262,8 +252,6 @@
             // Update URL with new date
             updateUrlWithDate(newDate);
             
-            // Update the date display
-            updateDateDisplay(newDate);
 
             // Trigger HTMX request
             htmx.trigger(datePicker, 'change');
@@ -281,8 +269,6 @@
             // Update URL with new date
             updateUrlWithDate(newDate);
             
-            // Update the date display
-            updateDateDisplay(newDate);
 
             // Trigger HTMX request
             htmx.trigger(datePicker, 'change');
