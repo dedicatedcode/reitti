@@ -254,6 +254,14 @@
             font-size: 24px;
             cursor: pointer;
         }
+
+
+        .date-item.selected {
+            background-color: unset;
+            color: wheat;
+            transform: scale(1.05);
+            box-shadow: unset;
+        }
     </style>
 </head>
 <body>
@@ -869,13 +877,13 @@
             onDateSelect: (date, formattedDate) => {
                 // Update hidden date picker value
                 document.getElementById('date-picker').value = formattedDate;
-                
-                // Update URL
-                updateUrlWithDate(formattedDate);
-                
-                // Update date display
-                updateDateDisplay(formattedDate);
-                
+                //
+                // // Update URL
+                // updateUrlWithDate(formattedDate);
+                //
+                // // Update date display
+                // updateDateDisplay(formattedDate);
+                //
                 // Load timeline data
                 loadTimelineData(formattedDate);
             }

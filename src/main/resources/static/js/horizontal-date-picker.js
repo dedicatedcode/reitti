@@ -182,20 +182,10 @@ class HorizontalDatePicker {
                         // Remove month-name if it exists to avoid duplication
                         const monthNameEl = item.querySelector('.month-name');
                         if (monthNameEl) {
-                            monthNameEl.style.transition = 'opacity 0.2s ease';
-                            monthNameEl.style.opacity = '0';
-                            setTimeout(() => {
-                                if (item.contains(monthNameEl)) {
-                                    item.removeChild(monthNameEl);
-                                }
-                            }, 200);
+                            if (item.contains(monthNameEl)) {
+                                item.removeChild(monthNameEl);
+                            }
                         }
-                        
-                        // Animate the month-year-name appearance
-                        setTimeout(() => {
-                            monthYearName.style.transition = 'opacity 0.3s ease';
-                            monthYearName.style.opacity = '1';
-                        }, 10);
                     }
                 } else {
                     // Add a smooth transition when removing the selected class
@@ -207,9 +197,6 @@ class HorizontalDatePicker {
                     // Remove month-year-name from non-selected items with fade-out effect
                     const monthYearEl = item.querySelector('.month-year-name');
                     if (monthYearEl) {
-                        monthYearEl.style.transition = 'opacity 0.2s ease';
-                        monthYearEl.style.opacity = '0';
-                        setTimeout(() => {
                             if (item.contains(monthYearEl)) {
                                 item.removeChild(monthYearEl);
                             }
@@ -220,15 +207,9 @@ class HorizontalDatePicker {
                                 const monthName = document.createElement('span');
                                 monthName.className = 'month-name';
                                 monthName.textContent = this.getMonthName(date);
-                                monthName.style.opacity = '0';
+                                monthName.style.opacity = '1';
                                 item.appendChild(monthName);
-                                
-                                setTimeout(() => {
-                                    monthName.style.transition = 'opacity 0.3s ease';
-                                    monthName.style.opacity = '1';
-                                }, 10);
                             }
-                        }, 200);
                     }
                 }
             });

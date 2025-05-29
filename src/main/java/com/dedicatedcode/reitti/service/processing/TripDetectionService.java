@@ -39,7 +39,7 @@ public class TripDetectionService {
     }
     
     @Transactional
-    @RabbitListener(queues = RabbitMQConfig.DETECT_TRIP_QUEUE)
+    @RabbitListener(queues = RabbitMQConfig.DETECT_TRIP_QUEUE, concurrency = "1-16")
     public void detectTripsForUser(MergeVisitEvent event) {
         User user = this.userRepository.findById(event.getUserId()).orElseThrow(() -> new IllegalArgumentException("Unknown user id: " + event.getUserId()));
         logger.info("Detecting trips for user: {}", user.getUsername());
