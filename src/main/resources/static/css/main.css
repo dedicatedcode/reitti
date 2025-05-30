@@ -1,7 +1,14 @@
 :root {
     --color-highlight: wheat;
     --color-background-dark: #3b3b3b;
+    --color-background-dark-light: #5c5c5c;
     --color-text-white: #e3e3e3;
+}
+
+input:focus{
+    outline: 0;
+    /* some people use shadows too */
+    box-shadow: none;
 }
 
 body {
@@ -37,6 +44,15 @@ body {
     overflow-y: auto;
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     position: relative;
+}
+
+.settings-content input {
+    color: var(--color-highlight);
+    background: var(--color-background-dark-light);
+}
+
+.settings-content input:focus {
+    border: 2px solid var(--color-highlight);
 }
 
 .close-settings {
@@ -83,6 +99,15 @@ body {
     display: block;
 }
 
+.settings-section .btn {
+    border: 1px solid;
+}
+
+.btn.btn-danger {
+    background: #995353;
+    font-weight: bolder;
+}
+
 .alert {
     padding: 10px 15px;
     margin-bottom: 15px;
@@ -123,6 +148,9 @@ table {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 20px;
+    color: var(--color-text-white);
+    background-color: var(--color-background-dark-light);
+
 }
 
 th, td {
@@ -131,12 +159,9 @@ th, td {
     border-bottom: 1px solid #ddd;
 }
 
-th {
-    background-color: #f5f5f5;
-}
-
 tr:hover {
-    background-color: #f9f9f9;
+    color: var(--color-highlight);
+    background-color: var(--color-background-dark-light);
 }
 
 .queue-status {
@@ -146,10 +171,11 @@ tr:hover {
 }
 
 .queue-card {
-    background-color: white;
+    background-color: var(--color-background-dark);
     border-radius: 8px;
     padding: 15px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid var(--color-highlight);
+    color: var(--color-text-white);
     flex: 1;
     min-width: 200px;
 }
@@ -166,7 +192,6 @@ tr:hover {
 
 .queue-time {
     margin-top: 10px;
-    color: #666;
 }
 
 .progress-bar {
@@ -193,15 +218,16 @@ tr:hover {
 }
 
 .place-card {
-    background-color: white;
+    background-color: var(--color-background-dark);
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     overflow: hidden;
+    border: 1px solid var(--color-highlight);
+    color: var(--color-text-white);
 }
 
 .place-map {
     height: 150px;
-    background-color: #f0f0f0;
     width: 100%;
     border-radius: 8px 8px 0 0;
 }
@@ -213,7 +239,6 @@ tr:hover {
 .place-info {
     margin: 15px 0;
     font-size: 0.9em;
-    color: #555;
 }
 
 .place-info div {

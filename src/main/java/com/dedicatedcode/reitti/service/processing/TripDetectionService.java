@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class TripDetectionService {
@@ -41,16 +42,21 @@ public class TripDetectionService {
     @Transactional
     @RabbitListener(queues = RabbitMQConfig.DETECT_TRIP_QUEUE, concurrency = "1-16")
     public void detectTripsForUser(MergeVisitEvent event) {
-        User user = this.userRepository.findById(event.getUserId()).orElseThrow(() -> new IllegalArgumentException("Unknown user id: " + event.getUserId()));
-        logger.info("Detecting trips for user: {}", user.getUsername());
+        Optional<User> user = this.userRepository.findById(event.getUserId());
+
+        if (user.isEmpty()) {
+            logger.warn("User not found for ID: {}", event.getUserId());
+            return;
+        }
+        logger.info("Detecting trips for user: {}", user.get().getUsername());
         // Get all processed visits for the user, sorted by start time
         List<ProcessedVisit> visits;
         if (event.getStartTime() == null || event.getEndTime() == null) {
-            visits = processedVisitRepository.findByUser(user);
+            visits = processedVisitRepository.findByUser(user.orElse(null));
         } else {
-            visits = processedVisitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user, Instant.ofEpochMilli(event.getStartTime()), Instant.ofEpochMilli(event.getEndTime()));
+            visits = processedVisitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user.orElse(null), Instant.ofEpochMilli(event.getStartTime()), Instant.ofEpochMilli(event.getEndTime()));
         }
-        findDetectedTrips(user, visits);
+        findDetectedTrips(user.orElse(null), visits);
     }
 
     private List<Trip> findDetectedTrips(User user, List<ProcessedVisit> visits) {

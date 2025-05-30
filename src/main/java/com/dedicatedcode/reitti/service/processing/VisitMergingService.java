@@ -51,7 +51,12 @@ public class VisitMergingService {
     @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE)
     @Transactional
     public void mergeVisits(MergeVisitEvent event) {
-        processAndMergeVisits(userRepository.findById(event.getUserId()).orElseThrow(), event.getStartTime(), event.getEndTime());
+        Optional<User> user = userRepository.findById(event.getUserId());
+        if (user.isEmpty()) {
+            logger.warn("User not found for ID: {}", event.getUserId());
+            return;
+        }
+        processAndMergeVisits(user.get(), event.getStartTime(), event.getEndTime());
     }
 
     private List<ProcessedVisit> processAndMergeVisits(User user, Long startTime, Long endTime) {

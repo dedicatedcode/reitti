@@ -17,10 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class TripMergingService {
@@ -43,19 +40,23 @@ public class TripMergingService {
     @Transactional
     @RabbitListener(queues = RabbitMQConfig.MERGE_TRIP_QUEUE)
     public void mergeDuplicateTripsForUser(MergeVisitEvent event) {
-        User user = this.userRepository.findById(event.getUserId()).orElseThrow(() -> new IllegalArgumentException("Unknown user id: " + event.getUserId()));
-        logger.info("Merging duplicate trips for user: {}", user.getUsername());
+        Optional<User> user = this.userRepository.findById(event.getUserId());
+        if (user.isEmpty()) {
+            logger.warn("User {} not found. Skipping duplicate trip merging.", event.getUserId());
+            return;
+        }
+        logger.info("Merging duplicate trips for user: {}", user.get().getUsername());
 
         // Get all trips for the user
         List<Trip> allTrips;
         if (event.getStartTime() == null || event.getEndTime() == null) {
-            allTrips = tripRepository.findByUser(user);
+            allTrips = tripRepository.findByUser(user.orElse(null));
         } else {
-            allTrips = tripRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user, Instant.ofEpochMilli(event.getStartTime()), Instant.ofEpochMilli(event.getEndTime()));
+            allTrips = tripRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user.orElse(null), Instant.ofEpochMilli(event.getStartTime()), Instant.ofEpochMilli(event.getEndTime()));
         }
 
-        mergeTrips(user, allTrips, true);
-        mergeTrips(user, allTrips, false);
+        mergeTrips(user.orElse(null), allTrips, true);
+        mergeTrips(user.orElse(null), allTrips, false);
 
     }
 
