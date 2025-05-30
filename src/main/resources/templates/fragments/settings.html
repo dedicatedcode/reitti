@@ -206,16 +206,19 @@
             <form id="gpx-upload-form"
                   hx-post="/settings/import/gpx"
                   hx-target="#file-upload"
-                  hx-encoding="multipart/form-data"
-                  hx-indicator=".htmx-indicator">
+                  hx-encoding="multipart/form-data">
                 <div class="form-group">
                     <input type="file" name="file" accept=".gpx" required>
-                    <div class="htmx-indicator">
-                        <div class="loading-spinner"></div>
-                    </div>
                 </div>
                 <button type="submit" class="btn">Upload GPX File</button>
             </form>
+            <progress id='progress-gpx' value='0' max='100' style="display: none"></progress>
+            <script>
+                htmx.on('#gpx-upload-form', 'htmx:xhr:progress', function(evt) {
+                    htmx.find('#progress-gpx').setAttribute('value', evt.detail.loaded/evt.detail.total * 100)
+                    htmx.find('#progress-gpx').setAttribute('style', null)
+                });
+            </script>
         </div>
         
         <div class="upload-option">
@@ -229,23 +232,20 @@
                   hx-post="/settings/import/google-takeout"
                   hx-target="#file-upload"
                   hx-swap="innerHTML"
-                  hx-encoding="multipart/form-data"
-                  hx-indicator=".htmx-indicator">
+                  hx-encoding="multipart/form-data">
                 <div class="form-group">
                     <input type="file" name="file" accept=".json" required>
-                    <div class="htmx-indicator">
-                        <div class="loading-spinner"></div>
-                    </div>
-
                 </div>
                 <button type="submit" class="btn">Upload Google Takeout</button>
             </form>
+            <progress id='progress-google' value='0' max='100'  style="display: none"></progress>
+            <script>
+                htmx.on('#takeout-upload-form', 'htmx:xhr:progress', function(evt) {
+                    htmx.find('#progress-google').setAttribute('value', evt.detail.loaded/evt.detail.total * 100)
+                    htmx.find('#progress-google').setAttribute('style', null)
+                });
+            </script>
         </div>
-    </div>
-    
-    <div class="htmx-indicator" style="display: none;">
-        <div class="loading-spinner"></div>
-        <p>Uploading file, please wait...</p>
     </div>
 </div>
 

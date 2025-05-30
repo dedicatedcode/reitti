@@ -4,18 +4,17 @@ import com.dedicatedcode.reitti.dto.TimelineResponse;
 import com.dedicatedcode.reitti.model.ApiToken;
 import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.model.User;
-import com.dedicatedcode.reitti.service.ApiTokenService;
-import com.dedicatedcode.reitti.service.ImportHandler;
-import com.dedicatedcode.reitti.service.PlaceService;
-import com.dedicatedcode.reitti.service.QueueStatsService;
-import com.dedicatedcode.reitti.service.UserService;
+import com.dedicatedcode.reitti.service.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -231,7 +230,7 @@ public class SettingsController {
     }
     
     @PostMapping("/import/gpx")
-    public String importGpx(@RequestParam("file") MultipartFile file, 
+    public String importGpx(@RequestParam("file") MultipartFile file,
                            Authentication authentication,
                            Model model) {
         String username = authentication.getName();

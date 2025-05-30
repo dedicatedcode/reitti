@@ -447,3 +447,23 @@ button:hover {
     z-index: 50;
     box-shadow: unset;
 }
+
+.upload-options progress {
+    display: block;
+    width: 100%;
+    margin-top: 1rem;
+}
+
+
+input[type=file]::file-selector-button {
+    background-color: var(--color-background-dark);
+    color: var(--color-text-white);
+    border: 1px solid var(--color-highlight);
+    padding: 10px 15px;
+    margin-right: 20px;
+    transition: .5s;
+}
+
+input[type=file]::file-selector-button:hover {
+    background-color: var(--color-background-dark-light);;
+}
