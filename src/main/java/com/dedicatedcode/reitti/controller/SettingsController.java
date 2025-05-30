@@ -108,39 +108,41 @@ public class SettingsController {
     }
 
     @PostMapping("/tokens")
-    @ResponseBody
-    public Map<String, Object> createToken(Authentication authentication, @RequestParam String name) {
-        Map<String, Object> response = new HashMap<>();
+    public String createToken(Authentication authentication, @RequestParam String name, Model model) {
         User user = userService.getUserByUsername(authentication.getName());
         
         try {
             ApiToken token = apiTokenService.createToken(user, name);
-            response.put("message", "Token created successfully");
-            response.put("success", true);
-            response.put("token", token);
+            model.addAttribute("successMessage", "Token created successfully");
         } catch (Exception e) {
-            response.put("message", "Error creating token: " + e.getMessage());
-            response.put("success", false);
+            model.addAttribute("errorMessage", "Error creating token: " + e.getMessage());
         }
         
-        return response;
+        // Get updated token list and add to model
+        List<ApiToken> tokens = apiTokenService.getTokensForUser(user);
+        model.addAttribute("tokens", tokens);
+        
+        // Return the api-tokens-content fragment
+        return "fragments/settings :: api-tokens-content";
     }
     
     @PostMapping("/tokens/{tokenId}/delete")
-    @ResponseBody
-    public Map<String, Object> deleteToken(@PathVariable Long tokenId) {
-        Map<String, Object> response = new HashMap<>();
+    public String deleteToken(@PathVariable Long tokenId, Authentication authentication, Model model) {
+        User user = userService.getUserByUsername(authentication.getName());
         
         try {
             apiTokenService.deleteToken(tokenId);
-            response.put("message", "Token deleted successfully");
-            response.put("success", true);
+            model.addAttribute("successMessage", "Token deleted successfully");
         } catch (Exception e) {
-            response.put("message", "Error deleting token: " + e.getMessage());
-            response.put("success", false);
+            model.addAttribute("errorMessage", "Error deleting token: " + e.getMessage());
         }
         
-        return response;
+        // Get updated token list and add to model
+        List<ApiToken> tokens = apiTokenService.getTokensForUser(user);
+        model.addAttribute("tokens", tokens);
+        
+        // Return the api-tokens-content fragment
+        return "fragments/settings :: api-tokens-content";
     }
     
     @PostMapping("/users/{userId}/delete")

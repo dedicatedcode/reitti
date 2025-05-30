@@ -6,9 +6,14 @@
 <div th:fragment="api-tokens-content">
     <h2>API Tokens</h2>
 
-    <div id="token-message" class="alert" style="display: none;"></div>
+    <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+        <span th:text="${successMessage}">Token created successfully</span>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+        <span th:text="${errorMessage}">Error message</span>
+    </div>
 
-    <form hx-post="/settings/tokens" hx-swap="none" class="token-form" style="margin-bottom: 20px;">
+    <form hx-post="/settings/tokens" hx-target="#api-tokens" hx-swap="innerHTML" class="token-form" style="margin-bottom: 20px;">
         <div class="form-group">
             <label for="tokenName">Token Name</label>
             <input type="text" id="tokenName" name="name" required placeholder="Enter a name for this token">
@@ -47,30 +52,7 @@
         </tbody>
     </table>
     
-    <script>
-        // Handle token form submission
-        document.querySelector('.token-form').addEventListener('htmx:afterRequest', function(event) {
-            if (event.detail.successful) {
-                // Clear the form
-                document.getElementById('tokenName').value = '';
-                
-                // Show success message
-                const data = JSON.parse(event.detail.xhr.responseText);
-                const messageEl = document.getElementById('token-message');
-                messageEl.textContent = data.message;
-                messageEl.className = data.success ? 'alert alert-success' : 'alert alert-danger';
-                messageEl.style.display = 'block';
-                
-                // Hide message after 5 seconds
-                setTimeout(() => {
-                    messageEl.style.display = 'none';
-                }, 5000);
-                
-                // Refresh the tokens list
-                htmx.trigger('#api-tokens', 'revealed');
-            }
-        });
-    </script>
+    <!-- No script needed here anymore as the form will directly update the content -->
 </div>
 
 <!-- Users Content Fragment -->
