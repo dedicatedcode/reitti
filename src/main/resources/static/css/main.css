@@ -1,3 +1,9 @@
+:root {
+    --color-highlight: wheat;
+    --color-background-dark: #3b3b3b;
+    --color-text-white: #e3e3e3;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     margin: 0;
@@ -20,7 +26,8 @@ body {
 }
 
 .settings-content {
-    background-color: #f5f5f5;
+    background-color: var(--color-background-dark);
+    color: var(--color-text-white);
     margin: 5% auto;
     padding: 20px;
     border-radius: 8px;
@@ -60,13 +67,13 @@ body {
 }
 
 .settings-nav-item.active {
-    border-bottom: 3px solid #4a89dc;
+    border-bottom: 3px solid var(--color-highlight);
     font-weight: bold;
 }
 
 .settings-section {
     display: none;
-    background-color: white;
+    background-color: var(--color-background-dark);
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -154,7 +161,7 @@ tr:hover {
 
 .queue-count {
     font-size: 24px;
-    color: #4a89dc;
+    color: var(--color-highlight);
 }
 
 .queue-time {
@@ -172,7 +179,7 @@ tr:hover {
 
 .progress-fill {
     height: 100%;
-    background-color: #4a89dc;
+    background-color: var(--color-highlight);
     width: 0%;
     transition: width 0.5s ease;
 }
@@ -275,7 +282,7 @@ nav {
     top: 0;
     width: 50%;
     bottom: 0;
-    background: #3b3b3b;
+    background: var(--color-background-dark);
     background: linear-gradient(90deg, rgb(17, 17, 17) 0%, rgba(59, 59, 59, 0.49) 76%, rgba(255, 255, 255, 0) 100%);
     z-index: 5;
     overflow-y: auto;
@@ -363,14 +370,14 @@ button:hover {
 }
 
 .month-item.selected {
-    background-color: #4a89dc;
+    background-color: var(--color-highlight);
     color: wheat;
     font-weight: bolder;
     background: unset;
 }
 
 .year-item.selected {
-    background-color: #4a89dc;
+    background-color: var(--color-highlight);
     color: wheat;
     font-weight: bolder;
     background: unset;
