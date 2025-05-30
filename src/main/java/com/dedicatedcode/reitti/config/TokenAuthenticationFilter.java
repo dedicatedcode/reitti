@@ -40,7 +40,13 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
             Optional<User> user = apiTokenService.getUserByToken(authHeader);
 
             if (user.isPresent()) {
-                Authentication authenticationToken = new PreAuthenticatedAuthenticationToken(user, null);
+                User authenticatedUser = user.get();
+                UsernamePasswordAuthenticationToken authenticationToken = 
+                    new UsernamePasswordAuthenticationToken(
+                        authenticatedUser, 
+                        null,
+                        authenticatedUser.getAuthorities()
+                    );
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             } else {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
