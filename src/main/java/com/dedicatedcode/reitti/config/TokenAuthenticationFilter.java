@@ -28,6 +28,12 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         String authHeader = request.getHeader("X-API-Token");
+        if (authHeader == null) {
+            authHeader = request.getHeader("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                authHeader = authHeader.substring(7);
+            }
+        }
 
         if(authHeader != null) {
             Optional<User> user = apiTokenService.getUserByToken(authHeader);
