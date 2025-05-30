@@ -115,8 +115,26 @@ public class SettingsController {
                                   @RequestParam(defaultValue = "0") int page,
                                   Model model) {
         User currentUser = userService.getUserByUsername(authentication.getName());
-        Page<SignificantPlace> places = placeService.getPlacesForUser(currentUser, PageRequest.of(page, 20));
+        Page<SignificantPlace> placesPage = placeService.getPlacesForUser(currentUser, PageRequest.of(page, 20));
+        
+        // Convert to PlaceInfo objects
+        List<TimelineResponse.PlaceInfo> places = placesPage.getContent().stream()
+            .map(place -> new TimelineResponse.PlaceInfo(
+                place.getId(),
+                place.getName(),
+                place.getAddress(),
+                place.getCategory(),
+                place.getLatitudeCentroid(),
+                place.getLongitudeCentroid()
+            ))
+            .collect(Collectors.toList());
+        
+        // Add pagination info to model
+        model.addAttribute("currentPage", placesPage.getNumber());
+        model.addAttribute("totalPages", placesPage.getTotalPages());
         model.addAttribute("places", places);
+        model.addAttribute("isEmpty", places.isEmpty());
+        
         return "fragments/settings :: places-content";
     }
 
