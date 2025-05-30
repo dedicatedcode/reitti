@@ -46,8 +46,7 @@
         </div>
 
         <!-- Places Management Section -->
-        <div id="places-management" class="settings-section" hx-get="/settings/places-content?page=0"
-             hx-trigger="revealed">
+        <div id="places-management" class="settings-section">
             <div class="htmx-indicator">Loading places...</div>
         </div>
 
@@ -135,7 +134,18 @@
         settingsButton.addEventListener('click', function (e) {
             e.preventDefault();
             settingsOverlay.style.display = 'block';
-            // HTMX will automatically load the content
+            // HTMX will automatically load the content for other tabs
+            
+            // For places tab, we need to check if it's active and load content
+            const placesTab = document.querySelector('.settings-nav-item[data-target="places-management"]');
+            const placesSection = document.getElementById('places-management');
+            
+            if (placesSection.classList.contains('active')) {
+                // If places tab is active, load its content
+                placesSection.setAttribute('hx-get', '/settings/places-content?page=0');
+                placesSection.setAttribute('hx-trigger', 'load');
+                htmx.process(placesSection);
+            }
         });
 
         // Close settings overlay
@@ -167,6 +177,14 @@
                     section.classList.remove('active');
                     if (section.id === target) {
                         section.classList.add('active');
+                        
+                        // If this is the places tab, load its content if not already loaded
+                        if (target === 'places-management' && !section.hasAttribute('hx-triggered')) {
+                            section.setAttribute('hx-get', '/settings/places-content?page=0');
+                            section.setAttribute('hx-trigger', 'load');
+                            section.setAttribute('hx-triggered', 'true');
+                            htmx.process(section);
+                        }
                     }
                 });
             });
