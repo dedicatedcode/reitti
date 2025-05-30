@@ -32,6 +32,7 @@
             <div class="settings-nav-item" data-target="user-management">User Management</div>
             <div class="settings-nav-item" data-target="places-management">Places</div>
             <div class="settings-nav-item" data-target="job-status">Job Status</div>
+            <div class="settings-nav-item" data-target="file-upload">Import Data</div>
         </div>
 
         <!-- API Tokens Section -->
@@ -104,6 +105,11 @@
         <div id="job-status" class="settings-section" hx-get="/settings/queue-stats-content"
              hx-trigger="revealed, every 5s">
             <div class="htmx-indicator">Loading queue stats...</div>
+        </div>
+
+        <!-- File Upload Section -->
+        <div id="file-upload" class="settings-section" hx-get="/settings/file-upload-content" hx-trigger="revealed">
+            <div class="htmx-indicator">Loading file upload options...</div>
         </div>
     </div>
 </div>
