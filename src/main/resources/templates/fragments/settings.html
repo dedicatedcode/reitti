@@ -204,7 +204,7 @@
                 tracks, and routes with timestamps that can be processed into your location history.
             </p>
             <form id="gpx-upload-form"
-                  hx-post="/api/v1/import/gpx"
+                  hx-post="/settings/import/gpx"
                   hx-target="#file-upload"
                   hx-encoding="multipart/form-data">
                 <div class="form-group">
@@ -228,7 +228,7 @@
                 your location history with timestamps and activity information.
             </p>
             <form id="takeout-upload-form"
-                  hx-post="/api/v1/import/google-takeout"
+                  hx-post="/settings/import/google-takeout"
                   hx-target="#file-upload"
                   hx-swap="innerHTML"
                   hx-encoding="multipart/form-data" >

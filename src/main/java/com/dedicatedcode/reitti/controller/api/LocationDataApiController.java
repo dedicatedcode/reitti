@@ -3,11 +3,7 @@ package com.dedicatedcode.reitti.controller.api;
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.event.LocationDataEvent;
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.dedicatedcode.reitti.service.ImportHandler;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,35 +16,24 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @RestController
 @RequestMapping("/api/v1")
 public class LocationDataApiController {
     
     private static final Logger logger = LoggerFactory.getLogger(LocationDataApiController.class);
-    private static final int BATCH_SIZE = 100; // Process locations in batches of 100
     
-    private final ObjectMapper objectMapper;
     private final RabbitTemplate rabbitTemplate;
+    private final ImportHandler importHandler;
     
     @Autowired
     public LocationDataApiController(
-            ObjectMapper objectMapper,
-            RabbitTemplate rabbitTemplate) {
-        this.objectMapper = objectMapper;
+            RabbitTemplate rabbitTemplate,
+            ImportHandler importHandler) {
         this.rabbitTemplate = rabbitTemplate;
+        this.importHandler = importHandler;
     }
     
     @PostMapping("/location-data")
@@ -93,140 +78,14 @@ public class LocationDataApiController {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UserDetails user = (UserDetails) authentication.getPrincipal();
-
-        if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "File is empty"));
-        }
         
-        if (!file.getOriginalFilename().endsWith(".json")) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Only JSON files are supported"));
-        }
+        Map<String, Object> result = importHandler.importGoogleTakeout(file, user.getUsername());
         
-        AtomicInteger processedCount = new AtomicInteger(0);
-        
-        try (InputStream inputStream = file.getInputStream()) {
-            // Use Jackson's streaming API to process the file
-            JsonFactory factory = objectMapper.getFactory();
-            JsonParser parser = factory.createParser(inputStream);
-            
-            // Find the "locations" array
-            while (parser.nextToken() != null) {
-                if (parser.getCurrentToken() == JsonToken.FIELD_NAME && 
-                    "locations".equals(parser.getCurrentName())) {
-                    
-                    // Move to the array
-                    parser.nextToken(); // Should be START_ARRAY
-                    
-                    if (parser.getCurrentToken() != JsonToken.START_ARRAY) {
-                        return ResponseEntity.badRequest().body(Map.of("error", "Invalid format: 'locations' is not an array"));
-                    }
-                    
-                    List<LocationDataRequest.LocationPoint> batch = new ArrayList<>(BATCH_SIZE);
-                    
-                    // Process each location in the array
-                    while (parser.nextToken() != JsonToken.END_ARRAY) {
-                        if (parser.getCurrentToken() == JsonToken.START_OBJECT) {
-                            // Parse the location object
-                            JsonNode locationNode = objectMapper.readTree(parser);
-                            
-                            try {
-                                LocationDataRequest.LocationPoint point = convertGoogleTakeoutLocation(locationNode);
-                                if (point != null) {
-                                    batch.add(point);
-                                    processedCount.incrementAndGet();
-                                    
-                                    // Process in batches to avoid memory issues
-                                    if (batch.size() >= BATCH_SIZE) {
-                                        // Create and publish event to RabbitMQ
-                                        LocationDataEvent event = new LocationDataEvent(
-                                                user.getUsername(),
-                                                new ArrayList<>(batch) // Create a copy to avoid reference issues
-                                        );
-                                        
-                                        rabbitTemplate.convertAndSend(
-                                            RabbitMQConfig.EXCHANGE_NAME,
-                                            RabbitMQConfig.LOCATION_DATA_ROUTING_KEY,
-                                            event
-                                        );
-                                        
-                                        logger.info("Queued batch of {} locations for processing", batch.size());
-                                        batch.clear();
-                                    }
-                                }
-                            } catch (Exception e) {
-                                logger.warn("Error processing location entry: {}", e.getMessage());
-                                // Continue with next location
-                            }
-                        }
-                    }
-                    
-                    // Process any remaining locations
-                    if (!batch.isEmpty()) {
-                        // Create and publish event to RabbitMQ
-                        LocationDataEvent event = new LocationDataEvent(
-                                user.getUsername(),
-                                new ArrayList<>(batch) // Create a copy to avoid reference issues
-                        );
-                        
-                        rabbitTemplate.convertAndSend(
-                            RabbitMQConfig.EXCHANGE_NAME,
-                            RabbitMQConfig.LOCATION_DATA_ROUTING_KEY,
-                            event
-                        );
-                        
-                        logger.info("Queued final batch of {} locations for processing", batch.size());
-                    }
-                    
-                    break; // We've processed the locations array, no need to continue
-                }
-            }
-            
-            logger.info("Successfully imported and queued {} location points from Google Takeout for user {}", 
-                    processedCount.get(), user.getUsername());
-            
-            return ResponseEntity.accepted().body(Map.of(
-                    "success", true,
-                    "message", "Successfully queued " + processedCount.get() + " location points for processing",
-                    "pointsReceived", processedCount.get()
-            ));
-            
-        } catch (IOException e) {
-            logger.error("Error processing Google Takeout file", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error processing Google Takeout file: " + e.getMessage()));
-        }
-    }
-    
-    /**
-     * Converts a Google Takeout location entry to our LocationPoint format
-     */
-    private LocationDataRequest.LocationPoint convertGoogleTakeoutLocation(JsonNode locationNode) {
-        // Check if we have the required fields
-        if (!locationNode.has("latitudeE7") || 
-            !locationNode.has("longitudeE7") || 
-            !locationNode.has("timestamp")) {
-            return null;
-        }
-        
-        LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
-        
-        // Convert latitudeE7 and longitudeE7 to standard decimal format
-        // Google stores these as integers with 7 decimal places of precision
-        double latitude = locationNode.get("latitudeE7").asDouble() / 10000000.0;
-        double longitude = locationNode.get("longitudeE7").asDouble() / 10000000.0;
-        
-        point.setLatitude(latitude);
-        point.setLongitude(longitude);
-        point.setTimestamp(locationNode.get("timestamp").asText());
-        
-        // Set accuracy if available
-        if (locationNode.has("accuracy")) {
-            point.setAccuracyMeters(locationNode.get("accuracy").asDouble());
+        if ((Boolean) result.get("success")) {
+            return ResponseEntity.accepted().body(result);
         } else {
-            point.setAccuracyMeters(100.0);
+            return ResponseEntity.badRequest().body(result);
         }
-        
-        return point;
     }
     
     @PostMapping("/import/gpx")
@@ -236,126 +95,12 @@ public class LocationDataApiController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UserDetails user = (UserDetails) authentication.getPrincipal();
         
-        if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "File is empty"));
-        }
+        Map<String, Object> result = importHandler.importGpx(file, user.getUsername());
         
-        if (!file.getOriginalFilename().endsWith(".gpx")) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Only GPX files are supported"));
-        }
-        
-        AtomicInteger processedCount = new AtomicInteger(0);
-        
-        try (InputStream inputStream = file.getInputStream()) {
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder builder = factory.newDocumentBuilder();
-            Document document = builder.parse(inputStream);
-            
-            // Normalize the XML structure
-            document.getDocumentElement().normalize();
-            
-            // Get all track points (trkpt) from the GPX file
-            NodeList trackPoints = document.getElementsByTagName("trkpt");
-            
-            List<LocationDataRequest.LocationPoint> batch = new ArrayList<>(BATCH_SIZE);
-            
-            // Process each track point
-            for (int i = 0; i < trackPoints.getLength(); i++) {
-                Element trackPoint = (Element) trackPoints.item(i);
-                
-                try {
-                    LocationDataRequest.LocationPoint point = convertGpxTrackPoint(trackPoint);
-                    if (point != null) {
-                        batch.add(point);
-                        processedCount.incrementAndGet();
-                        
-                        // Process in batches to avoid memory issues
-                        if (batch.size() >= BATCH_SIZE) {
-                            // Create and publish event to RabbitMQ
-                            LocationDataEvent event = new LocationDataEvent(
-                                    user.getUsername(),
-                                    new ArrayList<>(batch) // Create a copy to avoid reference issues
-                            );
-                            
-                            rabbitTemplate.convertAndSend(
-                                RabbitMQConfig.EXCHANGE_NAME,
-                                RabbitMQConfig.LOCATION_DATA_ROUTING_KEY,
-                                event
-                            );
-                            
-                            logger.info("Queued batch of {} locations for processing", batch.size());
-                            batch.clear();
-                        }
-                    }
-                } catch (Exception e) {
-                    logger.warn("Error processing GPX track point: {}", e.getMessage());
-                    // Continue with next point
-                }
-            }
-            
-            // Process any remaining locations
-            if (!batch.isEmpty()) {
-                // Create and publish event to RabbitMQ
-                LocationDataEvent event = new LocationDataEvent(
-                        user.getUsername(),
-                        new ArrayList<>(batch) // Create a copy to avoid reference issues
-                );
-                
-                rabbitTemplate.convertAndSend(
-                    RabbitMQConfig.EXCHANGE_NAME,
-                    RabbitMQConfig.LOCATION_DATA_ROUTING_KEY,
-                    event
-                );
-                
-                logger.info("Queued final batch of {} locations for processing", batch.size());
-            }
-            
-            logger.info("Successfully imported and queued {} location points from GPX file for user {}", 
-                    processedCount.get(), user.getUsername());
-            
-            return ResponseEntity.accepted().body(Map.of(
-                    "success", true,
-                    "message", "Successfully queued " + processedCount.get() + " location points for processing",
-                    "pointsReceived", processedCount.get()
-            ));
-            
-        } catch (Exception e) {
-            logger.error("Error processing GPX file", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error processing GPX file: " + e.getMessage()));
-        }
-    }
-    
-    /**
-     * Converts a GPX track point to our LocationPoint format
-     */
-    private LocationDataRequest.LocationPoint convertGpxTrackPoint(Element trackPoint) {
-        // Check if we have the required attributes
-        if (!trackPoint.hasAttribute("lat") || !trackPoint.hasAttribute("lon")) {
-            return null;
-        }
-        
-        LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
-        
-        // Get latitude and longitude
-        double latitude = Double.parseDouble(trackPoint.getAttribute("lat"));
-        double longitude = Double.parseDouble(trackPoint.getAttribute("lon"));
-        
-        point.setLatitude(latitude);
-        point.setLongitude(longitude);
-        
-        // Get timestamp from the time element
-        NodeList timeElements = trackPoint.getElementsByTagName("time");
-        if (timeElements.getLength() > 0) {
-            String timeStr = timeElements.item(0).getTextContent();
-            point.setTimestamp(timeStr);
+        if ((Boolean) result.get("success")) {
+            return ResponseEntity.accepted().body(result);
         } else {
-            return null;
+            return ResponseEntity.badRequest().body(result);
         }
-        
-        // Set accuracy - GPX doesn't typically include accuracy, so use a default
-        point.setAccuracyMeters(10.0); // Default accuracy of 10 meters
-        
-        return point;
     }
 }

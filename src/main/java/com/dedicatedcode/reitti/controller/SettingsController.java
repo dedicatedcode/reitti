@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.model.ApiToken;
 import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.service.ApiTokenService;
+import com.dedicatedcode.reitti.service.ImportHandler;
 import com.dedicatedcode.reitti.service.PlaceService;
 import com.dedicatedcode.reitti.service.QueueStatsService;
 import com.dedicatedcode.reitti.service.UserService;
@@ -28,13 +29,16 @@ public class SettingsController {
     private final UserService userService;
     private final QueueStatsService queueStatsService;
     private final PlaceService placeService;
+    private final ImportHandler importHandler;
 
     public SettingsController(ApiTokenService apiTokenService, UserService userService, 
-                             QueueStatsService queueStatsService, PlaceService placeService) {
+                             QueueStatsService queueStatsService, PlaceService placeService,
+                             ImportHandler importHandler) {
         this.apiTokenService = apiTokenService;
         this.userService = userService;
         this.queueStatsService = queueStatsService;
         this.placeService = placeService;
+        this.importHandler = importHandler;
     }
 
     // HTMX endpoints for the settings overlay
@@ -223,6 +227,40 @@ public class SettingsController {
     
     @GetMapping("/file-upload-content")
     public String getDataImportContent() {
+        return "fragments/settings :: file-upload-content";
+    }
+    
+    @PostMapping("/import/gpx")
+    public String importGpx(@RequestParam("file") MultipartFile file, 
+                           Authentication authentication,
+                           Model model) {
+        String username = authentication.getName();
+        
+        Map<String, Object> result = importHandler.importGpx(file, username);
+        
+        if ((Boolean) result.get("success")) {
+            model.addAttribute("uploadSuccessMessage", result.get("message"));
+        } else {
+            model.addAttribute("uploadErrorMessage", result.get("error"));
+        }
+        
+        return "fragments/settings :: file-upload-content";
+    }
+    
+    @PostMapping("/import/google-takeout")
+    public String importGoogleTakeout(@RequestParam("file") MultipartFile file, 
+                                    Authentication authentication,
+                                    Model model) {
+        String username = authentication.getName();
+        
+        Map<String, Object> result = importHandler.importGoogleTakeout(file, username);
+        
+        if ((Boolean) result.get("success")) {
+            model.addAttribute("uploadSuccessMessage", result.get("message"));
+        } else {
+            model.addAttribute("uploadErrorMessage", result.get("error"));
+        }
+        
         return "fragments/settings :: file-upload-content";
     }
 }
