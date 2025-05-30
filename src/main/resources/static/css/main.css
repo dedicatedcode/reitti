@@ -1,0 +1,415 @@
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+}
+
+/* Settings Overlay Styles */
+.settings-overlay {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.7);
+    backdrop-filter: blur(5px);
+}
+
+.settings-content {
+    background-color: #f5f5f5;
+    margin: 5% auto;
+    padding: 20px;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 1200px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    position: relative;
+}
+
+.close-settings {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: -10px;
+}
+
+.close-settings:hover,
+.close-settings:focus {
+    color: black;
+    text-decoration: none;
+}
+
+.settings-nav {
+    display: flex;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #ddd;
+}
+
+.settings-nav-item {
+    padding: 10px 20px;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+}
+
+.settings-nav-item.active {
+    border-bottom: 3px solid #4a89dc;
+    font-weight: bold;
+}
+
+.settings-section {
+    display: none;
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.settings-section.active {
+    display: block;
+}
+
+.alert {
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+input[type="text"], input[type="password"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+th, td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+th {
+    background-color: #f5f5f5;
+}
+
+tr:hover {
+    background-color: #f9f9f9;
+}
+
+.queue-status {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.queue-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    flex: 1;
+    min-width: 200px;
+}
+
+.queue-name {
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.queue-count {
+    font-size: 24px;
+    color: #4a89dc;
+}
+
+.queue-time {
+    margin-top: 10px;
+    color: #666;
+}
+
+.progress-bar {
+    height: 8px;
+    background-color: #e0e0e0;
+    border-radius: 4px;
+    margin-top: 10px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: #4a89dc;
+    width: 0%;
+    transition: width 0.5s ease;
+}
+
+/* Places Management Styles */
+.places-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.place-card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.place-map {
+    height: 150px;
+    background-color: #f0f0f0;
+}
+
+.place-details {
+    padding: 15px;
+}
+
+.place-info {
+    margin: 15px 0;
+    font-size: 0.9em;
+    color: #555;
+}
+
+.place-info div {
+    margin-bottom: 5px;
+}
+
+.pagination-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.pagination-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+header {
+    position: absolute;
+    top: 0;
+    left: 40%;
+    z-index: 10;
+    background: rgba(59, 59, 59, 0.62);
+    backdrop-filter: blur(10px);
+    color: white;
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+nav {
+    display: flex;
+    gap: 20px;
+}
+
+.nav-link {
+    color: white;
+    text-decoration: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+#map {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.timeline::-webkit-scrollbar {
+    display: none;
+}
+
+.timeline {
+    position: absolute;
+    top: 0;
+    width: 50%;
+    bottom: 0;
+    background: #3b3b3b;
+    background: linear-gradient(90deg, rgb(17, 17, 17) 0%, rgba(59, 59, 59, 0.49) 76%, rgba(255, 255, 255, 0) 100%);
+    z-index: 5;
+    overflow-y: auto;
+    pointer-events: none;
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+}
+
+.timeline-container {
+    pointer-events: all;
+    width: 350px;
+    font-family: "Serif";
+    padding-bottom: 250px;
+}
+
+.timeline-entry {
+    color: #bfbfbf;
+    padding: 1rem 2rem;
+    transition: color, padding 0.5s ease-in-out;
+    font-weight: lighter;
+}
+
+.timeline-entry.active {
+    color: #f8f8f8;
+    padding: 1rem 2.5rem;
+    transition: color, padding 0.5s ease-in-out;
+}
+
+.timeline-entry .entry-description {
+    font-family: "Fraunces";
+    font-size: 3rem;
+    transition: font-size 0.5s ease-in-out;
+}
+
+.timeline-entry .entry-icon {
+    padding: 8px;
+}
+
+.timeline-entry .entry-time {
+    padding: 0 32px;
+}
+
+.timeline-entry.active .entry-description {
+    font-family: "Fraunces";
+    font-size: 5rem;
+    transition: font-size 0.5s ease-in-out;
+}
+
+.htmx-request .htmx-indicator {
+    display: inline;
+}
+
+button {
+    background-color: transparent;
+    color: wheat;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #959595;
+}
+
+.timeline-header {
+    display: inline-flex;
+    align-items: baseline;
+    padding: 8px;
+    border-bottom: 1px black;
+    margin-left: 2rem;
+    pointer-events: auto;
+}
+
+.timeline-header {
+    position: sticky;
+    font-size: 1.4rem;
+}
+
+.date-item.selected {
+    background-color: unset;
+    color: wheat;
+    transform: scale(1.05);
+    box-shadow: unset;
+}
+
+.month-item.selected {
+    background-color: #4a89dc;
+    color: wheat;
+    font-weight: bolder;
+    background: unset;
+}
+
+.year-item.selected {
+    background-color: #4a89dc;
+    color: wheat;
+    font-weight: bolder;
+    background: unset;
+}
+
+.today-button {
+    background-color: unset;
+}
+
+.date-item {
+    padding: unset;
+    margin: unset;
+    border-radius: 0;
+}
+
+.date-item:hover {
+    background-color: unset;
+    border-bottom: 1px solid white;
+}
+
+.date-item.selected:hover {
+    border-bottom: 0;
+}
+
+.date-item .day-name,
+.date-item .day-number {
+    font-size: 2rem;
+    font-weight: lighter;
+}
+
+.horizontal-date-picker {
+    position: fixed;
+    font-family: "Fraunces";
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: rgba(59, 59, 59, 0.68);
+    backdrop-filter: blur(10px);
+    padding: 10px 0;
+    z-index: 50;
+    box-shadow: unset;
+}
