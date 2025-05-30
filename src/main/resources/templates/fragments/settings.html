@@ -207,7 +207,8 @@
                   hx-encoding="multipart/form-data" 
                   hx-target="#file-upload" 
                   hx-swap="innerHTML"
-                  hx-indicator=".htmx-indicator">
+                  hx-indicator=".htmx-indicator"
+                  hx-on::after-request="if(event.detail.successful) { htmx.trigger('#file-upload', 'htmx:load', {}); }">
                 <div class="form-group">
                     <input type="file" name="file" accept=".gpx" required>
                 </div>
@@ -226,7 +227,8 @@
                   hx-encoding="multipart/form-data" 
                   hx-target="#file-upload" 
                   hx-swap="innerHTML"
-                  hx-indicator=".htmx-indicator">
+                  hx-indicator=".htmx-indicator"
+                  hx-on::after-request="if(event.detail.successful) { htmx.trigger('#file-upload', 'htmx:load', {}); }">
                 <div class="form-group">
                     <input type="file" name="file" accept=".json" required>
                 </div>

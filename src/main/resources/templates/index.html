@@ -108,7 +108,7 @@
         </div>
 
         <!-- File Upload Section -->
-        <div id="file-upload" class="settings-section" hx-get="/settings/file-upload-content" hx-trigger="revealed">
+        <div id="file-upload" class="settings-section" hx-get="/settings/file-upload-content" hx-trigger="revealed, htmx:load from:#file-upload">
             <div class="htmx-indicator">Loading file upload options...</div>
         </div>
     </div>
