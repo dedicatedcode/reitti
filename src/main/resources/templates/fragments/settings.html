@@ -77,7 +77,12 @@
 <div th:fragment="users-content">
     <h2>User Management</h2>
 
-    <div id="user-message" class="alert" style="display: none;"></div>
+    <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+        <span th:text="${successMessage}">User created successfully</span>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+        <span th:text="${errorMessage}">Error message</span>
+    </div>
 
     <h3>Existing Users</h3>
     <div th:if="${users.isEmpty()}">
@@ -109,7 +114,7 @@
         </tbody>
     </table>
 
-    <form hx-post="/settings/users" hx-swap="none" class="user-form" autocomplete="off" style="margin-top: 30px;">
+    <form hx-post="/settings/users" hx-target="#user-management" hx-swap="innerHTML" class="user-form" autocomplete="off" style="margin-top: 30px;">
         <h3>Add New User</h3>
         <div class="form-group">
             <label for="username">Username</label>
@@ -126,32 +131,7 @@
         <button type="submit" class="btn">Create User</button>
     </form>
     
-    <script>
-        // Handle user form submission
-        document.querySelector('.user-form').addEventListener('htmx:afterRequest', function(event) {
-            if (event.detail.successful) {
-                // Clear the form
-                document.getElementById('username').value = '';
-                document.getElementById('displayName').value = '';
-                document.getElementById('password').value = '';
-                
-                // Show success message
-                const data = JSON.parse(event.detail.xhr.responseText);
-                const messageEl = document.getElementById('user-message');
-                messageEl.textContent = data.message;
-                messageEl.className = data.success ? 'alert alert-success' : 'alert alert-danger';
-                messageEl.style.display = 'block';
-                
-                // Hide message after 5 seconds
-                setTimeout(() => {
-                    messageEl.style.display = 'none';
-                }, 5000);
-                
-                // Refresh the users list
-                htmx.trigger('#user-management', 'revealed');
-            }
-        });
-    </script>
+    <!-- No script needed here anymore as the form will directly update the content -->
 </div>
 
 <!-- Places Content Fragment -->
