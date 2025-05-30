@@ -211,6 +211,8 @@
                   hx-indicator=".htmx-indicator"
                   hx-on::after-request="if(event.detail.successful) { 
                     document.getElementById('upload-progress-container').style.display = 'block';
+                    document.getElementById('upload-progress-fill').style.width = '0%';
+                    document.getElementById('upload-progress-percentage').textContent = '0%';
                     startProgressPolling('gpx');
                   }">
                 <div class="form-group">
@@ -235,6 +237,8 @@
                   hx-indicator=".htmx-indicator"
                   hx-on::after-request="if(event.detail.successful) { 
                     document.getElementById('upload-progress-container').style.display = 'block';
+                    document.getElementById('upload-progress-fill').style.width = '0%';
+                    document.getElementById('upload-progress-percentage').textContent = '0%';
                     startProgressPolling('takeout');
                   }">
                 <div class="form-group">
