@@ -9,12 +9,10 @@ import com.dedicatedcode.reitti.service.QueueStatsService;
 import com.dedicatedcode.reitti.service.UserService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.HashMap;
 import java.util.List;
@@ -121,16 +119,7 @@ public class SettingsController {
         model.addAttribute("places", places);
         return "fragments/settings :: places-content";
     }
-    
-    // Original JSON endpoint kept for compatibility
-    @GetMapping("/places")
-    @ResponseBody
-    public Page<SignificantPlace> getPlaces(Authentication authentication, 
-                                           @RequestParam(defaultValue = "0") int page) {
-        User currentUser = userService.getUserByUsername(authentication.getName());
-        return placeService.getPlacesForUser(currentUser, PageRequest.of(page, 20));
-    }
-    
+
     @PostMapping("/tokens")
     @ResponseBody
     public Map<String, Object> createToken(Authentication authentication, @RequestParam String name) {
