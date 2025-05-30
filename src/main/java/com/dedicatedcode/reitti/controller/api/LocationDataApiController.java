@@ -4,7 +4,8 @@ import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.model.User;
-import com.dedicatedcode.reitti.service.ApiTokenService;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
@@ -42,34 +43,24 @@ public class LocationDataApiController {
     private static final Logger logger = LoggerFactory.getLogger(LocationDataApiController.class);
     private static final int BATCH_SIZE = 100; // Process locations in batches of 100
     
-    private final ApiTokenService apiTokenService;
     private final ObjectMapper objectMapper;
     private final RabbitTemplate rabbitTemplate;
     
     @Autowired
     public LocationDataApiController(
-            ApiTokenService apiTokenService,
             ObjectMapper objectMapper,
             RabbitTemplate rabbitTemplate) {
-        this.apiTokenService = apiTokenService;
         this.objectMapper = objectMapper;
         this.rabbitTemplate = rabbitTemplate;
     }
     
     @PostMapping("/location-data")
     public ResponseEntity<?> receiveLocationData(
-            @RequestHeader("X-API-Token") String apiToken,
             @Valid @RequestBody LocationDataRequest request) {
         
-        // Authenticate using the API token
-        User user = apiTokenService.getUserByToken(apiToken)
-                .orElse(null);
-        
-        if (user == null) {
-            logger.warn("Invalid API token used: {}", apiToken);
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Invalid API token"));
-        }
+        // Get user from security context
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User user = (User) authentication.getPrincipal();
 
         try {
             // Create and publish event to RabbitMQ
@@ -103,18 +94,11 @@ public class LocationDataApiController {
     
     @PostMapping("/import/google-takeout")
     public ResponseEntity<?> importGoogleTakeout(
-            @RequestHeader("X-API-Token") String apiToken,
             @RequestParam("file") MultipartFile file) {
         
-        // Authenticate using the API token
-        User user = apiTokenService.getUserByToken(apiToken)
-                .orElse(null);
-        
-        if (user == null) {
-            logger.warn("Invalid API token used: {}", apiToken);
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Invalid API token"));
-        }
+        // Get user from security context
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User user = (User) authentication.getPrincipal();
         
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "File is empty"));
@@ -255,18 +239,11 @@ public class LocationDataApiController {
     
     @PostMapping("/import/gpx")
     public ResponseEntity<?> importGpx(
-            @RequestHeader("X-API-Token") String apiToken,
             @RequestParam("file") MultipartFile file) {
         
-        // Authenticate using the API token
-        User user = apiTokenService.getUserByToken(apiToken)
-                .orElse(null);
-        
-        if (user == null) {
-            logger.warn("Invalid API token used: {}", apiToken);
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Invalid API token"));
-        }
+        // Get user from security context
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User user = (User) authentication.getPrincipal();
         
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "File is empty"));
