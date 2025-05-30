@@ -11,6 +11,14 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -241,6 +249,147 @@ public class LocationDataApiController {
         } else {
             point.setAccuracyMeters(100.0);
         }
+        
+        return point;
+    }
+    
+    @PostMapping("/import/gpx")
+    public ResponseEntity<?> importGpx(
+            @RequestHeader("X-API-Token") String apiToken,
+            @RequestParam("file") MultipartFile file) {
+        
+        // Authenticate using the API token
+        User user = apiTokenService.getUserByToken(apiToken)
+                .orElse(null);
+        
+        if (user == null) {
+            logger.warn("Invalid API token used: {}", apiToken);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Invalid API token"));
+        }
+        
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "File is empty"));
+        }
+        
+        if (!file.getOriginalFilename().endsWith(".gpx")) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Only GPX files are supported"));
+        }
+        
+        AtomicInteger processedCount = new AtomicInteger(0);
+        
+        try (InputStream inputStream = file.getInputStream()) {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document document = builder.parse(inputStream);
+            
+            // Normalize the XML structure
+            document.getDocumentElement().normalize();
+            
+            // Get all track points (trkpt) from the GPX file
+            NodeList trackPoints = document.getElementsByTagName("trkpt");
+            
+            List<LocationDataRequest.LocationPoint> batch = new ArrayList<>(BATCH_SIZE);
+            
+            // Process each track point
+            for (int i = 0; i < trackPoints.getLength(); i++) {
+                Element trackPoint = (Element) trackPoints.item(i);
+                
+                try {
+                    LocationDataRequest.LocationPoint point = convertGpxTrackPoint(trackPoint);
+                    if (point != null) {
+                        batch.add(point);
+                        processedCount.incrementAndGet();
+                        
+                        // Process in batches to avoid memory issues
+                        if (batch.size() >= BATCH_SIZE) {
+                            // Create and publish event to RabbitMQ
+                            LocationDataEvent event = new LocationDataEvent(
+                                    user.getId(), 
+                                    user.getUsername(), 
+                                    new ArrayList<>(batch) // Create a copy to avoid reference issues
+                            );
+                            
+                            rabbitTemplate.convertAndSend(
+                                RabbitMQConfig.EXCHANGE_NAME,
+                                RabbitMQConfig.LOCATION_DATA_ROUTING_KEY,
+                                event
+                            );
+                            
+                            logger.info("Queued batch of {} locations for processing", batch.size());
+                            batch.clear();
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.warn("Error processing GPX track point: {}", e.getMessage());
+                    // Continue with next point
+                }
+            }
+            
+            // Process any remaining locations
+            if (!batch.isEmpty()) {
+                // Create and publish event to RabbitMQ
+                LocationDataEvent event = new LocationDataEvent(
+                        user.getId(), 
+                        user.getUsername(), 
+                        new ArrayList<>(batch) // Create a copy to avoid reference issues
+                );
+                
+                rabbitTemplate.convertAndSend(
+                    RabbitMQConfig.EXCHANGE_NAME,
+                    RabbitMQConfig.LOCATION_DATA_ROUTING_KEY,
+                    event
+                );
+                
+                logger.info("Queued final batch of {} locations for processing", batch.size());
+            }
+            
+            logger.info("Successfully imported and queued {} location points from GPX file for user {}", 
+                    processedCount.get(), user.getUsername());
+            
+            return ResponseEntity.accepted().body(Map.of(
+                    "success", true,
+                    "message", "Successfully queued " + processedCount.get() + " location points for processing",
+                    "pointsReceived", processedCount.get()
+            ));
+            
+        } catch (Exception e) {
+            logger.error("Error processing GPX file", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error processing GPX file: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Converts a GPX track point to our LocationPoint format
+     */
+    private LocationDataRequest.LocationPoint convertGpxTrackPoint(Element trackPoint) {
+        // Check if we have the required attributes
+        if (!trackPoint.hasAttribute("lat") || !trackPoint.hasAttribute("lon")) {
+            return null;
+        }
+        
+        LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
+        
+        // Get latitude and longitude
+        double latitude = Double.parseDouble(trackPoint.getAttribute("lat"));
+        double longitude = Double.parseDouble(trackPoint.getAttribute("lon"));
+        
+        point.setLatitude(latitude);
+        point.setLongitude(longitude);
+        
+        // Get timestamp from the time element
+        NodeList timeElements = trackPoint.getElementsByTagName("time");
+        if (timeElements.getLength() > 0) {
+            String timeStr = timeElements.item(0).getTextContent();
+            point.setTimestamp(timeStr);
+        } else {
+            // If no time element, use current time
+            point.setTimestamp(Instant.now().toString());
+        }
+        
+        // Set accuracy - GPX doesn't typically include accuracy, so use a default
+        point.setAccuracyMeters(10.0); // Default accuracy of 10 meters
         
         return point;
     }
