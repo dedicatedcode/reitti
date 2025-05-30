@@ -87,6 +87,16 @@
                     event.detail.target.closest('#places-management')) {
                     initPlaceMaps();
                 }
+            
+                // Handle form resets after successful submission
+                if (event.detail.target.id === 'user-management' || 
+                    event.detail.target.closest('#user-management')) {
+                    // Find and reset any forms in the user management section
+                    const forms = event.detail.target.querySelectorAll('form');
+                    forms.forEach(form => {
+                        form.reset();
+                    });
+                }
             });
         </script>
 

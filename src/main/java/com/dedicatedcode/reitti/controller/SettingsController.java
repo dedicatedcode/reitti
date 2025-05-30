@@ -191,22 +191,27 @@ public class SettingsController {
     }
     
     @PostMapping("/users")
-    @ResponseBody
-    public Map<String, Object> createUser(@RequestParam String username,
-                                        @RequestParam String displayName,
-                                        @RequestParam String password) {
-        Map<String, Object> response = new HashMap<>();
+    public String createUser(@RequestParam String username,
+                           @RequestParam String displayName,
+                           @RequestParam String password,
+                           Authentication authentication,
+                           Model model) {
+        String currentUsername = authentication.getName();
         
         try {
             userService.createUser(username, displayName, password);
-            response.put("message", "User created successfully");
-            response.put("success", true);
+            model.addAttribute("successMessage", "User created successfully");
         } catch (Exception e) {
-            response.put("message", "Error creating user: " + e.getMessage());
-            response.put("success", false);
+            model.addAttribute("errorMessage", "Error creating user: " + e.getMessage());
         }
         
-        return response;
+        // Get updated user list and add to model
+        List<User> users = userService.getAllUsers();
+        model.addAttribute("users", users);
+        model.addAttribute("currentUsername", currentUsername);
+        
+        // Return the users-content fragment
+        return "fragments/settings :: users-content";
     }
     @GetMapping("/queue-stats-content")
     public String getQueueStatsContent(Model model) {
