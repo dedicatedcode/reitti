@@ -203,7 +203,7 @@
                 Upload GPX files from your GPS devices or tracking apps. GPX files contain waypoints, 
                 tracks, and routes with timestamps that can be processed into your location history.
             </p>
-            <form hx-post="/api/v1/upload/gpx" 
+            <form hx-post="/api/v1/import/gpx"
                   hx-encoding="multipart/form-data" 
                   hx-target="#file-upload" 
                   hx-swap="innerHTML">
@@ -221,12 +221,12 @@
                 (takeout.google.com) and upload the Location History JSON file. This contains 
                 your location history with timestamps and activity information.
             </p>
-            <form hx-post="/api/v1/upload/google-takeout" 
+            <form hx-post="/api/v1/import/google-takeout"
                   hx-encoding="multipart/form-data" 
                   hx-target="#file-upload" 
                   hx-swap="innerHTML">
                 <div class="form-group">
-                    <input type="file" name="file" accept=".json,.zip" required>
+                    <input type="file" name="file" accept=".json" required>
                 </div>
                 <button type="submit" class="btn">Upload Google Takeout</button>
             </form>
