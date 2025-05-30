@@ -52,8 +52,6 @@
 
         <script>
             // Function to initialize maps for place cards
-            const maps = [];
-
             function initPlaceMaps() {
                 document.querySelectorAll('.place-map').forEach(mapElement => {
                     const lat = parseFloat(mapElement.dataset.lat);
@@ -79,7 +77,6 @@
                             opacity: 1,
                             fillOpacity: 0.8
                         }).addTo(placeMap);
-                        maps.push(placeMap);
                         placeMap.invalidateSize();
                     }
                 });
@@ -88,7 +85,6 @@
             document.body.addEventListener('htmx:afterSwap', function (event) {
                 if (event.detail.target.id === 'places-management' ||
                     event.detail.target.closest('#places-management')) {
-                    console.log('Initializing place maps...');
                     initPlaceMaps();
                 }
             });
