@@ -12,6 +12,7 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -57,16 +58,14 @@ public class LocationDataApiController {
     @PostMapping("/location-data")
     public ResponseEntity<?> receiveLocationData(
             @Valid @RequestBody LocationDataRequest request) {
-        
-        // Get user from security context
+
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        User user = (User) authentication.getPrincipal();
+        UserDetails user = (UserDetails) authentication.getPrincipal();
 
         try {
             // Create and publish event to RabbitMQ
             LocationDataEvent event = new LocationDataEvent(
-                    user.getId(), 
-                    user.getUsername(), 
+                    user.getUsername(),
                     request.getPoints()
             );
             
@@ -95,11 +94,10 @@ public class LocationDataApiController {
     @PostMapping("/import/google-takeout")
     public ResponseEntity<?> importGoogleTakeout(
             @RequestParam("file") MultipartFile file) {
-        
-        // Get user from security context
+
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        User user = (User) authentication.getPrincipal();
-        
+        UserDetails user = (UserDetails) authentication.getPrincipal();
+
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "File is empty"));
         }
@@ -145,8 +143,7 @@ public class LocationDataApiController {
                                     if (batch.size() >= BATCH_SIZE) {
                                         // Create and publish event to RabbitMQ
                                         LocationDataEvent event = new LocationDataEvent(
-                                                user.getId(), 
-                                                user.getUsername(), 
+                                                user.getUsername(),
                                                 new ArrayList<>(batch) // Create a copy to avoid reference issues
                                         );
                                         
@@ -171,8 +168,7 @@ public class LocationDataApiController {
                     if (!batch.isEmpty()) {
                         // Create and publish event to RabbitMQ
                         LocationDataEvent event = new LocationDataEvent(
-                                user.getId(), 
-                                user.getUsername(), 
+                                user.getUsername(),
                                 new ArrayList<>(batch) // Create a copy to avoid reference issues
                         );
                         
@@ -241,9 +237,8 @@ public class LocationDataApiController {
     public ResponseEntity<?> importGpx(
             @RequestParam("file") MultipartFile file) {
         
-        // Get user from security context
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        User user = (User) authentication.getPrincipal();
+        UserDetails user = (UserDetails) authentication.getPrincipal();
         
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "File is empty"));
@@ -282,8 +277,7 @@ public class LocationDataApiController {
                         if (batch.size() >= BATCH_SIZE) {
                             // Create and publish event to RabbitMQ
                             LocationDataEvent event = new LocationDataEvent(
-                                    user.getId(), 
-                                    user.getUsername(), 
+                                    user.getUsername(),
                                     new ArrayList<>(batch) // Create a copy to avoid reference issues
                             );
                             
@@ -307,8 +301,7 @@ public class LocationDataApiController {
             if (!batch.isEmpty()) {
                 // Create and publish event to RabbitMQ
                 LocationDataEvent event = new LocationDataEvent(
-                        user.getId(), 
-                        user.getUsername(), 
+                        user.getUsername(),
                         new ArrayList<>(batch) // Create a copy to avoid reference issues
                 );
                 
@@ -361,8 +354,7 @@ public class LocationDataApiController {
             String timeStr = timeElements.item(0).getTextContent();
             point.setTimestamp(timeStr);
         } else {
-            // If no time element, use current time
-            point.setTimestamp(Instant.now().toString());
+            return null;
         }
         
         // Set accuracy - GPX doesn't typically include accuracy, so use a default

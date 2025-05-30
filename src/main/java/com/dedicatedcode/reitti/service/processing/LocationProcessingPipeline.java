@@ -51,10 +51,10 @@ public class LocationProcessingPipeline {
         logger.debug("Starting processing pipeline for user {} with {} points",
                 event.getUsername(), event.getPoints().size());
 
-        Optional<User> userOpt = userRepository.findById(event.getUserId());
+        Optional<User> userOpt = userRepository.findByUsername(event.getUsername());
 
         if (userOpt.isEmpty()) {
-            logger.warn("User not found for ID: {}", event.getUserId());
+            logger.warn("User not found for name: {}", event.getUsername ());
             return;
         }
 
@@ -84,8 +84,8 @@ public class LocationProcessingPipeline {
             Instant endTime = savedPoints.stream().map(RawLocationPoint::getTimestamp).max(Instant::compareTo).orElse(Instant.now());
             long searchStart = startTime.minus(tripVisitMergeTimeRange, ChronoUnit.DAYS).toEpochMilli();
             long searchEnd = endTime.plus(tripVisitMergeTimeRange, ChronoUnit.DAYS).toEpochMilli();
-            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new MergeVisitEvent(user.getId(), searchStart, searchEnd));
-            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, new MergeVisitEvent(user.getId(), searchStart, searchEnd));
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new MergeVisitEvent(user.getUsername(), searchStart, searchEnd));
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, new MergeVisitEvent(user.getUsername(), searchStart, searchEnd));
         }
 
         logger.info("Completed processing pipeline for user {}", user.getUsername());

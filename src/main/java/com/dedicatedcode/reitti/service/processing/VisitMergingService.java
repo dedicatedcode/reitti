@@ -51,9 +51,9 @@ public class VisitMergingService {
     @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE)
     @Transactional
     public void mergeVisits(MergeVisitEvent event) {
-        Optional<User> user = userRepository.findById(event.getUserId());
+        Optional<User> user = userRepository.findByUsername(event.getUserName());
         if (user.isEmpty()) {
-            logger.warn("User not found for ID: {}", event.getUserId());
+            logger.warn("User not found for userName: {}", event.getUserName());
             return;
         }
         processAndMergeVisits(user.get(), event.getStartTime(), event.getEndTime());
@@ -92,7 +92,7 @@ public class VisitMergingService {
                 allVisits.size(), processedVisits.size(), user.getUsername());
 
         if (!processedVisits.isEmpty() && detectTripsAfterMerging) {
-            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, new MergeVisitEvent(user.getId(), startTime, endTime));
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, new MergeVisitEvent(user.getUsername(), startTime, endTime));
 
         }
         return processedVisits;

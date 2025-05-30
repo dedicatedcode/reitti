@@ -221,8 +221,8 @@ public class SettingsController {
         return "fragments/settings :: queue-stats-content";
     }
     
-    @GetMapping("/data-import-content")
+    @GetMapping("/file-upload-content")
     public String getDataImportContent() {
-        return "fragments/settings :: data-import-content";
+        return "fragments/settings :: file-upload-content";
     }
 }

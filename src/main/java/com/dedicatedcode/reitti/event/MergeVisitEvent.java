@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.event;
 
 public class MergeVisitEvent {
-    private Long userId;
+    private String userName;
     private Long startTime;
     private Long endTime;
 
@@ -9,19 +9,18 @@ public class MergeVisitEvent {
     public MergeVisitEvent() {
     }
 
-    public MergeVisitEvent(Long userId, Long startTime, Long endTime) {
-        this.userId = userId;
+    public MergeVisitEvent(String userName, Long startTime, Long endTime) {
+        this.userName = userName;
         this.startTime = startTime;
         this.endTime = endTime;
     }
 
-    // Getters and setters
-    public Long getUserId() {
-        return userId;
+    public String getUserName() {
+        return userName;
     }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
+    public void setUserName(String userName) {
+        this.userName = userName;
     }
 
     public Long getStartTime() {

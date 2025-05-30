@@ -40,9 +40,9 @@ public class TripMergingService {
     @Transactional
     @RabbitListener(queues = RabbitMQConfig.MERGE_TRIP_QUEUE)
     public void mergeDuplicateTripsForUser(MergeVisitEvent event) {
-        Optional<User> user = this.userRepository.findById(event.getUserId());
+        Optional<User> user = userRepository.findByUsername(event.getUserName());
         if (user.isEmpty()) {
-            logger.warn("User {} not found. Skipping duplicate trip merging.", event.getUserId());
+            logger.warn("User not found for userName: {}", event.getUserName());
             return;
         }
         logger.info("Merging duplicate trips for user: {}", user.get().getUsername());
