@@ -220,4 +220,9 @@ public class SettingsController {
         model.addAttribute("queueStats", queueStatsService.getQueueStats());
         return "fragments/settings :: queue-stats-content";
     }
+    
+    @GetMapping("/data-import-content")
+    public String getDataImportContent() {
+        return "fragments/settings :: data-import-content";
+    }
 }
