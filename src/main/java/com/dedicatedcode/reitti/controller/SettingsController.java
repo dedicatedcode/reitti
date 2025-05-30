@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller;
 
+import com.dedicatedcode.reitti.dto.TimelineResponse;
 import com.dedicatedcode.reitti.model.ApiToken;
 import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.model.User;
@@ -36,38 +37,6 @@ public class SettingsController {
         this.placeService = placeService;
     }
 
-    // Original method kept for backward compatibility
-    @GetMapping
-    public String settings(Authentication authentication, Model model,
-                          @RequestParam(defaultValue = "0") int page,
-                          @RequestParam(required = false) String tab) {
-        User currentUser = userService.getUserByUsername(authentication.getName());
-        
-        // Load API tokens
-        List<ApiToken> tokens = apiTokenService.getTokensForUser(currentUser);
-        model.addAttribute("tokens", tokens);
-        
-        // Load users (for admin)
-        List<User> users = userService.getAllUsers();
-        model.addAttribute("users", users);
-        
-        // Load significant places with pagination (20 per page)
-        Page<SignificantPlace> places = placeService.getPlacesForUser(currentUser, PageRequest.of(page, 20));
-        model.addAttribute("places", places);
-        
-        // Load queue stats
-        model.addAttribute("queueStats", queueStatsService.getQueueStats());
-        
-        model.addAttribute("username", authentication.getName());
-        
-        // Set active tab if provided
-        if (tab != null) {
-            model.addAttribute("activeTab", tab);
-        }
-        
-        return "settings";
-    }
-    
     // HTMX endpoints for the settings overlay
     @GetMapping("/api-tokens-content")
     public String getApiTokensContent(Authentication authentication, Model model) {
