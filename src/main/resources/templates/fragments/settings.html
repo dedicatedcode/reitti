@@ -206,15 +206,13 @@
             <form id="gpx-upload-form"
                   hx-post="/settings/import/gpx"
                   hx-target="#file-upload"
-                  hx-encoding="multipart/form-data">
+                  hx-encoding="multipart/form-data"
+                  hx-indicator=".htmx-indicator">
                 <div class="form-group">
                     <input type="file" name="file" accept=".gpx" required>
-                    <progress id='gpx-progress' value='0' max='100'></progress>
-                    <script>
-                        htmx.on('#form', 'htmx:xhr:progress', function(evt) {
-                            htmx.find('#gpx-progress').setAttribute('value', evt.detail.loaded/evt.detail.total * 100)
-                        });
-                    </script>
+                    <div class="htmx-indicator">
+                        <div class="loading-spinner"></div>
+                    </div>
                 </div>
                 <button type="submit" class="btn">Upload GPX File</button>
             </form>
@@ -231,15 +229,13 @@
                   hx-post="/settings/import/google-takeout"
                   hx-target="#file-upload"
                   hx-swap="innerHTML"
-                  hx-encoding="multipart/form-data" >
+                  hx-encoding="multipart/form-data"
+                  hx-indicator=".htmx-indicator">
                 <div class="form-group">
                     <input type="file" name="file" accept=".json" required>
-                    <progress id='google-progress' value='0' max='100'></progress>
-                    <script>
-                        htmx.on('#form', 'htmx:xhr:progress', function(evt) {
-                            htmx.find('#google-progress').setAttribute('value', evt.detail.loaded/evt.detail.total * 100)
-                        });
-                    </script>
+                    <div class="htmx-indicator">
+                        <div class="loading-spinner"></div>
+                    </div>
 
                 </div>
                 <button type="submit" class="btn">Upload Google Takeout</button>
@@ -247,73 +243,10 @@
         </div>
     </div>
     
-    <div id="upload-progress-container" style="display: none; margin-top: 20px;">
-        <h3>Upload Progress</h3>
-        <div class="progress-bar-container">
-            <div id="upload-progress-bar" class="progress-bar">
-                <div id="upload-progress-fill" class="progress-fill" style="width: 0%"></div>
-            </div>
-            <div id="upload-progress-percentage">0%</div>
-        </div>
-        <p id="upload-status-message">Processing file...</p>
-    </div>
-    
     <div class="htmx-indicator" style="display: none;">
         <div class="loading-spinner"></div>
         <p>Uploading file, please wait...</p>
     </div>
-    
-    <script>
-        function startProgressPolling(fileType) {
-            let progressBar = document.getElementById('upload-progress-fill');
-            let progressPercentage = document.getElementById('upload-progress-percentage');
-            let statusMessage = document.getElementById('upload-status-message');
-            let pollCount = 0;
-            let completed = false;
-            
-            // Reset progress
-            progressBar.style.width = '0%';
-            progressPercentage.textContent = '0%';
-            statusMessage.textContent = 'Processing file...';
-            
-            const pollProgress = () => {
-                fetch(`/api/v1/import/status?type=${fileType}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        // Update progress bar
-                        const progress = data.progress || 0;
-                        progressBar.style.width = `${progress}%`;
-                        progressPercentage.textContent = `${progress}%`;
-                        
-                        // Update status message
-                        if (data.message) {
-                            statusMessage.textContent = data.message;
-                        }
-                        
-                        // Check if processing is complete
-                        if (progress >= 100) {
-                            completed = true;
-                            setTimeout(() => {
-                                htmx.trigger('#file-upload', 'htmx:load', {});
-                            }, 1000);
-                        } else if (pollCount < 300) { // Limit polling to 5 minutes (300 * 1s)
-                            setTimeout(pollProgress, 1000);
-                        } else {
-                            statusMessage.textContent = 'Processing is taking longer than expected. Check job status for updates.';
-                        }
-                        
-                        pollCount++;
-                    })
-                    .catch(error => {
-                        console.error('Error polling upload status:', error);
-                        statusMessage.textContent = 'Error checking upload status. Please check job status.';
-                    });
-            };
-            
-            // Start polling
-            pollProgress();
-        }
-    </script>
 </div>
 
 </body>
