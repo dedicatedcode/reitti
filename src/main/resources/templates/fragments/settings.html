@@ -205,18 +205,16 @@
             </p>
             <form id="gpx-upload-form"
                   hx-post="/api/v1/import/gpx"
-                  hx-encoding="multipart/form-data" 
-                  hx-target="#file-upload" 
-                  hx-swap="innerHTML"
-                  hx-indicator=".htmx-indicator"
-                  hx-on::after-request="if(event.detail.successful) { 
-                    document.getElementById('upload-progress-container').style.display = 'block';
-                    document.getElementById('upload-progress-fill').style.width = '0%';
-                    document.getElementById('upload-progress-percentage').textContent = '0%';
-                    startProgressPolling('gpx');
-                  }">
+                  hx-target="#file-upload"
+                  hx-encoding="multipart/form-data">
                 <div class="form-group">
                     <input type="file" name="file" accept=".gpx" required>
+                    <progress id='gpx-progress' value='0' max='100'></progress>
+                    <script>
+                        htmx.on('#form', 'htmx:xhr:progress', function(evt) {
+                            htmx.find('#gpx-progress').setAttribute('value', evt.detail.loaded/evt.detail.total * 100)
+                        });
+                    </script>
                 </div>
                 <button type="submit" class="btn">Upload GPX File</button>
             </form>
@@ -231,18 +229,18 @@
             </p>
             <form id="takeout-upload-form"
                   hx-post="/api/v1/import/google-takeout"
-                  hx-encoding="multipart/form-data" 
-                  hx-target="#file-upload" 
+                  hx-target="#file-upload"
                   hx-swap="innerHTML"
-                  hx-indicator=".htmx-indicator"
-                  hx-on::after-request="if(event.detail.successful) { 
-                    document.getElementById('upload-progress-container').style.display = 'block';
-                    document.getElementById('upload-progress-fill').style.width = '0%';
-                    document.getElementById('upload-progress-percentage').textContent = '0%';
-                    startProgressPolling('takeout');
-                  }">
+                  hx-encoding="multipart/form-data" >
                 <div class="form-group">
                     <input type="file" name="file" accept=".json" required>
+                    <progress id='google-progress' value='0' max='100'></progress>
+                    <script>
+                        htmx.on('#form', 'htmx:xhr:progress', function(evt) {
+                            htmx.find('#google-progress').setAttribute('value', evt.detail.loaded/evt.detail.total * 100)
+                        });
+                    </script>
+
                 </div>
                 <button type="submit" class="btn">Upload Google Takeout</button>
             </form>
