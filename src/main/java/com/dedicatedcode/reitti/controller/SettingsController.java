@@ -144,28 +144,29 @@ public class SettingsController {
     }
     
     @PostMapping("/users/{userId}/delete")
-    @ResponseBody
-    public Map<String, Object> deleteUser(@PathVariable Long userId, Authentication authentication) {
-        Map<String, Object> response = new HashMap<>();
+    public String deleteUser(@PathVariable Long userId, Authentication authentication, Model model) {
+        String currentUsername = authentication.getName();
+        User currentUser = userService.getUserByUsername(currentUsername);
         
-        try {
-            // Prevent self-deletion
-            User currentUser = userService.getUserByUsername(authentication.getName());
-            if (currentUser.getId().equals(userId)) {
-                response.put("message", "You cannot delete your own account");
-                response.put("success", false);
-                return response;
+        // Prevent self-deletion
+        if (currentUser.getId().equals(userId)) {
+            model.addAttribute("errorMessage", "You cannot delete your own account");
+        } else {
+            try {
+                userService.deleteUser(userId);
+                model.addAttribute("successMessage", "User deleted successfully");
+            } catch (Exception e) {
+                model.addAttribute("errorMessage", "Error deleting user: " + e.getMessage());
             }
-            
-            userService.deleteUser(userId);
-            response.put("message", "User deleted successfully");
-            response.put("success", true);
-        } catch (Exception e) {
-            response.put("message", "Error deleting user: " + e.getMessage());
-            response.put("success", false);
         }
         
-        return response;
+        // Get updated user list and add to model
+        List<User> users = userService.getAllUsers();
+        model.addAttribute("users", users);
+        model.addAttribute("currentUsername", currentUsername);
+        
+        // Return the users-content fragment
+        return "fragments/settings :: users-content";
     }
     
     @PostMapping("/places/{placeId}/update")
