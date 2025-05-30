@@ -6,12 +6,13 @@
     <title>Reitti - Your Location Timeline</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel= "stylesheet" href= "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" >
-    <link rel= "stylesheet" href= "/css/date-picker.css" >
-    <link rel= "stylesheet" href= "/css/main.css" >
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <link rel="stylesheet" href="/css/date-picker.css">
+    <link rel="stylesheet" href="/css/main.css">
     <script src="/js/HumanizeDuration.js"></script>
     <script src="/js/horizontal-date-picker.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&display=swap"
+          rel="stylesheet">
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
@@ -25,7 +26,7 @@
 <div id="settings-overlay" class="settings-overlay">
     <div class="settings-content">
         <span class="close-settings">&times;</span>
-        
+
         <div class="settings-nav">
             <div class="settings-nav-item active" data-target="api-tokens">API Tokens</div>
             <div class="settings-nav-item" data-target="user-management">User Management</div>
@@ -34,7 +35,8 @@
         </div>
 
         <!-- API Tokens Section -->
-        <div id="api-tokens" class="settings-section active" hx-get="/settings/api-tokens-content" hx-trigger="revealed, every 30s">
+        <div id="api-tokens" class="settings-section active" hx-get="/settings/api-tokens-content"
+             hx-trigger="revealed, every 30s">
             <div class="htmx-indicator">Loading tokens...</div>
         </div>
 
@@ -44,17 +46,20 @@
         </div>
 
         <!-- Places Management Section -->
-        <div id="places-management" class="settings-section" hx-get="/settings/places-content?page=0" hx-trigger="revealed">
+        <div id="places-management" class="settings-section" hx-get="/settings/places-content?page=0"
+             hx-trigger="revealed">
             <div class="htmx-indicator">Loading places...</div>
         </div>
-        
+
         <script>
             // Function to initialize maps for place cards
+            const maps = [];
+
             function initPlaceMaps() {
                 document.querySelectorAll('.place-map').forEach(mapElement => {
                     const lat = parseFloat(mapElement.dataset.lat);
                     const lng = parseFloat(mapElement.dataset.lng);
-                    
+
                     if (!isNaN(lat) && !isNaN(lng)) {
                         const placeMap = L.map(mapElement, {
                             zoomControl: false,
@@ -62,11 +67,11 @@
                             dragging: false,
                             scrollWheelZoom: false
                         }).setView([lat, lng], 14);
-                        
+
                         L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', {
                             maxZoom: 20
                         }).addTo(placeMap);
-                        
+
                         L.circleMarker([lat, lng], {
                             radius: 8,
                             fillColor: '#4a89dc',
@@ -75,27 +80,24 @@
                             opacity: 1,
                             fillOpacity: 0.8
                         }).addTo(placeMap);
+                        maps.push(placeMap);
+                        placeMap.invalidateSize();
                     }
                 });
             }
-            
-            // Initialize maps when places tab is shown
-            document.querySelector('.settings-nav-item[data-target="places-management"]').addEventListener('click', function() {
-                // Allow time for HTMX to load the content
-                setTimeout(initPlaceMaps, 500);
-            });
-            
-            // Also initialize when HTMX loads content
-            document.body.addEventListener('htmx:afterSwap', function(event) {
-                if (event.detail.target.id === 'places-management' || 
+
+            document.body.addEventListener('htmx:afterSwap', function (event) {
+                if (event.detail.target.id === 'places-management' ||
                     event.detail.target.closest('#places-management')) {
-                    setTimeout(initPlaceMaps, 100);
+                    console.log('Initializing place maps...');
+                    initPlaceMaps();
                 }
             });
         </script>
 
         <!-- Job Status Section -->
-        <div id="job-status" class="settings-section" hx-get="/settings/queue-stats-content" hx-trigger="revealed, every 5s">
+        <div id="job-status" class="settings-section" hx-get="/settings/queue-stats-content"
+             hx-trigger="revealed, every 5s">
             <div class="htmx-indicator">Loading queue stats...</div>
         </div>
     </div>
@@ -107,7 +109,8 @@
         <a href="/" class="nav-link"><i class="fas fa-house-flag"></i></a>
         <a href="#" id="settings-button" class="nav-link"><i class="fas fa-cog"></i></a>
         <form th:action="@{/logout}" method="post" style="display: inline;">
-            <button type="submit" class="nav-link" style="background: none; border: none; cursor: pointer;"><i class="fas fa-right-from-bracket"></i>
+            <button type="submit" class="nav-link" style="background: none; border: none; cursor: pointer;"><i
+                    class="fas fa-right-from-bracket"></i>
             </button>
         </form>
     </span>
@@ -127,32 +130,32 @@
         const settingsButton = document.getElementById('settings-button');
         const settingsOverlay = document.getElementById('settings-overlay');
         const closeSettings = document.querySelector('.close-settings');
-        
+
         // Open settings overlay
-        settingsButton.addEventListener('click', function(e) {
+        settingsButton.addEventListener('click', function (e) {
             e.preventDefault();
             settingsOverlay.style.display = 'block';
             // HTMX will automatically load the content
         });
-        
+
         // Close settings overlay
-        closeSettings.addEventListener('click', function() {
+        closeSettings.addEventListener('click', function () {
             settingsOverlay.style.display = 'none';
         });
-        
+
         // Close when clicking outside the content
-        window.addEventListener('click', function(event) {
+        window.addEventListener('click', function (event) {
             if (event.target === settingsOverlay) {
                 settingsOverlay.style.display = 'none';
             }
         });
-        
+
         // Tab navigation in settings with htmx
         const navItems = document.querySelectorAll('.settings-nav-item');
         const sections = document.querySelectorAll('.settings-section');
-        
+
         navItems.forEach(item => {
-            item.addEventListener('click', function() {
+            item.addEventListener('click', function () {
                 const target = this.getAttribute('data-target');
 
                 // Update active nav item
@@ -168,18 +171,19 @@
                 });
             });
         });
-        
+
         // Function to load all settings data - now handled by htmx
         function loadSettingsData() {
             // HTMX will automatically load the content when the tab becomes visible
             // due to the hx-trigger="revealed" attribute
         }
-        
+
         // Helper function to format date time
         function formatDateTime(dateTimeString) {
             const date = new Date(dateTimeString);
             return date.toLocaleString();
         }
+
         // Check if date is in URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         let initialDate;
@@ -318,7 +322,7 @@
 
                 // Calculate duration
                 const durationMs = endTime - startTime;
-                const durationText = humanizeDuration(durationMs, {units: ["h", "m"], round: true });
+                const durationText = humanizeDuration(durationMs, {units: ["h", "m"], round: true});
 
                 const durationElement = document.createElement('span');
                 durationElement.className = 'entry-duration';
@@ -474,7 +478,7 @@
         });
 
         loadTimelineData(formattedDate);
-        
+
         // Parse the initial date properly to ensure correct date picker initialization
         let dateToUse = new Date();
         if (initialDate) {
@@ -483,7 +487,7 @@
             // Note: month is 0-indexed in JavaScript Date
             dateToUse = new Date(year, month - 1, day);
         }
-        
+
         // Initialize horizontal date picker
         new HorizontalDatePicker({
             container: document.getElementById('horizontal-date-picker-container'),
@@ -500,7 +504,7 @@
             onDateSelect: (date, formattedDate) => {
                 // Update URL
                 updateUrlWithDate(formattedDate);
-                
+
                 // Load timeline data
                 loadTimelineData(formattedDate);
             }
