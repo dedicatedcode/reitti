@@ -47,6 +47,52 @@
         <div id="places-management" class="settings-section" hx-get="/settings/places-content?page=0" hx-trigger="revealed">
             <div class="htmx-indicator">Loading places...</div>
         </div>
+        
+        <script>
+            // Function to initialize maps for place cards
+            function initPlaceMaps() {
+                document.querySelectorAll('.place-map').forEach(mapElement => {
+                    const lat = parseFloat(mapElement.dataset.lat);
+                    const lng = parseFloat(mapElement.dataset.lng);
+                    
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        const placeMap = L.map(mapElement, {
+                            zoomControl: false,
+                            attributionControl: false,
+                            dragging: false,
+                            scrollWheelZoom: false
+                        }).setView([lat, lng], 14);
+                        
+                        L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', {
+                            maxZoom: 20
+                        }).addTo(placeMap);
+                        
+                        L.circleMarker([lat, lng], {
+                            radius: 8,
+                            fillColor: '#4a89dc',
+                            color: '#fff',
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        }).addTo(placeMap);
+                    }
+                });
+            }
+            
+            // Initialize maps when places tab is shown
+            document.querySelector('.settings-nav-item[data-target="places-management"]').addEventListener('click', function() {
+                // Allow time for HTMX to load the content
+                setTimeout(initPlaceMaps, 500);
+            });
+            
+            // Also initialize when HTMX loads content
+            document.body.addEventListener('htmx:afterSwap', function(event) {
+                if (event.detail.target.id === 'places-management' || 
+                    event.detail.target.closest('#places-management')) {
+                    setTimeout(initPlaceMaps, 100);
+                }
+            });
+        </script>
 
         <!-- Job Status Section -->
         <div id="job-status" class="settings-section" hx-get="/settings/queue-stats-content" hx-trigger="revealed, every 5s">
