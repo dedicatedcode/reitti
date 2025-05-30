@@ -79,12 +79,26 @@ public class LocationDataApiController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UserDetails user = (UserDetails) authentication.getPrincipal();
         
-        Map<String, Object> result = importHandler.importGoogleTakeout(file, user.getUsername());
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "File is empty"));
+        }
         
-        if ((Boolean) result.get("success")) {
-            return ResponseEntity.accepted().body(result);
-        } else {
-            return ResponseEntity.badRequest().body(result);
+        if (!file.getOriginalFilename().endsWith(".json")) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Only JSON files are supported"));
+        }
+        
+        try (InputStream inputStream = file.getInputStream()) {
+            Map<String, Object> result = importHandler.importGoogleTakeout(inputStream, user.getUsername());
+        
+            if ((Boolean) result.get("success")) {
+                return ResponseEntity.accepted().body(result);
+            } else {
+                return ResponseEntity.badRequest().body(result);
+            }
+        } catch (IOException e) {
+            logger.error("Error processing Google Takeout file", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "error", "Error processing file: " + e.getMessage()));
         }
     }
     
@@ -95,12 +109,26 @@ public class LocationDataApiController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UserDetails user = (UserDetails) authentication.getPrincipal();
         
-        Map<String, Object> result = importHandler.importGpx(file, user.getUsername());
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "File is empty"));
+        }
         
-        if ((Boolean) result.get("success")) {
-            return ResponseEntity.accepted().body(result);
-        } else {
-            return ResponseEntity.badRequest().body(result);
+        if (!file.getOriginalFilename().endsWith(".gpx")) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Only GPX files are supported"));
+        }
+        
+        try (InputStream inputStream = file.getInputStream()) {
+            Map<String, Object> result = importHandler.importGpx(inputStream, user.getUsername());
+            
+            if ((Boolean) result.get("success")) {
+                return ResponseEntity.accepted().body(result);
+            } else {
+                return ResponseEntity.badRequest().body(result);
+            }
+        } catch (IOException e) {
+            logger.error("Error processing GPX file", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "error", "Error processing file: " + e.getMessage()));
         }
     }
 }

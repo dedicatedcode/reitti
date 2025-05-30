@@ -236,15 +236,30 @@ public class SettingsController {
                            Model model) {
         String username = authentication.getName();
         
-        Map<String, Object> result = importHandler.importGpx(file, username);
-        
-        if ((Boolean) result.get("success")) {
-            model.addAttribute("uploadSuccessMessage", result.get("message"));
-        } else {
-            model.addAttribute("uploadErrorMessage", result.get("error"));
+        if (file.isEmpty()) {
+            model.addAttribute("uploadErrorMessage", "File is empty");
+            return "fragments/settings :: file-upload-content";
         }
         
-        return "fragments/settings :: file-upload-content";
+        if (!file.getOriginalFilename().endsWith(".gpx")) {
+            model.addAttribute("uploadErrorMessage", "Only GPX files are supported");
+            return "fragments/settings :: file-upload-content";
+        }
+        
+        try (InputStream inputStream = file.getInputStream()) {
+            Map<String, Object> result = importHandler.importGpx(inputStream, username);
+        
+            if ((Boolean) result.get("success")) {
+                model.addAttribute("uploadSuccessMessage", result.get("message"));
+            } else {
+                model.addAttribute("uploadErrorMessage", result.get("error"));
+            }
+            
+            return "fragments/settings :: file-upload-content";
+        } catch (IOException e) {
+            model.addAttribute("uploadErrorMessage", "Error processing file: " + e.getMessage());
+            return "fragments/settings :: file-upload-content";
+        }
     }
     
     @PostMapping("/import/google-takeout")
@@ -253,7 +268,18 @@ public class SettingsController {
                                     Model model) {
         String username = authentication.getName();
         
-        Map<String, Object> result = importHandler.importGoogleTakeout(file, username);
+        if (file.isEmpty()) {
+            model.addAttribute("uploadErrorMessage", "File is empty");
+            return "fragments/settings :: file-upload-content";
+        }
+        
+        if (!file.getOriginalFilename().endsWith(".json")) {
+            model.addAttribute("uploadErrorMessage", "Only JSON files are supported");
+            return "fragments/settings :: file-upload-content";
+        }
+        
+        try (InputStream inputStream = file.getInputStream()) {
+            Map<String, Object> result = importHandler.importGoogleTakeout(inputStream, username);
         
         if ((Boolean) result.get("success")) {
             model.addAttribute("uploadSuccessMessage", result.get("message"));

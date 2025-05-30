@@ -44,18 +44,10 @@ public class ImportHandler {
         this.rabbitTemplate = rabbitTemplate;
     }
     
-    public Map<String, Object> importGoogleTakeout(MultipartFile file, String username) {
-        if (file.isEmpty()) {
-            return Map.of("success", false, "error", "File is empty");
-        }
-        
-        if (!file.getOriginalFilename().endsWith(".json")) {
-            return Map.of("success", false, "error", "Only JSON files are supported");
-        }
-        
+    public Map<String, Object> importGoogleTakeout(InputStream inputStream, String username) {
         AtomicInteger processedCount = new AtomicInteger(0);
         
-        try (InputStream inputStream = file.getInputStream()) {
+        try {
             // Use Jackson's streaming API to process the file
             JsonFactory factory = objectMapper.getFactory();
             JsonParser parser = factory.createParser(inputStream);
@@ -179,18 +171,10 @@ public class ImportHandler {
         return point;
     }
     
-    public Map<String, Object> importGpx(MultipartFile file, String username) {
-        if (file.isEmpty()) {
-            return Map.of("success", false, "error", "File is empty");
-        }
-        
-        if (!file.getOriginalFilename().endsWith(".gpx")) {
-            return Map.of("success", false, "error", "Only GPX files are supported");
-        }
-        
+    public Map<String, Object> importGpx(InputStream inputStream, String username) {
         AtomicInteger processedCount = new AtomicInteger(0);
         
-        try (InputStream inputStream = file.getInputStream()) {
+        try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             DocumentBuilder builder = factory.newDocumentBuilder();
             Document document = builder.parse(inputStream);
