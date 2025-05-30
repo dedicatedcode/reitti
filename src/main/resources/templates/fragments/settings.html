@@ -206,7 +206,8 @@
             <form hx-post="/api/v1/import/gpx"
                   hx-encoding="multipart/form-data" 
                   hx-target="#file-upload" 
-                  hx-swap="innerHTML">
+                  hx-swap="innerHTML"
+                  hx-indicator=".htmx-indicator">
                 <div class="form-group">
                     <input type="file" name="file" accept=".gpx" required>
                 </div>
@@ -224,7 +225,8 @@
             <form hx-post="/api/v1/import/google-takeout"
                   hx-encoding="multipart/form-data" 
                   hx-target="#file-upload" 
-                  hx-swap="innerHTML">
+                  hx-swap="innerHTML"
+                  hx-indicator=".htmx-indicator">
                 <div class="form-group">
                     <input type="file" name="file" accept=".json" required>
                 </div>
@@ -239,6 +241,11 @@
             <div class="progress-fill" th:style="'width:' + ${uploadStatus.progress} + '%'"></div>
         </div>
         <p th:text="${uploadStatus.message}">Processing file...</p>
+    </div>
+    
+    <div class="htmx-indicator" style="display: none;">
+        <div class="loading-spinner"></div>
+        <p>Uploading file, please wait...</p>
     </div>
 </div>
 
