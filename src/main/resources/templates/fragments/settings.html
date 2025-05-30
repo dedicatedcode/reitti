@@ -109,19 +109,19 @@
         </tbody>
     </table>
 
-    <form hx-post="/settings/users" hx-swap="none" class="user-form" style="margin-top: 30px;">
+    <form hx-post="/settings/users" hx-swap="none" class="user-form" autocomplete="off" style="margin-top: 30px;">
         <h3>Add New User</h3>
         <div class="form-group">
             <label for="username">Username</label>
-            <input type="text" id="username" name="username" required placeholder="Enter username">
+            <input type="text" id="username" name="username" required placeholder="Enter username" autocomplete="off">
         </div>
         <div class="form-group">
             <label for="displayName">Display Name</label>
-            <input type="text" id="displayName" name="displayName" required placeholder="Enter display name">
+            <input type="text" id="displayName" name="displayName" required placeholder="Enter display name" autocomplete="off">
         </div>
         <div class="form-group">
             <label for="password">Password</label>
-            <input type="password" id="password" name="password" required placeholder="Enter password">
+            <input type="password" id="password" name="password" required placeholder="Enter password" autocomplete="new-password">
         </div>
         <button type="submit" class="btn">Create User</button>
     </form>
@@ -178,9 +178,9 @@
 
     <div class="places-grid" th:if="${!isEmpty}">
         <div class="place-card" th:each="place : ${places}">
-            <div class="place-map" th:id="'map-' + ${place.id()}"></div>
+            <div class="place-map" th:id="'map-' + ${place.id()}" th:data-lat="${place.latitude()}" th:data-lng="${place.longitude()}" ></div>
             <div class="place-details">
-                <form th:id="'place-form-' + ${place.id()}" 
+                <form th:id="'place-form-' + ${place.id()}"  autocomplete="off"
                       th:attr="hx-post=@{/settings/places/{id}/update(id=${place.id()})}"
                       hx-swap="none">
                     <div class="form-group">
@@ -198,61 +198,6 @@
         </div>
     </div>
     <p th:if="${isEmpty}">No significant places found.</p>
-    
-    <script th:inline="javascript">
-        // Initialize maps for places
-        document.addEventListener('DOMContentLoaded', function() {
-            const places = /*[[${places}]]*/ [];
-            
-            places.forEach(place => {
-                initPlaceMap(place.id, place.latitude, place.longitude);
-            });
-            
-            // Handle place form submissions
-            document.querySelectorAll('form[id^="place-form-"]').forEach(form => {
-                form.addEventListener('htmx:afterRequest', function(event) {
-                    if (event.detail.successful) {
-                        // Show success message
-                        const data = JSON.parse(event.detail.xhr.responseText);
-                        const messageEl = document.getElementById('place-message');
-                        messageEl.textContent = data.message;
-                        messageEl.className = data.success ? 'alert alert-success' : 'alert alert-danger';
-                        messageEl.style.display = 'block';
-                        
-                        // Hide message after 5 seconds
-                        setTimeout(() => {
-                            messageEl.style.display = 'none';
-                        }, 5000);
-                    }
-                });
-            });
-        });
-        
-        function initPlaceMap(placeId, lat, lng) {
-            const mapContainer = document.getElementById(`map-${placeId}`);
-            if (!mapContainer) return;
-            
-            // Initialize map
-            const placeMap = L.map(`map-${placeId}`).setView([lat, lng], 15);
-            
-            // Add tile layer
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                maxZoom: 19
-            }).addTo(placeMap);
-            
-            // Add marker
-            L.marker([lat, lng]).addTo(placeMap);
-            
-            // Add circle to show approximate area
-            L.circle([lat, lng], {
-                color: '#4a89dc',
-                fillColor: '#4a89dc',
-                fillOpacity: 0.2,
-                radius: 50 // 50 meters radius
-            }).addTo(placeMap);
-        }
-    </script>
 </div>
 
 <!-- Queue Stats Content Fragment -->
