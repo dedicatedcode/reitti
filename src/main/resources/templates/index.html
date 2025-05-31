@@ -264,21 +264,34 @@
             const loadingIndicator = document.getElementById('loading-indicator');
             loadingIndicator.style.display = 'block';
 
-            fetch(`/api/timeline?selectedDate=${date}`)
-                .then(response => {
+            // Fetch both timeline data and raw location points
+            Promise.all([
+                fetch(`/api/timeline?selectedDate=${date}`).then(response => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok');
                     }
                     return response.json();
+                }),
+                fetch(`/api/v1/raw-location-points?date=${date}`).then(response => {
+                    if (!response.ok) {
+                        // If endpoint doesn't exist or returns error, just return empty array
+                        console.warn('Could not fetch raw location points');
+                        return { points: [] };
+                    }
+                    return response.json();
+                }).catch(error => {
+                    console.warn('Error fetching raw location points:', error);
+                    return { points: [] };
                 })
-                .then(data => {
-                    updateTimeline(data);
-                    loadingIndicator.style.display = 'none';
-                })
-                .catch(error => {
-                    console.error('Error fetching timeline data:', error);
-                    loadingIndicator.style.display = 'none';
-                });
+            ])
+            .then(([timelineData, rawPointsData]) => {
+                updateTimeline(timelineData, rawPointsData);
+                loadingIndicator.style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+                loadingIndicator.style.display = 'none';
+            });
         }
 
         const selectedPath = L.polyline([], {
@@ -287,10 +300,20 @@
             opacity: 1,
             lineJoin: 'round',
             lineCap: 'round'
-        })
+        });
+        
+        // Create a polyline for raw location points
+        const rawPointsPath = L.polyline([], {
+            color: '#9c27b0',  // Purple color for raw points
+            weight: 3,
+            opacity: 0.7,
+            lineJoin: 'round',
+            lineCap: 'round',
+            dashArray: '5, 5'  // Dashed line
+        });
 
         // Function to update the timeline with fetched data
-        function updateTimeline(data) {
+        function updateTimeline(data, rawPointsData) {
             const timelineContainer = document.querySelector('.timeline-container');
             const loadingIndicator = document.getElementById('loading-indicator');
             timelineContainer.innerHTML = '';
@@ -302,6 +325,41 @@
                     map.removeLayer(layer);
                 }
             });
+            
+            // Add raw location points if available
+            if (rawPointsData && rawPointsData.points && rawPointsData.points.length > 0) {
+                const rawPointsCoords = rawPointsData.points.map(point => [point.latitude, point.longitude]);
+                
+                // Sort points by timestamp if available
+                if (rawPointsData.points[0].timestamp) {
+                    rawPointsData.points.sort((a, b) => {
+                        return new Date(a.timestamp) - new Date(b.timestamp);
+                    });
+                }
+                
+                // Add the raw points polyline to the map
+                rawPointsPath.setLatLngs(rawPointsCoords);
+                rawPointsPath.addTo(map);
+                
+                // Add small markers for each raw point
+                rawPointsData.points.forEach(point => {
+                    L.circleMarker([point.latitude, point.longitude], {
+                        radius: 3,
+                        fillColor: '#9c27b0',
+                        color: '#fff',
+                        weight: 1,
+                        opacity: 0.7,
+                        fillOpacity: 0.7
+                    }).addTo(map);
+                });
+                
+                // Extend bounds with raw points
+                const rawPointsBounds = L.latLngBounds(rawPointsCoords);
+                if (rawPointsBounds.isValid()) {
+                    bounds.extend(rawPointsBounds);
+                    hasValidCoords = true;
+                }
+            }
 
             if (!data || !data.entries || data.entries.length === 0) {
                 const noDataMsg = document.createElement('div');
@@ -489,25 +547,30 @@
             document.querySelectorAll('.timeline-container .timeline-entry')
                 .forEach(entry => entry.classList.remove('active'));
             const entry = event.target.closest('.timeline-entry');
+            if (!entry) return;
+                
             entry.classList.add('active');
-            if (entry) {
-                selectedPath.remove();
-                const newBounds = L.latLngBounds();
+            selectedPath.remove();
+            const newBounds = L.latLngBounds();
 
-                const lat = parseFloat(entry.dataset.lat);
-                const lng = parseFloat(entry.dataset.lng);
+            const lat = parseFloat(entry.dataset.lat);
+            const lng = parseFloat(entry.dataset.lng);
 
-                if (entry.dataset.path) {
-                    const pathData = JSON.parse(entry.dataset.path);
-                    const latlngs = pathData.map(coord => [coord.latitude, coord.longitude]);
-                    latlngs.forEach(latlng => {
-                        newBounds.extend(latlng);
-                    });
-                    selectedPath.setLatLngs(latlngs);
-
-                    selectedPath.addTo(map)
-                }
+            if (entry.dataset.path) {
+                const pathData = JSON.parse(entry.dataset.path);
+                const latlngs = pathData.map(coord => [coord.latitude, coord.longitude]);
+                latlngs.forEach(latlng => {
+                    newBounds.extend(latlng);
+                });
+                selectedPath.setLatLngs(latlngs);
+                selectedPath.addTo(map);
+            }
+                
+            if (!isNaN(lat) && !isNaN(lng)) {
                 newBounds.extend([lat, lng]);
+            }
+                
+            if (newBounds.isValid()) {
                 map.flyToBounds(newBounds, {
                     padding: [50, 50],
                     maxZoom: 16
