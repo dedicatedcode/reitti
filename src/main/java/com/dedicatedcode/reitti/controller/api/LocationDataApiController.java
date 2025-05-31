@@ -4,7 +4,9 @@ import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.model.RawLocationPoint;
+import com.dedicatedcode.reitti.model.Trip;
 import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
 import com.dedicatedcode.reitti.service.ImportHandler;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -36,13 +38,16 @@ public class LocationDataApiController {
     
     private final RabbitTemplate rabbitTemplate;
     private final ImportHandler importHandler;
+    private final RawLocationPointRepository rawLocationPointRepository;
     
     @Autowired
     public LocationDataApiController(
             RabbitTemplate rabbitTemplate,
-            ImportHandler importHandler) {
+            ImportHandler importHandler,
+            RawLocationPointRepository rawLocationPointRepository) {
         this.rabbitTemplate = rabbitTemplate;
         this.importHandler = importHandler;
+        this.rawLocationPointRepository = rawLocationPointRepository;
     }
     
     @PostMapping("/location-data")
@@ -158,24 +163,20 @@ public class LocationDataApiController {
             User user = (User) userDetails;
             
             // Get raw location points for the user and date range
-            List<RawLocationPoint> rawPoints = user.getLocationPoints().stream()
+            List<LocationDataRequest.LocationPoint> points = rawLocationPointRepository.findByUserAndTimestampBetweenOrderByTimestampAsc(user, startOfDay, endOfDay).stream()
                 .filter(point -> !point.getTimestamp().isBefore(startOfDay) && point.getTimestamp().isBefore(endOfDay))
                 .sorted(Comparator.comparing(RawLocationPoint::getTimestamp))
-                .collect(Collectors.toList());
-            
-            // Convert to DTO objects
-            List<Map<String, Object>> pointDtos = rawPoints.stream()
-                .map(point -> {
-                    Map<String, Object> dto = new HashMap<>();
-                    dto.put("latitude", point.getLatitude());
-                    dto.put("longitude", point.getLongitude());
-                    dto.put("timestamp", point.getTimestamp().toString());
-                    dto.put("accuracyMeters", point.getAccuracyMeters());
-                    return dto;
-                })
-                .collect(Collectors.toList());
-            
-            return ResponseEntity.ok(Map.of("points", pointDtos));
+                    .map(point -> {
+                        LocationDataRequest.LocationPoint p = new LocationDataRequest.LocationPoint();
+                        p.setLatitude(point.getLatitude());
+                        p.setLongitude(point.getLongitude());
+                        p.setAccuracyMeters(point.getAccuracyMeters());
+                        p.setTimestamp(point.getTimestamp().toString());
+                        return p;
+                    })
+                    .toList();
+
+            return ResponseEntity.ok(Map.of("points", points));
             
         } catch (DateTimeParseException e) {
             return ResponseEntity.badRequest().body(Map.of(

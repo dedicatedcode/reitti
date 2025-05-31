@@ -17,10 +17,10 @@ public class OwntracksLocationRequest {
     private Double altitude;
     
     @JsonProperty("batt")
-    private Integer battery;
+    private Double battery;
     
     @JsonProperty("bs")
-    private Integer batteryStatus;
+    private Boolean batteryStatus;
     
     @JsonProperty("lat")
     private Double latitude;
@@ -67,19 +67,19 @@ public class OwntracksLocationRequest {
         this.altitude = altitude;
     }
     
-    public Integer getBattery() {
+    public Double getBattery() {
         return battery;
     }
     
-    public void setBattery(Integer battery) {
+    public void setBattery(Double battery) {
         this.battery = battery;
     }
     
-    public Integer getBatteryStatus() {
+    public Boolean getBatteryStatus() {
         return batteryStatus;
     }
     
-    public void setBatteryStatus(Integer batteryStatus) {
+    public void setBatteryStatus(Boolean batteryStatus) {
         this.batteryStatus = batteryStatus;
     }
     

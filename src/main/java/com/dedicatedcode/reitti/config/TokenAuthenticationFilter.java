@@ -28,13 +28,7 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        // Check if authentication is already set
-        if (SecurityContextHolder.getContext().getAuthentication() != null &&
-            SecurityContextHolder.getContext().getAuthentication().isAuthenticated()) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-        
+
         String authHeader = request.getHeader("X-API-Token");
         if (authHeader == null) {
             authHeader = request.getHeader("Authorization");

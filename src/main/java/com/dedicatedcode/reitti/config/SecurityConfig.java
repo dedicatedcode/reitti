@@ -19,6 +19,9 @@ public class SecurityConfig {
     @Autowired
     private TokenAuthenticationFilter bearerTokenAuthFilter;
 
+    @Autowired
+    private UrlTokenAuthenticationFilter urlTokenAuthenticationFilter;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -27,6 +30,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(bearerTokenAuthFilter, AuthorizationFilter.class)
+                .addFilterBefore(urlTokenAuthenticationFilter, TokenAuthenticationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(form -> form
                         .loginPage("/login")

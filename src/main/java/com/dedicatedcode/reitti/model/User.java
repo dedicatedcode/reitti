@@ -26,10 +26,7 @@ public class User implements UserDetails {
     
     @Column(nullable = false)
     private String displayName;
-    
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<RawLocationPoint> locationPoints = new ArrayList<>();
-    
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SignificantPlace> significantPlaces = new ArrayList<>();
     
@@ -100,14 +97,6 @@ public class User implements UserDetails {
     
     public void setPassword(String password) {
         this.password = password;
-    }
-
-    public List<RawLocationPoint> getLocationPoints() {
-        return locationPoints;
-    }
-
-    public void setLocationPoints(List<RawLocationPoint> locationPoints) {
-        this.locationPoints = locationPoints;
     }
 
     public List<SignificantPlace> getSignificantPlaces() {

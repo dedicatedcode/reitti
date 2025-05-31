@@ -301,12 +301,12 @@
             lineJoin: 'round',
             lineCap: 'round'
         });
-        
+
         // Create a polyline for raw location points
         const rawPointsPath = L.polyline([], {
-            color: '#9c27b0',  // Purple color for raw points
-            weight: 3,
-            opacity: 0.7,
+            color: '#fddca1',  // Purple color for raw points
+            weight: 6,
+            opacity: 1,
             lineJoin: 'round',
             lineCap: 'round',
             dashArray: '5, 5'  // Dashed line
@@ -325,41 +325,6 @@
                     map.removeLayer(layer);
                 }
             });
-            
-            // Add raw location points if available
-            if (rawPointsData && rawPointsData.points && rawPointsData.points.length > 0) {
-                const rawPointsCoords = rawPointsData.points.map(point => [point.latitude, point.longitude]);
-                
-                // Sort points by timestamp if available
-                if (rawPointsData.points[0].timestamp) {
-                    rawPointsData.points.sort((a, b) => {
-                        return new Date(a.timestamp) - new Date(b.timestamp);
-                    });
-                }
-                
-                // Add the raw points polyline to the map
-                rawPointsPath.setLatLngs(rawPointsCoords);
-                rawPointsPath.addTo(map);
-                
-                // Add small markers for each raw point
-                rawPointsData.points.forEach(point => {
-                    L.circleMarker([point.latitude, point.longitude], {
-                        radius: 3,
-                        fillColor: '#9c27b0',
-                        color: '#fff',
-                        weight: 1,
-                        opacity: 0.7,
-                        fillOpacity: 0.7
-                    }).addTo(map);
-                });
-                
-                // Extend bounds with raw points
-                const rawPointsBounds = L.latLngBounds(rawPointsCoords);
-                if (rawPointsBounds.isValid()) {
-                    bounds.extend(rawPointsBounds);
-                    hasValidCoords = true;
-                }
-            }
 
             if (!data || !data.entries || data.entries.length === 0) {
                 const noDataMsg = document.createElement('div');
@@ -506,29 +471,57 @@
                     bounds.extend([lat, lng]);
                     hasValidCoords = true;
                 }
+                //
+                // // If entry has a path, add it to the map
+                // if (entryElement.dataset.path) {
+                //     try {
+                //         const pathData = JSON.parse(entryElement.dataset.path);
+                //         const latlngs = pathData.map(coord => [coord.latitude, coord.longitude]);
+                //
+                //         // Create polyline
+                //         L.polyline(latlngs, {
+                //             color: '#4f73ff',
+                //             weight: 2,
+                //             opacity: 0.8,
+                //             lineJoin: 'round',
+                //             lineCap: 'round'
+                //         }).addTo(map);
+                //
+                //         // Extend bounds with all path points
+                //         latlngs.forEach(latlng => {
+                //             bounds.extend(latlng);
+                //             hasValidCoords = true;
+                //         });
+                //     } catch (e) {
+                //         console.error("Error parsing path data:", e);
+                //     }
+                // }
 
-                // If entry has a path, add it to the map
-                if (entryElement.dataset.path) {
-                    try {
-                        const pathData = JSON.parse(entryElement.dataset.path);
-                        const latlngs = pathData.map(coord => [coord.latitude, coord.longitude]);
+                if (rawPointsData && rawPointsData.points && rawPointsData.points.length > 0) {
+                    const rawPointsCoords = rawPointsData.points.map(point => [point.latitude, point.longitude]);
 
-                        // Create polyline
-                        L.polyline(latlngs, {
-                            color: '#4f73ff',
-                            weight: 2,
-                            opacity: 0.8,
-                            lineJoin: 'round',
-                            lineCap: 'round'
-                        }).addTo(map);
+                    rawPointsPath.remove();
+                    // Add the raw points polyline to the map
+                    rawPointsPath.setLatLngs(rawPointsCoords);
+                    rawPointsPath.addTo(map);
+                    //
+                    // // Add small markers for each raw point
+                    // rawPointsData.points.forEach(point => {
+                    //     L.circleMarker([point.latitude, point.longitude], {
+                    //         radius: 3,
+                    //         fillColor: '#9c27b0',
+                    //         color: '#fff',
+                    //         weight: 1,
+                    //         opacity: 0.7,
+                    //         fillOpacity: 0.7
+                    //     }).addTo(map);
+                    // });
 
-                        // Extend bounds with all path points
-                        latlngs.forEach(latlng => {
-                            bounds.extend(latlng);
-                            hasValidCoords = true;
-                        });
-                    } catch (e) {
-                        console.error("Error parsing path data:", e);
+                    // Extend bounds with raw points
+                    const rawPointsBounds = L.latLngBounds(rawPointsCoords);
+                    if (rawPointsBounds.isValid()) {
+                        bounds.extend(rawPointsBounds);
+                        hasValidCoords = true;
                     }
                 }
             });
