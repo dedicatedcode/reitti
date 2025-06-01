@@ -19,7 +19,6 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -31,7 +30,7 @@ public class VisitMergingService {
 
     private static final Logger logger = LoggerFactory.getLogger(VisitMergingService.class);
 
-    private static final double PLACE_MERGE_DISTANCE = 0.001; // degrees
+    private static final double PLACE_MERGE_DISTANCE = 200; // degrees
     private static final int SRID = 4326;
 
     private final VisitRepository visitRepository;
@@ -60,7 +59,6 @@ public class VisitMergingService {
     }
 
     @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE)
-    @Transactional
     public void mergeVisits(MergeVisitEvent event) {
         Optional<User> user = userRepository.findByUsername(event.getUserName());
         if (user.isEmpty()) {
@@ -79,8 +77,9 @@ public class VisitMergingService {
         if (startTime == null || endTime == null) {
             allVisits = this.visitRepository.findByUserAndProcessedFalse(user);
         } else {
-            allVisits = this.visitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user, Instant.ofEpochMilli(startTime), Instant.ofEpochMilli(endTime));
+            allVisits = this.visitRepository.findByUserAndStartTimeBetweenAndProcessedFalseOrderByStartTimeAsc(user, Instant.ofEpochMilli(startTime), Instant.ofEpochMilli(endTime));
         }
+
         if (allVisits.isEmpty()) {
             logger.info("No visits found for user: {}", user.getUsername());
             return Collections.emptyList();
@@ -127,7 +126,7 @@ public class VisitMergingService {
             Visit nextVisit = visits.get(i);
 
             // Case 1: Same place and within merge threshold
-            if (GeoUtils.calculateHaversineDistance(currentVisit.getLatitude(), currentVisit.getLongitude(), nextVisit.getLatitude(), nextVisit.getLongitude()) <= PLACE_MERGE_DISTANCE &&
+            if (GeoUtils.distanceInMeters(currentVisit.getLatitude(), currentVisit.getLongitude(), nextVisit.getLatitude(), nextVisit.getLongitude()) <= PLACE_MERGE_DISTANCE &&
                     Duration.between(currentEndTime, nextVisit.getStartTime()).getSeconds() <= mergeThresholdSeconds) {
 
                 // Merge this visit with the current one
@@ -186,7 +185,7 @@ public class VisitMergingService {
                 point,
                 null
         );
-        this.significantPlaceRepository.save(significantPlace);
+        this.significantPlaceRepository.saveAndFlush(significantPlace);
         publishSignificantPlaceCreatedEvent(significantPlace);
         return significantPlace;
     }
