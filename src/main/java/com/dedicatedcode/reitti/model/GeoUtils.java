@@ -4,7 +4,7 @@ public final class GeoUtils {
     private GeoUtils() {
     }
 
-    public static double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2) {
+    public static double distanceInMeters(double lat1, double lon1, double lat2, double lon2) {
         // Earth radius in meters
         final double R = 6371000;
 
@@ -20,8 +20,8 @@ public final class GeoUtils {
         return R * c;
     }
 
-    public static double calculateHaversineDistance(RawLocationPoint p1, RawLocationPoint p2) {
-        return calculateHaversineDistance(
+    public static double distanceInMeters(RawLocationPoint p1, RawLocationPoint p2) {
+        return distanceInMeters(
                 p1.getLatitude(), p1.getLongitude(),
                 p2.getLatitude(), p2.getLongitude());
     }
