@@ -38,7 +38,7 @@ public class SignificantPlace {
     private String category;
 
     @OneToMany(mappedBy = "place", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Visit> visits = new ArrayList<>();
+    private List<ProcessedVisit> visits = new ArrayList<>();
 
     public SignificantPlace() {}
 
@@ -114,11 +114,11 @@ public class SignificantPlace {
         this.category = category;
     }
 
-    public List<Visit> getVisits() {
+    public List<ProcessedVisit> getVisits() {
         return visits;
     }
 
-    public void setVisits(List<Visit> visits) {
+    public void setVisits(List<ProcessedVisit> visits) {
         this.visits = visits;
     }
     

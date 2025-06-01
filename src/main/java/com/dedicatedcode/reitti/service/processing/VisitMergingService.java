@@ -2,13 +2,16 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.MergeVisitEvent;
-import com.dedicatedcode.reitti.model.ProcessedVisit;
-import com.dedicatedcode.reitti.model.SignificantPlace;
-import com.dedicatedcode.reitti.model.User;
-import com.dedicatedcode.reitti.model.Visit;
+import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
+import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.ProcessedVisitRepository;
+import com.dedicatedcode.reitti.repository.SignificantPlaceRepository;
 import com.dedicatedcode.reitti.repository.UserRepository;
 import com.dedicatedcode.reitti.repository.VisitRepository;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -28,11 +31,15 @@ public class VisitMergingService {
 
     private static final Logger logger = LoggerFactory.getLogger(VisitMergingService.class);
 
+    private static final double PLACE_MERGE_DISTANCE = 0.001; // degrees
+    private static final int SRID = 4326;
+
     private final VisitRepository visitRepository;
     private final ProcessedVisitRepository processedVisitRepository;
     private final UserRepository userRepository;
     private final RabbitTemplate rabbitTemplate;
-
+    private final SignificantPlaceRepository significantPlaceRepository;
+    private final GeometryFactory geometryFactory;
     @Value("${reitti.visit.merge-threshold-seconds:300}")
     private long mergeThresholdSeconds;
     @Value("${reitti.detect-trips-after-merging:true}")
@@ -41,11 +48,15 @@ public class VisitMergingService {
     @Autowired
     public VisitMergingService(VisitRepository visitRepository,
                                ProcessedVisitRepository processedVisitRepository,
-                               UserRepository userRepository, RabbitTemplate rabbitTemplate) {
+                               UserRepository userRepository, RabbitTemplate rabbitTemplate,
+                               SignificantPlaceRepository significantPlaceRepository) {
         this.visitRepository = visitRepository;
         this.processedVisitRepository = processedVisitRepository;
         this.userRepository = userRepository;
         this.rabbitTemplate = rabbitTemplate;
+        this.significantPlaceRepository = significantPlaceRepository;
+        this.geometryFactory = new GeometryFactory(new PrecisionModel(), SRID);
+
     }
 
     @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE)
@@ -107,7 +118,6 @@ public class VisitMergingService {
 
         // Start with the first visit
         Visit currentVisit = visits.get(0);
-        SignificantPlace currentPlace = currentVisit.getPlace();
         Instant currentStartTime = currentVisit.getStartTime();
         Instant currentEndTime = currentVisit.getEndTime();
         Set<Long> mergedVisitIds = new HashSet<>();
@@ -115,10 +125,9 @@ public class VisitMergingService {
 
         for (int i = 1; i < visits.size(); i++) {
             Visit nextVisit = visits.get(i);
-            SignificantPlace nextPlace = nextVisit.getPlace();
 
             // Case 1: Same place and within merge threshold
-            if (nextPlace.getId().equals(currentPlace.getId()) &&
+            if (GeoUtils.calculateHaversineDistance(currentVisit.getLatitude(), currentVisit.getLongitude(), nextVisit.getLatitude(), nextVisit.getLongitude()) <= PLACE_MERGE_DISTANCE &&
                     Duration.between(currentEndTime, nextVisit.getStartTime()).getSeconds() <= mergeThresholdSeconds) {
 
                 // Merge this visit with the current one
@@ -129,17 +138,17 @@ public class VisitMergingService {
             else {
                 // Handle overlapping visits - if next visit starts before current ends
                 if (nextVisit.getStartTime().isBefore(currentEndTime)) {
-                    // Adjust current end time to when the next visit starts
+                    // Adjust the current end time to when the next visit starts
                     currentEndTime = nextVisit.getStartTime();
                 }
 
                 // Create a processed visit from the current merged set
-                ProcessedVisit processedVisit = createProcessedVisit(user, currentPlace, currentStartTime,
+                ProcessedVisit processedVisit = createProcessedVisit(user, currentVisit, currentStartTime,
                         currentEndTime, mergedVisitIds);
                 result.add(processedVisit);
 
                 // Start a new merged set with this visit
-                currentPlace = nextPlace;
+                currentVisit = nextVisit;
                 currentStartTime = nextVisit.getStartTime();
                 currentEndTime = nextVisit.getEndTime();
                 mergedVisitIds = new HashSet<>();
@@ -148,24 +157,54 @@ public class VisitMergingService {
         }
 
         // Add the last merged set
-        ProcessedVisit processedVisit = createProcessedVisit(user, currentPlace, currentStartTime,
+        ProcessedVisit processedVisit = createProcessedVisit(user, currentVisit, currentStartTime,
                 currentEndTime, mergedVisitIds);
         result.add(processedVisit);
 
         return result;
     }
 
-    private ProcessedVisit createProcessedVisit(User user, SignificantPlace place,
+
+    private List<SignificantPlace> findNearbyPlaces(User user, double latitude, double longitude) {
+        // Create a point geometry
+        Point point = geometryFactory.createPoint(new Coordinate(longitude, latitude));
+
+        // Find places within the merge distance
+        return significantPlaceRepository.findNearbyPlaces(user.getId(), point, PLACE_MERGE_DISTANCE);
+    }
+
+    private SignificantPlace createSignificantPlace(User user, Visit visit) {
+        // Create a point geometry
+        Point point = geometryFactory.createPoint(new Coordinate(visit.getLongitude(), visit.getLatitude()));
+
+        SignificantPlace significantPlace = new SignificantPlace(
+                user,
+                null, // name will be set later through reverse geocoding or user input
+                null, // address will be set later through reverse geocoding
+                visit.getLatitude(),
+                visit.getLongitude(),
+                point,
+                null
+        );
+        this.significantPlaceRepository.save(significantPlace);
+        publishSignificantPlaceCreatedEvent(significantPlace);
+        return significantPlace;
+    }
+
+    private ProcessedVisit createProcessedVisit(User user,
+                                                Visit visit,
                                                 Instant startTime, Instant endTime,
                                                 Set<Long> originalVisitIds) {
         // Check if a processed visit already exists for this time range and place
-        List<ProcessedVisit> existingVisits = processedVisitRepository.findByUserAndPlaceAndTimeOverlap(
-                user, place, startTime, endTime);
+        Optional<SignificantPlace> place = findNearbyPlaces(user, visit.getLatitude(), visit.getLongitude()).stream().findFirst();
+
+        List<ProcessedVisit> existingVisits = place.map(p -> processedVisitRepository.findByUserAndPlaceAndTimeOverlap(
+                user, p, startTime, endTime)).orElse(Collections.emptyList());
 
         if (!existingVisits.isEmpty()) {
             // Use the existing processed visit
-            ProcessedVisit existingVisit = existingVisits.get(0);
-            logger.debug("Found existing processed visit for place ID {}", place.getId());
+            ProcessedVisit existingVisit = existingVisits.getFirst();
+            logger.debug("Found existing processed visit for place ID {}", place.get().getId());
 
             // Update the existing visit if needed (e.g., extend time range)
             if (startTime.isBefore(existingVisit.getStartTime())) {
@@ -191,7 +230,7 @@ public class VisitMergingService {
             return processedVisitRepository.save(existingVisit);
         } else {
             // Create a new processed visit
-            ProcessedVisit processedVisit = new ProcessedVisit(user, place, startTime, endTime);
+            ProcessedVisit processedVisit = new ProcessedVisit(user, createSignificantPlace(user, visit), startTime, endTime);
             processedVisit.setMergedCount(originalVisitIds.size());
 
             // Store original visit IDs as comma-separated string
@@ -204,16 +243,13 @@ public class VisitMergingService {
         }
     }
 
-    @Transactional
-    public void clearProcessedVisits(User user) {
-        List<ProcessedVisit> userVisits = processedVisitRepository.findByUser(user);
-        processedVisitRepository.deleteAll(userVisits);
-        logger.info("Cleared {} processed visits for user: {}", userVisits.size(), user.getUsername());
-    }
-
-    @Transactional
-    public void clearAllProcessedVisits() {
-        processedVisitRepository.deleteAll();
-        logger.info("Cleared all processed visits");
+    private void publishSignificantPlaceCreatedEvent(SignificantPlace place) {
+        SignificantPlaceCreatedEvent event = new SignificantPlaceCreatedEvent(
+                place.getId(),
+                place.getLatitudeCentroid(),
+                place.getLongitudeCentroid()
+        );
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.SIGNIFICANT_PLACE_ROUTING_KEY, event);
+        logger.info("Published SignificantPlaceCreatedEvent for place ID: {}", place.getId());
     }
 }

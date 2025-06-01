@@ -8,35 +8,38 @@ import java.time.Instant;
 @Entity
 @Table(name = "visits")
 public class Visit {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
-    
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "place_id", nullable = false)
-    private SignificantPlace place;
-    
+
+    @Column(name = "longitude", nullable = false)
+    private Double longitude;
+    @Column(name = "latitude", nullable = false)
+    private Double latitude;
     @Column(nullable = false)
     private Instant startTime;
-    
+
     @Column(nullable = false)
     private Instant endTime;
-    
+
     @Column(nullable = false)
     private Long durationSeconds;
-    
+
     @Column(nullable = false)
     private boolean processed = false;
 
-    public Visit() {}
-    public Visit(User user, SignificantPlace place, Instant startTime, Instant endTime) {
+    public Visit() {
+    }
+
+    public Visit(User user, Double longitude, Double latitude, Instant startTime, Instant endTime) {
         this.user = user;
-        this.place = place;
+        this.longitude = longitude;
+        this.latitude = latitude;
         this.startTime = startTime;
         this.endTime = endTime;
     }
@@ -57,12 +60,20 @@ public class Visit {
         this.user = user;
     }
 
-    public SignificantPlace getPlace() {
-        return place;
+    public Double getLongitude() {
+        return longitude;
     }
 
-    public void setPlace(SignificantPlace place) {
-        this.place = place;
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
+    }
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
     }
 
     public Instant getStartTime() {
@@ -88,11 +99,11 @@ public class Visit {
     public void setDurationSeconds(Long durationSeconds) {
         this.durationSeconds = durationSeconds;
     }
-    
+
     public boolean isProcessed() {
         return processed;
     }
-    
+
     public void setProcessed(boolean processed) {
         this.processed = processed;
     }
