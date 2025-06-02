@@ -30,7 +30,6 @@ public class VisitMergingService {
 
     private static final Logger logger = LoggerFactory.getLogger(VisitMergingService.class);
 
-    private static final double PLACE_MERGE_DISTANCE = 200; // meters
     private static final int SRID = 4326;
 
     private final VisitRepository visitRepository;
@@ -217,7 +216,7 @@ public class VisitMergingService {
         Point point = geometryFactory.createPoint(new Coordinate(longitude, latitude));
 
         // Find places within the merge distance
-        return significantPlaceRepository.findNearbyPlaces(user.getId(), point, PLACE_MERGE_DISTANCE);
+        return significantPlaceRepository.findNearbyPlaces(user.getId(), point, GeoUtils.metersToDegreesAtPosition(50, latitude)[1]);
     }
 
     private SignificantPlace createSignificantPlace(User user, Visit visit) {
