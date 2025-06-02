@@ -40,9 +40,6 @@ public class VisitMergingService {
     private final GeometryFactory geometryFactory;
     @Value("${reitti.visit.merge-threshold-seconds:300}")
     private long mergeThresholdSeconds;
-    
-    @Value("${reitti.visit.max-time-difference-seconds:60}")
-    private long maxTimeDifferenceSeconds;
     @Value("${reitti.detect-trips-after-merging:true}")
     private boolean detectTripsAfterMerging;
 
@@ -176,59 +173,40 @@ public class VisitMergingService {
         }
         
         // Start with the first visit
-        Visit currentVisit = visits.get(0);
+        Visit currentVisit = visits.getFirst();
         Instant currentStartTime = currentVisit.getStartTime();
         Instant currentEndTime = currentVisit.getEndTime();
         Set<Long> mergedVisitIds = new HashSet<>();
         mergedVisitIds.add(currentVisit.getId());
-        
+
         for (int i = 1; i < visits.size(); i++) {
             Visit nextVisit = visits.get(i);
-            
-            // Check if visits are near each other (they should be since they're grouped by place)
-            double distance = GeoUtils.distanceInMeters(
-                currentVisit.getLatitude(), currentVisit.getLongitude(),
-                nextVisit.getLatitude(), nextVisit.getLongitude()
-            );
-            
-            // Check time conditions:
-            // 1. Visits overlap in time, OR
-            // 2. Time difference is within the configured threshold
-            boolean timeOverlap = nextVisit.getStartTime().isBefore(currentEndTime) || 
-                                 currentStartTime.isBefore(nextVisit.getEndTime());
-            
-            boolean withinTimeThreshold = Duration.between(currentEndTime, nextVisit.getStartTime()).getSeconds() <= maxTimeDifferenceSeconds ||
-                                         Duration.between(nextVisit.getEndTime(), currentStartTime).getSeconds() <= maxTimeDifferenceSeconds;
-            
-            // Only merge if consecutive visits are near each other AND meet time criteria
-            if (distance <= mergeThresholdSeconds && (timeOverlap || withinTimeThreshold)) {
+
+            // If within merge threshold, merge the visits
+            if (Duration.between(currentEndTime, nextVisit.getStartTime()).getSeconds() <= mergeThresholdSeconds) {
                 // Merge this visit with the current one
-                currentStartTime = currentStartTime.isBefore(nextVisit.getStartTime()) ? 
-                                  currentStartTime : nextVisit.getStartTime();
-                currentEndTime = currentEndTime.isAfter(nextVisit.getEndTime()) ? 
-                                currentEndTime : nextVisit.getEndTime();
+                currentEndTime = nextVisit.getEndTime().isAfter(currentEndTime) ?
+                        nextVisit.getEndTime() : currentEndTime;
                 mergedVisitIds.add(nextVisit.getId());
-                currentVisit = nextVisit; // Update current visit for next comparison
             } else {
                 // Create a processed visit from the current merged set
                 ProcessedVisit processedVisit = createProcessedVisit(user, place, currentStartTime,
                         currentEndTime, mergedVisitIds);
                 result.add(processedVisit);
-                
+
                 // Start a new merged set with this visit
-                currentVisit = nextVisit;
                 currentStartTime = nextVisit.getStartTime();
                 currentEndTime = nextVisit.getEndTime();
                 mergedVisitIds = new HashSet<>();
                 mergedVisitIds.add(nextVisit.getId());
             }
         }
-        
+
         // Add the last merged set
         ProcessedVisit processedVisit = createProcessedVisit(user, place, currentStartTime,
                 currentEndTime, mergedVisitIds);
         result.add(processedVisit);
-        
+
         return result;
     }
 
@@ -238,7 +216,7 @@ public class VisitMergingService {
         Point point = geometryFactory.createPoint(new Coordinate(longitude, latitude));
 
         // Find places within the merge distance
-        return significantPlaceRepository.findNearbyPlaces(user.getId(), point, GeoUtils.metersToDegreesAtPosition(50, latitude)[1]);
+        return significantPlaceRepository.findNearbyPlaces(user.getId(), point, GeoUtils.metersToDegreesAtPosition(50, latitude)[0]);
     }
 
     private SignificantPlace createSignificantPlace(User user, Visit visit) {

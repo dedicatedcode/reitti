@@ -76,8 +76,6 @@ public class LocationProcessingPipeline {
 
         if (!stayPoints.isEmpty()) {
             logger.trace("Detected {} stay points", stayPoints.size());
-
-            // Step 3: Update significant places based on stay points
             visitService.processStayPoints(user, stayPoints);
 
             Instant startTime = savedPoints.stream().map(RawLocationPoint::getTimestamp).min(Instant::compareTo).orElse(Instant.now());

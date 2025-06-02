@@ -14,9 +14,6 @@ import java.util.List;
 public class VisitService {
     private static final Logger logger = LoggerFactory.getLogger(VisitService.class);
 
-    // Parameters for significant place detection
-
-
     private final VisitRepository visitRepository;
 
     @Autowired

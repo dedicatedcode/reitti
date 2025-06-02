@@ -15,7 +15,9 @@ import java.util.List;
 public interface ProcessedVisitRepository extends JpaRepository<ProcessedVisit, Long> {
     
     List<ProcessedVisit> findByUser(User user);
-    
+
+    List<ProcessedVisit> findByUserOrderByStartTime(User user);
+
     @Query("SELECT pv FROM ProcessedVisit pv WHERE pv.user = :user AND pv.place = :place " +
            "AND ((pv.startTime <= :endTime AND pv.endTime >= :startTime) OR " +
            "(pv.startTime >= :startTime AND pv.startTime <= :endTime) OR " +

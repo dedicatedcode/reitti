@@ -1,10 +1,14 @@
 package com.dedicatedcode.reitti;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.model.RawLocationPoint;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.ImportHandler;
 import com.dedicatedcode.reitti.service.LocationDataService;
+import com.dedicatedcode.reitti.service.processing.StayPoint;
+import com.dedicatedcode.reitti.service.processing.StayPointDetectionService;
+import com.dedicatedcode.reitti.service.processing.VisitService;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -79,6 +83,11 @@ public abstract class AbstractIntegrationTest {
     private LocationDataService locationDataService;
 
     @Autowired
+    private StayPointDetectionService stayPointDetectionService;
+    @Autowired
+    private VisitService visitService;
+
+    @Autowired
     private ImportHandler importHandler;
 
     protected User user;
@@ -110,12 +119,19 @@ public abstract class AbstractIntegrationTest {
         }
     }
 
-    protected void importGpx(String filename) {
+    protected List<RawLocationPoint> importGpx(String filename) {
         InputStream is = getClass().getResourceAsStream(filename);
         importHandler.importGpx(is, user);
-
         List<LocationDataRequest.LocationPoint> allPoints = this.importListener.getPoints();
+        return locationDataService.processLocationData(user, allPoints);
+    }
 
-        locationDataService.processLocationData(user, allPoints);
+    protected void importUntilVisits(String fileName) {
+        List<RawLocationPoint> savedPoints = importGpx(fileName);
+        List<StayPoint> stayPoints = stayPointDetectionService.detectStayPoints(user, savedPoints);
+
+        if (!stayPoints.isEmpty()) {
+            visitService.processStayPoints(user, stayPoints);
+        }
     }
 }

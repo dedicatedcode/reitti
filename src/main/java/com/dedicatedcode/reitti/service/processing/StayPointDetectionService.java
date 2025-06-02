@@ -37,7 +37,7 @@ public class StayPointDetectionService {
         this.distanceThreshold = distanceThreshold;
         this.timeThreshold = timeThreshold;
         this.minPointsInCluster = minPointsInCluster;
-        
+
         logger.info("StayPointDetectionService initialized with: distanceThreshold={}m, timeThreshold={}s, minPointsInCluster={}",
                 distanceThreshold, timeThreshold, minPointsInCluster);
     }
@@ -82,80 +82,70 @@ public class StayPointDetectionService {
         }
 
         logger.info("Starting cluster-based stay point detection with {} points", points.size());
-        
-        // Step 1: Create clusters based on spatial proximity
-        List<List<RawLocationPoint>> clusters = createSpatialClusters(points);
-        logger.info("Created {} initial spatial clusters", clusters.size());
-        
-        // Step 2: Filter clusters based on time threshold
 
+        List<List<RawLocationPoint>> clusters = new ArrayList<>();
+        List<RawLocationPoint> currentCluster = new ArrayList<>();
+        RawLocationPoint currentPoint = null;
+        Point currentCenter = null;
+        for (RawLocationPoint point : points) {
+            if (currentPoint == null) {
+                currentPoint = point;
+                currentCluster.add(point);
+                currentCenter = new Point(point.getLatitude(), point.getLongitude());
+            } else if (GeoUtils.distanceInMeters(currentCenter.latitude(), currentCenter.longitude(), point.getLatitude(), point.getLongitude()) <= distanceThreshold) {
+                currentCluster.add(point);
+                currentCenter = weightedCenter(currentCluster);
+            } else {
+                clusters.add(currentCluster);
+                currentCluster = new ArrayList<>();
+                currentCluster.add(point);
+                currentPoint = point;
+                currentCenter = new Point(point.getLatitude(), point.getLongitude());
+            }
+        }
+
+        // Step 1: Create clusters based on spatial proximity
+        logger.info("Created {} initial spatial clusters", clusters.size());
+
+        // Step 2: Filter clusters based on time threshold
         List<List<RawLocationPoint>> validClusters = filterClustersByTimeThreshold(clusters);
         logger.info("Found {} valid clusters after time threshold filtering", validClusters.size());
-        
+
         // Step 3: Convert valid clusters to stay points
         return validClusters.stream()
                 .map(this::createStayPoint)
                 .collect(Collectors.toList());
     }
-    
-    private List<List<RawLocationPoint>> createSpatialClusters(List<RawLocationPoint> points) {
-        List<List<RawLocationPoint>> clusters = new ArrayList<>();
-        Set<RawLocationPoint> processedPoints = new HashSet<>();
-        
-        for (RawLocationPoint point : points) {
-            if (processedPoints.contains(point)) {
-                continue;
-            }
-            
-            // Start a new cluster with this point
-            List<RawLocationPoint> cluster = new ArrayList<>();
-            cluster.add(point);
-            processedPoints.add(point);
-            
-            // Find all points within DISTANCE_THRESHOLD of this point
-            for (RawLocationPoint otherPoint : points) {
-                if (processedPoints.contains(otherPoint)) {
-                    continue;
-                }
-                
-                double distance = GeoUtils.distanceInMeters(point, otherPoint);
-                
-                if (distance <= distanceThreshold) {
-                    cluster.add(otherPoint);
-                    processedPoints.add(otherPoint);
-                }
-            }
-            
-            // Only add clusters with enough points
-            if (cluster.size() >= minPointsInCluster) {
-                // Sort the cluster by timestamp
-                cluster.sort(Comparator.comparing(RawLocationPoint::getTimestamp));
-                clusters.add(cluster);
-            }
-        }
-        
-        return clusters;
-    }
-    
+
     private List<List<RawLocationPoint>> filterClustersByTimeThreshold(List<List<RawLocationPoint>> clusters) {
         List<List<RawLocationPoint>> validClusters = new ArrayList<>();
-        
+
         for (List<RawLocationPoint> cluster : clusters) {
             // Calculate the total time span of the cluster
-            Instant firstTimestamp = cluster.get(0).getTimestamp();
-            Instant lastTimestamp = cluster.get(cluster.size() - 1).getTimestamp();
-            
+            Instant firstTimestamp = cluster.getFirst().getTimestamp();
+            Instant lastTimestamp = cluster.getLast().getTimestamp();
+
             long timeSpanSeconds = Duration.between(firstTimestamp, lastTimestamp).getSeconds();
-            
+
             if (timeSpanSeconds >= timeThreshold) {
                 validClusters.add(cluster);
             }
         }
-        
+
         return validClusters;
     }
 
     private StayPoint createStayPoint(List<RawLocationPoint> clusterPoints) {
+        Point result = weightedCenter(clusterPoints);
+
+        // Get the time range
+        Instant arrivalTime = clusterPoints.getFirst().getTimestamp();
+        Instant departureTime = clusterPoints.getLast().getTimestamp();
+
+        return new StayPoint(result.latitude(), result.longitude(), arrivalTime, departureTime, clusterPoints);
+    }
+
+    private static Point weightedCenter(List<RawLocationPoint> clusterPoints) {
         // Calculate the centroid of the cluster using weighted average based on accuracy
         // Points with better accuracy (lower meters value) get higher weight
         double weightSum = 0;
@@ -164,10 +154,10 @@ public class StayPointDetectionService {
 
         for (RawLocationPoint point : clusterPoints) {
             // Use inverse of accuracy as weight (higher accuracy = higher weight)
-            double weight = point.getAccuracyMeters() != null && point.getAccuracyMeters() > 0 
-                ? 1.0 / point.getAccuracyMeters() 
+            double weight = point.getAccuracyMeters() != null && point.getAccuracyMeters() > 0
+                ? 1.0 / point.getAccuracyMeters()
                 : 1.0; // default weight if accuracy is null or zero
-            
+
             weightSum += weight;
             weightedLatSum += point.getLatitude() * weight;
             weightedLngSum += point.getLongitude() * weight;
@@ -175,11 +165,9 @@ public class StayPointDetectionService {
 
         double latCentroid = weightedLatSum / weightSum;
         double lngCentroid = weightedLngSum / weightSum;
+        return new Point(latCentroid, lngCentroid);
+    }
 
-        // Get the time range
-        Instant arrivalTime = clusterPoints.get(0).getTimestamp();
-        Instant departureTime = clusterPoints.get(clusterPoints.size() - 1).getTimestamp();
-
-        return new StayPoint(latCentroid, lngCentroid, arrivalTime, departureTime, clusterPoints);
+    private record Point(double latitude, double longitude) {
     }
 }
