@@ -233,7 +233,7 @@ public class SettingsController {
     public String importGpx(@RequestParam("file") MultipartFile file,
                            Authentication authentication,
                            Model model) {
-        String username = authentication.getName();
+        User user = (User) authentication.getDetails();
         
         if (file.isEmpty()) {
             model.addAttribute("uploadErrorMessage", "File is empty");
@@ -246,7 +246,7 @@ public class SettingsController {
         }
         
         try (InputStream inputStream = file.getInputStream()) {
-            Map<String, Object> result = importHandler.importGpx(inputStream, username);
+            Map<String, Object> result = importHandler.importGpx(inputStream, user);
         
             if ((Boolean) result.get("success")) {
                 model.addAttribute("uploadSuccessMessage", result.get("message"));
@@ -265,7 +265,7 @@ public class SettingsController {
     public String importGoogleTakeout(@RequestParam("file") MultipartFile file, 
                                     Authentication authentication,
                                     Model model) {
-        String username = authentication.getName();
+        User user = (User) authentication.getPrincipal();
         
         if (file.isEmpty()) {
             model.addAttribute("uploadErrorMessage", "File is empty");
@@ -278,7 +278,7 @@ public class SettingsController {
         }
         
         try (InputStream inputStream = file.getInputStream()) {
-            Map<String, Object> result = importHandler.importGoogleTakeout(inputStream, username);
+            Map<String, Object> result = importHandler.importGoogleTakeout(inputStream, user);
         
             if ((Boolean) result.get("success")) {
                 model.addAttribute("uploadSuccessMessage", result.get("message"));

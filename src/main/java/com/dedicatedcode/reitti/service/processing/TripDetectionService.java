@@ -144,7 +144,7 @@ public class TripDetectionService {
     }
     
     private double calculateDistanceBetweenPlaces(SignificantPlace place1, SignificantPlace place2) {
-        return GeoUtils.calculateHaversineDistance(
+        return GeoUtils.distanceInMeters(
                 place1.getLatitudeCentroid(), place1.getLongitudeCentroid(),
                 place2.getLatitudeCentroid(), place2.getLongitudeCentroid());
     }
@@ -160,7 +160,7 @@ public class TripDetectionService {
             RawLocationPoint p1 = points.get(i);
             RawLocationPoint p2 = points.get(i + 1);
             
-            totalDistance += GeoUtils.calculateHaversineDistance(p1, p2);
+            totalDistance += GeoUtils.distanceInMeters(p1, p2);
         }
         
         return totalDistance;

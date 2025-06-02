@@ -37,7 +37,6 @@ public class ReverseGeocodingListener {
     }
     
     @RabbitListener(queues = RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE, concurrency = "1-16")
-    @Transactional(isolation = Isolation.READ_UNCOMMITTED)
     public void handleSignificantPlaceCreated(SignificantPlaceCreatedEvent event) {
         logger.info("Received SignificantPlaceCreatedEvent for place ID: {}", event.getPlaceId());
         

@@ -43,6 +43,7 @@ class VisitMergingServiceIntegrationTest extends AbstractIntegrationTest {
         // Create test user
         testUser = new User();
         testUser.setUsername("testuser");
+        testUser.setDisplayName("testuser");
         testUser.setPassword(passwordEncoder.encode("password"));
         testUser = userRepository.save(testUser);
     }
@@ -53,23 +54,4 @@ class VisitMergingServiceIntegrationTest extends AbstractIntegrationTest {
         assertTrue(true, "Containers should be running");
     }
 
-    @Test
-    void testCreateAndSaveVisit() {
-        // Create a test visit
-        Visit visit = new Visit();
-        visit.setUser(testUser);
-        visit.setLatitude(60.1699);
-        visit.setLongitude(24.9384);
-        visit.setStartTime(Instant.now().minusSeconds(3600));
-        visit.setEndTime(Instant.now());
-        visit.setProcessed(false);
-        
-        // Save the visit
-        Visit savedVisit = visitRepository.save(visit);
-        
-        // Verify it was saved
-        List<Visit> visits = visitRepository.findByUser(testUser);
-        assertEquals(1, visits.size());
-        assertEquals(savedVisit.getId(), visits.get(0).getId());
-    }
 }

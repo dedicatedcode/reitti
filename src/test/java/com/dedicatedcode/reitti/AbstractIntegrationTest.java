@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti;
 
-import com.dedicatedcode.reitti.config.TestContainersConfig;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
@@ -10,19 +9,19 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest
 @Testcontainers
 @ActiveProfiles("test")
-@Import(TestContainersConfig.class)
 public abstract class AbstractIntegrationTest {
 
     @Container
-    static PostgreSQLContainer<?> timescaledb = new PostgreSQLContainer<>("timescale/timescaledb:latest-pg14")
-            .withDatabaseName("reitti_test")
+    static PostgreSQLContainer<?> timescaledb = new PostgreSQLContainer<>(DockerImageName.parse("postgis/postgis:17-3.5-alpine")
+            .asCompatibleSubstituteFor("postgres"))
+            .withDatabaseName("reitti")
             .withUsername("test")
-            .withPassword("test")
-            .withCommand("postgres -c shared_preload_libraries=timescaledb");
+            .withPassword("test");
 
     @Container
     static RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3-management")
@@ -34,7 +33,7 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.datasource.url", timescaledb::getJdbcUrl);
         registry.add("spring.datasource.username", timescaledb::getUsername);
         registry.add("spring.datasource.password", timescaledb::getPassword);
-        
+
         // RabbitMQ properties
         registry.add("spring.rabbitmq.host", rabbitmq::getHost);
         registry.add("spring.rabbitmq.port", rabbitmq::getAmqpPort);

@@ -108,7 +108,7 @@ public class StayPointDetectionService {
                     continue;
                 }
                 
-                double distance = GeoUtils.calculateHaversineDistance(point, otherPoint);
+                double distance = GeoUtils.distanceInMeters(point, otherPoint);
                 
                 if (distance <= DISTANCE_THRESHOLD) {
                     cluster.add(otherPoint);

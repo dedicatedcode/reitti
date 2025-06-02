@@ -166,7 +166,7 @@ public class TripMergingService {
             RawLocationPoint p1 = points.get(i);
             RawLocationPoint p2 = points.get(i + 1);
 
-            double distance = GeoUtils.calculateHaversineDistance(
+            double distance = GeoUtils.distanceInMeters(
                     p1.getLatitude(), p1.getLongitude(),
                     p2.getLatitude(), p2.getLongitude());
 
@@ -177,7 +177,7 @@ public class TripMergingService {
 
         // Also update the estimated distance
         if (trip.getStartPlace() != null && trip.getEndPlace() != null) {
-            double directDistance = GeoUtils.calculateHaversineDistance(
+            double directDistance = GeoUtils.distanceInMeters(
                     trip.getStartPlace().getLatitudeCentroid(), trip.getStartPlace().getLongitudeCentroid(),
                     trip.getEndPlace().getLatitudeCentroid(), trip.getEndPlace().getLongitudeCentroid());
             trip.setEstimatedDistanceMeters(directDistance);

@@ -18,4 +18,6 @@ public interface VisitRepository extends JpaRepository<Visit, Long> {
     
     List<Visit> findByUserAndStartTimeBetweenOrderByStartTimeAsc(
             User user, Instant startTime, Instant endTime);
+
+    List<Visit> findByUserAndStartTimeBetweenAndProcessedFalseOrderByStartTimeAsc(User user, Instant startTime, Instant endTime);
 }
