@@ -20,7 +20,7 @@ public class RabbitMQImportDispatcher implements ImportListener{
     }
 
     @Override
-    public void handle(User user, List<LocationDataRequest.LocationPoint> data) {
+    public void handleImport(User user, List<LocationDataRequest.LocationPoint> data) {
         // Create and publish event to RabbitMQ
         LocationDataEvent event = new LocationDataEvent(
                 user.getUsername(),

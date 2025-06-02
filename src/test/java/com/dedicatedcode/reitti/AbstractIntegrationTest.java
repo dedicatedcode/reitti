@@ -1,7 +1,17 @@
 package com.dedicatedcode.reitti;
 
+import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.repository.*;
+import com.dedicatedcode.reitti.service.ImportHandler;
+import com.dedicatedcode.reitti.service.LocationDataService;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -11,9 +21,13 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import java.io.InputStream;
+import java.util.List;
+
 @SpringBootTest
 @Testcontainers
 @ActiveProfiles("test")
+@Import(AbstractIntegrationTest.TestConfig.class)
 public abstract class AbstractIntegrationTest {
 
     @Container
@@ -39,5 +53,69 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.rabbitmq.port", rabbitmq::getAmqpPort);
         registry.add("spring.rabbitmq.username", rabbitmq::getAdminUsername);
         registry.add("spring.rabbitmq.password", rabbitmq::getAdminPassword);
+    }
+
+
+    @Autowired
+    protected UserRepository userRepository;
+    @Autowired
+    protected VisitRepository visitRepository;
+    @Autowired
+    protected ProcessedVisitRepository processedVisitRepository;
+    @Autowired
+    protected PasswordEncoder passwordEncoder;
+    @Autowired
+    protected RawLocationPointRepository rawLocationPointRepository;
+    @Autowired
+    protected SignificantPlaceRepository significantPlaceRepository;
+
+    @Autowired
+    protected MockImportListener importListener;
+
+    @Autowired
+    protected TripRepository tripsRepository;
+
+    @Autowired
+    private LocationDataService locationDataService;
+
+    @Autowired
+    private ImportHandler importHandler;
+
+    protected User user;
+
+    @BeforeEach
+    void setUp() {
+        // Clean up repositories
+        tripsRepository.deleteAll();
+        significantPlaceRepository.deleteAll();
+        processedVisitRepository.deleteAll();
+        visitRepository.deleteAll();
+        rawLocationPointRepository.deleteAll();
+        userRepository.deleteAll();
+        importListener.clearAll();
+
+        // Create test user
+        user = new User();
+        user.setUsername("testuser");
+        user.setDisplayName("testuser");
+        user.setPassword(passwordEncoder.encode("password"));
+        user = userRepository.save(user);
+    }
+
+    @TestConfiguration
+    public static class TestConfig {
+        @Bean(name = "importListener")
+        public MockImportListener importListener() {
+            return new MockImportListener();
+        }
+    }
+
+    protected void importGpx(String filename) {
+        InputStream is = getClass().getResourceAsStream(filename);
+        importHandler.importGpx(is, user);
+
+        List<LocationDataRequest.LocationPoint> allPoints = this.importListener.getPoints();
+
+        locationDataService.processLocationData(user, allPoints);
     }
 }

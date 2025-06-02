@@ -21,4 +21,5 @@ public interface RawLocationPointRepository extends JpaRepository<RawLocationPoi
     List<RawLocationPoint> findByUserAndDate(User user, Instant date);
     
     Optional<RawLocationPoint> findByUserAndTimestamp(User user, Instant timestamp);
+
 }

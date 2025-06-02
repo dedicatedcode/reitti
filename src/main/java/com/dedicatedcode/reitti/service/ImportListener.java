@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface ImportListener {
 
-    void handle(User user, List<LocationDataRequest.LocationPoint> data);
+    void handleImport(User user, List<LocationDataRequest.LocationPoint> data);
 }

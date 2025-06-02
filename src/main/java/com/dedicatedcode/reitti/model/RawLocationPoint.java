@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.model;
 import jakarta.persistence.*;
 
 import java.time.Instant;
+import java.util.Objects;
 
 @Entity
 @Table(name = "raw_location_points")
@@ -95,5 +96,17 @@ public class RawLocationPoint {
 
     public void setActivityProvided(String activityProvided) {
         this.activityProvided = activityProvided;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        RawLocationPoint that = (RawLocationPoint) o;
+        return Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(id);
     }
 }

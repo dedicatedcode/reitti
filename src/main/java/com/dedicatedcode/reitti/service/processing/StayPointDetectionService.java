@@ -7,6 +7,7 @@ import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,8 +30,8 @@ public class StayPointDetectionService {
     @Autowired
     public StayPointDetectionService(
             RawLocationPointRepository rawLocationPointRepository,
-            @Value("${reitti.staypoint.distance-threshold:50}") double distanceThreshold,
-            @Value("${reitti.staypoint.time-threshold:1200}") long timeThreshold,
+            @Value("${reitti.staypoint.distance-threshold-meters:50}") double distanceThreshold,
+            @Value("${reitti.staypoint.time-threshold-seconds:1200}") long timeThreshold,
             @Value("${reitti.staypoint.min-points:5}") int minPointsInCluster) {
         this.rawLocationPointRepository = rawLocationPointRepository;
         this.distanceThreshold = distanceThreshold;

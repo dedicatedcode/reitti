@@ -1,8 +1,6 @@
 package com.dedicatedcode.reitti.service;
 
-import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
-import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.model.User;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
@@ -11,10 +9,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -81,7 +77,7 @@ public class ImportHandler {
                                     
                                     // Process in batches to avoid memory issues
                                     if (batch.size() >= BATCH_SIZE) {
-                                        this.importListener.handle(user, new ArrayList<>(batch));
+                                        this.importListener.handleImport(user, new ArrayList<>(batch));
                                         logger.info("Queued batch of {} locations for processing", batch.size());
                                         batch.clear();
                                     }
@@ -95,7 +91,7 @@ public class ImportHandler {
                     
                     // Process any remaining locations
                     if (!batch.isEmpty()) {
-                        this.importListener.handle(user, new ArrayList<>(batch));
+                        this.importListener.handleImport(user, new ArrayList<>(batch));
                         logger.info("Queued final batch of {} locations for processing", batch.size());
                     }
                     
@@ -178,7 +174,7 @@ public class ImportHandler {
                         
                         // Process in batches to avoid memory issues
                         if (batch.size() >= BATCH_SIZE) {
-                            this.importListener.handle(user, new ArrayList<>(batch));
+                            this.importListener.handleImport(user, new ArrayList<>(batch));
                             logger.info("Queued batch of {} locations for processing", batch.size());
                             batch.clear();
                         }
@@ -192,7 +188,7 @@ public class ImportHandler {
             // Process any remaining locations
             if (!batch.isEmpty()) {
                 // Create and publish event to RabbitMQ
-                this.importListener.handle(user, new ArrayList<>(batch));
+                this.importListener.handleImport(user, new ArrayList<>(batch));
                 logger.info("Queued final batch of {} locations for processing", batch.size());
             }
             

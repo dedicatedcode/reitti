@@ -1,5 +1,7 @@
 package com.dedicatedcode.reitti.model;
 
+import com.dedicatedcode.reitti.service.processing.StayPoint;
+
 public final class GeoUtils {
     private GeoUtils() {
     }
@@ -25,7 +27,13 @@ public final class GeoUtils {
                 p1.getLatitude(), p1.getLongitude(),
                 p2.getLatitude(), p2.getLongitude());
     }
-    
+
+    public static double distanceInMeters(StayPoint p1, StayPoint p2) {
+        return distanceInMeters(
+                p1.getLatitude(), p1.getLongitude(),
+                p2.getLatitude(), p2.getLongitude());
+    }
+
     /**
      * Converts a distance in meters to degrees of latitude and longitude at a given position.
      * The conversion varies based on the latitude because longitude degrees get closer together as you move away from the equator.

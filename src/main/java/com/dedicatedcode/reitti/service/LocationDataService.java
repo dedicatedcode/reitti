@@ -42,7 +42,6 @@ public class LocationDataService {
                 }
             } catch (Exception e) {
                 logger.warn("Error processing point at timestamp {}: {}", point.getTimestamp(), e.getMessage());
-                // Continue with next point
             }
         }
 

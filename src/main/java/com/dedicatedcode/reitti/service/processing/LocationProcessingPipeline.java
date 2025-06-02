@@ -9,6 +9,7 @@ import com.dedicatedcode.reitti.repository.UserRepository;
 import com.dedicatedcode.reitti.service.LocationDataService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitMessageOperations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,6 +47,7 @@ public class LocationProcessingPipeline {
         this.tripVisitMergeTimeRange = tripVisitMergeTimeRange;
     }
 
+    @RabbitListener(queues = RabbitMQConfig.LOCATION_DATA_QUEUE, concurrency = "4-16")
     public void processLocationData(LocationDataEvent event) {
         logger.debug("Starting processing pipeline for user {} with {} points",
                 event.getUsername(), event.getPoints().size());
