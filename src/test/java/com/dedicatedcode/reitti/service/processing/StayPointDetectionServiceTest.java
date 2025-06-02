@@ -4,8 +4,6 @@ import com.dedicatedcode.reitti.AbstractIntegrationTest;
 import com.dedicatedcode.reitti.model.GeoUtils;
 import com.dedicatedcode.reitti.model.RawLocationPoint;
 import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
-import org.hibernate.validator.internal.constraintvalidators.bv.AssertTrueValidator;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
