@@ -40,6 +40,9 @@ public class VisitMergingService {
     private final GeometryFactory geometryFactory;
     @Value("${reitti.visit.merge-threshold-seconds:300}")
     private long mergeThresholdSeconds;
+    
+    @Value("${reitti.visit.max-time-difference-seconds:60}")
+    private long maxTimeDifferenceSeconds;
     @Value("${reitti.detect-trips-after-merging:true}")
     private boolean detectTripsAfterMerging;
 
@@ -182,12 +185,30 @@ public class VisitMergingService {
         for (int i = 1; i < visits.size(); i++) {
             Visit nextVisit = visits.get(i);
             
-            // If within merge threshold, merge the visits
-            if (Duration.between(currentEndTime, nextVisit.getStartTime()).getSeconds() <= mergeThresholdSeconds) {
+            // Check if visits are near each other (they should be since they're grouped by place)
+            double distance = GeoUtils.distanceInMeters(
+                currentVisit.getLatitude(), currentVisit.getLongitude(),
+                nextVisit.getLatitude(), nextVisit.getLongitude()
+            );
+            
+            // Check time conditions:
+            // 1. Visits overlap in time, OR
+            // 2. Time difference is within the configured threshold
+            boolean timeOverlap = nextVisit.getStartTime().isBefore(currentEndTime) || 
+                                 currentStartTime.isBefore(nextVisit.getEndTime());
+            
+            boolean withinTimeThreshold = Duration.between(currentEndTime, nextVisit.getStartTime()).getSeconds() <= maxTimeDifferenceSeconds ||
+                                         Duration.between(nextVisit.getEndTime(), currentStartTime).getSeconds() <= maxTimeDifferenceSeconds;
+            
+            // Only merge if consecutive visits are near each other AND meet time criteria
+            if (distance <= mergeThresholdSeconds && (timeOverlap || withinTimeThreshold)) {
                 // Merge this visit with the current one
-                currentEndTime = nextVisit.getEndTime().isAfter(currentEndTime) ? 
-                                 nextVisit.getEndTime() : currentEndTime;
+                currentStartTime = currentStartTime.isBefore(nextVisit.getStartTime()) ? 
+                                  currentStartTime : nextVisit.getStartTime();
+                currentEndTime = currentEndTime.isAfter(nextVisit.getEndTime()) ? 
+                                currentEndTime : nextVisit.getEndTime();
                 mergedVisitIds.add(nextVisit.getId());
+                currentVisit = nextVisit; // Update current visit for next comparison
             } else {
                 // Create a processed visit from the current merged set
                 ProcessedVisit processedVisit = createProcessedVisit(user, place, currentStartTime,
@@ -195,6 +216,7 @@ public class VisitMergingService {
                 result.add(processedVisit);
                 
                 // Start a new merged set with this visit
+                currentVisit = nextVisit;
                 currentStartTime = nextVisit.getStartTime();
                 currentEndTime = nextVisit.getEndTime();
                 mergedVisitIds = new HashSet<>();
