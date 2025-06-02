@@ -20,15 +20,25 @@ public class StayPointDetectionService {
     private static final Logger logger = LoggerFactory.getLogger(StayPointDetectionService.class);
 
     // Parameters for stay point detection
-    private static final double DISTANCE_THRESHOLD = 50; // meters
-    private static final long TIME_THRESHOLD = 20 * 60; // 20 minutes in seconds
-    private static final int MIN_POINTS_IN_CLUSTER = 5; // Minimum points to form a valid cluster
+    private final double distanceThreshold; // meters
+    private final long timeThreshold; // seconds
+    private final int minPointsInCluster; // Minimum points to form a valid cluster
 
     private final RawLocationPointRepository rawLocationPointRepository;
 
     @Autowired
-    public StayPointDetectionService(RawLocationPointRepository rawLocationPointRepository) {
+    public StayPointDetectionService(
+            RawLocationPointRepository rawLocationPointRepository,
+            @Value("${reitti.staypoint.distance-threshold:50}") double distanceThreshold,
+            @Value("${reitti.staypoint.time-threshold:1200}") long timeThreshold,
+            @Value("${reitti.staypoint.min-points:5}") int minPointsInCluster) {
         this.rawLocationPointRepository = rawLocationPointRepository;
+        this.distanceThreshold = distanceThreshold;
+        this.timeThreshold = timeThreshold;
+        this.minPointsInCluster = minPointsInCluster;
+        
+        logger.info("StayPointDetectionService initialized with: distanceThreshold={}m, timeThreshold={}s, minPointsInCluster={}",
+                distanceThreshold, timeThreshold, minPointsInCluster);
     }
 
     @Transactional(readOnly = true)
@@ -66,7 +76,7 @@ public class StayPointDetectionService {
     }
 
     private List<StayPoint> detectStayPointsFromTrajectory(List<RawLocationPoint> points) {
-        if (points.size() < MIN_POINTS_IN_CLUSTER) {
+        if (points.size() < minPointsInCluster) {
             return Collections.emptyList();
         }
 
@@ -109,14 +119,14 @@ public class StayPointDetectionService {
                 
                 double distance = GeoUtils.distanceInMeters(point, otherPoint);
                 
-                if (distance <= DISTANCE_THRESHOLD) {
+                if (distance <= distanceThreshold) {
                     cluster.add(otherPoint);
                     processedPoints.add(otherPoint);
                 }
             }
             
             // Only add clusters with enough points
-            if (cluster.size() >= MIN_POINTS_IN_CLUSTER) {
+            if (cluster.size() >= minPointsInCluster) {
                 // Sort the cluster by timestamp
                 cluster.sort(Comparator.comparing(RawLocationPoint::getTimestamp));
                 clusters.add(cluster);
@@ -136,7 +146,7 @@ public class StayPointDetectionService {
             
             long timeSpanSeconds = Duration.between(firstTimestamp, lastTimestamp).getSeconds();
             
-            if (timeSpanSeconds >= TIME_THRESHOLD) {
+            if (timeSpanSeconds >= timeThreshold) {
                 validClusters.add(cluster);
             }
         }
