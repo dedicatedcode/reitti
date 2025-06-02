@@ -22,7 +22,7 @@ public class StayPointDetectionService {
     // Parameters for stay point detection
     private static final double DISTANCE_THRESHOLD = 50; // meters
     private static final long TIME_THRESHOLD = 20 * 60; // 20 minutes in seconds
-    private static final int MIN_POINTS_IN_CLUSTER = 3; // Minimum points to form a valid cluster
+    private static final int MIN_POINTS_IN_CLUSTER = 5; // Minimum points to form a valid cluster
 
     private final RawLocationPointRepository rawLocationPointRepository;
 
@@ -46,9 +46,9 @@ public class StayPointDetectionService {
 
         if (earliestNewPoint.isPresent() && latestNewPoint.isPresent()) {
             // Get points from 1 hour before the earliest new point
-            Instant windowStart = earliestNewPoint.get().minus(Duration.ofHours(1));
+            Instant windowStart = earliestNewPoint.get();
             // Get points from 1 hour after the latest new point
-            Instant windowEnd = latestNewPoint.get().plus(Duration.ofHours(1));
+            Instant windowEnd = latestNewPoint.get();
 
             List<RawLocationPoint> pointsInWindow = rawLocationPointRepository
                     .findByUserAndTimestampBetweenOrderByTimestampAsc(user, windowStart, windowEnd);
@@ -77,15 +77,14 @@ public class StayPointDetectionService {
         logger.info("Created {} initial spatial clusters", clusters.size());
         
         // Step 2: Filter clusters based on time threshold
+
         List<List<RawLocationPoint>> validClusters = filterClustersByTimeThreshold(clusters);
         logger.info("Found {} valid clusters after time threshold filtering", validClusters.size());
         
         // Step 3: Convert valid clusters to stay points
-        List<StayPoint> stayPoints = validClusters.stream()
+        return validClusters.stream()
                 .map(this::createStayPoint)
                 .collect(Collectors.toList());
-        
-        return stayPoints;
     }
     
     private List<List<RawLocationPoint>> createSpatialClusters(List<RawLocationPoint> points) {
