@@ -347,11 +347,6 @@
                     }
                 }
 
-                // Create icon element
-                const iconElement = document.createElement('span');
-                iconElement.className = 'entry-icon';
-                iconElement.innerHTML = entry.type === 'VISIT' ? '<i class="fas fa-map-marker-alt"></i>' : '<i class="fas fa-route"></i>';
-
                 // Create time element
                 const timeElement = document.createElement('div');
                 timeElement.className = 'entry-time';
@@ -406,7 +401,6 @@
 
                 // Add elements to entry
                 entryElement.appendChild(descElement);
-                entryElement.appendChild(iconElement);
                 entryElement.appendChild(durationElement);
                 entryElement.appendChild(timeElement);
 
