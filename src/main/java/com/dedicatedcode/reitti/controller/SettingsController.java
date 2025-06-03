@@ -218,6 +218,31 @@ public class SettingsController {
         // Return the users-content fragment
         return "fragments/settings :: users-content";
     }
+    
+    @PostMapping("/users/update")
+    public String updateUser(@RequestParam Long userId,
+                           @RequestParam String username,
+                           @RequestParam String displayName,
+                           @RequestParam(required = false) String password,
+                           Authentication authentication,
+                           Model model) {
+        String currentUsername = authentication.getName();
+        
+        try {
+            userService.updateUser(userId, username, displayName, password);
+            model.addAttribute("successMessage", "User updated successfully");
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", "Error updating user: " + e.getMessage());
+        }
+        
+        // Get updated user list and add to model
+        List<User> users = userService.getAllUsers();
+        model.addAttribute("users", users);
+        model.addAttribute("currentUsername", currentUsername);
+        
+        // Return the users-content fragment
+        return "fragments/settings :: users-content";
+    }
     @GetMapping("/queue-stats-content")
     public String getQueueStatsContent(Model model) {
         model.addAttribute("queueStats", queueStatsService.getQueueStats());

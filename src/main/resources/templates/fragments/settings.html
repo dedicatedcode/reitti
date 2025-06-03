@@ -80,9 +80,9 @@
             </tr>
         </thead>
         <tbody>
-            <tr th:each="user : ${users}">
-                <td th:text="${user.username}"></td>
-                <td th:text="${user.displayName}"></td>
+            <tr th:each="user : ${users}" th:attr="data-user-id=${user.id}" class="user-row">
+                <td th:text="${user.username}" th:attr="data-username=${user.username}"></td>
+                <td th:text="${user.displayName}" th:attr="data-display-name=${user.displayName}"></td>
                 <td>
                     <span th:if="${user.username == currentUsername}">(Current User)</span>
                     <button th:if="${user.username != currentUsername}" 
@@ -91,13 +91,17 @@
                             hx-confirm="Are you sure you want to delete this user? This will delete all their data."
                             hx-target="#user-management"
                             hx-swap="innerHTML">Delete</button>
+                    <button th:if="${user.username != currentUsername}"
+                            class="btn"
+                            onclick="selectUserForEdit(this.parentElement.parentElement); return false;">Edit</button>
                 </td>
             </tr>
         </tbody>
     </table>
 
-    <form hx-post="/settings/users" hx-target="#user-management" hx-swap="innerHTML" class="user-form" autocomplete="off" style="margin-top: 30px;">
-        <h3>Add New User</h3>
+    <form id="user-form" hx-target="#user-management" hx-swap="innerHTML" class="user-form" autocomplete="off" style="margin-top: 30px;">
+        <input type="hidden" id="userId" name="userId" value="">
+        <h3 id="form-title">Add New User</h3>
         <div class="form-group">
             <label for="username">Username</label>
             <input type="text" id="username" name="username" required placeholder="Enter username" autocomplete="off">
@@ -109,11 +113,52 @@
         <div class="form-group">
             <label for="password">Password</label>
             <input type="password" id="password" name="password" required placeholder="Enter password" autocomplete="new-password">
+            <small id="password-help" style="display: none;">Leave empty to keep current password</small>
         </div>
-        <button type="submit" class="btn">Create User</button>
+        <div style="display: flex; gap: 10px;">
+            <button type="submit" id="submit-btn" class="btn">Create User</button>
+            <button type="button" id="clear-btn" class="btn" style="display: none;" onclick="clearUserForm()">Cancel</button>
+        </div>
     </form>
     
-    <!-- No script needed here anymore as the form will directly update the content -->
+    <script>
+        function selectUserForEdit(row) {
+            const userId = row.getAttribute('data-user-id');
+            const username = row.querySelector('[data-username]').getAttribute('data-username');
+            const displayName = row.querySelector('[data-display-name]').getAttribute('data-display-name');
+            
+            // Update form fields
+            document.getElementById('userId').value = userId;
+            document.getElementById('username').value = username;
+            document.getElementById('displayName').value = displayName;
+            
+            // Update form appearance
+            document.getElementById('form-title').textContent = 'Update User';
+            document.getElementById('submit-btn').textContent = 'Update User';
+            document.getElementById('clear-btn').style.display = 'block';
+            document.getElementById('password-help').style.display = 'block';
+            document.getElementById('password').required = false;
+            
+            // Set form action for update
+            document.getElementById('user-form').setAttribute('hx-post', '/settings/users/update');
+        }
+        
+        function clearUserForm() {
+            // Reset form fields
+            document.getElementById('user-form').reset();
+            document.getElementById('userId').value = '';
+            
+            // Reset form appearance
+            document.getElementById('form-title').textContent = 'Add New User';
+            document.getElementById('submit-btn').textContent = 'Create User';
+            document.getElementById('clear-btn').style.display = 'none';
+            document.getElementById('password-help').style.display = 'none';
+            document.getElementById('password').required = true;
+            
+            // Set form action for create
+            document.getElementById('user-form').setAttribute('hx-post', '/settings/users');
+        }
+    </script>
 </div>
 
 <!-- Places Content Fragment -->

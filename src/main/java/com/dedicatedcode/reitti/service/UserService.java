@@ -42,4 +42,20 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(password));
         return userRepository.save(user);
     }
+    
+    @Transactional
+    public User updateUser(Long userId, String username, String displayName, String password) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
+        
+        user.setUsername(username);
+        user.setDisplayName(displayName);
+        
+        // Only update password if provided
+        if (password != null && !password.trim().isEmpty()) {
+            user.setPassword(passwordEncoder.encode(password));
+        }
+        
+        return userRepository.save(user);
+    }
 }
