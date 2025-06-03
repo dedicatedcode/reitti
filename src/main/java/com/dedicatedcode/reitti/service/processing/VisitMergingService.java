@@ -109,49 +109,64 @@ public class VisitMergingService {
 
     private List<ProcessedVisit> mergeVisitsChronologically(User user, List<Visit> visits) {
         List<ProcessedVisit> result = new ArrayList<>();
-        Map<Long, List<Visit>> placeVisitMap = new HashMap<>();
 
         if (visits.isEmpty()) {
             return result;
         }
 
-        // First, group visits by nearby significant places
-        for (Visit visit : visits) {
-            List<SignificantPlace> nearbyPlaces = findNearbyPlaces(user, visit.getLatitude(), visit.getLongitude());
+        // Sort visits chronologically
+        visits.sort(Comparator.comparing(Visit::getStartTime));
+        
+        // Start with the first visit
+        Visit currentVisit = visits.getFirst();
+        Instant currentStartTime = currentVisit.getStartTime();
+        Instant currentEndTime = currentVisit.getEndTime();
+        Set<Long> mergedVisitIds = new HashSet<>();
+        mergedVisitIds.add(currentVisit.getId());
+        
+        // Find or create a place for the first visit
+        List<SignificantPlace> nearbyPlaces = findNearbyPlaces(user, currentVisit.getLatitude(), currentVisit.getLongitude());
+        SignificantPlace currentPlace = nearbyPlaces.isEmpty() ? 
+                createSignificantPlace(user, currentVisit) : 
+                findClosestPlace(currentVisit, nearbyPlaces);
+
+        for (int i = 1; i < visits.size(); i++) {
+            Visit nextVisit = visits.get(i);
             
-            if (nearbyPlaces.isEmpty()) {
-                // Create a new place for this visit
-                SignificantPlace newPlace = createSignificantPlace(user, visit);
-                List<Visit> placeVisits = new ArrayList<>();
-                placeVisits.add(visit);
-                placeVisitMap.put(newPlace.getId(), placeVisits);
+            // Find nearby places for the next visit
+            nearbyPlaces = findNearbyPlaces(user, nextVisit.getLatitude(), nextVisit.getLongitude());
+            SignificantPlace nextPlace = nearbyPlaces.isEmpty() ? 
+                    createSignificantPlace(user, nextVisit) : 
+                    findClosestPlace(nextVisit, nearbyPlaces);
+            
+            // Check if the next visit is at the same place and within the time threshold
+            boolean samePlace = nextPlace.getId().equals(currentPlace.getId());
+            boolean withinTimeThreshold = Duration.between(currentEndTime, nextVisit.getStartTime()).getSeconds() <= mergeThresholdSeconds;
+            
+            if (samePlace && withinTimeThreshold) {
+                // Merge this visit with the current one
+                currentEndTime = nextVisit.getEndTime().isAfter(currentEndTime) ?
+                        nextVisit.getEndTime() : currentEndTime;
+                mergedVisitIds.add(nextVisit.getId());
             } else {
-                // Add to the closest existing place
-                SignificantPlace closestPlace = findClosestPlace(visit, nearbyPlaces);
-                placeVisitMap.computeIfAbsent(closestPlace.getId(), k -> new ArrayList<>()).add(visit);
+                // Create a processed visit from the current merged set
+                ProcessedVisit processedVisit = createProcessedVisit(user, currentPlace, currentStartTime,
+                        currentEndTime, mergedVisitIds);
+                result.add(processedVisit);
+
+                // Start a new merged set with this visit
+                currentStartTime = nextVisit.getStartTime();
+                currentEndTime = nextVisit.getEndTime();
+                currentPlace = nextPlace;
+                mergedVisitIds = new HashSet<>();
+                mergedVisitIds.add(nextVisit.getId());
             }
         }
 
-        // Now process each place's visits separately
-        for (Map.Entry<Long, List<Visit>> entry : placeVisitMap.entrySet()) {
-            Long placeId = entry.getKey();
-            List<Visit> placeVisits = entry.getValue();
-            
-            // Sort visits by start time
-            placeVisits.sort(Comparator.comparing(Visit::getStartTime));
-            
-            // Get the place
-            Optional<SignificantPlace> placeOpt = significantPlaceRepository.findById(placeId);
-            if (placeOpt.isEmpty()) {
-                logger.warn("Place not found for ID: {}", placeId);
-                continue;
-            }
-            SignificantPlace place = placeOpt.get();
-            
-            // Merge consecutive visits at this place
-            List<ProcessedVisit> placeProcessedVisits = mergeConsecutiveVisits(user, placeVisits, place);
-            result.addAll(placeProcessedVisits);
-        }
+        // Add the last merged set
+        ProcessedVisit processedVisit = createProcessedVisit(user, currentPlace, currentStartTime,
+                currentEndTime, mergedVisitIds);
+        result.add(processedVisit);
 
         return result;
     }
@@ -163,51 +178,6 @@ public class VisitMergingService {
                     visit.getLatitude(), visit.getLongitude(), 
                     place.getLatitudeCentroid(), place.getLongitudeCentroid())))
             .orElseThrow(() -> new IllegalStateException("No places found"));
-    }
-    
-    private List<ProcessedVisit> mergeConsecutiveVisits(User user, List<Visit> visits, SignificantPlace place) {
-        List<ProcessedVisit> result = new ArrayList<>();
-        
-        if (visits.isEmpty()) {
-            return result;
-        }
-        
-        // Start with the first visit
-        Visit currentVisit = visits.getFirst();
-        Instant currentStartTime = currentVisit.getStartTime();
-        Instant currentEndTime = currentVisit.getEndTime();
-        Set<Long> mergedVisitIds = new HashSet<>();
-        mergedVisitIds.add(currentVisit.getId());
-
-        for (int i = 1; i < visits.size(); i++) {
-            Visit nextVisit = visits.get(i);
-
-            // If within merge threshold, merge the visits
-            if (Duration.between(currentEndTime, nextVisit.getStartTime()).getSeconds() <= mergeThresholdSeconds) {
-                // Merge this visit with the current one
-                currentEndTime = nextVisit.getEndTime().isAfter(currentEndTime) ?
-                        nextVisit.getEndTime() : currentEndTime;
-                mergedVisitIds.add(nextVisit.getId());
-            } else {
-                // Create a processed visit from the current merged set
-                ProcessedVisit processedVisit = createProcessedVisit(user, place, currentStartTime,
-                        currentEndTime, mergedVisitIds);
-                result.add(processedVisit);
-
-                // Start a new merged set with this visit
-                currentStartTime = nextVisit.getStartTime();
-                currentEndTime = nextVisit.getEndTime();
-                mergedVisitIds = new HashSet<>();
-                mergedVisitIds.add(nextVisit.getId());
-            }
-        }
-
-        // Add the last merged set
-        ProcessedVisit processedVisit = createProcessedVisit(user, place, currentStartTime,
-                currentEndTime, mergedVisitIds);
-        result.add(processedVisit);
-
-        return result;
     }
 
 
