@@ -37,8 +37,15 @@ public class SecurityConfig {
                         .defaultSuccessUrl("/", true)
                         .permitAll()
                 )
+                .rememberMe(rememberMe -> rememberMe
+                        .key("uniqueAndSecretKey")
+                        .tokenValiditySeconds(2592000) // 30 days
+                        .rememberMeParameter("remember-me")
+                        .useSecureCookie(true)
+                )
                 .logout(logout -> logout
                         .logoutSuccessUrl("/login?logout")
+                        .deleteCookies("JSESSIONID", "remember-me")
                         .permitAll()
                 );
 
