@@ -214,7 +214,6 @@ public class VisitMergingService {
     private List<SignificantPlace> findNearbyPlaces(User user, double latitude, double longitude) {
         // Create a point geometry
         Point point = geometryFactory.createPoint(new Coordinate(longitude, latitude));
-
         // Find places within the merge distance
         return significantPlaceRepository.findNearbyPlaces(user.getId(), point, GeoUtils.metersToDegreesAtPosition(50, latitude)[0]);
     }
