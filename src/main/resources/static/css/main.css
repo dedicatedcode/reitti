@@ -348,10 +348,6 @@ nav {
     padding: 8px;
 }
 
-.timeline-entry .entry-time {
-    padding: 0 32px;
-}
-
 .timeline-entry.active .entry-description {
     font-family: "Fraunces";
     font-size: 5rem;
