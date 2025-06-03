@@ -466,5 +466,5 @@ input[type=file]::file-selector-button {
 }
 
 input[type=file]::file-selector-button:hover {
-    background-color: var(--color-background-dark-light);;
+    background-color: var(--color-background-dark-light);
 }
