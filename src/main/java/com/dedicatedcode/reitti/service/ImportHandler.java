@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.model.User;
+import org.springframework.beans.factory.annotation.Value;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
@@ -28,17 +29,19 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ImportHandler {
     
     private static final Logger logger = LoggerFactory.getLogger(ImportHandler.class);
-    private static final int BATCH_SIZE = 100;
     
     private final ObjectMapper objectMapper;
     private final ImportListener importListener;
+    private final int batchSize;
 
     @Autowired
     public ImportHandler(
             ObjectMapper objectMapper,
-            ImportListener importListener) {
+            ImportListener importListener,
+            @Value("${reitti.import.batch-size:100}") int batchSize) {
         this.objectMapper = objectMapper;
         this.importListener = importListener;
+        this.batchSize = batchSize;
     }
     
     public Map<String, Object> importGoogleTakeout(InputStream inputStream, User user) {
@@ -61,7 +64,7 @@ public class ImportHandler {
                         return Map.of("success", false, "error", "Invalid format: 'locations' is not an array");
                     }
                     
-                    List<LocationDataRequest.LocationPoint> batch = new ArrayList<>(BATCH_SIZE);
+                    List<LocationDataRequest.LocationPoint> batch = new ArrayList<>(batchSize);
                     
                     // Process each location in the array
                     while (parser.nextToken() != JsonToken.END_ARRAY) {
@@ -76,7 +79,7 @@ public class ImportHandler {
                                     processedCount.incrementAndGet();
                                     
                                     // Process in batches to avoid memory issues
-                                    if (batch.size() >= BATCH_SIZE) {
+                                    if (batch.size() >= batchSize) {
                                         this.importListener.handleImport(user, new ArrayList<>(batch));
                                         logger.info("Queued batch of {} locations for processing", batch.size());
                                         batch.clear();
@@ -160,7 +163,7 @@ public class ImportHandler {
             // Get all track points (trkpt) from the GPX file
             NodeList trackPoints = document.getElementsByTagName("trkpt");
             
-            List<LocationDataRequest.LocationPoint> batch = new ArrayList<>(BATCH_SIZE);
+            List<LocationDataRequest.LocationPoint> batch = new ArrayList<>(batchSize);
             
             // Process each track point
             for (int i = 0; i < trackPoints.getLength(); i++) {
@@ -173,7 +176,7 @@ public class ImportHandler {
                         processedCount.incrementAndGet();
                         
                         // Process in batches to avoid memory issues
-                        if (batch.size() >= BATCH_SIZE) {
+                        if (batch.size() >= batchSize) {
                             this.importListener.handleImport(user, new ArrayList<>(batch));
                             logger.info("Queued batch of {} locations for processing", batch.size());
                             batch.clear();
