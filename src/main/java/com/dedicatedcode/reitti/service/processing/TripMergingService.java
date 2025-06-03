@@ -117,7 +117,7 @@ public class TripMergingService {
 
     private Trip mergeTrips(List<Trip> trips, User user) {
         // Use the first trip as a base
-        Trip baseTrip = trips.get(0);
+        Trip baseTrip = trips.getFirst();
 
         // Find the earliest start time and latest end time
         Instant earliestStart = baseTrip.getStartTime();
@@ -146,8 +146,12 @@ public class TripMergingService {
         // Set transport mode (use the most common one from the trips)
         mergedTrip.setTransportModeInferred(getMostCommonTransportMode(trips));
 
-        // Save the merged trip
-        return tripRepository.save(mergedTrip);
+        if (tripRepository.existsByUserAndStartPlaceAndEndPlaceAndStartTimeAndEndTime(user, baseTrip.getStartPlace(), baseTrip.getEndPlace(), earliestStart, latestEnd)) {
+            logger.warn("Duplicate trip found for user: {}, will ignore it.", user.getUsername());
+            return mergedTrip;
+        } else {
+            return tripRepository.save(mergedTrip);
+        }
     }
 
     private void recalculateDistance(Trip trip) {

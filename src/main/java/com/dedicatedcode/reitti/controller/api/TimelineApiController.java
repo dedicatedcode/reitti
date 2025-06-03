@@ -53,11 +53,11 @@ public class TimelineApiController {
         Instant endOfDay = date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().minusMillis(1);
         
         // Get processed visits for the user and date range
-        List<ProcessedVisit> processedVisits = processedVisitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(
+        List<ProcessedVisit> processedVisits = processedVisitRepository.findByUserAndTimeOverlap(
                 user, startOfDay, endOfDay);
         
         // Get trips for the user and date range
-        List<Trip> trips = tripRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(
+        List<Trip> trips = tripRepository.findByUserAndTimeOverlap(
                 user, startOfDay, endOfDay);
         
         // Convert to timeline entries
