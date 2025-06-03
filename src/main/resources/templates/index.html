@@ -383,24 +383,24 @@
                     descElement.textContent = entry.place ? entry.place.name || 'Unknown Place' : 'Unknown Place';
                 } else if (entry.type === 'TRIP') {
                     descElement.textContent = `Trip`;
-                    // Add distance if available
                     if (entry.distanceMeters) {
                         const distanceKm = (entry.distanceMeters / 1000).toFixed(1);
                         durationElement.textContent = `Distance: ${distanceKm} km `;
-                        if (entry.transportMode) {
-                            switch (entry.transportMode) {
-                                case 'WALKING':
-                                    durationElement.textContent += ' by foot';
-                                    break;
-                                case 'CYCLING':
-                                    durationElement.textContent += ' by bike';
-                                    break;
-                                case 'DRIVING':
-                                    durationElement.textContent += ' by car';
-                                    break;
-                            }
+                    }
 
+                    if (entry.transportMode) {
+                        switch (entry.transportMode) {
+                            case 'WALKING':
+                                durationElement.textContent += entry.distanceMeters ? ' by foot' : ' walking';
+                                break;
+                            case 'CYCLING':
+                                durationElement.textContent += entry.distanceMeters ? ' by bike' : ' cycling';
+                                break;
+                            case 'DRIVING':
+                                durationElement.textContent += entry.distanceMeters ? ' by car' : ' driving';
+                                break;
                         }
+
                     }
                 }
 
