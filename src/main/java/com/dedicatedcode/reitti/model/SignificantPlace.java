@@ -6,6 +6,7 @@ import org.locationtech.jts.geom.Point;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Entity
 @Table(name = "significant_places")
@@ -128,5 +129,17 @@ public class SignificantPlace {
     
     public void setGeom(Point geom) {
         this.geom = geom;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        SignificantPlace that = (SignificantPlace) o;
+        return Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(id);
     }
 }

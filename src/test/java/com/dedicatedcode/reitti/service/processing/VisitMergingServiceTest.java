@@ -37,7 +37,6 @@ class VisitMergingServiceTest extends AbstractIntegrationTest {
         List<GeoPoint> expectedVisits = new ArrayList<>();
 
         expectedVisits.add(new GeoPoint(53.86334539659948,10.701105248045259)); // Moltke
-        expectedVisits.add(new GeoPoint(53.86334539659948,10.701105248045259)); // Moltke
         expectedVisits.add(new GeoPoint(53.86889230000001,10.680612066666669)); // Diele
         expectedVisits.add(new GeoPoint(53.86334539659948,10.701105248045259)); // Moltke
         expectedVisits.add(new GeoPoint(53.86889230000001,10.680612066666669)); // Diele

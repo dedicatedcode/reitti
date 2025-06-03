@@ -102,7 +102,6 @@ public class VisitMergingService {
 
         if (!processedVisits.isEmpty() && detectTripsAfterMerging) {
             rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, new MergeVisitEvent(user.getUsername(), startTime, endTime));
-
         }
         return processedVisits;
     }

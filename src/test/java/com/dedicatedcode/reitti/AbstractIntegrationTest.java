@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.event.MergeVisitEvent;
 import com.dedicatedcode.reitti.model.RawLocationPoint;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.*;
@@ -8,6 +9,7 @@ import com.dedicatedcode.reitti.service.ImportHandler;
 import com.dedicatedcode.reitti.service.LocationDataService;
 import com.dedicatedcode.reitti.service.processing.StayPoint;
 import com.dedicatedcode.reitti.service.processing.StayPointDetectionService;
+import com.dedicatedcode.reitti.service.processing.VisitMergingService;
 import com.dedicatedcode.reitti.service.processing.VisitService;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,11 +86,15 @@ public abstract class AbstractIntegrationTest {
 
     @Autowired
     private StayPointDetectionService stayPointDetectionService;
+
     @Autowired
     private VisitService visitService;
 
     @Autowired
     private ImportHandler importHandler;
+
+    @Autowired
+    private VisitMergingService visitMergingService;
 
     protected User user;
 
@@ -133,5 +139,10 @@ public abstract class AbstractIntegrationTest {
         if (!stayPoints.isEmpty()) {
             visitService.processStayPoints(user, stayPoints);
         }
+    }
+
+    protected void importUntilProcessedVisits(String fileName) {
+        importUntilVisits(fileName);
+        visitMergingService.mergeVisits(new MergeVisitEvent(user.getUsername(), null, null));
     }
 }
