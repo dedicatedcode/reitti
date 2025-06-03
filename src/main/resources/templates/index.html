@@ -6,9 +6,9 @@
     <title>Reitti - Your Location Timeline</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <link rel="stylesheet" href="/css/date-picker.css">
     <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/lineicons.css">
     <script src="/js/HumanizeDuration.js"></script>
     <script src="/js/horizontal-date-picker.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&display=swap"
@@ -117,11 +117,10 @@
 
 <div class="timeline">
     <span class="timeline-header">
-        <a href="/" class="nav-link"><i class="fas fa-house-flag"></i></a>
-        <a href="#" id="settings-button" class="nav-link"><i class="fas fa-cog"></i></a>
-        <form th:action="@{/logout}" method="post" style="display: inline;">
-            <button type="submit" class="nav-link" style="background: none; border: none; cursor: pointer;"><i
-                    class="fas fa-right-from-bracket"></i>
+        <a href="#" id="settings-button" class="nav-link"><i class="lni lni-gear-1" title="open settings ..."></i></a>
+        <form th:action="@{/logout}" method="post" >
+            <button type="submit" class="nav-link" style="font-size: 1.4rem;" title="logout"><i
+                    class="lni lni-exit"></i>
             </button>
         </form>
     </span>
@@ -210,18 +209,6 @@
             });
         });
 
-        // Function to load all settings data - now handled by htmx
-        function loadSettingsData() {
-            // HTMX will automatically load the content when the tab becomes visible
-            // due to the hx-trigger="revealed" attribute
-        }
-
-        // Helper function to format date time
-        function formatDateTime(dateTimeString) {
-            const date = new Date(dateTimeString);
-            return date.toLocaleString();
-        }
-
         // Check if date is in URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         let initialDate;
@@ -304,12 +291,11 @@
 
         // Create a polyline for raw location points
         const rawPointsPath = L.polyline([], {
-            color: '#fddca1',  // Purple color for raw points
+            color: '#ecbc6f',  // Purple color for raw points
             weight: 6,
-            opacity: 1,
+            opacity: 0.5,
             lineJoin: 'round',
-            lineCap: 'round',
-            dashArray: '5, 5'  // Dashed line
+            lineCap: 'round'
         });
 
         // Function to update the timeline with fetched data
@@ -393,36 +379,28 @@
                 const descElement = document.createElement('div');
                 descElement.className = 'entry-description';
 
-                // Create details element
-                const detailsElement = document.createElement('div');
-                detailsElement.className = 'entry-details';
-
                 if (entry.type === 'VISIT') {
-                    const placeName = entry.place ? entry.place.name || 'Unknown Place' : 'Unknown Place';
-                    descElement.textContent = placeName;
-
-                    if (entry.place && entry.place.address) {
-                        detailsElement.textContent = entry.place.address;
-                    }
-
-                    if (entry.place && entry.place.category) {
-                        const categorySpan = document.createElement('span');
-                        categorySpan.style.display = 'block';
-                        categorySpan.style.marginTop = '5px';
-                        categorySpan.style.fontStyle = 'italic';
-                        categorySpan.textContent = entry.place.category;
-                        detailsElement.appendChild(categorySpan);
-                    }
+                    descElement.textContent = entry.place ? entry.place.name || 'Unknown Place' : 'Unknown Place';
                 } else if (entry.type === 'TRIP') {
-                    const startName = entry.startPlace ? entry.startPlace.name || 'Unknown' : 'Unknown';
-                    const endName = entry.endPlace ? entry.endPlace.name || 'Unknown' : 'Unknown';
                     descElement.textContent = `Trip`;
-                    detailsElement.innerHTML = `<strong>From:</strong> ${startName}<br><strong>To:</strong> ${endName}`;
-
                     // Add distance if available
                     if (entry.distanceMeters) {
                         const distanceKm = (entry.distanceMeters / 1000).toFixed(1);
-                        durationElement.textContent = `Distance: ${distanceKm} km`;
+                        durationElement.textContent = `Distance: ${distanceKm} km `;
+                        if (entry.transportMode) {
+                            switch (entry.transportMode) {
+                                case 'WALKING':
+                                    durationElement.textContent += ' by foot';
+                                    break;
+                                case 'CYCLING':
+                                    durationElement.textContent += ' by bike';
+                                    break;
+                                case 'DRIVING':
+                                    durationElement.textContent += ' by car';
+                                    break;
+                            }
+
+                        }
                     }
                 }
 
@@ -471,31 +449,7 @@
                     bounds.extend([lat, lng]);
                     hasValidCoords = true;
                 }
-                //
-                // // If entry has a path, add it to the map
-                // if (entryElement.dataset.path) {
-                //     try {
-                //         const pathData = JSON.parse(entryElement.dataset.path);
-                //         const latlngs = pathData.map(coord => [coord.latitude, coord.longitude]);
-                //
-                //         // Create polyline
-                //         L.polyline(latlngs, {
-                //             color: '#4f73ff',
-                //             weight: 2,
-                //             opacity: 0.8,
-                //             lineJoin: 'round',
-                //             lineCap: 'round'
-                //         }).addTo(map);
-                //
-                //         // Extend bounds with all path points
-                //         latlngs.forEach(latlng => {
-                //             bounds.extend(latlng);
-                //             hasValidCoords = true;
-                //         });
-                //     } catch (e) {
-                //         console.error("Error parsing path data:", e);
-                //     }
-                // }
+
 
                 if (rawPointsData && rawPointsData.points && rawPointsData.points.length > 0) {
                     const rawPointsCoords = rawPointsData.points.map(point => [point.latitude, point.longitude]);
