@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Service
@@ -52,7 +53,7 @@ public class TripMergingService {
         if (event.getStartTime() == null || event.getEndTime() == null) {
             allTrips = tripRepository.findByUser(user.orElse(null));
         } else {
-            allTrips = tripRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user.orElse(null), Instant.ofEpochMilli(event.getStartTime()), Instant.ofEpochMilli(event.getEndTime()));
+            allTrips = tripRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user.orElse(null), Instant.ofEpochMilli(event.getStartTime()).minus(1, ChronoUnit.DAYS), Instant.ofEpochMilli(event.getEndTime()).plus(1, ChronoUnit.DAYS));
         }
 
         mergeTrips(user.orElse(null), allTrips, true);
