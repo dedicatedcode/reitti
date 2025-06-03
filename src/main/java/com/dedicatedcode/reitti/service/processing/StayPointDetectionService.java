@@ -57,9 +57,9 @@ public class StayPointDetectionService {
 
         if (earliestNewPoint.isPresent() && latestNewPoint.isPresent()) {
             // Get points from 1 hour before the earliest new point
-            Instant windowStart = earliestNewPoint.get();
+            Instant windowStart = earliestNewPoint.get().minus(Duration.ofHours(1));
             // Get points from 1 hour after the latest new point
-            Instant windowEnd = latestNewPoint.get();
+            Instant windowEnd = latestNewPoint.get().plus(Duration.ofHours(1));
 
             List<RawLocationPoint> pointsInWindow = rawLocationPointRepository
                     .findByUserAndTimestampBetweenOrderByTimestampAsc(user, windowStart, windowEnd);

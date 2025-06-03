@@ -233,7 +233,7 @@ public class SettingsController {
     public String importGpx(@RequestParam("file") MultipartFile file,
                            Authentication authentication,
                            Model model) {
-        User user = (User) authentication.getDetails();
+        User user = (User) authentication.getPrincipal();
         
         if (file.isEmpty()) {
             model.addAttribute("uploadErrorMessage", "File is empty");
