@@ -142,4 +142,14 @@ public class SignificantPlace {
     public int hashCode() {
         return Objects.hashCode(id);
     }
+
+    @Override
+    public String toString() {
+        return "SignificantPlace{" +
+                "id=" + id +
+                ", user=" + user +
+                ", name='" + name + '\'' +
+                ", geom=" + geom +
+                '}';
+    }
 }
