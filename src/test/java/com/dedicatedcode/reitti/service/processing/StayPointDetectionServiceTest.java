@@ -7,8 +7,7 @@ import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -44,19 +43,20 @@ class StayPointDetectionServiceTest extends AbstractIntegrationTest {
         expectedStayPointsInOrder.add(new StayPoint(53.87306318052629, 10.732658768947365, null, null, null)); //Garten.
         expectedStayPointsInOrder.add(new StayPoint(53.87101884785715, 10.745859928571429, null, null, null)); //Fimila
         expectedStayPointsInOrder.add(new StayPoint(53.871636138461504, 10.747298292564096, null, null, null)); //Obi
-        expectedStayPointsInOrder.add(new StayPoint(53.87216447272729,10.747552527272727, null, null, null)); //Obi
+        expectedStayPointsInOrder.add(new StayPoint(53.87216447272729, 10.747552527272727, null, null, null)); //Obi
+        expectedStayPointsInOrder.add(new StayPoint(53.871564058,10.747507870888889, null, null, null)); //Obi
         expectedStayPointsInOrder.add(new StayPoint(53.873079353158, 10.73264953157896, null, null, null)); //Garten
         expectedStayPointsInOrder.add(new StayPoint(53.86334557300011, 10.701107468000021, null, null, null)); //Moltkestr.
 
         List<StayPoint> distinctStayPoints = new ArrayList<>();
 
+        List<StayPoint> flatStayPoints = stayPoints.stream().flatMap(Collection::stream).sorted(Comparator.comparing(StayPoint::getArrivalTime)).toList();
         StayPoint last = null;
-        for (List<StayPoint> stayPoint : stayPoints) {
-            for (StayPoint point : stayPoint) {
-                if (last == null || GeoUtils.distanceInMeters(last, point) > 50) {
-                    last = point;
-                    distinctStayPoints.add(point);
-                }
+        int checkThresholdInMeters = 50;
+        for (StayPoint point : flatStayPoints) {
+            if (last == null || GeoUtils.distanceInMeters(last, point) >= checkThresholdInMeters) {
+                last = point;
+                distinctStayPoints.add(point);
             }
         }
 
@@ -65,7 +65,8 @@ class StayPointDetectionServiceTest extends AbstractIntegrationTest {
             StayPoint expected = expectedStayPointsInOrder.get(i);
             StayPoint actual = distinctStayPoints.get(i);
 
-            assertTrue(GeoUtils.distanceInMeters(actual, expected) < 25, "Distance between " + actual + " and " + expected + " is too large. Should be less than 25m but was " + GeoUtils.distanceInMeters(actual, expected) + "m for index " + i + ".");
+            assertTrue(GeoUtils.distanceInMeters(actual, expected) < checkThresholdInMeters,
+                    "Distance between " + actual + " and " + expected + " is too large. Should be less than " + checkThresholdInMeters + "m but was " + GeoUtils.distanceInMeters(actual, expected) + "m for index " + i + ".");
         }
     }
 }

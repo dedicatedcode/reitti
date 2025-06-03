@@ -2,13 +2,13 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.AbstractIntegrationTest;
 import com.dedicatedcode.reitti.event.MergeVisitEvent;
-import com.dedicatedcode.reitti.model.ProcessedVisit;
+import com.dedicatedcode.reitti.model.GeoUtils;
 import com.dedicatedcode.reitti.repository.ProcessedVisitRepository;
 import com.dedicatedcode.reitti.repository.VisitRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,6 +26,7 @@ class VisitMergingServiceTest extends AbstractIntegrationTest {
     private ProcessedVisitRepository processedVisitRepository;
 
     @Test
+    @Transactional
     void shouldMergeVisitsInTimeFrame() {
         importUntilVisits("/data/gpx/20250531.gpx");
 
@@ -33,21 +34,30 @@ class VisitMergingServiceTest extends AbstractIntegrationTest {
 
         assertEquals(0, visitRepository.findByUserAndProcessedFalse(user).size());
 
-        List<StayPoint> expectedVisits = new ArrayList<>();
-        expectedVisits.add(new StayPoint(53.86334557300011, 10.701107468000021, null, null, null)); //Moltkestr.
-        expectedVisits.add(new StayPoint(53.86334557300011, 10.701107468000021, null, null, null)); //Moltkestr.
-        expectedVisits.add(new StayPoint(53.86889230000001, 10.680612066666669, null, null, null)); //Diele.
-        expectedVisits.add(new StayPoint(53.86334557300011, 10.701107468000021, null, null, null)); //Moltkestr.
-        expectedVisits.add(new StayPoint(53.86889230000001, 10.680612066666669, null, null, null)); //Diele.
-        expectedVisits.add(new StayPoint(53.87306318052629, 10.732658768947365, null, null, null)); //Garten.
-        expectedVisits.add(new StayPoint(53.87101884785715, 10.745859928571429, null, null, null)); //Fimila
-        expectedVisits.add(new StayPoint(53.871636138461504, 10.747298292564096, null, null, null)); //Obi
-        expectedVisits.add(new StayPoint(53.87216447272729,10.747552527272727, null, null, null)); //Obi
-        expectedVisits.add(new StayPoint(53.873079353158, 10.73264953157896, null, null, null)); //Garten
-        expectedVisits.add(new StayPoint(53.86334557300011, 10.701107468000021, null, null, null)); //Moltkestr.
+        List<GeoPoint> expectedVisits = new ArrayList<>();
 
+        expectedVisits.add(new GeoPoint(53.86334539659948,10.701105248045259)); // Moltke
+        expectedVisits.add(new GeoPoint(53.86334539659948,10.701105248045259)); // Moltke
+        expectedVisits.add(new GeoPoint(53.86889230000001,10.680612066666669)); // Diele
+        expectedVisits.add(new GeoPoint(53.86334539659948,10.701105248045259)); // Moltke
+        expectedVisits.add(new GeoPoint(53.86889230000001,10.680612066666669)); // Diele
+        expectedVisits.add(new GeoPoint(53.87306318052629,10.732658768947365)); // Garten
+        expectedVisits.add(new GeoPoint(53.871003894,10.7458164105)); // Famila
+        expectedVisits.add(new GeoPoint(53.8714586375,10.747866387499998)); // Obi 1
+        expectedVisits.add(new GeoPoint(53.87214355833334,10.747553500000002)); // Obi 2
+        expectedVisits.add(new GeoPoint(53.8714586375,10.747866387499998)); // Obi 1
+        expectedVisits.add(new GeoPoint(53.87306318052629,10.732658768947365)); // Garten
+        expectedVisits.add(new GeoPoint(53.86334539659948,10.701105248045259)); // Moltke
 
-        List<ProcessedVisit> actual = this.processedVisitRepository.findByUserOrderByStartTime(user);
-        assertEquals(expectedVisits.size(), actual.size());
+        List<GeoPoint> actualVisits = this.processedVisitRepository.findByUserOrderByStartTime(user).stream().map(pv -> new GeoPoint(pv.getPlace().getLatitudeCentroid(), pv.getPlace().getLongitudeCentroid())).toList();
+        assertEquals(expectedVisits.size(), actualVisits.size());
+        for (int i = 0; i < actualVisits.size(); i++) {
+            GeoPoint expected = expectedVisits.get(i);
+            GeoPoint actual = actualVisits.get(i);
+
+            double distanceInMeters = GeoUtils.distanceInMeters(actual.latitude(), actual.longitude(), expected.latitude(), expected.longitude());
+            assertTrue(distanceInMeters < 50, "Distance between " + actual + " and " + expected + " is too large. Should be less than 25m but was " + distanceInMeters + "m for index " + i + ".");
+        }
+
     }
 }

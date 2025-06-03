@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ImportHandler {
     
     private static final Logger logger = LoggerFactory.getLogger(ImportHandler.class);
-    private static final int BATCH_SIZE = 10000; // Process locations in batches of 100
+    private static final int BATCH_SIZE = 100;
     
     private final ObjectMapper objectMapper;
     private final ImportListener importListener;
