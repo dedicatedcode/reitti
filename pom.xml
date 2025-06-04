@@ -14,6 +14,7 @@
     <name>reitti</name>
     <description>Reitti application</description>
     <properties>
+        <docker.tag>latest</docker.tag>
         <java.version>24</java.version>
         <argLine/>
         <testcontainers.version>1.19.5</testcontainers.version>
@@ -158,7 +159,7 @@
                         <artifactId>spring-boot-maven-plugin</artifactId>
                         <configuration>
                             <image>
-                                <name>dedicatedcode/reitti:latest</name>
+                                <name>dedicatedcode/reitti:${docker.tag}</name>
                                 <env>
                                     <BP_JVM_VERSION>24</BP_JVM_VERSION>
                                 </env>
@@ -166,6 +167,7 @@
                             <layers>
                                 <enabled>true</enabled>
                             </layers>
+                            <publish>true</publish>
                         </configuration>
                         <executions>
                             <execution>

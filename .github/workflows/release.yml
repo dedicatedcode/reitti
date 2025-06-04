@@ -28,25 +28,8 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-      - name: Build Docker Image
-        run: mvn spring-boot:build-image -Pdocker -DskipTests
-      - name: Docker metadata
-        id: metadata
-        uses: docker/metadata-action@v3
-        with:
-          images: dedicatedcode/reitti
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value={{sha}},enable=${{ github.ref_type != 'tag' }}
-      - name: Tag image
-        run: docker image tag dedicatedcode/reitti ${{ inputs.tags }}
-        with:
-          tags: ${{ steps.metadata.outputs.tags }}
-      - name: Push images
-        run: docker push --all-tags dedicatedcode/reitti:tagname
-
-
+      - name: Build & Publish Latest Docker Image
+        run: mvn spring-boot:build-image -Pdocker -DskipTests -Ddocker.tag=latest
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
