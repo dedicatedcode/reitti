@@ -19,7 +19,7 @@ jobs:
           java-version: '24'
           distribution: 'temurin'
           cache: maven
-      - name: Build
+      - name: Build & Test
         run: mvn --batch-mode --update-snapshots verify
       - name: Create bundle
         run: mkdir staging && cp target/*.jar staging

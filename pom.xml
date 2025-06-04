@@ -158,7 +158,7 @@
                         <artifactId>spring-boot-maven-plugin</artifactId>
                         <configuration>
                             <image>
-                                <name>${docker.image.prefix}/${docker.image.name}</name>
+                                <name>dedicatedcode/reitti:latest</name>
                                 <env>
                                     <BP_JVM_VERSION>24</BP_JVM_VERSION>
                                 </env>
