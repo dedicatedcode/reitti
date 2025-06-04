@@ -1,12 +1,18 @@
 ---
 name: "release"
 
+env:
+  DOCKER_IMAGE_NAME: dedicatedcode/reitti
+
 on:
+  # Trigger the action manually from the UI
+  workflow_dispatch:
+  # Trigger the action when a version tag is pushed
   push:
     branches:
       - "*"
     tags:
-      - "v*"
+      - '[0-9]+.[0-9]+.[0-9]+' # Push events to matching numeric semver tags, i.e., 1.0.0, 20.15.10
 
 jobs:
   tagged-release:
@@ -22,14 +28,27 @@ jobs:
           distribution: 'temurin'
           cache: maven
       - name: Build
-        run: mvn --batch-mode --update-snapshots package -Pdocker
+        run: mvn --batch-mode --update-snapshots package
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-      - name: Build & Publish Latest Docker Image
-        run: mvn spring-boot:build-image -Pdocker -DskipTests -Ddocker.tag=latest
+
+      - name: Get the tag name
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      - name: Build and push Landing Page Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKER_IMAGE_NAME }}:${{ steps.get_version.outputs.VERSION }}
+            ${{ env.DOCKER_IMAGE_NAME }}:latest
+          cache-from: type=registry,ref=${{ env.DOCKER_IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.DOCKER_IMAGE_NAME }}:buildcache,mode=max
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"

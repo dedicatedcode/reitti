@@ -9,7 +9,7 @@ LABEL org.opencontainers.image.licenses="MIT"
 RUN addgroup -S reitti -g 1000 && adduser -S reitti -u 1000 -G reitti
 
 # Set environment variables
-ENV SPRING_PROFILES_ACTIVE=prod
+ENV SPRING_PROFILES_ACTIVE=docker
 ENV APP_HOME=/app
 
 # Create application directory
