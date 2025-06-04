@@ -17,6 +17,8 @@
         <java.version>24</java.version>
         <argLine/>
         <testcontainers.version>1.19.5</testcontainers.version>
+        <docker.image.prefix>reitti</docker.image.prefix>
+        <docker.image.name>${project.artifactId}</docker.image.name>
     </properties>
     <dependencies>
         <dependency>
@@ -143,6 +145,25 @@
                 <configuration>
                     <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <image>
+                        <name>${docker.image.prefix}/${docker.image.name}:${project.version}</name>
+                    </image>
+                    <layers>
+                        <enabled>true</enabled>
+                    </layers>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>build-image</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
