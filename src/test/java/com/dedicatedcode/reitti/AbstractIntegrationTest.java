@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.model.RawLocationPoint;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.ImportHandler;
+import com.dedicatedcode.reitti.service.ImportListener;
 import com.dedicatedcode.reitti.service.LocationDataService;
 import com.dedicatedcode.reitti.service.processing.StayPoint;
 import com.dedicatedcode.reitti.service.processing.StayPointDetectionService;
@@ -15,9 +16,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -33,6 +36,7 @@ import java.util.List;
 @SpringBootTest
 @Testcontainers
 @ActiveProfiles("test")
+@DirtiesContext
 @Import(AbstractIntegrationTest.TestConfig.class)
 public abstract class AbstractIntegrationTest {
 
@@ -60,7 +64,6 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.rabbitmq.username", rabbitmq::getAdminUsername);
         registry.add("spring.rabbitmq.password", rabbitmq::getAdminPassword);
     }
-
 
     @Autowired
     protected UserRepository userRepository;

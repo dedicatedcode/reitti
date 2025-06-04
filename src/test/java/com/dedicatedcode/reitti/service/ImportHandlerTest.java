@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.AbstractIntegrationTest;
+import com.dedicatedcode.reitti.MockImportListener;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +21,7 @@ class ImportHandlerTest extends AbstractIntegrationTest {
     private ImportHandler importHandler;
 
     @MockitoBean
-    private ImportListener importListener;
+    private MockImportListener importListener;
 
     @Test
     void shouldImportGPX() {
