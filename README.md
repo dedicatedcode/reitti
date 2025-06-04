@@ -45,7 +45,11 @@ Reitti is a personal location tracking and analysis application that helps you u
 ### Building Docker Image
 
 ```bash
-mvn -Pdocker spring-boot:build-image
+# Build the application
+mvn clean package
+
+# Build the Docker image
+docker build -t reitti/reitti:latest .
 ```
 
 ## Docker
@@ -82,6 +86,9 @@ docker run -p 8080:8080 \
 | `SPRING_RABBITMQ_USERNAME` | RabbitMQ username | guest |
 | `SPRING_RABBITMQ_PASSWORD` | RabbitMQ password | guest |
 | `SERVER_PORT` | Application server port | 8080 |
+| `APP_UID` | User ID to run the application as | 1000 |
+| `APP_GID` | Group ID to run the application as | 1000 |
+| `JAVA_OPTS` | JVM options | |
 
 ### Tags
 

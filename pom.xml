@@ -14,12 +14,9 @@
     <name>reitti</name>
     <description>Reitti application</description>
     <properties>
-        <docker.tag>latest</docker.tag>
         <java.version>24</java.version>
         <argLine/>
         <testcontainers.version>1.19.5</testcontainers.version>
-        <docker.image.prefix>reitti</docker.image.prefix>
-        <docker.image.name>${project.artifactId}</docker.image.name>
     </properties>
     <dependencies>
         <dependency>
@@ -158,24 +155,8 @@
                         <groupId>org.springframework.boot</groupId>
                         <artifactId>spring-boot-maven-plugin</artifactId>
                         <configuration>
-                            <image>
-                                <name>dedicatedcode/reitti:${docker.tag}</name>
-                                <env>
-                                    <BP_JVM_VERSION>24</BP_JVM_VERSION>
-                                </env>
-                            </image>
-                            <layers>
-                                <enabled>true</enabled>
-                            </layers>
-                            <publish>true</publish>
+                            <executable>true</executable>
                         </configuration>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>build-image</goal>
-                                </goals>
-                            </execution>
-                        </executions>
                     </plugin>
                 </plugins>
             </build>
