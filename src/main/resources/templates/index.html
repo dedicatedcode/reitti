@@ -448,9 +448,18 @@
                     // Determine marker color based on entry type
                     const markerColor = entry.type === 'VISIT' ? '#4a89dc' : '#e67e22';
 
+                    // Calculate radius based on duration for visits
+                    let radius = 8;
+                    if (entry.type === 'VISIT') {
+                        const durationMs = new Date(entry.endTime) - new Date(entry.startTime);
+                        const durationHours = durationMs / (1000 * 60 * 60);
+                        // Scale radius based on duration: min 8, max 30
+                        radius = Math.min(30, Math.max(8, 8 + (durationHours * 2)));
+                    }
+                    
                     // Create marker with custom icon
                     const marker = L.circleMarker([lat, lng], {
-                        radius: 8,
+                        radius: radius,
                         fillColor: markerColor,
                         color: '#fff',
                         weight: 1,
@@ -462,13 +471,18 @@
                         color: '#4a89dc',
                         fillColor: '#6098e3',
                         fillOpacity: 0.1,
-                        radius: 30
+                        radius: radius * 5
                     }).addTo(map);
 
-                    // Add popup with basic info
-                    const popupContent = entry.type === 'VISIT'
-                        ? `<b>${entry.place?.name || 'Unknown Place'}</b><br>${timeElement.textContent}`
-                        : `<b>Trip</b><br>${timeElement.textContent}`;
+                    // Add popup with basic info including duration for visits
+                    let popupContent = '';
+                    if (entry.type === 'VISIT') {
+                        const durationMs = new Date(entry.endTime) - new Date(entry.startTime);
+                        const durationText = humanizeDuration(durationMs, {units: ["h", "m"], round: true});
+                        popupContent = `<b>${entry.place?.name || 'Unknown Place'}</b><br>${timeElement.textContent}<br>Duration: ${durationText}`;
+                    } else {
+                        popupContent = `<b>Trip</b><br>${timeElement.textContent}`;
+                    }
 
                     marker.bindPopup(popupContent);
 
