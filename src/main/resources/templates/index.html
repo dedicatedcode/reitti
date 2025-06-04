@@ -6,6 +6,8 @@
     <title>Reitti - Your Location Timeline</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <link rel="stylesheet" href="/css/date-picker.css">
     <link rel="stylesheet" href="/css/main.css">
     <link rel="stylesheet" href="/css/lineicons.css">
@@ -14,8 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&display=swap"
           rel="stylesheet">
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </head>
@@ -444,9 +445,25 @@
                 const lat = parseFloat(entryElement.dataset.lat);
                 const lng = parseFloat(entryElement.dataset.lng);
 
+                if (rawPointsData && rawPointsData.points && rawPointsData.points.length > 0) {
+                    const rawPointsCoords = rawPointsData.points.map(point => [point.latitude, point.longitude]);
+
+                    rawPointsPath.remove();
+                    // Add the raw points polyline to the map
+                    rawPointsPath.setLatLngs(rawPointsCoords);
+                    rawPointsPath.addTo(map);
+
+                    // Extend bounds with raw points
+                    const rawPointsBounds = L.latLngBounds(rawPointsCoords);
+                    if (rawPointsBounds.isValid()) {
+                        bounds.extend(rawPointsBounds);
+                        hasValidCoords = true;
+                    }
+                }
+
                 if (!isNaN(lat) && !isNaN(lng)) {
                     // Determine marker color based on entry type
-                    const markerColor = entry.type === 'VISIT' ? '#4a89dc' : '#e67e22';
+                    const markerColor = entry.type === 'VISIT' ? '#ff6c00' : '#e67e22';
 
                     // Calculate radius based on duration for visits
                     let radius = 8;
@@ -456,10 +473,10 @@
                         // Scale radius based on duration: min 8, max 30
                         radius = Math.min(30, Math.max(8, 8 + (durationHours * 2)));
                     }
-                    
+
                     // Create marker with custom icon
                     const marker = L.circleMarker([lat, lng], {
-                        radius: radius,
+                        radius: 5,
                         fillColor: markerColor,
                         color: '#fff',
                         weight: 1,
@@ -467,58 +484,31 @@
                         fillOpacity: 0.8
                     }).addTo(map);
 
-                    L.circle([lat, lng], {
-                        color: '#4a89dc',
-                        fillColor: '#6098e3',
+                    const circle = L.circle([lat, lng], {
+                        color: '#dcae4a',
+                        fillColor: '#ff984f',
                         fillOpacity: 0.1,
                         radius: radius * 5
                     }).addTo(map);
 
-                    // Add popup with basic info including duration for visits
-                    let popupContent = '';
+
                     if (entry.type === 'VISIT') {
                         const durationMs = new Date(entry.endTime) - new Date(entry.startTime);
                         const durationText = humanizeDuration(durationMs, {units: ["h", "m"], round: true});
-                        popupContent = `<b>${entry.place?.name || 'Unknown Place'}</b><br>${timeElement.textContent}<br>Duration: ${durationText}`;
-                    } else {
-                        popupContent = `<b>Trip</b><br>${timeElement.textContent}`;
+                        let tooltip = L.tooltip([lat, lng], {
+                            content:
+                                `<div style="font-size: 1.4rem; color: wheat">${entry.place.name}</div>
+                             <div>Adress:<br />${entry.place.address}</div>`
+                            , className: 'visit-popup', permanent: false
+                        });
+
+                        circle.bindTooltip(tooltip);
                     }
-
-                    marker.bindPopup(popupContent);
-
-                    // Extend bounds for map fitting
                     bounds.extend([lat, lng]);
                     hasValidCoords = true;
                 }
 
 
-                if (rawPointsData && rawPointsData.points && rawPointsData.points.length > 0) {
-                    const rawPointsCoords = rawPointsData.points.map(point => [point.latitude, point.longitude]);
-
-                    rawPointsPath.remove();
-                    // Add the raw points polyline to the map
-                    rawPointsPath.setLatLngs(rawPointsCoords);
-                    rawPointsPath.addTo(map);
-                    //
-                    // // Add small markers for each raw point
-                    // rawPointsData.points.forEach(point => {
-                    //     L.circleMarker([point.latitude, point.longitude], {
-                    //         radius: 3,
-                    //         fillColor: '#9c27b0',
-                    //         color: '#fff',
-                    //         weight: 1,
-                    //         opacity: 0.7,
-                    //         fillOpacity: 0.7
-                    //     }).addTo(map);
-                    // });
-
-                    // Extend bounds with raw points
-                    const rawPointsBounds = L.latLngBounds(rawPointsCoords);
-                    if (rawPointsBounds.isValid()) {
-                        bounds.extend(rawPointsBounds);
-                        hasValidCoords = true;
-                    }
-                }
             });
 
             // Fit map to bounds if we have valid coordinates
