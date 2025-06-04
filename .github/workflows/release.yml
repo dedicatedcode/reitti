@@ -34,7 +34,7 @@ jobs:
         id: metadata
         uses: docker/metadata-action@v3
         with:
-          images: dedicatedcode/reitti:latest
+          images: dedicatedcode/reitti
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
