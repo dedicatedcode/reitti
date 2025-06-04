@@ -231,7 +231,7 @@ public class SettingsController {
         boolean isCurrentUser = currentUser.getId().equals(userId);
         
         try {
-            User updatedUser = userService.updateUser(userId, username, displayName, password);
+            userService.updateUser(userId, username, displayName, password);
             model.addAttribute("successMessage", "User updated successfully");
             
             // If the current user was updated, update the authentication
