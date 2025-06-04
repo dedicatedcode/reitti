@@ -40,8 +40,12 @@ RUN echo '#!/bin/sh' > /entrypoint.sh && \
 # Expose the application port
 EXPOSE 8080
 
-# Install su-exec for proper user switching
-RUN apk add --no-cache su-exec
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
+
+# Install su-exec for proper user switching and wget for healthcheck
+RUN apk add --no-cache su-exec wget
 
 # Run as root initially to allow UID/GID changes
 USER root
