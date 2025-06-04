@@ -7,7 +7,7 @@ on:
   # Trigger the action when a version tag is pushed
   push:
     branches:
-      - "main"
+      - "*"
     tags:
       - '[0-9]+.[0-9]+.[0-9]+' # Push events to matching numeric semver tags, i.e., 1.0.0, 20.15.10
 
