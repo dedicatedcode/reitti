@@ -15,25 +15,30 @@
             --color-background-dark-light: #5c5c5c;
             --color-text-white: #e3e3e3;
         }
-
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
             padding: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #111111;
+            background: linear-gradient(135deg, #111111 0%, #3b3b3b 100%);
             color: var(--color-text-white);
         }
-
+        
         .login-container {
-            background-color: #3b3b3bbd;
+            background-color: var(--color-background-dark);
             padding: 40px;
             border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
             width: 350px;
             border: 1px solid var(--color-highlight);
             backdrop-filter: blur(10px);
-            margin: 0 auto;
         }
-
+        
         h1 {
             text-align: center;
             color: var(--color-highlight);
@@ -42,18 +47,18 @@
             font-size: 3rem;
             font-weight: lighter;
         }
-
+        
         .form-group {
             margin-bottom: 25px;
         }
-
+        
         label {
             display: block;
             margin-bottom: 8px;
             font-weight: 400;
             color: var(--color-text-white);
         }
-
+        
         input[type="text"],
         input[type="password"] {
             width: 100%;
@@ -65,23 +70,23 @@
             color: var(--color-text-white);
             transition: border-color 0.3s;
         }
-
+        
         input[type="text"]:focus,
         input[type="password"]:focus {
             border-color: var(--color-highlight);
             outline: none;
         }
-
+        
         .remember-me {
             display: flex;
             align-items: center;
             margin-bottom: 20px;
         }
-
+        
         .remember-me input {
             margin-right: 8px;
         }
-
+        
         button {
             background-color: transparent;
             color: var(--color-highlight);
@@ -93,12 +98,12 @@
             font-size: 16px;
             transition: background-color 0.3s, color 0.3s;
         }
-
+        
         button:hover {
             background-color: var(--color-highlight);
             color: var(--color-background-dark);
         }
-
+        
         .error-message {
             color: #ff6b6b;
             margin-bottom: 20px;
@@ -107,52 +112,34 @@
             background-color: rgba(255, 107, 107, 0.1);
             border-radius: 4px;
         }
-
-        .login-backdrop {
-            background-image: url("/images/login-background.jpeg");
-            background-size: cover;
-        }
-
-        .background-filter {
-            backdrop-filter: grayscale(100%);
-            position: absolute;
-            left: 0;
-            right: 0;
-            top: 0;
-            bottom: 0;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
     </style>
 </head>
-<body class="login-backdrop">
-<div class="background-filter">
+<body>
     <div class="login-container">
+        <h1>Reitti</h1>
+        
         <div th:if="${param.error}" class="error-message">
             Invalid username or password
         </div>
-
+        
         <form th:action="@{/login}" method="post">
             <div class="form-group">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" required autofocus>
             </div>
-
+            
             <div class="form-group">
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" required>
             </div>
-
+            
             <div class="remember-me">
                 <input type="checkbox" id="remember-me" name="remember-me">
                 <label for="remember-me">Remember me</label>
             </div>
-
+            
             <button type="submit">Login</button>
         </form>
     </div>
-</div>
 </body>
 </html>
