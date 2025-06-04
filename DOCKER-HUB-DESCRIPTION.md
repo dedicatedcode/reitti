@@ -28,18 +28,20 @@ For production use, we recommend using the provided docker-compose file that inc
 
 ## Environment Variables
 
-- `POSTGIS_HOST` - PostgreSQL database host (default: postgis)
-- `POSTGIS_PORT` - PostgreSQL database port (default: 5432)
-- `POSTGIS_DB` - PostgreSQL database name (default: reittidb)
-- `POSTGIS_USER` - Database username (default: reitti)
-- `POSTGIS_PASSWORD` - Database password (default: reitti)
-- `RABBITMQ_HOST` - RabbitMQ host (default: rabbitmq)
-- `RABBITMQ_PORT` - RabbitMQ port (default: 5672)
-- `RABBITMQ_USER` - RabbitMQ username (default: reitti)
-- `RABBITMQ_PASSWORD` - RabbitMQ password (default: reitti)
-- `APP_UID` - User ID to run the application as (default: 1000)
-- `APP_GID` - Group ID to run the application as (default: 1000)
-- `JAVA_OPTS` - JVM options for the application
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `POSTGIS_HOST` | PostgreSQL database host | postgis |
+| `POSTGIS_PORT` | PostgreSQL database port | 5432 |
+| `POSTGIS_DB` | PostgreSQL database name | reittidb |
+| `POSTGIS_USER` | Database username | reitti |
+| `POSTGIS_PASSWORD` | Database password | reitti |
+| `RABBITMQ_HOST` | RabbitMQ host | rabbitmq |
+| `RABBITMQ_PORT` | RabbitMQ port | 5672 |
+| `RABBITMQ_USER` | RabbitMQ username | reitti |
+| `RABBITMQ_PASSWORD` | RabbitMQ password | reitti |
+| `APP_UID` | User ID to run the application as | 1000 |
+| `APP_GID` | Group ID to run the application as | 1000 |
+| `JAVA_OPTS` | JVM options for the application | |
 
 ## Tags
 
