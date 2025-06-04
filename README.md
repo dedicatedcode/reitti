@@ -1,6 +1,6 @@
 # Reitti
 
-Reitti is a personal location tracking and analysis application that helps you understand your movement patterns and significant places.
+Reitti is a personal location tracking and analysis application that helps you understand your movement patterns and significant places. The name "Reitti" comes from Finnish, meaning "route" or "path".
 
 ## Features
 
@@ -10,6 +10,7 @@ Reitti is a personal location tracking and analysis application that helps you u
 - **Significant Places**: Recognize and categorize frequently visited locations
 - **Timeline View**: See your day organized as visits and trips
 - **Privacy-Focused**: Self-hosted solution that keeps your location data private
+- **Asynchronous Processing**: Handle large datasets efficiently with RabbitMQ-based processing
 
 ## Getting Started
 
@@ -18,14 +19,34 @@ Reitti is a personal location tracking and analysis application that helps you u
 - Java 24 or higher
 - Maven 3.6 or higher
 - Docker and Docker Compose
+- PostgreSQL database with spatial extensions
+- RabbitMQ for message processing
 
 ### Running the Application
 
 1. Clone the repository
-2. Navigate to the project directory
-3. Start the infrastructure services with `docker-compose up -d`
-4. Run `mvn spring-boot:run`
-5. Access the application at `http://localhost:8080`
+   ```bash
+   git clone https://github.com/dedicatedcode/reitti.git
+   cd reitti
+   ```
+
+2. Start the infrastructure services
+   ```bash
+   docker-compose up -d
+   ```
+
+3. Build and run the application
+   ```bash
+   mvn spring-boot:run
+   ```
+
+4. Access the application at `http://localhost:8080`
+
+### Building Docker Image
+
+```bash
+mvn -Pdocker spring-boot:build-image
+```
 
 ## Docker
 
@@ -34,21 +55,33 @@ This repository contains Docker images for the Reitti application.
 ### Usage
 
 ```bash
+# Pull the image
 docker pull reitti/reitti:latest
 
-# Run with PostgreSQL and RabbitMQ
+# Run with PostgreSQL and RabbitMQ using docker-compose
 docker-compose up -d
+
+# Or run standalone with environment variables
+docker run -p 8080:8080 \
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/reitti \
+  -e SPRING_DATASOURCE_USERNAME=postgres \
+  -e SPRING_DATASOURCE_PASSWORD=postgres \
+  -e SPRING_RABBITMQ_HOST=rabbitmq \
+  reitti/reitti:latest
 ```
 
 ### Environment Variables
 
-- `SPRING_DATASOURCE_URL` - JDBC URL for PostgreSQL database
-- `SPRING_DATASOURCE_USERNAME` - Database username
-- `SPRING_DATASOURCE_PASSWORD` - Database password
-- `SPRING_RABBITMQ_HOST` - RabbitMQ host
-- `SPRING_RABBITMQ_PORT` - RabbitMQ port
-- `SPRING_RABBITMQ_USERNAME` - RabbitMQ username
-- `SPRING_RABBITMQ_PASSWORD` - RabbitMQ password
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `SPRING_DATASOURCE_URL` | JDBC URL for PostgreSQL database | jdbc:postgresql://localhost:5432/reitti |
+| `SPRING_DATASOURCE_USERNAME` | Database username | postgres |
+| `SPRING_DATASOURCE_PASSWORD` | Database password | postgres |
+| `SPRING_RABBITMQ_HOST` | RabbitMQ host | localhost |
+| `SPRING_RABBITMQ_PORT` | RabbitMQ port | 5672 |
+| `SPRING_RABBITMQ_USERNAME` | RabbitMQ username | guest |
+| `SPRING_RABBITMQ_PASSWORD` | RabbitMQ password | guest |
+| `SERVER_PORT` | Application server port | 8080 |
 
 ### Tags
 
@@ -57,16 +90,33 @@ docker-compose up -d
 
 ## API Endpoints
 
-- `POST /api/v1/import/gpx` - Import GPX data
-- `GET /api/v1/queue-stats` - Get processing queue statistics
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/import/gpx` | POST | Import GPX data files |
+| `/api/v1/queue-stats` | GET | Get processing queue statistics |
+| `/settings/import/gpx` | POST | Web interface for GPX import |
+| `/api/v1/timeline` | GET | Get timeline data |
+
+## Data Flow
+
+1. Location data is imported via API or web interface
+2. Data is queued in RabbitMQ for asynchronous processing
+3. Processing workers analyze the data to detect visits and trips
+4. Results are stored in PostgreSQL database
+5. Web interface displays the processed data as timeline and maps
 
 ## Technologies
 
-- Spring Boot
-- Spring Data JPA
-- PostgreSQL with spatial extensions
-- RabbitMQ for asynchronous processing
-- Spring Security for authentication
+- **Backend**: Spring Boot, Spring Data JPA, Spring Security
+- **Database**: PostgreSQL with spatial extensions
+- **Message Queue**: RabbitMQ for asynchronous processing
+- **Frontend**: Thymeleaf, JavaScript
+- **Testing**: JUnit 5, Testcontainers
+- **Containerization**: Docker, Spring Boot Docker plugin
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
