@@ -95,15 +95,6 @@ docker run -p 8080:8080 \
 - `latest` - Latest stable release
 - `x.y.z` - Specific version releases
 
-## API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/import/gpx` | POST | Import GPX data files |
-| `/api/v1/queue-stats` | GET | Get processing queue statistics |
-| `/settings/import/gpx` | POST | Web interface for GPX import |
-| `/api/v1/timeline` | GET | Get timeline data |
-
 ## Data Flow
 
 1. Location data is imported via API or web interface
@@ -119,7 +110,7 @@ docker run -p 8080:8080 \
 - **Message Queue**: RabbitMQ for asynchronous processing
 - **Frontend**: Thymeleaf, JavaScript
 - **Testing**: JUnit 5, Testcontainers
-- **Containerization**: Docker, Spring Boot Docker plugin
+- **Containerization**: Docker
 
 ## Contributing
 

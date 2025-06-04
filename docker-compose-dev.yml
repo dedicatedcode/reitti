@@ -1,14 +1,4 @@
 services:
-  reitti:
-    image: dedicatedcode/reitti:latest
-    ports:
-      - 8080:8080
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      postgis:
-        condition: service_healthy
-        restart: true
   # PostgreSQL with PostGIS and TimescaleDB extensions
   postgis:
     image: postgis/postgis:17-3.5-alpine
@@ -46,4 +36,5 @@ services:
 
 volumes:
   postgis-data:
+  redis-data:
   rabbitmq-data:

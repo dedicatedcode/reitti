@@ -34,7 +34,7 @@ RUN echo '#!/bin/sh' > /entrypoint.sh && \
     echo '  # Fix ownership of all files' >> /entrypoint.sh && \
     echo '  chown -R reitti:reitti $APP_HOME' >> /entrypoint.sh && \
     echo 'fi' >> /entrypoint.sh && \
-    echo 'exec su-exec reitti java $JAVA_OPTS -jar $APP_HOME/app.jar "$@"' >> /entrypoint.sh && \
+    echo 'exec su-exec reitti java $JAVA_OPTS -jar $APP_HOME/app.jar -Dspring.profiles.active=docker "$@"' >> /entrypoint.sh && \
     chmod +x /entrypoint.sh
 
 # Expose the application port
