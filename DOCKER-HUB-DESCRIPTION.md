@@ -33,6 +33,9 @@ For production use, we recommend using the provided docker-compose file that inc
 - `SPRING_RABBITMQ_PORT` - RabbitMQ port
 - `SPRING_RABBITMQ_USERNAME` - RabbitMQ username
 - `SPRING_RABBITMQ_PASSWORD` - RabbitMQ password
+- `APP_UID` - User ID to run the application as (default: 1000)
+- `APP_GID` - Group ID to run the application as (default: 1000)
+- `JAVA_OPTS` - JVM options for the application
 
 ## Tags
 

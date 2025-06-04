@@ -25,17 +25,25 @@ COPY --chown=reitti:reitti target/*.jar $APP_HOME/app.jar
 RUN echo '#!/bin/sh' > /entrypoint.sh && \
     echo 'if [ -n "$APP_UID" ] && [ -n "$APP_GID" ]; then' >> /entrypoint.sh && \
     echo '  echo "Changing reitti user/group to UID:$APP_UID / GID:$APP_GID"' >> /entrypoint.sh && \
-    echo '  sed -i -e "s/^reitti:x:[0-9]*:[0-9]*:/reitti:x:$APP_UID:$APP_GID:/" /etc/passwd' >> /entrypoint.sh && \
-    echo '  sed -i -e "s/^reitti:x:[0-9]*:/reitti:x:$APP_GID:/" /etc/group' >> /entrypoint.sh && \
-    echo '  chown -R $APP_UID:$APP_GID $APP_HOME' >> /entrypoint.sh && \
+    echo '  # Add shadow package for usermod and groupmod commands' >> /entrypoint.sh && \
+    echo '  apk add --no-cache shadow' >> /entrypoint.sh && \
+    echo '  # Change GID first' >> /entrypoint.sh && \
+    echo '  groupmod -g $APP_GID reitti' >> /entrypoint.sh && \
+    echo '  # Then change UID' >> /entrypoint.sh && \
+    echo '  usermod -u $APP_UID reitti' >> /entrypoint.sh && \
+    echo '  # Fix ownership of all files' >> /entrypoint.sh && \
+    echo '  chown -R reitti:reitti $APP_HOME' >> /entrypoint.sh && \
     echo 'fi' >> /entrypoint.sh && \
-    echo 'exec java $JAVA_OPTS -jar $APP_HOME/app.jar "$@"' >> /entrypoint.sh && \
+    echo 'exec su-exec reitti java $JAVA_OPTS -jar $APP_HOME/app.jar "$@"' >> /entrypoint.sh && \
     chmod +x /entrypoint.sh
 
 # Expose the application port
 EXPOSE 8080
 
-# Set the user to run the application
-USER reitti
+# Install su-exec for proper user switching
+RUN apk add --no-cache su-exec
+
+# Run as root initially to allow UID/GID changes
+USER root
 
 ENTRYPOINT ["/entrypoint.sh"]
