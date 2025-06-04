@@ -95,72 +95,45 @@
                             hx-target="#user-management"
                             hx-swap="innerHTML">Delete</button>
                     <button class="btn"
-                            onclick="selectUserForEdit(this.parentElement.parentElement); return false;">Edit</button>
+                            th:attr="hx-get=@{/settings/user-form(userId=${user.id}, username=${user.username}, displayName=${user.displayName})}"
+                            hx-target="#user-form-container">Edit</button>
                 </td>
             </tr>
         </tbody>
     </table>
 
-    <form id="user-form" hx-target="#user-management" hx-swap="innerHTML" class="user-form" autocomplete="off" style="margin-top: 30px;">
-        <input type="hidden" id="userId" name="userId" value="">
-        <h3 id="form-title">Add New User</h3>
+    <div id="user-form-container" style="margin-top: 30px;">
+        <div hx-get="/settings/user-form" hx-trigger="load" hx-target="#user-form-container"></div>
+    </div>
+</div>
+
+<!-- User Form Fragment -->
+<div th:fragment="user-form">
+    <form hx-target="#user-management" hx-swap="innerHTML" class="user-form" autocomplete="off" 
+          th:attr="hx-post=${userId != null ? '/settings/users/update' : '/settings/users'}">
+        <input type="hidden" name="userId" th:value="${userId}">
+        <h3 th:text="${userId != null ? 'Update User' : 'Add New User'}">Add New User</h3>
         <div class="form-group">
             <label for="username">Username</label>
-            <input type="text" id="username" name="username" required placeholder="Enter username" autocomplete="off">
+            <input type="text" id="username" name="username" required placeholder="Enter username" autocomplete="off" 
+                   th:value="${username}">
         </div>
         <div class="form-group">
             <label for="displayName">Display Name</label>
-            <input type="text" id="displayName" name="displayName" required placeholder="Enter display name" autocomplete="off">
+            <input type="text" id="displayName" name="displayName" required placeholder="Enter display name" autocomplete="off"
+                   th:value="${displayName}">
         </div>
         <div class="form-group">
             <label for="password">Password</label>
-            <input type="password" id="password" name="password" required placeholder="Enter password" autocomplete="new-password">
-            <small id="password-help" style="display: none;">Leave empty to keep current password</small>
+            <input type="password" id="password" name="password" th:required="${userId == null}" placeholder="Enter password" autocomplete="new-password">
+            <small th:if="${userId != null}">Leave empty to keep current password</small>
         </div>
         <div style="display: flex; gap: 10px;">
-            <button type="submit" id="submit-btn" class="btn">Create User</button>
-            <button type="button" id="clear-btn" class="btn" style="display: none;" onclick="clearUserForm()">Cancel</button>
+            <button type="submit" class="btn" th:text="${userId != null ? 'Update User' : 'Create User'}">Create User</button>
+            <button type="button" class="btn" th:if="${userId != null}" 
+                    hx-get="/settings/user-form" hx-target="#user-form-container">Cancel</button>
         </div>
     </form>
-    
-    <script>
-        function selectUserForEdit(row) {
-            const userId = row.getAttribute('data-user-id');
-            const username = row.querySelector('[data-username]').getAttribute('data-username');
-            const displayName = row.querySelector('[data-display-name]').getAttribute('data-display-name');
-            
-            // Update form fields
-            document.getElementById('userId').value = userId;
-            document.getElementById('username').value = username;
-            document.getElementById('displayName').value = displayName;
-            
-            // Update form appearance
-            document.getElementById('form-title').textContent = 'Update User';
-            document.getElementById('submit-btn').textContent = 'Update User';
-            document.getElementById('clear-btn').style.display = 'block';
-            document.getElementById('password-help').style.display = 'block';
-            document.getElementById('password').required = false;
-            
-            // Set form action for update
-            document.getElementById('user-form').setAttribute('hx-post', '/settings/users/update');
-        }
-        
-        function clearUserForm() {
-            // Reset form fields
-            document.getElementById('user-form').reset();
-            document.getElementById('userId').value = '';
-            
-            // Reset form appearance
-            document.getElementById('form-title').textContent = 'Add New User';
-            document.getElementById('submit-btn').textContent = 'Create User';
-            document.getElementById('clear-btn').style.display = 'none';
-            document.getElementById('password-help').style.display = 'none';
-            document.getElementById('password').required = true;
-            
-            // Set form action for create
-            document.getElementById('user-form').setAttribute('hx-post', '/settings/users');
-        }
-    </script>
 </div>
 
 <!-- Places Content Fragment -->

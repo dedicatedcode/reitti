@@ -263,6 +263,19 @@ public class SettingsController {
         return "fragments/settings :: file-upload-content";
     }
     
+    @GetMapping("/user-form")
+    public String getUserForm(@RequestParam(required = false) Long userId,
+                             @RequestParam(required = false) String username,
+                             @RequestParam(required = false) String displayName,
+                             Model model) {
+        if (userId != null) {
+            model.addAttribute("userId", userId);
+            model.addAttribute("username", username);
+            model.addAttribute("displayName", displayName);
+        }
+        return "fragments/settings :: user-form";
+    }
+    
     @PostMapping("/import/gpx")
     public String importGpx(@RequestParam("file") MultipartFile file,
                            Authentication authentication,
