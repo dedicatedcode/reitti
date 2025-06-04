@@ -6,14 +6,15 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Build and Publish
+name: Branch build
 
 on:
   push:
-    branches: [ "main" ]
+    branches-ignore:
+      - main
   pull_request:
-    branches: [ "main" ]
-
+    branches:
+      - main
 jobs:
   build:
     runs-on: ubuntu-latest
