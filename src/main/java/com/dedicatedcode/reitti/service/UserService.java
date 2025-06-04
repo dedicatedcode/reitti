@@ -25,6 +25,11 @@ public class UserService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }
 
+    public User getUserById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + id));
+    }
+
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }

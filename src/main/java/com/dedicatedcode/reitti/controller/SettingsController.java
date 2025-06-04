@@ -227,7 +227,7 @@ public class SettingsController {
                            Authentication authentication,
                            Model model) {
         String currentUsername = authentication.getName();
-        User currentUser = userService.getUserByUsername(currentUsername);
+        User currentUser = userService.getUserById(userId);
         boolean isCurrentUser = currentUser.getId().equals(userId);
         
         try {
