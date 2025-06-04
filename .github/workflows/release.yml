@@ -1,16 +1,13 @@
 ---
 name: "release"
 
-env:
-  DOCKER_IMAGE_NAME: dedicatedcode/reitti
-
 on:
   # Trigger the action manually from the UI
   workflow_dispatch:
   # Trigger the action when a version tag is pushed
   push:
     branches:
-      - "*"
+      - "main"
     tags:
       - '[0-9]+.[0-9]+.[0-9]+' # Push events to matching numeric semver tags, i.e., 1.0.0, 20.15.10
 
@@ -34,19 +31,28 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-
-      - name: Get the tag name
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-      - name: Build and push Landing Page Docker image
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # list of Docker images to use as base name for tags
+          images: |
+            dedicatedcode/reitti
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
+      - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          tags: |
-            ${{ env.DOCKER_IMAGE_NAME }}:${{ steps.get_version.outputs.VERSION }}
-            ${{ env.DOCKER_IMAGE_NAME }}:latest
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
