@@ -126,6 +126,12 @@ body {
     border: 1px solid #f5c6cb;
 }
 
+.alert-warning {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
 .user-row.selected {
     background-color: var(--color-highlight);
     color: var(--color-background-dark);

@@ -227,10 +227,19 @@ public class SettingsController {
                            Authentication authentication,
                            Model model) {
         String currentUsername = authentication.getName();
+        User currentUser = userService.getUserByUsername(currentUsername);
+        boolean isCurrentUser = currentUser.getId().equals(userId);
         
         try {
-            userService.updateUser(userId, username, displayName, password);
+            User updatedUser = userService.updateUser(userId, username, displayName, password);
             model.addAttribute("successMessage", "User updated successfully");
+            
+            // If the current user was updated, update the authentication
+            if (isCurrentUser && !currentUsername.equals(username)) {
+                // We need to re-authenticate with the new username
+                model.addAttribute("requireRelogin", true);
+                model.addAttribute("newUsername", username);
+            }
         } catch (Exception e) {
             model.addAttribute("errorMessage", "Error updating user: " + e.getMessage());
         }
@@ -238,7 +247,7 @@ public class SettingsController {
         // Get updated user list and add to model
         List<User> users = userService.getAllUsers();
         model.addAttribute("users", users);
-        model.addAttribute("currentUsername", currentUsername);
+        model.addAttribute("currentUsername", isCurrentUser ? username : currentUsername);
         
         // Return the users-content fragment
         return "fragments/settings :: users-content";

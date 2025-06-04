@@ -65,6 +65,9 @@
     <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
         <span th:text="${errorMessage}">Error message</span>
     </div>
+    <div th:if="${requireRelogin}" class="alert alert-warning" style="display: block;">
+        <span>Your username has changed to <strong th:text="${newUsername}"></strong>. You will need to log out and log in again with your new username.</span>
+    </div>
 
     <h3>Existing Users</h3>
     <div th:if="${users.isEmpty()}">
@@ -91,8 +94,7 @@
                             hx-confirm="Are you sure you want to delete this user? This will delete all their data."
                             hx-target="#user-management"
                             hx-swap="innerHTML">Delete</button>
-                    <button th:if="${user.username != currentUsername}"
-                            class="btn"
+                    <button class="btn"
                             onclick="selectUserForEdit(this.parentElement.parentElement); return false;">Edit</button>
                 </td>
             </tr>
