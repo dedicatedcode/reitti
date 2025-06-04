@@ -34,19 +34,16 @@ jobs:
         id: metadata
         uses: docker/metadata-action@v3
         with:
-          images: docker.io/dedicatedcode/reitti:latest
+          images: dedicatedcode/reitti:latest
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value={{sha}},enable=${{ github.ref_type != 'tag' }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+      - name: Build and push
+        uses: docker/build-push-action@v2
         with:
-          context: .
           push: true
           tags: ${{ steps.metadata.outputs.tags }}
-          labels: ${{ steps.metadata.outputs.labels }}
 
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
