@@ -151,7 +151,10 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <image>
-                        <name>${docker.image.prefix}/${docker.image.name}:${project.version}</name>
+                        <name>${docker.image.prefix}/${docker.image.name}</name>
+                        <env>
+                            <BP_JVM_VERSION>24</BP_JVM_VERSION>
+                        </env>
                     </image>
                     <layers>
                         <enabled>true</enabled>
