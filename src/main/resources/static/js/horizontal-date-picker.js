@@ -214,7 +214,7 @@ class HorizontalDatePicker {
         let touchStartX = 0;
         let touchStartY = 0;
         let touchStartTime = 0;
-        let hasMoved = false;
+        let isTouchScrolling = false;
         let touchScrollTimeout;
         
         // Touch start
@@ -222,32 +222,48 @@ class HorizontalDatePicker {
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
             touchStartTime = Date.now();
-            hasMoved = false;
+            isTouchScrolling = false;
             
             // Clear any existing timeout
             clearTimeout(touchScrollTimeout);
+            
+            // If auto-select is enabled and not a manual selection, deselect current date
+            if (this.options.autoSelectOnScroll && !this._isManualSelection) {
+                if (this.selectedElement) {
+                    this.selectedElement.classList.remove('selected');
+                }
+            }
         }, { passive: true });
         
         // Touch move
         this.dateContainer.addEventListener('touchmove', (e) => {
-            const currentX = e.touches[0].clientX;
-            const currentY = e.touches[0].clientY;
-            const deltaX = Math.abs(currentX - touchStartX);
-            const deltaY = Math.abs(currentY - touchStartY);
-            
-            // Mark as moved if there's significant movement
-            if (deltaX > 5 || deltaY > 5) {
-                hasMoved = true;
+            if (!isTouchScrolling) {
+                isTouchScrolling = true;
             }
+            
+            // Update selection during touch scrolling if auto-select is enabled
+            if (this.options.autoSelectOnScroll && !this._isManualSelection) {
+                requestAnimationFrame(() => {
+                    this.updateSelectionDuringScroll();
+                });
+            }
+            
+            // Check if we need to add more dates
+            this.checkScrollPosition();
         }, { passive: true });
         
         // Touch end
         this.dateContainer.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
             const touchEndTime = Date.now();
+            
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
             const deltaTime = touchEndTime - touchStartTime;
             
-            // Check if this was a tap (short duration, no significant movement)
-            const isTap = deltaTime < 300 && !hasMoved;
+            // Check if this was a tap (short duration, small movement)
+            const isTap = deltaTime < 300 && Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10;
             
             if (isTap) {
                 // Handle tap - find the date item that was tapped
@@ -276,15 +292,22 @@ class HorizontalDatePicker {
                         this._isManualSelection = false;
                     }, 500);
                 }
+            } else if (isTouchScrolling) {
+                // Handle scroll end for touch
+                touchScrollTimeout = setTimeout(() => {
+                    isTouchScrolling = false;
+                    
+                    // Only handle scroll end if not in manual selection mode
+                    if (!this._isManualSelection) {
+                        this.handleScrollEnd();
+                    }
+                }, 150);
             }
-            
-            // Reset movement flag
-            hasMoved = false;
         }, { passive: true });
         
         // Handle touch cancel
         this.dateContainer.addEventListener('touchcancel', () => {
-            hasMoved = false;
+            isTouchScrolling = false;
             clearTimeout(touchScrollTimeout);
         }, { passive: true });
     }
