@@ -281,29 +281,10 @@ class HorizontalDatePicker {
                 }
             }
             
-            // Reset touch interaction flag after a shorter delay to allow data loading after swipe
+            // Reset touch interaction flag after a delay to allow for momentum scrolling
             setTimeout(() => {
                 this._isTouchInteracting = false;
-                
-                // If auto-select is enabled and we have a selected element, trigger the callback
-                if (this.options.autoSelectOnScroll && this.selectedElement && !isTap) {
-                    const dateToSelect = this.parseDate(this.selectedElement.dataset.date);
-                    
-                    // Call onDateSelect callback if provided
-                    if (typeof this.options.onDateSelect === 'function') {
-                        this.options.onDateSelect(dateToSelect, this.selectedElement.dataset.date);
-                    }
-                    
-                    // Dispatch custom event
-                    const event = new CustomEvent('dateSelected', {
-                        detail: {
-                            date: dateToSelect,
-                            formattedDate: this.selectedElement.dataset.date
-                        }
-                    });
-                    this.element.dispatchEvent(event);
-                }
-            }, 300);
+            }, 1000);
             
             // Reset movement flag
             hasMoved = false;
@@ -317,7 +298,7 @@ class HorizontalDatePicker {
             // Reset touch interaction flag
             setTimeout(() => {
                 this._isTouchInteracting = false;
-            }, 300);
+            }, 500);
         }, { passive: true });
     }
     
