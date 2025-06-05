@@ -35,7 +35,11 @@ class HorizontalDatePicker {
         this.populateDates();
         this.attachEventListeners();
         this.attachTouchEventListeners();
-        this.scrollToSelectedDate(false);
+        
+        // Scroll to selected date after a brief delay to ensure DOM is ready
+        setTimeout(() => {
+            this.scrollToSelectedDate(false);
+        }, 0);
         
         // Highlight the current month in the month row
         if (this.options.showMonthRow) {
@@ -93,10 +97,17 @@ class HorizontalDatePicker {
         const startDate = new Date(centerDate);
         startDate.setDate(centerDate.getDate() - this.options.daysBeforeToday);
         
-        // Always show exactly daysToShow days
-        for (let i = 0; i < this.options.daysToShow; i++) {
-            const date = new Date(startDate);
-            date.setDate(startDate.getDate() + i);
+        // Create more dates at the beginning for initial load (2 weeks before)
+        const extendedStartDate = new Date(startDate);
+        extendedStartDate.setDate(startDate.getDate() - 14);
+        
+        // Calculate total days to show (original + 2 weeks before + 2 weeks after)
+        const totalDaysToShow = this.options.daysToShow + 28;
+        
+        // Generate all dates including the extended range
+        for (let i = 0; i < totalDaysToShow; i++) {
+            const date = new Date(extendedStartDate);
+            date.setDate(extendedStartDate.getDate() + i);
             
             // Skip dates outside of min/max range if specified
             if ((this.options.minDate && date < new Date(this.options.minDate)) || 
@@ -107,10 +118,6 @@ class HorizontalDatePicker {
             const dateItem = this.createDateElement(date);
             this.dateContainer.appendChild(dateItem);
         }
-        
-        // Add extra dates at both ends for continuous scrolling
-        this.addMoreDatesAtStart();
-        this.addMoreDatesAtEnd();
     }
     
     attachEventListeners() {
