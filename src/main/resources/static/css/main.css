@@ -318,7 +318,7 @@ nav {
 .timeline {
     position: absolute;
     top: 0;
-    width: 50%;
+    width: 90%;
     bottom: 0;
     background: var(--color-background-dark);
     background: linear-gradient(90deg, rgb(17, 17, 17) 0%, rgba(59, 59, 59, 0.49) 76%, rgba(255, 255, 255, 0) 100%);
@@ -331,7 +331,6 @@ nav {
 
 .timeline-container {
     pointer-events: all;
-    width: 350px;
     font-family: "Serif";
     padding-bottom: 250px;
 }
@@ -486,4 +485,24 @@ input[type=file]::file-selector-button:hover {
     background: #3b3b3bbf;
     color: var(--color-text-white);
     box-shadow: none;
+}
+
+@media (max-width: 800px) {
+    .timeline-entry .entry-description {
+        font-size: 1.2rem;
+        font-weight: normal;
+    }
+
+    .timeline-entry {
+        font-size: 1rem;
+        color: white;
+    }
+
+    .timeline-entry.active {
+        color: wheat;
+    }
+
+    .timeline-entry.active .entry-description {
+        font-size: 2rem;
+    }
 }
