@@ -216,7 +216,6 @@ class HorizontalDatePicker {
         let touchStartTime = 0;
         let hasMoved = false;
         let touchScrollTimeout;
-        let isActivelyTouching = false;
         
         // Touch start
         this.dateContainer.addEventListener('touchstart', (e) => {
@@ -224,20 +223,12 @@ class HorizontalDatePicker {
             touchStartY = e.touches[0].clientY;
             touchStartTime = Date.now();
             hasMoved = false;
-            isActivelyTouching = true;
             
-            // Set strong flag to prevent any data loading during touch interaction
+            // Set flag to prevent data loading during touch interaction
             this._isTouchInteracting = true;
-            this._preventDataLoading = true;
             
             // Clear any existing timeout
             clearTimeout(touchScrollTimeout);
-            
-            // Clear any pending auto-selection timeouts to prevent interference
-            if (this._autoSelectTimeout) {
-                clearTimeout(this._autoSelectTimeout);
-                this._autoSelectTimeout = null;
-            }
         }, { passive: true });
         
         // Touch move
@@ -251,9 +242,6 @@ class HorizontalDatePicker {
             if (deltaX > 5 || deltaY > 5) {
                 hasMoved = true;
             }
-            
-            // Ensure data loading remains blocked during movement
-            this._preventDataLoading = true;
         }, { passive: true });
         
         // Touch end
@@ -293,38 +281,29 @@ class HorizontalDatePicker {
                 }
             }
             
-            isActivelyTouching = false;
-            
-            // Use a longer delay to ensure touch interaction is completely finished
-            // including any momentum scrolling
+            // Reset touch interaction flag after a shorter delay to allow data loading after swipe
             setTimeout(() => {
                 this._isTouchInteracting = false;
-                this._preventDataLoading = false;
                 
-                // Only trigger callback after swipe if auto-select is enabled and it wasn't a tap
+                // If auto-select is enabled and we have a selected element, trigger the callback
                 if (this.options.autoSelectOnScroll && this.selectedElement && !isTap) {
-                    // Add an additional small delay to ensure DOM is stable
-                    setTimeout(() => {
-                        if (!this._preventDataLoading && !this._isTouchInteracting) {
-                            const dateToSelect = this.parseDate(this.selectedElement.dataset.date);
-                            
-                            // Call onDateSelect callback if provided
-                            if (typeof this.options.onDateSelect === 'function') {
-                                this.options.onDateSelect(dateToSelect, this.selectedElement.dataset.date);
-                            }
-                            
-                            // Dispatch custom event
-                            const event = new CustomEvent('dateSelected', {
-                                detail: {
-                                    date: dateToSelect,
-                                    formattedDate: this.selectedElement.dataset.date
-                                }
-                            });
-                            this.element.dispatchEvent(event);
+                    const dateToSelect = this.parseDate(this.selectedElement.dataset.date);
+                    
+                    // Call onDateSelect callback if provided
+                    if (typeof this.options.onDateSelect === 'function') {
+                        this.options.onDateSelect(dateToSelect, this.selectedElement.dataset.date);
+                    }
+                    
+                    // Dispatch custom event
+                    const event = new CustomEvent('dateSelected', {
+                        detail: {
+                            date: dateToSelect,
+                            formattedDate: this.selectedElement.dataset.date
                         }
-                    }, 100);
+                    });
+                    this.element.dispatchEvent(event);
                 }
-            }, 800);
+            }, 300);
             
             // Reset movement flag
             hasMoved = false;
@@ -335,11 +314,10 @@ class HorizontalDatePicker {
             hasMoved = false;
             clearTimeout(touchScrollTimeout);
             
-            // Reset touch interaction flags
+            // Reset touch interaction flag
             setTimeout(() => {
                 this._isTouchInteracting = false;
-                this._preventDataLoading = false;
-            }, 500);
+            }, 300);
         }, { passive: true });
     }
     
@@ -602,7 +580,7 @@ class HorizontalDatePicker {
         }
         
         // Skip data loading callbacks during touch interactions unless it's a manual selection
-        const shouldSkipCallback = (this._isTouchInteracting || this._preventDataLoading) && !isManualSelection;
+        const shouldSkipCallback = this._isTouchInteracting && !isManualSelection;
         
         // Clear any existing selection
         if (this.selectedElement) {
@@ -673,8 +651,8 @@ class HorizontalDatePicker {
             }
             
             this._autoSelectTimeout = setTimeout(() => {
-                // Only trigger if this is still the selected element and not during any touch interaction
-                if (this.selectedElement === dateItem && !this._isTouchInteracting && !this._preventDataLoading) {
+                // Only trigger if this is still the selected element and not during touch interaction
+                if (this.selectedElement === dateItem && !this._isTouchInteracting) {
                     // Call onDateSelect callback if provided
                     if (typeof this.options.onDateSelect === 'function') {
                         this.options.onDateSelect(dateToSelect, dateItem.dataset.date);
