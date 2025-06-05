@@ -527,7 +527,6 @@
                     radius: radius
                 }).addTo(map);
 
-                // Create tooltip with aggregated information
                 const totalDurationText = humanizeDuration(totalDurationMs, {units: ["h", "m"], round: true});
                 const visitCount = visits.length;
                 const visitText = visitCount === 1 ? 'visit' : 'visits';
@@ -535,7 +534,7 @@
                 let tooltip = L.tooltip([lat, lng], {
                     content: `<div style="font-size: 1.4rem; color: wheat">${place.name}</div>
                              <div>Address:<br />${place.address}</div>
-                             <div style="margin-top: 8px; font-weight: bold;">
+                             <div style="margin-top: 4px; font-weight: bold;">
                                  ${visitCount} ${visitText} - Total: ${totalDurationText}
                              </div>`,
                     className: 'visit-popup', 

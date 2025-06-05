@@ -478,8 +478,7 @@ input[type=file]::file-selector-button:hover {
     border-radius: 8px;
     padding: 8px;
     background: #3b3b3bbf;
-    color: var(--color-text-white);
-    box-shadow: none;
+    color: white;
 }
 
 @media (max-width: 800px) {
