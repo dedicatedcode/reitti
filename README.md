@@ -54,7 +54,7 @@ docker build -t reitti/reitti:latest .
 
 ## Docker
 
-This [repository](https://hub.docker.com/r/docker/dedicatedcode/reitti/)  contains Docker images for the Reitti application.
+This [repository](https://hub.docker.com/r/dedicatedcode/reitti/)  contains Docker images for the Reitti application.
 
 ### Usage
 
