@@ -323,6 +323,8 @@
             }
 
             const bounds = L.latLngBounds();
+            // Store the original bounds for deselection
+            window.originalBounds = L.latLngBounds();
 
             let hasValidCoords = false;
 
@@ -458,6 +460,7 @@
                     const rawPointsBounds = L.latLngBounds(rawPointsCoords);
                     if (rawPointsBounds.isValid()) {
                         bounds.extend(rawPointsBounds);
+                        window.originalBounds.extend(rawPointsBounds);
                         hasValidCoords = true;
                     }
                 }
@@ -506,6 +509,7 @@
                         circle.bindTooltip(tooltip);
                     }
                     bounds.extend([lat, lng]);
+                    window.originalBounds.extend([lat, lng]);
                     hasValidCoords = true;
                 }
 
@@ -523,37 +527,55 @@
 
         // Handle clicks on timeline entries
         document.querySelector('.timeline-container').addEventListener('click', function (event) {
-            document.querySelectorAll('.timeline-container .timeline-entry')
-                .forEach(entry => entry.classList.remove('active'));
             const entry = event.target.closest('.timeline-entry');
             if (!entry) return;
-                
-            entry.classList.add('active');
+            
+            // Check if this entry is already active (deselection case)
+            const isCurrentlyActive = entry.classList.contains('active');
+            
+            // Remove active class from all entries
+            document.querySelectorAll('.timeline-container .timeline-entry')
+                .forEach(e => e.classList.remove('active'));
+            
+            // Remove any selected path
             selectedPath.remove();
-            const newBounds = L.latLngBounds();
+            
+            if (isCurrentlyActive) {
+                // Deselection: zoom back to original bounds showing all data
+                if (window.originalBounds && window.originalBounds.isValid()) {
+                    map.flyToBounds(window.originalBounds, {
+                        padding: [50, 50],
+                        maxZoom: 16
+                    });
+                }
+            } else {
+                // Selection: zoom to specific entry
+                entry.classList.add('active');
+                const newBounds = L.latLngBounds();
 
-            const lat = parseFloat(entry.dataset.lat);
-            const lng = parseFloat(entry.dataset.lng);
+                const lat = parseFloat(entry.dataset.lat);
+                const lng = parseFloat(entry.dataset.lng);
 
-            if (entry.dataset.path) {
-                const pathData = JSON.parse(entry.dataset.path);
-                const latlngs = pathData.map(coord => [coord.latitude, coord.longitude]);
-                latlngs.forEach(latlng => {
-                    newBounds.extend(latlng);
-                });
-                selectedPath.setLatLngs(latlngs);
-                selectedPath.addTo(map);
-            }
-                
-            if (!isNaN(lat) && !isNaN(lng)) {
-                newBounds.extend([lat, lng]);
-            }
-                
-            if (newBounds.isValid()) {
-                map.flyToBounds(newBounds, {
-                    padding: [50, 50],
-                    maxZoom: 16
-                });
+                if (entry.dataset.path) {
+                    const pathData = JSON.parse(entry.dataset.path);
+                    const latlngs = pathData.map(coord => [coord.latitude, coord.longitude]);
+                    latlngs.forEach(latlng => {
+                        newBounds.extend(latlng);
+                    });
+                    selectedPath.setLatLngs(latlngs);
+                    selectedPath.addTo(map);
+                }
+                    
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    newBounds.extend([lat, lng]);
+                }
+                    
+                if (newBounds.isValid()) {
+                    map.flyToBounds(newBounds, {
+                        padding: [50, 50],
+                        maxZoom: 16
+                    });
+                }
             }
         });
 
