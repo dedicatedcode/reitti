@@ -41,7 +41,7 @@ RUN echo '#!/bin/sh' > /entrypoint.sh && \
 EXPOSE 8080
 
 # Add healthcheck
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=5s --timeout=3s --start-period=1s --retries=20 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
 
 # Install su-exec for proper user switching and wget for healthcheck
