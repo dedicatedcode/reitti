@@ -125,6 +125,7 @@
     </dependencyManagement>
 
     <build>
+        <finalName>reitti-app</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
