@@ -3,6 +3,8 @@ package com.dedicatedcode.reitti.service.geocoding;
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.repository.SignificantPlaceRepository;
+import com.dedicatedcode.reitti.service.GeocodeResult;
+import com.dedicatedcode.reitti.service.GeocodeServiceManager;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -20,20 +22,16 @@ import java.util.Optional;
 @Component
 public class ReverseGeocodingListener {
     private static final Logger logger = LoggerFactory.getLogger(ReverseGeocodingListener.class);
-    private static final String NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse?format=geocodejson&lat=%s&lon=%s";
-    
+
     private final SignificantPlaceRepository significantPlaceRepository;
-    private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper;
-    
+    private final GeocodeServiceManager geocodeServiceManager;
+
     @Autowired
     public ReverseGeocodingListener(
             SignificantPlaceRepository significantPlaceRepository,
-            RestTemplate restTemplate,
-            ObjectMapper objectMapper) {
+            GeocodeServiceManager geocodeServiceManager) {
         this.significantPlaceRepository = significantPlaceRepository;
-        this.restTemplate = restTemplate;
-        this.objectMapper = objectMapper;
+        this.geocodeServiceManager = geocodeServiceManager;
     }
     
     @RabbitListener(queues = RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE, concurrency = "1-16")
@@ -49,20 +47,15 @@ public class ReverseGeocodingListener {
         SignificantPlace place = placeOptional.get();
         
         try {
-            String url = String.format(NOMINATIM_URL, place.getLatitudeCentroid(), place.getLongitudeCentroid());
-            String response = restTemplate.getForObject(url, String.class);
-            
-            JsonNode root = objectMapper.readTree(response);
-            JsonNode features = root.path("features");
-            
-            if (features.isArray() && !features.isEmpty()) {
-                JsonNode geocoding = features.get(0).path("properties").path("geocoding");
-                
-                String label = geocoding.path("label").asText("");
-                String street = geocoding.path("street").asText("");
-                String city = geocoding.path("city").asText("");
-                String district = geocoding.path("district").asText("");
-                
+            Optional<GeocodeResult> resultOpt  = this.geocodeServiceManager.reverseGeocode(place.getLatitudeCentroid(), place.getLongitudeCentroid());
+
+            if (resultOpt.isPresent()) {
+                GeocodeResult result = resultOpt.get();
+                String label = result.label();
+                String street = result.street();
+                String city = result.city();
+                String district = result.district();
+
                 // Set the name to the street or district if available
                 if (!street.isEmpty()) {
                     place.setName(street);
@@ -71,10 +64,9 @@ public class ReverseGeocodingListener {
                 } else if (!city.isEmpty()) {
                     place.setName(city);
                 }
-                
+
                 // Set the address to the full label
                 place.setAddress(label);
-                
                 // Save the updated place
                 significantPlaceRepository.saveAndFlush(place);
                 logger.info("Updated place ID: {} with geocoding data: {}", place.getId(), label);

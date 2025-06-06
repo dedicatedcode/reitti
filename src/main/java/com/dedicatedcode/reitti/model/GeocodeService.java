@@ -23,9 +23,6 @@ public class GeocodeService {
     @Column(nullable = false)
     private int errorCount = 0;
     
-    @Column(nullable = false)
-    private int maxErrors = 10;
-    
     @Column
     private Instant lastUsed;
     
@@ -55,9 +52,6 @@ public class GeocodeService {
     
     public int getErrorCount() { return errorCount; }
     public void setErrorCount(int errorCount) { this.errorCount = errorCount; }
-    
-    public int getMaxErrors() { return maxErrors; }
-    public void setMaxErrors(int maxErrors) { this.maxErrors = maxErrors; }
     
     public Instant getLastUsed() { return lastUsed; }
     public void setLastUsed(Instant lastUsed) { this.lastUsed = lastUsed; }
