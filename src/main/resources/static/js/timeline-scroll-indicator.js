@@ -149,22 +149,10 @@ class TimelineScrollIndicator {
 
         // Calculate target scroll position
         const targetScrollTop = nearestPosition * maxScroll;
-        
-        // Only snap if we're not already very close
-        if (Math.abs(scrollTop - targetScrollTop) > 5) {
-            this.isSnapping = true;
-            
-            // Smooth scroll to target position
             this.timeline.scrollTo({
                 top: targetScrollTop,
                 behavior: 'smooth'
             });
-            
-            // Reset snapping flag after animation
-            setTimeout(() => {
-                this.isSnapping = false;
-            }, 500);
-        }
     }
 
     updateScrollPosition() {
