@@ -13,6 +13,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -264,7 +265,7 @@ public class SettingsController {
     }
     
     @GetMapping("/integrations-content")
-    public String getIntegrationsContent(Authentication authentication, Model model) {
+    public String getIntegrationsContent(Authentication authentication, Model model, HttpServletRequest request) {
         User currentUser = userService.getUserByUsername(authentication.getName());
         List<ApiToken> tokens = apiTokenService.getTokensForUser(currentUser);
         
@@ -275,6 +276,22 @@ public class SettingsController {
         } else {
             model.addAttribute("hasToken", false);
         }
+        
+        // Build the server URL
+        String scheme = request.getScheme();
+        String serverName = request.getServerName();
+        int serverPort = request.getServerPort();
+        
+        StringBuilder serverUrl = new StringBuilder();
+        serverUrl.append(scheme).append("://").append(serverName);
+        
+        // Only add port if it's not the default port for the scheme
+        if ((scheme.equals("http") && serverPort != 80) || 
+            (scheme.equals("https") && serverPort != 443)) {
+            serverUrl.append(":").append(serverPort);
+        }
+        
+        model.addAttribute("serverUrl", serverUrl.toString());
         
         return "fragments/settings :: integrations-content";
     }
