@@ -155,10 +155,8 @@
         settingsButton.addEventListener('click', function (e) {
             e.preventDefault();
             settingsOverlay.style.display = 'block';
-            // HTMX will automatically load the content for other tabs
-            
+
             // For places tab, we need to check if it's active and load content
-            const placesTab = document.querySelector('.settings-nav-item[data-target="places-management"]');
             const placesSection = document.getElementById('places-management');
             
             if (placesSection.classList.contains('active')) {
