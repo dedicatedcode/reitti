@@ -10,6 +10,9 @@ class TimelineScrollIndicator {
         this.scrollThumb = null;
         this.scrollListener = null;
         this.resizeListener = null;
+        this.scrollEndTimer = null;
+        this.snapPositions = [];
+        this.isSnapping = false;
     }
 
     init() {
@@ -21,18 +24,26 @@ class TimelineScrollIndicator {
         this.createScrollIndicator();
 
         // Set up scroll listener
-        this.scrollListener = () => this.updateScrollPosition();
+        this.scrollListener = () => this.handleScroll();
         this.timeline.addEventListener('scroll', this.scrollListener);
         
         // Set up resize listener
         this.resizeListener = () => this.updateScrollPosition();
         window.addEventListener('resize', this.resizeListener);
         
+        // Calculate snap positions based on timeline entries
+        this.calculateSnapPositions();
+        
         // Initial update
         this.updateScrollPosition();
     }
 
     cleanup() {
+        // Clear any pending timers
+        if (this.scrollEndTimer) {
+            clearTimeout(this.scrollEndTimer);
+        }
+
         // Remove scroll indicator
         if (this.scrollIndicator && this.scrollIndicator.parentNode) {
             this.scrollIndicator.parentNode.removeChild(this.scrollIndicator);
@@ -51,6 +62,9 @@ class TimelineScrollIndicator {
         this.scrollThumb = null;
         this.scrollListener = null;
         this.resizeListener = null;
+        this.scrollEndTimer = null;
+        this.snapPositions = [];
+        this.isSnapping = false;
     }
 
     createScrollIndicator() {
@@ -72,6 +86,85 @@ class TimelineScrollIndicator {
         
         // Add to timeline
         this.timeline.appendChild(this.scrollIndicator);
+    }
+
+    calculateSnapPositions() {
+        const timelineEntries = this.timelineContainer.querySelectorAll('.timeline-entry');
+        const entryCount = timelineEntries.length;
+        
+        if (entryCount === 0) {
+            this.snapPositions = [];
+            return;
+        }
+
+        // Calculate snap positions based on entry count
+        // Each entry gets an equal portion of the scroll track
+        this.snapPositions = [];
+        for (let i = 0; i < entryCount; i++) {
+            const position = i / (entryCount - 1); // 0 to 1
+            this.snapPositions.push(Math.max(0, Math.min(1, position)));
+        }
+    }
+
+    handleScroll() {
+        if (this.isSnapping) return;
+
+        // Update position immediately for smooth scrolling
+        this.updateScrollPosition();
+
+        // Clear existing timer
+        if (this.scrollEndTimer) {
+            clearTimeout(this.scrollEndTimer);
+        }
+
+        // Set timer to detect scroll end
+        this.scrollEndTimer = setTimeout(() => {
+            this.snapToNearestPosition();
+        }, 150); // Wait 150ms after scroll stops
+    }
+
+    snapToNearestPosition() {
+        if (!this.timeline || !this.scrollThumb || this.snapPositions.length === 0) return;
+
+        const scrollTop = this.timeline.scrollTop;
+        const scrollHeight = this.timeline.scrollHeight;
+        const clientHeight = this.timeline.clientHeight;
+        const maxScroll = scrollHeight - clientHeight;
+        
+        if (maxScroll <= 0) return;
+
+        const currentScrollPercentage = scrollTop / maxScroll;
+        
+        // Find the nearest snap position
+        let nearestPosition = this.snapPositions[0];
+        let minDistance = Math.abs(currentScrollPercentage - nearestPosition);
+        
+        for (let i = 1; i < this.snapPositions.length; i++) {
+            const distance = Math.abs(currentScrollPercentage - this.snapPositions[i]);
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestPosition = this.snapPositions[i];
+            }
+        }
+
+        // Calculate target scroll position
+        const targetScrollTop = nearestPosition * maxScroll;
+        
+        // Only snap if we're not already very close
+        if (Math.abs(scrollTop - targetScrollTop) > 5) {
+            this.isSnapping = true;
+            
+            // Smooth scroll to target position
+            this.timeline.scrollTo({
+                top: targetScrollTop,
+                behavior: 'smooth'
+            });
+            
+            // Reset snapping flag after animation
+            setTimeout(() => {
+                this.isSnapping = false;
+            }, 500);
+        }
     }
 
     updateScrollPosition() {
