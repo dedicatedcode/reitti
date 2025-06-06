@@ -53,63 +53,8 @@
         </div>
 
         <!-- Integrations Section -->
-        <div id="integrations" class="settings-section">
-            <h2>App Integrations</h2>
-            
-            <div id="no-token-warning" style="display: none; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 15px; margin-bottom: 20px; color: #856404;">
-                <strong>⚠️ No API Token Available</strong><br>
-                You need to create an API token first in the "API Tokens" tab before setting up app integrations.
-            </div>
-            
-            <div class="integration-section">
-                <h3>📱 GPSLogger Setup</h3>
-                <p>GPSLogger is a free Android app that can automatically log your location and send it to Reitti.</p>
-                
-                <div class="setup-steps">
-                    <h4>Setup Instructions:</h4>
-                    <ol>
-                        <li>Download GPSLogger from the Google Play Store</li>
-                        <li>Open GPSLogger and go to <strong>Logging details → Log to custom URL</strong></li>
-                        <li>Enable "Log to custom URL"</li>
-                        <li>Set the URL to: <code id="gpslogger-url">https://your-domain.com/api/v1/location-data</code></li>
-                        <li>Set HTTP Method to <strong>POST</strong></li>
-                        <li>In HTTP Headers, add: <code>Authorization: Bearer YOUR_API_TOKEN</code></li>
-                        <li>Set HTTP Body to: <code>{"points":[{"latitude":%LAT,"longitude":%LON,"timestamp":"%ISODATE","accuracyMeters":%ACC}]}</code></li>
-                        <li>Set Content-Type header to: <code>application/json</code></li>
-                        <li>Configure logging frequency as desired (e.g., every 30 seconds)</li>
-                        <li>Start logging!</li>
-                    </ol>
-                </div>
-            </div>
-            
-            <div class="integration-section">
-                <h3>🗺️ OwnTracks Setup</h3>
-                <p>OwnTracks is a privacy-focused location tracking app available for iOS and Android.</p>
-                
-                <div class="setup-steps">
-                    <h4>Setup Instructions:</h4>
-                    <ol>
-                        <li>Download OwnTracks from the App Store or Google Play Store</li>
-                        <li>Open OwnTracks and go to <strong>Settings → Connection</strong></li>
-                        <li>Set Mode to <strong>HTTP</strong></li>
-                        <li>Set Host to: <code id="owntracks-url">https://your-domain.com</code></li>
-                        <li>Set Path to: <code>/api/v1/owntracks</code></li>
-                        <li>Enable <strong>Authentication</strong></li>
-                        <li>Set Username to your Reitti username</li>
-                        <li>Set Password to: <code>YOUR_API_TOKEN</code></li>
-                        <li>Configure tracking settings as desired</li>
-                        <li>The app will automatically start sending location updates</li>
-                    </ol>
-                </div>
-            </div>
-            
-            <div class="integration-section">
-                <h3>📋 API Token Usage</h3>
-                <p>Your API token will be displayed here once you create one in the API Tokens tab. Keep it secure and don't share it with others.</p>
-                <div id="token-display" style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 10px; margin-top: 10px; font-family: monospace; word-break: break-all;">
-                    <span id="token-value">No token available - create one in the API Tokens tab</span>
-                </div>
-            </div>
+        <div id="integrations" class="settings-section" hx-get="/settings/integrations-content" hx-trigger="revealed">
+            <div class="htmx-indicator">Loading integrations...</div>
         </div>
 
         <script>
@@ -223,8 +168,6 @@
                 htmx.process(placesSection);
             }
             
-            // Update integrations tab when opening settings
-            updateIntegrationsTab();
         });
 
         // Close settings overlay
@@ -273,59 +216,11 @@
                             htmx.process(section);
                         }
                         
-                        // If this is the integrations tab, update the URLs and token display
-                        if (target === 'integrations') {
-                            updateIntegrationsTab();
-                        }
                     }
                 });
             });
         });
 
-        // Function to update integrations tab with current domain and token info
-        function updateIntegrationsTab() {
-            const currentDomain = window.location.origin;
-            
-            // Update URLs in the integrations tab
-            const gpsloggerUrl = document.getElementById('gpslogger-url');
-            const owntracksUrl = document.getElementById('owntracks-url');
-            
-            if (gpsloggerUrl) {
-                gpsloggerUrl.textContent = `${currentDomain}/api/v1/location-data`;
-            }
-            if (owntracksUrl) {
-                owntracksUrl.textContent = currentDomain;
-            }
-            
-            // Check if we have any API tokens and update the display
-            fetch('/api/v1/tokens')
-                .then(response => response.json())
-                .then(data => {
-                    const noTokenWarning = document.getElementById('no-token-warning');
-                    const tokenValue = document.getElementById('token-value');
-                    
-                    if (data && data.length > 0) {
-                        // We have tokens, hide warning and show the first token
-                        if (noTokenWarning) noTokenWarning.style.display = 'none';
-                        if (tokenValue) {
-                            tokenValue.textContent = data[0].token;
-                            tokenValue.style.color = '#28a745';
-                        }
-                    } else {
-                        // No tokens, show warning
-                        if (noTokenWarning) noTokenWarning.style.display = 'block';
-                        if (tokenValue) {
-                            tokenValue.textContent = 'No token available - create one in the API Tokens tab';
-                            tokenValue.style.color = '#6c757d';
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.warn('Could not fetch API tokens:', error);
-                    const noTokenWarning = document.getElementById('no-token-warning');
-                    if (noTokenWarning) noTokenWarning.style.display = 'block';
-                });
-        }
 
         // Check if date is in URL parameters
         const urlParams = new URLSearchParams(window.location.search);

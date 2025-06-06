@@ -263,6 +263,22 @@ public class SettingsController {
         return "fragments/settings :: file-upload-content";
     }
     
+    @GetMapping("/integrations-content")
+    public String getIntegrationsContent(Authentication authentication, Model model) {
+        User currentUser = userService.getUserByUsername(authentication.getName());
+        List<ApiToken> tokens = apiTokenService.getTokensForUser(currentUser);
+        
+        // Add the first token if available
+        if (!tokens.isEmpty()) {
+            model.addAttribute("firstToken", tokens.get(0).getToken());
+            model.addAttribute("hasToken", true);
+        } else {
+            model.addAttribute("hasToken", false);
+        }
+        
+        return "fragments/settings :: integrations-content";
+    }
+    
     @GetMapping("/user-form")
     public String getUserForm(@RequestParam(required = false) Long userId,
                              @RequestParam(required = false) String username,
