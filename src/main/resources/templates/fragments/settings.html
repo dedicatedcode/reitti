@@ -288,7 +288,7 @@
                 <li>Download GPSLogger from the Google Play Store</li>
                 <li>Open GPSLogger and go to <strong>Logging details → Log to custom URL</strong></li>
                 <li>Enable "Log to custom URL"</li>
-                <li>Set the URL to: <code th:text="${#httpServletRequest.scheme + '://' + #httpServletRequest.serverName + (#httpServletRequest.serverPort != 80 and #httpServletRequest.serverPort != 443 ? ':' + #httpServletRequest.serverPort : '') + '/api/v1/location-data'}">https://your-domain.com/api/v1/location-data</code></li>
+                <li>Set the URL to: <code th:text="${#httpServletRequest.scheme + '://' + #httpServletRequest.serverName + (#httpServletRequest.serverPort != 80 and #httpServletRequest.serverPort != 443 ? ':' + #httpServletRequest.serverPort : '') + '/api/v1/owntracks'}">https://your-domain.com/api/v1/owntracks</code></li>
                 <li>Set HTTP Method to <strong>POST</strong></li>
                 <li>In HTTP Headers, add: <code th:text="${hasToken ? 'Authorization: Bearer ' + firstToken : 'Authorization: Bearer YOUR_API_TOKEN'}">Authorization: Bearer YOUR_API_TOKEN</code></li>
                 <li>Set HTTP Body to: <code>{"points":[{"latitude":%LAT,"longitude":%LON,"timestamp":"%ISODATE","accuracyMeters":%ACC}]}</code></li>
