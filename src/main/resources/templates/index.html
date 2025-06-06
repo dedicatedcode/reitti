@@ -31,7 +31,7 @@
             <div class="settings-nav-item active" data-target="api-tokens">API Tokens</div>
             <div class="settings-nav-item" data-target="user-management">User Management</div>
             <div class="settings-nav-item" data-target="places-management">Places</div>
-            <div class="settings-nav-item" data-target="integrations">Integrations</div>
+            <div class="settings-nav-item" data-target="integrations" hx-get="/settings/integrations-content" hx-target="#integrations">Integrations</div>
             <div class="settings-nav-item" data-target="job-status">Job Status</div>
             <div class="settings-nav-item" data-target="file-upload">Import Data</div>
         </div>
@@ -53,7 +53,7 @@
         </div>
 
         <!-- Integrations Section -->
-        <div id="integrations" class="settings-section" hx-get="/settings/integrations-content" hx-trigger="revealed">
+        <div id="integrations" class="settings-section">
             <div class="htmx-indicator">Loading integrations...</div>
         </div>
 

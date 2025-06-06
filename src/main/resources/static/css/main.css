@@ -55,6 +55,12 @@ body {
     border: 2px solid var(--color-highlight);
 }
 
+.settings-content code {
+    font-size: 1rem;
+    font-weight: bold;
+    color: var(--color-text-white);
+}
+
 .close-settings {
     color: #aaa;
     float: right;
