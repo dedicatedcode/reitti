@@ -360,11 +360,9 @@ public class SettingsController {
     @PostMapping("/geocode-services")
     public String createGeocodeService(@RequestParam String name, 
                                      @RequestParam String urlTemplate,
-                                     @RequestParam(defaultValue = "10") int maxErrors,
                                      Model model) {
         try {
             GeocodeService service = new GeocodeService(name, urlTemplate, false);
-            service.setMaxErrors(maxErrors);
             geocodeServiceRepository.save(service);
             model.addAttribute("successMessage", "Geocode service created successfully");
         } catch (Exception e) {
