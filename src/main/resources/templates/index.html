@@ -216,11 +216,10 @@
                             htmx.process(section);
                         }
                         
-                        // If this is the integrations tab, load its content if not already loaded
-                        if (target === 'integrations' && !section.hasAttribute('hx-triggered')) {
+                        // If this is the integrations tab, always load its content (no caching)
+                        if (target === 'integrations') {
                             section.setAttribute('hx-get', '/settings/integrations-content');
-                            section.setAttribute('hx-trigger', 'load once');
-                            section.setAttribute('hx-triggered', 'true');
+                            section.setAttribute('hx-trigger', 'load');
                             htmx.process(section);
                         }
                         
