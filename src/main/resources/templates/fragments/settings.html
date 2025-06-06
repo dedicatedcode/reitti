@@ -310,10 +310,8 @@
                 <li>Open OwnTracks and go to <strong>Settings → Connection</strong></li>
                 <li>Set Mode to <strong>HTTP</strong></li>
                 <li>Set Host to: <code th:text="${serverUrl}">https://your-domain.com</code></li>
-                <li>Set Path to: <code>/api/v1/owntracks</code></li>
-                <li>Enable <strong>Authentication</strong></li>
-                <li>Set Username to your Reitti username</li>
-                <li>Set Password to: <code th:text="${hasToken ? firstToken : 'YOUR_API_TOKEN'}">YOUR_API_TOKEN</code></li>
+                <li>Set Path to: <code th:text="${hasToken ? '/api/v1/owntracks?token=' + firstToken : '/api/v1/owntracks?token=YOUR_API_TOKEN'}">/api/v1/owntracks?token=YOUR_API_TOKEN</code></li>
+                <li>Disable <strong>Authentication</strong> (we use the token in the URL instead)</li>
                 <li>Configure tracking settings as desired</li>
                 <li>The app will automatically start sending location updates</li>
             </ol>
