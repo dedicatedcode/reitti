@@ -38,6 +38,9 @@ public class SignificantPlace {
     @Column
     private String category;
 
+    @Column(nullable = false)
+    private boolean geocoded = false;
+
     @OneToMany(mappedBy = "place", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProcessedVisit> visits = new ArrayList<>();
 
@@ -129,6 +132,14 @@ public class SignificantPlace {
     
     public void setGeom(Point geom) {
         this.geom = geom;
+    }
+
+    public boolean isGeocoded() { 
+        return geocoded; 
+    }
+
+    public void setGeocoded(boolean geocoded) { 
+        this.geocoded = geocoded; 
     }
 
     @Override

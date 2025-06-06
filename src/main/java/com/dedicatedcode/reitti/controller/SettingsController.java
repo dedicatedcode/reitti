@@ -2,8 +2,10 @@ package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.dto.TimelineResponse;
 import com.dedicatedcode.reitti.model.ApiToken;
+import com.dedicatedcode.reitti.model.GeocodeService;
 import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.repository.GeocodeServiceRepository;
 import com.dedicatedcode.reitti.service.*;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
@@ -30,15 +32,17 @@ public class SettingsController {
     private final QueueStatsService queueStatsService;
     private final PlaceService placeService;
     private final ImportHandler importHandler;
+    private final GeocodeServiceRepository geocodeServiceRepository;
 
     public SettingsController(ApiTokenService apiTokenService, UserService userService, 
                              QueueStatsService queueStatsService, PlaceService placeService,
-                             ImportHandler importHandler) {
+                             ImportHandler importHandler, GeocodeServiceRepository geocodeServiceRepository) {
         this.apiTokenService = apiTokenService;
         this.userService = userService;
         this.queueStatsService = queueStatsService;
         this.placeService = placeService;
         this.importHandler = importHandler;
+        this.geocodeServiceRepository = geocodeServiceRepository;
     }
 
     @GetMapping("/api-tokens-content")
@@ -345,5 +349,65 @@ public class SettingsController {
             model.addAttribute("uploadErrorMessage", "Error processing file: " + e.getMessage());
             return "fragments/settings :: file-upload-content";
         }
+    }
+    
+    @GetMapping("/geocode-services-content")
+    public String getGeocodeServicesContent(Model model) {
+        model.addAttribute("geocodeServices", geocodeServiceRepository.findAllByOrderByNameAsc());
+        return "fragments/settings :: geocode-services-content";
+    }
+
+    @PostMapping("/geocode-services")
+    public String createGeocodeService(@RequestParam String name, 
+                                     @RequestParam String urlTemplate,
+                                     @RequestParam(defaultValue = "10") int maxErrors,
+                                     Model model) {
+        try {
+            GeocodeService service = new GeocodeService(name, urlTemplate, false);
+            service.setMaxErrors(maxErrors);
+            geocodeServiceRepository.save(service);
+            model.addAttribute("successMessage", "Geocode service created successfully");
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", "Error creating geocode service: " + e.getMessage());
+        }
+        
+        model.addAttribute("geocodeServices", geocodeServiceRepository.findAllByOrderByNameAsc());
+        return "fragments/settings :: geocode-services-content";
+    }
+
+    @PostMapping("/geocode-services/{id}/toggle")
+    public String toggleGeocodeService(@PathVariable Long id, Model model) {
+        GeocodeService service = geocodeServiceRepository.findById(id).orElse(null);
+        if (service != null) {
+            service.setEnabled(!service.isEnabled());
+            if (service.isEnabled()) {
+                service.setErrorCount(0);
+            }
+            geocodeServiceRepository.save(service);
+        }
+        model.addAttribute("geocodeServices", geocodeServiceRepository.findAllByOrderByNameAsc());
+        return "fragments/settings :: geocode-services-content";
+    }
+
+    @PostMapping("/geocode-services/{id}/delete")
+    public String deleteGeocodeService(@PathVariable Long id, Model model) {
+        GeocodeService service = geocodeServiceRepository.findById(id).orElse(null);
+        if (service != null && !service.isDefault()) {
+            geocodeServiceRepository.delete(service);
+        }
+        model.addAttribute("geocodeServices", geocodeServiceRepository.findAllByOrderByNameAsc());
+        return "fragments/settings :: geocode-services-content";
+    }
+
+    @PostMapping("/geocode-services/{id}/reset-errors")
+    public String resetGeocodeServiceErrors(@PathVariable Long id, Model model) {
+        GeocodeService service = geocodeServiceRepository.findById(id).orElse(null);
+        if (service != null) {
+            service.setErrorCount(0);
+            service.setEnabled(true);
+            geocodeServiceRepository.save(service);
+        }
+        model.addAttribute("geocodeServices", geocodeServiceRepository.findAllByOrderByNameAsc());
+        return "fragments/settings :: geocode-services-content";
     }
 }

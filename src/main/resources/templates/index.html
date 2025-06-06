@@ -31,6 +31,7 @@
             <div class="settings-nav-item active" data-target="api-tokens">API Tokens</div>
             <div class="settings-nav-item" data-target="user-management">User Management</div>
             <div class="settings-nav-item" data-target="places-management">Places</div>
+            <div class="settings-nav-item" data-target="geocode-services">Geocoding</div>
             <div class="settings-nav-item" data-target="integrations" hx-get="/settings/integrations-content" hx-target="#integrations">Integrations</div>
             <div class="settings-nav-item" data-target="job-status">Job Status</div>
             <div class="settings-nav-item" data-target="file-upload">Import Data</div>
@@ -50,6 +51,11 @@
         <!-- Places Management Section -->
         <div id="places-management" class="settings-section">
             <div class="htmx-indicator">Loading places...</div>
+        </div>
+
+        <!-- Geocoding Services Section -->
+        <div id="geocode-services" class="settings-section">
+            <div class="htmx-indicator">Loading geocoding services...</div>
         </div>
 
         <!-- Integrations Section -->
@@ -214,6 +220,13 @@
                             htmx.process(section);
                         }
 
+                        // If this is the geocoding tab, load its content if not already loaded
+                        if (target === 'geocode-services' && !section.hasAttribute('hx-triggered')) {
+                            section.setAttribute('hx-get', '/settings/geocode-services-content');
+                            section.setAttribute('hx-trigger', 'load once');
+                            section.setAttribute('hx-triggered', 'true');
+                            htmx.process(section);
+                        }
 
                     }
                 });

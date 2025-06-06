@@ -339,5 +339,99 @@
     </div>
 </div>
 
+<!-- Geocode Services Content Fragment -->
+<div th:fragment="geocode-services-content">
+    <h2>Geocoding Services</h2>
+    
+    <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+        <span th:text="${successMessage}">Service created successfully</span>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+        <span th:text="${errorMessage}">Error message</span>
+    </div>
+    
+    <div style="background-color: #e7f3ff; border: 1px solid #b3d9ff; border-radius: 4px; padding: 15px; margin-bottom: 20px;">
+        <h4>About Geocoding Services</h4>
+        <p>Geocoding services convert coordinates to addresses for your significant places. You can add multiple services and the system will use them randomly to distribute load.</p>
+        <p><strong>URL Template placeholders:</strong></p>
+        <ul>
+            <li><code>{lat}</code> - Will be replaced with latitude</li>
+            <li><code>{lng}</code> - Will be replaced with longitude</li>
+        </ul>
+        <p><strong>Example:</strong> <code>https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lng}&zoom=18&addressdetails=1</code></p>
+    </div>
+    
+    <form hx-post="/settings/geocode-services" hx-target="#geocode-services" hx-swap="innerHTML" class="geocode-service-form" style="margin-bottom: 20px;">
+        <h3>Add New Geocoding Service</h3>
+        <div class="form-group">
+            <label for="serviceName">Service Name</label>
+            <input type="text" id="serviceName" name="name" required placeholder="e.g., My Custom Geocoder">
+        </div>
+        <div class="form-group">
+            <label for="serviceUrl">URL Template</label>
+            <input type="text" id="serviceUrl" name="urlTemplate" required placeholder="https://api.example.com/reverse?lat={lat}&lon={lng}&format=json">
+        </div>
+        <div class="form-group">
+            <label for="maxErrors">Max Errors (before auto-disable)</label>
+            <input type="number" id="maxErrors" name="maxErrors" value="10" min="1" max="100">
+        </div>
+        <button type="submit" class="btn">Add Service</button>
+    </form>
+    
+    <h3>Available Services</h3>
+    <div th:if="${geocodeServices.isEmpty()}">
+        <p>No geocoding services configured.</p>
+    </div>
+    
+    <table th:if="${!geocodeServices.isEmpty()}">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>URL Template</th>
+                <th>Status</th>
+                <th>Errors</th>
+                <th>Last Used</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="service : ${geocodeServices}">
+                <td th:text="${service.name}"></td>
+                <td style="max-width: 300px; word-break: break-all; font-family: monospace; font-size: 0.9em;" th:text="${service.urlTemplate}"></td>
+                <td>
+                    <span th:if="${service.enabled}" style="color: green;">✓ Enabled</span>
+                    <span th:if="${!service.enabled}" style="color: red;">✗ Disabled</span>
+                    <span th:if="${service.default}" style="color: blue; font-size: 0.8em;">(System)</span>
+                </td>
+                <td>
+                    <span th:text="${service.errorCount + '/' + service.maxErrors}"></span>
+                    <span th:if="${service.errorCount >= service.maxErrors}" style="color: red;"> (Auto-disabled)</span>
+                </td>
+                <td th:text="${service.lastUsed != null ? #temporals.format(service.lastUsed, 'yyyy-MM-dd HH:mm') : 'Never'}"></td>
+                <td>
+                    <button class="btn" 
+                            th:attr="hx-post=@{/settings/geocode-services/{id}/toggle(id=${service.id})}"
+                            hx-target="#geocode-services"
+                            hx-swap="innerHTML"
+                            th:text="${service.enabled ? 'Disable' : 'Enable'}">Toggle</button>
+                    
+                    <button th:if="${service.errorCount > 0}" 
+                            class="btn"
+                            th:attr="hx-post=@{/settings/geocode-services/{id}/reset-errors(id=${service.id})}"
+                            hx-target="#geocode-services"
+                            hx-swap="innerHTML">Reset Errors</button>
+                    
+                    <button th:if="${!service.default}" 
+                            class="btn btn-danger"
+                            th:attr="hx-post=@{/settings/geocode-services/{id}/delete(id=${service.id})}"
+                            hx-confirm="Are you sure you want to delete this geocoding service?"
+                            hx-target="#geocode-services"
+                            hx-swap="innerHTML">Delete</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
 </body>
 </html>
