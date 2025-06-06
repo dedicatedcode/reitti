@@ -523,18 +523,6 @@ input[type=file]::file-selector-button:hover {
     transition: transform 0.1s ease-out;
 }
 
-.scroll-thumb::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 6px;
-    height: 6px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 50%;
-}
-
 @media (max-width: 800px) {
     .timeline-entry .entry-description {
         font-size: 1.2rem;
