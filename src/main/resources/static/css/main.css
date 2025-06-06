@@ -480,6 +480,61 @@ input[type=file]::file-selector-button:hover {
     color: white;
 }
 
+/* Timeline Scroll Indicator Styles */
+.timeline-scroll-indicator {
+    position: fixed;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 60vh;
+    width: 6px;
+    z-index: 100;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.timeline-scroll-indicator:hover {
+    opacity: 1;
+}
+
+.scroll-track {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, 
+        rgba(245, 222, 179, 0.3) 0%, 
+        rgba(245, 222, 179, 0.6) 50%, 
+        rgba(245, 222, 179, 0.3) 100%);
+    border-radius: 3px;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.scroll-thumb {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 12px;
+    height: 20px;
+    background: var(--color-highlight);
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    transition: transform 0.1s ease-out;
+}
+
+.scroll-thumb::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 6px;
+    height: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 50%;
+}
+
 @media (max-width: 800px) {
     .timeline-entry .entry-description {
         font-size: 1.2rem;
@@ -501,5 +556,22 @@ input[type=file]::file-selector-button:hover {
 
     .timeline {
         width: 90%;
+    }
+
+    .timeline-scroll-indicator {
+        left: 5px;
+        width: 4px;
+        height: 50vh;
+    }
+    
+    .scroll-thumb {
+        width: 8px;
+        height: 16px;
+        border-radius: 4px;
+    }
+    
+    .scroll-thumb::before {
+        width: 4px;
+        height: 4px;
     }
 }
