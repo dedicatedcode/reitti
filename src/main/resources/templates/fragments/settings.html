@@ -288,10 +288,21 @@
                 <li>Download GPSLogger from the Google Play Store</li>
                 <li>Open GPSLogger and go to <strong>Logging details → Log to custom URL</strong></li>
                 <li>Enable "Log to custom URL"</li>
-                <li>Set the URL to: <code th:text="${serverUrl + '/api/v1/owntracks'}">https://your-domain.com/api/v1/location-data</code></li>
+                <li th:if="${hasToken}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + firstToken}">https://your-domain.com/api/v1/location-data</code></li>
+                <li th:unless="${hasToken}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/location-data</code></li>
                 <li>Set HTTP Method to <strong>POST</strong></li>
-                <li>In HTTP Headers, add: <code th:text="${hasToken ? 'Authorization: Bearer ' + firstToken : 'Authorization: Bearer YOUR_API_TOKEN'}">Authorization: Bearer YOUR_API_TOKEN</code></li>
-                <li>Set HTTP Body to: <code>{"points":[{"latitude":%LAT,"longitude":%LON,"timestamp":"%ISODATE","accuracyMeters":%ACC}]}</code></li>
+                <li>Set HTTP Body to: <code>{
+                    "_type" : "location",
+                    "t": "u",
+                    "acc": "%ACC",
+                    "alt": "%ALT",
+                    "batt": "%BATT",
+                    "bs": "%ISCHARGING",
+                    "lat": "%LAT",
+                    "lon": "%LON",
+                    "tst": "%TIMESTAMP",
+                    "vel": "%SPD"
+                    }</code></li>
                 <li>Set Content-Type header to: <code>application/json</code></li>
                 <li>Configure logging frequency as desired (e.g., every 30 seconds)</li>
                 <li>Start logging!</li>
@@ -310,7 +321,7 @@
                 <li>Open OwnTracks and go to <strong>Settings → Connection</strong></li>
                 <li>Set Mode to <strong>HTTP</strong></li>
                 <li>Set Host to: <code th:text="${serverUrl}">https://your-domain.com</code></li>
-                <li>Set Path to: <code th:text="${hasToken ? '/api/v1/owntracks?token=' + firstToken : '/api/v1/owntracks?token=YOUR_API_TOKEN'}">/api/v1/owntracks?token=YOUR_API_TOKEN</code></li>
+                <li>Set Path to: <code th:text="${hasToken ? '/api/v1/ingest/owntracks?token=' + firstToken : '/api/v1/ingest/owntracks?token=YOUR_API_TOKEN'}">/api/v1/ingest/owntracks?token=YOUR_API_TOKEN</code></li>
                 <li>Disable <strong>Authentication</strong> (we use the token in the URL instead)</li>
                 <li>Configure tracking settings as desired</li>
                 <li>The app will automatically start sending location updates</li>
