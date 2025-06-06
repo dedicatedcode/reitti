@@ -330,7 +330,6 @@ nav {
 }
 
 .timeline-container {
-    pointer-events: all;
     width: 350px;
     font-family: "Serif";
     padding-bottom: 250px;
