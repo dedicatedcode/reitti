@@ -32,15 +32,12 @@ public class GeocodeService {
     @Column
     private Instant lastError;
     
-    @Column(nullable = false)
-    private boolean isDefault = false;
     
     public GeocodeService() {}
     
-    public GeocodeService(String name, String urlTemplate, boolean isDefault) {
+    public GeocodeService(String name, String urlTemplate) {
         this.name = name;
         this.urlTemplate = urlTemplate;
-        this.isDefault = isDefault;
     }
     
     // Getters and setters
@@ -68,6 +65,4 @@ public class GeocodeService {
     public Instant getLastError() { return lastError; }
     public void setLastError(Instant lastError) { this.lastError = lastError; }
     
-    public boolean isDefault() { return isDefault; }
-    public void setDefault(boolean isDefault) { this.isDefault = isDefault; }
 }
