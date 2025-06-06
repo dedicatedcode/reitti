@@ -219,8 +219,9 @@
                             // Clear existing content first to force reload
                             section.innerHTML = '<div class="htmx-indicator">Loading integrations...</div>';
                             section.setAttribute('hx-get', '/settings/integrations-content');
-                            section.setAttribute('hx-trigger', 'load');
                             htmx.process(section);
+                            // Manually trigger the request
+                            htmx.trigger(section, 'htmx:trigger');
                         }
                         
                     }
