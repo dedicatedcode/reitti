@@ -254,6 +254,12 @@
             const loadingIndicator = document.getElementById('loading-indicator');
             loadingIndicator.style.display = 'block';
 
+            // Cleanup existing scroll indicator
+            if (window.timelineScrollIndicator) {
+                window.timelineScrollIndicator.cleanup();
+                window.timelineScrollIndicator = null;
+            }
+
             // Fetch both timeline data and raw location points
             Promise.all([
                 fetch(`/api/timeline?selectedDate=${date}`).then(response => {
@@ -277,6 +283,10 @@
             .then(([timelineData, rawPointsData]) => {
                 updateTimeline(timelineData, rawPointsData);
                 loadingIndicator.style.display = 'none';
+                
+                // Initialize scroll indicator after timeline is updated
+                window.timelineScrollIndicator = new TimelineScrollIndicator();
+                window.timelineScrollIndicator.init();
             })
             .catch(error => {
                 console.error('Error fetching data:', error);

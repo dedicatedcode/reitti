@@ -6,27 +6,22 @@ class TimelineScrollIndicator {
     constructor() {
         this.timelineContainer = null;
         this.entries = [];
-        this.init();
+        this.scrollListener = null;
+        this.resizeListener = null;
+        this.mutationObserver = null;
     }
 
     init() {
-        // Wait for DOM to be ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => this.setup());
-        } else {
-            this.setup();
-        }
-    }
-
-    setup() {
         this.timelineContainer = document.querySelector('.timeline-container');
         if (!this.timelineContainer) return;
 
         // Set up scroll listener
-        this.timelineContainer.addEventListener('scroll', () => this.updateIndicators());
+        this.scrollListener = () => this.updateIndicators();
+        this.timelineContainer.addEventListener('scroll', this.scrollListener);
         
         // Set up resize listener
-        window.addEventListener('resize', () => this.updateIndicators());
+        this.resizeListener = () => this.updateIndicators();
+        window.addEventListener('resize', this.resizeListener);
         
         // Set up mutation observer to handle dynamic content
         this.setupMutationObserver();
@@ -36,13 +31,40 @@ class TimelineScrollIndicator {
         this.updateIndicators();
     }
 
+    cleanup() {
+        // Remove all scroll indicators
+        if (this.timelineContainer) {
+            const indicators = this.timelineContainer.querySelectorAll('.scroll-indicator');
+            indicators.forEach(indicator => indicator.remove());
+        }
+
+        // Remove event listeners
+        if (this.scrollListener && this.timelineContainer) {
+            this.timelineContainer.removeEventListener('scroll', this.scrollListener);
+        }
+        if (this.resizeListener) {
+            window.removeEventListener('resize', this.resizeListener);
+        }
+
+        // Disconnect mutation observer
+        if (this.mutationObserver) {
+            this.mutationObserver.disconnect();
+        }
+
+        // Reset state
+        this.entries = [];
+        this.scrollListener = null;
+        this.resizeListener = null;
+        this.mutationObserver = null;
+    }
+
     setupMutationObserver() {
-        const observer = new MutationObserver(() => {
+        this.mutationObserver = new MutationObserver(() => {
             this.updateEntries();
             this.updateIndicators();
         });
 
-        observer.observe(this.timelineContainer, {
+        this.mutationObserver.observe(this.timelineContainer, {
             childList: true,
             subtree: true
         });
@@ -132,5 +154,5 @@ class TimelineScrollIndicator {
     }
 }
 
-// Initialize when the script loads
-new TimelineScrollIndicator();
+// Global instance to be controlled from the main script
+window.timelineScrollIndicator = null;
