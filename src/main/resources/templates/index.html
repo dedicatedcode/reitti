@@ -213,7 +213,7 @@
                             section.setAttribute('hx-triggered', 'true');
                             htmx.process(section);
                         }
-                        
+
                         // If this is the integrations tab, always load its content (no caching)
                         if (target === 'integrations') {
                             // Clear existing content first to force reload
@@ -223,7 +223,7 @@
                             // Manually trigger the request
                             htmx.trigger(section, 'htmx:trigger');
                         }
-                        
+
                     }
                 });
             });
