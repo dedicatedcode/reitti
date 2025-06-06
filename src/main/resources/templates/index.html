@@ -53,7 +53,7 @@
         </div>
 
         <!-- Integrations Section -->
-        <div id="integrations" class="settings-section">
+        <div id="integrations" class="settings-section" hx-get="/settings/integrations-content" hx-trigger="revealed">
             <div class="htmx-indicator">Loading integrations...</div>
         </div>
 
@@ -214,15 +214,6 @@
                             htmx.process(section);
                         }
 
-                        // If this is the integrations tab, always load its content (no caching)
-                        if (target === 'integrations') {
-                            // Clear existing content first to force reload
-                            section.innerHTML = '<div class="htmx-indicator">Loading integrations...</div>';
-                            section.setAttribute('hx-get', '/settings/integrations-content');
-                            htmx.process(section);
-                            // Manually trigger the request
-                            htmx.trigger(section, 'htmx:trigger');
-                        }
 
                     }
                 });
