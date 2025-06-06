@@ -282,6 +282,51 @@
             });
         });
 
+        // Function to update integrations tab with current domain and token info
+        function updateIntegrationsTab() {
+            const currentDomain = window.location.origin;
+            
+            // Update URLs in the integrations tab
+            const gpsloggerUrl = document.getElementById('gpslogger-url');
+            const owntracksUrl = document.getElementById('owntracks-url');
+            
+            if (gpsloggerUrl) {
+                gpsloggerUrl.textContent = `${currentDomain}/api/v1/location-data`;
+            }
+            if (owntracksUrl) {
+                owntracksUrl.textContent = currentDomain;
+            }
+            
+            // Check if we have any API tokens and update the display
+            fetch('/api/v1/tokens')
+                .then(response => response.json())
+                .then(data => {
+                    const noTokenWarning = document.getElementById('no-token-warning');
+                    const tokenValue = document.getElementById('token-value');
+                    
+                    if (data && data.length > 0) {
+                        // We have tokens, hide warning and show the first token
+                        if (noTokenWarning) noTokenWarning.style.display = 'none';
+                        if (tokenValue) {
+                            tokenValue.textContent = data[0].token;
+                            tokenValue.style.color = '#28a745';
+                        }
+                    } else {
+                        // No tokens, show warning
+                        if (noTokenWarning) noTokenWarning.style.display = 'block';
+                        if (tokenValue) {
+                            tokenValue.textContent = 'No token available - create one in the API Tokens tab';
+                            tokenValue.style.color = '#6c757d';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.warn('Could not fetch API tokens:', error);
+                    const noTokenWarning = document.getElementById('no-token-warning');
+                    if (noTokenWarning) noTokenWarning.style.display = 'block';
+                });
+        }
+
         // Check if date is in URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         let initialDate;
