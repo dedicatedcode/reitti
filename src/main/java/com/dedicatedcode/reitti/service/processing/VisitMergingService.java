@@ -67,7 +67,7 @@ public class VisitMergingService {
         processAndMergeVisits(user.get(), event.getStartTime(), event.getEndTime());
     }
 
-    private List<ProcessedVisit> processAndMergeVisits(User user, Long startTime, Long endTime) {
+    private void processAndMergeVisits(User user, Long startTime, Long endTime) {
         logger.info("Processing and merging visits for user: {}", user.getUsername());
 
         List<Visit> allVisits;
@@ -81,7 +81,7 @@ public class VisitMergingService {
 
         if (allVisits.isEmpty()) {
             logger.info("No visits found for user: {}", user.getUsername());
-            return Collections.emptyList();
+            return;
         }
 
         // Sort all visits chronologically
@@ -103,7 +103,6 @@ public class VisitMergingService {
         if (!processedVisits.isEmpty() && detectTripsAfterMerging) {
             rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, new MergeVisitEvent(user.getUsername(), startTime, endTime));
         }
-        return processedVisits;
     }
 
     private List<ProcessedVisit> mergeVisitsChronologically(User user, List<Visit> visits) {

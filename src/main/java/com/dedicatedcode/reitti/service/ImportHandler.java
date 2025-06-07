@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -232,7 +233,11 @@ public class ImportHandler {
         NodeList timeElements = trackPoint.getElementsByTagName("time");
         if (timeElements.getLength() > 0) {
             String timeStr = timeElements.item(0).getTextContent();
-            point.setTimestamp(timeStr);
+            if (StringUtils.hasText(timeStr)) {
+                point.setTimestamp(timeStr);
+            } else {
+                return null;
+            }
         } else {
             return null;
         }
@@ -375,21 +380,19 @@ public class ImportHandler {
         }
 
         if (timestamp == null || timestamp.isEmpty()) {
-            // Use current time if no timestamp is available
-            timestamp = java.time.Instant.now().toString();
+            logger.warn("Could not determine timestamp for point {}. Will discard it", point);
+            return null;
         }
 
         point.setTimestamp(timestamp);
 
         // Try to extract accuracy from properties
         Double accuracy = null;
-        if (properties != null) {
-            String[] accuracyFields = {"accuracy", "acc", "precision", "hdop"};
-            for (String field : accuracyFields) {
-                if (properties.has(field)) {
-                    accuracy = properties.get(field).asDouble();
-                    break;
-                }
+        String[] accuracyFields = {"accuracy", "acc", "precision", "hdop"};
+        for (String field : accuracyFields) {
+            if (properties.has(field)) {
+                accuracy = properties.get(field).asDouble();
+                break;
             }
         }
 

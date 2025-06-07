@@ -49,7 +49,7 @@ class VisitMergingServiceTest extends AbstractIntegrationTest {
         expectedVisits.add(new GeoPoint(53.86334539659948, 10.701105248045259)); // Moltke
 
         List<GeoPoint> actualVisits = this.processedVisitRepository.findByUserOrderByStartTime(user).stream().map(pv -> new GeoPoint(pv.getPlace().getLatitudeCentroid(), pv.getPlace().getLongitudeCentroid())).toList();
-        verfiyVisits(expectedVisits, actualVisits);
+        verifyVisits(expectedVisits, actualVisits);
     }
 
     @Test
@@ -57,7 +57,27 @@ class VisitMergingServiceTest extends AbstractIntegrationTest {
     void shouldNotMergeVisitsAtEndOfDay() {
         importUntilVisits("/data/gpx/20250601.gpx");
 
+        // Before merging
+        // 1,53.86333445315504,10.701094198219016,2025-05-31T22:39:53.634Z,2025-06-01T06:48:05.555Z,29291,false
+        // 2,53.86331389419786,10.701092915884196,2025-06-01T06:52:36.607Z,2025-06-01T12:14:16.108Z,19299,false
+        // 3,53.86327076803925,10.701049170196082,2025-06-01T12:34:48.105Z,2025-06-01T13:01:27.045Z,1598,false
+        // 4,53.835119448726246,10.982210150382198,2025-06-01T13:25:39Z,2025-06-01T14:54:15Z,5316,false
+        // 5,53.83514816615395,10.982174839903868,2025-06-01T14:56:30Z,2025-06-01T15:55:18Z,3528,false
+        // 6,53.835155407333325,10.982291070666665,2025-06-01T15:55:52Z,2025-06-01T16:05:31Z,579,false
+        // 7,53.86333082351099,10.701096835697554,2025-06-01T16:58:19.380Z,2025-06-01T20:46:31.922Z,13692,false
         visitMergingService.mergeVisits(new MergeVisitEvent(user.getUsername(), null, null));
+
+        // Expected after merging
+        // 1,53.86333445315504,10.701094198219016,2025-05-31T22:39:53.634Z,2025-06-01T06:48:05.555Z,29291,false
+        // 2,53.86331389419786,10.701092915884196,2025-06-01T06:52:36.607Z,2025-06-01T12:14:16.108Z,19299,false
+        // 3,53.86327076803925,10.701049170196082,2025-06-01T12:34:48.105Z,2025-06-01T13:01:27.045Z,1598,false
+
+        // 4,53.835119448726246,10.982210150382198,2025-06-01T13:25:39Z,2025-06-01T14:54:15Z,5316,false
+        // 5,53.83514816615395,10.982174839903868,2025-06-01T14:56:30Z,2025-06-01T15:55:18Z,3528,false
+        // 6,53.835155407333325,10.982291070666665,2025-06-01T15:55:52Z,2025-06-01T16:05:31Z,579,false
+
+        // 7,53.86333082351099,10.701096835697554,2025-06-01T16:58:19.380Z,2025-06-01T20:46:31.922Z,13692,false
+
 
         assertEquals(0, visitRepository.findByUserAndProcessedFalse(user).size());
 
@@ -73,10 +93,13 @@ class VisitMergingServiceTest extends AbstractIntegrationTest {
         expectedVisits.add(new GeoPoint(53.863149, 10.700927)); // Moltke
 
         List<GeoPoint> actualVisits = this.processedVisitRepository.findByUserOrderByStartTime(user).stream().map(pv -> new GeoPoint(pv.getPlace().getLatitudeCentroid(), pv.getPlace().getLongitudeCentroid())).toList();
-        verfiyVisits(expectedVisits, actualVisits);
+
+
+
+        verifyVisits(expectedVisits, actualVisits);
     }
 
-    private static void verfiyVisits(List<GeoPoint> expectedVisits, List<GeoPoint> actualVisits) {
+    private static void verifyVisits(List<GeoPoint> expectedVisits, List<GeoPoint> actualVisits) {
         assertEquals(expectedVisits.size(), actualVisits.size());
         for (int i = 0; i < actualVisits.size(); i++) {
             GeoPoint expected = expectedVisits.get(i);

@@ -2,38 +2,19 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.AbstractIntegrationTest;
 import com.dedicatedcode.reitti.model.GeoUtils;
-import com.dedicatedcode.reitti.model.RawLocationPoint;
-import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StayPointDetectionServiceTest extends AbstractIntegrationTest {
 
-    @Autowired
-    private RawLocationPointRepository rawLocationPointRepository;
-
-    @Autowired
-    private StayPointDetectionService stayPointDetectionService;
-
     @Test
     void shouldCalculateCorrectStayPoints() {
-        importGpx("/data/gpx/20250531.gpx");
-        List<RawLocationPoint> all = rawLocationPointRepository.findByUserOrderByTimestampAsc(user);
-        int splitSize = 100;
-        List<List<StayPoint>> stayPoints = new ArrayList<>();
-        while (all.size() >= splitSize) {
-            List<RawLocationPoint> current = new ArrayList<>(all.subList(0, splitSize));
-            all.removeAll(current);
-            stayPoints.add(stayPointDetectionService.detectStayPoints(user, current));
-        }
-        if (!all.isEmpty()) {
-            stayPoints.add(stayPointDetectionService.detectStayPoints(user, all));
-        }
+        List<StayPoint> stayPoints = importUntilStayPoints("/data/gpx/20250531.gpx");
 
         List<StayPoint> expectedStayPointsInOrder = new ArrayList<>();
         expectedStayPointsInOrder.add(new StayPoint(53.86334557300011, 10.701107468000021, null, null, null)); //Moltkestr.
@@ -48,12 +29,14 @@ class StayPointDetectionServiceTest extends AbstractIntegrationTest {
         expectedStayPointsInOrder.add(new StayPoint(53.873079353158, 10.73264953157896, null, null, null)); //Garten
         expectedStayPointsInOrder.add(new StayPoint(53.86334557300011, 10.701107468000021, null, null, null)); //Moltkestr.
 
-        List<StayPoint> distinctStayPoints = new ArrayList<>();
+        verifyStayPoints(stayPoints, expectedStayPointsInOrder);
+    }
 
-        List<StayPoint> flatStayPoints = stayPoints.stream().flatMap(Collection::stream).sorted(Comparator.comparing(StayPoint::getArrivalTime)).toList();
+    private static void verifyStayPoints(List<StayPoint> stayPoints, List<StayPoint> expectedStayPointsInOrder) {
+        List<StayPoint> distinctStayPoints = new ArrayList<>();
         StayPoint last = null;
         int checkThresholdInMeters = 50;
-        for (StayPoint point : flatStayPoints) {
+        for (StayPoint point : stayPoints) {
             if (last == null || GeoUtils.distanceInMeters(last, point) >= checkThresholdInMeters) {
                 last = point;
                 distinctStayPoints.add(point);
