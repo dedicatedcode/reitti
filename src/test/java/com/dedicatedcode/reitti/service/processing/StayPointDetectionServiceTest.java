@@ -32,13 +32,6 @@ class StayPointDetectionServiceTest extends AbstractIntegrationTest {
         verifyStayPoints(stayPoints, expectedStayPointsInOrder);
     }
 
-    @Test
-    void shouldCalculateCorrectStayPointsAtEndOfDay() {
-        List<StayPoint> calculatedStayPoints = importData("/data/gpx/20250601.gpx", ImportStep.STAY_POINTS);
-
-
-    }
-
     private static void verifyStayPoints(List<StayPoint> stayPoints, List<GeoPoint> expectedStayPointsInOrder) {
         List<StayPoint> distinctStayPoints = new ArrayList<>();
         StayPoint last = null;

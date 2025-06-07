@@ -33,7 +33,6 @@ public class VisitMergingRunner {
         userService.getAllUsers().forEach(user -> {
             logger.info("Schedule visit merging process for user {}", user.getUsername());
             rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new MergeVisitEvent(user.getUsername(), null, null));
-            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_TRIP_ROUTING_KEY, new MergeVisitEvent(user.getUsername(), null, null));
         });
     }
 }

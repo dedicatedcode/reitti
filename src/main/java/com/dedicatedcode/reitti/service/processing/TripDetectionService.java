@@ -10,15 +10,13 @@ import com.dedicatedcode.reitti.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class TripDetectionService {
@@ -29,15 +27,18 @@ public class TripDetectionService {
     private final RawLocationPointRepository rawLocationPointRepository;
     private final TripRepository tripRepository;
     private final UserRepository userRepository;
+    private final RabbitTemplate rabbitTemplate;
 
     public TripDetectionService(ProcessedVisitRepository processedVisitRepository,
                                 RawLocationPointRepository rawLocationPointRepository,
                                 TripRepository tripRepository,
-                                UserRepository userRepository) {
+                                UserRepository userRepository,
+                                RabbitTemplate rabbitTemplate) {
         this.processedVisitRepository = processedVisitRepository;
         this.rawLocationPointRepository = rawLocationPointRepository;
         this.tripRepository = tripRepository;
         this.userRepository = userRepository;
+        this.rabbitTemplate = rabbitTemplate;
     }
 
     @Transactional
@@ -56,15 +57,18 @@ public class TripDetectionService {
         } else {
             visits = processedVisitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user.get(), Instant.ofEpochMilli(event.getStartTime()), Instant.ofEpochMilli(event.getEndTime()));
         }
-        findDetectedTrips(user.get(), visits);
+        List<Trip> detectedTrips = findDetectedTrips(user.get(), visits);
+        if (!detectedTrips.isEmpty()) {
+            this.rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_TRIP_ROUTING_KEY, event);
+        }
     }
 
-    private void findDetectedTrips(User user, List<ProcessedVisit> visits) {
+    private List<Trip> findDetectedTrips(User user, List<ProcessedVisit> visits) {
         visits.sort(Comparator.comparing(ProcessedVisit::getStartTime));
 
         if (visits.size() < 2) {
             logger.info("Not enough visits to detect trips for user: {}", user.getUsername());
-            return;
+            return Collections.emptyList();
         }
 
         List<Trip> detectedTrips = new ArrayList<>();
@@ -80,8 +84,8 @@ public class TripDetectionService {
                 detectedTrips.add(trip);
             }
         }
-
         logger.info("Detected {} trips for user: {}", detectedTrips.size(), user.getUsername());
+        return detectedTrips;
     }
 
     private Trip createTripBetweenVisits(User user, ProcessedVisit startVisit, ProcessedVisit endVisit) {
