@@ -28,7 +28,7 @@ class VisitMergingServiceTest extends AbstractIntegrationTest {
     @Test
     @Transactional
     void shouldMergeVisitsInTimeFrame() {
-        importUntilVisits("/data/gpx/20250531.gpx");
+        importData("/data/gpx/20250531.gpx", ImportStep.VISITS);
 
         visitMergingService.mergeVisits(new MergeVisitEvent(user.getUsername(), null, null));
 
@@ -55,7 +55,7 @@ class VisitMergingServiceTest extends AbstractIntegrationTest {
     @Test
     @Transactional
     void shouldNotMergeVisitsAtEndOfDay() {
-        importUntilVisits("/data/gpx/20250601.gpx");
+        importData("/data/gpx/20250601.gpx", ImportStep.VISITS);
 
         // Before merging
         // 1,53.86333445315504,10.701094198219016,2025-05-31T22:39:53.634Z,2025-06-01T06:48:05.555Z,29291,false

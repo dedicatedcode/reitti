@@ -14,7 +14,7 @@ class StayPointDetectionServiceTest extends AbstractIntegrationTest {
 
     @Test
     void shouldCalculateCorrectStayPoints() {
-        List<StayPoint> stayPoints = importUntilStayPoints("/data/gpx/20250531.gpx");
+        List<StayPoint> stayPoints = importData("/data/gpx/20250531.gpx", ImportStep.STAY_POINTS);
 
         List<StayPoint> expectedStayPointsInOrder = new ArrayList<>();
         expectedStayPointsInOrder.add(new StayPoint(53.86334557300011, 10.701107468000021, null, null, null)); //Moltkestr.

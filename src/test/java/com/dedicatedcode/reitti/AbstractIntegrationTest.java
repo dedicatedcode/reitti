@@ -28,6 +28,7 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @SpringBootTest
@@ -133,44 +134,22 @@ public abstract class AbstractIntegrationTest {
     }
 
     @SuppressWarnings("unchecked")
-    protected List<RawLocationPoint> importGpx(String filename) {
-        return (List<RawLocationPoint>) importData(filename, ImportStep.RAW_POINTS);
-    }
-
-    @SuppressWarnings("unchecked")
-    protected List<StayPoint> importUntilStayPoints(String filename) {
-        return (List<StayPoint>) importData(filename, ImportStep.STAY_POINTS);
-    }
-
-    @SuppressWarnings("unchecked")
-    protected List<Visit> importUntilVisits(String fileName) {
-        return (List<Visit>) importData(fileName, ImportStep.VISITS);
-    }
-
-    @SuppressWarnings("unchecked")
-    protected List<ProcessedVisit> importUntilProcessedVisits(String fileName) {
-        return (List<ProcessedVisit>) importData(fileName, ImportStep.MERGE_VISITS);
-    }
-
-    @SuppressWarnings("unchecked")
-    protected List<Trip> importUntilTrips(String fileName) {
-        return (List<Trip>) importData(fileName, ImportStep.TRIPS);
-    }
-
-    @SuppressWarnings("unchecked")
-    protected List<Trip> importUntilMergedTrips(String fileName) {
-        return (List<Trip>) importData(fileName, ImportStep.MERGE_TRIPS);
-    }
-
-    private List<?> importData(String fileName, ImportStep untilStep) {
+    public  <T> List<T> importData(String fileName, ImportStep untilStep) {
         InputStream is = getClass().getResourceAsStream(fileName);
-        importHandler.importGpx(is, user);
+
+        if (fileName.endsWith(".gpx")) {
+            importHandler.importGpx(is, user);
+        } else if (fileName.endsWith(".geojson")) {
+            importHandler.importGeoJson(is, user);
+        } else {
+            throw new IllegalArgumentException("Unsupported file type: " + fileName);
+        }
         List<LocationDataRequest.LocationPoint> allPoints = this.importListener.getPoints();
         List<RawLocationPoint> savedPoints = locationDataService.processLocationData(user, allPoints);
 
         log.info("Imported [{}] raw location points", savedPoints.size());
         if (untilStep == ImportStep.RAW_POINTS) {
-            return savedPoints;
+            return (List<T>) savedPoints;
         }
 
         int splitSize = 100;
@@ -183,15 +162,16 @@ public abstract class AbstractIntegrationTest {
         if (!savedPoints.isEmpty()) {
             stayPoints.addAll(stayPointDetectionService.detectStayPoints(user, savedPoints));
         }
+        stayPoints.sort(Comparator.comparing(StayPoint::getArrivalTime));
         log.info("Created [{}] stay points", stayPoints.size());
         if (untilStep == ImportStep.STAY_POINTS) {
-            return savedPoints;
+            return (List<T>) stayPoints;
         }
 
         visitService.processStayPoints(user, stayPoints);
         log.info("Created [{}] visits out of [{}] stay points", this.visitRepository.count(), stayPoints.size());
         if (untilStep == ImportStep.VISITS) {
-            return this.visitRepository.findAll();
+            return (List<T>) this.visitRepository.findAll();
         }
 
         MergeVisitEvent visitEvent = new MergeVisitEvent(user.getUsername(), null, null);
@@ -199,19 +179,19 @@ public abstract class AbstractIntegrationTest {
         visitMergingService.mergeVisits(visitEvent);
         log.info("Merged [{}] visits into [{}] processed visits", this.visitRepository.count(), this.processedVisitRepository.count());
         if (untilStep == ImportStep.MERGE_VISITS) {
-            return this.processedVisitRepository.findAll();
+            return (List<T>) this.processedVisitRepository.findAll();
         }
 
         tripDetectionService.detectTripsForUser(visitEvent);
         long processedTripsCount = this.processedVisitRepository.count();
         log.info("Found [{}] trips between [{}] processed visits", this.tripsRepository.count(), processedTripsCount);
         if (untilStep == ImportStep.TRIPS) {
-            return this.tripsRepository.findAll();
+            return (List<T>) this.tripsRepository.findAll();
         }
 
         tripMergingService.mergeDuplicateTripsForUser(visitEvent);
         log.info("Merged [{}] processed trips into [{}] processed visits", processedTripsCount, this.processedVisitRepository.count());
-        return this.tripsRepository.findAll();
+        return (List<T>) this.tripsRepository.findAll();
     }
 
     public enum ImportStep {
@@ -221,6 +201,6 @@ public abstract class AbstractIntegrationTest {
         MERGE_VISITS,
         TRIPS,
         MERGE_TRIPS;
-
     }
+
 }

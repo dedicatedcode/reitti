@@ -7,7 +7,6 @@ import com.dedicatedcode.reitti.model.Trip;
 import com.dedicatedcode.reitti.repository.ProcessedVisitRepository;
 import com.dedicatedcode.reitti.repository.TripRepository;
 import org.junit.jupiter.api.Test;
-import org.locationtech.jts.triangulate.tri.Tri;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,7 +29,7 @@ class TripDetectionServiceTest extends AbstractIntegrationTest {
     @Test
     @Transactional
     void shouldDetectTripsBetweenVisits() {
-        this.importUntilProcessedVisits("/data/gpx/20250531.gpx");
+        importData("/data/gpx/20250531.gpx", ImportStep.MERGE_VISITS);
         this.tripDetectionService.detectTripsForUser(new MergeVisitEvent(user.getUsername(), null, null));
 
         List<Trip> persistedTrips = tripRepository.findByUser(user);

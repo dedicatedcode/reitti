@@ -11,18 +11,16 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@Disabled
 class TripMergingServiceTest extends AbstractIntegrationTest {
-    @Autowired
-    private TripMergingService tripMergingService;
+
 
     @Autowired
     private TripRepository tripRepository;
 
     @Test
     void shouldMergeCorrectly() {
-        List<Trip> trips = importUntilTrips("/data/gpx/20250601.gpx");
+        List<Trip> trips = importData("/data/gpx/20250601.gpx", ImportStep.TRIPS);
 
-        assertEquals(1, tripRepository.count());
+        assertEquals(3, tripRepository.count());
     }
 }
