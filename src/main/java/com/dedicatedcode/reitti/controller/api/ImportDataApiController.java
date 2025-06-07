@@ -103,4 +103,35 @@ public class ImportDataApiController {
         }
     }
 
+    @PostMapping("/import/geojson")
+    public ResponseEntity<?> importGeoJson(
+            @RequestParam("file") MultipartFile file) {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User user = (User) authentication.getPrincipal();
+
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "File is empty"));
+        }
+
+        String filename = file.getOriginalFilename();
+        if (filename == null || (!filename.endsWith(".geojson") && !filename.endsWith(".json"))) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Only GeoJSON files (.geojson or .json) are supported"));
+        }
+
+        try (InputStream inputStream = file.getInputStream()) {
+            Map<String, Object> result = importHandler.importGeoJson(inputStream, user);
+
+            if ((Boolean) result.get("success")) {
+                return ResponseEntity.accepted().body(result);
+            } else {
+                return ResponseEntity.badRequest().body(result);
+            }
+        } catch (IOException e) {
+            logger.error("Error processing GeoJSON file", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "error", "Error processing file: " + e.getMessage()));
+        }
+    }
+
 }

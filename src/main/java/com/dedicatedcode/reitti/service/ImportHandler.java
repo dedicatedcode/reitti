@@ -55,7 +55,7 @@ public class ImportHandler {
             // Find the "locations" array
             while (parser.nextToken() != null) {
                 if (parser.getCurrentToken() == JsonToken.FIELD_NAME && 
-                    "locations".equals(parser.getCurrentName())) {
+                    "locations".equals(parser.currentName())) {
                     
                     // Move to the array
                     parser.nextToken(); // Should be START_ARRAY
@@ -195,7 +195,7 @@ public class ImportHandler {
                 logger.info("Queued final batch of {} locations for processing", batch.size());
             }
             
-            logger.info("Successfully imported and queued {} location points from GPX file for user {}", 
+            logger.info("Successfully imported and queued {} location points from GPX file for user {}",
                     processedCount.get(), user.getUsername());
             
             return Map.of(
@@ -240,6 +240,161 @@ public class ImportHandler {
         // Set accuracy - GPX doesn't typically include accuracy, so use a default
         point.setAccuracyMeters(10.0); // Default accuracy of 10 meters
         
+        return point;
+    }
+
+    public Map<String, Object> importGeoJson(InputStream inputStream, User user) {
+        AtomicInteger processedCount = new AtomicInteger(0);
+
+        try {
+            JsonNode rootNode = objectMapper.readTree(inputStream);
+
+            // Check if it's a valid GeoJSON
+            if (!rootNode.has("type")) {
+                return Map.of("success", false, "error", "Invalid GeoJSON: missing 'type' field");
+            }
+
+            String type = rootNode.get("type").asText();
+            List<LocationDataRequest.LocationPoint> batch = new ArrayList<>(batchSize);
+
+            switch (type) {
+                case "FeatureCollection" -> {
+                    // Process FeatureCollection
+                    if (!rootNode.has("features")) {
+                        return Map.of("success", false, "error", "Invalid FeatureCollection: missing 'features' array");
+                    }
+
+                    JsonNode features = rootNode.get("features");
+                    for (JsonNode feature : features) {
+                        LocationDataRequest.LocationPoint point = convertGeoJsonFeature(feature);
+                        if (point != null) {
+                            batch.add(point);
+                            processedCount.incrementAndGet();
+
+                            if (batch.size() >= batchSize) {
+                                this.importListener.handleImport(user, new ArrayList<>(batch));
+                                logger.info("Queued batch of {} locations for processing", batch.size());
+                                batch.clear();
+                            }
+                        }
+                    }
+                }
+                case "Feature" -> {
+                    // Process single Feature
+                    LocationDataRequest.LocationPoint point = convertGeoJsonFeature(rootNode);
+                    if (point != null) {
+                        batch.add(point);
+                        processedCount.incrementAndGet();
+                    }
+                }
+                case "Point" -> {
+                    // Process single Point geometry
+                    LocationDataRequest.LocationPoint point = convertGeoJsonGeometry(rootNode, null);
+                    if (point != null) {
+                        batch.add(point);
+                        processedCount.incrementAndGet();
+                    }
+                }
+                case null, default -> {
+                    return Map.of("success", false, "error", "Unsupported GeoJSON type: " + type + ". Only FeatureCollection, Feature, and Point are supported.");
+                }
+            }
+
+            // Process any remaining locations
+            if (!batch.isEmpty()) {
+                this.importListener.handleImport(user, new ArrayList<>(batch));
+                logger.info("Queued final batch of {} locations for processing", batch.size());
+            }
+
+            logger.info("Successfully imported and queued {} location points from GeoJSON file for user {}",
+                    processedCount.get(), user.getUsername());
+
+            return Map.of(
+                    "success", true,
+                    "message", "Successfully queued " + processedCount.get() + " location points for processing",
+                    "pointsReceived", processedCount.get()
+            );
+
+        } catch (IOException e) {
+            logger.error("Error processing GeoJSON file", e);
+            return Map.of("success", false, "error", "Error processing GeoJSON file: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Converts a GeoJSON Feature to our LocationPoint format
+     */
+    private LocationDataRequest.LocationPoint convertGeoJsonFeature(JsonNode feature) {
+        if (!feature.has("geometry")) {
+            return null;
+        }
+
+        JsonNode geometry = feature.get("geometry");
+        JsonNode properties = feature.has("properties") ? feature.get("properties") : null;
+
+        return convertGeoJsonGeometry(geometry, properties);
+    }
+
+    /**
+     * Converts a GeoJSON geometry (Point) to our LocationPoint format
+     */
+    private LocationDataRequest.LocationPoint convertGeoJsonGeometry(JsonNode geometry, JsonNode properties) {
+        if (!geometry.has("type") || !"Point".equals(geometry.get("type").asText())) {
+            return null; // Only support Point geometries for location data
+        }
+
+        if (!geometry.has("coordinates")) {
+            return null;
+        }
+
+        JsonNode coordinates = geometry.get("coordinates");
+        if (!coordinates.isArray() || coordinates.size() < 2) {
+            return null;
+        }
+
+        LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
+
+        // GeoJSON coordinates are [longitude, latitude]
+        double longitude = coordinates.get(0).asDouble();
+        double latitude = coordinates.get(1).asDouble();
+
+        point.setLatitude(latitude);
+        point.setLongitude(longitude);
+
+        // Try to extract timestamp from properties
+        String timestamp = null;
+        if (properties != null) {
+            // Common timestamp field names in GeoJSON
+            String[] timestampFields = {"timestamp", "time", "datetime", "date", "when"};
+            for (String field : timestampFields) {
+                if (properties.has(field)) {
+                    timestamp = properties.get(field).asText();
+                    break;
+                }
+            }
+        }
+
+        if (timestamp == null || timestamp.isEmpty()) {
+            // Use current time if no timestamp is available
+            timestamp = java.time.Instant.now().toString();
+        }
+
+        point.setTimestamp(timestamp);
+
+        // Try to extract accuracy from properties
+        Double accuracy = null;
+        if (properties != null) {
+            String[] accuracyFields = {"accuracy", "acc", "precision", "hdop"};
+            for (String field : accuracyFields) {
+                if (properties.has(field)) {
+                    accuracy = properties.get(field).asDouble();
+                    break;
+                }
+            }
+        }
+
+        point.setAccuracyMeters(accuracy != null ? accuracy : 50.0); // Default accuracy of 50 meters
+
         return point;
     }
 }
