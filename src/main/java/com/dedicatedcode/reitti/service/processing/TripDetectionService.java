@@ -51,11 +51,11 @@ public class TripDetectionService {
         // Get all processed visits for the user, sorted by start time
         List<ProcessedVisit> visits;
         if (event.getStartTime() == null || event.getEndTime() == null) {
-            visits = processedVisitRepository.findByUser(user.orElse(null));
+            visits = processedVisitRepository.findByUser(user.get());
         } else {
-            visits = processedVisitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user.orElse(null), Instant.ofEpochMilli(event.getStartTime()), Instant.ofEpochMilli(event.getEndTime()));
+            visits = processedVisitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user.get(), Instant.ofEpochMilli(event.getStartTime()), Instant.ofEpochMilli(event.getEndTime()));
         }
-        findDetectedTrips(user.orElse(null), visits);
+        findDetectedTrips(user.get(), visits);
     }
 
     private List<Trip> findDetectedTrips(User user, List<ProcessedVisit> visits) {

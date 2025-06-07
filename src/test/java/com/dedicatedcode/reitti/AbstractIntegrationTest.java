@@ -6,17 +6,14 @@ import com.dedicatedcode.reitti.model.RawLocationPoint;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.ImportHandler;
-import com.dedicatedcode.reitti.service.ImportListener;
 import com.dedicatedcode.reitti.service.LocationDataService;
-import com.dedicatedcode.reitti.service.processing.StayPoint;
-import com.dedicatedcode.reitti.service.processing.StayPointDetectionService;
-import com.dedicatedcode.reitti.service.processing.VisitMergingService;
-import com.dedicatedcode.reitti.service.processing.VisitService;
+import com.dedicatedcode.reitti.service.processing.*;
 import org.junit.jupiter.api.BeforeEach;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -39,6 +36,7 @@ import java.util.List;
 @DirtiesContext
 @Import(AbstractIntegrationTest.TestConfig.class)
 public abstract class AbstractIntegrationTest {
+    private static final Logger log = LoggerFactory.getLogger(AbstractIntegrationTest.class);
 
     @Container
     static PostgreSQLContainer<?> timescaledb = new PostgreSQLContainer<>(DockerImageName.parse("postgis/postgis:17-3.5-alpine")
@@ -99,6 +97,9 @@ public abstract class AbstractIntegrationTest {
     @Autowired
     private VisitMergingService visitMergingService;
 
+    @Autowired
+    private TripDetectionService tripDetectionService;
+
     protected User user;
 
     @BeforeEach
@@ -147,5 +148,20 @@ public abstract class AbstractIntegrationTest {
     protected void importUntilProcessedVisits(String fileName) {
         importUntilVisits(fileName);
         visitMergingService.mergeVisits(new MergeVisitEvent(user.getUsername(), null, null));
+    }
+
+    protected void importUntilTrips(String fileName) {
+        List<RawLocationPoint> savedPoints = importGpx(fileName);
+        log.info("Imported [{}] raw location points", savedPoints.size());
+        List<StayPoint> stayPoints = stayPointDetectionService.detectStayPoints(user, savedPoints);
+        log.info("Created [{}] stay points", stayPoints.size());
+
+        visitService.processStayPoints(user, stayPoints);
+        log.info("Created [{}] visits out of [{}] stay points", this.visitRepository.count(), stayPoints.size());
+
+        visitMergingService.mergeVisits(new MergeVisitEvent(user.getUsername(), null, null));
+        log.info("Merged [{}] visits into [{}] processed visits", this.visitRepository.count(), this.processedVisitRepository.count());
+        tripDetectionService.detectTripsForUser(new MergeVisitEvent(user.getUsername(), null, null));
+        log.info("Found [{}] trips between [{}] processed visits", this.tripsRepository.count(), this.processedVisitRepository.count());
     }
 }

@@ -36,19 +36,47 @@ class VisitMergingServiceTest extends AbstractIntegrationTest {
 
         List<GeoPoint> expectedVisits = new ArrayList<>();
 
-        expectedVisits.add(new GeoPoint(53.86334539659948,10.701105248045259)); // Moltke
-        expectedVisits.add(new GeoPoint(53.86889230000001,10.680612066666669)); // Diele
-        expectedVisits.add(new GeoPoint(53.86334539659948,10.701105248045259)); // Moltke
-        expectedVisits.add(new GeoPoint(53.86889230000001,10.680612066666669)); // Diele
-        expectedVisits.add(new GeoPoint(53.87306318052629,10.732658768947365)); // Garten
-        expectedVisits.add(new GeoPoint(53.871003894,10.7458164105)); // Famila
-        expectedVisits.add(new GeoPoint(53.8714586375,10.747866387499998)); // Obi 1
-        expectedVisits.add(new GeoPoint(53.87214355833334,10.747553500000002)); // Obi 2
-        expectedVisits.add(new GeoPoint(53.8714586375,10.747866387499998)); // Obi 1
-        expectedVisits.add(new GeoPoint(53.87306318052629,10.732658768947365)); // Garten
-        expectedVisits.add(new GeoPoint(53.86334539659948,10.701105248045259)); // Moltke
+        expectedVisits.add(new GeoPoint(53.86334539659948, 10.701105248045259)); // Moltke
+        expectedVisits.add(new GeoPoint(53.86889230000001, 10.680612066666669)); // Diele
+        expectedVisits.add(new GeoPoint(53.86334539659948, 10.701105248045259)); // Moltke
+        expectedVisits.add(new GeoPoint(53.86889230000001, 10.680612066666669)); // Diele
+        expectedVisits.add(new GeoPoint(53.87306318052629, 10.732658768947365)); // Garten
+        expectedVisits.add(new GeoPoint(53.871003894, 10.7458164105)); // Famila
+        expectedVisits.add(new GeoPoint(53.8714586375, 10.747866387499998)); // Obi 1
+        expectedVisits.add(new GeoPoint(53.87214355833334, 10.747553500000002)); // Obi 2
+        expectedVisits.add(new GeoPoint(53.8714586375, 10.747866387499998)); // Obi 1
+        expectedVisits.add(new GeoPoint(53.87306318052629, 10.732658768947365)); // Garten
+        expectedVisits.add(new GeoPoint(53.86334539659948, 10.701105248045259)); // Moltke
 
         List<GeoPoint> actualVisits = this.processedVisitRepository.findByUserOrderByStartTime(user).stream().map(pv -> new GeoPoint(pv.getPlace().getLatitudeCentroid(), pv.getPlace().getLongitudeCentroid())).toList();
+        verfiyVisits(expectedVisits, actualVisits);
+    }
+
+    @Test
+    @Transactional
+    void shouldNotMergeVisitsAtEndOfDay() {
+        importUntilVisits("/data/gpx/20250601.gpx");
+
+        visitMergingService.mergeVisits(new MergeVisitEvent(user.getUsername(), null, null));
+
+        assertEquals(0, visitRepository.findByUserAndProcessedFalse(user).size());
+
+        List<GeoPoint> expectedVisits = new ArrayList<>();
+        expectedVisits.add(new GeoPoint(53.863149, 10.700927)); // Moltke
+        // trip between 1/2 walk, 1/2 car
+        expectedVisits.add(new GeoPoint(53.863149, 10.700927)); // Moltke
+        // trip between -> car
+        expectedVisits.add(new GeoPoint(53.835121, 10.982272)); // Retelsdorf
+        // trip between -> car
+        expectedVisits.add(new GeoPoint(53.863149, 10.700927)); // Moltke
+        // trip between 1/2 car, 1/2 walk
+        expectedVisits.add(new GeoPoint(53.863149, 10.700927)); // Moltke
+
+        List<GeoPoint> actualVisits = this.processedVisitRepository.findByUserOrderByStartTime(user).stream().map(pv -> new GeoPoint(pv.getPlace().getLatitudeCentroid(), pv.getPlace().getLongitudeCentroid())).toList();
+        verfiyVisits(expectedVisits, actualVisits);
+    }
+
+    private static void verfiyVisits(List<GeoPoint> expectedVisits, List<GeoPoint> actualVisits) {
         assertEquals(expectedVisits.size(), actualVisits.size());
         for (int i = 0; i < actualVisits.size(); i++) {
             GeoPoint expected = expectedVisits.get(i);
@@ -57,6 +85,5 @@ class VisitMergingServiceTest extends AbstractIntegrationTest {
             double distanceInMeters = GeoUtils.distanceInMeters(actual.latitude(), actual.longitude(), expected.latitude(), expected.longitude());
             assertTrue(distanceInMeters < 50, "Distance between " + actual + " and " + expected + " is too large. Should be less than 25m but was " + distanceInMeters + "m for index " + i + ".");
         }
-
     }
 }
