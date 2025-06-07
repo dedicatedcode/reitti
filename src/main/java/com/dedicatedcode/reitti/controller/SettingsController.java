@@ -295,35 +295,58 @@ public class SettingsController {
     }
 
     @PostMapping("/import/gpx")
-    public String importGpx(@RequestParam("file") MultipartFile file,
+    public String importGpx(@RequestParam("files") MultipartFile[] files,
                             Authentication authentication,
                             Model model) {
         User user = (User) authentication.getPrincipal();
 
-        if (file.isEmpty()) {
-            model.addAttribute("uploadErrorMessage", "File is empty");
+        if (files.length == 0) {
+            model.addAttribute("uploadErrorMessage", "No files selected");
             return "fragments/settings :: file-upload-content";
         }
 
-        if (!file.getOriginalFilename().endsWith(".gpx")) {
-            model.addAttribute("uploadErrorMessage", "Only GPX files are supported");
-            return "fragments/settings :: file-upload-content";
-        }
+        int totalProcessed = 0;
+        int successCount = 0;
+        StringBuilder errorMessages = new StringBuilder();
 
-        try (InputStream inputStream = file.getInputStream()) {
-            Map<String, Object> result = importHandler.importGpx(inputStream, user);
-
-            if ((Boolean) result.get("success")) {
-                model.addAttribute("uploadSuccessMessage", result.get("message"));
-            } else {
-                model.addAttribute("uploadErrorMessage", result.get("error"));
+        for (MultipartFile file : files) {
+            if (file.isEmpty()) {
+                errorMessages.append("File ").append(file.getOriginalFilename()).append(" is empty. ");
+                continue;
             }
 
-            return "fragments/settings :: file-upload-content";
-        } catch (IOException e) {
-            model.addAttribute("uploadErrorMessage", "Error processing file: " + e.getMessage());
-            return "fragments/settings :: file-upload-content";
+            if (!file.getOriginalFilename().endsWith(".gpx")) {
+                errorMessages.append("File ").append(file.getOriginalFilename()).append(" is not a GPX file. ");
+                continue;
+            }
+
+            try (InputStream inputStream = file.getInputStream()) {
+                Map<String, Object> result = importHandler.importGpx(inputStream, user);
+
+                if ((Boolean) result.get("success")) {
+                    totalProcessed += (Integer) result.get("pointsReceived");
+                    successCount++;
+                } else {
+                    errorMessages.append("Error processing ").append(file.getOriginalFilename()).append(": ")
+                            .append(result.get("error")).append(". ");
+                }
+            } catch (IOException e) {
+                errorMessages.append("Error processing ").append(file.getOriginalFilename()).append(": ")
+                        .append(e.getMessage()).append(". ");
+            }
         }
+
+        if (successCount > 0) {
+            String message = "Successfully processed " + successCount + " file(s) with " + totalProcessed + " location points";
+            if (errorMessages.length() > 0) {
+                message += ". Errors: " + errorMessages.toString();
+            }
+            model.addAttribute("uploadSuccessMessage", message);
+        } else {
+            model.addAttribute("uploadErrorMessage", "No files were processed successfully. " + errorMessages.toString());
+        }
+
+        return "fragments/settings :: file-upload-content";
     }
 
     @PostMapping("/import/google-takeout")
@@ -359,36 +382,59 @@ public class SettingsController {
     }
 
     @PostMapping("/import/geojson")
-    public String importGeoJson(@RequestParam("file") MultipartFile file,
+    public String importGeoJson(@RequestParam("files") MultipartFile[] files,
                                 Authentication authentication,
                                 Model model) {
         User user = (User) authentication.getPrincipal();
 
-        if (file.isEmpty()) {
-            model.addAttribute("uploadErrorMessage", "File is empty");
+        if (files.length == 0) {
+            model.addAttribute("uploadErrorMessage", "No files selected");
             return "fragments/settings :: file-upload-content";
         }
 
-        String filename = file.getOriginalFilename();
-        if (filename == null || (!filename.endsWith(".geojson") && !filename.endsWith(".json"))) {
-            model.addAttribute("uploadErrorMessage", "Only GeoJSON files (.geojson or .json) are supported");
-            return "fragments/settings :: file-upload-content";
-        }
+        int totalProcessed = 0;
+        int successCount = 0;
+        StringBuilder errorMessages = new StringBuilder();
 
-        try (InputStream inputStream = file.getInputStream()) {
-            Map<String, Object> result = importHandler.importGeoJson(inputStream, user);
-
-            if ((Boolean) result.get("success")) {
-                model.addAttribute("uploadSuccessMessage", result.get("message"));
-            } else {
-                model.addAttribute("uploadErrorMessage", result.get("error"));
+        for (MultipartFile file : files) {
+            if (file.isEmpty()) {
+                errorMessages.append("File ").append(file.getOriginalFilename()).append(" is empty. ");
+                continue;
             }
 
-            return "fragments/settings :: file-upload-content";
-        } catch (IOException e) {
-            model.addAttribute("uploadErrorMessage", "Error processing file: " + e.getMessage());
-            return "fragments/settings :: file-upload-content";
+            String filename = file.getOriginalFilename();
+            if (filename == null || (!filename.endsWith(".geojson") && !filename.endsWith(".json"))) {
+                errorMessages.append("File ").append(filename).append(" is not a GeoJSON file. ");
+                continue;
+            }
+
+            try (InputStream inputStream = file.getInputStream()) {
+                Map<String, Object> result = importHandler.importGeoJson(inputStream, user);
+
+                if ((Boolean) result.get("success")) {
+                    totalProcessed += (Integer) result.get("pointsReceived");
+                    successCount++;
+                } else {
+                    errorMessages.append("Error processing ").append(filename).append(": ")
+                            .append(result.get("error")).append(". ");
+                }
+            } catch (IOException e) {
+                errorMessages.append("Error processing ").append(filename).append(": ")
+                        .append(e.getMessage()).append(". ");
+            }
         }
+
+        if (successCount > 0) {
+            String message = "Successfully processed " + successCount + " file(s) with " + totalProcessed + " location points";
+            if (errorMessages.length() > 0) {
+                message += ". Errors: " + errorMessages.toString();
+            }
+            model.addAttribute("uploadSuccessMessage", message);
+        } else {
+            model.addAttribute("uploadErrorMessage", "No files were processed successfully. " + errorMessages.toString());
+        }
+
+        return "fragments/settings :: file-upload-content";
     }
 
     @GetMapping("/geocode-services-content")

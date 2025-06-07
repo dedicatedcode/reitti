@@ -28,6 +28,8 @@ import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -75,62 +77,120 @@ public class ImportDataApiController {
 
     @PostMapping("/import/gpx")
     public ResponseEntity<?> importGpx(
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("files") MultipartFile[] files) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         User user = (User) authentication.getPrincipal();
 
-        if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "File is empty"));
+        if (files.length == 0) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "No files provided"));
         }
 
-        if (!file.getOriginalFilename().endsWith(".gpx")) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Only GPX files are supported"));
-        }
+        int totalProcessed = 0;
+        int successCount = 0;
+        List<String> errors = new ArrayList<>();
 
-        try (InputStream inputStream = file.getInputStream()) {
-            Map<String, Object> result = importHandler.importGpx(inputStream, user);
-
-            if ((Boolean) result.get("success")) {
-                return ResponseEntity.accepted().body(result);
-            } else {
-                return ResponseEntity.badRequest().body(result);
+        for (MultipartFile file : files) {
+            if (file.isEmpty()) {
+                errors.add("File " + file.getOriginalFilename() + " is empty");
+                continue;
             }
-        } catch (IOException e) {
-            logger.error("Error processing GPX file", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "error", "Error processing file: " + e.getMessage()));
+
+            if (!file.getOriginalFilename().endsWith(".gpx")) {
+                errors.add("File " + file.getOriginalFilename() + " is not a GPX file");
+                continue;
+            }
+
+            try (InputStream inputStream = file.getInputStream()) {
+                Map<String, Object> result = importHandler.importGpx(inputStream, user);
+
+                if ((Boolean) result.get("success")) {
+                    totalProcessed += (Integer) result.get("pointsReceived");
+                    successCount++;
+                } else {
+                    errors.add("Error processing " + file.getOriginalFilename() + ": " + result.get("error"));
+                }
+            } catch (IOException e) {
+                logger.error("Error processing GPX file: " + file.getOriginalFilename(), e);
+                errors.add("Error processing " + file.getOriginalFilename() + ": " + e.getMessage());
+            }
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        if (successCount > 0) {
+            response.put("success", true);
+            response.put("message", "Successfully processed " + successCount + " file(s) with " + totalProcessed + " location points");
+            response.put("pointsReceived", totalProcessed);
+            response.put("filesProcessed", successCount);
+            if (!errors.isEmpty()) {
+                response.put("errors", errors);
+            }
+            return ResponseEntity.accepted().body(response);
+        } else {
+            response.put("success", false);
+            response.put("error", "No files were processed successfully");
+            response.put("errors", errors);
+            return ResponseEntity.badRequest().body(response);
         }
     }
 
     @PostMapping("/import/geojson")
     public ResponseEntity<?> importGeoJson(
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("files") MultipartFile[] files) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         User user = (User) authentication.getPrincipal();
 
-        if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "File is empty"));
+        if (files.length == 0) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "No files provided"));
         }
 
-        String filename = file.getOriginalFilename();
-        if (filename == null || (!filename.endsWith(".geojson") && !filename.endsWith(".json"))) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Only GeoJSON files (.geojson or .json) are supported"));
-        }
+        int totalProcessed = 0;
+        int successCount = 0;
+        List<String> errors = new ArrayList<>();
 
-        try (InputStream inputStream = file.getInputStream()) {
-            Map<String, Object> result = importHandler.importGeoJson(inputStream, user);
-
-            if ((Boolean) result.get("success")) {
-                return ResponseEntity.accepted().body(result);
-            } else {
-                return ResponseEntity.badRequest().body(result);
+        for (MultipartFile file : files) {
+            if (file.isEmpty()) {
+                errors.add("File " + file.getOriginalFilename() + " is empty");
+                continue;
             }
-        } catch (IOException e) {
-            logger.error("Error processing GeoJSON file", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "error", "Error processing file: " + e.getMessage()));
+
+            String filename = file.getOriginalFilename();
+            if (filename == null || (!filename.endsWith(".geojson") && !filename.endsWith(".json"))) {
+                errors.add("File " + filename + " is not a GeoJSON file");
+                continue;
+            }
+
+            try (InputStream inputStream = file.getInputStream()) {
+                Map<String, Object> result = importHandler.importGeoJson(inputStream, user);
+
+                if ((Boolean) result.get("success")) {
+                    totalProcessed += (Integer) result.get("pointsReceived");
+                    successCount++;
+                } else {
+                    errors.add("Error processing " + filename + ": " + result.get("error"));
+                }
+            } catch (IOException e) {
+                logger.error("Error processing GeoJSON file: " + filename, e);
+                errors.add("Error processing " + filename + ": " + e.getMessage());
+            }
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        if (successCount > 0) {
+            response.put("success", true);
+            response.put("message", "Successfully processed " + successCount + " file(s) with " + totalProcessed + " location points");
+            response.put("pointsReceived", totalProcessed);
+            response.put("filesProcessed", successCount);
+            if (!errors.isEmpty()) {
+                response.put("errors", errors);
+            }
+            return ResponseEntity.accepted().body(response);
+        } else {
+            response.put("success", false);
+            response.put("error", "No files were processed successfully");
+            response.put("errors", errors);
+            return ResponseEntity.badRequest().body(response);
         }
     }
 

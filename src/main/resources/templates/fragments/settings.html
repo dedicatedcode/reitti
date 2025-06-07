@@ -228,7 +228,7 @@
                   hx-target="#file-upload"
                   hx-encoding="multipart/form-data">
                 <div class="form-group">
-                    <input type="file" name="file" accept=".gpx" required>
+                    <input type="file" name="files" accept=".gpx" multiple required>
                 </div>
                 <button type="submit" class="btn">Upload GPX File</button>
             </form>
@@ -280,7 +280,7 @@
                   hx-swap="innerHTML"
                   hx-encoding="multipart/form-data">
                 <div class="form-group">
-                    <input type="file" name="file" accept=".geojson,.json" required>
+                    <input type="file" name="files" accept=".geojson,.json" multiple required>
                 </div>
                 <button type="submit" class="btn">Upload GeoJSON File</button>
             </form>
