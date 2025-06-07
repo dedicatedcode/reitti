@@ -93,7 +93,7 @@ public class TripDetectionService {
         
         // If end time is before or equal to start time, this is not a valid trip
         if (tripEndTime.isBefore(tripStartTime) || tripEndTime.equals(tripStartTime)) {
-            logger.debug("Invalid trip time range detected for user {}: {} to {}", 
+            logger.warn("Invalid trip time range detected for user {}: {} to {}",
                     user.getUsername(), tripStartTime, tripEndTime);
             return null;
         }
@@ -191,18 +191,5 @@ public class TripDetectionService {
         } else {
             return "TRANSIT"; // High-speed transit like train
         }
-    }
-    
-    @Transactional
-    public void clearTrips(User user) {
-        List<Trip> userTrips = tripRepository.findByUser(user);
-        tripRepository.deleteAll(userTrips);
-        logger.info("Cleared {} trips for user: {}", userTrips.size(), user.getUsername());
-    }
-    
-    @Transactional
-    public void clearAllTrips() {
-        tripRepository.deleteAll();
-        logger.info("Cleared all trips");
     }
 }
