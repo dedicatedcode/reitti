@@ -124,13 +124,13 @@ public class VisitMergingService {
         
         // Find or create a place for the first visit
         List<SignificantPlace> nearbyPlaces = findNearbyPlaces(user, currentVisit.getLatitude(), currentVisit.getLongitude());
-        SignificantPlace currentPlace = nearbyPlaces.isEmpty() ? 
-                createSignificantPlace(user, currentVisit) : 
+        SignificantPlace currentPlace = nearbyPlaces.isEmpty() ?
+                createSignificantPlace(user, currentVisit) :
                 findClosestPlace(currentVisit, nearbyPlaces);
 
         for (int i = 1; i < visits.size(); i++) {
             Visit nextVisit = visits.get(i);
-            
+
             // Find nearby places for the next visit
             nearbyPlaces = findNearbyPlaces(user, nextVisit.getLatitude(), nextVisit.getLongitude());
             SignificantPlace nextPlace = nearbyPlaces.isEmpty() ? 

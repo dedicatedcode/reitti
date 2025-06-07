@@ -7,6 +7,7 @@ import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.ImportHandler;
 import com.dedicatedcode.reitti.service.LocationDataService;
 import com.dedicatedcode.reitti.service.processing.*;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +31,9 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @Testcontainers
@@ -106,6 +110,18 @@ public abstract class AbstractIntegrationTest {
 
     protected User user;
 
+    public static void verifyPoints(List<GeoPoint> expectedVisits, List<GeoPoint> actualVisits, int maxDistance) {
+        assertEquals(expectedVisits.size(), actualVisits.size());
+        for (int i = 0; i < actualVisits.size(); i++) {
+            GeoPoint expected = expectedVisits.get(i);
+            GeoPoint actual = actualVisits.get(i);
+
+            double distanceInMeters = GeoUtils.distanceInMeters(actual.latitude(), actual.longitude(), expected.latitude(), expected.longitude());
+            assertTrue(distanceInMeters < maxDistance, "Distance between " + actual + " and " + expected + " is too large. Should be less than " + maxDistance + " but was " + distanceInMeters + "m for index " + i + ".");
+        }
+    }
+
+
     @BeforeEach
     void setUp() {
         // Clean up repositories
@@ -134,7 +150,7 @@ public abstract class AbstractIntegrationTest {
     }
 
     @SuppressWarnings("unchecked")
-    public  <T> List<T> importData(String fileName, ImportStep untilStep) {
+    public <T> List<T> importData(String fileName, ImportStep untilStep) {
         InputStream is = getClass().getResourceAsStream(fileName);
 
         if (fileName.endsWith(".gpx")) {
@@ -157,10 +173,18 @@ public abstract class AbstractIntegrationTest {
         while (savedPoints.size() >= splitSize) {
             List<RawLocationPoint> current = new ArrayList<>(savedPoints.subList(0, splitSize));
             savedPoints.removeAll(current);
-            stayPoints.addAll(stayPointDetectionService.detectStayPoints(user, current));
+            List<StayPoint> calculatedPoints = stayPointDetectionService.detectStayPoints(user, current);
+            stayPoints.addAll(calculatedPoints);
+
+            if (untilStep.ordinal() >= ImportStep.VISITS.ordinal()) {
+                visitService.processStayPoints(user, stayPoints);
+            }
         }
         if (!savedPoints.isEmpty()) {
             stayPoints.addAll(stayPointDetectionService.detectStayPoints(user, savedPoints));
+            if (untilStep.ordinal() >= ImportStep.VISITS.ordinal()) {
+                visitService.processStayPoints(user, stayPoints);
+            }
         }
         stayPoints.sort(Comparator.comparing(StayPoint::getArrivalTime));
         log.info("Created [{}] stay points", stayPoints.size());
@@ -168,7 +192,6 @@ public abstract class AbstractIntegrationTest {
             return (List<T>) stayPoints;
         }
 
-        visitService.processStayPoints(user, stayPoints);
         log.info("Created [{}] visits out of [{}] stay points", this.visitRepository.count(), stayPoints.size());
         if (untilStep == ImportStep.VISITS) {
             return (List<T>) this.visitRepository.findAll();
