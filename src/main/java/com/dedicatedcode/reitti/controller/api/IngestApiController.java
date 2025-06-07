@@ -48,7 +48,11 @@ public class IngestApiController {
         try {
             // Convert Owntracks format to our LocationPoint format
             LocationDataRequest.LocationPoint locationPoint = request.toLocationPoint();
-            
+
+            if (locationPoint.getTimestamp() == null) {
+                logger.warn("Ignoring location point [{}] because timestamp is null", locationPoint);
+                return ResponseEntity.ok(Map.of());
+            }
             // Create and publish event to RabbitMQ
             LocationDataEvent event = new LocationDataEvent(
                     user.getUsername(),

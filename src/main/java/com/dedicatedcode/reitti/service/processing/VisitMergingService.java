@@ -67,7 +67,7 @@ public class VisitMergingService {
         processAndMergeVisits(user.get(), event.getStartTime(), event.getEndTime());
     }
 
-    private List<ProcessedVisit> processAndMergeVisits(User user, Long startTime, Long endTime) {
+    private void processAndMergeVisits(User user, Long startTime, Long endTime) {
         logger.info("Processing and merging visits for user: {}", user.getUsername());
 
         List<Visit> allVisits;
@@ -81,7 +81,7 @@ public class VisitMergingService {
 
         if (allVisits.isEmpty()) {
             logger.info("No visits found for user: {}", user.getUsername());
-            return Collections.emptyList();
+            return;
         }
 
         // Sort all visits chronologically
@@ -103,7 +103,6 @@ public class VisitMergingService {
         if (!processedVisits.isEmpty() && detectTripsAfterMerging) {
             rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, new MergeVisitEvent(user.getUsername(), startTime, endTime));
         }
-        return processedVisits;
     }
 
     private List<ProcessedVisit> mergeVisitsChronologically(User user, List<Visit> visits) {
@@ -125,13 +124,13 @@ public class VisitMergingService {
         
         // Find or create a place for the first visit
         List<SignificantPlace> nearbyPlaces = findNearbyPlaces(user, currentVisit.getLatitude(), currentVisit.getLongitude());
-        SignificantPlace currentPlace = nearbyPlaces.isEmpty() ? 
-                createSignificantPlace(user, currentVisit) : 
+        SignificantPlace currentPlace = nearbyPlaces.isEmpty() ?
+                createSignificantPlace(user, currentVisit) :
                 findClosestPlace(currentVisit, nearbyPlaces);
 
         for (int i = 1; i < visits.size(); i++) {
             Visit nextVisit = visits.get(i);
-            
+
             // Find nearby places for the next visit
             nearbyPlaces = findNearbyPlaces(user, nextVisit.getLatitude(), nextVisit.getLongitude());
             SignificantPlace nextPlace = nearbyPlaces.isEmpty() ? 

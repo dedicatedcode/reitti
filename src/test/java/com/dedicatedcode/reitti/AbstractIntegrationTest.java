@@ -2,21 +2,18 @@ package com.dedicatedcode.reitti;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.event.MergeVisitEvent;
-import com.dedicatedcode.reitti.model.RawLocationPoint;
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.ImportHandler;
-import com.dedicatedcode.reitti.service.ImportListener;
 import com.dedicatedcode.reitti.service.LocationDataService;
-import com.dedicatedcode.reitti.service.processing.StayPoint;
-import com.dedicatedcode.reitti.service.processing.StayPointDetectionService;
-import com.dedicatedcode.reitti.service.processing.VisitMergingService;
-import com.dedicatedcode.reitti.service.processing.VisitService;
+import com.dedicatedcode.reitti.service.processing.*;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,7 +28,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @Testcontainers
@@ -39,6 +41,7 @@ import java.util.List;
 @DirtiesContext
 @Import(AbstractIntegrationTest.TestConfig.class)
 public abstract class AbstractIntegrationTest {
+    private static final Logger log = LoggerFactory.getLogger(AbstractIntegrationTest.class);
 
     @Container
     static PostgreSQLContainer<?> timescaledb = new PostgreSQLContainer<>(DockerImageName.parse("postgis/postgis:17-3.5-alpine")
@@ -99,7 +102,25 @@ public abstract class AbstractIntegrationTest {
     @Autowired
     private VisitMergingService visitMergingService;
 
+    @Autowired
+    private TripDetectionService tripDetectionService;
+
+    @Autowired
+    private TripMergingService tripMergingService;
+
     protected User user;
+
+    public static void verifyPoints(List<GeoPoint> expectedVisits, List<GeoPoint> actualVisits, int maxDistance) {
+        assertEquals(expectedVisits.size(), actualVisits.size());
+        for (int i = 0; i < actualVisits.size(); i++) {
+            GeoPoint expected = expectedVisits.get(i);
+            GeoPoint actual = actualVisits.get(i);
+
+            double distanceInMeters = GeoUtils.distanceInMeters(actual.latitude(), actual.longitude(), expected.latitude(), expected.longitude());
+            assertTrue(distanceInMeters < maxDistance, "Distance between " + actual + " and " + expected + " is too large. Should be less than " + maxDistance + " but was " + distanceInMeters + "m for index " + i + ".");
+        }
+    }
+
 
     @BeforeEach
     void setUp() {
@@ -128,24 +149,81 @@ public abstract class AbstractIntegrationTest {
         }
     }
 
-    protected List<RawLocationPoint> importGpx(String filename) {
-        InputStream is = getClass().getResourceAsStream(filename);
-        importHandler.importGpx(is, user);
-        List<LocationDataRequest.LocationPoint> allPoints = this.importListener.getPoints();
-        return locationDataService.processLocationData(user, allPoints);
-    }
+    @SuppressWarnings("unchecked")
+    public <T> List<T> importData(String fileName, ImportStep untilStep) {
+        InputStream is = getClass().getResourceAsStream(fileName);
 
-    protected void importUntilVisits(String fileName) {
-        List<RawLocationPoint> savedPoints = importGpx(fileName);
-        List<StayPoint> stayPoints = stayPointDetectionService.detectStayPoints(user, savedPoints);
-
-        if (!stayPoints.isEmpty()) {
-            visitService.processStayPoints(user, stayPoints);
+        if (fileName.endsWith(".gpx")) {
+            importHandler.importGpx(is, user);
+        } else if (fileName.endsWith(".geojson")) {
+            importHandler.importGeoJson(is, user);
+        } else {
+            throw new IllegalArgumentException("Unsupported file type: " + fileName);
         }
+        List<LocationDataRequest.LocationPoint> allPoints = this.importListener.getPoints();
+        List<RawLocationPoint> savedPoints = locationDataService.processLocationData(user, allPoints);
+
+        log.info("Imported [{}] raw location points", savedPoints.size());
+        if (untilStep == ImportStep.RAW_POINTS) {
+            return (List<T>) savedPoints;
+        }
+
+        int splitSize = 100;
+        List<StayPoint> stayPoints = new ArrayList<>();
+        while (savedPoints.size() >= splitSize) {
+            List<RawLocationPoint> current = new ArrayList<>(savedPoints.subList(0, splitSize));
+            savedPoints.removeAll(current);
+            List<StayPoint> calculatedPoints = stayPointDetectionService.detectStayPoints(user, current);
+            stayPoints.addAll(calculatedPoints);
+
+            if (untilStep.ordinal() >= ImportStep.VISITS.ordinal()) {
+                visitService.processStayPoints(user, stayPoints);
+            }
+        }
+        if (!savedPoints.isEmpty()) {
+            stayPoints.addAll(stayPointDetectionService.detectStayPoints(user, savedPoints));
+            if (untilStep.ordinal() >= ImportStep.VISITS.ordinal()) {
+                visitService.processStayPoints(user, stayPoints);
+            }
+        }
+        stayPoints.sort(Comparator.comparing(StayPoint::getArrivalTime));
+        log.info("Created [{}] stay points", stayPoints.size());
+        if (untilStep == ImportStep.STAY_POINTS) {
+            return (List<T>) stayPoints;
+        }
+
+        log.info("Created [{}] visits out of [{}] stay points", this.visitRepository.count(), stayPoints.size());
+        if (untilStep == ImportStep.VISITS) {
+            return (List<T>) this.visitRepository.findAll();
+        }
+
+        MergeVisitEvent visitEvent = new MergeVisitEvent(user.getUsername(), null, null);
+
+        visitMergingService.mergeVisits(visitEvent);
+        log.info("Merged [{}] visits into [{}] processed visits", this.visitRepository.count(), this.processedVisitRepository.count());
+        if (untilStep == ImportStep.MERGE_VISITS) {
+            return (List<T>) this.processedVisitRepository.findAll();
+        }
+
+        tripDetectionService.detectTripsForUser(visitEvent);
+        long processedTripsCount = this.processedVisitRepository.count();
+        log.info("Found [{}] trips between [{}] processed visits", this.tripsRepository.count(), processedTripsCount);
+        if (untilStep == ImportStep.TRIPS) {
+            return (List<T>) this.tripsRepository.findAll();
+        }
+
+        tripMergingService.mergeDuplicateTripsForUser(visitEvent);
+        log.info("Merged [{}] processed trips into [{}] processed visits", processedTripsCount, this.processedVisitRepository.count());
+        return (List<T>) this.tripsRepository.findAll();
     }
 
-    protected void importUntilProcessedVisits(String fileName) {
-        importUntilVisits(fileName);
-        visitMergingService.mergeVisits(new MergeVisitEvent(user.getUsername(), null, null));
+    public enum ImportStep {
+        RAW_POINTS,
+        STAY_POINTS,
+        VISITS,
+        MERGE_VISITS,
+        TRIPS,
+        MERGE_TRIPS;
     }
+
 }

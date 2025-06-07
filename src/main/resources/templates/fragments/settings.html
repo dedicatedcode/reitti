@@ -266,6 +266,32 @@
                 });
             </script>
         </div>
+        
+        <div class="upload-option">
+            <h3>GeoJSON Files</h3>
+            <p class="description">
+                Upload GeoJSON files containing Point features with location data. GeoJSON files 
+                should contain Point geometries with coordinates and optional timestamp properties. 
+                Supports both single Feature and FeatureCollection formats.
+            </p>
+            <form id="geojson-upload-form"
+                  hx-post="/settings/import/geojson"
+                  hx-target="#file-upload"
+                  hx-swap="innerHTML"
+                  hx-encoding="multipart/form-data">
+                <div class="form-group">
+                    <input type="file" name="file" accept=".geojson,.json" required>
+                </div>
+                <button type="submit" class="btn">Upload GeoJSON File</button>
+            </form>
+            <progress id='progress-geojson' value='0' max='100' style="display: none"></progress>
+            <script>
+                htmx.on('#geojson-upload-form', 'htmx:xhr:progress', function(evt) {
+                    htmx.find('#progress-geojson').setAttribute('value', evt.detail.loaded/evt.detail.total * 100)
+                    htmx.find('#progress-geojson').setAttribute('style', null)
+                });
+            </script>
+        </div>
     </div>
 </div>
 

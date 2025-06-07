@@ -358,6 +358,39 @@ public class SettingsController {
         }
     }
 
+    @PostMapping("/import/geojson")
+    public String importGeoJson(@RequestParam("file") MultipartFile file,
+                                Authentication authentication,
+                                Model model) {
+        User user = (User) authentication.getPrincipal();
+
+        if (file.isEmpty()) {
+            model.addAttribute("uploadErrorMessage", "File is empty");
+            return "fragments/settings :: file-upload-content";
+        }
+
+        String filename = file.getOriginalFilename();
+        if (filename == null || (!filename.endsWith(".geojson") && !filename.endsWith(".json"))) {
+            model.addAttribute("uploadErrorMessage", "Only GeoJSON files (.geojson or .json) are supported");
+            return "fragments/settings :: file-upload-content";
+        }
+
+        try (InputStream inputStream = file.getInputStream()) {
+            Map<String, Object> result = importHandler.importGeoJson(inputStream, user);
+
+            if ((Boolean) result.get("success")) {
+                model.addAttribute("uploadSuccessMessage", result.get("message"));
+            } else {
+                model.addAttribute("uploadErrorMessage", result.get("error"));
+            }
+
+            return "fragments/settings :: file-upload-content";
+        } catch (IOException e) {
+            model.addAttribute("uploadErrorMessage", "Error processing file: " + e.getMessage());
+            return "fragments/settings :: file-upload-content";
+        }
+    }
+
     @GetMapping("/geocode-services-content")
     public String getGeocodeServicesContent(Model model) {
         model.addAttribute("geocodeServices", geocodeServiceRepository.findAllByOrderByNameAsc());

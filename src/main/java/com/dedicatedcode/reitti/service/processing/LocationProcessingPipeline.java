@@ -83,7 +83,6 @@ public class LocationProcessingPipeline {
             long searchStart = startTime.minus(tripVisitMergeTimeRange, ChronoUnit.DAYS).toEpochMilli();
             long searchEnd = endTime.plus(tripVisitMergeTimeRange, ChronoUnit.DAYS).toEpochMilli();
             rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new MergeVisitEvent(user.getUsername(), searchStart, searchEnd));
-            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, new MergeVisitEvent(user.getUsername(), searchStart, searchEnd));
         }
 
         logger.info("Completed processing pipeline for user {}", user.getUsername());
