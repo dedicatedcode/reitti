@@ -1,1 +1,0 @@
-ALTER TABLE trips DROP COLUMN estimated_distance_meters;

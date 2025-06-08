@@ -1,6 +1,9 @@
 package com.dedicatedcode.reitti.model;
 
+import com.dedicatedcode.reitti.TestUtils;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -28,5 +31,13 @@ class GeoUtilsTest {
         double[] degreesFor100m = GeoUtils.metersToDegreesAtPosition(100, 45);
         assertEquals(0.0009, degreesFor100m[0], 0.0001); // About 0.0009 degrees latitude
         assertEquals(0.00127, degreesFor100m[1], 0.0001); // About 0.00127 degrees longitude at 45°N
+    }
+
+    @Test
+    void shouldCalculateCorrectTripDistances() {
+        List<RawLocationPoint> points = TestUtils.loadFromCsv("/data/raw/trip_1.csv");
+        double calculatedDistances = GeoUtils.calculateTripDistance(points);
+
+        assertEquals(22664.67856, calculatedDistances, 0.01);
     }
 }

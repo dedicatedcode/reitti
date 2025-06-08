@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.model;
 
 import com.dedicatedcode.reitti.service.processing.StayPoint;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -59,14 +60,14 @@ public final class GeoUtils {
         if (points.size() < 2) {
             return 0.0;
         }
-
-        points.sort(Comparator.comparing(RawLocationPoint::getLatitude));
+        List<RawLocationPoint> tmp = new ArrayList<>(points);
+        tmp.sort(Comparator.comparing(RawLocationPoint::getTimestamp));
 
         double totalDistance = 0.0;
 
-        for (int i = 0; i < points.size() - 1; i++) {
-            RawLocationPoint p1 = points.get(i);
-            RawLocationPoint p2 = points.get(i + 1);
+        for (int i = 0; i < tmp.size() - 1; i++) {
+            RawLocationPoint p1 = tmp.get(i);
+            RawLocationPoint p2 = tmp.get(i + 1);
 
             totalDistance += distanceInMeters(p1, p2);
         }

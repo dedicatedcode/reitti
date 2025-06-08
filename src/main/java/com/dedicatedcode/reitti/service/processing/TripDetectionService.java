@@ -124,14 +124,20 @@ public class TripDetectionService {
         trip.setStartPlace(startVisit.getPlace());
         trip.setEndPlace(endVisit.getPlace());
 
+        // Calculate estimated distance (straight-line distance between places)
+        double estimatedDistanceInMeters = calculateDistanceBetweenPlaces(startVisit.getPlace(), endVisit.getPlace());
+        trip.setEstimatedDistanceMeters(estimatedDistanceInMeters);
+
         // Calculate travelled distance (sum of distances between consecutive points)
         double travelledDistanceMeters = GeoUtils.calculateTripDistance(tripPoints);
         trip.setTravelledDistanceMeters(travelledDistanceMeters);
 
         // Infer transport mode based on speed and distance
-        String transportMode = inferTransportMode(travelledDistanceMeters, tripStartTime, tripEndTime);
+        String transportMode = inferTransportMode(travelledDistanceMeters != 0 ? travelledDistanceMeters : estimatedDistanceInMeters, tripStartTime, tripEndTime);
         trip.setTransportModeInferred(transportMode);
 
+        trip.setStartVisit(startVisit);
+        trip.setEndVisit(endVisit);
         logger.debug("Created trip from {} to {}: travelled distance={}m, mode={}",
                 startVisit.getPlace().getName(), endVisit.getPlace().getName(), Math.round(travelledDistanceMeters), transportMode);
 

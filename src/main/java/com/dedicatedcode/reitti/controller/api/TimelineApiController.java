@@ -130,7 +130,7 @@ public class TimelineApiController {
                     null,
                     startPlace,
                     endPlace,
-                    trip.getTravelledDistanceMeters(),
+                    trip.getTravelledDistanceMeters() != null ? trip.getTravelledDistanceMeters() : trip.getEstimatedDistanceMeters(),
                     trip.getTransportModeInferred(),
                     path.stream().map(p -> new TimelineResponse.PointInfo(p.getLatitude(), p.getLongitude(), p.getTimestamp(), p.getAccuracyMeters())).toList()
 

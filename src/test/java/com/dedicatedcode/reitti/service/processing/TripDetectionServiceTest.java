@@ -42,7 +42,7 @@ class TripDetectionServiceTest extends AbstractIntegrationTest {
             ProcessedVisit start = processedVisits.get(i);
             ProcessedVisit end = processedVisits.get(i + 1);
             if (!end.getPlace().equals(start.getPlace())) {
-                expectedTrips.add(new Trip(user, start.getPlace(), end.getPlace(), start.getStartTime(), start.getEndTime(), null));
+                expectedTrips.add(new Trip(user, start.getPlace(), end.getPlace(), start.getStartTime(), start.getEndTime(),null, null, start, end));
             }
         }
 
