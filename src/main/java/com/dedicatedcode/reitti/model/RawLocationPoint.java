@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.model;
 
 import jakarta.persistence.*;
+import org.locationtech.jts.geom.Point;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -21,25 +22,22 @@ public class RawLocationPoint {
     private Instant timestamp;
     
     @Column(nullable = false)
-    private Double latitude;
-    
-    @Column(nullable = false)
-    private Double longitude;
-    
-    @Column(nullable = false)
     private Double accuracyMeters;
     
     @Column
     private String activityProvided;
 
+    @Column(columnDefinition = "geometry(Point,4326)", nullable = false)
+    private Point geom;
+
+
     public RawLocationPoint() {
     }
-    public RawLocationPoint(User user, Instant timestamp, Double latitude, Double longitude, Double accuracyMeters) {
+    public RawLocationPoint(User user, Instant timestamp, Point geom, Double accuracyMeters) {
         this.user = user;
         this.timestamp = timestamp;
-        this.latitude = latitude;
-        this.longitude = longitude;
         this.accuracyMeters = accuracyMeters;
+        this.geom = geom;
     }
 
     public Long getId() {
@@ -67,19 +65,11 @@ public class RawLocationPoint {
     }
 
     public Double getLatitude() {
-        return latitude;
-    }
-
-    public void setLatitude(Double latitude) {
-        this.latitude = latitude;
+        return this.geom.getY();
     }
 
     public Double getLongitude() {
-        return longitude;
-    }
-
-    public void setLongitude(Double longitude) {
-        this.longitude = longitude;
+        return this.geom.getCoordinate().getX();
     }
 
     public Double getAccuracyMeters() {
@@ -97,6 +87,16 @@ public class RawLocationPoint {
     public void setActivityProvided(String activityProvided) {
         this.activityProvided = activityProvided;
     }
+
+    public Point getGeom() {
+        return geom;
+    }
+
+    public void setGeom(Point geom) {
+        this.geom = geom;
+    }
+
+
 
     @Override
     public boolean equals(Object o) {

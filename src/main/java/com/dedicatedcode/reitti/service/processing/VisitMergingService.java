@@ -30,8 +30,6 @@ public class VisitMergingService {
 
     private static final Logger logger = LoggerFactory.getLogger(VisitMergingService.class);
 
-    private static final int SRID = 4326;
-
     private final VisitRepository visitRepository;
     private final ProcessedVisitRepository processedVisitRepository;
     private final UserRepository userRepository;
@@ -46,15 +44,16 @@ public class VisitMergingService {
     @Autowired
     public VisitMergingService(VisitRepository visitRepository,
                                ProcessedVisitRepository processedVisitRepository,
-                               UserRepository userRepository, RabbitTemplate rabbitTemplate,
-                               SignificantPlaceRepository significantPlaceRepository) {
+                               UserRepository userRepository,
+                               RabbitTemplate rabbitTemplate,
+                               SignificantPlaceRepository significantPlaceRepository,
+                               GeometryFactory geometryFactory) {
         this.visitRepository = visitRepository;
         this.processedVisitRepository = processedVisitRepository;
         this.userRepository = userRepository;
         this.rabbitTemplate = rabbitTemplate;
         this.significantPlaceRepository = significantPlaceRepository;
-        this.geometryFactory = new GeometryFactory(new PrecisionModel(), SRID);
-
+        this.geometryFactory = geometryFactory;
     }
 
     @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE)

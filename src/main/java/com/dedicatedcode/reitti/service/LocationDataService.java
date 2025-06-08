@@ -4,6 +4,8 @@ import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.model.RawLocationPoint;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,10 +23,12 @@ public class LocationDataService {
     private static final Logger logger = LoggerFactory.getLogger(LocationDataService.class);
 
     private final RawLocationPointRepository rawLocationPointRepository;
-
+    private final GeometryFactory geometryFactory;
     @Autowired
-    public LocationDataService(RawLocationPointRepository rawLocationPointRepository) {
+    public LocationDataService(RawLocationPointRepository rawLocationPointRepository,
+                               GeometryFactory geometryFactory) {
         this.rawLocationPointRepository = rawLocationPointRepository;
+        this.geometryFactory = geometryFactory;
     }
 
     @Transactional
@@ -67,8 +71,7 @@ public class LocationDataService {
 
         RawLocationPoint locationPoint = new RawLocationPoint();
         locationPoint.setUser(user);
-        locationPoint.setLatitude(point.getLatitude());
-        locationPoint.setLongitude(point.getLongitude());
+        locationPoint.setGeom(geometryFactory.createPoint(new Coordinate(point.getLongitude(), point.getLatitude())));
         locationPoint.setTimestamp(timestamp);
         locationPoint.setAccuracyMeters(point.getAccuracyMeters());
         locationPoint.setActivityProvided(point.getActivity());
