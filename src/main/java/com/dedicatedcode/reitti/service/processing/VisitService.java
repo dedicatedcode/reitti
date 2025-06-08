@@ -26,8 +26,11 @@ public class VisitService {
         logger.info("Processing {} stay points for user {}", stayPoints.size(), user.getUsername());
 
         for (StayPoint stayPoint : stayPoints) {
-            Visit visit = createVisit(user, stayPoint.getLongitude(), stayPoint.getLatitude(), stayPoint);
-            visitRepository.save(visit);
+            boolean exists = this.visitRepository.existsByUserAndStartTimeAndEndTimeAndLatitudeAndLongitude(user, stayPoint.getArrivalTime(), stayPoint.getDepartureTime(), stayPoint.getLatitude(), stayPoint.getLongitude());
+            if (!exists){
+                Visit visit = createVisit(user, stayPoint.getLongitude(), stayPoint.getLatitude(), stayPoint);
+                visitRepository.save(visit);
+            }
         }
     }
 

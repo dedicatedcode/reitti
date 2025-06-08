@@ -56,83 +56,73 @@ public class StayPointDetectionService {
                 .max(Instant::compareTo);
 
         if (earliestNewPoint.isPresent() && latestNewPoint.isPresent()) {
-            // Get points from 1 hour before the earliest new point
-            Instant windowStart = earliestNewPoint.get().minus(Duration.ofHours(1));
-            // Get points from 1 hour after the latest new point
-            Instant windowEnd = latestNewPoint.get().plus(Duration.ofHours(1));
+            // Get points from 1 day before the earliest new point
+            Instant windowStart = earliestNewPoint.get().minus(Duration.ofDays(1));
+            // Get points from 1 day after the latest new point
+            Instant windowEnd = latestNewPoint.get().plus(Duration.ofDays(1));
 
-            List<RawLocationPoint> pointsInWindow = rawLocationPointRepository
-                    .findByUserAndTimestampBetweenOrderByTimestampAsc(user, windowStart, windowEnd);
+            List<RawLocationPointRepository.ClusteredPoint> clusteredPointsInTimeRangeForUser = this.rawLocationPointRepository.findClusteredPointsInTimeRangeForUser(user, windowStart, windowEnd, minPointsInCluster, GeoUtils.metersToDegreesAtPosition(distanceThreshold, newPoints.stream().findFirst().get().getLatitude())[1]);
+            Map<Integer, List<RawLocationPoint>> clusteredByLocation = new HashMap<>();
+            for (RawLocationPointRepository.ClusteredPoint clusteredPoint : clusteredPointsInTimeRangeForUser) {
+                if (clusteredPoint.getClusterId() != null) {
+                    clusteredByLocation.computeIfAbsent(clusteredPoint.getClusterId(), k -> new ArrayList<>()).add(clusteredPoint.getPoint());
+                }
+            }
 
-            logger.info("Found {} points in the processing window", pointsInWindow.size());
+            logger.info("Found {} point clusters in the processing window", clusteredByLocation.size());
 
             // Apply the stay point detection algorithm
-            List<StayPoint> stayPoints = detectStayPointsFromTrajectory(pointsInWindow);
+            List<StayPoint> stayPoints = detectStayPointsFromTrajectory(clusteredByLocation);
 
             logger.info("Detected {} stay points", stayPoints.size());
-            return stayPoints;
 
+            return stayPoints;
         }
         return Collections.emptyList();
     }
 
-    private List<StayPoint> detectStayPointsFromTrajectory(List<RawLocationPoint> points) {
-        if (points.size() < minPointsInCluster) {
-            return Collections.emptyList();
-        }
-
-        logger.info("Starting cluster-based stay point detection with {} points", points.size());
+    private List<StayPoint> detectStayPointsFromTrajectory(Map<Integer, List<RawLocationPoint>> points) {
+        logger.info("Starting cluster-based stay point detection with {} different spatial clusters.", points.size());
 
         List<List<RawLocationPoint>> clusters = new ArrayList<>();
-        List<RawLocationPoint> currentCluster = new ArrayList<>();
-        RawLocationPoint currentPoint = null;
-        GeoPoint currentCenter = null;
-        for (RawLocationPoint point : points) {
-            if (currentPoint == null) {
-                currentPoint = point;
-                currentCluster.add(point);
-                currentCenter = new GeoPoint(point.getLatitude(), point.getLongitude());
-            } else if (GeoUtils.distanceInMeters(currentCenter.latitude(), currentCenter.longitude(), point.getLatitude(), point.getLongitude()) <= distanceThreshold) {
-                currentCluster.add(point);
-                currentCenter = weightedCenter(currentCluster);
-            } else {
-                clusters.add(currentCluster);
-                currentCluster = new ArrayList<>();
-                currentCluster.add(point);
-                currentPoint = point;
-                currentCenter = new GeoPoint(point.getLatitude(), point.getLongitude());
+
+        //split them up when time is x seconds between
+        for (List<RawLocationPoint> clusteredByLocation : points.values()) {
+            logger.debug("Start splitting up geospatial cluster with [{}] elements based on minimum time [{}]s between points", clusteredByLocation.size(), timeThreshold);
+            //first sort them by timestamp
+            clusteredByLocation.sort(Comparator.comparing(RawLocationPoint::getTimestamp));
+
+            List<RawLocationPoint> currentTimedCluster = new ArrayList<>();
+            clusters.add(currentTimedCluster);
+            currentTimedCluster.add(clusteredByLocation.getFirst());
+
+            Instant currentTime = clusteredByLocation.getFirst().getTimestamp();
+
+            for (int i = 1; i < clusteredByLocation.size(); i++) {
+                RawLocationPoint next = clusteredByLocation.get(i);
+                if (Duration.between(currentTime, next.getTimestamp()).getSeconds() < timeThreshold) {
+                    currentTimedCluster.add(next);
+                } else {
+                    currentTimedCluster = new ArrayList<>();
+                    currentTimedCluster.add(next);
+                    clusters.add(currentTimedCluster);
+                }
+                currentTime = next.getTimestamp();
             }
         }
 
-        clusters.add(currentCluster);
+        logger.info("Detected {} stay points after splitting them up.", clusters.size());
+        //filter them by duration
+        List<List<RawLocationPoint>> filteredByMinimumDuration = clusters.stream()
+                .filter(c -> Duration.between(c.getFirst().getTimestamp(), c.getLast().getTimestamp()).toSeconds() > timeThreshold)
+                .toList();
 
-        logger.info("Created {} initial spatial clusters", clusters.size());
-
-        List<List<RawLocationPoint>> validClusters = filterClustersByTimeThreshold(clusters);
-        logger.info("Found {} valid clusters after time threshold filtering", validClusters.size());
+        logger.info("Found {} valid clusters after duration filtering", filteredByMinimumDuration.size());
 
         // Step 3: Convert valid clusters to stay points
-        return validClusters.stream()
+        return filteredByMinimumDuration.stream()
                 .map(this::createStayPoint)
                 .collect(Collectors.toList());
-    }
-
-    private List<List<RawLocationPoint>> filterClustersByTimeThreshold(List<List<RawLocationPoint>> clusters) {
-        List<List<RawLocationPoint>> validClusters = new ArrayList<>();
-
-        for (List<RawLocationPoint> cluster : clusters) {
-            // Calculate the total time span of the cluster
-            Instant firstTimestamp = cluster.getFirst().getTimestamp();
-            Instant lastTimestamp = cluster.getLast().getTimestamp();
-
-            long timeSpanSeconds = Duration.between(firstTimestamp, lastTimestamp).getSeconds();
-
-            if (timeSpanSeconds >= timeThreshold) {
-                validClusters.add(cluster);
-            }
-        }
-
-        return validClusters;
     }
 
     private StayPoint createStayPoint(List<RawLocationPoint> clusterPoints) {

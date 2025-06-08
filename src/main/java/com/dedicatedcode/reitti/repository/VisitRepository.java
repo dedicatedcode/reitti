@@ -20,4 +20,6 @@ public interface VisitRepository extends JpaRepository<Visit, Long> {
             User user, Instant startTime, Instant endTime);
 
     List<Visit> findByUserAndStartTimeBetweenAndProcessedFalseOrderByStartTimeAsc(User user, Instant startTime, Instant endTime);
+
+    boolean existsByUserAndStartTimeAndEndTimeAndLatitudeAndLongitude(User user, Instant startTime, Instant endTime, Double latitude, Double longitude);
 }

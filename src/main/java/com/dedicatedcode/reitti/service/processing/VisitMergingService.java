@@ -4,10 +4,7 @@ import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.MergeVisitEvent;
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.model.*;
-import com.dedicatedcode.reitti.repository.ProcessedVisitRepository;
-import com.dedicatedcode.reitti.repository.SignificantPlaceRepository;
-import com.dedicatedcode.reitti.repository.UserRepository;
-import com.dedicatedcode.reitti.repository.VisitRepository;
+import com.dedicatedcode.reitti.repository.*;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -35,9 +32,12 @@ public class VisitMergingService {
     private final UserRepository userRepository;
     private final RabbitTemplate rabbitTemplate;
     private final SignificantPlaceRepository significantPlaceRepository;
+    private final RawLocationPointRepository rawLocationPointRepository;
     private final GeometryFactory geometryFactory;
     @Value("${reitti.visit.merge-threshold-seconds:300}")
     private long mergeThresholdSeconds;
+    @Value("${reitti.visit.merge-threshold-meters:100}")
+    private long mergeThresholdMeters;
     @Value("${reitti.detect-trips-after-merging:true}")
     private boolean detectTripsAfterMerging;
 
@@ -47,12 +47,14 @@ public class VisitMergingService {
                                UserRepository userRepository,
                                RabbitTemplate rabbitTemplate,
                                SignificantPlaceRepository significantPlaceRepository,
+                               RawLocationPointRepository rawLocationPointRepository,
                                GeometryFactory geometryFactory) {
         this.visitRepository = visitRepository;
         this.processedVisitRepository = processedVisitRepository;
         this.userRepository = userRepository;
         this.rabbitTemplate = rabbitTemplate;
         this.significantPlaceRepository = significantPlaceRepository;
+        this.rawLocationPointRepository = rawLocationPointRepository;
         this.geometryFactory = geometryFactory;
     }
 
@@ -73,9 +75,13 @@ public class VisitMergingService {
 
         // Get all unprocessed visits for the user
         if (startTime == null || endTime == null) {
-            allVisits = this.visitRepository.findByUserAndProcessedFalse(user);
+            allVisits = this.visitRepository.findByUser(user);
+            this.processedVisitRepository.deleteProcessedVisitByUser(user);
         } else {
-            allVisits = this.visitRepository.findByUserAndStartTimeBetweenAndProcessedFalseOrderByStartTimeAsc(user, Instant.ofEpochMilli(startTime), Instant.ofEpochMilli(endTime));
+            Instant startWindow = Instant.ofEpochMilli(startTime);
+            Instant endWindow = Instant.ofEpochMilli(endTime);
+            allVisits = this.visitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user, startWindow, endWindow);
+            this.processedVisitRepository.deleteProcessedVisitByUserAndStartTimeBeforeAndEndTimeIsAfter(user, endWindow, startWindow);
         }
 
         if (allVisits.isEmpty()) {
@@ -93,10 +99,10 @@ public class VisitMergingService {
         if (!allVisits.isEmpty()) {
             allVisits.forEach(visit -> visit.setProcessed(true));
             visitRepository.saveAll(allVisits);
-            logger.info("Marked {} visits as processed for user: {}", allVisits.size(), user.getUsername());
+            logger.debug("Marked {} visits as processed for user: {}", allVisits.size(), user.getUsername());
         }
 
-        logger.info("Processed {} visits into {} merged visits for user: {}",
+        logger.debug("Processed {} visits into {} merged visits for user: {}",
                 allVisits.size(), processedVisits.size(), user.getUsername());
 
         if (!processedVisits.isEmpty() && detectTripsAfterMerging) {
@@ -139,8 +145,16 @@ public class VisitMergingService {
             // Check if the next visit is at the same place and within the time threshold
             boolean samePlace = nextPlace.getId().equals(currentPlace.getId());
             boolean withinTimeThreshold = Duration.between(currentEndTime, nextVisit.getStartTime()).getSeconds() <= mergeThresholdSeconds;
-            
-            if (samePlace && withinTimeThreshold) {
+
+            boolean shouldMergeWithNextVisit = samePlace && withinTimeThreshold;
+
+            if (samePlace && !withinTimeThreshold) {
+                List<RawLocationPoint> pointsBetweenVisits = this.rawLocationPointRepository.findByUserAndTimestampBetweenOrderByTimestampAsc(user, currentEndTime, nextVisit.getStartTime());
+                double travelledDistanceInMeters = GeoUtils.calculateTripDistance(pointsBetweenVisits);
+                shouldMergeWithNextVisit = travelledDistanceInMeters < mergeThresholdMeters;
+            }
+
+            if (shouldMergeWithNextVisit) {
                 // Merge this visit with the current one
                 currentEndTime = nextVisit.getEndTime().isAfter(currentEndTime) ?
                         nextVisit.getEndTime() : currentEndTime;

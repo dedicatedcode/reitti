@@ -117,7 +117,9 @@ public abstract class AbstractIntegrationTest {
             GeoPoint actual = actualVisits.get(i);
 
             double distanceInMeters = GeoUtils.distanceInMeters(actual.latitude(), actual.longitude(), expected.latitude(), expected.longitude());
-            assertTrue(distanceInMeters < maxDistance, "Distance between " + actual + " and " + expected + " is too large. Should be less than " + maxDistance + " but was " + distanceInMeters + "m for index " + i + ".");
+            assertTrue(distanceInMeters < maxDistance, "Distance between \n" +
+                    "actual" + actual + "\nand\n expected" + expected + " is too large. " +
+                    "\nShould be less than " + maxDistance + " but was " + distanceInMeters + "m for index " + i + ".");
         }
     }
 

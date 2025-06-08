@@ -179,16 +179,6 @@ public class TripMergingService {
         }
 
         trip.setTravelledDistanceMeters(totalDistance);
-
-        // Also update the estimated distance
-        if (trip.getStartPlace() != null && trip.getEndPlace() != null) {
-            double directDistance = GeoUtils.distanceInMeters(
-                    trip.getStartPlace().getLatitudeCentroid(), trip.getStartPlace().getLongitudeCentroid(),
-                    trip.getEndPlace().getLatitudeCentroid(), trip.getEndPlace().getLongitudeCentroid());
-            trip.setEstimatedDistanceMeters(directDistance);
-        } else {
-            trip.setEstimatedDistanceMeters(totalDistance);
-        }
     }
 
     private String getMostCommonTransportMode(List<Trip> trips) {

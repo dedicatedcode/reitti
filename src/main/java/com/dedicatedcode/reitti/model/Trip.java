@@ -34,9 +34,6 @@ public class Trip {
     @Column(nullable = false)
     private Long durationSeconds;
     
-    @Column
-    private Double estimatedDistanceMeters;
-    
     @Column(name = "travelled_distance_meters")
     private Double travelledDistanceMeters;
     
@@ -45,13 +42,12 @@ public class Trip {
 
     public Trip() {}
 
-    public Trip(User user, SignificantPlace startPlace, SignificantPlace endPlace, Instant startTime, Instant endTime, Double estimatedDistanceMeters, String transportModeInferred) {
+    public Trip(User user, SignificantPlace startPlace, SignificantPlace endPlace, Instant startTime, Instant endTime, String transportModeInferred) {
         this.user = user;
         this.startPlace = startPlace;
         this.endPlace = endPlace;
         this.startTime = startTime;
         this.endTime = endTime;
-        this.estimatedDistanceMeters = estimatedDistanceMeters;
         this.transportModeInferred = transportModeInferred;
     }
 
@@ -111,14 +107,6 @@ public class Trip {
         this.durationSeconds = durationSeconds;
     }
 
-    public Double getEstimatedDistanceMeters() {
-        return estimatedDistanceMeters;
-    }
-
-    public void setEstimatedDistanceMeters(Double estimatedDistanceMeters) {
-        this.estimatedDistanceMeters = estimatedDistanceMeters;
-    }
-    
     public Double getTravelledDistanceMeters() {
         return travelledDistanceMeters;
     }
