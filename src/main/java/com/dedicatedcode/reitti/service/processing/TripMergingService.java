@@ -119,8 +119,9 @@ public class TripMergingService {
 
     private boolean tripsOverlap(Trip trip1, Trip trip2) {
         // Check if trips overlap by start time or end time
-        return trip1.getStartTime().isBefore(trip2.getEndTime()) && 
-               trip2.getStartTime().isBefore(trip1.getEndTime());
+        // Use isAfter/isBefore or equals to include exact time matches
+        return !trip1.getStartTime().isAfter(trip2.getEndTime()) && 
+               !trip2.getStartTime().isAfter(trip1.getEndTime());
     }
 
     private List<List<Trip>> findOverlappingTrips(List<Trip> trips) {
