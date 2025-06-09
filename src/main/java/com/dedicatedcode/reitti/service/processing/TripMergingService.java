@@ -46,7 +46,7 @@ public class TripMergingService {
             logger.warn("User not found for userName: {}", event.getUserName());
             return;
         }
-        logger.info("Merging duplicate trips for user: {}", user.get().getUsername());
+        logger.debug("Merging duplicate trips for user: {}", user.get().getUsername());
 
         // Get all trips for the user
         List<Trip> allTrips;
@@ -64,7 +64,7 @@ public class TripMergingService {
     private void mergeTrips(User user, List<Trip> allTrips, boolean withStart) {
 
         if (allTrips.isEmpty()) {
-            logger.info("No trips found for user: {}", user.getUsername());
+            logger.debug("No trips found for user: {}", user.getUsername());
             return;
         }
 
