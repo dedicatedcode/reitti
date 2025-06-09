@@ -201,7 +201,7 @@ public class TripMergingService {
     private void recalculateDistance(Trip trip) {
         // Get all raw location points for this user within the trip's time range
         List<RawLocationPoint> points = rawLocationPointRepository.findByUserAndTimestampBetweenOrderByTimestampAsc(
-                trip.getUser(), trip.getStartTime(), trip.getEndTime());
+                trip.getUser(), trip.getStartVisit().getEndTime(), trip.getEndVisit().getStartTime());
 
         if (points.size() < 2) {
             // Not enough points to calculate distance
