@@ -62,22 +62,28 @@ public class TripMergingService {
     }
 
     private void mergeTrips(User user, List<Trip> allTrips, boolean withStart) {
-
         if (allTrips.isEmpty()) {
             logger.debug("No trips found for user: {}", user.getUsername());
             return;
         }
 
-        // Group trips by start place, end place, and similar time range
+        // Group trips by start place and end place
         Map<String, List<Trip>> tripGroups = groupSimilarTrips(allTrips, withStart);
 
-        // Process each group to merge duplicates
+        // Process each group to merge overlapping trips
         List<Trip> tripsToDelete = new ArrayList<>();
 
         for (List<Trip> tripGroup : tripGroups.values()) {
             if (tripGroup.size() > 1) {
-                mergeTrips(tripGroup, user);
-                tripsToDelete.addAll(tripGroup);
+                // Find overlapping trips within this group
+                List<List<Trip>> overlappingGroups = findOverlappingTrips(tripGroup);
+                
+                for (List<Trip> overlappingTrips : overlappingGroups) {
+                    if (overlappingTrips.size() > 1) {
+                        mergeTrips(overlappingTrips, user);
+                        tripsToDelete.addAll(overlappingTrips);
+                    }
+                }
             }
         }
 
@@ -92,27 +98,65 @@ public class TripMergingService {
         Map<String, List<Trip>> tripGroups = new HashMap<>();
 
         for (Trip trip : trips) {
-            // Create a key based on start place, end place, and approximate time
-            // We use minute precision for time to allow for small differences
-            String key = createTripGroupKey(trip, withStart);
+            // Create a key based only on start place and end place
+            String key = createTripGroupKey(trip);
             tripGroups.computeIfAbsent(key, k -> new ArrayList<>()).add(trip);
         }
         return tripGroups;
     }
 
-    private String createTripGroupKey(Trip trip, boolean withStart) {
-        // Create a key that identifies similar trips
-        // Format: userId_startPlaceId_endPlaceId_startTimeMinute_endTimeMinute
-        long timeKey = withStart ? trip.getStartTime().getEpochSecond() / 60 : trip.getEndTime().getEpochSecond() / 60;
-
+    private String createTripGroupKey(Trip trip) {
+        // Create a key that identifies trips with same start and end places
+        // Format: userId_startPlaceId_endPlaceId
         Long startPlaceId = trip.getStartPlace() != null ? trip.getStartPlace().getId() : 0;
         Long endPlaceId = trip.getEndPlace() != null ? trip.getEndPlace().getId() : 0;
 
-        return String.format("%d_%d_%d_%d",
+        return String.format("%d_%d_%d",
                 trip.getUser().getId(),
                 startPlaceId,
-                endPlaceId,
-                timeKey);
+                endPlaceId);
+    }
+
+    private boolean tripsOverlap(Trip trip1, Trip trip2) {
+        // Check if trips overlap by start time or end time
+        return trip1.getStartTime().isBefore(trip2.getEndTime()) && 
+               trip2.getStartTime().isBefore(trip1.getEndTime());
+    }
+
+    private List<List<Trip>> findOverlappingTrips(List<Trip> trips) {
+        List<List<Trip>> overlappingGroups = new ArrayList<>();
+        boolean[] processed = new boolean[trips.size()];
+        
+        for (int i = 0; i < trips.size(); i++) {
+            if (processed[i]) continue;
+            
+            List<Trip> overlappingGroup = new ArrayList<>();
+            overlappingGroup.add(trips.get(i));
+            processed[i] = true;
+            
+            // Find all trips that overlap with any trip in the current group
+            boolean foundOverlap = true;
+            while (foundOverlap) {
+                foundOverlap = false;
+                for (int j = 0; j < trips.size(); j++) {
+                    if (processed[j]) continue;
+                    
+                    // Check if this trip overlaps with any trip in the current group
+                    for (Trip groupTrip : overlappingGroup) {
+                        if (tripsOverlap(trips.get(j), groupTrip)) {
+                            overlappingGroup.add(trips.get(j));
+                            processed[j] = true;
+                            foundOverlap = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            overlappingGroups.add(overlappingGroup);
+        }
+        
+        return overlappingGroups;
     }
 
     private Trip mergeTrips(List<Trip> trips, User user) {
