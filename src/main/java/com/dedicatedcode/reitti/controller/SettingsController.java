@@ -36,12 +36,14 @@ public class SettingsController {
     private final ImportHandler importHandler;
     private final GeocodeServiceRepository geocodeServiceRepository;
     private final int maxErrors;
+    private final boolean dataManagementEnabled;
 
     public SettingsController(ApiTokenService apiTokenService, UserService userService,
                               QueueStatsService queueStatsService, PlaceService placeService,
                               ImportHandler importHandler,
                               GeocodeServiceRepository geocodeServiceRepository,
-                              @Value("${reitti.geocoding.max-errors}") int maxErrors) {
+                              @Value("${reitti.geocoding.max-errors}") int maxErrors,
+                              @Value("${reitti.data-management.enabled}") boolean dataManagementEnabled) {
         this.apiTokenService = apiTokenService;
         this.userService = userService;
         this.queueStatsService = queueStatsService;
@@ -49,6 +51,7 @@ public class SettingsController {
         this.importHandler = importHandler;
         this.geocodeServiceRepository = geocodeServiceRepository;
         this.maxErrors = maxErrors;
+        this.dataManagementEnabled = dataManagementEnabled;
     }
 
     @GetMapping("/api-tokens-content")
@@ -435,6 +438,31 @@ public class SettingsController {
         }
 
         return "fragments/settings :: file-upload-content";
+    }
+
+    @GetMapping("/manage-data-content")
+    public String getManageDataContent(Model model) {
+        if (!dataManagementEnabled) {
+            throw new RuntimeException("Data management is not enabled");
+        }
+        return "fragments/settings :: manage-data-content";
+    }
+
+    @PostMapping("/manage-data/process-visits-trips")
+    public String processVisitsTrips(Authentication authentication, Model model) {
+        if (!dataManagementEnabled) {
+            throw new RuntimeException("Data management is not enabled");
+        }
+
+        try {
+            // TODO: Add actual processing logic here
+            // This would typically trigger the processing pipeline manually
+            model.addAttribute("successMessage", "Processing started successfully. Check the Job Status tab to monitor progress.");
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", "Error starting processing: " + e.getMessage());
+        }
+
+        return "fragments/settings :: manage-data-content";
     }
 
     @GetMapping("/geocode-services-content")
