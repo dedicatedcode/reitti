@@ -33,6 +33,7 @@
             <div class="settings-nav-item" data-target="places-management">Places</div>
             <div class="settings-nav-item" data-target="geocode-services">Geocoding</div>
             <div class="settings-nav-item" data-target="integrations" hx-get="/settings/integrations-content" hx-target="#integrations">Integrations</div>
+            <div class="settings-nav-item" data-target="manage-data">Manage Data</div>
             <div class="settings-nav-item" data-target="job-status">Job Status</div>
             <div class="settings-nav-item" data-target="file-upload">Import Data</div>
         </div>
@@ -61,6 +62,11 @@
         <!-- Integrations Section -->
         <div id="integrations" class="settings-section">
             <div class="htmx-indicator">Loading integrations...</div>
+        </div>
+
+        <!-- Manage Data Section -->
+        <div id="manage-data" class="settings-section">
+            <div class="htmx-indicator">Loading data management...</div>
         </div>
 
         <script>
@@ -223,6 +229,14 @@
                         // If this is the geocoding tab, load its content if not already loaded
                         if (target === 'geocode-services' && !section.hasAttribute('hx-triggered')) {
                             section.setAttribute('hx-get', '/settings/geocode-services-content');
+                            section.setAttribute('hx-trigger', 'load once');
+                            section.setAttribute('hx-triggered', 'true');
+                            htmx.process(section);
+                        }
+
+                        // If this is the manage data tab, load its content if not already loaded
+                        if (target === 'manage-data' && !section.hasAttribute('hx-triggered')) {
+                            section.setAttribute('hx-get', '/settings/manage-data-content');
                             section.setAttribute('hx-trigger', 'load once');
                             section.setAttribute('hx-triggered', 'true');
                             htmx.process(section);
