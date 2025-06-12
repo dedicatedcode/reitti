@@ -17,6 +17,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
@@ -59,7 +60,6 @@ public class VisitMergingService {
         this.geometryFactory = geometryFactory;
     }
 
-    @Transactional
     @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE)
     public void visitCreated(VisitCreatedEvent event) {
         try {
@@ -70,7 +70,6 @@ public class VisitMergingService {
     }
 
 
-    @Transactional
     @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE)
     public void visitUpdated(VisitUpdatedEvent event) {
         try {

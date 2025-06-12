@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -31,7 +32,6 @@ public class LocationDataService {
         this.geometryFactory = geometryFactory;
     }
 
-    @Transactional
     public List<RawLocationPoint> processLocationData(User user, List<LocationDataRequest.LocationPoint> points) {
         List<RawLocationPoint> savedPoints = new ArrayList<>();
         int duplicatesSkipped = 0;
@@ -56,7 +56,6 @@ public class LocationDataService {
         return savedPoints;
     }
 
-    @Transactional
     public Optional<RawLocationPoint> processSingleLocationPoint(User user, LocationDataRequest.LocationPoint point) {
         ZonedDateTime parse = ZonedDateTime.parse(point.getTimestamp());
         Instant timestamp = parse.toInstant();

@@ -11,13 +11,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 public class TripDetectionService {
@@ -28,56 +30,17 @@ public class TripDetectionService {
     private final RawLocationPointRepository rawLocationPointRepository;
     private final TripRepository tripRepository;
     private final UserRepository userRepository;
-    private final RabbitTemplate rabbitTemplate;
 
     public TripDetectionService(ProcessedVisitRepository processedVisitRepository,
                                 RawLocationPointRepository rawLocationPointRepository,
                                 TripRepository tripRepository,
-                                UserRepository userRepository,
-                                RabbitTemplate rabbitTemplate) {
+                                UserRepository userRepository) {
         this.processedVisitRepository = processedVisitRepository;
         this.rawLocationPointRepository = rawLocationPointRepository;
         this.tripRepository = tripRepository;
         this.userRepository = userRepository;
-        this.rabbitTemplate = rabbitTemplate;
     }
-//
-//    @RabbitListener(queues = RabbitMQConfig.DETECT_TRIP_QUEUE, concurrency = "1")
-//    public void visitUpdated(ProcessedVisitUpdatedEvent event) {
-//        Optional<User> user = userRepository.findByUsername(event.getUsername());
-//        if (user.isEmpty()) {
-//            logger.warn("User not found for userName: {}", event.getUsername());
-//            return;
-//        }
-//        logger.info("Update on processed visit [{}] received, will update trips containing that visit for user: {}", event.getVisitId(), event.getUsername());
-//        Optional<ProcessedVisit> processedVisit = this.processedVisitRepository.findById(event.getVisitId());
-//        if (processedVisit.isEmpty()) {
-//            logger.warn("Processed visit not found for user: [{}] and id [{}]", event.getUsername(), event.getVisitId());
-//        } else {
-//            ProcessedVisit visit = processedVisit.get();
-//            List<Trip> connectedTrips = this.tripRepository.findByUserAndStartVisitOrEndVisit(user.get(), visit, visit);
-//            for (Trip connectedTrip : connectedTrips) {
-//                //maybe the end got moved?
-//                boolean changed = false;
-//                if (connectedTrip.getEndVisit().equals(visit) && !connectedTrip.getEndTime().equals(visit.getStartTime())) {
-//                    logger.debug("end of trip [{}] got moved", connectedTrip.getId());
-//                    connectedTrip.setEndTime(visit.getStartTime());
-//                    changed = true;
-//                }
-//                //maybe the start got moved?
-//                if (connectedTrip.getStartVisit().equals(visit) && !connectedTrip.getStartTime().equals(visit.getEndTime())) {
-//                    logger.debug("start of trip [{}] got moved", connectedTrip.getId());
-//                    connectedTrip.setStartTime(visit.getEndTime());
-//                    changed = true;
-//                }
-//                if (changed) {
-//                    this.tripRepository.save(connectedTrip);
-//                }
-//            }
-//        }
-//    }
 
-    @Transactional
     @RabbitListener(queues = RabbitMQConfig.DETECT_TRIP_QUEUE, concurrency = "1")
     public void visitCreated(ProcessedVisitCreatedEvent event) {
         User user = this.userRepository.findByUsername(event.getUsername()).orElseThrow();

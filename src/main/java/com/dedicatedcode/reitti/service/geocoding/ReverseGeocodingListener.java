@@ -9,6 +9,9 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -28,6 +31,7 @@ public class ReverseGeocodingListener {
     }
     
     @RabbitListener(queues = RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE, concurrency = "1-16")
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.READ_UNCOMMITTED)
     public void handleSignificantPlaceCreated(SignificantPlaceCreatedEvent event) {
         logger.info("Received SignificantPlaceCreatedEvent for place ID: {}", event.getPlaceId());
         
