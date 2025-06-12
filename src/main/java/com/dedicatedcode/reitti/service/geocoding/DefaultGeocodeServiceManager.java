@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.service;
+package com.dedicatedcode.reitti.service.geocoding;
 
 import com.dedicatedcode.reitti.model.GeocodeService;
 import com.dedicatedcode.reitti.repository.GeocodeServiceRepository;
@@ -15,23 +15,22 @@ import org.springframework.web.client.RestTemplate;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @Service
-public class GeocodeServiceManager {
+public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
 
-    private static final Logger logger = LoggerFactory.getLogger(GeocodeServiceManager.class);
+    private static final Logger logger = LoggerFactory.getLogger(DefaultGeocodeServiceManager.class);
 
     private final GeocodeServiceRepository geocodeServiceRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final int maxErrors;
 
-    public GeocodeServiceManager(GeocodeServiceRepository geocodeServiceRepository,
-                                 RestTemplate restTemplate,
-                                 ObjectMapper objectMapper,
-                                 @Value("${reitti.geocoding.max-errors}") int maxErrors) {
+    public DefaultGeocodeServiceManager(GeocodeServiceRepository geocodeServiceRepository,
+                                        RestTemplate restTemplate,
+                                        ObjectMapper objectMapper,
+                                        @Value("${reitti.geocoding.max-errors}") int maxErrors) {
         this.geocodeServiceRepository = geocodeServiceRepository;
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
@@ -39,6 +38,7 @@ public class GeocodeServiceManager {
     }
 
     @Transactional
+    @Override
     public Optional<GeocodeResult> reverseGeocode(double latitude, double longitude) {
         List<GeocodeService> availableServices = geocodeServiceRepository.findByEnabledTrueOrderByLastUsedAsc();
 

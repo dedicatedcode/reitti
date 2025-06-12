@@ -13,6 +13,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,15 +60,22 @@ public class VisitMergingService {
     @Transactional
     @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE)
     public void visitCreated(VisitCreatedEvent event) {
-        handleEvent(event.getUsername(), event.getVisitId());
+        try {
+            handleEvent(event.getUsername(), event.getVisitId());
+        } catch (Exception e) {
+            logger.error("Could not handle event: {}", event);
+        }
     }
 
 
     @Transactional
     @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE)
     public void visitUpdated(VisitUpdatedEvent event) {
-        handleEvent(event.getUsername(), event.getVisitId());
-
+        try {
+            handleEvent(event.getUsername(), event.getVisitId());
+        } catch (Exception e) {
+            logger.debug("Could not handle event: {}", event);
+        }
     }
 
     private void handleEvent(String username, long visitId) {
@@ -247,17 +255,17 @@ public class VisitMergingService {
                                                 SignificantPlace place,
                                                 Instant startTime, Instant endTime,
                                                 Set<Long> originalVisitIds) {
-            // Create a new processed visit
-            ProcessedVisit processedVisit = new ProcessedVisit(user, place, startTime, endTime);
-            processedVisit.setMergedCount(originalVisitIds.size());
+        // Create a new processed visit
+        ProcessedVisit processedVisit = new ProcessedVisit(user, place, startTime, endTime);
+        processedVisit.setMergedCount(originalVisitIds.size());
 
-            // Store original visit IDs as comma-separated string
-            String visitIdsStr = originalVisitIds.stream()
-                    .map(Object::toString)
-                    .collect(Collectors.joining(","));
-            processedVisit.setOriginalVisitIds(visitIdsStr);
+        // Store original visit IDs as comma-separated string
+        String visitIdsStr = originalVisitIds.stream()
+                .map(Object::toString)
+                .collect(Collectors.joining(","));
+        processedVisit.setOriginalVisitIds(visitIdsStr);
 
-            return processedVisitRepository.save(processedVisit);
+        return processedVisitRepository.save(processedVisit);
     }
 
     private void publishSignificantPlaceCreatedEvent(SignificantPlace place) {

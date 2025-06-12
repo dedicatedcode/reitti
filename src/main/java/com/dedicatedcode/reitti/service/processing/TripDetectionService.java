@@ -173,9 +173,11 @@ public class TripDetectionService {
 
         // Save and return the trip
         try {
-            tripRepository.save(trip);
-        } catch (DataIntegrityViolationException e) {
-            logger.warn("Duplicated trip: {} detected. Will not store it.", trip);
+            if (this.processedVisitRepository.existsById(trip.getStartVisit().getId()) &&  this.processedVisitRepository.existsById(trip.getEndVisit().getId())) {
+                tripRepository.save(trip);
+            }
+        } catch (Exception e) {
+            logger.debug("Duplicated trip: [{}] detected. Will not store it.", trip);
         }
     }
 

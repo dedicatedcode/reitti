@@ -5,13 +5,10 @@ import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.model.RawLocationPoint;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.UserRepository;
-import com.dedicatedcode.reitti.service.LocationDataService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.rabbit.core.RabbitMessageOperations;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -46,15 +43,13 @@ public class LocationDataIngestPipeline {
 
         User user = userOpt.get();
 
-        // Step 1: Save raw location points (with duplicate checking)
         List<RawLocationPoint> savedPoints = locationDataService.processLocationData(user, event.getPoints());
 
         if (savedPoints.isEmpty()) {
-            logger.info("No new points to process for user {}", user.getUsername());
-            return;
+            logger.debug("No new points to process for user {}", user.getUsername());
+        } else {
+            logger.info("Saved {} new location points for user {}", savedPoints.size(), user.getUsername());
         }
-
-        logger.info("Saved {} new location points for user {}", savedPoints.size(), user.getUsername());
-        logger.debug("Completed processing pipeline for user {}", user.getUsername());
     }
+
 }

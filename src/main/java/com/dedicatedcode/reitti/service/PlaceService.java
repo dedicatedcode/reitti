@@ -34,7 +34,6 @@ public class PlaceService {
         
         SignificantPlace place = placeOpt.get();
         
-        // Security check: ensure the place belongs to the current user
         if (!place.getUser().getId().equals(currentUser.getId())) {
             throw new AccessDeniedException("You don't have permission to update this place");
         }

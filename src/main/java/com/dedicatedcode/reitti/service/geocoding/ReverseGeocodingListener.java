@@ -3,18 +3,11 @@ package com.dedicatedcode.reitti.service.geocoding;
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.repository.SignificantPlaceRepository;
-import com.dedicatedcode.reitti.service.GeocodeResult;
-import com.dedicatedcode.reitti.service.GeocodeServiceManager;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Isolation;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 
 import java.util.Optional;

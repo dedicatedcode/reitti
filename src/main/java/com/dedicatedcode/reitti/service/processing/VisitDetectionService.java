@@ -14,6 +14,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,7 +41,7 @@ public class VisitDetectionService {
     public VisitDetectionService(
             RawLocationPointRepository rawLocationPointRepository,
             @Value("${reitti.staypoint.distance-threshold-meters:50}") double distanceThreshold,
-            @Value("${reitti.staypoint.time-threshold-seconds:1200}") long timeThreshold,
+            @Value("${reitti.visit.merge-threshold-seconds:300}") long timeThreshold,
             @Value("${reitti.staypoint.min-points:5}") int minPointsInCluster,
             UserService userService,
             VisitRepository visitRepository,
@@ -109,8 +110,12 @@ public class VisitDetectionService {
                 }
 
                 if (changed) {
-                    visitRepository.save(visit);
-                    rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitUpdatedEvent(user.getUsername(), visit.getId()));
+                    try {
+                        visitRepository.save(visit);
+                        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitUpdatedEvent(user.getUsername(), visit.getId()));
+                    } catch (Exception e) {
+                        logger.debug("Could not save updated visit: {}", visit);
+                    }
                 }
             }
 
@@ -118,8 +123,12 @@ public class VisitDetectionService {
                 Visit visit = createVisit(user, stayPoint.getLongitude(), stayPoint.getLatitude(), stayPoint);
                 logger.debug("Creating new visit: {}", visit);
 
-                visit = visitRepository.save(visit);
-                rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitCreatedEvent(user.getUsername(), visit.getId()));
+                try {
+                    visit = visitRepository.save(visit);
+                    rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitCreatedEvent(user.getUsername(), visit.getId()));
+                } catch (Exception e) {
+                    logger.debug("Could not save new visit: {}", visit);
+                }
             }
         }
     }

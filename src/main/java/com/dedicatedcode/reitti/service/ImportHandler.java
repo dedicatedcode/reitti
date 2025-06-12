@@ -1,7 +1,10 @@
 package com.dedicatedcode.reitti.service;
 
+import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.model.User;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
@@ -22,6 +25,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -32,16 +36,16 @@ public class ImportHandler {
     private static final Logger logger = LoggerFactory.getLogger(ImportHandler.class);
     
     private final ObjectMapper objectMapper;
-    private final ImportListener importListener;
+    private final RabbitTemplate rabbitTemplate;
     private final int batchSize;
 
     @Autowired
     public ImportHandler(
             ObjectMapper objectMapper,
-            ImportListener importListener,
+            RabbitTemplate rabbitTemplate,
             @Value("${reitti.import.batch-size:100}") int batchSize) {
         this.objectMapper = objectMapper;
-        this.importListener = importListener;
+        this.rabbitTemplate = rabbitTemplate;
         this.batchSize = batchSize;
     }
     
@@ -80,26 +84,24 @@ public class ImportHandler {
                                     processedCount.incrementAndGet();
                                     
                                     // Process in batches to avoid memory issues
+
                                     if (batch.size() >= batchSize) {
-                                        this.importListener.handleImport(user, new ArrayList<>(batch));
-                                        logger.info("Queued batch of {} locations for processing", batch.size());
+                                        sendToQueue(user, batch);
                                         batch.clear();
                                     }
                                 }
                             } catch (Exception e) {
                                 logger.warn("Error processing location entry: {}", e.getMessage());
-                                // Continue with next location
                             }
                         }
                     }
                     
                     // Process any remaining locations
                     if (!batch.isEmpty()) {
-                        this.importListener.handleImport(user, new ArrayList<>(batch));
-                        logger.info("Queued final batch of {} locations for processing", batch.size());
+                        sendToQueue(user, batch);
                     }
                     
-                    break; // We've processed the locations array, no need to continue
+                    break;
                 }
             }
             
@@ -117,39 +119,7 @@ public class ImportHandler {
             return Map.of("success", false, "error", "Error processing Google Takeout file: " + e.getMessage());
         }
     }
-    
-    /**
-     * Converts a Google Takeout location entry to our LocationPoint format
-     */
-    private LocationDataRequest.LocationPoint convertGoogleTakeoutLocation(JsonNode locationNode) {
-        // Check if we have the required fields
-        if (!locationNode.has("latitudeE7") || 
-            !locationNode.has("longitudeE7") || 
-            !locationNode.has("timestamp")) {
-            return null;
-        }
-        
-        LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
-        
-        // Convert latitudeE7 and longitudeE7 to standard decimal format
-        // Google stores these as integers with 7 decimal places of precision
-        double latitude = locationNode.get("latitudeE7").asDouble() / 10000000.0;
-        double longitude = locationNode.get("longitudeE7").asDouble() / 10000000.0;
-        
-        point.setLatitude(latitude);
-        point.setLongitude(longitude);
-        point.setTimestamp(locationNode.get("timestamp").asText());
-        
-        // Set accuracy if available
-        if (locationNode.has("accuracy")) {
-            point.setAccuracyMeters(locationNode.get("accuracy").asDouble());
-        } else {
-            point.setAccuracyMeters(100.0);
-        }
-        
-        return point;
-    }
-    
+
     public Map<String, Object> importGpx(InputStream inputStream, User user) {
         AtomicInteger processedCount = new AtomicInteger(0);
         
@@ -178,8 +148,7 @@ public class ImportHandler {
                         
                         // Process in batches to avoid memory issues
                         if (batch.size() >= batchSize) {
-                            this.importListener.handleImport(user, new ArrayList<>(batch));
-                            logger.info("Queued batch of {} locations for processing", batch.size());
+                            sendToQueue(user, batch);
                             batch.clear();
                         }
                     }
@@ -191,9 +160,7 @@ public class ImportHandler {
             
             // Process any remaining locations
             if (!batch.isEmpty()) {
-                // Create and publish event to RabbitMQ
-                this.importListener.handleImport(user, new ArrayList<>(batch));
-                logger.info("Queued final batch of {} locations for processing", batch.size());
+                sendToQueue(user, batch);
             }
             
             logger.info("Successfully imported and queued {} location points from GPX file for user {}",
@@ -210,7 +177,83 @@ public class ImportHandler {
             return Map.of("success", false, "error", "Error processing GPX file: " + e.getMessage());
         }
     }
-    
+
+    public Map<String, Object> importGeoJson(InputStream inputStream, User user) {
+        AtomicInteger processedCount = new AtomicInteger(0);
+
+        try {
+            JsonNode rootNode = objectMapper.readTree(inputStream);
+
+            // Check if it's a valid GeoJSON
+            if (!rootNode.has("type")) {
+                return Map.of("success", false, "error", "Invalid GeoJSON: missing 'type' field");
+            }
+
+            String type = rootNode.get("type").asText();
+            List<LocationDataRequest.LocationPoint> batch = new ArrayList<>(batchSize);
+
+            switch (type) {
+                case "FeatureCollection" -> {
+                    // Process FeatureCollection
+                    if (!rootNode.has("features")) {
+                        return Map.of("success", false, "error", "Invalid FeatureCollection: missing 'features' array");
+                    }
+
+                    JsonNode features = rootNode.get("features");
+                    for (JsonNode feature : features) {
+                        LocationDataRequest.LocationPoint point = convertGeoJsonFeature(feature);
+                        if (point != null) {
+                            batch.add(point);
+                            processedCount.incrementAndGet();
+
+                            if (batch.size() >= batchSize) {
+                                sendToQueue(user, batch);
+                                batch.clear();
+                            }
+                        }
+                    }
+                }
+                case "Feature" -> {
+                    // Process single Feature
+                    LocationDataRequest.LocationPoint point = convertGeoJsonFeature(rootNode);
+                    if (point != null) {
+                        batch.add(point);
+                        processedCount.incrementAndGet();
+                    }
+                }
+                case "Point" -> {
+                    // Process single Point geometry
+                    LocationDataRequest.LocationPoint point = convertGeoJsonGeometry(rootNode, null);
+                    if (point != null) {
+                        batch.add(point);
+                        processedCount.incrementAndGet();
+                    }
+                }
+                case null, default -> {
+                    return Map.of("success", false, "error", "Unsupported GeoJSON type: " + type + ". Only FeatureCollection, Feature, and Point are supported.");
+                }
+            }
+
+            // Process any remaining locations
+            if (!batch.isEmpty()) {
+                sendToQueue(user, batch);
+            }
+
+            logger.info("Successfully imported and queued {} location points from GeoJSON file for user {}",
+                    processedCount.get(), user.getUsername());
+
+            return Map.of(
+                    "success", true,
+                    "message", "Successfully queued " + processedCount.get() + " location points for processing",
+                    "pointsReceived", processedCount.get()
+            );
+
+        } catch (IOException e) {
+            logger.error("Error processing GeoJSON file", e);
+            return Map.of("success", false, "error", "Error processing GeoJSON file: " + e.getMessage());
+        }
+    }
+
     /**
      * Converts a GPX track point to our LocationPoint format
      */
@@ -248,82 +291,36 @@ public class ImportHandler {
         return point;
     }
 
-    public Map<String, Object> importGeoJson(InputStream inputStream, User user) {
-        AtomicInteger processedCount = new AtomicInteger(0);
-
-        try {
-            JsonNode rootNode = objectMapper.readTree(inputStream);
-
-            // Check if it's a valid GeoJSON
-            if (!rootNode.has("type")) {
-                return Map.of("success", false, "error", "Invalid GeoJSON: missing 'type' field");
-            }
-
-            String type = rootNode.get("type").asText();
-            List<LocationDataRequest.LocationPoint> batch = new ArrayList<>(batchSize);
-
-            switch (type) {
-                case "FeatureCollection" -> {
-                    // Process FeatureCollection
-                    if (!rootNode.has("features")) {
-                        return Map.of("success", false, "error", "Invalid FeatureCollection: missing 'features' array");
-                    }
-
-                    JsonNode features = rootNode.get("features");
-                    for (JsonNode feature : features) {
-                        LocationDataRequest.LocationPoint point = convertGeoJsonFeature(feature);
-                        if (point != null) {
-                            batch.add(point);
-                            processedCount.incrementAndGet();
-
-                            if (batch.size() >= batchSize) {
-                                this.importListener.handleImport(user, new ArrayList<>(batch));
-                                logger.info("Queued batch of {} locations for processing", batch.size());
-                                batch.clear();
-                            }
-                        }
-                    }
-                }
-                case "Feature" -> {
-                    // Process single Feature
-                    LocationDataRequest.LocationPoint point = convertGeoJsonFeature(rootNode);
-                    if (point != null) {
-                        batch.add(point);
-                        processedCount.incrementAndGet();
-                    }
-                }
-                case "Point" -> {
-                    // Process single Point geometry
-                    LocationDataRequest.LocationPoint point = convertGeoJsonGeometry(rootNode, null);
-                    if (point != null) {
-                        batch.add(point);
-                        processedCount.incrementAndGet();
-                    }
-                }
-                case null, default -> {
-                    return Map.of("success", false, "error", "Unsupported GeoJSON type: " + type + ". Only FeatureCollection, Feature, and Point are supported.");
-                }
-            }
-
-            // Process any remaining locations
-            if (!batch.isEmpty()) {
-                this.importListener.handleImport(user, new ArrayList<>(batch));
-                logger.info("Queued final batch of {} locations for processing", batch.size());
-            }
-
-            logger.info("Successfully imported and queued {} location points from GeoJSON file for user {}",
-                    processedCount.get(), user.getUsername());
-
-            return Map.of(
-                    "success", true,
-                    "message", "Successfully queued " + processedCount.get() + " location points for processing",
-                    "pointsReceived", processedCount.get()
-            );
-
-        } catch (IOException e) {
-            logger.error("Error processing GeoJSON file", e);
-            return Map.of("success", false, "error", "Error processing GeoJSON file: " + e.getMessage());
+    /**
+     * Converts a Google Takeout location entry to our LocationPoint format
+     */
+    private LocationDataRequest.LocationPoint convertGoogleTakeoutLocation(JsonNode locationNode) {
+        // Check if we have the required fields
+        if (!locationNode.has("latitudeE7") ||
+                !locationNode.has("longitudeE7") ||
+                !locationNode.has("timestamp")) {
+            return null;
         }
+
+        LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
+
+        // Convert latitudeE7 and longitudeE7 to standard decimal format
+        // Google stores these as integers with 7 decimal places of precision
+        double latitude = locationNode.get("latitudeE7").asDouble() / 10000000.0;
+        double longitude = locationNode.get("longitudeE7").asDouble() / 10000000.0;
+
+        point.setLatitude(latitude);
+        point.setLongitude(longitude);
+        point.setTimestamp(locationNode.get("timestamp").asText());
+
+        // Set accuracy if available
+        if (locationNode.has("accuracy")) {
+            point.setAccuracyMeters(locationNode.get("accuracy").asDouble());
+        } else {
+            point.setAccuracyMeters(100.0);
+        }
+
+        return point;
     }
 
     /**
@@ -400,4 +397,18 @@ public class ImportHandler {
 
         return point;
     }
+
+    private void sendToQueue(User user, List<LocationDataRequest.LocationPoint> batch) {
+        LocationDataEvent event = new LocationDataEvent(
+                user.getUsername(),
+                batch
+        );
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.EXCHANGE_NAME,
+                RabbitMQConfig.LOCATION_DATA_ROUTING_KEY,
+                event
+        );
+        logger.info("Queued batch of {} locations for processing", batch.size());
+    }
+
 }
