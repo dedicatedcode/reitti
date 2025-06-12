@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.model;
 
 import jakarta.persistence.*;
-import org.locationtech.jts.geom.Point;
 
 import java.time.Instant;
 
