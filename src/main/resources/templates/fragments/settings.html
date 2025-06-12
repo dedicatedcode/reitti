@@ -43,8 +43,7 @@
                 <td th:text="${token.lastUsedAt != null ? #temporals.format(token.lastUsedAt, 'yyyy-MM-dd HH:mm') : 'Never'}"></td>
                 <td>
                     <button class="btn btn-danger" 
-                            th:attr="hx-post=@{/settings/tokens/{id}/delete(id=${token.id})}"
-                            th:attr="hx-confirm=#{tokens.delete.confirm}"
+                            th:attr="hx-post=@{/settings/tokens/{id}/delete(id=${token.id})}, hx-confirm=#{tokens.delete.confirm}"
                             hx-target="#api-tokens"
                             hx-swap="innerHTML"
                             th:text="#{form.delete}">Delete</button>
@@ -91,8 +90,7 @@
                     <span th:if="${user.username == currentUsername}" th:text="#{users.current.user}">(Current User)</span>
                     <button th:if="${user.username != currentUsername}" 
                             class="btn btn-danger"
-                            th:attr="hx-post=@{/settings/users/{id}/delete(id=${user.id})}"
-                            th:attr="hx-confirm=#{users.delete.confirm}"
+                            th:attr="hx-post=@{/settings/users/{id}/delete(id=${user.id})}, hx-confirm=#{users.delete.confirm}"
                             hx-target="#user-management"
                             hx-swap="innerHTML"
                             th:text="#{form.delete}">Delete</button>
