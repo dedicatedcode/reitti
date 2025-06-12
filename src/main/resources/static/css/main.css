@@ -467,7 +467,7 @@ button:hover {
 
 .language-buttons {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 15px;
     max-width: 800px;
 }
@@ -476,7 +476,7 @@ button:hover {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    padding: 15px 20px;
+    padding: 0 20px;
     background-color: var(--color-background-dark-light);
     color: var(--color-text-white);
     border: 2px solid transparent;

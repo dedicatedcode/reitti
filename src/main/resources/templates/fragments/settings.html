@@ -417,36 +417,28 @@
         <div class="language-buttons">
             <a class="btn language-btn"
                     th:classappend="${#locale.language == 'en'} ? 'active' : ''"
-                    href="/?lang=en"
-                    hx-target="#language-settings"
-                    hx-swap="innerHTML">
+                    href="/?lang=en">
                 <span class="language-flag">🇺🇸</span>
                 <span class="language-name">English</span>
             </a>
             
             <a class="btn language-btn"
                     th:classappend="${#locale.language == 'fi'} ? 'active' : ''"
-                    href="/?lang=fi"
-                    hx-target="#language-settings"
-                    hx-swap="innerHTML">
+                    href="/?lang=fi">
                 <span class="language-flag">🇫🇮</span>
                 <span class="language-name">Suomi</span>
             </a>
             
             <a class="btn language-btn"
                     th:classappend="${#locale.language == 'de'} ? 'active' : ''"
-                    href="/?lang=de"
-                    hx-target="#language-settings"
-                    hx-swap="innerHTML">
+                    href="/?lang=de">
                 <span class="language-flag">🇩🇪</span>
                 <span class="language-name">Deutsch</span>
             </a>
             
             <a class="btn language-btn"
                     th:classappend="${#locale.language == 'fr'} ? 'active' : ''"
-                    href="/?lang=fr"
-                    hx-target="#language-settings"
-                    hx-swap="innerHTML">
+                    href="/?lang=fr">
                 <span class="language-flag">🇫🇷</span>
                 <span class="language-name">Français</span>
             </a>
