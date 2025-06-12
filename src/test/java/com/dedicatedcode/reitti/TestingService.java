@@ -68,7 +68,7 @@ public class TestingService {
     public void awaitDataImport(int seconds) {
         this.lastRun.set(0);
         Awaitility.await()
-                .pollInterval(1, TimeUnit.SECONDS)
+                .pollInterval(10, TimeUnit.SECONDS)
                 .atMost(seconds, TimeUnit.SECONDS)
                 .alias("Wait for Queues to be empty").until(() -> {
                     boolean queuesArEmpty = QUEUES_TO_CHECK.stream().allMatch(name -> this.rabbitAdmin.getQueueInfo(name).getMessageCount() == 0);
