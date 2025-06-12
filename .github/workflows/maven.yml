@@ -9,9 +9,6 @@
 name: Branch build
 
 on:
-  push:
-    branches-ignore:
-      - main
   pull_request:
     branches:
       - main
@@ -27,7 +24,7 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Build with Maven
-      run: mvn --batch-mode --update-snapshots verify
+      run: mvn verify
     - name: Create bundle
       run: mkdir staging && cp target/*.jar staging
     - name: Upload packages

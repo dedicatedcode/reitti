@@ -22,7 +22,7 @@ jobs:
           distribution: 'temurin'
           cache: maven
       - name: Build
-        run: mvn --batch-mode verify
+        run: mvn verify
       - name: Create bundle
         run: mkdir staging && cp target/*.jar staging
       - name: Upload packages
