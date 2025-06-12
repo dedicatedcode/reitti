@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reitti - Your Location Timeline</title>
+    <title th:text="#{page.title}">Reitti - Your Location Timeline</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -28,14 +28,15 @@
         <span class="close-settings">&times;</span>
 
         <div class="settings-nav">
-            <div class="settings-nav-item active" data-target="api-tokens">API Tokens</div>
-            <div class="settings-nav-item" data-target="user-management">User Management</div>
-            <div class="settings-nav-item" data-target="places-management">Places</div>
-            <div class="settings-nav-item" data-target="geocode-services">Geocoding</div>
-            <div class="settings-nav-item" data-target="integrations" hx-get="/settings/integrations-content" hx-target="#integrations">Integrations</div>
-            <div class="settings-nav-item" data-target="manage-data">Manage Data</div>
-            <div class="settings-nav-item" data-target="job-status">Job Status</div>
-            <div class="settings-nav-item" data-target="file-upload">Import Data</div>
+            <div class="settings-nav-item active" data-target="api-tokens" th:text="#{settings.api.tokens}">API Tokens</div>
+            <div class="settings-nav-item" data-target="user-management" th:text="#{settings.user.management}">User Management</div>
+            <div class="settings-nav-item" data-target="places-management" th:text="#{settings.places}">Places</div>
+            <div class="settings-nav-item" data-target="geocode-services" th:text="#{settings.geocoding}">Geocoding</div>
+            <div class="settings-nav-item" data-target="integrations" hx-get="/settings/integrations-content" hx-target="#integrations" th:text="#{settings.integrations}">Integrations</div>
+            <div class="settings-nav-item" data-target="manage-data" th:text="#{settings.manage.data}">Manage Data</div>
+            <div class="settings-nav-item" data-target="job-status" th:text="#{settings.job.status}">Job Status</div>
+            <div class="settings-nav-item" data-target="file-upload" th:text="#{settings.import.data}">Import Data</div>
+            <div class="settings-nav-item" data-target="language-settings" th:text="#{language.select}">Select Language</div>
         </div>
 
         <!-- API Tokens Section -->
@@ -133,22 +134,33 @@
         <div id="file-upload" class="settings-section">
             <div class="htmx-indicator">Loading file upload options...</div>
         </div>
+
+        <!-- Language Settings Section -->
+        <div id="language-settings" class="settings-section">
+            <h2 th:text="#{language.select}">Select Language</h2>
+            <div class="language-options" style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 20px;">
+                <a href="?lang=en" class="btn" th:text="#{language.english}" style="text-decoration: none; display: inline-block;">English</a>
+                <a href="?lang=fi" class="btn" th:text="#{language.finnish}" style="text-decoration: none; display: inline-block;">Finnish</a>
+                <a href="?lang=de" class="btn" th:text="#{language.german}" style="text-decoration: none; display: inline-block;">German</a>
+                <a href="?lang=fr" class="btn" th:text="#{language.french}" style="text-decoration: none; display: inline-block;">French</a>
+            </div>
+        </div>
     </div>
 </div>
 
 
 <div class="timeline">
     <span class="timeline-header">
-        <a href="#" id="settings-button" class="nav-link"><i class="lni lni-gear-1" title="open settings ..."></i></a>
+        <a href="#" id="settings-button" class="nav-link"><i class="lni lni-gear-1" th:title="#{nav.settings.tooltip}"></i></a>
         <form th:action="@{/logout}" method="post" >
-            <button type="submit" class="nav-link" style="font-size: 1.4rem;" title="logout"><i
+            <button type="submit" class="nav-link" style="font-size: 1.4rem;" th:title="#{nav.logout.tooltip}"><i
                     class="lni lni-exit"></i>
             </button>
         </form>
     </span>
 
     <div class="timeline-container">
-        <div id="loading-indicator" style="display: none;">Loading...</div>
+        <div id="loading-indicator" style="display: none;" th:text="#{timeline.loading}">Loading...</div>
         <!-- Timeline entries will be loaded here -->
     </div>
 </div>
@@ -156,7 +168,46 @@
 <!-- Horizontal date picker will be initialized here -->
 <div id="horizontal-date-picker-container"></div>
 
-<script>
+<script th:inline="javascript">
+    // Locale object for JavaScript
+    window.locale = {
+        loading: /*[[#{timeline.loading}]]*/ 'Loading...',
+        noData: /*[[#{timeline.no.data}]]*/ 'No timeline data available for this date.',
+        duration: /*[[#{timeline.duration}]]*/ 'Duration',
+        distance: /*[[#{timeline.distance}]]*/ 'Distance',
+        trip: /*[[#{timeline.trip}]]*/ 'Trip',
+        transportWalking: /*[[#{timeline.transport.walking}]]*/ 'by foot',
+        transportCycling: /*[[#{timeline.transport.cycling}]]*/ 'by bike',
+        transportDriving: /*[[#{timeline.transport.driving}]]*/ 'by car',
+        today: /*[[#{datepicker.today}]]*/ 'Today',
+        days: [
+            /*[[#{datepicker.days.sun}]]*/ 'Sun',
+            /*[[#{datepicker.days.mon}]]*/ 'Mon',
+            /*[[#{datepicker.days.tue}]]*/ 'Tue',
+            /*[[#{datepicker.days.wed}]]*/ 'Wed',
+            /*[[#{datepicker.days.thu}]]*/ 'Thu',
+            /*[[#{datepicker.days.fri}]]*/ 'Fri',
+            /*[[#{datepicker.days.sat}]]*/ 'Sat'
+        ],
+        months: [
+            /*[[#{datepicker.months.jan}]]*/ 'Jan',
+            /*[[#{datepicker.months.feb}]]*/ 'Feb',
+            /*[[#{datepicker.months.mar}]]*/ 'Mar',
+            /*[[#{datepicker.months.apr}]]*/ 'Apr',
+            /*[[#{datepicker.months.may}]]*/ 'May',
+            /*[[#{datepicker.months.jun}]]*/ 'Jun',
+            /*[[#{datepicker.months.jul}]]*/ 'Jul',
+            /*[[#{datepicker.months.aug}]]*/ 'Aug',
+            /*[[#{datepicker.months.sep}]]*/ 'Sep',
+            /*[[#{datepicker.months.oct}]]*/ 'Oct',
+            /*[[#{datepicker.months.nov}]]*/ 'Nov',
+            /*[[#{datepicker.months.dec}]]*/ 'Dec'
+        ]
+    };
+    
+    // Set locale for HumanizeDuration
+    const currentLocale = /*[[${#locale.language}]]*/ 'en';
+
     document.addEventListener('DOMContentLoaded', function () {
         // Settings overlay functionality
         const settingsButton = document.getElementById('settings-button');
@@ -363,7 +414,7 @@
             if (!data || !data.entries || data.entries.length === 0) {
                 const noDataMsg = document.createElement('div');
                 noDataMsg.className = 'timeline-entry';
-                noDataMsg.textContent = 'No timeline data available for this date.';
+                noDataMsg.textContent = window.locale.noData;
                 timelineContainer.appendChild(noDataMsg);
                 return;
             }
@@ -450,11 +501,15 @@
 
                 // Calculate duration
                 const durationMs = endTime - startTime;
-                const durationText = humanizeDuration(durationMs, {units: ["h", "m"], round: true});
+                const durationText = humanizeDuration(durationMs, {
+                    units: ["h", "m"], 
+                    round: true,
+                    language: currentLocale
+                });
 
                 const durationElement = document.createElement('span');
                 durationElement.className = 'entry-duration';
-                durationElement.textContent = `Duration: ${durationText}`;
+                durationElement.textContent = `${window.locale.duration}: ${durationText}`;
 
                 // Create description element
                 const descElement = document.createElement('div');
@@ -463,22 +518,22 @@
                 if (entry.type === 'VISIT') {
                     descElement.textContent = entry.place ? entry.place.name || 'Unknown Place' : 'Unknown Place';
                 } else if (entry.type === 'TRIP') {
-                    descElement.textContent = `Trip`;
+                    descElement.textContent = window.locale.trip;
                     if (entry.distanceMeters) {
                         const distanceKm = (entry.distanceMeters / 1000).toFixed(1);
-                        durationElement.textContent = `Distance: ${distanceKm} km `;
+                        durationElement.textContent = `${window.locale.distance}: ${distanceKm} km `;
                     }
 
                     if (entry.transportMode) {
                         switch (entry.transportMode) {
                             case 'WALKING':
-                                durationElement.textContent += entry.distanceMeters ? ' by foot' : ' walking';
+                                durationElement.textContent += entry.distanceMeters ? ` ${window.locale.transportWalking}` : ` ${window.locale.transportWalking}`;
                                 break;
                             case 'CYCLING':
-                                durationElement.textContent += entry.distanceMeters ? ' by bike' : ' cycling';
+                                durationElement.textContent += entry.distanceMeters ? ` ${window.locale.transportCycling}` : ` ${window.locale.transportCycling}`;
                                 break;
                             case 'DRIVING':
-                                durationElement.textContent += entry.distanceMeters ? ' by car' : ' driving';
+                                durationElement.textContent += entry.distanceMeters ? ` ${window.locale.transportDriving}` : ` ${window.locale.transportDriving}`;
                                 break;
                         }
 

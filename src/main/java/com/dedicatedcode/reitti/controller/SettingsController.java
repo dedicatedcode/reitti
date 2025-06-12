@@ -6,7 +6,10 @@ import com.dedicatedcode.reitti.repository.GeocodeServiceRepository;
 import com.dedicatedcode.reitti.service.*;
 import com.dedicatedcode.reitti.service.processing.RawLocationPointProcessingTrigger;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
@@ -35,6 +38,9 @@ public class SettingsController {
     private final RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger;
     private final int maxErrors;
     private final boolean dataManagementEnabled;
+    
+    @Autowired
+    private MessageSource messageSource;
 
     public SettingsController(ApiTokenService apiTokenService, UserService userService,
                               QueueStatsService queueStatsService, PlaceService placeService,
@@ -52,6 +58,10 @@ public class SettingsController {
         this.rawLocationPointProcessingTrigger = rawLocationPointProcessingTrigger;
         this.maxErrors = maxErrors;
         this.dataManagementEnabled = dataManagementEnabled;
+    }
+    
+    private String getMessage(String key, Object... args) {
+        return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
     }
 
     @GetMapping("/api-tokens-content")
@@ -104,9 +114,9 @@ public class SettingsController {
 
         try {
             ApiToken token = apiTokenService.createToken(user, name);
-            model.addAttribute("successMessage", "Token created successfully");
+            model.addAttribute("successMessage", getMessage("message.success.token.created"));
         } catch (Exception e) {
-            model.addAttribute("errorMessage", "Error creating token: " + e.getMessage());
+            model.addAttribute("errorMessage", getMessage("message.error.token.creation", e.getMessage()));
         }
 
         // Get updated token list and add to model
@@ -123,9 +133,9 @@ public class SettingsController {
 
         try {
             apiTokenService.deleteToken(tokenId);
-            model.addAttribute("successMessage", "Token deleted successfully");
+            model.addAttribute("successMessage", getMessage("message.success.token.deleted"));
         } catch (Exception e) {
-            model.addAttribute("errorMessage", "Error deleting token: " + e.getMessage());
+            model.addAttribute("errorMessage", getMessage("message.error.token.deletion", e.getMessage()));
         }
 
         // Get updated token list and add to model
@@ -143,13 +153,13 @@ public class SettingsController {
 
         // Prevent self-deletion
         if (currentUser.getId().equals(userId)) {
-            model.addAttribute("errorMessage", "You cannot delete your own account");
+            model.addAttribute("errorMessage", getMessage("message.error.user.self.delete"));
         } else {
             try {
                 userService.deleteUser(userId);
-                model.addAttribute("successMessage", "User deleted successfully");
+                model.addAttribute("successMessage", getMessage("message.success.user.deleted"));
             } catch (Exception e) {
-                model.addAttribute("errorMessage", "Error deleting user: " + e.getMessage());
+                model.addAttribute("errorMessage", getMessage("message.error.user.deletion", e.getMessage()));
             }
         }
 
@@ -173,10 +183,10 @@ public class SettingsController {
             User currentUser = userService.getUserByUsername(authentication.getName());
             placeService.updatePlaceName(placeId, name, currentUser);
 
-            response.put("message", "Place updated successfully");
+            response.put("message", getMessage("message.success.place.updated"));
             response.put("success", true);
         } catch (Exception e) {
-            response.put("message", "Error updating place: " + e.getMessage());
+            response.put("message", getMessage("message.error.place.update", e.getMessage()));
             response.put("success", false);
         }
 
@@ -193,9 +203,9 @@ public class SettingsController {
 
         try {
             userService.createUser(username, displayName, password);
-            model.addAttribute("successMessage", "User created successfully");
+            model.addAttribute("successMessage", getMessage("message.success.user.created"));
         } catch (Exception e) {
-            model.addAttribute("errorMessage", "Error creating user: " + e.getMessage());
+            model.addAttribute("errorMessage", getMessage("message.error.user.creation", e.getMessage()));
         }
 
         // Get updated user list and add to model
@@ -220,7 +230,7 @@ public class SettingsController {
 
         try {
             userService.updateUser(userId, username, displayName, password);
-            model.addAttribute("successMessage", "User updated successfully");
+            model.addAttribute("successMessage", getMessage("message.success.user.updated"));
 
             // If the current user was updated, update the authentication
             if (isCurrentUser && !currentUsername.equals(username)) {
@@ -229,7 +239,7 @@ public class SettingsController {
                 model.addAttribute("newUsername", username);
             }
         } catch (Exception e) {
-            model.addAttribute("errorMessage", "Error updating user: " + e.getMessage());
+            model.addAttribute("errorMessage", getMessage("message.error.user.update", e.getMessage()));
         }
 
         // Get updated user list and add to model
@@ -458,9 +468,9 @@ public class SettingsController {
 
             rawLocationPointProcessingTrigger.start();
 
-            model.addAttribute("successMessage", "Processing started successfully. Check the Job Status tab to monitor progress.");
+            model.addAttribute("successMessage", getMessage("data.process.success"));
         } catch (Exception e) {
-            model.addAttribute("errorMessage", "Error starting processing: " + e.getMessage());
+            model.addAttribute("errorMessage", getMessage("data.process.error", e.getMessage()));
         }
 
         return "fragments/settings :: manage-data-content";
@@ -480,9 +490,9 @@ public class SettingsController {
         try {
             GeocodeService service = new GeocodeService(name, urlTemplate);
             geocodeServiceRepository.save(service);
-            model.addAttribute("successMessage", "Geocode service created successfully");
+            model.addAttribute("successMessage", getMessage("message.success.geocode.created"));
         } catch (Exception e) {
-            model.addAttribute("errorMessage", "Error creating geocode service: " + e.getMessage());
+            model.addAttribute("errorMessage", getMessage("message.error.geocode.creation", e.getMessage()));
         }
 
         model.addAttribute("geocodeServices", geocodeServiceRepository.findAllByOrderByNameAsc());

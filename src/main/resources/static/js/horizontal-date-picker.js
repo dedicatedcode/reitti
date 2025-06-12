@@ -757,13 +757,13 @@ class HorizontalDatePicker {
     }
     
     getDayName(date) {
-        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        return days[date.getDay()];
+        return window.locale?.days ? window.locale.days[date.getDay()] : 
+               ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
     }
     
     getMonthName(date) {
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        return months[date.getMonth()];
+        return window.locale?.months ? window.locale.months[date.getMonth()] :
+               ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][date.getMonth()];
     }
     
     isSameDay(date1, date2) {
@@ -826,7 +826,7 @@ class HorizontalDatePicker {
             if (this.options.showTodayButton) {
                 const todayButton = document.createElement('div');
                 todayButton.className = 'today-button';
-                todayButton.innerHTML = '<i class="fas fa-calendar-day"></i> Today';
+                todayButton.innerHTML = `<i class="fas fa-calendar-day"></i> ${window.locale?.today || 'Today'}`;
                 todayButton.addEventListener('click', () => {
                     this.goToToday();
                 });
