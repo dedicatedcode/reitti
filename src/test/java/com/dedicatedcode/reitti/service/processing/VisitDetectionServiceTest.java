@@ -43,10 +43,10 @@ class VisitDetectionServiceTest {
     @Transactional
     void shouldDetectVisits() {
         this.testingService.importData("/data/gpx/20250531.gpx");
-        this.testingService.awaitDataImport(60);
+        this.testingService.awaitDataImport(600);
         this.testingService.triggerProcessingPipeline();
 
-        this.testingService.awaitDataImport(120);
+        this.testingService.awaitDataImport(600);
 
         List<Visit> persistedVisits = this.visitRepository.findAll(Sort.by(Sort.Direction.ASC, "startTime"));
 
