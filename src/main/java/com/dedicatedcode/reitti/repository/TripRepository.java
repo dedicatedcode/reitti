@@ -32,4 +32,6 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
     boolean existsByUserAndStartTimeAndEndTime(User user, Instant startTime, Instant endTime);
 
     boolean existsByUserAndStartPlaceAndEndPlaceAndStartTimeAndEndTime(User user, SignificantPlace startPlace, SignificantPlace endPlace, Instant startTime, Instant endTime);
+
+    List<Trip> findByUserAndStartVisitOrEndVisit(User user, ProcessedVisit startVisit, ProcessedVisit endVisit);
 }

@@ -1,14 +1,12 @@
 package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
-import com.dedicatedcode.reitti.event.MergeVisitEvent;
-import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
+import com.dedicatedcode.reitti.event.*;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.*;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
-import org.locationtech.jts.geom.PrecisionModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -16,9 +14,11 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -38,8 +38,6 @@ public class VisitMergingService {
     private long mergeThresholdSeconds;
     @Value("${reitti.visit.merge-threshold-meters:100}")
     private long mergeThresholdMeters;
-    @Value("${reitti.detect-trips-after-merging:true}")
-    private boolean detectTripsAfterMerging;
 
     @Autowired
     public VisitMergingService(VisitRepository visitRepository,
@@ -58,32 +56,61 @@ public class VisitMergingService {
         this.geometryFactory = geometryFactory;
     }
 
+    @Transactional
     @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE)
-    public void mergeVisits(MergeVisitEvent event) {
-        Optional<User> user = userRepository.findByUsername(event.getUserName());
-        if (user.isEmpty()) {
-            logger.warn("User not found for userName: {}", event.getUserName());
-            return;
-        }
-        processAndMergeVisits(user.get(), event.getStartTime(), event.getEndTime());
+    public void visitCreated(VisitCreatedEvent event) {
+        handleEvent(event.getUsername(), event.getVisitId());
     }
 
-    private void processAndMergeVisits(User user, Long startTime, Long endTime) {
-        logger.info("Processing and merging visits for user: {}", user.getUsername());
 
-        List<Visit> allVisits;
+    @Transactional
+    @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE)
+    public void visitUpdated(VisitUpdatedEvent event) {
+        handleEvent(event.getUsername(), event.getVisitId());
 
-        // Get all unprocessed visits for the user
-        if (startTime == null || endTime == null) {
-            allVisits = this.visitRepository.findByUser(user);
-            this.processedVisitRepository.deleteProcessedVisitByUser(user);
-        } else {
-            Instant startWindow = Instant.ofEpochMilli(startTime);
-            Instant endWindow = Instant.ofEpochMilli(endTime);
-            allVisits = this.visitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user, startWindow, endWindow);
-            this.processedVisitRepository.deleteProcessedVisitByUserAndStartTimeBeforeAndEndTimeIsAfter(user, endWindow, startWindow);
+    }
+
+    private void handleEvent(String username, long visitId) {
+        Optional<User> user = userRepository.findByUsername(username);
+        if (user.isEmpty()) {
+            logger.warn("User not found for userName: {}", username);
+            return;
         }
 
+        Optional<Visit> visitOpt = this.visitRepository.findById(visitId);
+        if (visitOpt.isEmpty()) {
+            logger.debug("Visit not found for visitId: {}", visitId);
+            return;
+        }
+
+
+        Visit visit = visitOpt.get();
+        Instant searchStart = visit.getStartTime().minus(1, ChronoUnit.DAYS);
+        Instant searchEnd = visit.getEndTime().plus(1, ChronoUnit.DAYS);
+        processAndMergeVisits(user.get(), searchStart.toEpochMilli(), searchEnd.toEpochMilli());
+    }
+
+    private void processAndMergeVisits(User user, Long start, Long end) {
+        logger.info("Processing and merging visits for user: {}", user.getUsername());
+
+
+        Instant searchStart = Instant.ofEpochMilli(start);
+        Instant searchEnd = Instant.ofEpochMilli(end);
+        List<ProcessedVisit> visitsAtStart = this.processedVisitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user, searchStart, searchEnd);
+        List<ProcessedVisit> visitsAtEnd = this.processedVisitRepository.findByUserAndEndTimeBetweenOrderByStartTimeAsc(user, searchStart, searchEnd);
+
+        if (!visitsAtStart.isEmpty()) {
+            searchStart = visitsAtStart.getFirst().getStartTime().minus(1, ChronoUnit.DAYS);
+        }
+        if (!visitsAtEnd.isEmpty()) {
+            searchEnd = visitsAtEnd.getLast().getEndTime().plus(1, ChronoUnit.DAYS);
+        }
+        logger.debug("found {} processed visits at start and {} processed visits at end, will extend search window to {} and {}", visitsAtStart.size(), visitsAtEnd.size(), searchStart, searchEnd);
+
+
+        List<ProcessedVisit> allProcessedVisitsInRange = this.processedVisitRepository.findByUserAndStartTimeGreaterThanEqualAndEndTimeLessThanEqual(user, searchStart, searchEnd);
+        this.processedVisitRepository.deleteAll(allProcessedVisitsInRange);
+        List<Visit> allVisits = this.visitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user, searchStart, searchEnd);
         if (allVisits.isEmpty()) {
             logger.info("No visits found for user: {}", user.getUsername());
             return;
@@ -95,19 +122,11 @@ public class VisitMergingService {
         // Process all visits chronologically to avoid overlaps
         List<ProcessedVisit> processedVisits = mergeVisitsChronologically(user, allVisits);
 
-        // Mark all visits as processed
-        if (!allVisits.isEmpty()) {
-            allVisits.forEach(visit -> visit.setProcessed(true));
-            visitRepository.saveAll(allVisits);
-            logger.debug("Marked {} visits as processed for user: {}", allVisits.size(), user.getUsername());
-        }
-
+        processedVisits.stream()
+                .sorted(Comparator.comparing(ProcessedVisit::getStartTime))
+                .forEach(processedVisit -> this.rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, new ProcessedVisitCreatedEvent(user.getUsername(), processedVisit.getId())));
         logger.debug("Processed {} visits into {} merged visits for user: {}",
                 allVisits.size(), processedVisits.size(), user.getUsername());
-
-        if (!processedVisits.isEmpty() && detectTripsAfterMerging) {
-            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, new MergeVisitEvent(user.getUsername(), startTime, endTime));
-        }
     }
 
     private List<ProcessedVisit> mergeVisitsChronologically(User user, List<Visit> visits) {
@@ -119,14 +138,14 @@ public class VisitMergingService {
 
         // Sort visits chronologically
         visits.sort(Comparator.comparing(Visit::getStartTime));
-        
+
         // Start with the first visit
         Visit currentVisit = visits.getFirst();
         Instant currentStartTime = currentVisit.getStartTime();
         Instant currentEndTime = currentVisit.getEndTime();
         Set<Long> mergedVisitIds = new HashSet<>();
         mergedVisitIds.add(currentVisit.getId());
-        
+
         // Find or create a place for the first visit
         List<SignificantPlace> nearbyPlaces = findNearbyPlaces(user, currentVisit.getLatitude(), currentVisit.getLongitude());
         SignificantPlace currentPlace = nearbyPlaces.isEmpty() ?
@@ -138,20 +157,26 @@ public class VisitMergingService {
 
             // Find nearby places for the next visit
             nearbyPlaces = findNearbyPlaces(user, nextVisit.getLatitude(), nextVisit.getLongitude());
-            SignificantPlace nextPlace = nearbyPlaces.isEmpty() ? 
-                    createSignificantPlace(user, nextVisit) : 
+            SignificantPlace nextPlace = nearbyPlaces.isEmpty() ?
+                    createSignificantPlace(user, nextVisit) :
                     findClosestPlace(nextVisit, nearbyPlaces);
-            
+
             // Check if the next visit is at the same place and within the time threshold
             boolean samePlace = nextPlace.getId().equals(currentPlace.getId());
             boolean withinTimeThreshold = Duration.between(currentEndTime, nextVisit.getStartTime()).getSeconds() <= mergeThresholdSeconds;
 
             boolean shouldMergeWithNextVisit = samePlace && withinTimeThreshold;
 
+            //fluke detections
             if (samePlace && !withinTimeThreshold) {
                 List<RawLocationPoint> pointsBetweenVisits = this.rawLocationPointRepository.findByUserAndTimestampBetweenOrderByTimestampAsc(user, currentEndTime, nextVisit.getStartTime());
-                double travelledDistanceInMeters = GeoUtils.calculateTripDistance(pointsBetweenVisits);
-                shouldMergeWithNextVisit = travelledDistanceInMeters < mergeThresholdMeters;
+                if (pointsBetweenVisits.size() > 2) {
+                    double travelledDistanceInMeters = GeoUtils.calculateTripDistance(pointsBetweenVisits);
+                    shouldMergeWithNextVisit = travelledDistanceInMeters < mergeThresholdMeters;
+                } else {
+                    logger.debug("Skipping creation of new visit because there are no points tracked between {} and {}", currentEndTime, nextVisit.getStartTime());
+                    shouldMergeWithNextVisit = true;
+                }
             }
 
             if (shouldMergeWithNextVisit) {
@@ -177,18 +202,19 @@ public class VisitMergingService {
         // Add the last merged set
         ProcessedVisit processedVisit = createProcessedVisit(user, currentPlace, currentStartTime,
                 currentEndTime, mergedVisitIds);
+
         result.add(processedVisit);
 
         return result;
     }
-    
+
     private SignificantPlace findClosestPlace(Visit visit, List<SignificantPlace> places) {
         return places.stream()
-            .min(Comparator.comparingDouble(place -> 
-                GeoUtils.distanceInMeters(
-                    visit.getLatitude(), visit.getLongitude(), 
-                    place.getLatitudeCentroid(), place.getLongitudeCentroid())))
-            .orElseThrow(() -> new IllegalStateException("No places found"));
+                .min(Comparator.comparingDouble(place ->
+                        GeoUtils.distanceInMeters(
+                                visit.getLatitude(), visit.getLongitude(),
+                                place.getLatitudeCentroid(), place.getLongitudeCentroid())))
+                .orElseThrow(() -> new IllegalStateException("No places found"));
     }
 
 
@@ -218,41 +244,9 @@ public class VisitMergingService {
     }
 
     private ProcessedVisit createProcessedVisit(User user,
-                                               SignificantPlace place,
-                                               Instant startTime, Instant endTime,
-                                               Set<Long> originalVisitIds) {
-        // Check if a processed visit already exists for this time range and place
-        List<ProcessedVisit> existingVisits = processedVisitRepository.findByUserAndPlaceAndTimeOverlap(
-                user, place, startTime, endTime);
-
-        if (!existingVisits.isEmpty()) {
-            // Use the existing processed visit
-            ProcessedVisit existingVisit = existingVisits.getFirst();
-            logger.debug("Found existing processed visit for place ID {}", place.getId());
-
-            // Update the existing visit if needed (e.g., extend time range)
-            if (startTime.isBefore(existingVisit.getStartTime())) {
-                existingVisit.setStartTime(startTime);
-            }
-            if (endTime.isAfter(existingVisit.getEndTime())) {
-                existingVisit.setEndTime(endTime);
-            }
-
-            // Add original visit IDs to the existing one
-            String existingIds = existingVisit.getOriginalVisitIds();
-            String newIds = originalVisitIds.stream()
-                    .map(Object::toString)
-                    .collect(Collectors.joining(","));
-
-            if (existingIds == null || existingIds.isEmpty()) {
-                existingVisit.setOriginalVisitIds(newIds);
-            } else {
-                existingVisit.setOriginalVisitIds(existingIds + "," + newIds);
-            }
-
-            existingVisit.setMergedCount(existingVisit.getMergedCount() + originalVisitIds.size());
-            return processedVisitRepository.save(existingVisit);
-        } else {
+                                                SignificantPlace place,
+                                                Instant startTime, Instant endTime,
+                                                Set<Long> originalVisitIds) {
             // Create a new processed visit
             ProcessedVisit processedVisit = new ProcessedVisit(user, place, startTime, endTime);
             processedVisit.setMergedCount(originalVisitIds.size());
@@ -264,7 +258,6 @@ public class VisitMergingService {
             processedVisit.setOriginalVisitIds(visitIdsStr);
 
             return processedVisitRepository.save(processedVisit);
-        }
     }
 
     private void publishSignificantPlaceCreatedEvent(SignificantPlace place) {

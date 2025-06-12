@@ -30,6 +30,8 @@ public class RawLocationPoint {
     @Column(columnDefinition = "geometry(Point,4326)", nullable = false)
     private Point geom;
 
+    @Column(nullable = false)
+    private boolean processed;
 
     public RawLocationPoint() {
     }
@@ -96,7 +98,17 @@ public class RawLocationPoint {
         this.geom = geom;
     }
 
+    public boolean isProcessed() {
+        return processed;
+    }
 
+    public void setProcessed(boolean processed) {
+        this.processed = processed;
+    }
+
+    public void markProcessed() {
+        this.processed = true;
+    }
 
     @Override
     public boolean equals(Object o) {

@@ -1,13 +1,11 @@
 package com.dedicatedcode.reitti;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
-import com.dedicatedcode.reitti.event.MergeVisitEvent;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.ImportHandler;
 import com.dedicatedcode.reitti.service.LocationDataService;
 import com.dedicatedcode.reitti.service.processing.*;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,8 +26,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -90,23 +86,9 @@ public abstract class AbstractIntegrationTest {
     @Autowired
     private LocationDataService locationDataService;
 
-    @Autowired
-    private StayPointDetectionService stayPointDetectionService;
-
-    @Autowired
-    private VisitService visitService;
 
     @Autowired
     private ImportHandler importHandler;
-
-    @Autowired
-    private VisitMergingService visitMergingService;
-
-    @Autowired
-    private TripDetectionService tripDetectionService;
-
-    @Autowired
-    private TripMergingService tripMergingService;
 
     protected User user;
 
@@ -170,51 +152,49 @@ public abstract class AbstractIntegrationTest {
             return (List<T>) savedPoints;
         }
 
-        int splitSize = 100;
-        List<StayPoint> stayPoints = new ArrayList<>();
-        while (savedPoints.size() >= splitSize) {
-            List<RawLocationPoint> current = new ArrayList<>(savedPoints.subList(0, splitSize));
-            savedPoints.removeAll(current);
-            List<StayPoint> calculatedPoints = stayPointDetectionService.detectStayPoints(user, current);
-            stayPoints.addAll(calculatedPoints);
+//        int splitSize = 100;
+//        List<StayPoint> stayPoints = new ArrayList<>();
+//        while (savedPoints.size() >= splitSize) {
+//            List<RawLocationPoint> current = new ArrayList<>(savedPoints.subList(0, splitSize));
+//            savedPoints.removeAll(current);
+//            List<StayPoint> calculatedPoints = stayPointDetectionService.detectStayPoints(user, current);
+//            stayPoints.addAll(calculatedPoints);
+//
+//            if (untilStep.ordinal() >= ImportStep.VISITS.ordinal()) {
+//                visitService.processStayPoints(user, stayPoints);
+//            }
+//        }
+//        if (!savedPoints.isEmpty()) {
+//            stayPoints.addAll(stayPointDetectionService.detectStayPoints(user, savedPoints));
+//            if (untilStep.ordinal() >= ImportStep.VISITS.ordinal()) {
+//                visitService.processStayPoints(user, stayPoints);
+//            }
+//        }
+//        stayPoints.sort(Comparator.comparing(StayPoint::getArrivalTime));
+//        log.info("Created [{}] stay points", stayPoints.size());
+//        if (untilStep == ImportStep.STAY_POINTS) {
+//            return (List<T>) stayPoints;
+//        }
 
-            if (untilStep.ordinal() >= ImportStep.VISITS.ordinal()) {
-                visitService.processStayPoints(user, stayPoints);
-            }
-        }
-        if (!savedPoints.isEmpty()) {
-            stayPoints.addAll(stayPointDetectionService.detectStayPoints(user, savedPoints));
-            if (untilStep.ordinal() >= ImportStep.VISITS.ordinal()) {
-                visitService.processStayPoints(user, stayPoints);
-            }
-        }
-        stayPoints.sort(Comparator.comparing(StayPoint::getArrivalTime));
-        log.info("Created [{}] stay points", stayPoints.size());
-        if (untilStep == ImportStep.STAY_POINTS) {
-            return (List<T>) stayPoints;
-        }
-
-        log.info("Created [{}] visits out of [{}] stay points", this.visitRepository.count(), stayPoints.size());
+//        log.info("Created [{}] visits out of [{}] stay points", this.visitRepository.count(), stayPoints.size());
         if (untilStep == ImportStep.VISITS) {
             return (List<T>) this.visitRepository.findAll();
         }
 
-        MergeVisitEvent visitEvent = new MergeVisitEvent(user.getUsername(), null, null);
 
-        visitMergingService.mergeVisits(visitEvent);
+//        visitMergingService.visitCreated(visitEvent);
         log.info("Merged [{}] visits into [{}] processed visits", this.visitRepository.count(), this.processedVisitRepository.count());
         if (untilStep == ImportStep.MERGE_VISITS) {
             return (List<T>) this.processedVisitRepository.findAll();
         }
 
-        tripDetectionService.detectTripsForUser(visitEvent);
+//        tripDetectionService.visitUpdated(visitEvent);
         long processedTripsCount = this.processedVisitRepository.count();
         log.info("Found [{}] trips between [{}] processed visits", this.tripsRepository.count(), processedTripsCount);
         if (untilStep == ImportStep.TRIPS) {
             return (List<T>) this.tripsRepository.findAll();
         }
 
-        tripMergingService.mergeDuplicateTripsForUser(visitEvent);
         log.info("Merged [{}] processed trips into [{}] processed visits", processedTripsCount, this.processedVisitRepository.count());
         return (List<T>) this.tripsRepository.findAll();
     }

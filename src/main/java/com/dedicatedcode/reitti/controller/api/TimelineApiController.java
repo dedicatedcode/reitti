@@ -121,6 +121,11 @@ public class TimelineApiController {
                 );
             }
             List<RawLocationPoint> path = this.rawLocationPointRepository.findByUserAndTimestampBetweenOrderByTimestampAsc(trip.getUser(), trip.getStartTime(), trip.getEndTime());
+            List<TimelineResponse.PointInfo> pathPoints = new ArrayList<>();
+            pathPoints.add(new TimelineResponse.PointInfo(trip.getStartPlace().getLatitudeCentroid(), trip.getStartPlace().getLongitudeCentroid(), trip.getStartTime(), 0.0));
+            pathPoints.addAll(path.stream().map(p -> new TimelineResponse.PointInfo(p.getLatitude(), p.getLongitude(), p.getTimestamp(), p.getAccuracyMeters())).toList());
+            pathPoints.add(new TimelineResponse.PointInfo(trip.getEndPlace().getLatitudeCentroid(), trip.getEndPlace().getLongitudeCentroid(), trip.getEndTime(), 0.0));
+
             entries.add(new TimelineResponse.TimelineEntry(
                     "TRIP",
                     trip.getId(),
@@ -132,7 +137,7 @@ public class TimelineApiController {
                     endPlace,
                     trip.getTravelledDistanceMeters() != null ? trip.getTravelledDistanceMeters() : trip.getEstimatedDistanceMeters(),
                     trip.getTransportModeInferred(),
-                    path.stream().map(p -> new TimelineResponse.PointInfo(p.getLatitude(), p.getLongitude(), p.getTimestamp(), p.getAccuracyMeters())).toList()
+                    pathPoints
 
             ));
         }

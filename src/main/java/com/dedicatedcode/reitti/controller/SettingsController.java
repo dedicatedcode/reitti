@@ -1,14 +1,11 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.dto.TimelineResponse;
-import com.dedicatedcode.reitti.model.ApiToken;
-import com.dedicatedcode.reitti.model.GeocodeService;
-import com.dedicatedcode.reitti.model.SignificantPlace;
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.GeocodeServiceRepository;
 import com.dedicatedcode.reitti.service.*;
+import com.dedicatedcode.reitti.service.processing.RawLocationPointProcessingTrigger;
 import jakarta.servlet.http.HttpServletRequest;
-import org.geolatte.geom.V;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -35,6 +32,7 @@ public class SettingsController {
     private final PlaceService placeService;
     private final ImportHandler importHandler;
     private final GeocodeServiceRepository geocodeServiceRepository;
+    private final RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger;
     private final int maxErrors;
     private final boolean dataManagementEnabled;
 
@@ -42,14 +40,16 @@ public class SettingsController {
                               QueueStatsService queueStatsService, PlaceService placeService,
                               ImportHandler importHandler,
                               GeocodeServiceRepository geocodeServiceRepository,
+                              RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger,
                               @Value("${reitti.geocoding.max-errors}") int maxErrors,
-                              @Value("${reitti.data-management.enabled}") boolean dataManagementEnabled) {
+                              @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.apiTokenService = apiTokenService;
         this.userService = userService;
         this.queueStatsService = queueStatsService;
         this.placeService = placeService;
         this.importHandler = importHandler;
         this.geocodeServiceRepository = geocodeServiceRepository;
+        this.rawLocationPointProcessingTrigger = rawLocationPointProcessingTrigger;
         this.maxErrors = maxErrors;
         this.dataManagementEnabled = dataManagementEnabled;
     }
@@ -455,8 +455,9 @@ public class SettingsController {
         }
 
         try {
-            // TODO: Add actual processing logic here
-            // This would typically trigger the processing pipeline manually
+
+            rawLocationPointProcessingTrigger.start();
+
             model.addAttribute("successMessage", "Processing started successfully. Check the Job Status tab to monitor progress.");
         } catch (Exception e) {
             model.addAttribute("errorMessage", "Error starting processing: " + e.getMessage());

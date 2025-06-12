@@ -15,15 +15,20 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/ingest")
 public class IngestApiController {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(IngestApiController.class);
-    
+    private static final Map<String, ? extends Serializable> SUCCESS = Map.of(
+            "success", true,
+            "message", "Successfully queued Owntracks location point for processing"
+    );
+
     private final RabbitTemplate rabbitTemplate;
     
     @Autowired
@@ -46,7 +51,7 @@ public class IngestApiController {
         UserDetails user = (UserDetails) authentication.getPrincipal();
         
         try {
-            // Convert Owntracks format to our LocationPoint format
+            // Convert an Owntracks format to our LocationPoint format
             LocationDataRequest.LocationPoint locationPoint = request.toLocationPoint();
 
             if (locationPoint.getTimestamp() == null) {
@@ -65,13 +70,10 @@ public class IngestApiController {
                 event
             );
             
-            logger.info("Successfully received and queued Owntracks location point for user {}", 
+            logger.debug("Successfully received and queued Owntracks location point for user {}",
                     user.getUsername());
             
-            return ResponseEntity.accepted().body(Map.of(
-                    "success", true,
-                    "message", "Successfully queued Owntracks location point for processing"
-            ));
+            return ResponseEntity.accepted().body(SUCCESS);
             
         } catch (Exception e) {
             logger.error("Error processing Owntracks data", e);

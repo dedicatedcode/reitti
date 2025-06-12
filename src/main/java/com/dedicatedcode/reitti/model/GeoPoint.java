@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.service.processing;
+package com.dedicatedcode.reitti.model;
 
 public record GeoPoint(double latitude, double longitude) {
 

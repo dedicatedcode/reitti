@@ -1,7 +1,9 @@
 package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.AbstractIntegrationTest;
+import com.dedicatedcode.reitti.model.GeoPoint;
 import com.dedicatedcode.reitti.model.GeoUtils;
+import com.dedicatedcode.reitti.model.StayPoint;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -10,7 +12,7 @@ import java.util.List;
 import static com.dedicatedcode.reitti.TestConstants.Points.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class StayPointDetectionServiceTest extends AbstractIntegrationTest {
+class VisitDetectionServiceTest extends AbstractIntegrationTest {
 
     @Test
     void shouldCalculateCorrectStayPoints() {

@@ -17,15 +17,14 @@ public class RabbitMQConfig {
     public static final String EXCHANGE_NAME = "reitti-exchange";
     public static final String LOCATION_DATA_QUEUE = "location-data-queue";
     public static final String LOCATION_DATA_ROUTING_KEY = "location.data";
+    public static final String STAY_DETECTION_QUEUE = "stay-detection-queue";
+    public static final String STAY_DETECTION_ROUTING_KEY = "stay.detection.created";
+    public static final String MERGE_VISIT_QUEUE = "merge-visit-queue";
+    public static final String MERGE_VISIT_ROUTING_KEY = "merge.visit.created";
     public static final String SIGNIFICANT_PLACE_QUEUE = "significant-place-queue";
     public static final String SIGNIFICANT_PLACE_ROUTING_KEY = "significant.place.created";
     public static final String DETECT_TRIP_QUEUE = "detect-trip-queue";
     public static final String DETECT_TRIP_ROUTING_KEY = "detect.trip.created";
-    public static final String MERGE_TRIP_QUEUE = "merge-trip-queue";
-    public static final String MERGE_TRIP_ROUTING_KEY = "merge.trip.created";
-
-    public static final String MERGE_VISIT_QUEUE = "merge-visit-queue";
-    public static final String MERGE_VISIT_ROUTING_KEY = "merge.visit.created";
 
     @Bean
     public TopicExchange exchange() {
@@ -43,11 +42,6 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Queue mergeTripQueue() {
-        return new Queue(MERGE_TRIP_QUEUE, true);
-    }
-
-    @Bean
     public Queue mergeVisitQueue() {
         return new Queue(MERGE_VISIT_QUEUE, true);
     }
@@ -55,6 +49,11 @@ public class RabbitMQConfig {
     @Bean
     public Queue significantPlaceQueue() {
         return new Queue(SIGNIFICANT_PLACE_QUEUE, true);
+    }
+
+    @Bean
+    public Queue stayDetectionQueue() {
+        return new Queue(STAY_DETECTION_QUEUE, true);
     }
 
     @Bean
@@ -78,8 +77,8 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Binding mergeTripBinding(Queue mergeTripQueue, TopicExchange exchange) {
-        return BindingBuilder.bind(mergeTripQueue).to(exchange).with(MERGE_TRIP_ROUTING_KEY);
+    public Binding stayDetectionBinding(Queue stayDetectionQueue, TopicExchange exchange) {
+        return BindingBuilder.bind(stayDetectionQueue).to(exchange).with(STAY_DETECTION_ROUTING_KEY);
     }
 
     @Bean

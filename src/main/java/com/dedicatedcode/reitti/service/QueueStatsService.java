@@ -21,8 +21,9 @@ public class QueueStatsService {
 
     private final List<String> QUEUES = List.of(
             RabbitMQConfig.LOCATION_DATA_QUEUE,
-            RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE,
+            RabbitMQConfig.STAY_DETECTION_QUEUE,
             RabbitMQConfig.MERGE_VISIT_QUEUE,
+            RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE,
             RabbitMQConfig.DETECT_TRIP_QUEUE);
 
     @Autowired

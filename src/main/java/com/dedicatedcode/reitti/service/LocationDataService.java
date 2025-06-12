@@ -50,7 +50,7 @@ public class LocationDataService {
         }
 
         if (duplicatesSkipped > 0) {
-            logger.info("Skipped {} duplicate points for user {}", duplicatesSkipped, user.getUsername());
+            logger.debug("Skipped {} duplicate points for user {}", duplicatesSkipped, user.getUsername());
         }
 
         return savedPoints;

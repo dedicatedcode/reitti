@@ -33,6 +33,8 @@ public interface RawLocationPointRepository extends JpaRepository<RawLocationPoi
             @Param("distance") double distanceInMeters
     );
 
+    List<RawLocationPoint> findByUserAndProcessedIsFalseOrderByTimestamp(User user);
+
     interface ClusteredPoint {
         RawLocationPoint getPoint();
         Integer getClusterId();

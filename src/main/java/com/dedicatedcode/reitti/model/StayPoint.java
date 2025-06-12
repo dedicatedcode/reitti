@@ -1,6 +1,4 @@
-package com.dedicatedcode.reitti.service.processing;
-
-import com.dedicatedcode.reitti.model.RawLocationPoint;
+package com.dedicatedcode.reitti.model;
 
 import java.time.Duration;
 import java.time.Instant;

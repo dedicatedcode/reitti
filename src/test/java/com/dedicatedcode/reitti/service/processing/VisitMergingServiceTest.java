@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.AbstractIntegrationTest;
 import com.dedicatedcode.reitti.TestConstants;
-import com.dedicatedcode.reitti.event.MergeVisitEvent;
+import com.dedicatedcode.reitti.model.GeoPoint;
 import com.dedicatedcode.reitti.repository.ProcessedVisitRepository;
 import com.dedicatedcode.reitti.repository.VisitRepository;
 import org.junit.jupiter.api.Test;
@@ -27,10 +27,10 @@ class VisitMergingServiceTest extends AbstractIntegrationTest {
 
     @Test
     @Transactional
-    void shouldMergeVisitsInTimeFrame() {
+    void shouldVisitCreatedInTimeFrame() {
         importData("/data/gpx/20250531.gpx", ImportStep.VISITS);
 
-        visitMergingService.mergeVisits(new MergeVisitEvent(user.getUsername(), null, null));
+//        visitMergingService.visitCreated(new MergeVisitEvent(user.getUsername(), null, null));
 
         assertEquals(0, visitRepository.findByUserAndProcessedFalse(user).size());
 
@@ -43,8 +43,6 @@ class VisitMergingServiceTest extends AbstractIntegrationTest {
         expectedVisits.add(new GeoPoint(53.87306318052629, 10.732658768947365)); // Garten
         expectedVisits.add(new GeoPoint(53.871003894, 10.7458164105)); // Famila
         expectedVisits.add(new GeoPoint(53.8714586375, 10.747866387499998)); // Obi 1
-        expectedVisits.add(new GeoPoint(53.87214355833334, 10.747553500000002)); // Obi 2
-        expectedVisits.add(new GeoPoint(53.8714586375, 10.747866387499998)); // Obi 1
         expectedVisits.add(new GeoPoint(53.87306318052629, 10.732658768947365)); // Garten
         expectedVisits.add(new GeoPoint(53.86334539659948, 10.701105248045259)); // Moltke
 
@@ -54,7 +52,7 @@ class VisitMergingServiceTest extends AbstractIntegrationTest {
 
     @Test
     @Transactional
-    void shouldNotMergeVisitsAtEndOfDay() {
+    void shouldNotVisitCreatedAtEndOfDay() {
         importData("/data/gpx/20250601.gpx", ImportStep.MERGE_VISITS);
         assertEquals(0, visitRepository.findByUserAndProcessedFalse(user).size());
 

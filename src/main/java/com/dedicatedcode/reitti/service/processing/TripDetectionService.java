@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
-import com.dedicatedcode.reitti.event.MergeVisitEvent;
+import com.dedicatedcode.reitti.event.ProcessedVisitCreatedEvent;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.ProcessedVisitRepository;
 import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Service
@@ -40,73 +41,102 @@ public class TripDetectionService {
         this.userRepository = userRepository;
         this.rabbitTemplate = rabbitTemplate;
     }
+//
+//    @RabbitListener(queues = RabbitMQConfig.DETECT_TRIP_QUEUE, concurrency = "1")
+//    public void visitUpdated(ProcessedVisitUpdatedEvent event) {
+//        Optional<User> user = userRepository.findByUsername(event.getUsername());
+//        if (user.isEmpty()) {
+//            logger.warn("User not found for userName: {}", event.getUsername());
+//            return;
+//        }
+//        logger.info("Update on processed visit [{}] received, will update trips containing that visit for user: {}", event.getVisitId(), event.getUsername());
+//        Optional<ProcessedVisit> processedVisit = this.processedVisitRepository.findById(event.getVisitId());
+//        if (processedVisit.isEmpty()) {
+//            logger.warn("Processed visit not found for user: [{}] and id [{}]", event.getUsername(), event.getVisitId());
+//        } else {
+//            ProcessedVisit visit = processedVisit.get();
+//            List<Trip> connectedTrips = this.tripRepository.findByUserAndStartVisitOrEndVisit(user.get(), visit, visit);
+//            for (Trip connectedTrip : connectedTrips) {
+//                //maybe the end got moved?
+//                boolean changed = false;
+//                if (connectedTrip.getEndVisit().equals(visit) && !connectedTrip.getEndTime().equals(visit.getStartTime())) {
+//                    logger.debug("end of trip [{}] got moved", connectedTrip.getId());
+//                    connectedTrip.setEndTime(visit.getStartTime());
+//                    changed = true;
+//                }
+//                //maybe the start got moved?
+//                if (connectedTrip.getStartVisit().equals(visit) && !connectedTrip.getStartTime().equals(visit.getEndTime())) {
+//                    logger.debug("start of trip [{}] got moved", connectedTrip.getId());
+//                    connectedTrip.setStartTime(visit.getEndTime());
+//                    changed = true;
+//                }
+//                if (changed) {
+//                    this.tripRepository.save(connectedTrip);
+//                }
+//            }
+//        }
+//    }
 
     @Transactional
-    @RabbitListener(queues = RabbitMQConfig.DETECT_TRIP_QUEUE, concurrency = "1-16")
-    public void detectTripsForUser(MergeVisitEvent event) {
-        Optional<User> user = userRepository.findByUsername(event.getUserName());
-        if (user.isEmpty()) {
-            logger.warn("User not found for userName: {}", event.getUserName());
-            return;
-        }
-        logger.info("Detecting trips for user: {}", user.get().getUsername());
-        // Get all processed visits for the user, sorted by start time
-        List<ProcessedVisit> visits;
-        if (event.getStartTime() == null || event.getEndTime() == null) {
-            visits = processedVisitRepository.findByUser(user.get());
-        } else {
-            visits = processedVisitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user.get(), Instant.ofEpochMilli(event.getStartTime()), Instant.ofEpochMilli(event.getEndTime()));
-        }
-        List<Trip> detectedTrips = findDetectedTrips(user.get(), visits);
-        if (!detectedTrips.isEmpty()) {
-            this.rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_TRIP_ROUTING_KEY, event);
-        }
-    }
+    @RabbitListener(queues = RabbitMQConfig.DETECT_TRIP_QUEUE, concurrency = "1")
+    public void visitCreated(ProcessedVisitCreatedEvent event) {
+        User user = this.userRepository.findByUsername(event.getUsername()).orElseThrow();
 
-    private List<Trip> findDetectedTrips(User user, List<ProcessedVisit> visits) {
-        visits.sort(Comparator.comparing(ProcessedVisit::getStartTime));
+        Optional<ProcessedVisit> createdVisit = this.processedVisitRepository.findByUserAndId(user, event.getVisitId());
+        createdVisit.ifPresent(visit -> {
+            //find visits in timerange
+            Instant searchStart = visit.getStartTime().minus(1, ChronoUnit.DAYS);
+            Instant searchEnd = visit.getEndTime().plus(1, ChronoUnit.DAYS);
 
-        if (visits.size() < 2) {
-            logger.info("Not enough visits to detect trips for user: {}", user.getUsername());
-            return Collections.emptyList();
-        }
+            List<ProcessedVisit> visits = this.processedVisitRepository.findByUserAndTimeOverlap(user, searchStart, searchEnd);
 
-        List<Trip> detectedTrips = new ArrayList<>();
+            visits.sort(Comparator.comparing(ProcessedVisit::getStartTime));
 
-        // Iterate through consecutive visits to detect trips
-        for (int i = 0; i < visits.size() - 1; i++) {
-            ProcessedVisit startVisit = visits.get(i);
-            ProcessedVisit endVisit = visits.get(i + 1);
-
-            // Create a trip between these two visits
-            Trip trip = createTripBetweenVisits(user, startVisit, endVisit);
-            if (trip != null) {
-                detectedTrips.add(trip);
+            if (visits.size() < 2) {
+                logger.info("Not enough visits to detect trips for user: {}", user.getUsername());
+                return;
             }
-        }
-        logger.info("Detected {} trips for user: {}", detectedTrips.size(), user.getUsername());
-        return detectedTrips;
+
+            // Iterate through consecutive visits to detect trips
+            for (int i = 0; i < visits.size() - 1; i++) {
+                ProcessedVisit startVisit = visits.get(i);
+                ProcessedVisit endVisit = visits.get(i + 1);
+
+                // Create a trip between these two visits
+                createTripBetweenVisits(user, startVisit, endVisit);
+            }
+        });
     }
 
-    private Trip createTripBetweenVisits(User user, ProcessedVisit startVisit, ProcessedVisit endVisit) {
+    private void createTripBetweenVisits(User user, ProcessedVisit startVisit, ProcessedVisit endVisit) {
         // Trip starts when the first visit ends
         Instant tripStartTime = startVisit.getEndTime();
 
         // Trip ends when the second visit starts
         Instant tripEndTime = endVisit.getStartTime();
 
+        if (this.processedVisitRepository.findById(startVisit.getId()).isEmpty() || this.processedVisitRepository.findById(endVisit.getId()).isEmpty()) {
+            logger.debug("One of the following visits [{},{}] where already deleted. Will skip trip creation.", startVisit.getId(), endVisit.getId());
+            return;
+        }
         // If end time is before or equal to start time, this is not a valid trip
         if (tripEndTime.isBefore(tripStartTime) || tripEndTime.equals(tripStartTime)) {
             logger.warn("Invalid trip time range detected for user {}: {} to {}",
                     user.getUsername(), tripStartTime, tripEndTime);
-            return null;
+            return;
         }
 
         // Check if a trip already exists with the same start and end times
         if (tripRepository.existsByUserAndStartTimeAndEndTime(user, tripStartTime, tripEndTime)) {
             logger.debug("Trip already exists for user {} from {} to {}",
                     user.getUsername(), tripStartTime, tripEndTime);
-            return null;
+            return;
+        }
+
+
+        if (tripRepository.existsByUserAndStartPlaceAndEndPlaceAndStartTimeAndEndTime(user, startVisit.getPlace(), endVisit.getPlace(), tripStartTime, tripEndTime))  {
+            logger.debug("Duplicated trip detected, will not store it");
+            return;
         }
 
         // Get location points between the two visits
@@ -147,7 +177,6 @@ public class TripDetectionService {
         } catch (DataIntegrityViolationException e) {
             logger.warn("Duplicated trip: {} detected. Will not store it.", trip);
         }
-        return trip;
     }
 
     private double calculateDistanceBetweenPlaces(SignificantPlace place1, SignificantPlace place2) {
