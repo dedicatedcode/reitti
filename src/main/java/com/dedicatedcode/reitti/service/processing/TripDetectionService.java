@@ -174,7 +174,11 @@ public class TripDetectionService {
         // Save and return the trip
         try {
             if (this.processedVisitRepository.existsById(trip.getStartVisit().getId()) &&  this.processedVisitRepository.existsById(trip.getEndVisit().getId())) {
-                tripRepository.save(trip);
+                try {
+                    tripRepository.save(trip);
+                } catch (Exception e) {
+                    logger.warn("Could not save trip.");
+                }
             }
         } catch (Exception e) {
             logger.debug("Duplicated trip: [{}] detected. Will not store it.", trip);

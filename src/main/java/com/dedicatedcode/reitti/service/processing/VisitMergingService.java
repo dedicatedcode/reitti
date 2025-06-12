@@ -1,7 +1,10 @@
 package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
-import com.dedicatedcode.reitti.event.*;
+import com.dedicatedcode.reitti.event.ProcessedVisitCreatedEvent;
+import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
+import com.dedicatedcode.reitti.event.VisitCreatedEvent;
+import com.dedicatedcode.reitti.event.VisitUpdatedEvent;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.*;
 import org.locationtech.jts.geom.Coordinate;
@@ -13,7 +16,6 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
