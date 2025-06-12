@@ -70,6 +70,22 @@
             <div class="htmx-indicator">Loading data management...</div>
         </div>
 
+        <!-- Job Status Section -->
+        <div id="job-status" class="settings-section" hx-get="/settings/queue-stats-content"
+             hx-trigger="revealed, every 5s">
+            <div class="htmx-indicator">Loading queue stats...</div>
+        </div>
+
+        <!-- File Upload Section -->
+        <div id="file-upload" class="settings-section">
+            <div class="htmx-indicator">Loading file upload options...</div>
+        </div>
+
+        <!-- Language Settings Section -->
+        <div id="language-settings" class="settings-section" hx-get="/settings/language-content">
+            <div class="htmx-indicator">Loading file upload options...</div>
+        </div>
+
         <script>
             // Function to initialize maps for place cards
             function initPlaceMaps() {
@@ -111,9 +127,9 @@
                     event.detail.target.closest('#places-management')) {
                     initPlaceMaps();
                 }
-            
+
                 // Handle form resets after successful submission
-                if (event.detail.target.id === 'user-management' || 
+                if (event.detail.target.id === 'user-management' ||
                     event.detail.target.closest('#user-management')) {
                     // Find and reset any forms in the user management section
                     const forms = event.detail.target.querySelectorAll('form');
@@ -123,28 +139,6 @@
                 }
             });
         </script>
-
-        <!-- Job Status Section -->
-        <div id="job-status" class="settings-section" hx-get="/settings/queue-stats-content"
-             hx-trigger="revealed, every 5s">
-            <div class="htmx-indicator">Loading queue stats...</div>
-        </div>
-
-        <!-- File Upload Section -->
-        <div id="file-upload" class="settings-section">
-            <div class="htmx-indicator">Loading file upload options...</div>
-        </div>
-
-        <!-- Language Settings Section -->
-        <div id="language-settings" class="settings-section">
-            <h2 th:text="#{language.select}">Select Language</h2>
-            <div class="language-options" style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 20px;">
-                <a href="?lang=en" class="btn" th:text="#{language.english}" style="text-decoration: none; display: inline-block;">English</a>
-                <a href="?lang=fi" class="btn" th:text="#{language.finnish}" style="text-decoration: none; display: inline-block;">Finnish</a>
-                <a href="?lang=de" class="btn" th:text="#{language.german}" style="text-decoration: none; display: inline-block;">German</a>
-                <a href="?lang=fr" class="btn" th:text="#{language.french}" style="text-decoration: none; display: inline-block;">French</a>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -292,7 +286,13 @@
                             section.setAttribute('hx-triggered', 'true');
                             htmx.process(section);
                         }
-
+                        // If this is the language data tab, load its content if not already loaded
+                        if (target === 'language-settings' && !section.hasAttribute('hx-triggered')) {
+                            section.setAttribute('hx-get', '/settings/language-content');
+                            section.setAttribute('hx-trigger', 'load once');
+                            section.setAttribute('hx-triggered', 'true');
+                            htmx.process(section);
+                        }
                     }
                 });
             });

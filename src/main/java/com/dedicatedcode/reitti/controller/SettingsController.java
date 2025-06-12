@@ -38,7 +38,7 @@ public class SettingsController {
     private final RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger;
     private final int maxErrors;
     private final boolean dataManagementEnabled;
-    
+
     @Autowired
     private MessageSource messageSource;
 
@@ -59,7 +59,7 @@ public class SettingsController {
         this.maxErrors = maxErrors;
         this.dataManagementEnabled = dataManagementEnabled;
     }
-    
+
     private String getMessage(String key, Object... args) {
         return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
     }
@@ -260,6 +260,11 @@ public class SettingsController {
     @GetMapping("/file-upload-content")
     public String getDataImportContent() {
         return "fragments/settings :: file-upload-content";
+    }
+
+    @GetMapping("/language-content")
+    public String getLanguageContent() {
+        return "fragments/settings :: language-content";
     }
 
     @GetMapping("/integrations-content")
