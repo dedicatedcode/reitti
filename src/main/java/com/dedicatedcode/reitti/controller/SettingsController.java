@@ -6,11 +6,13 @@ import com.dedicatedcode.reitti.repository.GeocodeServiceRepository;
 import com.dedicatedcode.reitti.service.*;
 import com.dedicatedcode.reitti.service.processing.RawLocationPointProcessingTrigger;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
+import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -41,6 +43,9 @@ public class SettingsController {
 
     @Autowired
     private MessageSource messageSource;
+    
+    @Autowired
+    private LocaleResolver localeResolver;
 
     public SettingsController(ApiTokenService apiTokenService, UserService userService,
                               QueueStatsService queueStatsService, PlaceService placeService,
@@ -264,6 +269,22 @@ public class SettingsController {
 
     @GetMapping("/language-content")
     public String getLanguageContent() {
+        return "fragments/settings :: language-content";
+    }
+
+    @PostMapping("/language")
+    public String changeLanguage(@RequestParam String lang, 
+                                HttpServletRequest request, 
+                                HttpServletResponse response, 
+                                Model model) {
+        try {
+            Locale locale = Locale.forLanguageTag(lang);
+            localeResolver.setLocale(request, response, locale);
+            model.addAttribute("successMessage", getMessage("message.success.language.changed"));
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", getMessage("message.error.language.change", e.getMessage()));
+        }
+        
         return "fragments/settings :: language-content";
     }
 
