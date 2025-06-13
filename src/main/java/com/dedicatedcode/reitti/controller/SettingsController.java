@@ -7,6 +7,8 @@ import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.GeocodeServiceRepository;
 import com.dedicatedcode.reitti.service.*;
+import com.dedicatedcode.reitti.model.ImmichIntegration;
+import java.util.Optional;
 import com.dedicatedcode.reitti.service.processing.RawLocationPointProcessingTrigger;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -42,6 +44,7 @@ public class SettingsController {
     private final ImportHandler importHandler;
     private final GeocodeServiceRepository geocodeServiceRepository;
     private final RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger;
+    private final ImmichIntegrationService immichIntegrationService;
     private final int maxErrors;
     private final boolean dataManagementEnabled;
     private final MessageSource messageSource;
@@ -56,6 +59,7 @@ public class SettingsController {
                               ImportHandler importHandler,
                               GeocodeServiceRepository geocodeServiceRepository,
                               RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger,
+                              ImmichIntegrationService immichIntegrationService,
                               @Value("${reitti.geocoding.max-errors}") int maxErrors,
                               @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                               MessageSource messageSource,
@@ -67,6 +71,7 @@ public class SettingsController {
         this.importHandler = importHandler;
         this.geocodeServiceRepository = geocodeServiceRepository;
         this.rawLocationPointProcessingTrigger = rawLocationPointProcessingTrigger;
+        this.immichIntegrationService = immichIntegrationService;
         this.maxErrors = maxErrors;
         this.dataManagementEnabled = dataManagementEnabled;
         this.messageSource = messageSource;
@@ -340,6 +345,75 @@ public class SettingsController {
         model.addAttribute("serverUrl", serverUrl.toString());
 
         return "fragments/settings :: integrations-content";
+    }
+
+    @GetMapping("/photos-content")
+    public String getPhotosContent(Authentication authentication, Model model) {
+        User currentUser = userService.getUserByUsername(authentication.getName());
+        Optional<ImmichIntegration> integration = immichIntegrationService.getIntegrationForUser(currentUser);
+        
+        if (integration.isPresent()) {
+            model.addAttribute("immichIntegration", integration.get());
+            model.addAttribute("hasIntegration", true);
+        } else {
+            model.addAttribute("hasIntegration", false);
+        }
+        
+        return "fragments/settings :: photos-content";
+    }
+
+    @PostMapping("/immich-integration")
+    public String saveImmichIntegration(@RequestParam String serverUrl,
+                                       @RequestParam String apiToken,
+                                       @RequestParam(defaultValue = "false") boolean enabled,
+                                       Authentication authentication,
+                                       Model model) {
+        User currentUser = userService.getUserByUsername(authentication.getName());
+        
+        try {
+            ImmichIntegration integration = immichIntegrationService.saveIntegration(
+                currentUser, serverUrl, apiToken, enabled);
+            
+            model.addAttribute("immichIntegration", integration);
+            model.addAttribute("hasIntegration", true);
+            model.addAttribute("successMessage", getMessage("integrations.immich.config.saved"));
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", getMessage("integrations.immich.config.error", e.getMessage()));
+            
+            // Re-populate form with submitted values
+            ImmichIntegration tempIntegration = new ImmichIntegration();
+            tempIntegration.setServerUrl(serverUrl);
+            tempIntegration.setApiToken(apiToken);
+            tempIntegration.setEnabled(enabled);
+            model.addAttribute("immichIntegration", tempIntegration);
+            model.addAttribute("hasIntegration", true);
+        }
+        
+        return "fragments/settings :: photos-content";
+    }
+
+    @PostMapping("/immich-integration/test")
+    @ResponseBody
+    public Map<String, Object> testImmichConnection(@RequestParam String serverUrl,
+                                                   @RequestParam String apiToken) {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            boolean connectionSuccessful = immichIntegrationService.testConnection(serverUrl, apiToken);
+            
+            if (connectionSuccessful) {
+                response.put("success", true);
+                response.put("message", getMessage("integrations.immich.connection.success"));
+            } else {
+                response.put("success", false);
+                response.put("message", getMessage("integrations.immich.connection.failed", "Invalid configuration"));
+            }
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", getMessage("integrations.immich.connection.failed", e.getMessage()));
+        }
+        
+        return response;
     }
 
     @GetMapping("/user-form")
