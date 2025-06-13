@@ -118,27 +118,27 @@
     <div class="login-container">
         <h1>Reitti</h1>
         
-        <div th:if="${param.error}" class="error-message">
+        <div th:if="${param.error}" class="error-message" th:text="#{login.invalid.credentials}">
             Invalid username or password
         </div>
         
         <form th:action="@{/login}" method="post">
             <div class="form-group">
-                <label for="username">Username</label>
+                <label for="username" th:text="#{login.username}">Username</label>
                 <input type="text" id="username" name="username" required autofocus>
             </div>
             
             <div class="form-group">
-                <label for="password">Password</label>
+                <label for="password" th:text="#{login.password}">Password</label>
                 <input type="password" id="password" name="password" required>
             </div>
             
             <div class="remember-me">
                 <input type="checkbox" id="remember-me" name="remember-me">
-                <label for="remember-me">Remember me</label>
+                <label for="remember-me" th:text="#{login.remember.me}">Remember me</label>
             </div>
             
-            <button type="submit">Login</button>
+            <button type="submit" th:text="#{login.button}">Login</button>
         </form>
     </div>
 </body>
