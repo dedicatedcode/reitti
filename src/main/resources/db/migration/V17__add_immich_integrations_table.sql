@@ -7,8 +7,7 @@ CREATE TABLE immich_integrations (
     enabled BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    last_sync TIMESTAMP WITH TIME ZONE,
-    
+
     CONSTRAINT fk_immich_integrations_user 
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
