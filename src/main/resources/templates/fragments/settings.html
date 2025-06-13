@@ -306,56 +306,66 @@
         <span th:text="#{integrations.no.token.warning}">You need to create an API token first in the "API Tokens" tab before setting up app integrations.</span>
     </div>
     
-    <div class="integration-section">
-        <h3 th:text="#{integrations.gpslogger.title}">📱 GPSLogger Setup</h3>
-        <p th:text="#{integrations.gpslogger.description}">GPSLogger is a free Android app that can automatically log your location and send it to Reitti.</p>
-        
-        <div class="setup-steps">
-            <h4 th:text="#{integrations.setup.instructions}">Setup Instructions:</h4>
-            <ol>
-                <li>Download GPSLogger from the Google Play Store</li>
-                <li>Open GPSLogger and go to <strong>Logging details → Log to custom URL</strong></li>
-                <li>Enable "Log to custom URL"</li>
-                <li th:if="${hasToken}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + firstToken}">https://your-domain.com/api/v1/location-data</code></li>
-                <li th:unless="${hasToken}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/location-data</code></li>
-                <li>Set HTTP Method to <strong>POST</strong></li>
-                <li>Set HTTP Body to: <code>{
-                    "_type" : "location",
-                    "t": "u",
-                    "acc": "%ACC",
-                    "alt": "%ALT",
-                    "batt": "%BATT",
-                    "bs": "%ISCHARGING",
-                    "lat": "%LAT",
-                    "lon": "%LON",
-                    "tst": "%TIMESTAMP",
-                    "vel": "%SPD"
-                    }</code></li>
-                <li>Set Content-Type header to: <code>application/json</code></li>
-                <li>Configure logging frequency as desired (e.g., every 30 seconds)</li>
-                <li>Start logging!</li>
-            </ol>
+    <!-- Data Ingestion Collapsible Section -->
+    <details open style="border: 1px solid #dee2e6; border-radius: 8px; margin-bottom: 20px; background-color: var(--color-background-dark-light);">
+        <summary style="padding: 15px; cursor: pointer; font-weight: bold; font-size: 1.1em; background-color: var(--color-background-dark); border-radius: 8px 8px 0 0; margin: -1px -1px 0 -1px;">
+            📱 <span th:text="#{integrations.data.ingestion.title}">Data Ingestion</span>
+        </summary>
+        <div style="padding: 15px;">
+            <p th:text="#{integrations.data.ingestion.description}" style="margin-bottom: 20px; color: var(--color-text-white);">Configure mobile apps to automatically send location data to Reitti</p>
+            
+            <div class="integration-section" style="margin-bottom: 30px;">
+                <h3 th:text="#{integrations.gpslogger.title}">📱 GPSLogger Setup</h3>
+                <p th:text="#{integrations.gpslogger.description}">GPSLogger is a free Android app that can automatically log your location and send it to Reitti.</p>
+                
+                <div class="setup-steps">
+                    <h4 th:text="#{integrations.setup.instructions}">Setup Instructions:</h4>
+                    <ol>
+                        <li>Download GPSLogger from the Google Play Store</li>
+                        <li>Open GPSLogger and go to <strong>Logging details → Log to custom URL</strong></li>
+                        <li>Enable "Log to custom URL"</li>
+                        <li th:if="${hasToken}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + firstToken}">https://your-domain.com/api/v1/location-data</code></li>
+                        <li th:unless="${hasToken}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/location-data</code></li>
+                        <li>Set HTTP Method to <strong>POST</strong></li>
+                        <li>Set HTTP Body to: <code>{
+                            "_type" : "location",
+                            "t": "u",
+                            "acc": "%ACC",
+                            "alt": "%ALT",
+                            "batt": "%BATT",
+                            "bs": "%ISCHARGING",
+                            "lat": "%LAT",
+                            "lon": "%LON",
+                            "tst": "%TIMESTAMP",
+                            "vel": "%SPD"
+                            }</code></li>
+                        <li>Set Content-Type header to: <code>application/json</code></li>
+                        <li>Configure logging frequency as desired (e.g., every 30 seconds)</li>
+                        <li>Start logging!</li>
+                    </ol>
+                </div>
+            </div>
+            
+            <div class="integration-section">
+                <h3 th:text="#{integrations.owntracks.title}">🗺️ OwnTracks Setup</h3>
+                <p th:text="#{integrations.owntracks.description}">OwnTracks is a privacy-focused location tracking app available for iOS and Android.</p>
+                
+                <div class="setup-steps">
+                    <h4 th:text="#{integrations.setup.instructions}">Setup Instructions:</h4>
+                    <ol>
+                        <li>Download OwnTracks from the App Store or Google Play Store</li>
+                        <li>Open OwnTracks and go to <strong>Settings → Connection</strong></li>
+                        <li>Set Mode to <strong>HTTP</strong></li>
+                        <li>Set Host to: <code th:text="${serverUrl}">https://your-domain.com</code></li>
+                        <li>Set Path to: <code th:text="${hasToken ? '/api/v1/ingest/owntracks?token=' + firstToken : '/api/v1/ingest/owntracks?token=YOUR_API_TOKEN'}">/api/v1/ingest/owntracks?token=YOUR_API_TOKEN</code></li>
+                        <li>Disable <strong>Authentication</strong> (we use the token in the URL instead)</li>
+                        <li>Configure tracking settings as desired</li>
+                        <li>The app will automatically start sending location updates</li>
+                    </ol>
+                </div>
+            </div>
         </div>
-    </div>
-    
-    <div class="integration-section">
-        <h3 th:text="#{integrations.owntracks.title}">🗺️ OwnTracks Setup</h3>
-        <p th:text="#{integrations.owntracks.description}">OwnTracks is a privacy-focused location tracking app available for iOS and Android.</p>
-        
-        <div class="setup-steps">
-            <h4 th:text="#{integrations.setup.instructions}">Setup Instructions:</h4>
-            <ol>
-                <li>Download OwnTracks from the App Store or Google Play Store</li>
-                <li>Open OwnTracks and go to <strong>Settings → Connection</strong></li>
-                <li>Set Mode to <strong>HTTP</strong></li>
-                <li>Set Host to: <code th:text="${serverUrl}">https://your-domain.com</code></li>
-                <li>Set Path to: <code th:text="${hasToken ? '/api/v1/ingest/owntracks?token=' + firstToken : '/api/v1/ingest/owntracks?token=YOUR_API_TOKEN'}">/api/v1/ingest/owntracks?token=YOUR_API_TOKEN</code></li>
-                <li>Disable <strong>Authentication</strong> (we use the token in the URL instead)</li>
-                <li>Configure tracking settings as desired</li>
-                <li>The app will automatically start sending location updates</li>
-            </ol>
-        </div>
-    </div>
+    </details>
     
     <div class="integration-section">
         <h3 th:text="#{integrations.api.token.usage}">📋 API Token Usage</h3>

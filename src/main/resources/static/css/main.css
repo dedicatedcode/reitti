@@ -543,6 +543,28 @@ button:hover {
     }
 }
 
+/* Collapsible details styling */
+details {
+    color: var(--color-text-white);
+}
+
+details summary {
+    color: var(--color-text-white);
+    transition: background-color 0.2s ease;
+}
+
+details summary:hover {
+    background-color: var(--color-background-dark-light);
+}
+
+details[open] summary {
+    border-radius: 8px 8px 0 0;
+}
+
+details:not([open]) summary {
+    border-radius: 8px;
+}
+
 
 input[type=file]::file-selector-button {
     background-color: var(--color-background-dark);
