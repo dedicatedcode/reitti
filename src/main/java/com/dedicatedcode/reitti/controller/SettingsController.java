@@ -10,6 +10,8 @@ import com.dedicatedcode.reitti.service.*;
 import com.dedicatedcode.reitti.service.processing.RawLocationPointProcessingTrigger;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -18,23 +20,15 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.LocaleResolver;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.stream.Collectors;
-import jakarta.annotation.PostConstruct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import java.io.InputStream;
-import java.io.IOException;
 
 
 @Controller
@@ -588,26 +582,21 @@ public class SettingsController {
     @GetMapping("/about-content")
     public String getAboutContent(Model model) {
         String notAvailable = getMessage("about.not.available");
-        model.addAttribute("buildVersion", gitProperties.getProperty("git.build.version", notAvailable));
-        model.addAttribute("gitBranch", gitProperties.getProperty("git.branch", notAvailable));
+        String property = gitProperties.getProperty("git.tags");
+        if (!StringUtils.hasText(property)) {
+            property = "development";
+        }
+        model.addAttribute("buildVersion", property);
 
         String commitId = gitProperties.getProperty("git.commit.id.abbrev", notAvailable);
         String commitTime = gitProperties.getProperty("git.commit.time");
-        String commitUserName = gitProperties.getProperty("git.commit.user.name");
-        String commitMessageShort = gitProperties.getProperty("git.commit.message.short");
 
         StringBuilder commitDetails = new StringBuilder();
         if (!commitId.equals(notAvailable)) {
             commitDetails.append(commitId);
             if (commitTime != null && !commitTime.isEmpty()) {
                 commitDetails.append(" (").append(commitTime);
-                if (commitUserName != null && !commitUserName.isEmpty()) {
-                    commitDetails.append(" by ").append(commitUserName);
-                }
                 commitDetails.append(")");
-            }
-            if (commitMessageShort != null && !commitMessageShort.isEmpty()) {
-                commitDetails.append(" - ").append(commitMessageShort);
             }
         } else {
             commitDetails.append(notAvailable);

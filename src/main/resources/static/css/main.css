@@ -39,7 +39,7 @@ body {
     padding: 20px;
     border-radius: 8px;
     width: 80%;
-    max-width: 1200px;
+    max-width: 90%;
     max-height: 85vh;
     overflow-y: auto;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
