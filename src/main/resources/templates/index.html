@@ -36,6 +36,7 @@
             <div class="settings-nav-item" data-target="manage-data" th:if="${dataManagementEnabled}" th:text="#{settings.manage.data}">Manage Data</div>
             <div class="settings-nav-item" data-target="job-status" th:text="#{settings.job.status}">Job Status</div>
             <div class="settings-nav-item" data-target="file-upload" th:text="#{settings.import.data}">Import Data</div>
+            <div class="settings-nav-item" data-target="about-section" th:text="#{settings.about}">About</div>
             <div class="settings-nav-item" data-target="language-settings" th:text="#{language.select}">Select Language</div>
         </div>
 
@@ -83,7 +84,12 @@
 
         <!-- Language Settings Section -->
         <div id="language-settings" class="settings-section" hx-get="/settings/language-content">
-            <div class="htmx-indicator">Loading file upload options...</div>
+            <div class="htmx-indicator">Loading language options...</div>
+        </div>
+
+        <!-- About Section -->
+        <div id="about-section" class="settings-section">
+            <div class="htmx-indicator">Loading about information...</div>
         </div>
 
         <script>
@@ -282,6 +288,13 @@
                         // If this is the manage data tab, load its content if not already loaded
                         if (target === 'manage-data' && !section.hasAttribute('hx-triggered')) {
                             section.setAttribute('hx-get', '/settings/manage-data-content');
+                            section.setAttribute('hx-trigger', 'load once');
+                            section.setAttribute('hx-triggered', 'true');
+                            htmx.process(section);
+                        }
+                        // If this is the about tab, load its content if not already loaded
+                        if (target === 'about-section' && !section.hasAttribute('hx-triggered')) {
+                            section.setAttribute('hx-get', '/settings/about-content');
                             section.setAttribute('hx-trigger', 'load once');
                             section.setAttribute('hx-triggered', 'true');
                             htmx.process(section);

@@ -28,7 +28,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Properties;
 import java.util.stream.Collectors;
+import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.io.InputStream;
+import java.io.IOException;
+
 
 @Controller
 @RequestMapping("/settings")
@@ -45,6 +52,8 @@ public class SettingsController {
     private final boolean dataManagementEnabled;
     private final MessageSource messageSource;
     private final LocaleResolver localeResolver;
+    private final Properties gitProperties = new Properties();
+    private static final Logger logger = LoggerFactory.getLogger(SettingsController.class);
 
     public SettingsController(ApiTokenService apiTokenService,
                               UserService userService,
@@ -68,6 +77,20 @@ public class SettingsController {
         this.dataManagementEnabled = dataManagementEnabled;
         this.messageSource = messageSource;
         this.localeResolver = localeResolver;
+        loadGitProperties();
+    }
+
+    private void loadGitProperties() {
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream("git.properties")) {
+            if (is != null) {
+                this.gitProperties.load(is);
+                logger.info("git.properties loaded successfully.");
+            } else {
+                logger.warn("git.properties not found on classpath. About section may not display Git information.");
+            }
+        } catch (IOException e) {
+            logger.error("Failed to load git.properties", e);
+        }
     }
 
     private String getMessage(String key, Object... args) {
@@ -560,5 +583,39 @@ public class SettingsController {
         model.addAttribute("geocodeServices", geocodeServiceRepository.findAllByOrderByNameAsc());
         model.addAttribute("maxErrors", maxErrors);
         return "fragments/settings :: geocode-services-content";
+    }
+
+    @GetMapping("/about-content")
+    public String getAboutContent(Model model) {
+        String notAvailable = getMessage("about.not.available");
+        model.addAttribute("buildVersion", gitProperties.getProperty("git.build.version", notAvailable));
+        model.addAttribute("gitBranch", gitProperties.getProperty("git.branch", notAvailable));
+
+        String commitId = gitProperties.getProperty("git.commit.id.abbrev", notAvailable);
+        String commitTime = gitProperties.getProperty("git.commit.time");
+        String commitUserName = gitProperties.getProperty("git.commit.user.name");
+        String commitMessageShort = gitProperties.getProperty("git.commit.message.short");
+
+        StringBuilder commitDetails = new StringBuilder();
+        if (!commitId.equals(notAvailable)) {
+            commitDetails.append(commitId);
+            if (commitTime != null && !commitTime.isEmpty()) {
+                commitDetails.append(" (").append(commitTime);
+                if (commitUserName != null && !commitUserName.isEmpty()) {
+                    commitDetails.append(" by ").append(commitUserName);
+                }
+                commitDetails.append(")");
+            }
+            if (commitMessageShort != null && !commitMessageShort.isEmpty()) {
+                commitDetails.append(" - ").append(commitMessageShort);
+            }
+        } else {
+            commitDetails.append(notAvailable);
+        }
+
+
+        model.addAttribute("gitCommitDetails", commitDetails.toString());
+        model.addAttribute("buildTime", gitProperties.getProperty("git.build.time", notAvailable));
+        return "fragments/settings :: about-content";
     }
 }
