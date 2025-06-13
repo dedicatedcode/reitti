@@ -456,7 +456,7 @@
 
 <!-- Geocode Services Content Fragment -->
 <div th:fragment="geocode-services-content">
-    <h2>Geocoding Services</h2>
+    <h2 th:text="#{geocoding.title}">Geocoding Services</h2>
     
     <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
         <span th:text="${successMessage}">Service created successfully</span>
@@ -466,44 +466,44 @@
     </div>
     
     <div style="border: 1px solid #b3d9ff; border-radius: 4px; padding: 15px; margin-bottom: 20px;">
-        <h4>About Geocoding Services</h4>
-        <p>Geocoding services convert coordinates to addresses for your significant places. You can add multiple services and the system will use them randomly to distribute the load.</p>
-        <p>Make sure that the geocoding service answers with GeoJson. This is the only supported response.</p>
-        <p><strong>URL Template placeholders:</strong></p>
+        <h4 th:text="#{geocoding.about.title}">About Geocoding Services</h4>
+        <p th:text="#{geocoding.about.description}">Geocoding services convert coordinates to addresses for your significant places. You can add multiple services and the system will use them randomly to distribute the load.</p>
+        <p th:text="#{geocoding.about.format}">Make sure that the geocoding service answers with GeoJson. This is the only supported response.</p>
+        <p><strong th:text="#{geocoding.url.placeholders}">URL Template placeholders:</strong></p>
         <ul>
-            <li><code>{lat}</code> - Will be replaced with latitude</li>
-            <li><code>{lng}</code> - Will be replaced with longitude</li>
+            <li><code>{lat}</code> - <span th:text="#{geocoding.placeholder.lat}">Will be replaced with latitude</span></li>
+            <li><code>{lng}</code> - <span th:text="#{geocoding.placeholder.lng}">Will be replaced with longitude</span></li>
         </ul>
-        <p><strong>Example:</strong> <code>https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lng}&zoom=18&addressdetails=1</code></p>
+        <p><strong th:text="#{geocoding.example}">Example:</strong> <code>https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lng}&zoom=18&addressdetails=1</code></p>
     </div>
     
     <form hx-post="/settings/geocode-services" hx-target="#geocode-services" hx-swap="innerHTML" class="geocode-service-form" style="margin-bottom: 20px;">
-        <h3>Add New Geocoding Service</h3>
+        <h3 th:text="#{geocoding.add.title}">Add New Geocoding Service</h3>
         <div class="form-group">
-            <label for="serviceName">Service Name</label>
+            <label for="serviceName" th:text="#{geocoding.service.name}">Service Name</label>
             <input type="text" id="serviceName" name="name" required placeholder="e.g., My Custom Geocoder">
         </div>
         <div class="form-group">
-            <label for="serviceUrl">URL Template</label>
+            <label for="serviceUrl" th:text="#{geocoding.service.url}">URL Template</label>
             <input type="text" id="serviceUrl" name="urlTemplate" required placeholder="https://api.example.com/reverse?lat={lat}&lon={lng}&format=json">
         </div>
-        <button type="submit" class="btn">Add Service</button>
+        <button type="submit" class="btn" th:text="#{form.create}">Add Service</button>
     </form>
     
-    <h3>Available Services</h3>
+    <h3 th:text="#{geocoding.available.services}">Available Services</h3>
     <div th:if="${geocodeServices.isEmpty()}">
-        <p>No geocoding services configured.</p>
+        <p th:text="#{geocoding.no.services}">No geocoding services configured.</p>
     </div>
     
     <table th:if="${!geocodeServices.isEmpty()}">
         <thead>
             <tr>
-                <th>Name</th>
-                <th>URL Template</th>
-                <th>Status</th>
-                <th>Errors</th>
-                <th>Last Used</th>
-                <th>Actions</th>
+                <th th:text="#{geocoding.table.name}">Name</th>
+                <th th:text="#{geocoding.table.url}">URL Template</th>
+                <th th:text="#{geocoding.table.status}">Status</th>
+                <th th:text="#{geocoding.table.errors}">Errors</th>
+                <th th:text="#{geocoding.table.last.used}">Last Used</th>
+                <th th:text="#{geocoding.table.actions}">Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -511,32 +511,33 @@
                 <td th:text="${service.name}"></td>
                 <td style="max-width: 300px; word-break: break-all; font-family: monospace;" th:text="${service.urlTemplate}"></td>
                 <td>
-                    <span th:if="${service.enabled}"><i class="lni lni-check"></i> Enabled</span>
-                    <span th:if="${!service.enabled}" style="color: red;"><i class="lni lni-xmark"></i> Disabled</span>
+                    <span th:if="${service.enabled}"><i class="lni lni-check"></i> <span th:text="#{geocoding.status.enabled}">Enabled</span></span>
+                    <span th:if="${!service.enabled}" style="color: red;"><i class="lni lni-xmark"></i> <span th:text="#{geocoding.status.disabled}">Disabled</span></span>
                 </td>
                 <td>
                     <span th:text="${service.errorCount + '/' + maxErrors}"></span>
-                    <span th:if="${service.errorCount >= maxErrors}"> (Auto-disabled)</span>
+                    <span th:if="${service.errorCount >= maxErrors}" th:text="#{geocoding.auto.disabled}"> (Auto-disabled)</span>
                 </td>
-                <td th:text="${service.lastUsed != null ? #temporals.format(service.lastUsed, 'yyyy-MM-dd HH:mm') : 'Never'}"></td>
+                <td th:text="${service.lastUsed != null ? #temporals.format(service.lastUsed, 'yyyy-MM-dd HH:mm') : #messages.msg('geocoding.never.used')}"></td>
                 <td>
                     <button class="btn" 
                             th:attr="hx-post=@{/settings/geocode-services/{id}/toggle(id=${service.id})}"
                             hx-target="#geocode-services"
                             hx-swap="innerHTML"
-                            th:text="${service.enabled ? 'Disable' : 'Enable'}">Toggle</button>
+                            th:text="${service.enabled ? #messages.msg('geocoding.disable') : #messages.msg('geocoding.enable')}">Toggle</button>
                     
                     <button th:if="${service.errorCount > 0}" 
                             class="btn"
                             th:attr="hx-post=@{/settings/geocode-services/{id}/reset-errors(id=${service.id})}"
                             hx-target="#geocode-services"
-                            hx-swap="innerHTML">Reset Errors</button>
+                            hx-swap="innerHTML"
+                            th:text="#{geocoding.reset.errors}">Reset Errors</button>
                     
                     <button class="btn btn-danger"
-                            th:attr="hx-post=@{/settings/geocode-services/{id}/delete(id=${service.id})}"
-                            hx-confirm="Are you sure you want to delete this geocoding service?"
+                            th:attr="hx-post=@{/settings/geocode-services/{id}/delete(id=${service.id})}, hx-confirm=#{geocoding.delete.confirm}"
                             hx-target="#geocode-services"
-                            hx-swap="innerHTML">Delete</button>
+                            hx-swap="innerHTML"
+                            th:text="#{form.delete}">Delete</button>
                 </td>
             </tr>
         </tbody>
