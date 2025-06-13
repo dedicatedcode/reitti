@@ -402,15 +402,15 @@
 
 <!-- Language Selection Content Fragment -->
 <div th:fragment="language-content">
-    <h2>Language Settings</h2>
+    <h2 th:text="#{language.title}">Language Settings</h2>
     
     <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
         <span th:text="${successMessage}">Language changed successfully</span>
     </div>
     
     <div style="border: 1px solid #b3d9ff; border-radius: 4px; padding: 15px; margin-bottom: 20px;">
-        <h4>Select Your Language</h4>
-        <p>Choose your preferred language for the application interface. The change will take effect immediately.</p>
+        <h4 th:text="#{language.select}">Select Your Language</h4>
+        <p th:text="#{language.description}">Choose your preferred language for the application interface. You may need to reload the page for all changes to take effect.</p>
     </div>
     
     <div class="language-selection">
