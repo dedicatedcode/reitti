@@ -38,11 +38,6 @@ public class ImmichIntegrationService {
         return immichIntegrationRepository.save(integration);
     }
     
-    @Transactional
-    public void deleteIntegration(User user) {
-        immichIntegrationRepository.findByUser(user).ifPresent(immichIntegrationRepository::delete);
-    }
-    
     public boolean testConnection(String serverUrl, String apiToken) {
         // TODO: Implement actual connection test to Immich API
         // For now, just validate that URL and token are not empty
