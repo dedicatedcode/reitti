@@ -367,17 +367,18 @@
                 </div>
             </div>
         </details>
+        <details>
+            <summary>
+                📸 <span th:text="#{integrations.photos.title}">Photos</span>
+            </summary>
+            <div id="photos-section" hx-get="/settings/photos-content" hx-trigger="load" hx-swap="innerHTML" style="padding: 15px;">
+                <!-- Photos content will be loaded here -->
+            </div>
+        </details>
     </div>
     
     <!-- Photos Collapsible Section -->
-    <details style="border: 1px solid #dee2e6; border-radius: 8px; margin-bottom: 20px; background-color: var(--color-background-dark-light);">
-        <summary style="padding: 15px; cursor: pointer; font-weight: bold; font-size: 1.1em; background-color: var(--color-background-dark); border-radius: 8px 8px 0 0; margin: -1px -1px 0 -1px;">
-            📸 <span th:text="#{integrations.photos.title}">Photos</span>
-        </summary>
-        <div id="photos-section" hx-get="/settings/photos-content" hx-trigger="load" hx-swap="innerHTML" style="padding: 15px;">
-            <!-- Photos content will be loaded here -->
-        </div>
-    </details>
+
 </div>
 
 <!-- Photos Content Fragment -->
@@ -395,13 +396,14 @@
         <h3 th:text="#{integrations.immich.title}">🖼️ Immich Integration</h3>
         <p th:text="#{integrations.immich.description}">Immich is a self-hosted photo and video backup solution. Connect your Immich instance to automatically sync location data with your photos.</p>
         
-        <form hx-post="/settings/immich-integration" hx-target="#photos-section" hx-swap="innerHTML" class="immich-form" style="margin-top: 20px;">
+        <form hx-post="/settings/immich-integration" hx-target="#photos-section" hx-swap="innerHTML" class="immich-form" style="margin-top: 20px;" autocomplete="off" >
             <div class="form-group">
                 <label for="serverUrl" th:text="#{integrations.immich.server.url}">Server URL</label>
                 <input type="url" 
                        id="serverUrl" 
                        name="serverUrl" 
-                       required 
+                       required
+                       autocomplete="off"
                        th:placeholder="#{integrations.immich.server.url.placeholder}"
                        th:value="${hasIntegration ? immichIntegration.serverUrl : ''}">
             </div>
@@ -411,7 +413,8 @@
                 <input type="password" 
                        id="apiToken" 
                        name="apiToken" 
-                       required 
+                       required
+                       autocomplete="new-password"
                        th:placeholder="#{integrations.immich.api.token.placeholder}"
                        th:value="${hasIntegration ? immichIntegration.apiToken : ''}">
             </div>
