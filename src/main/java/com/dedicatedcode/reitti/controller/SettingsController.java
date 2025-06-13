@@ -1,24 +1,26 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.dto.TimelineResponse;
-import com.dedicatedcode.reitti.model.*;
+import com.dedicatedcode.reitti.model.ApiToken;
+import com.dedicatedcode.reitti.model.GeocodeService;
+import com.dedicatedcode.reitti.model.SignificantPlace;
+import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.GeocodeServiceRepository;
 import com.dedicatedcode.reitti.service.*;
 import com.dedicatedcode.reitti.service.processing.RawLocationPointProcessingTrigger;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
-import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.LocaleResolver;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,20 +43,20 @@ public class SettingsController {
     private final RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger;
     private final int maxErrors;
     private final boolean dataManagementEnabled;
+    private final MessageSource messageSource;
+    private final LocaleResolver localeResolver;
 
-    @Autowired
-    private MessageSource messageSource;
-    
-    @Autowired
-    private LocaleResolver localeResolver;
-
-    public SettingsController(ApiTokenService apiTokenService, UserService userService,
-                              QueueStatsService queueStatsService, PlaceService placeService,
+    public SettingsController(ApiTokenService apiTokenService,
+                              UserService userService,
+                              QueueStatsService queueStatsService,
+                              PlaceService placeService,
                               ImportHandler importHandler,
                               GeocodeServiceRepository geocodeServiceRepository,
                               RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger,
                               @Value("${reitti.geocoding.max-errors}") int maxErrors,
-                              @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
+                              @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
+                              MessageSource messageSource,
+                              LocaleResolver localeResolver) {
         this.apiTokenService = apiTokenService;
         this.userService = userService;
         this.queueStatsService = queueStatsService;
@@ -64,6 +66,8 @@ public class SettingsController {
         this.rawLocationPointProcessingTrigger = rawLocationPointProcessingTrigger;
         this.maxErrors = maxErrors;
         this.dataManagementEnabled = dataManagementEnabled;
+        this.messageSource = messageSource;
+        this.localeResolver = localeResolver;
     }
 
     private String getMessage(String key, Object... args) {
@@ -119,7 +123,7 @@ public class SettingsController {
         User user = userService.getUserByUsername(authentication.getName());
 
         try {
-            ApiToken token = apiTokenService.createToken(user, name);
+            apiTokenService.createToken(user, name);
             model.addAttribute("successMessage", getMessage("message.success.token.created"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("message.error.token.creation", e.getMessage()));
@@ -296,7 +300,7 @@ public class SettingsController {
 
         // Add the first token if available
         if (!tokens.isEmpty()) {
-            model.addAttribute("firstToken", tokens.get(0).getToken());
+            model.addAttribute("firstToken", tokens.getFirst().getToken());
             model.addAttribute("hasToken", true);
         } else {
             model.addAttribute("hasToken", false);
@@ -350,7 +354,7 @@ public class SettingsController {
         StringBuilder errorMessages = new StringBuilder();
 
         for (MultipartFile file : files) {
-            if (file.isEmpty()) {
+            if (file.isEmpty() || file.getOriginalFilename() == null) {
                 errorMessages.append("File ").append(file.getOriginalFilename()).append(" is empty. ");
                 continue;
             }
@@ -378,12 +382,12 @@ public class SettingsController {
 
         if (successCount > 0) {
             String message = "Successfully processed " + successCount + " file(s) with " + totalProcessed + " location points";
-            if (errorMessages.length() > 0) {
-                message += ". Errors: " + errorMessages.toString();
+            if (!errorMessages.isEmpty()) {
+                message += ". Errors: " + errorMessages;
             }
             model.addAttribute("uploadSuccessMessage", message);
         } else {
-            model.addAttribute("uploadErrorMessage", "No files were processed successfully. " + errorMessages.toString());
+            model.addAttribute("uploadErrorMessage", "No files were processed successfully. " + errorMessages);
         }
 
         return "fragments/settings :: file-upload-content";
@@ -395,7 +399,7 @@ public class SettingsController {
                                       Model model) {
         User user = (User) authentication.getPrincipal();
 
-        if (file.isEmpty()) {
+        if (file.isEmpty() || file.getOriginalFilename() == null) {
             model.addAttribute("uploadErrorMessage", "File is empty");
             return "fragments/settings :: file-upload-content";
         }
@@ -466,12 +470,12 @@ public class SettingsController {
 
         if (successCount > 0) {
             String message = "Successfully processed " + successCount + " file(s) with " + totalProcessed + " location points";
-            if (errorMessages.length() > 0) {
-                message += ". Errors: " + errorMessages.toString();
+            if (!errorMessages.isEmpty()) {
+                message += ". Errors: " + errorMessages;
             }
             model.addAttribute("uploadSuccessMessage", message);
         } else {
-            model.addAttribute("uploadErrorMessage", "No files were processed successfully. " + errorMessages.toString());
+            model.addAttribute("uploadErrorMessage", "No files were processed successfully. " + errorMessages);
         }
 
         return "fragments/settings :: file-upload-content";
@@ -486,15 +490,13 @@ public class SettingsController {
     }
 
     @PostMapping("/manage-data/process-visits-trips")
-    public String processVisitsTrips(Authentication authentication, Model model) {
+    public String processVisitsTrips(Model model) {
         if (!dataManagementEnabled) {
             throw new RuntimeException("Data management is not enabled");
         }
 
         try {
-
             rawLocationPointProcessingTrigger.start();
-
             model.addAttribute("successMessage", getMessage("data.process.success"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("data.process.error", e.getMessage()));

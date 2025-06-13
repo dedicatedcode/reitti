@@ -33,7 +33,7 @@
             <div class="settings-nav-item" data-target="places-management" th:text="#{settings.places}">Places</div>
             <div class="settings-nav-item" data-target="geocode-services" th:text="#{settings.geocoding}">Geocoding</div>
             <div class="settings-nav-item" data-target="integrations" hx-get="/settings/integrations-content" hx-target="#integrations" th:text="#{settings.integrations}">Integrations</div>
-            <div class="settings-nav-item" data-target="manage-data" th:text="#{settings.manage.data}">Manage Data</div>
+            <div class="settings-nav-item" data-target="manage-data" th:if="${dataManagementEnabled}" th:text="#{settings.manage.data}">Manage Data</div>
             <div class="settings-nav-item" data-target="job-status" th:text="#{settings.job.status}">Job Status</div>
             <div class="settings-nav-item" data-target="file-upload" th:text="#{settings.import.data}">Import Data</div>
             <div class="settings-nav-item" data-target="language-settings" th:text="#{language.select}">Select Language</div>
@@ -66,7 +66,7 @@
         </div>
 
         <!-- Manage Data Section -->
-        <div id="manage-data" class="settings-section">
+        <div th:if="${dataManagementEnabled}" id="manage-data" class="settings-section">
             <div class="htmx-indicator">Loading data management...</div>
         </div>
 
