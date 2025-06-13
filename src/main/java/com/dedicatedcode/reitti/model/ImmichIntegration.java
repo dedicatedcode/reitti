@@ -30,9 +30,6 @@ public class ImmichIntegration {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
     
-    @Column(name = "last_sync")
-    private Instant lastSync;
-    
     public ImmichIntegration() {
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
@@ -108,11 +105,4 @@ public class ImmichIntegration {
         this.updatedAt = updatedAt;
     }
     
-    public Instant getLastSync() {
-        return lastSync;
-    }
-    
-    public void setLastSync(Instant lastSync) {
-        this.lastSync = lastSync;
-    }
 }
