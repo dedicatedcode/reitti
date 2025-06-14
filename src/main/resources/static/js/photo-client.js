@@ -210,10 +210,13 @@ class PhotoClient {
             document.body.removeChild(modal);
         };
 
-        closeButton.addEventListener('click', closeModal);
+        closeButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleEscape({ key: 'Escape' });
+        });
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
-                closeModal();
+                handleEscape({ key: 'Escape' });
             }
         });
 
@@ -271,10 +274,13 @@ class PhotoClient {
             }
         };
 
-        closeButton.addEventListener('click', closeModal);
+        closeButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleEscape({ key: 'Escape' });
+        });
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
-                closeModal();
+                handleEscape({ key: 'Escape' });
             }
         });
 
