@@ -182,7 +182,7 @@ class PhotoClient {
             photoElement.className = 'photo-grid-item';
 
             const img = document.createElement('img');
-            img.src = photo.thumbnailUrl;
+            img.src = photo.fullImageUrl;
             img.alt = photo.fileName || 'Photo';
 
             photoElement.addEventListener('click', (e) => {
