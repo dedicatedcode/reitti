@@ -111,52 +111,21 @@ class PhotoClient {
      * @param {Object} group - Photo group object with latitude, longitude, and photos array
      */
     createPhotoGroupMarker(group) {
-        const iconSize = 50;
+        const iconSize = getComputedStyle(document.documentElement)
+            .getPropertyValue('--photo-marker-size').trim();
+        const iconSizeNum = parseInt(iconSize);
         const primaryPhoto = group.photos[0];
         const photoCount = group.photos.length;
         
         // Create count indicator if more than one photo
         const countIndicator = photoCount > 1 ? `
-            <div style="
-                position: absolute;
-                top: -5px;
-                right: -5px;
-                background: #e74c3c;
-                color: white;
-                border-radius: 50%;
-                width: 20px;
-                height: 20px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 12px;
-                font-weight: bold;
-                border: 2px solid #fff;
-            ">+${photoCount - 1}</div>
+            <div class="photo-count-indicator">+${photoCount - 1}</div>
         ` : '';
         
         const iconHtml = `
-            <div style="
-                width: ${iconSize}px;
-                height: ${iconSize}px;
-                border-radius: 50%;
-                border: 3px solid #fff;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-                background: #f0f0f0;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                position: relative;
-            ">
+            <div class="photo-marker-icon" style="width: ${iconSize}; height: ${iconSize};">
                 <img src="${primaryPhoto.thumbnailUrl}" 
                      alt="${primaryPhoto.fileName || 'Photo'}"
-                     style="
-                        width: 100%;
-                        height: 100%;
-                        object-fit: cover;
-                        border-radius: 50%;
-                     "
                      onerror="this.style.display='none'; this.parentElement.innerHTML='📷';">
                 ${countIndicator}
             </div>
@@ -165,8 +134,8 @@ class PhotoClient {
         const customIcon = L.divIcon({
             html: iconHtml,
             className: 'photo-marker',
-            iconSize: [iconSize, iconSize],
-            iconAnchor: [iconSize / 2, iconSize / 2]
+            iconSize: [iconSizeNum, iconSizeNum],
+            iconAnchor: [iconSizeNum / 2, iconSizeNum / 2]
         });
 
         const marker = L.marker([group.latitude, group.longitude], {
@@ -190,86 +159,31 @@ class PhotoClient {
         // Create modal overlay
         const modal = document.createElement('div');
         modal.className = 'photo-grid-modal';
-        modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 10000;
-            cursor: pointer;
-        `;
 
         // Create grid container
         const gridContainer = document.createElement('div');
-        gridContainer.style.cssText = `
-            max-width: 90%;
-            max-height: 90%;
-            overflow: auto;
-            cursor: default;
-            position: relative;
-        `;
+        gridContainer.className = 'photo-grid-container';
 
         // Create close button
         const closeButton = document.createElement('button');
         closeButton.innerHTML = '×';
-        closeButton.style.cssText = `
-            position: absolute;
-            top: -40px;
-            right: 0;
-            background: rgba(255, 255, 255, 0.8);
-            border: none;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            font-size: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10001;
-        `;
+        closeButton.className = 'photo-grid-close-button';
 
         // Create photo grid
         const photoGrid = document.createElement('div');
+        photoGrid.className = 'photo-grid';
         const columns = Math.min(4, Math.ceil(Math.sqrt(photos.length)));
-        photoGrid.style.cssText = `
-            display: grid;
-            grid-template-columns: repeat(${columns}, 450px);
-            gap: 0;
-            background: #000;
-        `;
+        const thumbnailSize = getComputedStyle(document.documentElement)
+            .getPropertyValue('--photo-grid-thumbnail-size').trim();
+        photoGrid.style.gridTemplateColumns = `repeat(${columns}, ${thumbnailSize})`;
 
         photos.forEach(photo => {
             const photoElement = document.createElement('div');
-            photoElement.style.cssText = `
-                width: 450px;
-                height: 450px;
-                cursor: pointer;
-                overflow: hidden;
-            `;
+            photoElement.className = 'photo-grid-item';
 
             const img = document.createElement('img');
             img.src = photo.thumbnailUrl;
             img.alt = photo.fileName || 'Photo';
-            img.style.cssText = `
-                width: 100%;
-                height: 100%;
-                object-fit: cover;
-                transition: transform 0.2s;
-            `;
-
-            img.addEventListener('mouseenter', () => {
-                img.style.transform = 'scale(1.05)';
-            });
-
-            img.addEventListener('mouseleave', () => {
-                img.style.transform = 'scale(1)';
-            });
 
             photoElement.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -325,56 +239,20 @@ class PhotoClient {
         // Create modal overlay
         const modal = document.createElement('div');
         modal.className = 'photo-modal';
-        modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 10001;
-            cursor: pointer;
-        `;
 
         // Create image container
         const imageContainer = document.createElement('div');
-        imageContainer.style.cssText = `
-            max-width: 90%;
-            max-height: 90%;
-            position: relative;
-        `;
+        imageContainer.className = 'photo-modal-container';
 
         // Create image
         const img = document.createElement('img');
         img.src = photo.fullImageUrl;
         img.alt = photo.fileName || 'Photo';
-        img.style.cssText = `
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-        `;
 
         // Create close button
         const closeButton = document.createElement('button');
         closeButton.innerHTML = '×';
-        closeButton.style.cssText = `
-            position: absolute;
-            top: -40px;
-            right: 0;
-            background: rgba(255, 255, 255, 0.8);
-            border: none;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            font-size: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        `;
+        closeButton.className = 'photo-modal-close-button';
 
         // Add event listeners
         const closeModal = () => {

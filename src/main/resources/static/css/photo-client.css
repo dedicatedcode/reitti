@@ -1,0 +1,151 @@
+:root {
+    --photo-marker-size: 50px;
+    --photo-grid-thumbnail-size: 450px;
+    --photo-count-indicator-size: 20px;
+    --photo-modal-close-button-size: 30px;
+}
+
+.photo-marker {
+    /* Custom marker styles are handled inline due to Leaflet requirements */
+}
+
+.photo-grid-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    cursor: pointer;
+}
+
+.photo-grid-container {
+    max-width: 90%;
+    max-height: 90%;
+    overflow: auto;
+    cursor: default;
+    position: relative;
+}
+
+.photo-grid-close-button {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    background: rgba(255, 255, 255, 0.8);
+    border: none;
+    border-radius: 50%;
+    width: var(--photo-modal-close-button-size);
+    height: var(--photo-modal-close-button-size);
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10001;
+}
+
+.photo-grid {
+    display: grid;
+    gap: 0;
+    background: #000;
+}
+
+.photo-grid-item {
+    width: var(--photo-grid-thumbnail-size);
+    height: var(--photo-grid-thumbnail-size);
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.photo-grid-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.2s;
+}
+
+.photo-grid-item:hover img {
+    transform: scale(1.05);
+}
+
+.photo-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10001;
+    cursor: pointer;
+}
+
+.photo-modal-container {
+    max-width: 90%;
+    max-height: 90%;
+    position: relative;
+}
+
+.photo-modal img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.photo-modal-close-button {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    background: rgba(255, 255, 255, 0.8);
+    border: none;
+    border-radius: 50%;
+    width: var(--photo-modal-close-button-size);
+    height: var(--photo-modal-close-button-size);
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.photo-marker-icon {
+    border-radius: 50%;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+}
+
+.photo-marker-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.photo-count-indicator {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #e74c3c;
+    color: white;
+    border-radius: 50%;
+    width: var(--photo-count-indicator-size);
+    height: var(--photo-count-indicator-size);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    border: 2px solid #fff;
+}
