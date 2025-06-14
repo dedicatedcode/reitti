@@ -73,16 +73,46 @@ class PhotoClient {
      * @param {Object} photo - Photo object with id, latitude, longitude, etc.
      */
     createPhotoMarker(photo) {
-        const marker = L.circleMarker([photo.latitude, photo.longitude], {
-            radius: 8,
-            fillColor: '#e74c3c',
-            color: '#fff',
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.8
+        // Create a custom div icon with the thumbnail image
+        const iconSize = 50;
+        const iconHtml = `
+            <div style="
+                width: ${iconSize}px;
+                height: ${iconSize}px;
+                border-radius: 50%;
+                border: 3px solid #fff;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                overflow: hidden;
+                background: #f0f0f0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+            ">
+                <img src="${photo.thumbnailUrl}" 
+                     alt="${photo.fileName || 'Photo'}"
+                     style="
+                        width: 100%;
+                        height: 100%;
+                        object-fit: cover;
+                        border-radius: 50%;
+                     "
+                     onerror="this.style.display='none'; this.parentElement.innerHTML='📷';">
+            </div>
+        `;
+
+        const customIcon = L.divIcon({
+            html: iconHtml,
+            className: 'photo-marker',
+            iconSize: [iconSize, iconSize],
+            iconAnchor: [iconSize / 2, iconSize / 2]
         });
 
-        // Create popup content with photo thumbnail
+        const marker = L.marker([photo.latitude, photo.longitude], {
+            icon: customIcon
+        });
+
+        // Create popup content with photo info
         const popupContent = this.createPhotoPopupContent(photo);
         marker.bindPopup(popupContent, {
             maxWidth: 300,
@@ -109,14 +139,10 @@ class PhotoClient {
         
         return `
             <div class="photo-popup-content">
-                <img src="${photo.thumbnailUrl}" 
-                     alt="${fileName}" 
-                     style="width: 100%; max-width: 250px; height: auto; border-radius: 4px; margin-bottom: 8px;"
-                     onerror="this.style.display='none'">
                 <div style="font-weight: bold; margin-bottom: 4px;">${fileName}</div>
-                <div style="font-size: 0.9em; color: #666;">${dateTime}</div>
-                <div style="margin-top: 8px; font-size: 0.8em; color: #888;">
-                    Click marker to view full size
+                <div style="font-size: 0.9em; color: #666; margin-bottom: 8px;">${dateTime}</div>
+                <div style="font-size: 0.8em; color: #888;">
+                    Click to view full size
                 </div>
             </div>
         `;
