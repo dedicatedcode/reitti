@@ -213,7 +213,9 @@ class PhotoClient {
         // Add event listeners
         const closeModal = () => {
             document.removeEventListener('keydown', handleEscape);
-            document.body.removeChild(modal);
+            if (document.body.contains(modal)) {
+                document.body.removeChild(modal);
+            }
         };
 
         closeButton.addEventListener('click', (e) => {

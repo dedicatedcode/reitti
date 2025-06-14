@@ -26,26 +26,8 @@
 .photo-grid-container {
     max-width: 90%;
     max-height: 90%;
-    overflow: auto;
     cursor: default;
     position: relative;
-}
-
-.photo-grid-close-button {
-    position: absolute;
-    top: -40px;
-    right: 0;
-    background: rgba(255, 255, 255, 0.8);
-    border: none;
-    border-radius: 50%;
-    width: var(--photo-modal-close-button-size);
-    height: var(--photo-modal-close-button-size);
-    font-size: 20px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10001;
 }
 
 .photo-grid {
@@ -102,11 +84,12 @@
     object-fit: contain;
 }
 
+.photo-grid-close-button,
 .photo-modal-close-button {
     position: absolute;
     top: -40px;
     right: 0;
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(53, 53, 53, 0.8);
     border: none;
     border-radius: 50%;
     width: var(--photo-modal-close-button-size);
