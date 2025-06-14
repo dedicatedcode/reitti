@@ -197,8 +197,16 @@ class PhotoClient {
             photoGrid.appendChild(photoElement);
         });
 
+        // Handle escape key
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        };
+
         // Add event listeners
         const closeModal = () => {
+            document.removeEventListener('keydown', handleEscape);
             document.body.removeChild(modal);
         };
 
@@ -209,13 +217,6 @@ class PhotoClient {
             }
         });
 
-        // Handle escape key
-        const handleEscape = (e) => {
-            if (e.key === 'Escape') {
-                closeModal();
-                document.removeEventListener('keydown', handleEscape);
-            }
-        };
         document.addEventListener('keydown', handleEscape);
 
         // Assemble modal
@@ -254,8 +255,16 @@ class PhotoClient {
         closeButton.innerHTML = '×';
         closeButton.className = 'photo-modal-close-button';
 
+        // Handle escape key
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        };
+
         // Add event listeners
         const closeModal = () => {
+            document.removeEventListener('keydown', handleEscape);
             document.body.removeChild(modal);
             if (onClose) {
                 onClose();
@@ -269,13 +278,6 @@ class PhotoClient {
             }
         });
 
-        // Handle escape key
-        const handleEscape = (e) => {
-            if (e.key === 'Escape') {
-                closeModal();
-                document.removeEventListener('keydown', handleEscape);
-            }
-        };
         document.addEventListener('keydown', handleEscape);
 
         // Assemble modal
