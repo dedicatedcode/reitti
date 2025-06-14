@@ -1,5 +1,9 @@
 package com.dedicatedcode.reitti.service;
 
+import com.dedicatedcode.reitti.dto.ImmichAsset;
+import com.dedicatedcode.reitti.dto.ImmichSearchRequest;
+import com.dedicatedcode.reitti.dto.ImmichSearchResponse;
+import com.dedicatedcode.reitti.dto.PhotoResponse;
 import com.dedicatedcode.reitti.model.ImmichIntegration;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.ImmichIntegrationRepository;
@@ -8,6 +12,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -70,5 +77,87 @@ public class ImmichIntegrationService {
         } catch (Exception e) {
             return false;
         }
+    }
+    
+    public List<PhotoResponse> searchPhotosForDay(User user, LocalDate date) {
+        Optional<ImmichIntegration> integrationOpt = getIntegrationForUser(user);
+        
+        if (integrationOpt.isEmpty() || !integrationOpt.get().isEnabled()) {
+            return new ArrayList<>();
+        }
+        
+        ImmichIntegration integration = integrationOpt.get();
+        
+        try {
+            String baseUrl = integration.getServerUrl().endsWith("/") ? 
+                integration.getServerUrl() : integration.getServerUrl() + "/";
+            String searchUrl = baseUrl + "api/search/metadata";
+            
+            // Create date range for the specific day
+            String startOfDay = date.atStartOfDay().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            String endOfDay = date.plusDays(1).atStartOfDay().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            
+            ImmichSearchRequest searchRequest = new ImmichSearchRequest(startOfDay, endOfDay);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.add("x-api-key", integration.getApiToken());
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            
+            HttpEntity<ImmichSearchRequest> entity = new HttpEntity<>(searchRequest, headers);
+            
+            ResponseEntity<ImmichSearchResponse> response = restTemplate.exchange(
+                searchUrl,
+                HttpMethod.POST,
+                entity,
+                ImmichSearchResponse.class
+            );
+            
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return convertToPhotoResponses(response.getBody(), baseUrl);
+            }
+            
+        } catch (Exception e) {
+            // Log error but don't throw - return empty list
+        }
+        
+        return new ArrayList<>();
+    }
+    
+    private List<PhotoResponse> convertToPhotoResponses(ImmichSearchResponse searchResponse, String baseUrl) {
+        List<PhotoResponse> photos = new ArrayList<>();
+        
+        if (searchResponse.getAssets() != null && searchResponse.getAssets().getItems() != null) {
+            for (ImmichAsset asset : searchResponse.getAssets().getItems()) {
+                String thumbnailUrl = baseUrl + "api/assets/" + asset.getId() + "/thumbnail";
+                String fullImageUrl = baseUrl + "api/assets/" + asset.getId() + "/original";
+                
+                Double latitude = null;
+                Double longitude = null;
+                String dateTime = asset.getLocalDateTime();
+                
+                if (asset.getExifInfo() != null) {
+                    latitude = asset.getExifInfo().getLatitude();
+                    longitude = asset.getExifInfo().getLongitude();
+                    if (asset.getExifInfo().getDateTimeOriginal() != null) {
+                        dateTime = asset.getExifInfo().getDateTimeOriginal();
+                    }
+                }
+                
+                PhotoResponse photo = new PhotoResponse(
+                    asset.getId(),
+                    asset.getOriginalFileName(),
+                    thumbnailUrl,
+                    fullImageUrl,
+                    latitude,
+                    longitude,
+                    dateTime
+                );
+                
+                photos.add(photo);
+            }
+        }
+        
+        return photos;
     }
 }
