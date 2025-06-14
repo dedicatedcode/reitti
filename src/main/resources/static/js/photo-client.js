@@ -142,7 +142,6 @@ class PhotoClient {
                 border-radius: 50%;
                 border: 3px solid #fff;
                 box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-                overflow: hidden;
                 background: #f0f0f0;
                 display: flex;
                 align-items: center;
@@ -240,7 +239,7 @@ class PhotoClient {
         const columns = Math.min(4, Math.ceil(Math.sqrt(photos.length)));
         photoGrid.style.cssText = `
             display: grid;
-            grid-template-columns: repeat(${columns}, 150px);
+            grid-template-columns: repeat(${columns}, 450px);
             gap: 0;
             background: #000;
         `;
@@ -248,8 +247,8 @@ class PhotoClient {
         photos.forEach(photo => {
             const photoElement = document.createElement('div');
             photoElement.style.cssText = `
-                width: 150px;
-                height: 150px;
+                width: 450px;
+                height: 450px;
                 cursor: pointer;
                 overflow: hidden;
             `;
