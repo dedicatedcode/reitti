@@ -131,6 +131,7 @@
     height: 100%;
     object-fit: cover;
     border-radius: 50%;
+    overflow: hidden;
 }
 
 .photo-count-indicator {
@@ -148,4 +149,5 @@
     font-size: 12px;
     font-weight: bold;
     border: 2px solid #fff;
+    z-index: 20;
 }
