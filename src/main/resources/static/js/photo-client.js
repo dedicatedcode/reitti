@@ -156,6 +156,12 @@ class PhotoClient {
      * @param {Array} photos - Array of photo objects
      */
     showPhotoGridModal(photos) {
+        // Remove any existing photo grid modal first
+        const existingModal = document.querySelector('.photo-grid-modal');
+        if (existingModal) {
+            document.body.removeChild(existingModal);
+        }
+
         // Create modal overlay
         const modal = document.createElement('div');
         modal.className = 'photo-grid-modal';
