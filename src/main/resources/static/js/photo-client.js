@@ -62,19 +62,79 @@ class PhotoClient {
             return bounds.contains(photoLatLng);
         });
         
-        // Create markers for visible photos
-        visiblePhotos.forEach(photo => {
-            this.createPhotoMarker(photo);
+        // Group photos by location (with small tolerance for GPS precision)
+        const photoGroups = this.groupPhotosByLocation(visiblePhotos);
+        
+        // Create markers for photo groups
+        photoGroups.forEach(group => {
+            this.createPhotoGroupMarker(group);
         });
     }
 
     /**
-     * Create a marker for a photo
-     * @param {Object} photo - Photo object with id, latitude, longitude, etc.
+     * Group photos by location with tolerance for GPS precision
+     * @param {Array} photos - Array of photo objects
+     * @returns {Array} Array of photo groups
      */
-    createPhotoMarker(photo) {
-        // Create a custom div icon with the thumbnail image
+    groupPhotosByLocation(photos) {
+        const groups = [];
+        const tolerance = 0.0001; // ~10 meters tolerance
+        
+        photos.forEach(photo => {
+            let foundGroup = false;
+            
+            for (let group of groups) {
+                const latDiff = Math.abs(group.latitude - photo.latitude);
+                const lngDiff = Math.abs(group.longitude - photo.longitude);
+                
+                if (latDiff < tolerance && lngDiff < tolerance) {
+                    group.photos.push(photo);
+                    foundGroup = true;
+                    break;
+                }
+            }
+            
+            if (!foundGroup) {
+                groups.push({
+                    latitude: photo.latitude,
+                    longitude: photo.longitude,
+                    photos: [photo]
+                });
+            }
+        });
+        
+        return groups;
+    }
+
+    /**
+     * Create a marker for a photo group
+     * @param {Object} group - Photo group object with latitude, longitude, and photos array
+     */
+    createPhotoGroupMarker(group) {
         const iconSize = 50;
+        const primaryPhoto = group.photos[0];
+        const photoCount = group.photos.length;
+        
+        // Create count indicator if more than one photo
+        const countIndicator = photoCount > 1 ? `
+            <div style="
+                position: absolute;
+                top: -5px;
+                right: -5px;
+                background: #e74c3c;
+                color: white;
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 12px;
+                font-weight: bold;
+                border: 2px solid #fff;
+            ">+${photoCount - 1}</div>
+        ` : '';
+        
         const iconHtml = `
             <div style="
                 width: ${iconSize}px;
@@ -88,9 +148,10 @@ class PhotoClient {
                 align-items: center;
                 justify-content: center;
                 cursor: pointer;
+                position: relative;
             ">
-                <img src="${photo.thumbnailUrl}" 
-                     alt="${photo.fileName || 'Photo'}"
+                <img src="${primaryPhoto.thumbnailUrl}" 
+                     alt="${primaryPhoto.fileName || 'Photo'}"
                      style="
                         width: 100%;
                         height: 100%;
@@ -98,6 +159,7 @@ class PhotoClient {
                         border-radius: 50%;
                      "
                      onerror="this.style.display='none'; this.parentElement.innerHTML='📷';">
+                ${countIndicator}
             </div>
         `;
 
@@ -108,20 +170,13 @@ class PhotoClient {
             iconAnchor: [iconSize / 2, iconSize / 2]
         });
 
-        const marker = L.marker([photo.latitude, photo.longitude], {
+        const marker = L.marker([group.latitude, group.longitude], {
             icon: customIcon
         });
 
-        // Create popup content with photo info
-        const popupContent = this.createPhotoPopupContent(photo);
-        marker.bindPopup(popupContent, {
-            maxWidth: 300,
-            className: 'photo-popup'
-        });
-
-        // Add click handler to show full image
+        // Add click handler to show photo grid
         marker.on('click', () => {
-            this.showPhotoModal(photo);
+            this.showPhotoGridModal(group.photos);
         });
 
         marker.addTo(this.map);
@@ -129,30 +184,145 @@ class PhotoClient {
     }
 
     /**
-     * Create popup content for a photo
-     * @param {Object} photo - Photo object
-     * @returns {string} HTML content for popup
+     * Show photo grid modal
+     * @param {Array} photos - Array of photo objects
      */
-    createPhotoPopupContent(photo) {
-        const fileName = photo.fileName || 'Unknown';
-        const dateTime = photo.dateTime ? new Date(photo.dateTime).toLocaleString() : 'Unknown time';
-        
-        return `
-            <div class="photo-popup-content">
-                <div style="font-weight: bold; margin-bottom: 4px;">${fileName}</div>
-                <div style="font-size: 0.9em; color: #666; margin-bottom: 8px;">${dateTime}</div>
-                <div style="font-size: 0.8em; color: #888;">
-                    Click to view full size
-                </div>
-            </div>
+    showPhotoGridModal(photos) {
+        // Create modal overlay
+        const modal = document.createElement('div');
+        modal.className = 'photo-grid-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            cursor: pointer;
         `;
+
+        // Create grid container
+        const gridContainer = document.createElement('div');
+        gridContainer.style.cssText = `
+            max-width: 90%;
+            max-height: 90%;
+            overflow: auto;
+            cursor: default;
+            position: relative;
+        `;
+
+        // Create close button
+        const closeButton = document.createElement('button');
+        closeButton.innerHTML = '×';
+        closeButton.style.cssText = `
+            position: absolute;
+            top: -40px;
+            right: 0;
+            background: rgba(255, 255, 255, 0.8);
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001;
+        `;
+
+        // Create photo grid
+        const photoGrid = document.createElement('div');
+        const columns = Math.min(4, Math.ceil(Math.sqrt(photos.length)));
+        photoGrid.style.cssText = `
+            display: grid;
+            grid-template-columns: repeat(${columns}, 150px);
+            gap: 0;
+            background: #000;
+        `;
+
+        photos.forEach(photo => {
+            const photoElement = document.createElement('div');
+            photoElement.style.cssText = `
+                width: 150px;
+                height: 150px;
+                cursor: pointer;
+                overflow: hidden;
+            `;
+
+            const img = document.createElement('img');
+            img.src = photo.thumbnailUrl;
+            img.alt = photo.fileName || 'Photo';
+            img.style.cssText = `
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                transition: transform 0.2s;
+            `;
+
+            img.addEventListener('mouseenter', () => {
+                img.style.transform = 'scale(1.05)';
+            });
+
+            img.addEventListener('mouseleave', () => {
+                img.style.transform = 'scale(1)';
+            });
+
+            photoElement.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showPhotoModal(photo, () => {
+                    // Return to grid when closing full image
+                    this.showPhotoGridModal(photos);
+                });
+            });
+
+            photoElement.appendChild(img);
+            photoGrid.appendChild(photoElement);
+        });
+
+        // Add event listeners
+        const closeModal = () => {
+            document.body.removeChild(modal);
+        };
+
+        closeButton.addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        // Handle escape key
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+
+        // Assemble modal
+        gridContainer.appendChild(closeButton);
+        gridContainer.appendChild(photoGrid);
+        modal.appendChild(gridContainer);
+        document.body.appendChild(modal);
+
+        // Prevent click propagation on grid container
+        gridContainer.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
     }
 
     /**
      * Show photo in a modal
      * @param {Object} photo - Photo object
+     * @param {Function} onClose - Optional callback when modal is closed
      */
-    showPhotoModal(photo) {
+    showPhotoModal(photo, onClose = null) {
         // Create modal overlay
         const modal = document.createElement('div');
         modal.className = 'photo-modal';
@@ -166,7 +336,7 @@ class PhotoClient {
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 10000;
+            z-index: 10001;
             cursor: pointer;
         `;
 
@@ -210,6 +380,9 @@ class PhotoClient {
         // Add event listeners
         const closeModal = () => {
             document.body.removeChild(modal);
+            if (onClose) {
+                onClose();
+            }
         };
 
         closeButton.addEventListener('click', closeModal);
