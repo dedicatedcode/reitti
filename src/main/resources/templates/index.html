@@ -14,6 +14,7 @@
     <script src="/js/HumanizeDuration.js"></script>
     <script src="/js/horizontal-date-picker.js"></script>
     <script src="/js/timeline-scroll-indicator.js"></script>
+    <script src="/js/photo-client.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -348,6 +349,14 @@
             metric: true
         }).addTo(map);
 
+        // Initialize photo client
+        const photoClient = new PhotoClient(map);
+        
+        // Listen for map move/zoom events to update photo markers
+        map.on('moveend zoomend', () => {
+            photoClient.onMapMoveEnd();
+        });
+
         // Function to load timeline data
         function loadTimelineData(date) {
             const loadingIndicator = document.getElementById('loading-indicator');
@@ -358,6 +367,9 @@
                 window.timelineScrollIndicator.cleanup();
                 window.timelineScrollIndicator = null;
             }
+
+            // Load photos for the selected date
+            photoClient.updatePhotosForDate(date);
 
             // Fetch both timeline data and raw location points
             Promise.all([
@@ -751,6 +763,10 @@
 
                 // Load timeline data
                 loadTimelineData(formattedDate);
+            },
+            onDateDeselect: () => {
+                // Clear photos when no date is selected
+                photoClient.clearPhotos();
             }
         });
     });
