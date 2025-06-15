@@ -81,8 +81,8 @@
         
         // Initialize charts for this fragment
         function initializeCharts(config) {
-            // Initialize pie chart
-            const pieCanvas = document.getElementById('transportPieChart');
+            // Initialize pie chart - find the canvas with dynamic ID
+            const pieCanvas = document.querySelector('[id^="transportPieChart"]');
             if (pieCanvas && config.transportStatsData && config.transportStatsData.length > 0) {
                 const ctx = pieCanvas.getContext('2d');
                 new Chart(ctx, {
@@ -122,7 +122,7 @@
             }
             
             // Initialize monthly stacked bar chart
-            const monthlyCanvas = document.getElementById('monthlyTransportChart');
+            const monthlyCanvas = document.querySelector('[id^="monthlyTransportChart"]');
             if (monthlyCanvas && config.monthlyTransportData && config.monthlyTransportData.length > 0) {
                 const ctx = monthlyCanvas.getContext('2d');
                 
@@ -212,20 +212,20 @@
         <h3 th:text="#{statistics.transport.distance}">Distance by Transport Mode</h3>
         
         <div th:if="${statisticsType == 'overall'}" class="pie-chart-container">
-            <canvas id="transportPieChart"></canvas>
+            <canvas id="transportPieChart_overall"></canvas>
         </div>
         
         <div th:if="${statisticsType == 'year'}" class="transport-charts-container">
             <div class="transport-chart-section">
                 <div class="transport-chart-title" th:text="#{statistics.transport.distribution}">Transport Distribution</div>
                 <div class="pie-chart-container">
-                    <canvas th:id="${'transportPieChart_'+ year}"></canvas>
+                    <canvas th:id="'transportPieChart_' + ${year}"></canvas>
                 </div>
             </div>
             <div class="transport-chart-section">
                 <div class="transport-chart-title" th:text="#{statistics.monthly.breakdown}">Monthly Breakdown</div>
                 <div class="chart-container">
-                    <canvas id="monthlyTransportChart"></canvas>
+                    <canvas th:id="'monthlyTransportChart_' + ${year}"></canvas>
                 </div>
             </div>
         </div>
@@ -234,13 +234,13 @@
             <div class="transport-chart-section">
                 <div class="transport-chart-title" th:text="#{statistics.transport.distribution}">Transport Distribution</div>
                 <div class="pie-chart-container">
-                    <canvas th:id="${'transportPieChart_'+ year + '_'+ month}"id="transportPieChart"></canvas>
+                    <canvas th:id="'transportPieChart_' + ${year} + '_' + ${month}"></canvas>
                 </div>
             </div>
             <div class="transport-chart-section">
                 <div class="transport-chart-title" th:text="#{statistics.daily.breakdown}">Daily Breakdown</div>
                 <div class="chart-container">
-                    <canvas id="dailyTransportChart"></canvas>
+                    <canvas th:id="'dailyTransportChart_' + ${year} + '_' + ${month}"></canvas>
                 </div>
             </div>
         </div>
@@ -313,7 +313,7 @@
         // Initialize charts for month content
         function initializeMonthCharts(config) {
             // Initialize pie chart for month
-            const pieCanvas = document.getElementById('monthTransportPieChart');
+            const pieCanvas = document.querySelector('[id^="transportPieChart"]');
             if (pieCanvas && config.transportStatsData && config.transportStatsData.length > 0) {
                 const ctx = pieCanvas.getContext('2d');
                 new Chart(ctx, {
@@ -353,7 +353,7 @@
             }
             
             // Initialize daily stacked bar chart
-            const dailyCanvas = document.getElementById('monthDailyTransportChart');
+            const dailyCanvas = document.querySelector('[id^="dailyTransportChart"]');
             if (dailyCanvas && config.dailyTransportData && config.dailyTransportData.length > 0) {
                 dailyCanvas.width = dailyCanvas.width;
                 const ctx = dailyCanvas.getContext('2d');
@@ -449,13 +449,13 @@
             <div class="transport-chart-section">
                 <div class="transport-chart-title" th:text="#{statistics.transport.distribution}">Transport Distribution</div>
                 <div class="pie-chart-container">
-                    <canvas id="monthTransportPieChart"></canvas>
+                    <canvas th:id="'monthTransportPieChart_' + ${year} + '_' + ${month}"></canvas>
                 </div>
             </div>
             <div class="transport-chart-section">
                 <div class="transport-chart-title" th:text="#{statistics.daily.breakdown}">Daily Breakdown</div>
                 <div class="chart-container">
-                    <canvas id="monthDailyTransportChart"></canvas>
+                    <canvas th:id="'monthDailyTransportChart_' + ${year} + '_' + ${month}"></canvas>
                 </div>
             </div>
         </div>
