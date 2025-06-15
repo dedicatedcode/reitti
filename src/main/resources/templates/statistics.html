@@ -26,8 +26,12 @@
     </span>
 
     <div class="timeline-container">
-        <div id="loading-indicator" style="display: none;" th:text="#{timeline.loading}">Loading...</div>
-        <!-- Timeline entries will be loaded here -->
+        <div id="years-navigation" 
+             hx-get="/statistics/years-navigation" 
+             hx-trigger="load">
+            <div class="htmx-indicator" th:text="#{timeline.loading}">Loading...</div>
+        </div>
+        <!-- Statistics content will be loaded here -->
     </div>
 </div>
 </body>
