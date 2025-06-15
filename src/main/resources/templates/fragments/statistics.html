@@ -73,14 +73,13 @@
         <h3>Monthly Breakdown</h3>
         <div class="months-grid">
             <div class="month-item" th:each="month : ${months}"
-                 th:attr="hx-get='/statistics/' + ${year} + '/' + ${month}"
-                 hx-target="#month-details"
+                 th:attr="hx-get='/statistics/' + ${year} + '/' + ${month}, hx-target='#month-details-' + ${month}"
                  hx-trigger="click">
                 <span th:text="${T(java.time.Month).of(month).name()}">JANUARY</span>
+                <div th:id="'month-details-' + ${month}" class="month-details">
+                    <!-- Month details will be loaded here -->
+                </div>
             </div>
-        </div>
-        <div id="month-details" class="month-details">
-            <!-- Month details will be loaded here -->
         </div>
     </div>
 </div>
