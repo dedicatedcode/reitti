@@ -34,4 +34,22 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
     boolean existsByUserAndStartPlaceAndEndPlaceAndStartTimeAndEndTime(User user, SignificantPlace startPlace, SignificantPlace endPlace, Instant startTime, Instant endTime);
 
     List<Trip> findByUserAndStartVisitOrEndVisit(User user, ProcessedVisit startVisit, ProcessedVisit endVisit);
+
+    @Query("SELECT t.transportMode, SUM(t.distanceMeters), COUNT(t) " +
+           "FROM Trip t " +
+           "WHERE t.user = :user " +
+           "GROUP BY t.transportMode " +
+           "ORDER BY SUM(t.distanceMeters) DESC")
+    List<Object[]> findTransportStatisticsByUser(@Param("user") User user);
+
+    @Query("SELECT t.transportMode, SUM(t.distanceMeters), COUNT(t) " +
+           "FROM Trip t " +
+           "WHERE t.user = :user " +
+           "AND t.startTime >= :startTime " +
+           "AND t.endTime <= :endTime " +
+           "GROUP BY t.transportMode " +
+           "ORDER BY SUM(t.distanceMeters) DESC")
+    List<Object[]> findTransportStatisticsByUserAndTimeRange(@Param("user") User user,
+                                                             @Param("startTime") Instant startTime,
+                                                             @Param("endTime") Instant endTime);
 }

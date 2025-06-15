@@ -95,14 +95,44 @@ public class StatisticsService {
     }
     
     public List<TransportStatistic> getTransportStatistics(User user, Instant startTime, Instant endTime) {
-        // TODO: Implement actual database query
-        List<TransportStatistic> mockData = new ArrayList<>();
-        mockData.add(new TransportStatistic("driving", 12500.5, 180));
-        mockData.add(new TransportStatistic("walking", 850.2, 320));
-        mockData.add(new TransportStatistic("cycling", 420.8, 45));
-        mockData.add(new TransportStatistic("public_transport", 380.1, 28));
-        return mockData.stream()
-                .sorted((a, b) -> Double.compare(b.getTotalDistanceKm(), a.getTotalDistanceKm()))
+        List<Object[]> results = tripRepository.findTransportStatisticsByUserAndTimeRange(user, startTime, endTime);
+        
+        return results.stream()
+                .map(row -> {
+                    String transportMode = (String) row[0];
+                    Long totalDistanceMeters = (Long) row[1];
+                    Long tripCount = (Long) row[2];
+                    
+                    // Convert meters to kilometers
+                    double totalDistanceKm = totalDistanceMeters / 1000.0;
+                    
+                    return new TransportStatistic(
+                        transportMode != null ? transportMode : "unknown",
+                        totalDistanceKm,
+                        tripCount.intValue()
+                    );
+                })
+                .collect(Collectors.toList());
+    }
+
+    public List<TransportStatistic> getTransportStatistics(User user) {
+        List<Object[]> results = tripRepository.findTransportStatisticsByUser(user);
+        
+        return results.stream()
+                .map(row -> {
+                    String transportMode = (String) row[0];
+                    Long totalDistanceMeters = (Long) row[1];
+                    Long tripCount = (Long) row[2];
+                    
+                    // Convert meters to kilometers
+                    double totalDistanceKm = totalDistanceMeters / 1000.0;
+                    
+                    return new TransportStatistic(
+                        transportMode != null ? transportMode : "unknown",
+                        totalDistanceKm,
+                        tripCount.intValue()
+                    );
+                })
                 .collect(Collectors.toList());
     }
     
@@ -111,7 +141,7 @@ public class StatisticsService {
     }
     
     public List<TransportStatistic> getOverallTransportStatistics(User user) {
-        return getTransportStatistics(user, null, null);
+        return getTransportStatistics(user);
     }
     
     public List<VisitStatistic> getYearTopVisits(User user, int year) {
