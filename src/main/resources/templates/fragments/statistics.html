@@ -33,14 +33,92 @@
 
 <div th:fragment="statistics-content" id="statistics-panel" class="statistics-content">
     <h2 th:text="${title}">Statistics</h2>
-    <div class="statistics-placeholder">
-        <p th:text="#{statistics.coming.soon}">Statistics features are coming soon!</p>
-        <div th:if="${statisticsType == 'overall'}">
-            <p>This will show overall statistics across all years.</p>
+    
+    <!-- Top Visits Section -->
+    <div class="statistics-section">
+        <h3>Top Places by Stay Time</h3>
+        <div class="statistics-table">
+            <div class="table-header">
+                <span>Place</span>
+                <span>Total Hours</span>
+                <span>Visits</span>
+            </div>
+            <div class="table-row" th:each="visit : ${topVisits}">
+                <span th:text="${visit.placeName}">Home</span>
+                <span th:text="${visit.totalStayTimeHours} + 'h'">2400h</span>
+                <span th:text="${visit.visitCount}">365</span>
+            </div>
         </div>
-        <div th:if="${statisticsType == 'year'}">
-            <p th:text="'This will show statistics for the year ' + ${year}">This will show statistics for the specific
-                year.</p>
+    </div>
+    
+    <!-- Transport Statistics Section -->
+    <div class="statistics-section">
+        <h3>Distance by Transport Mode</h3>
+        <div class="statistics-table">
+            <div class="table-header">
+                <span>Transport Mode</span>
+                <span>Distance (km)</span>
+                <span>Trips</span>
+            </div>
+            <div class="table-row" th:each="transport : ${transportStats}">
+                <span th:text="${transport.transportMode}">driving</span>
+                <span th:text="${#numbers.formatDecimal(transport.totalDistanceKm, 1, 1)} + ' km'">12500.5 km</span>
+                <span th:text="${transport.tripCount}">180</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Monthly breakdown for year view -->
+    <div th:if="${statisticsType == 'year'}" class="statistics-section">
+        <h3>Monthly Breakdown</h3>
+        <div class="months-grid">
+            <div class="month-item" th:each="month : ${months}"
+                 th:attr="hx-get='/statistics/' + ${year} + '/' + ${month}"
+                 hx-target="#month-details"
+                 hx-trigger="click">
+                <span th:text="${T(java.time.Month).of(month).name()}">JANUARY</span>
+            </div>
+        </div>
+        <div id="month-details" class="month-details">
+            <!-- Month details will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<div th:fragment="month-content" class="month-content">
+    <h4 th:text="${title}">Statistics for January 2024</h4>
+    
+    <!-- Top Visits Section for Month -->
+    <div class="statistics-section">
+        <h5>Top Places by Stay Time</h5>
+        <div class="statistics-table">
+            <div class="table-header">
+                <span>Place</span>
+                <span>Total Hours</span>
+                <span>Visits</span>
+            </div>
+            <div class="table-row" th:each="visit : ${topVisits}">
+                <span th:text="${visit.placeName}">Home</span>
+                <span th:text="${visit.totalStayTimeHours} + 'h'">200h</span>
+                <span th:text="${visit.visitCount}">30</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Transport Statistics Section for Month -->
+    <div class="statistics-section">
+        <h5>Distance by Transport Mode</h5>
+        <div class="statistics-table">
+            <div class="table-header">
+                <span>Transport Mode</span>
+                <span>Distance (km)</span>
+                <span>Trips</span>
+            </div>
+            <div class="table-row" th:each="transport : ${transportStats}">
+                <span th:text="${transport.transportMode}">driving</span>
+                <span th:text="${#numbers.formatDecimal(transport.totalDistanceKm, 1, 1)} + ' km'">1200.5 km</span>
+                <span th:text="${transport.tripCount}">15</span>
+            </div>
         </div>
     </div>
 </div>
