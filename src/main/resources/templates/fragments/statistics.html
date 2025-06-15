@@ -40,7 +40,10 @@
         <div class="places-stats-grid">
             <div class="place-stats-card" th:each="visit, visitStat : ${topVisits}">
                 <div class="place-map-container">
-                    <div class="place-map" th:id="'place-map-' + ${visitStat.index}"></div>
+                    <div class="place-map" 
+                         th:id="'place-map-' + ${visitStat.index}"
+                         th:data-lat="${visit.latitude}"
+                         th:data-lng="${visit.longitude}"></div>
                 </div>
                 <div class="place-name" th:text="${visit.placeName}">Home</div>
                 <div class="place-stats">
@@ -99,7 +102,10 @@
         <div class="places-stats-grid">
             <div class="place-stats-card" th:each="visit, visitStat : ${topVisits}">
                 <div class="place-map-container">
-                    <div class="place-map" th:id="'month-place-map-' + ${visitStat.index}"></div>
+                    <div class="place-map" 
+                         th:id="'month-place-map-' + ${visitStat.index}"
+                         th:data-lat="${visit.latitude}"
+                         th:data-lng="${visit.longitude}"></div>
                 </div>
                 <div class="place-name" th:text="${visit.placeName}">Home</div>
                 <div class="place-stats">

@@ -53,16 +53,22 @@ public class StatisticsService {
         private final String placeName;
         private final long totalStayTimeHours;
         private final int visitCount;
+        private final Double latitude;
+        private final Double longitude;
         
-        public VisitStatistic(String placeName, long totalStayTimeHours, int visitCount) {
+        public VisitStatistic(String placeName, long totalStayTimeHours, int visitCount, Double latitude, Double longitude) {
             this.placeName = placeName;
             this.totalStayTimeHours = totalStayTimeHours;
             this.visitCount = visitCount;
+            this.latitude = latitude;
+            this.longitude = longitude;
         }
         
         public String getPlaceName() { return placeName; }
         public long getTotalStayTimeHours() { return totalStayTimeHours; }
         public int getVisitCount() { return visitCount; }
+        public Double getLatitude() { return latitude; }
+        public Double getLongitude() { return longitude; }
     }
     
     public static class TransportStatistic {
@@ -97,13 +103,17 @@ public class StatisticsService {
                     String placeName = (String) row[0];
                     Long totalDurationSeconds = (Long) row[1];
                     Long visitCount = (Long) row[2];
+                    Double latitude = (Double) row[3];
+                    Double longitude = (Double) row[4];
                     
                     // Convert seconds to hours
                     long totalStayTimeHours = totalDurationSeconds / 3600;
                     return new VisitStatistic(
                         placeName != null ? placeName : "Unknown Place",
                         totalStayTimeHours,
-                        visitCount.intValue()
+                        visitCount.intValue(),
+                        latitude,
+                        longitude
                     );
                 })
                 .collect(Collectors.toList());

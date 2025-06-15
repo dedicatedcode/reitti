@@ -27,20 +27,20 @@ public interface ProcessedVisitRepository extends JpaRepository<ProcessedVisit, 
 
     List<ProcessedVisit> findByUserAndStartTimeGreaterThanEqualAndEndTimeLessThanEqual(User user, Instant startTimeIsGreaterThan, Instant endTimeIsLessThan);
 
-    @Query("SELECT pv.place.name, SUM(pv.durationSeconds), COUNT(pv) " +
+    @Query("SELECT pv.place.name, SUM(pv.durationSeconds), COUNT(pv), pv.place.latitudeCentroid, pv.place.longitudeCentroid " +
             "FROM ProcessedVisit pv " +
             "WHERE pv.user = :user " +
-            "GROUP BY pv.place.id, pv.place.name " +
+            "GROUP BY pv.place.id, pv.place.name, pv.place.latitudeCentroid, pv.place.longitudeCentroid " +
             "ORDER BY SUM(pv.durationSeconds) DESC LIMIT :limit")
     List<Object[]> findTopPlacesByStayTimeWithLimit(@Param("user") User user,
                                                     @Param("limit") long limit);
 
-    @Query("SELECT pv.place.name, SUM(pv.durationSeconds), COUNT(pv) " +
+    @Query("SELECT pv.place.name, SUM(pv.durationSeconds), COUNT(pv), pv.place.latitudeCentroid, pv.place.longitudeCentroid " +
             "FROM ProcessedVisit pv " +
             "WHERE pv.user = :user " +
             "AND pv.startTime >= :startTime " +
             "AND pv.endTime <= :endTime " +
-            "GROUP BY pv.place.id, pv.place.name " +
+            "GROUP BY pv.place.id, pv.place.name, pv.place.latitudeCentroid, pv.place.longitudeCentroid " +
             "ORDER BY SUM(pv.durationSeconds) DESC LIMIT :limit")
     List<Object[]> findTopPlacesByStayTimeWithLimit(@Param("user") User user,
                                                     @Param("startTime") Instant startTime,

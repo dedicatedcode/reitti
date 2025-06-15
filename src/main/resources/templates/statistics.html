@@ -56,9 +56,9 @@ function initializePlaceMaps() {
         // Mark as initialized to prevent duplicate initialization
         container.setAttribute('data-map-initialized', 'true');
         
-        // Generate random coordinates for demo (replace with actual place coordinates)
-        const lat = 53.8 + (Math.random() - 0.5) * 0.1;
-        const lng = 10.7 + (Math.random() - 0.5) * 0.1;
+        // Get coordinates from data attributes
+        const lat = parseFloat(container.getAttribute('data-lat')) || 53.8;
+        const lng = parseFloat(container.getAttribute('data-lng')) || 10.7;
         
         // Initialize the map
         const map = L.map(container, {
