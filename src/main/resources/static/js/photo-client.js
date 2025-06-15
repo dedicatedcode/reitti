@@ -172,7 +172,7 @@ class PhotoClient {
 
         // Create close button
         const closeButton = document.createElement('button');
-        closeButton.innerHTML = '×';
+        closeButton.innerHTML = '<i class="lni lni-xmark"></i>';
         closeButton.className = 'photo-grid-close-button';
 
         // Create photo grid
@@ -265,7 +265,7 @@ class PhotoClient {
 
         // Create close button
         const closeButton = document.createElement('button');
-        closeButton.innerHTML = '×';
+        closeButton.innerHTML = '<i class="lni lni-xmark"></i>';
         closeButton.className = 'photo-modal-close-button';
 
         // Create navigation elements if we have multiple photos
@@ -273,13 +273,13 @@ class PhotoClient {
         if (allPhotos && allPhotos.length > 1) {
             // Previous button
             prevButton = document.createElement('button');
-            prevButton.innerHTML = '‹';
+            prevButton.innerHTML = '<i class="lni lni-chevron-left"></i>';
             prevButton.className = 'photo-nav-button photo-nav-prev';
             prevButton.disabled = currentIndex === 0;
 
             // Next button
             nextButton = document.createElement('button');
-            nextButton.innerHTML = '›';
+            nextButton.innerHTML = '<i class="lni lni-chevron-left lni-rotate-180"></i>';
             nextButton.className = 'photo-nav-button photo-nav-next';
             nextButton.disabled = currentIndex === allPhotos.length - 1;
 
