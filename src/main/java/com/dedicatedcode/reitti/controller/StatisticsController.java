@@ -44,6 +44,7 @@ public class StatisticsController {
         model.addAttribute("title", "Statistics for " + year);
         model.addAttribute("topVisits", statisticsService.getYearTopVisits(user, year));
         model.addAttribute("transportStats", statisticsService.getYearTransportStatistics(user, year));
+        model.addAttribute("monthlyTransportData", statisticsService.getMonthlyTransportBreakdown(user, year));
         
         // Add months for the year
         java.util.List<Integer> months = java.util.Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
@@ -61,6 +62,7 @@ public class StatisticsController {
         model.addAttribute("title", "Statistics for " + java.time.Month.of(month).name() + " " + year);
         model.addAttribute("topVisits", statisticsService.getMonthTopVisits(user, year, month));
         model.addAttribute("transportStats", statisticsService.getMonthTransportStatistics(user, year, month));
+        model.addAttribute("dailyTransportData", statisticsService.getDailyTransportBreakdown(user, year, month));
         return "fragments/statistics :: month-content";
     }
 }

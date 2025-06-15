@@ -32,6 +32,10 @@
 </div>
 
 <div th:fragment="statistics-content" id="statistics-panel" class="statistics-content">
+    <script th:inline="javascript">
+        window.transportStatsData = /*[[${transportStats}]]*/ [];
+        window.monthlyTransportData = /*[[${monthlyTransportData}]]*/ [];
+    </script>
     <h2 th:text="${title}">Statistics</h2>
     
     <!-- Top Visits Section -->
@@ -63,7 +67,43 @@
     <!-- Transport Statistics Section -->
     <div class="statistics-section">
         <h3 th:text="#{statistics.transport.distance}">Distance by Transport Mode</h3>
-        <div class="transport-stats-table">
+        
+        <div th:if="${statisticsType == 'overall'}" class="pie-chart-container">
+            <canvas id="transportPieChart"></canvas>
+        </div>
+        
+        <div th:if="${statisticsType == 'year'}" class="transport-charts-container">
+            <div class="transport-chart-section">
+                <div class="transport-chart-title" th:text="#{statistics.transport.distribution}">Transport Distribution</div>
+                <div class="pie-chart-container">
+                    <canvas id="transportPieChart"></canvas>
+                </div>
+            </div>
+            <div class="transport-chart-section">
+                <div class="transport-chart-title" th:text="#{statistics.monthly.breakdown}">Monthly Breakdown</div>
+                <div class="chart-container">
+                    <canvas id="monthlyTransportChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div th:if="${statisticsType == 'month'}" class="transport-charts-container">
+            <div class="transport-chart-section">
+                <div class="transport-chart-title" th:text="#{statistics.transport.distribution}">Transport Distribution</div>
+                <div class="pie-chart-container">
+                    <canvas id="transportPieChart"></canvas>
+                </div>
+            </div>
+            <div class="transport-chart-section">
+                <div class="transport-chart-title" th:text="#{statistics.daily.breakdown}">Daily Breakdown</div>
+                <div class="chart-container">
+                    <canvas id="dailyTransportChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Fallback table for small screens or when charts fail -->
+        <div class="transport-stats-table" style="margin-top: 2rem;">
             <div class="transport-table-header">
                 <span th:text="#{statistics.transport.mode}">Transport Mode</span>
                 <span th:text="#{statistics.distance.km}">Distance (km)</span>
@@ -94,6 +134,10 @@
 </div>
 
 <div th:fragment="month-content" class="month-content">
+    <script th:inline="javascript">
+        window.transportStatsData = /*[[${transportStats}]]*/ [];
+        window.dailyTransportData = /*[[${dailyTransportData}]]*/ [];
+    </script>
     <h4 th:text="${title}">Statistics for January 2024</h4>
     
     <!-- Top Visits Section for Month -->
@@ -125,7 +169,24 @@
     <!-- Transport Statistics Section for Month -->
     <div class="statistics-section">
         <h5 th:text="#{statistics.transport.distance}">Distance by Transport Mode</h5>
-        <div class="transport-stats-table">
+        
+        <div class="transport-charts-container">
+            <div class="transport-chart-section">
+                <div class="transport-chart-title" th:text="#{statistics.transport.distribution}">Transport Distribution</div>
+                <div class="pie-chart-container">
+                    <canvas id="monthTransportPieChart"></canvas>
+                </div>
+            </div>
+            <div class="transport-chart-section">
+                <div class="transport-chart-title" th:text="#{statistics.daily.breakdown}">Daily Breakdown</div>
+                <div class="chart-container">
+                    <canvas id="monthDailyTransportChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Fallback table -->
+        <div class="transport-stats-table" style="margin-top: 2rem;">
             <div class="transport-table-header">
                 <span th:text="#{statistics.transport.mode}">Transport Mode</span>
                 <span th:text="#{statistics.distance.km}">Distance (km)</span>

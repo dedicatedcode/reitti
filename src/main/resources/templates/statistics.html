@@ -92,6 +92,179 @@ document.addEventListener('htmx:afterSwap', function(event) {
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(initializePlaceMaps, 100);
 });
+
+// Chart.js configuration and initialization
+function initializeCharts() {
+    // Transport mode colors
+    const transportColors = {
+        'driving': '#FF6384',
+        'walking': '#36A2EB', 
+        'cycling': '#FFCE56',
+        'public_transport': '#4BC0C0',
+        'running': '#9966FF',
+        'unknown': '#FF9F40'
+    };
+    
+    // Initialize pie chart
+    const pieCanvas = document.getElementById('transportPieChart');
+    if (pieCanvas && window.transportStatsData) {
+        const ctx = pieCanvas.getContext('2d');
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: window.transportStatsData.map(stat => stat.transportMode),
+                datasets: [{
+                    data: window.transportStatsData.map(stat => stat.totalDistanceKm),
+                    backgroundColor: window.transportStatsData.map(stat => 
+                        transportColors[stat.transportMode] || transportColors['unknown']
+                    ),
+                    borderColor: '#F5DEB3',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#F5DEB3',
+                            font: {
+                                family: 'Fraunces'
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.parsed.toFixed(1) + ' km';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Initialize monthly stacked bar chart
+    const monthlyCanvas = document.getElementById('monthlyTransportChart');
+    if (monthlyCanvas && window.monthlyTransportData) {
+        const ctx = monthlyCanvas.getContext('2d');
+        
+        // Get all unique transport modes
+        const allModes = [...new Set(window.monthlyTransportData.flatMap(month => 
+            month.transportStats.map(stat => stat.transportMode)
+        ))];
+        
+        const datasets = allModes.map(mode => ({
+            label: mode,
+            data: window.monthlyTransportData.map(month => {
+                const stat = month.transportStats.find(s => s.transportMode === mode);
+                return stat ? stat.totalDistanceKm : 0;
+            }),
+            backgroundColor: transportColors[mode] || transportColors['unknown'],
+            borderColor: '#F5DEB3',
+            borderWidth: 1
+        }));
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: window.monthlyTransportData.map(month => month.monthName.substring(0, 3)),
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        stacked: true,
+                        ticks: { color: '#F5DEB3' },
+                        grid: { color: 'rgba(245, 222, 179, 0.2)' }
+                    },
+                    y: {
+                        stacked: true,
+                        ticks: { color: '#F5DEB3' },
+                        grid: { color: 'rgba(245, 222, 179, 0.2)' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#F5DEB3',
+                            font: { family: 'Fraunces' }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Initialize daily stacked bar chart
+    const dailyCanvas = document.getElementById('dailyTransportChart') || document.getElementById('monthDailyTransportChart');
+    if (dailyCanvas && window.dailyTransportData) {
+        const ctx = dailyCanvas.getContext('2d');
+        
+        // Get all unique transport modes
+        const allModes = [...new Set(window.dailyTransportData.flatMap(day => 
+            day.transportStats.map(stat => stat.transportMode)
+        ))];
+        
+        const datasets = allModes.map(mode => ({
+            label: mode,
+            data: window.dailyTransportData.map(day => {
+                const stat = day.transportStats.find(s => s.transportMode === mode);
+                return stat ? stat.totalDistanceKm : 0;
+            }),
+            backgroundColor: transportColors[mode] || transportColors['unknown'],
+            borderColor: '#F5DEB3',
+            borderWidth: 1
+        }));
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: window.dailyTransportData.map(day => day.dayOfMonth),
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        stacked: true,
+                        ticks: { color: '#F5DEB3' },
+                        grid: { color: 'rgba(245, 222, 179, 0.2)' }
+                    },
+                    y: {
+                        stacked: true,
+                        ticks: { color: '#F5DEB3' },
+                        grid: { color: 'rgba(245, 222, 179, 0.2)' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#F5DEB3',
+                            font: { family: 'Fraunces' }
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+// Initialize charts when statistics content is loaded
+document.addEventListener('htmx:afterSwap', function(event) {
+    if (event.detail.target.id === 'statistics-panel') {
+        setTimeout(() => {
+            initializePlaceMaps();
+            initializeCharts();
+        }, 100);
+    }
+});
 </script>
 
 </body>

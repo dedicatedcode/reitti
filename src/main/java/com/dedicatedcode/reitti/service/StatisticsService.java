@@ -155,6 +155,62 @@ public class StatisticsService {
         return getTransportStatistics(user, startOfYear, endOfYear);
     }
     
+    public List<MonthlyTransportData> getMonthlyTransportBreakdown(User user, int year) {
+        List<MonthlyTransportData> monthlyData = new ArrayList<>();
+        
+        for (int month = 1; month <= 12; month++) {
+            Instant startOfMonth = LocalDate.of(year, month, 1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+            Instant endOfMonth = LocalDate.of(year, month, 1).plusMonths(1).minusDays(1).atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant();
+            
+            List<TransportStatistic> monthStats = getTransportStatistics(user, startOfMonth, endOfMonth);
+            monthlyData.add(new MonthlyTransportData(java.time.Month.of(month).name(), monthStats));
+        }
+        
+        return monthlyData;
+    }
+    
+    public List<DailyTransportData> getDailyTransportBreakdown(User user, int year, int month) {
+        List<DailyTransportData> dailyData = new ArrayList<>();
+        LocalDate startDate = LocalDate.of(year, month, 1);
+        LocalDate endDate = startDate.plusMonths(1).minusDays(1);
+        
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            Instant startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant();
+            Instant endOfDay = date.atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant();
+            
+            List<TransportStatistic> dayStats = getTransportStatistics(user, startOfDay, endOfDay);
+            dailyData.add(new DailyTransportData(date.getDayOfMonth(), dayStats));
+        }
+        
+        return dailyData;
+    }
+    
+    public static class MonthlyTransportData {
+        private final String monthName;
+        private final List<TransportStatistic> transportStats;
+        
+        public MonthlyTransportData(String monthName, List<TransportStatistic> transportStats) {
+            this.monthName = monthName;
+            this.transportStats = transportStats;
+        }
+        
+        public String getMonthName() { return monthName; }
+        public List<TransportStatistic> getTransportStats() { return transportStats; }
+    }
+    
+    public static class DailyTransportData {
+        private final int dayOfMonth;
+        private final List<TransportStatistic> transportStats;
+        
+        public DailyTransportData(int dayOfMonth, List<TransportStatistic> transportStats) {
+            this.dayOfMonth = dayOfMonth;
+            this.transportStats = transportStats;
+        }
+        
+        public int getDayOfMonth() { return dayOfMonth; }
+        public List<TransportStatistic> getTransportStats() { return transportStats; }
+    }
+    
     public List<VisitStatistic> getMonthTopVisits(User user, int year, int month) {
         Instant startOfMonth = LocalDate.of(year, month, 1).atStartOfDay(ZoneId.systemDefault()).toInstant();
         Instant endOfMonth = LocalDate.of(year, month, 1).plusMonths(1).minusDays(1).atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant();
