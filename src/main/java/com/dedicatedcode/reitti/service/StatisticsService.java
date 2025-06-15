@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.VisitRepository;
 import com.dedicatedcode.reitti.repository.TripRepository;
 import com.dedicatedcode.reitti.repository.ProcessedVisitRepository;
+import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.time.Instant;
@@ -28,15 +29,11 @@ public class StatisticsService {
     @Autowired
     private ProcessedVisitRepository processedVisitRepository;
     
-    public List<Integer> getAvailableYears() {
-        // TODO: Replace with actual database query to get years with data
-        // For now, return a range of recent years - this should be replaced with actual data query
-        List<Integer> years = new ArrayList<>();
-        int currentYear = java.time.LocalDate.now().getYear();
-        for (int year = currentYear; year >= currentYear - 5; year--) {
-            years.add(year);
-        }
-        return years;
+    @Autowired
+    private RawLocationPointRepository rawLocationPointRepository;
+    
+    public List<Integer> getAvailableYears(User user) {
+        return rawLocationPointRepository.findDistinctYearsByUser(user);
     }
     
     public static class VisitStatistic {

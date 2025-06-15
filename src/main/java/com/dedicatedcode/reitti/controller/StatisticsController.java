@@ -23,8 +23,8 @@ public class StatisticsController {
     }
 
     @GetMapping("/years-navigation")
-    public String yearsNavigation(Model model) {
-        model.addAttribute("years", statisticsService.getAvailableYears());
+    public String yearsNavigation(@AuthenticationPrincipal User user, Model model) {
+        model.addAttribute("years", statisticsService.getAvailableYears(user));
         return "fragments/statistics :: years-navigation";
     }
 

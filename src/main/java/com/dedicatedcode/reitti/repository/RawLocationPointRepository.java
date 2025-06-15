@@ -35,6 +35,12 @@ public interface RawLocationPointRepository extends JpaRepository<RawLocationPoi
 
     List<RawLocationPoint> findByUserAndProcessedIsFalseOrderByTimestamp(User user);
 
+    @Query("SELECT DISTINCT EXTRACT(YEAR FROM p.timestamp) " +
+           "FROM RawLocationPoint p " +
+           "WHERE p.user = :user " +
+           "ORDER BY EXTRACT(YEAR FROM p.timestamp) DESC")
+    List<Integer> findDistinctYearsByUser(@Param("user") User user);
+
     interface ClusteredPoint {
         RawLocationPoint getPoint();
         Integer getClusterId();
