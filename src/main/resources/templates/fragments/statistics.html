@@ -82,6 +82,8 @@
             // Initialize pie chart
             const pieCanvas = document.getElementById('transportPieChart');
             if (pieCanvas && window.transportStatsData && window.transportStatsData.length > 0) {
+                // Clear any existing chart
+                pieCanvas.width = pieCanvas.width;
                 const ctx = pieCanvas.getContext('2d');
                 new Chart(ctx, {
                     type: 'pie',
@@ -122,6 +124,8 @@
             // Initialize monthly stacked bar chart
             const monthlyCanvas = document.getElementById('monthlyTransportChart');
             if (monthlyCanvas && window.monthlyTransportData && window.monthlyTransportData.length > 0) {
+                // Clear any existing chart
+                monthlyCanvas.width = monthlyCanvas.width;
                 const ctx = monthlyCanvas.getContext('2d');
                 
                 const allModes = [...new Set(window.monthlyTransportData.flatMap(month => 
@@ -313,6 +317,8 @@
             // Initialize pie chart for month
             const pieCanvas = document.getElementById('monthTransportPieChart');
             if (pieCanvas && window.transportStatsData && window.transportStatsData.length > 0) {
+                // Clear any existing chart
+                pieCanvas.width = pieCanvas.width;
                 const ctx = pieCanvas.getContext('2d');
                 new Chart(ctx, {
                     type: 'pie',
@@ -353,6 +359,8 @@
             // Initialize daily stacked bar chart
             const dailyCanvas = document.getElementById('monthDailyTransportChart');
             if (dailyCanvas && window.dailyTransportData && window.dailyTransportData.length > 0) {
+                // Clear any existing chart
+                dailyCanvas.width = dailyCanvas.width;
                 const ctx = dailyCanvas.getContext('2d');
                 
                 const allModes = [...new Set(window.dailyTransportData.flatMap(day => 
