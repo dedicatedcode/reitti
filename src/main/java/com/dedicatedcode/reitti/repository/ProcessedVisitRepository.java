@@ -43,4 +43,15 @@ public interface ProcessedVisitRepository extends JpaRepository<ProcessedVisit, 
     Optional<ProcessedVisit> findByUserAndId(User user, long id);
 
     List<ProcessedVisit> findByUserAndStartTimeGreaterThanEqualAndEndTimeLessThanEqual(User user, Instant startTimeIsGreaterThan, Instant endTimeIsLessThan);
+
+    @Query("SELECT pv.place.name, SUM(pv.durationSeconds), COUNT(pv) " +
+           "FROM ProcessedVisit pv " +
+           "WHERE pv.user = :user " +
+           "AND (:startTime IS NULL OR pv.startTime >= :startTime) " +
+           "AND (:endTime IS NULL OR pv.endTime <= :endTime) " +
+           "GROUP BY pv.place.id, pv.place.name " +
+           "ORDER BY SUM(pv.durationSeconds) DESC")
+    List<Object[]> findTopPlacesByStayTime(@Param("user") User user, 
+                                          @Param("startTime") Instant startTime, 
+                                          @Param("endTime") Instant endTime);
 }

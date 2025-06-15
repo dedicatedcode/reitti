@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.service;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.VisitRepository;
 import com.dedicatedcode.reitti.repository.TripRepository;
+import com.dedicatedcode.reitti.repository.ProcessedVisitRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.time.Instant;
@@ -24,12 +25,17 @@ public class StatisticsService {
     @Autowired
     private TripRepository tripRepository;
     
+    @Autowired
+    private ProcessedVisitRepository processedVisitRepository;
+    
     public List<Integer> getAvailableYears() {
         // TODO: Replace with actual database query to get years with data
+        // For now, return a range of recent years - this should be replaced with actual data query
         List<Integer> years = new ArrayList<>();
-        years.add(2024);
-        years.add(2023);
-        years.add(2022);
+        int currentYear = java.time.LocalDate.now().getYear();
+        for (int year = currentYear; year >= currentYear - 5; year--) {
+            years.add(year);
+        }
         return years;
     }
     
@@ -66,14 +72,25 @@ public class StatisticsService {
     }
     
     public List<VisitStatistic> getTopVisitsByStayTime(User user, Instant startTime, Instant endTime, int limit) {
-        // TODO: Implement actual database query
-        List<VisitStatistic> mockData = new ArrayList<>();
-        mockData.add(new VisitStatistic("Home", 2400, 365));
-        mockData.add(new VisitStatistic("Work", 1800, 250));
-        mockData.add(new VisitStatistic("Grocery Store", 120, 52));
-        mockData.add(new VisitStatistic("Gym", 100, 48));
-        mockData.add(new VisitStatistic("Restaurant", 80, 24));
-        return mockData.stream().limit(limit).collect(Collectors.toList());
+        List<Object[]> results = processedVisitRepository.findTopPlacesByStayTime(user, startTime, endTime);
+        
+        return results.stream()
+                .limit(limit)
+                .map(row -> {
+                    String placeName = (String) row[0];
+                    Long totalDurationSeconds = (Long) row[1];
+                    Long visitCount = (Long) row[2];
+                    
+                    // Convert seconds to hours
+                    long totalStayTimeHours = totalDurationSeconds / 3600;
+                    
+                    return new VisitStatistic(
+                        placeName != null ? placeName : "Unknown Place",
+                        totalStayTimeHours,
+                        visitCount.intValue()
+                    );
+                })
+                .collect(Collectors.toList());
     }
     
     public List<TransportStatistic> getTransportStatistics(User user, Instant startTime, Instant endTime) {
