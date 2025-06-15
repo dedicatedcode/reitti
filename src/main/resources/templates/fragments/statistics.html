@@ -5,11 +5,13 @@
 <div class="years-navigation" th:fragment="years-navigation">
     <div class="timeline-entry trip" data-year="overall"
          hx-get="/statistics/overall"
+         hx-target="#statistics-panel"
          hx-trigger="click">
         <div class="entry-description" th:text="#{statistics.overall}">Overall</div>
     </div>
     <div class="timeline-entry trip" th:each="year : ${years}"
          th:attr="hx-get='/statistics/'+ ${year}"
+         hx-target="#statistics-panel"
          hx-trigger="click">
         <div class="entry-description" th:text="${year}">2024</div>
     </div>
@@ -27,6 +29,21 @@
             }
         });
     </script>
+</div>
+
+<div th:fragment="statistics-content">
+    <div class="statistics-content">
+        <h2 th:text="${title}">Statistics</h2>
+        <div class="statistics-placeholder">
+            <p th:text="#{statistics.coming.soon}">Statistics features are coming soon!</p>
+            <div th:if="${statisticsType == 'overall'}">
+                <p>This will show overall statistics across all years.</p>
+            </div>
+            <div th:if="${statisticsType == 'year'}">
+                <p th:text="'This will show statistics for the year ' + ${year}">This will show statistics for the specific year.</p>
+            </div>
+        </div>
+    </div>
 </div>
 
 </body>
