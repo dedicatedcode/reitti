@@ -37,16 +37,22 @@
     <!-- Top Visits Section -->
     <div class="statistics-section">
         <h3 th:text="#{statistics.top.places}">Top Places by Stay Time</h3>
-        <div class="statistics-table">
-            <div class="table-header">
-                <span th:text="#{statistics.place}">Place</span>
-                <span th:text="#{statistics.total.hours}">Total Hours</span>
-                <span th:text="#{statistics.visits}">Visits</span>
-            </div>
-            <div class="table-row" th:each="visit : ${topVisits}">
-                <span th:text="${visit.placeName}">Home</span>
-                <span th:text="${visit.totalStayTimeHours} + 'h'">2400h</span>
-                <span th:text="${visit.visitCount}">365</span>
+        <div class="places-stats-grid">
+            <div class="place-stats-card" th:each="visit : ${topVisits}">
+                <div class="place-map-container">
+                    <div class="place-map" th:id="'place-map-' + ${visitStat.index}"></div>
+                </div>
+                <div class="place-name" th:text="${visit.placeName}">Home</div>
+                <div class="place-stats">
+                    <div class="place-stat-item">
+                        <span class="place-stat-label" th:text="#{statistics.total.hours}">Total Hours</span>
+                        <span class="place-stat-value" th:text="${visit.totalStayTimeHours} + 'h'">2400h</span>
+                    </div>
+                    <div class="place-stat-item">
+                        <span class="place-stat-label" th:text="#{statistics.visits}">Visits</span>
+                        <span class="place-stat-value" th:text="${visit.visitCount}">365</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -54,16 +60,16 @@
     <!-- Transport Statistics Section -->
     <div class="statistics-section">
         <h3 th:text="#{statistics.transport.distance}">Distance by Transport Mode</h3>
-        <div class="statistics-table">
-            <div class="table-header">
+        <div class="transport-stats-table">
+            <div class="transport-table-header">
                 <span th:text="#{statistics.transport.mode}">Transport Mode</span>
                 <span th:text="#{statistics.distance.km}">Distance (km)</span>
                 <span th:text="#{statistics.trips}">Trips</span>
             </div>
-            <div class="table-row" th:each="transport : ${transportStats}">
-                <span th:text="${transport.transportMode}">driving</span>
-                <span th:text="${#numbers.formatDecimal(transport.totalDistanceKm, 1, 1)} + ' km'">12500.5 km</span>
-                <span th:text="${transport.tripCount}">180</span>
+            <div class="transport-table-row" th:each="transport : ${transportStats}">
+                <span class="transport-mode" th:text="${transport.transportMode}">driving</span>
+                <span class="transport-distance" th:text="${#numbers.formatDecimal(transport.totalDistanceKm, 1, 1)} + ' km'">12500.5 km</span>
+                <span class="transport-trips" th:text="${transport.tripCount}">180</span>
             </div>
         </div>
     </div>
@@ -90,16 +96,22 @@
     <!-- Top Visits Section for Month -->
     <div class="statistics-section">
         <h5 th:text="#{statistics.top.places}">Top Places by Stay Time</h5>
-        <div class="statistics-table">
-            <div class="table-header">
-                <span th:text="#{statistics.place}">Place</span>
-                <span th:text="#{statistics.total.hours}">Total Hours</span>
-                <span th:text="#{statistics.visits}">Visits</span>
-            </div>
-            <div class="table-row" th:each="visit : ${topVisits}">
-                <span th:text="${visit.placeName}">Home</span>
-                <span th:text="${visit.totalStayTimeHours} + 'h'">200h</span>
-                <span th:text="${visit.visitCount}">30</span>
+        <div class="places-stats-grid">
+            <div class="place-stats-card" th:each="visit : ${topVisits}">
+                <div class="place-map-container">
+                    <div class="place-map" th:id="'month-place-map-' + ${visitStat.index}"></div>
+                </div>
+                <div class="place-name" th:text="${visit.placeName}">Home</div>
+                <div class="place-stats">
+                    <div class="place-stat-item">
+                        <span class="place-stat-label" th:text="#{statistics.total.hours}">Total Hours</span>
+                        <span class="place-stat-value" th:text="${visit.totalStayTimeHours} + 'h'">200h</span>
+                    </div>
+                    <div class="place-stat-item">
+                        <span class="place-stat-label" th:text="#{statistics.visits}">Visits</span>
+                        <span class="place-stat-value" th:text="${visit.visitCount}">30</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -107,16 +119,16 @@
     <!-- Transport Statistics Section for Month -->
     <div class="statistics-section">
         <h5 th:text="#{statistics.transport.distance}">Distance by Transport Mode</h5>
-        <div class="statistics-table">
-            <div class="table-header">
+        <div class="transport-stats-table">
+            <div class="transport-table-header">
                 <span th:text="#{statistics.transport.mode}">Transport Mode</span>
                 <span th:text="#{statistics.distance.km}">Distance (km)</span>
                 <span th:text="#{statistics.trips}">Trips</span>
             </div>
-            <div class="table-row" th:each="transport : ${transportStats}">
-                <span th:text="${transport.transportMode}">driving</span>
-                <span th:text="${#numbers.formatDecimal(transport.totalDistanceKm, 1, 1)} + ' km'">1200.5 km</span>
-                <span th:text="${transport.tripCount}">15</span>
+            <div class="transport-table-row" th:each="transport : ${transportStats}">
+                <span class="transport-mode" th:text="${transport.transportMode}">driving</span>
+                <span class="transport-distance" th:text="${#numbers.formatDecimal(transport.totalDistanceKm, 1, 1)} + ' km'">1200.5 km</span>
+                <span class="transport-trips" th:text="${transport.tripCount}">15</span>
             </div>
         </div>
     </div>
