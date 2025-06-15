@@ -264,10 +264,12 @@
 
 <div th:fragment="month-content" class="month-content">
     <script th:inline="javascript">
-        // Configuration object for month content
-        const monthConfig = {
+        // Configuration object for month content - unique per month
+        const monthConfig_/*[[${year}]]*/_/*[[${month}]]*/ = {
             transportStatsData: /*[[${transportStats}]]*/ [],
             dailyTransportData: /*[[${dailyTransportData}]]*/ [],
+            year: /*[[${year}]]*/ null,
+            month: /*[[${month}]]*/ null,
             transportColors: {
                 'DRIVING': '#FF6384',
                 'WALKING': '#36A2EB',
@@ -312,8 +314,9 @@
         
         // Initialize charts for month content
         function initializeMonthCharts(config) {
-            // Initialize pie chart for month
-            const pieCanvas = document.querySelector('[id^="transportPieChart"]');
+            // Initialize pie chart for month - target specific month chart
+            const pieCanvasId = 'monthTransportPieChart_' + config.year + '_' + config.month;
+            const pieCanvas = document.getElementById(pieCanvasId);
             if (pieCanvas && config.transportStatsData && config.transportStatsData.length > 0) {
                 const ctx = pieCanvas.getContext('2d');
                 new Chart(ctx, {
@@ -352,8 +355,9 @@
                 });
             }
             
-            // Initialize daily stacked bar chart
-            const dailyCanvas = document.querySelector('[id^="dailyTransportChart"]');
+            // Initialize daily stacked bar chart - target specific month chart
+            const dailyCanvasId = 'monthDailyTransportChart_' + config.year + '_' + config.month;
+            const dailyCanvas = document.getElementById(dailyCanvasId);
             if (dailyCanvas && config.dailyTransportData && config.dailyTransportData.length > 0) {
                 const ctx = dailyCanvas.getContext('2d');
                 
@@ -409,7 +413,7 @@
         // Execute initialization
         setTimeout(() => {
             initializeMonthPlaceMaps();
-            initializeMonthCharts(monthConfig);
+            initializeMonthCharts(monthConfig_/*[[${year}]]*/_/*[[${month}]]*/);
         }, 100);
     </script>
     <h4 th:text="${title}">Statistics for January 2024</h4>
