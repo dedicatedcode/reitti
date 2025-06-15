@@ -101,20 +101,6 @@
                 </div>
             </div>
         </div>
-        
-        <!-- Fallback table for small screens or when charts fail -->
-        <div class="transport-stats-table" style="margin-top: 2rem;">
-            <div class="transport-table-header">
-                <span th:text="#{statistics.transport.mode}">Transport Mode</span>
-                <span th:text="#{statistics.distance.km}">Distance (km)</span>
-                <span th:text="#{statistics.trips}">Trips</span>
-            </div>
-            <div class="transport-table-row" th:each="transport : ${transportStats}">
-                <span class="transport-mode" th:text="${transport.transportMode}">driving</span>
-                <span class="transport-distance" th:text="${#numbers.formatDecimal(transport.totalDistanceKm, 1, 1)} + ' km'">12500.5 km</span>
-                <span class="transport-trips" th:text="${transport.tripCount}">180</span>
-            </div>
-        </div>
     </div>
     
     <!-- Monthly breakdown for year view -->
@@ -182,20 +168,6 @@
                 <div class="chart-container">
                     <canvas id="monthDailyTransportChart"></canvas>
                 </div>
-            </div>
-        </div>
-        
-        <!-- Fallback table -->
-        <div class="transport-stats-table" style="margin-top: 2rem;">
-            <div class="transport-table-header">
-                <span th:text="#{statistics.transport.mode}">Transport Mode</span>
-                <span th:text="#{statistics.distance.km}">Distance (km)</span>
-                <span th:text="#{statistics.trips}">Trips</span>
-            </div>
-            <div class="transport-table-row" th:each="transport : ${transportStats}">
-                <span class="transport-mode" th:text="${transport.transportMode}">driving</span>
-                <span class="transport-distance" th:text="${#numbers.formatDecimal(transport.totalDistanceKm, 1, 1)} + ' km'">1200.5 km</span>
-                <span class="transport-trips" th:text="${transport.tripCount}">15</span>
             </div>
         </div>
     </div>
