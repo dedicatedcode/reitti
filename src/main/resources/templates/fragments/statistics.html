@@ -33,8 +33,18 @@
 
 <div th:fragment="statistics-content" id="statistics-panel" class="statistics-content">
     <script th:inline="javascript">
-        window.transportStatsData = /*[[${transportStats}]]*/ [];
-        window.monthlyTransportData = /*[[${monthlyTransportData}]]*/ [];
+        // Configuration object for this fragment
+        const statisticsConfig = {
+            transportStatsData: /*[[${transportStats}]]*/ [],
+            monthlyTransportData: /*[[${monthlyTransportData}]]*/ [],
+            transportColors: {
+                'DRIVING': '#FF6384',
+                'WALKING': '#36A2EB',
+                'CYCLING': '#FFCE56',
+                'public_transport': '#4BC0C0',
+                'unknown': '#FF9F40'
+            }
+        };
         
         // Initialize place maps for this fragment
         function initializePlaceMaps() {
@@ -70,28 +80,19 @@
         }
         
         // Initialize charts for this fragment
-        function initializeCharts() {
-            const transportColors = {
-                'DRIVING': '#FF6384',
-                'WALKING': '#36A2EB',
-                'CYCLING': '#FFCE56',
-                'public_transport': '#4BC0C0',
-                'unknown': '#FF9F40'
-            };
-            
+        function initializeCharts(config) {
             // Initialize pie chart
             const pieCanvas = document.getElementById('transportPieChart');
-            if (pieCanvas && window.transportStatsData && window.transportStatsData.length > 0) {
-                // Clear any existing chart
+            if (pieCanvas && config.transportStatsData && config.transportStatsData.length > 0) {
                 const ctx = pieCanvas.getContext('2d');
                 new Chart(ctx, {
                     type: 'pie',
                     data: {
-                        labels: window.transportStatsData.map(stat => stat.transportMode),
+                        labels: config.transportStatsData.map(stat => stat.transportMode),
                         datasets: [{
-                            data: window.transportStatsData.map(stat => stat.totalDistanceKm),
-                            backgroundColor: window.transportStatsData.map(stat => 
-                                transportColors[stat.transportMode] || transportColors['unknown']
+                            data: config.transportStatsData.map(stat => stat.totalDistanceKm),
+                            backgroundColor: config.transportStatsData.map(stat => 
+                                config.transportColors[stat.transportMode] || config.transportColors['unknown']
                             ),
                             borderColor: '#F5DEB3',
                             borderWidth: 2
@@ -122,21 +123,20 @@
             
             // Initialize monthly stacked bar chart
             const monthlyCanvas = document.getElementById('monthlyTransportChart');
-            if (monthlyCanvas && window.monthlyTransportData && window.monthlyTransportData.length > 0) {
-                // Clear any existing chart
+            if (monthlyCanvas && config.monthlyTransportData && config.monthlyTransportData.length > 0) {
                 const ctx = monthlyCanvas.getContext('2d');
                 
-                const allModes = [...new Set(window.monthlyTransportData.flatMap(month => 
+                const allModes = [...new Set(config.monthlyTransportData.flatMap(month => 
                     month.transportStats.map(stat => stat.transportMode)
                 ))];
                 
                 const datasets = allModes.map(mode => ({
                     label: mode,
-                    data: window.monthlyTransportData.map(month => {
+                    data: config.monthlyTransportData.map(month => {
                         const stat = month.transportStats.find(s => s.transportMode === mode);
                         return stat ? stat.totalDistanceKm : 0;
                     }),
-                    backgroundColor: transportColors[mode] || transportColors['unknown'],
+                    backgroundColor: config.transportColors[mode] || config.transportColors['unknown'],
                     borderColor: '#F5DEB3',
                     borderWidth: 1
                 }));
@@ -144,7 +144,7 @@
                 new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: window.monthlyTransportData.map(month => month.monthName.substring(0, 3)),
+                        labels: config.monthlyTransportData.map(month => month.monthName.substring(0, 3)),
                         datasets: datasets
                     },
                     options: {
@@ -176,10 +176,8 @@
         }
         
         // Execute initialization
-        // setTimeout(() => {
-            initializePlaceMaps();
-            initializeCharts();
-        // }, 100);
+        initializePlaceMaps();
+        initializeCharts(statisticsConfig);
     </script>
     <h2 th:text="${title}">Statistics</h2>
     
@@ -266,8 +264,18 @@
 
 <div th:fragment="month-content" class="month-content">
     <script th:inline="javascript">
-        window.transportStatsData = /*[[${transportStats}]]*/ [];
-        window.dailyTransportData = /*[[${dailyTransportData}]]*/ [];
+        // Configuration object for month content
+        const monthConfig = {
+            transportStatsData: /*[[${transportStats}]]*/ [],
+            dailyTransportData: /*[[${dailyTransportData}]]*/ [],
+            transportColors: {
+                'DRIVING': '#FF6384',
+                'WALKING': '#36A2EB',
+                'CYCLING': '#FFCE56',
+                'public_transport': '#4BC0C0',
+                'unknown': '#FF9F40'
+            }
+        };
         
         // Initialize place maps for month content
         function initializeMonthPlaceMaps() {
@@ -303,28 +311,19 @@
         }
         
         // Initialize charts for month content
-        function initializeMonthCharts() {
-            const transportColors = {
-                'DRIVING': '#FF6384',
-                'WALKING': '#36A2EB',
-                'CYCLING': '#FFCE56',
-                'public_transport': '#4BC0C0',
-                'unknown': '#FF9F40'
-            };
-            
+        function initializeMonthCharts(config) {
             // Initialize pie chart for month
             const pieCanvas = document.getElementById('monthTransportPieChart');
-            if (pieCanvas && window.transportStatsData && window.transportStatsData.length > 0) {
-                // Clear any existing chart
+            if (pieCanvas && config.transportStatsData && config.transportStatsData.length > 0) {
                 const ctx = pieCanvas.getContext('2d');
                 new Chart(ctx, {
                     type: 'pie',
                     data: {
-                        labels: window.transportStatsData.map(stat => stat.transportMode),
+                        labels: config.transportStatsData.map(stat => stat.transportMode),
                         datasets: [{
-                            data: window.transportStatsData.map(stat => stat.totalDistanceKm),
-                            backgroundColor: window.transportStatsData.map(stat => 
-                                transportColors[stat.transportMode] || transportColors['unknown']
+                            data: config.transportStatsData.map(stat => stat.totalDistanceKm),
+                            backgroundColor: config.transportStatsData.map(stat => 
+                                config.transportColors[stat.transportMode] || config.transportColors['unknown']
                             ),
                             borderColor: '#F5DEB3',
                             borderWidth: 2
@@ -355,22 +354,21 @@
             
             // Initialize daily stacked bar chart
             const dailyCanvas = document.getElementById('monthDailyTransportChart');
-            if (dailyCanvas && window.dailyTransportData && window.dailyTransportData.length > 0) {
-                // Clear any existing chart
+            if (dailyCanvas && config.dailyTransportData && config.dailyTransportData.length > 0) {
                 dailyCanvas.width = dailyCanvas.width;
                 const ctx = dailyCanvas.getContext('2d');
                 
-                const allModes = [...new Set(window.dailyTransportData.flatMap(day => 
+                const allModes = [...new Set(config.dailyTransportData.flatMap(day => 
                     day.transportStats.map(stat => stat.transportMode)
                 ))];
                 
                 const datasets = allModes.map(mode => ({
                     label: mode,
-                    data: window.dailyTransportData.map(day => {
+                    data: config.dailyTransportData.map(day => {
                         const stat = day.transportStats.find(s => s.transportMode === mode);
                         return stat ? stat.totalDistanceKm : 0;
                     }),
-                    backgroundColor: transportColors[mode] || transportColors['unknown'],
+                    backgroundColor: config.transportColors[mode] || config.transportColors['unknown'],
                     borderColor: '#F5DEB3',
                     borderWidth: 1
                 }));
@@ -378,7 +376,7 @@
                 new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: window.dailyTransportData.map(day => day.dayOfMonth),
+                        labels: config.dailyTransportData.map(day => day.dayOfMonth),
                         datasets: datasets
                     },
                     options: {
@@ -412,7 +410,7 @@
         // Execute initialization
         setTimeout(() => {
             initializeMonthPlaceMaps();
-            initializeMonthCharts();
+            initializeMonthCharts(monthConfig);
         }, 100);
     </script>
     <h4 th:text="${title}">Statistics for January 2024</h4>
