@@ -10,11 +10,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,7 +27,24 @@ public class StatisticsService {
     
     @Autowired
     private RawLocationPointRepository rawLocationPointRepository;
-    
+
+    private static TransportStatistic mapTransportStatistics(Object[] row) {
+        String transportMode = (String) row[0];
+        Double totalDistanceMeters = (Double) row[1];
+        Long durationInSeconds = (Long) row[2];
+        Long tripCount = (Long) row[3];
+
+        double totalDistanceKm = totalDistanceMeters / 1000.0;
+        double totalDurationHours = durationInSeconds / 3600.0;
+
+        return new TransportStatistic(
+                transportMode != null ? transportMode : "unknown",
+                totalDistanceKm,
+                totalDurationHours,
+                tripCount.intValue()
+        );
+    }
+
     public List<Integer> getAvailableYears(User user) {
         return rawLocationPointRepository.findDistinctYearsByUser(user);
     }
@@ -56,16 +69,19 @@ public class StatisticsService {
         private final String transportMode;
         private final double totalDistanceKm;
         private final int tripCount;
-        
-        public TransportStatistic(String transportMode, double totalDistanceKm, int tripCount) {
+        private final double totalDurationHours;
+
+        public TransportStatistic(String transportMode, double totalDistanceKm, double totalDurationHours, int tripCount) {
             this.transportMode = transportMode;
             this.totalDistanceKm = totalDistanceKm;
+            this.totalDurationHours = totalDistanceKm;
             this.tripCount = tripCount;
         }
         
         public String getTransportMode() { return transportMode; }
         public double getTotalDistanceKm() { return totalDistanceKm; }
         public int getTripCount() { return tripCount; }
+        public double getTotalDurationHours() { return totalDurationHours; }
     }
     
     public List<VisitStatistic> getTopVisitsByStayTime(User user, Instant startTime, Instant endTime, int limit) {
@@ -84,7 +100,6 @@ public class StatisticsService {
                     
                     // Convert seconds to hours
                     long totalStayTimeHours = totalDurationSeconds / 3600;
-                    
                     return new VisitStatistic(
                         placeName != null ? placeName : "Unknown Place",
                         totalStayTimeHours,
@@ -98,20 +113,7 @@ public class StatisticsService {
         List<Object[]> results = tripRepository.findTransportStatisticsByUserAndTimeRange(user, startTime, endTime);
         
         return results.stream()
-                .map(row -> {
-                    String transportMode = (String) row[0];
-                    Long totalDistanceMeters = (Long) row[1];
-                    Long tripCount = (Long) row[2];
-                    
-                    // Convert meters to kilometers
-                    double totalDistanceKm = totalDistanceMeters / 1000.0;
-                    
-                    return new TransportStatistic(
-                        transportMode != null ? transportMode : "unknown",
-                        totalDistanceKm,
-                        tripCount.intValue()
-                    );
-                })
+                .map(StatisticsService::mapTransportStatistics)
                 .collect(Collectors.toList());
     }
 
@@ -119,20 +121,7 @@ public class StatisticsService {
         List<Object[]> results = tripRepository.findTransportStatisticsByUser(user);
         
         return results.stream()
-                .map(row -> {
-                    String transportMode = (String) row[0];
-                    Long totalDistanceMeters = (Long) row[1];
-                    Long tripCount = (Long) row[2];
-                    
-                    // Convert meters to kilometers
-                    double totalDistanceKm = totalDistanceMeters / 1000.0;
-                    
-                    return new TransportStatistic(
-                        transportMode != null ? transportMode : "unknown",
-                        totalDistanceKm,
-                        tripCount.intValue()
-                    );
-                })
+                .map(StatisticsService::mapTransportStatistics)
                 .collect(Collectors.toList());
     }
     

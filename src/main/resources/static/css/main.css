@@ -651,6 +651,34 @@ input[type=file]::file-selector-button:hover {
     width: 100%;
 }
 
+.statistics-content {
+    margin-left: 30rem;
+    color: var(--color-text-white);
+    font-family: "Fraunces", serif;
+    background: transparent;
+    z-index: 1000;
+    position: relative;
+    font-weight: 300;
+    font-size: 1.4rem;
+    overflow: scroll;
+    max-height: 100vh;
+}
+
+.statistics-content h2 {
+    font-weight: 300;
+    font-size: 2.4rem;
+}
+
+.statistics-content h3 {
+    font-weight: 300;
+    font-size: 2.1rem;
+}
+
+.statistics-panel {
+}
+.background-dark {
+    background: var(--color-background-dark);
+}
 @media (max-width: 800px) {
     .timeline-entry .entry-description {
         font-size: 1.2rem;

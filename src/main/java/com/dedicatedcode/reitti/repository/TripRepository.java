@@ -35,20 +35,20 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
 
     List<Trip> findByUserAndStartVisitOrEndVisit(User user, ProcessedVisit startVisit, ProcessedVisit endVisit);
 
-    @Query("SELECT t.transportMode, SUM(t.distanceMeters), COUNT(t) " +
+    @Query("SELECT t.transportModeInferred, SUM(t.travelledDistanceMeters), SUM(t.durationSeconds), COUNT(t) " +
            "FROM Trip t " +
            "WHERE t.user = :user " +
-           "GROUP BY t.transportMode " +
-           "ORDER BY SUM(t.distanceMeters) DESC")
+           "GROUP BY t.transportModeInferred " +
+           "ORDER BY SUM(t.travelledDistanceMeters) DESC")
     List<Object[]> findTransportStatisticsByUser(@Param("user") User user);
 
-    @Query("SELECT t.transportMode, SUM(t.distanceMeters), COUNT(t) " +
+    @Query("SELECT t.transportModeInferred, SUM(t.travelledDistanceMeters),  SUM(t.durationSeconds), COUNT(t) " +
            "FROM Trip t " +
            "WHERE t.user = :user " +
            "AND t.startTime >= :startTime " +
            "AND t.endTime <= :endTime " +
-           "GROUP BY t.transportMode " +
-           "ORDER BY SUM(t.distanceMeters) DESC")
+           "GROUP BY t.transportModeInferred " +
+           "ORDER BY SUM(t.travelledDistanceMeters) DESC")
     List<Object[]> findTransportStatisticsByUserAndTimeRange(@Param("user") User user,
                                                              @Param("startTime") Instant startTime,
                                                              @Param("endTime") Instant endTime);
