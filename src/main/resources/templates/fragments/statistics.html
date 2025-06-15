@@ -38,7 +38,7 @@
     <div class="statistics-section">
         <h3 th:text="#{statistics.top.places}">Top Places by Stay Time</h3>
         <div class="places-stats-grid">
-            <div class="place-stats-card" th:each="visit : ${topVisits}">
+            <div class="place-stats-card" th:each="visit, visitStat : ${topVisits}">
                 <div class="place-map-container">
                     <div class="place-map" th:id="'place-map-' + ${visitStat.index}"></div>
                 </div>
@@ -97,7 +97,7 @@
     <div class="statistics-section">
         <h5 th:text="#{statistics.top.places}">Top Places by Stay Time</h5>
         <div class="places-stats-grid">
-            <div class="place-stats-card" th:each="visit : ${topVisits}">
+            <div class="place-stats-card" th:each="visit, visitStat : ${topVisits}">
                 <div class="place-map-container">
                     <div class="place-map" th:id="'month-place-map-' + ${visitStat.index}"></div>
                 </div>
