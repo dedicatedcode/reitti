@@ -6,23 +6,23 @@
     <div class="timeline-entry trip" data-year="overall"
          hx-get="/statistics/overall"
          hx-target="#statistics-panel"
-         hx-trigger="click">
+         hx-trigger="click"
+         hx-swap="outerHTML">
         <div class="entry-description" th:text="#{statistics.overall}">Overall</div>
     </div>
     <div class="timeline-entry trip" th:each="year : ${years}"
          th:attr="hx-get='/statistics/'+ ${year}"
          hx-target="#statistics-panel"
-         hx-trigger="click">
+         hx-trigger="click"
+         hx-swap="outerHTML">
         <div class="entry-description" th:text="${year}">2024</div>
     </div>
     <script>
         document.querySelector('.years-navigation').addEventListener('click', function (event) {
             const entry = event.target.closest('.timeline-entry');
             if (!entry) return;
-            // Check if this entry is already active (deselection case)
             const isCurrentlyActive = entry.classList.contains('active');
-            // Remove active class from all entries
-            document.querySelectorAll('.timeline-container .timeline-entry')
+             document.querySelectorAll('.timeline-container .timeline-entry')
                 .forEach(e => e.classList.remove('active'));
             if (!isCurrentlyActive) {
                 entry.classList.add('active');
@@ -31,17 +31,16 @@
     </script>
 </div>
 
-<div th:fragment="statistics-content">
-    <div class="statistics-content">
-        <h2 th:text="${title}">Statistics</h2>
-        <div class="statistics-placeholder">
-            <p th:text="#{statistics.coming.soon}">Statistics features are coming soon!</p>
-            <div th:if="${statisticsType == 'overall'}">
-                <p>This will show overall statistics across all years.</p>
-            </div>
-            <div th:if="${statisticsType == 'year'}">
-                <p th:text="'This will show statistics for the year ' + ${year}">This will show statistics for the specific year.</p>
-            </div>
+<div th:fragment="statistics-content" id="statistics-panel" class="statistics-content">
+    <h2 th:text="${title}">Statistics</h2>
+    <div class="statistics-placeholder">
+        <p th:text="#{statistics.coming.soon}">Statistics features are coming soon!</p>
+        <div th:if="${statisticsType == 'overall'}">
+            <p>This will show overall statistics across all years.</p>
+        </div>
+        <div th:if="${statisticsType == 'year'}">
+            <p th:text="'This will show statistics for the year ' + ${year}">This will show statistics for the specific
+                year.</p>
         </div>
     </div>
 </div>

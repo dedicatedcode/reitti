@@ -15,5 +15,4 @@ public class StatisticsService {
         years.add(2022);
         return years;
     }
-    
 }
