@@ -72,10 +72,14 @@ public class StatisticsService {
     }
     
     public List<VisitStatistic> getTopVisitsByStayTime(User user, Instant startTime, Instant endTime, int limit) {
-        List<Object[]> results = processedVisitRepository.findTopPlacesByStayTime(user, startTime, endTime);
-        
+        List<Object[]> results;
+        if (startTime == null || endTime == null) {
+             results = processedVisitRepository.findTopPlacesByStayTimeWithLimit(user, limit);
+        } else {
+            results = processedVisitRepository.findTopPlacesByStayTimeWithLimit(user, startTime, endTime, limit);
+        }
+
         return results.stream()
-                .limit(limit)
                 .map(row -> {
                     String placeName = (String) row[0];
                     Long totalDurationSeconds = (Long) row[1];
