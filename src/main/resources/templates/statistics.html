@@ -95,7 +95,21 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Chart.js configuration and initialization
+let chartInstances = {};
+
+function destroyExistingCharts() {
+    Object.keys(chartInstances).forEach(chartId => {
+        if (chartInstances[chartId]) {
+            chartInstances[chartId].destroy();
+            delete chartInstances[chartId];
+        }
+    });
+}
+
 function initializeCharts() {
+    // Destroy existing charts first
+    destroyExistingCharts();
+    
     // Transport mode colors
     const transportColors = {
         'DRIVING': '#FF6384',
@@ -109,7 +123,7 @@ function initializeCharts() {
     const pieCanvas = document.getElementById('transportPieChart');
     if (pieCanvas && window.transportStatsData) {
         const ctx = pieCanvas.getContext('2d');
-        new Chart(ctx, {
+        chartInstances['transportPieChart'] = new Chart(ctx, {
             type: 'pie',
             data: {
                 labels: window.transportStatsData.map(stat => stat.transportMode),
@@ -168,7 +182,7 @@ function initializeCharts() {
             borderWidth: 1
         }));
         
-        new Chart(ctx, {
+        chartInstances['monthlyTransportChart'] = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: window.monthlyTransportData.map(month => month.monthName.substring(0, 3)),
@@ -222,7 +236,8 @@ function initializeCharts() {
             borderWidth: 1
         }));
         
-        new Chart(ctx, {
+        const chartId = dailyCanvas.id || 'dailyTransportChart';
+        chartInstances[chartId] = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: window.dailyTransportData.map(day => day.dayOfMonth),
@@ -264,6 +279,11 @@ document.addEventListener('htmx:afterSwap', function(event) {
             initializeCharts();
         }, 100);
     }
+});
+
+// Clean up charts when page is about to unload
+window.addEventListener('beforeunload', function() {
+    destroyExistingCharts();
 });
 </script>
 
