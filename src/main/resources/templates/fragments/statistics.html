@@ -36,12 +36,12 @@
     
     <!-- Top Visits Section -->
     <div class="statistics-section">
-        <h3>Top Places by Stay Time</h3>
+        <h3 th:text="#{statistics.top.places}">Top Places by Stay Time</h3>
         <div class="statistics-table">
             <div class="table-header">
-                <span>Place</span>
-                <span>Total Hours</span>
-                <span>Visits</span>
+                <span th:text="#{statistics.place}">Place</span>
+                <span th:text="#{statistics.total.hours}">Total Hours</span>
+                <span th:text="#{statistics.visits}">Visits</span>
             </div>
             <div class="table-row" th:each="visit : ${topVisits}">
                 <span th:text="${visit.placeName}">Home</span>
@@ -53,12 +53,12 @@
     
     <!-- Transport Statistics Section -->
     <div class="statistics-section">
-        <h3>Distance by Transport Mode</h3>
+        <h3 th:text="#{statistics.transport.distance}">Distance by Transport Mode</h3>
         <div class="statistics-table">
             <div class="table-header">
-                <span>Transport Mode</span>
-                <span>Distance (km)</span>
-                <span>Trips</span>
+                <span th:text="#{statistics.transport.mode}">Transport Mode</span>
+                <span th:text="#{statistics.distance.km}">Distance (km)</span>
+                <span th:text="#{statistics.trips}">Trips</span>
             </div>
             <div class="table-row" th:each="transport : ${transportStats}">
                 <span th:text="${transport.transportMode}">driving</span>
@@ -70,12 +70,12 @@
     
     <!-- Monthly breakdown for year view -->
     <div th:if="${statisticsType == 'year'}" class="statistics-section">
-        <h3>Monthly Breakdown</h3>
+        <h3 th:text="#{statistics.monthly.breakdown}">Monthly Breakdown</h3>
         <div class="months-grid">
             <div class="month-item" th:each="month : ${months}"
                  th:attr="hx-get='/statistics/' + ${year} + '/' + ${month}, hx-target='#month-details-' + ${month}"
                  hx-trigger="click">
-                <span th:text="${T(java.time.Month).of(month).name()}">JANUARY</span>
+                <span th:text="#{${'month.' + month}}">JANUARY</span>
                 <div th:id="'month-details-' + ${month}" class="month-details">
                     <!-- Month details will be loaded here -->
                 </div>
@@ -89,12 +89,12 @@
     
     <!-- Top Visits Section for Month -->
     <div class="statistics-section">
-        <h5>Top Places by Stay Time</h5>
+        <h5 th:text="#{statistics.top.places}">Top Places by Stay Time</h5>
         <div class="statistics-table">
             <div class="table-header">
-                <span>Place</span>
-                <span>Total Hours</span>
-                <span>Visits</span>
+                <span th:text="#{statistics.place}">Place</span>
+                <span th:text="#{statistics.total.hours}">Total Hours</span>
+                <span th:text="#{statistics.visits}">Visits</span>
             </div>
             <div class="table-row" th:each="visit : ${topVisits}">
                 <span th:text="${visit.placeName}">Home</span>
@@ -106,12 +106,12 @@
     
     <!-- Transport Statistics Section for Month -->
     <div class="statistics-section">
-        <h5>Distance by Transport Mode</h5>
+        <h5 th:text="#{statistics.transport.distance}">Distance by Transport Mode</h5>
         <div class="statistics-table">
             <div class="table-header">
-                <span>Transport Mode</span>
-                <span>Distance (km)</span>
-                <span>Trips</span>
+                <span th:text="#{statistics.transport.mode}">Transport Mode</span>
+                <span th:text="#{statistics.distance.km}">Distance (km)</span>
+                <span th:text="#{statistics.trips}">Trips</span>
             </div>
             <div class="table-row" th:each="transport : ${transportStats}">
                 <span th:text="${transport.transportMode}">driving</span>
