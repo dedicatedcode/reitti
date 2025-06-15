@@ -19,4 +19,10 @@ public class StatisticsController {
         // Add any model attributes for statistics here in the future
         return "statistics";
     }
+
+    @GetMapping("/years-navigation")
+    public String yearsNavigation(Model model) {
+        model.addAttribute("years", statisticsService.getAvailableYears());
+        return "fragments/statistics-years-navigation";
+    }
 }
