@@ -183,7 +183,7 @@ class PhotoClient {
             .getPropertyValue('--photo-grid-thumbnail-size').trim();
         photoGrid.style.gridTemplateColumns = `repeat(${columns}, ${thumbnailSize})`;
 
-        photos.forEach(photo => {
+        photos.forEach((photo, index) => {
             const photoElement = document.createElement('div');
             photoElement.className = 'photo-grid-item';
 
@@ -196,7 +196,7 @@ class PhotoClient {
                 this.showPhotoModal(photo, () => {
                     // Return to grid when closing full image
                     this.showPhotoGridModal(photos);
-                });
+                }, photos, index);
             });
 
             photoElement.appendChild(img);
@@ -246,8 +246,10 @@ class PhotoClient {
      * Show photo in a modal
      * @param {Object} photo - Photo object
      * @param {Function} onClose - Optional callback when modal is closed
+     * @param {Array} allPhotos - All photos in the group for navigation
+     * @param {number} currentIndex - Current photo index in the group
      */
-    showPhotoModal(photo, onClose = null) {
+    showPhotoModal(photo, onClose = null, allPhotos = null, currentIndex = 0) {
         // Create modal overlay
         const modal = document.createElement('div');
         modal.className = 'photo-modal';
@@ -266,17 +268,65 @@ class PhotoClient {
         closeButton.innerHTML = '×';
         closeButton.className = 'photo-modal-close-button';
 
-        // Handle escape key
-        const handleEscape = (e) => {
-            if (e.key === 'Escape') {
+        // Create navigation elements if we have multiple photos
+        let prevButton, nextButton, counter;
+        if (allPhotos && allPhotos.length > 1) {
+            // Previous button
+            prevButton = document.createElement('button');
+            prevButton.innerHTML = '‹';
+            prevButton.className = 'photo-nav-button photo-nav-prev';
+            prevButton.disabled = currentIndex === 0;
+
+            // Next button
+            nextButton = document.createElement('button');
+            nextButton.innerHTML = '›';
+            nextButton.className = 'photo-nav-button photo-nav-next';
+            nextButton.disabled = currentIndex === allPhotos.length - 1;
+
+            // Photo counter
+            counter = document.createElement('div');
+            counter.className = 'photo-counter';
+            counter.textContent = `${currentIndex + 1} / ${allPhotos.length}`;
+        }
+
+        // Navigation functions
+        const showPrevPhoto = () => {
+            if (allPhotos && currentIndex > 0) {
                 closeModal();
+                this.showPhotoModal(allPhotos[currentIndex - 1], onClose, allPhotos, currentIndex - 1);
+            }
+        };
+
+        const showNextPhoto = () => {
+            if (allPhotos && currentIndex < allPhotos.length - 1) {
+                closeModal();
+                this.showPhotoModal(allPhotos[currentIndex + 1], onClose, allPhotos, currentIndex + 1);
+            }
+        };
+
+        // Handle keyboard navigation
+        const handleKeydown = (e) => {
+            switch (e.key) {
+                case 'Escape':
+                    closeModal();
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    showPrevPhoto();
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    showNextPhoto();
+                    break;
             }
         };
 
         // Add event listeners
         const closeModal = () => {
-            document.removeEventListener('keydown', handleEscape);
-            document.body.removeChild(modal);
+            document.removeEventListener('keydown', handleKeydown);
+            if (document.body.contains(modal)) {
+                document.body.removeChild(modal);
+            }
             if (onClose) {
                 onClose();
             }
@@ -284,19 +334,40 @@ class PhotoClient {
 
         closeButton.addEventListener('click', (e) => {
             e.preventDefault();
-            handleEscape({ key: 'Escape' });
+            closeModal();
         });
+
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
-                handleEscape({ key: 'Escape' });
+                closeModal();
             }
         });
 
-        document.addEventListener('keydown', handleEscape);
+        // Add navigation button listeners
+        if (prevButton) {
+            prevButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showPrevPhoto();
+            });
+        }
+
+        if (nextButton) {
+            nextButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showNextPhoto();
+            });
+        }
+
+        document.addEventListener('keydown', handleKeydown);
 
         // Assemble modal
         imageContainer.appendChild(img);
         imageContainer.appendChild(closeButton);
+        
+        if (prevButton) imageContainer.appendChild(prevButton);
+        if (nextButton) imageContainer.appendChild(nextButton);
+        if (counter) imageContainer.appendChild(counter);
+        
         modal.appendChild(imageContainer);
         document.body.appendChild(modal);
     }

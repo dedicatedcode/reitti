@@ -80,6 +80,55 @@
     position: relative;
 }
 
+.photo-nav-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(53, 53, 53, 0.8);
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10002;
+    transition: background-color 0.2s;
+}
+
+.photo-nav-button:hover {
+    background: rgba(53, 53, 53, 1);
+}
+
+.photo-nav-button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.photo-nav-prev {
+    left: -60px;
+}
+
+.photo-nav-next {
+    right: -60px;
+}
+
+.photo-counter {
+    position: absolute;
+    bottom: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(53, 53, 53, 0.8);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
 .photo-modal img {
     max-width: 100%;
     max-height: 100vh;
