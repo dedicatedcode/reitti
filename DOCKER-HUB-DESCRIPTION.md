@@ -18,7 +18,6 @@ Reitti is a comprehensive self-hosted application for tracking, analyzing, and v
 
 ### User Management & Security
 - **Multi-user Support**: Individual user accounts with data isolation
-- **API Token Management**: Secure token-based authentication for mobile apps
 - **Multi-language Support**: Available in English, Finnish, German, and French
 - **Geocoding Services**: Configurable address resolution with multiple provider support
 

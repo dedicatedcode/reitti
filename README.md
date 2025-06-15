@@ -27,24 +27,19 @@ Reitti is a comprehensive personal location tracking and analysis application th
 - **Multi-user Support**: Multiple user accounts with individual data isolation
 - **API Token Management**: Secure API access with token-based authentication
 - **User Profile Management**: Customizable display names and secure password management
-- **Role-based Access**: Secure access control for different user types
 
 ### Geocoding & Address Resolution
 - **Multiple Geocoding Services**: Support for custom geocoding providers (Nominatim, etc.)
 - **Automatic Address Resolution**: Convert coordinates to human-readable addresses
 - **Service Management**: Configure multiple geocoding services with automatic failover
-- **Error Handling**: Robust error tracking and service health monitoring
 
 ### Customization & Localization
 - **Multi-language Support**: Available in English, Finnish, German, and French
-- **Customizable Interface**: Configurable map styles and visualization options
-- **Data Management Tools**: Manual processing triggers and data cleanup utilities
 - **Queue Monitoring**: Real-time job status and processing queue visibility
 
 ### Privacy & Self-hosting
 - **Complete Data Control**: Your location data never leaves your server
 - **Self-hosted Solution**: Deploy on your own infrastructure
-- **Secure by Design**: No third-party data sharing or cloud dependencies
 - **Asynchronous Processing**: Handle large datasets efficiently with RabbitMQ-based processing
 
 ## Getting Started
