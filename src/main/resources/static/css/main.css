@@ -704,8 +704,8 @@ input[type=file]::file-selector-button:hover {
 }
 
 .place-map-container {
-    width: 120px;
-    height: 120px;
+    width: 240px;
+    height: 240px;
     margin: 0 auto 1rem;
     border-radius: 50%;
     overflow: hidden;

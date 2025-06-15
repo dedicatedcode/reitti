@@ -79,9 +79,6 @@ function initializePlaceMaps() {
             attribution: ''
         }).addTo(map);
         
-        // Add a marker for the place
-        L.marker([lat, lng]).addTo(map);
-        
         // Invalidate size after a short delay to ensure proper rendering
         setTimeout(() => {
             map.invalidateSize();
