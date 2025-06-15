@@ -9,26 +9,26 @@
     <link rel="stylesheet" href="/css/main.css">
     <link rel="stylesheet" href="/css/lineicons.css">
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+
 </head>
 <body>
-    <header>
-        <nav>
-            <a href="/" class="nav-link" th:text="#{nav.timeline}">Timeline</a>
-            <a href="/statistics" class="nav-link" th:text="#{nav.statistics}">Statistics</a>
-            <a href="#" id="settings-button" class="nav-link"><i class="lni lni-gear-1" th:title="#{nav.settings.tooltip}"></i></a>
-            <form th:action="@{/logout}" method="post" style="display: inline;">
-                <button type="submit" class="nav-link" style="font-size: 1.4rem;" th:title="#{nav.logout.tooltip}">
-                    <i class="lni lni-exit"></i>
-                </button>
-            </form>
-        </nav>
-    </header>
+<div class="timeline">
+    <span class="timeline-header">
+        <a href="/" class="nav-link" th:title="#{nav.timeline}"><i class="lni lni-route-1"></i></a>
+        <a href="#" id="settings-button" class="nav-link"><i class="lni lni-gear-1" th:title="#{nav.settings.tooltip}"></i></a>
+        <form th:action="@{/logout}" method="post" >
+            <button type="submit" class="nav-link" style="font-size: 1.4rem;" th:title="#{nav.logout.tooltip}"><i
+                    class="lni lni-exit"></i>
+            </button>
 
-    <main style="padding: 80px 40px 40px 40px; min-height: 100vh; background-color: var(--color-background-dark); color: var(--color-text-white);">
-        <div style="max-width: 1200px; margin: 0 auto;">
-            <h1 th:text="#{statistics.title}">Statistics</h1>
-            <p th:text="#{statistics.coming.soon}">Statistics features are coming soon!</p>
-        </div>
-    </main>
+        </form>
+    </span>
+
+    <div class="timeline-container">
+        <div id="loading-indicator" style="display: none;" th:text="#{timeline.loading}">Loading...</div>
+        <!-- Timeline entries will be loaded here -->
+    </div>
+</div>
 </body>
 </html>
