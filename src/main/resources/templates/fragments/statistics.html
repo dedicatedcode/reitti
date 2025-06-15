@@ -355,7 +355,6 @@
             // Initialize daily stacked bar chart
             const dailyCanvas = document.querySelector('[id^="dailyTransportChart"]');
             if (dailyCanvas && config.dailyTransportData && config.dailyTransportData.length > 0) {
-                dailyCanvas.width = dailyCanvas.width;
                 const ctx = dailyCanvas.getContext('2d');
                 
                 const allModes = [...new Set(config.dailyTransportData.flatMap(day => 
