@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="/css/lineicons.css">
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="/js/TileLayer.Grayscale.js"></script>
 </head>
@@ -97,11 +98,10 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeCharts() {
     // Transport mode colors
     const transportColors = {
-        'driving': '#FF6384',
-        'walking': '#36A2EB', 
-        'cycling': '#FFCE56',
+        'DRIVING': '#FF6384',
+        'WALKING': '#36A2EB',
+        'CYCLING': '#FFCE56',
         'public_transport': '#4BC0C0',
-        'running': '#9966FF',
         'unknown': '#FF9F40'
     };
     
