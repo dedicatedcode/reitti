@@ -83,7 +83,6 @@
             const pieCanvas = document.getElementById('transportPieChart');
             if (pieCanvas && window.transportStatsData && window.transportStatsData.length > 0) {
                 // Clear any existing chart
-                pieCanvas.width = pieCanvas.width;
                 const ctx = pieCanvas.getContext('2d');
                 new Chart(ctx, {
                     type: 'pie',
@@ -125,7 +124,6 @@
             const monthlyCanvas = document.getElementById('monthlyTransportChart');
             if (monthlyCanvas && window.monthlyTransportData && window.monthlyTransportData.length > 0) {
                 // Clear any existing chart
-                monthlyCanvas.width = monthlyCanvas.width;
                 const ctx = monthlyCanvas.getContext('2d');
                 
                 const allModes = [...new Set(window.monthlyTransportData.flatMap(month => 
@@ -178,10 +176,10 @@
         }
         
         // Execute initialization
-        setTimeout(() => {
+        // setTimeout(() => {
             initializePlaceMaps();
             initializeCharts();
-        }, 100);
+        // }, 100);
     </script>
     <h2 th:text="${title}">Statistics</h2>
     
@@ -223,7 +221,7 @@
             <div class="transport-chart-section">
                 <div class="transport-chart-title" th:text="#{statistics.transport.distribution}">Transport Distribution</div>
                 <div class="pie-chart-container">
-                    <canvas id="transportPieChart"></canvas>
+                    <canvas th:id="${'transportPieChart_'+ year}"></canvas>
                 </div>
             </div>
             <div class="transport-chart-section">
@@ -238,7 +236,7 @@
             <div class="transport-chart-section">
                 <div class="transport-chart-title" th:text="#{statistics.transport.distribution}">Transport Distribution</div>
                 <div class="pie-chart-container">
-                    <canvas id="transportPieChart"></canvas>
+                    <canvas th:id="${'transportPieChart_'+ year + '_'+ month}"id="transportPieChart"></canvas>
                 </div>
             </div>
             <div class="transport-chart-section">
@@ -318,7 +316,6 @@
             const pieCanvas = document.getElementById('monthTransportPieChart');
             if (pieCanvas && window.transportStatsData && window.transportStatsData.length > 0) {
                 // Clear any existing chart
-                pieCanvas.width = pieCanvas.width;
                 const ctx = pieCanvas.getContext('2d');
                 new Chart(ctx, {
                     type: 'pie',
