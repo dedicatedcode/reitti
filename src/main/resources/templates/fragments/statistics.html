@@ -137,6 +137,7 @@
 
     <script th:inline="javascript">
         initializePlaceMaps();
+        renderCharts();
     </script>
 
 </div>
@@ -199,22 +200,8 @@
     </div>
 
     <script th:inline="javascript">
-//        // Configuration object for month content - unique per month
-//        const monthConfig_/*[[${year}]]*/_/*[[${month}]]*/
-//            = {
-//            dataKey: monthDataKey,
-//            year: /*[[${year}]]*/ null,
-//            month: /*[[${month}]]*/ null,
-//            transportColors: {
-//                'DRIVING': '#FF6384',
-//                'WALKING': '#36A2EB',
-//                'CYCLING': '#FFCE56',
-//                'public_transport': '#4BC0C0',
-//                'unknown': '#FF9F40'
-//            }
-//        };
-        
         initializePlaceMaps();
+        renderCharts();
     </script>
 </div>
 
