@@ -812,7 +812,7 @@ input[type=file]::file-selector-button:hover {
 /* Transport Charts Styles */
 .transport-charts-container {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fill, minmax(700px, 1fr));
     gap: 2rem;
     margin-top: 1.5rem;
 }

@@ -3,10 +3,10 @@
 <body>
 
 <div class="years-navigation" th:fragment="years-navigation">
-    <div class="timeline-entry trip" id="overall-entry" data-year="overall"
+    <div class="timeline-entry trip active" id="overall-entry" data-year="overall"
          hx-get="/statistics/overall"
          hx-target="#statistics-panel"
-         hx-trigger="click[shouldTrigger(this)]"
+         hx-trigger="load, click[shouldTrigger(this)]"
          hx-swap="outerHTML">
         <div class="entry-description" th:text="#{statistics.overall}">Overall</div>
     </div>
@@ -48,6 +48,7 @@
               data-month=${month},
               data-transport-stats=${transportStats != null ? transportStats : '[]'},
               data-breakdown-transport=${breakdownTransportData != null ? breakdownTransportData : '[]'}">
+
     <h2 th:text="${title}">Statistics</h2>
     
     <!-- Check if there's any data available -->
@@ -123,12 +124,12 @@
     <div th:if="${statisticsType == 'year' and months != null and !months.isEmpty()}" class="statistics-section">
         <h3 th:text="#{statistics.monthly.breakdown}">Monthly Breakdown</h3>
         <div class="months-grid">
-            <div class="month-item" th:each="month : ${months}"
+            <div class="month-item" th:each="month, iterStats : ${months}"
                  th:attr="hx-get='/statistics/' + ${year} + '/' + ${month}, 
                           hx-target='#month-details-' + ${month},
                           data-year=${year},
-                          data-month=${month}"
-                 hx-trigger="revealed">
+                          data-month=${month},
+                          hx-trigger=${iterStats.index == 0 ? 'intersect once' : 'load'}">
                 <div th:id="'month-details-' + ${month}" class="month-details"></div>
             </div>
         </div>
