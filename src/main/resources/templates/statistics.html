@@ -81,7 +81,7 @@
             const year = container.getAttribute('data-year');
             const month = container.getAttribute('data-month');
             const transportStatsAttr = container.getAttribute('data-transport-stats');
-            const monthlyTransportAttr = container.getAttribute('data-monthly-transport');
+            const breakdownTransportAttr = container.getAttribute('data-breakdown-transport');
             
             // Parse transport stats data
             let transportStats = [];
@@ -93,13 +93,13 @@
                 }
             }
             
-            // Parse monthly transport data
-            let monthlyTransportData = [];
-            if (monthlyTransportAttr && monthlyTransportAttr !== '[]') {
+            // Parse breakdown transport data
+            let breakdownTransportData = [];
+            if (breakdownTransportAttr && breakdownTransportAttr !== '[]') {
                 try {
-                    monthlyTransportData = JSON.parse(monthlyTransportAttr);
+                    breakdownTransportData = JSON.parse(breakdownTransportAttr);
                 } catch (e) {
-                    console.error('Error parsing monthly transport data:', e);
+                    console.error('Error parsing breakdown transport data:', e);
                 }
             }
             
@@ -148,20 +148,20 @@
                 }
             }
             
-            // Render monthly breakdown chart for year view
-            if (statisticsType === 'year' && monthlyTransportData.length > 0) {
+            // Render breakdown chart for year view (monthly breakdown)
+            if (statisticsType === 'year' && breakdownTransportData.length > 0) {
                 const monthlyCanvas = document.getElementById(`monthlyTransportChart_${year}`);
                 if (monthlyCanvas) {
                     const ctx = monthlyCanvas.getContext('2d');
                     
                     // Group data by transport mode
-                    const transportModes = [...new Set(monthlyTransportData.map(item => item.transportMode))];
-                    const months = [...new Set(monthlyTransportData.map(item => item.month))].sort((a, b) => a - b);
+                    const transportModes = [...new Set(breakdownTransportData.map(item => item.transportMode))];
+                    const months = [...new Set(breakdownTransportData.map(item => item.month))].sort((a, b) => a - b);
                     
                     const datasets = transportModes.map(mode => ({
                         label: mode,
                         data: months.map(month => {
-                            const item = monthlyTransportData.find(d => d.month === month && d.transportMode === mode);
+                            const item = breakdownTransportData.find(d => d.month === month && d.transportMode === mode);
                             return item ? item.totalDistance : 0;
                         }),
                         backgroundColor: transportColors[mode] || '#999999'
@@ -199,7 +199,7 @@
             const year = container.getAttribute('data-year');
             const month = container.getAttribute('data-month');
             const transportStatsAttr = container.getAttribute('data-transport-stats');
-            const dailyTransportAttr = container.getAttribute('data-daily-transport');
+            const breakdownTransportAttr = container.getAttribute('data-breakdown-transport');
             
             // Parse transport stats data
             let transportStats = [];
@@ -211,13 +211,13 @@
                 }
             }
             
-            // Parse daily transport data
-            let dailyTransportData = [];
-            if (dailyTransportAttr && dailyTransportAttr !== '[]') {
+            // Parse breakdown transport data
+            let breakdownTransportData = [];
+            if (breakdownTransportAttr && breakdownTransportAttr !== '[]') {
                 try {
-                    dailyTransportData = JSON.parse(dailyTransportAttr);
+                    breakdownTransportData = JSON.parse(breakdownTransportAttr);
                 } catch (e) {
-                    console.error('Error parsing daily transport data:', e);
+                    console.error('Error parsing breakdown transport data:', e);
                 }
             }
             
@@ -257,20 +257,20 @@
                 }
             }
             
-            // Render daily breakdown chart for month view
-            if (dailyTransportData.length > 0) {
+            // Render breakdown chart for month view (daily breakdown)
+            if (breakdownTransportData.length > 0) {
                 const dailyCanvas = document.getElementById(`monthDailyTransportChart_${year}_${month}`);
                 if (dailyCanvas) {
                     const ctx = dailyCanvas.getContext('2d');
                     
                     // Group data by transport mode
-                    const transportModes = [...new Set(dailyTransportData.map(item => item.transportMode))];
-                    const days = [...new Set(dailyTransportData.map(item => item.day))].sort((a, b) => a - b);
+                    const transportModes = [...new Set(breakdownTransportData.map(item => item.transportMode))];
+                    const days = [...new Set(breakdownTransportData.map(item => item.day))].sort((a, b) => a - b);
                     
                     const datasets = transportModes.map(mode => ({
                         label: mode,
                         data: days.map(day => {
-                            const item = dailyTransportData.find(d => d.day === day && d.transportMode === mode);
+                            const item = breakdownTransportData.find(d => d.day === day && d.transportMode === mode);
                             return item ? item.totalDistance : 0;
                         }),
                         backgroundColor: transportColors[mode] || '#999999'

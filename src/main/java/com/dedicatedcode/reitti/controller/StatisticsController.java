@@ -60,11 +60,11 @@ public class StatisticsController {
             String transportStatsJson = objectMapper.writeValueAsString(statisticsService.getYearTransportStatistics(user, year));
             model.addAttribute("transportStats", transportStatsJson);
             
-            String monthlyTransportJson = objectMapper.writeValueAsString(statisticsService.getMonthlyTransportBreakdown(user, year));
-            model.addAttribute("monthlyTransportData", monthlyTransportJson);
+            String breakdownTransportJson = objectMapper.writeValueAsString(statisticsService.getMonthlyTransportBreakdown(user, year));
+            model.addAttribute("breakdownTransportData", breakdownTransportJson);
         } catch (JsonProcessingException e) {
             model.addAttribute("transportStats", "[]");
-            model.addAttribute("monthlyTransportData", "[]");
+            model.addAttribute("breakdownTransportData", "[]");
         }
         
         // Add months for the year
@@ -87,11 +87,11 @@ public class StatisticsController {
             String transportStatsJson = objectMapper.writeValueAsString(statisticsService.getMonthTransportStatistics(user, year, month));
             model.addAttribute("transportStats", transportStatsJson);
             
-            String dailyTransportJson = objectMapper.writeValueAsString(statisticsService.getDailyTransportBreakdown(user, year, month));
-            model.addAttribute("dailyTransportData", dailyTransportJson);
+            String breakdownTransportJson = objectMapper.writeValueAsString(statisticsService.getDailyTransportBreakdown(user, year, month));
+            model.addAttribute("breakdownTransportData", breakdownTransportJson);
         } catch (JsonProcessingException e) {
             model.addAttribute("transportStats", "[]");
-            model.addAttribute("dailyTransportData", "[]");
+            model.addAttribute("breakdownTransportData", "[]");
         }
         
         return "fragments/statistics :: month-content";
