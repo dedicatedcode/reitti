@@ -55,8 +55,12 @@
               data-breakdown-transport=${breakdownTransportData != null ? breakdownTransportData : '[]'}">
     <h2 th:text="${title}">Statistics</h2>
     
+    <!-- Check if there's any data available -->
+    <div th:if="${topVisits == null or topVisits.isEmpty()} and ${transportStats == null or transportStats == '[]'}" 
+         class="no-data-message" th:text="#{statistics.no.data}">No data available</div>
+    
     <!-- Top Visits Section -->
-    <div class="statistics-section">
+    <div th:if="${topVisits != null and !topVisits.isEmpty()}" class="statistics-section">
         <h3 th:text="#{statistics.top.places}">Top Places by Stay Time</h3>
         <div class="places-stats-grid">
             <div class="place-stats-card" th:each="visit, visitStat : ${topVisits}">
@@ -82,7 +86,7 @@
     </div>
     
     <!-- Transport Statistics Section -->
-    <div class="statistics-section">
+    <div th:if="${transportStats != null and transportStats != '[]'}" class="statistics-section">
         <h3 th:text="#{statistics.transport.distance}">Distance by Transport Mode</h3>
         
         <div th:if="${statisticsType == 'overall'}" class="pie-chart-container">
@@ -121,7 +125,7 @@
     </div>
     
     <!-- Monthly breakdown for year view -->
-    <div th:if="${statisticsType == 'year'}" class="statistics-section">
+    <div th:if="${statisticsType == 'year' and months != null and !months.isEmpty()}" class="statistics-section">
         <h3 th:text="#{statistics.monthly.breakdown}">Monthly Breakdown</h3>
         <div class="months-grid">
             <div class="month-item" th:each="month : ${months}"
