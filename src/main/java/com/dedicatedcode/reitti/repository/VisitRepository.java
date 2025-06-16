@@ -14,16 +14,10 @@ import java.util.Optional;
 
 @Repository
 public interface VisitRepository extends JpaRepository<Visit, Long> {
-    
-    List<Visit> findByUser(User user);
-    
-    List<Visit> findByUserAndProcessedFalse(User user);
 
-    List<Visit> findByUserAndStartTimeBetweenAndProcessedFalseOrderByStartTimeAsc(User user, Instant startTime, Instant endTime);
+    List<Visit> findByUserAndStartTime(User user, Instant startTime);
 
-    Optional<Visit> findByUserAndStartTime(User user, Instant startTime);
-
-    Optional<Visit> findByUserAndEndTime(User user, Instant departureTime);
+    List<Visit> findByUserAndEndTime(User user, Instant departureTime);
 
     List<Visit> findByUserAndStartTimeBetweenOrderByStartTimeAsc(User user, Instant startTime, Instant endTime);
 

@@ -660,7 +660,6 @@ input[type=file]::file-selector-button:hover {
     position: relative;
     font-weight: 300;
     font-size: 1.4rem;
-    overflow: scroll;
     max-height: 100vh;
     padding: 2rem;
 }

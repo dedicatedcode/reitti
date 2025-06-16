@@ -21,7 +21,6 @@
 <div class="timeline">
     <span class="timeline-header">
         <a href="/" class="nav-link" th:title="#{nav.timeline}"><i class="lni lni-route-1"></i></a>
-        <a href="#" id="settings-button" class="nav-link"><i class="lni lni-gear-1" th:title="#{nav.settings.tooltip}"></i></a>
         <form th:action="@{/logout}" method="post" >
             <button type="submit" class="nav-link" style="font-size: 1.4rem;" th:title="#{nav.logout.tooltip}"><i
                     class="lni lni-exit"></i>
@@ -38,6 +37,10 @@
     </div>
 </div>
 <script>
+
+    function shouldTrigger(element) {
+        return !element.classList.contains('active');
+    }
     function initializePlaceMaps() {
         const mapContainers = document.querySelectorAll('.place-map:not([data-map-initialized])');
         mapContainers.forEach((container, index) => {
@@ -327,6 +330,7 @@
                 }
             }
         });
+
     }
 
 </script>

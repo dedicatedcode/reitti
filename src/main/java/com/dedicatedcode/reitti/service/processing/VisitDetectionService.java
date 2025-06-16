@@ -81,14 +81,14 @@ public class VisitDetectionService {
         logger.info("Detected {} stay points for user {}", stayPoints.size(), user.getUsername());
 
         for (StayPoint stayPoint : stayPoints) {
-            Optional<Visit> existingVisitByStart = this.visitRepository.findByUserAndStartTime(user, stayPoint.getArrivalTime());
-            Optional<Visit> existingVisitByEnd = this.visitRepository.findByUserAndEndTime(user, stayPoint.getDepartureTime());
+            List<Visit> existingVisitByStart = this.visitRepository.findByUserAndStartTime(user, stayPoint.getArrivalTime());
+            List<Visit> existingVisitByEnd = this.visitRepository.findByUserAndEndTime(user, stayPoint.getDepartureTime());
             List<Visit> overlappingVisits = this.visitRepository.findByUserAndStartTimeBeforeAndEndTimeAfter(user, stayPoint.getDepartureTime(), stayPoint.getArrivalTime());
 
 
             Set<Visit> visitsToUpdate = new HashSet<>();
-            existingVisitByStart.ifPresent(visitsToUpdate::add);
-            existingVisitByEnd.ifPresent(visitsToUpdate::add);
+            visitsToUpdate.addAll(existingVisitByStart);
+            visitsToUpdate.addAll(existingVisitByEnd);
             visitsToUpdate.addAll(overlappingVisits);
 
 

@@ -3,17 +3,17 @@
 <body>
 
 <div class="years-navigation" th:fragment="years-navigation">
-    <div class="timeline-entry trip" data-year="overall"
+    <div class="timeline-entry trip" id="overall-entry" data-year="overall"
          hx-get="/statistics/overall"
          hx-target="#statistics-panel"
-         hx-trigger="click"
+         hx-trigger="click[shouldTrigger(this)]"
          hx-swap="outerHTML">
         <div class="entry-description" th:text="#{statistics.overall}">Overall</div>
     </div>
     <div class="timeline-entry trip" th:each="year : ${years}"
          th:attr="hx-get='/statistics/'+ ${year}, data-year=${year}"
          hx-target="#statistics-panel"
-         hx-trigger="click"
+         hx-trigger="click[shouldTrigger(this)]"
          hx-swap="outerHTML">
         <div class="entry-description" th:text="${year}">2024</div>
     </div>
@@ -31,18 +31,13 @@
             const entry = event.target.closest('.timeline-entry');
             if (!entry) return;
             const isCurrentlyActive = entry.classList.contains('active');
-             document.querySelectorAll('.timeline-container .timeline-entry')
-                .forEach(e => e.classList.remove('active'));
-            if (!isCurrentlyActive) {
-                entry.classList.add('active');
-                
-                // Reset chart data when switching timeline entries
-                window.chartData = {
-                    transport: {},
-                    monthlyTransport: {},
-                    dailyTransport: {}
-                };
+            if (isCurrentlyActive) {
+                return;
             }
+            document.querySelectorAll('.timeline-container .timeline-entry')
+                .forEach(e => e.classList.remove('active'));
+                entry.classList.add('active');
+
         });
     </script>
 </div>
