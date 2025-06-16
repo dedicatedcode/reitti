@@ -169,7 +169,59 @@
 </div>
 
 <div th:fragment="month-content" class="month-content">
-    <script th:inline="javascript">
+    <h4 th:text="${title}">Statistics for January 2024</h4>
+    
+    <!-- Check if there's any data available -->
+    <div th:if="${topVisits == null or topVisits.isEmpty()} and ${transportStats == null or transportStats.isEmpty()}" 
+         class="no-data-message" th:text="#{statistics.no.data}">No data available for this month</div>
+    
+    <!-- Top Visits Section for Month -->
+    <div th:if="${topVisits != null and !topVisits.isEmpty()}" class="statistics-section">
+        <h5 th:text="#{statistics.top.places}">Top Places by Stay Time</h5>
+        <div class="places-stats-grid">
+            <div class="place-stats-card" th:each="visit, visitStat : ${topVisits}">
+                <div class="place-map-container">
+                    <div class="place-map" 
+                         th:id="'month-place-map-' + ${visitStat.index}"
+                         th:data-lat="${visit.latitude}"
+                         th:data-lng="${visit.longitude}"></div>
+                </div>
+                <div class="place-name" th:text="${visit.placeName}">Home</div>
+                <div class="place-stats">
+                    <div class="place-stat-item">
+                        <span class="place-stat-label" th:text="#{statistics.total.hours}">Total Hours</span>
+                        <span class="place-stat-value" th:text="${visit.totalStayTimeHours} + 'h'">200h</span>
+                    </div>
+                    <div class="place-stat-item">
+                        <span class="place-stat-label" th:text="#{statistics.visits}">Visits</span>
+                        <span class="place-stat-value" th:text="${visit.visitCount}">30</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Transport Statistics Section for Month -->
+    <div th:if="${transportStats != null and !transportStats.isEmpty()}" class="statistics-section">
+        <h5 th:text="#{statistics.transport.distance}">Distance by Transport Mode</h5>
+        
+        <div class="transport-charts-container">
+            <div class="transport-chart-section">
+                <div class="transport-chart-title" th:text="#{statistics.transport.distribution}">Transport Distribution</div>
+                <div class="pie-chart-container">
+                    <canvas th:id="'monthTransportPieChart_' + ${year} + '_' + ${month}"></canvas>
+                </div>
+            </div>
+            <div class="transport-chart-section">
+                <div class="transport-chart-title" th:text="#{statistics.daily.breakdown}">Daily Breakdown</div>
+                <div class="chart-container">
+                    <canvas th:id="'monthDailyTransportChart_' + ${year} + '_' + ${month}"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script th:if="${topVisits != null and !topVisits.isEmpty()}" th:inline="javascript">
         // Configuration object for month content - unique per month
         const monthConfig_/*[[${year}]]*/_/*[[${month}]]*/
             = {
@@ -225,53 +277,6 @@
             initializeMonthPlaceMaps();
         }, 100);
     </script>
-    <h4 th:text="${title}">Statistics for January 2024</h4>
-    
-    <!-- Top Visits Section for Month -->
-    <div class="statistics-section">
-        <h5 th:text="#{statistics.top.places}">Top Places by Stay Time</h5>
-        <div class="places-stats-grid">
-            <div class="place-stats-card" th:each="visit, visitStat : ${topVisits}">
-                <div class="place-map-container">
-                    <div class="place-map" 
-                         th:id="'month-place-map-' + ${visitStat.index}"
-                         th:data-lat="${visit.latitude}"
-                         th:data-lng="${visit.longitude}"></div>
-                </div>
-                <div class="place-name" th:text="${visit.placeName}">Home</div>
-                <div class="place-stats">
-                    <div class="place-stat-item">
-                        <span class="place-stat-label" th:text="#{statistics.total.hours}">Total Hours</span>
-                        <span class="place-stat-value" th:text="${visit.totalStayTimeHours} + 'h'">200h</span>
-                    </div>
-                    <div class="place-stat-item">
-                        <span class="place-stat-label" th:text="#{statistics.visits}">Visits</span>
-                        <span class="place-stat-value" th:text="${visit.visitCount}">30</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Transport Statistics Section for Month -->
-    <div class="statistics-section">
-        <h5 th:text="#{statistics.transport.distance}">Distance by Transport Mode</h5>
-        
-        <div class="transport-charts-container">
-            <div class="transport-chart-section">
-                <div class="transport-chart-title" th:text="#{statistics.transport.distribution}">Transport Distribution</div>
-                <div class="pie-chart-container">
-                    <canvas th:id="'monthTransportPieChart_' + ${year} + '_' + ${month}"></canvas>
-                </div>
-            </div>
-            <div class="transport-chart-section">
-                <div class="transport-chart-title" th:text="#{statistics.daily.breakdown}">Daily Breakdown</div>
-                <div class="chart-container">
-                    <canvas th:id="'monthDailyTransportChart_' + ${year} + '_' + ${month}"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 </body>
