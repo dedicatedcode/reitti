@@ -154,11 +154,11 @@
     <h4 th:text="${title}">Statistics for January 2024</h4>
     
     <!-- Check if there's any data available -->
-    <div th:if="${topVisits == null or topVisits.isEmpty()} and ${transportStats == null or transportStats.isEmpty()}" 
+    <div th:unless="${dataAvailable}"
          class="no-data-message" th:text="#{statistics.no.data}">No data available for this month</div>
     
     <!-- Top Visits Section for Month -->
-    <div th:if="${topVisits != null and !topVisits.isEmpty()}" class="statistics-section">
+    <div th:if="${dataAvailable}" class="statistics-section">
         <h5 th:text="#{statistics.top.places}">Top Places by Stay Time</h5>
         <div class="places-stats-grid">
             <div class="place-stats-card" th:each="visit, visitStat : ${topVisits}">
@@ -184,7 +184,7 @@
     </div>
     
     <!-- Transport Statistics Section for Month -->
-    <div th:if="${transportStats != null and !transportStats.isEmpty()}" class="statistics-section">
+    <div th:if="${dataAvailable}" class="statistics-section">
         <h5 th:text="#{statistics.transport.distance}">Distance by Transport Mode</h5>
         
         <div class="transport-charts-container">

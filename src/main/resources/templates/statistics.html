@@ -72,17 +72,19 @@
 
     function renderCharts() {
         // Find all statistics content containers that haven't been processed yet
+        Chart.defaults.color = '#ffffff';
+        Chart.defaults.font.family = 'Fraunces';
         const statisticsContainers = document.querySelectorAll('.statistics-content:not([data-charts-initialized])');
-        
+
         statisticsContainers.forEach(container => {
             container.setAttribute('data-charts-initialized', 'true');
-            
+
             const statisticsType = container.getAttribute('data-statistics-type');
             const year = container.getAttribute('data-year');
             const month = container.getAttribute('data-month');
             const transportStatsAttr = container.getAttribute('data-transport-stats');
             const breakdownTransportAttr = container.getAttribute('data-breakdown-transport');
-            
+
             // Parse transport stats data
             let transportStats = [];
             if (transportStatsAttr && transportStatsAttr !== '[]') {
@@ -92,7 +94,7 @@
                     console.error('Error parsing transport stats:', e);
                 }
             }
-            
+
             // Parse breakdown transport data
             let breakdownTransportData = [];
             if (breakdownTransportAttr && breakdownTransportAttr !== '[]') {
@@ -102,7 +104,7 @@
                     console.error('Error parsing breakdown transport data:', e);
                 }
             }
-            
+
             // Transport mode colors
             const transportColors = {
                 'DRIVING': '#FF6384',
@@ -111,7 +113,7 @@
                 'public_transport': '#4BC0C0',
                 'unknown': '#FF9F40'
             };
-            
+
             // Render pie chart for transport distribution
             if (transportStats.length > 0) {
                 let chartId;
@@ -122,7 +124,7 @@
                 } else if (statisticsType === 'month') {
                     chartId = `transportPieChart_${year}_${month}`;
                 }
-                
+
                 const pieCanvas = document.getElementById(chartId);
                 if (pieCanvas) {
                     const ctx = pieCanvas.getContext('2d');
@@ -131,7 +133,7 @@
                         data: {
                             labels: transportStats.map(stat => stat.transportMode),
                             datasets: [{
-                                data: transportStats.map(stat => stat.totalDistance),
+                                data: transportStats.map(stat => stat.totalDistanceKm),
                                 backgroundColor: transportStats.map(stat => transportColors[stat.transportMode] || '#999999')
                             }]
                         },
@@ -147,30 +149,35 @@
                     });
                 }
             }
-            
+
             // Render breakdown chart for year view (monthly breakdown)
             if (statisticsType === 'year' && breakdownTransportData.length > 0) {
                 const monthlyCanvas = document.getElementById(`monthlyTransportChart_${year}`);
                 if (monthlyCanvas) {
                     const ctx = monthlyCanvas.getContext('2d');
-                    
+
                     // Group data by transport mode
-                    const transportModes = [...new Set(breakdownTransportData.map(item => item.transportMode))];
-                    const months = [...new Set(breakdownTransportData.map(item => item.month))].sort((a, b) => a - b);
-                    
+                    const transportModes = [...new Set(transportStats.map(item => item.transportMode))];
+                    const months = [...new Set(breakdownTransportData.map(item => item.monthName))].sort((a, b) => a - b);
+
                     const datasets = transportModes.map(mode => ({
                         label: mode,
                         data: months.map(month => {
-                            const item = breakdownTransportData.find(d => d.month === month && d.transportMode === mode);
-                            return item ? item.totalDistance : 0;
+                            const item = breakdownTransportData.filter(d => d.monthName === month).map(d => d.transportStats);
+                            if (item.length === 0) {
+                                return 0;
+                            } else {
+                                let byTransportMode = item[0].find(i => i.transportMode === mode);
+                                return byTransportMode ? byTransportMode.totalDistanceKm : 0;
+                            }
                         }),
                         backgroundColor: transportColors[mode] || '#999999'
                     }));
-                    
+
                     new Chart(ctx, {
                         type: 'bar',
                         data: {
-                            labels: months.map(m => `Month ${m}`),
+                            labels: months,
                             datasets: datasets
                         },
                         options: {
@@ -189,18 +196,18 @@
                 }
             }
         });
-        
+
         // Handle month content containers separately
         const monthContainers = document.querySelectorAll('.month-content:not([data-charts-initialized])');
-        
+
         monthContainers.forEach(container => {
             container.setAttribute('data-charts-initialized', 'true');
-            
+
             const year = container.getAttribute('data-year');
             const month = container.getAttribute('data-month');
             const transportStatsAttr = container.getAttribute('data-transport-stats');
             const breakdownTransportAttr = container.getAttribute('data-breakdown-transport');
-            
+
             // Parse transport stats data
             let transportStats = [];
             if (transportStatsAttr && transportStatsAttr !== '[]') {
@@ -210,7 +217,7 @@
                     console.error('Error parsing transport stats:', e);
                 }
             }
-            
+
             // Parse breakdown transport data
             let breakdownTransportData = [];
             if (breakdownTransportAttr && breakdownTransportAttr !== '[]') {
@@ -220,7 +227,7 @@
                     console.error('Error parsing breakdown transport data:', e);
                 }
             }
-            
+
             // Transport mode colors
             const transportColors = {
                 'DRIVING': '#FF6384',
@@ -229,7 +236,7 @@
                 'public_transport': '#4BC0C0',
                 'unknown': '#FF9F40'
             };
-            
+
             // Render pie chart for month transport distribution
             if (transportStats.length > 0) {
                 const pieCanvas = document.getElementById(`monthTransportPieChart_${year}_${month}`);
@@ -240,8 +247,8 @@
                         data: {
                             labels: transportStats.map(stat => stat.transportMode),
                             datasets: [{
-                                data: transportStats.map(stat => stat.totalDistance),
-                                backgroundColor: transportStats.map(stat => transportColors[stat.transportMode] || '#999999')
+                                data: transportStats.map(stat => stat.totalDistanceKm),
+                                backgroundColor: transportStats.map(stat => transportColors[stat.transportMode] || '#cd0808')
                             }]
                         },
                         options: {
@@ -256,33 +263,47 @@
                     });
                 }
             }
-            
+
             // Render breakdown chart for month view (daily breakdown)
             if (breakdownTransportData.length > 0) {
                 const dailyCanvas = document.getElementById(`monthDailyTransportChart_${year}_${month}`);
                 if (dailyCanvas) {
                     const ctx = dailyCanvas.getContext('2d');
-                    
+
                     // Group data by transport mode
-                    const transportModes = [...new Set(breakdownTransportData.map(item => item.transportMode))];
-                    const days = [...new Set(breakdownTransportData.map(item => item.day))].sort((a, b) => a - b);
-                    
+                    const transportModes = [...new Set(transportStats.map(item => item.transportMode))];
+                    const days = [...new Set(breakdownTransportData.map(item => item.dayOfMonth))].sort((a, b) => a - b);
+
                     const datasets = transportModes.map(mode => ({
                         label: mode,
                         data: days.map(day => {
-                            const item = breakdownTransportData.find(d => d.day === day && d.transportMode === mode);
-                            return item ? item.totalDistance : 0;
+                            const item = breakdownTransportData.filter(d => d.dayOfMonth === day).map(d => d.transportStats);
+                            if (item.length === 0) {
+                                return 0;
+                            } else {
+                                let byTransportMode = item[0].find(i => i.transportMode === mode);
+                                return byTransportMode ? byTransportMode.totalDistanceKm : 0;
+                            }
                         }),
-                        backgroundColor: transportColors[mode] || '#999999'
+                        backgroundColor: transportColors[mode] || '#f10808'
                     }));
-                    
+
                     new Chart(ctx, {
+
                         type: 'bar',
                         data: {
-                            labels: days.map(d => `Day ${d}`),
+                            labels: days,
                             datasets: datasets
                         },
                         options: {
+                            plugins: {
+                                legend: {
+                                    display: true,
+                                    labels: {
+                                        // color: 'rgb(234,234,234)'
+                                    }
+                                }
+                            },
                             responsive: true,
                             maintainAspectRatio: false,
                             scales: {

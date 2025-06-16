@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 
+import java.util.List;
+
 @Controller
 @RequestMapping("/statistics")
 public class StatisticsController {
@@ -84,11 +86,12 @@ public class StatisticsController {
         model.addAttribute("topVisits", statisticsService.getMonthTopVisits(user, year, month));
         
         try {
-            String transportStatsJson = objectMapper.writeValueAsString(statisticsService.getMonthTransportStatistics(user, year, month));
-            model.addAttribute("transportStats", transportStatsJson);
-            
-            String breakdownTransportJson = objectMapper.writeValueAsString(statisticsService.getDailyTransportBreakdown(user, year, month));
-            model.addAttribute("breakdownTransportData", breakdownTransportJson);
+            List<StatisticsService.TransportStatistic> monthTransportStatistics = statisticsService.getMonthTransportStatistics(user, year, month);
+            List<StatisticsService.DailyTransportData> dailyTransportBreakdown = statisticsService.getDailyTransportBreakdown(user, year, month);
+
+            model.addAttribute("dataAvailable", !monthTransportStatistics.isEmpty() || dailyTransportBreakdown.stream().noneMatch(dt -> dt.getTransportStats().isEmpty()));
+            model.addAttribute("transportStats", objectMapper.writeValueAsString(monthTransportStatistics));
+            model.addAttribute("breakdownTransportData", objectMapper.writeValueAsString(dailyTransportBreakdown));
         } catch (JsonProcessingException e) {
             model.addAttribute("transportStats", "[]");
             model.addAttribute("breakdownTransportData", "[]");
