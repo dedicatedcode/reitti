@@ -74,7 +74,7 @@
                 <div class="place-stats">
                     <div class="place-stat-item">
                         <span class="place-stat-label" th:text="#{statistics.total.hours}">Total Hours</span>
-                        <span class="place-stat-value" th:text="${visit.totalStayTimeHours} + 'h'">2400h</span>
+                        <span class="place-stat-value" th:text="${#numbers.formatDecimal(visit.totalStayTimeHours, 1, 2)} + 'h'">2400.00h</span>
                     </div>
                     <div class="place-stat-item">
                         <span class="place-stat-label" th:text="#{statistics.visits}">Visits</span>
@@ -174,7 +174,7 @@
                 <div class="place-stats">
                     <div class="place-stat-item">
                         <span class="place-stat-label" th:text="#{statistics.total.hours}">Total Hours</span>
-                        <span class="place-stat-value" th:text="${visit.totalStayTimeHours} + 'h'">200h</span>
+                        <span class="place-stat-value" th:text="${#numbers.formatDecimal(visit.totalStayTimeHours, 1, 2)} + 'h'">200.00h</span>
                     </div>
                     <div class="place-stat-item">
                         <span class="place-stat-label" th:text="#{statistics.visits}">Visits</span>
