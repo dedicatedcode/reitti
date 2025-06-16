@@ -59,7 +59,7 @@ public class StatisticsController {
         model.addAttribute("statisticsType", "month");
         model.addAttribute("year", year);
         model.addAttribute("month", month);
-        model.addAttribute("title", "Statistics for " + java.time.Month.of(month).name() + " " + year);
+        model.addAttribute("title", java.time.Month.of(month).name() + " " + year);
         model.addAttribute("topVisits", statisticsService.getMonthTopVisits(user, year, month));
         model.addAttribute("transportStats", statisticsService.getMonthTransportStatistics(user, year, month));
         model.addAttribute("dailyTransportData", statisticsService.getDailyTransportBreakdown(user, year, month));
