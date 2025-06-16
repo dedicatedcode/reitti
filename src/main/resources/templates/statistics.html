@@ -37,5 +37,39 @@
         </div>
     </div>
 </div>
+<script>
+    function initializePlaceMaps() {
+        const mapContainers = document.querySelectorAll('.place-map:not([data-map-initialized])');
+
+        mapContainers.forEach((container, index) => {
+            container.setAttribute('data-map-initialized', 'true');
+
+            const lat = parseFloat(container.getAttribute('data-lat')) || 53.8;
+            const lng = parseFloat(container.getAttribute('data-lng')) || 10.7;
+
+            const map = L.map(container, {
+                center: [lat, lng],
+                zoom: 15,
+                zoomControl: false,
+                attributionControl: false,
+                dragging: false,
+                touchZoom: false,
+                doubleClickZoom: false,
+                scrollWheelZoom: false,
+                boxZoom: false,
+                keyboard: false
+            });
+
+            L.tileLayer.grayscale('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: ''
+            }).addTo(map);
+
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 100);
+        });
+    }
+
+</script>
 </body>
 </html>

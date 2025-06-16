@@ -51,9 +51,8 @@
      th:attr="data-statistics-type=${statisticsType},
               data-year=${year},
               data-month=${month},
-              data-transport-stats=${transportStats != null ? #strings.escapeXml(#object.toString(transportStats)) : '[]'},
-              data-monthly-transport=${monthlyTransportData != null ? #strings.escapeXml(#object.toString(monthlyTransportData)) : '[]'},
-              data-daily-transport=${dailyTransportData != null ? #strings.escapeXml(#object.toString(dailyTransportData)) : '[]'}">
+              data-transport-stats=${transportStats != null ? #strings.escapeXml(transportStats) : '[]'},
+              data-monthly-transport=${monthlyTransportData != null ? #strings.escapeXml(monthlyTransportData) : '[]'}">
     <h2 th:text="${title}">Statistics</h2>
     
     <!-- Top Visits Section -->
@@ -137,42 +136,6 @@
     </div>
 
     <script th:inline="javascript">
-        // Store data in global chart data object from DOM data attributes
-        const statisticsPanel = document.getElementById('statistics-panel');
-        const dataKey = /*[[${statisticsType == 'overall' ? 'overall' : (statisticsType == 'year' ? year : year + '_' + month)}]]*/ 'overall';
-        
-        // Parse and store transport data from data attributes
-        try {
-            const transportStatsAttr = statisticsPanel.getAttribute('data-transport-stats');
-            if (transportStatsAttr && transportStatsAttr !== '[]') {
-                window.chartData.transport[dataKey] = JSON.parse(transportStatsAttr);
-            }
-            
-            const monthlyTransportAttr = statisticsPanel.getAttribute('data-monthly-transport');
-            if (monthlyTransportAttr && monthlyTransportAttr !== '[]') {
-                window.chartData.monthlyTransport[dataKey] = JSON.parse(monthlyTransportAttr);
-            }
-            
-            const dailyTransportAttr = statisticsPanel.getAttribute('data-daily-transport');
-            if (dailyTransportAttr && dailyTransportAttr !== '[]') {
-                window.chartData.dailyTransport[dataKey] = JSON.parse(dailyTransportAttr);
-            }
-        } catch (e) {
-            console.warn('Failed to parse chart data from DOM attributes:', e);
-        }
-
-        // Configuration object for this fragment
-        const statisticsConfig = {
-            dataKey: dataKey,
-            transportColors: {
-                'DRIVING': '#FF6384',
-                'WALKING': '#36A2EB',
-                'CYCLING': '#FFCE56',
-                'public_transport': '#4BC0C0',
-                'unknown': '#FF9F40'
-            }
-        };
-
         initializePlaceMaps();
     </script>
 
@@ -181,8 +144,8 @@
 <div th:fragment="month-content" class="month-content"
      th:attr="data-year=${year},
               data-month=${month},
-              data-transport-stats=${transportStats != null ? #strings.escapeXml(#object.toString(transportStats)) : '[]'},
-              data-daily-transport=${dailyTransportData != null ? #strings.escapeXml(#object.toString(dailyTransportData)) : '[]'}">
+              data-transport-stats=${transportStats != null ? #strings.escapeXml(transportStats) : '[]'},
+              data-daily-transport=${dailyTransportData != null ? #strings.escapeXml(dailyTransportData) : '[]'}">
     <h4 th:text="${title}">Statistics for January 2024</h4>
     
     <!-- Check if there's any data available -->
@@ -236,41 +199,20 @@
     </div>
 
     <script th:inline="javascript">
-        // Store month data in global chart data object from DOM data attributes
-        const monthContent = document.querySelector('.month-content[data-year="/*[[${year}]]*/"][data-month="/*[[${month}]]*/"]');
-        const monthDataKey = /*[[${year}]]*/ + '_' + /*[[${month}]]*/ ;
-        
-        // Parse and store transport data from data attributes
-        if (monthContent) {
-            try {
-                const transportStatsAttr = monthContent.getAttribute('data-transport-stats');
-                if (transportStatsAttr && transportStatsAttr !== '[]') {
-                    window.chartData.transport[monthDataKey] = JSON.parse(transportStatsAttr);
-                }
-                
-                const dailyTransportAttr = monthContent.getAttribute('data-daily-transport');
-                if (dailyTransportAttr && dailyTransportAttr !== '[]') {
-                    window.chartData.dailyTransport[monthDataKey] = JSON.parse(dailyTransportAttr);
-                }
-            } catch (e) {
-                console.warn('Failed to parse month chart data from DOM attributes:', e);
-            }
-        }
-
-        // Configuration object for month content - unique per month
-        const monthConfig_/*[[${year}]]*/_/*[[${month}]]*/
-            = {
-            dataKey: monthDataKey,
-            year: /*[[${year}]]*/ null,
-            month: /*[[${month}]]*/ null,
-            transportColors: {
-                'DRIVING': '#FF6384',
-                'WALKING': '#36A2EB',
-                'CYCLING': '#FFCE56',
-                'public_transport': '#4BC0C0',
-                'unknown': '#FF9F40'
-            }
-        };
+//        // Configuration object for month content - unique per month
+//        const monthConfig_/*[[${year}]]*/_/*[[${month}]]*/
+//            = {
+//            dataKey: monthDataKey,
+//            year: /*[[${year}]]*/ null,
+//            month: /*[[${month}]]*/ null,
+//            transportColors: {
+//                'DRIVING': '#FF6384',
+//                'WALKING': '#36A2EB',
+//                'CYCLING': '#FFCE56',
+//                'public_transport': '#4BC0C0',
+//                'unknown': '#FF9F40'
+//            }
+//        };
         
         initializePlaceMaps();
     </script>
