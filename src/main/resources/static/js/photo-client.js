@@ -187,9 +187,33 @@ class PhotoClient {
             const photoElement = document.createElement('div');
             photoElement.className = 'photo-grid-item';
 
+            // Create loading spinner
+            const spinner = document.createElement('div');
+            spinner.className = 'photo-loading-spinner';
+            photoElement.appendChild(spinner);
+
             const img = document.createElement('img');
             img.src = photo.fullImageUrl;
             img.alt = photo.fileName || 'Photo';
+
+            // Handle image load
+            img.addEventListener('load', () => {
+                img.classList.add('loaded');
+                if (photoElement.contains(spinner)) {
+                    photoElement.removeChild(spinner);
+                }
+            });
+
+            // Handle image error
+            img.addEventListener('error', () => {
+                if (photoElement.contains(spinner)) {
+                    photoElement.removeChild(spinner);
+                }
+                img.style.display = 'none';
+                photoElement.innerHTML = '📷';
+                photoElement.style.fontSize = '24px';
+                photoElement.style.color = '#ccc';
+            });
 
             photoElement.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -258,10 +282,36 @@ class PhotoClient {
         const imageContainer = document.createElement('div');
         imageContainer.className = 'photo-modal-container';
 
+        // Create loading spinner for modal
+        const modalSpinner = document.createElement('div');
+        modalSpinner.className = 'photo-modal-loading-spinner';
+        imageContainer.appendChild(modalSpinner);
+
         // Create image
         const img = document.createElement('img');
         img.src = photo.fullImageUrl;
         img.alt = photo.fileName || 'Photo';
+
+        // Handle image load
+        img.addEventListener('load', () => {
+            img.classList.add('loaded');
+            if (imageContainer.contains(modalSpinner)) {
+                imageContainer.removeChild(modalSpinner);
+            }
+        });
+
+        // Handle image error
+        img.addEventListener('error', () => {
+            if (imageContainer.contains(modalSpinner)) {
+                imageContainer.removeChild(modalSpinner);
+            }
+            img.style.display = 'none';
+            const errorMsg = document.createElement('div');
+            errorMsg.textContent = 'Failed to load image';
+            errorMsg.style.color = '#ccc';
+            errorMsg.style.fontSize = '18px';
+            imageContainer.appendChild(errorMsg);
+        });
 
         // Create close button
         const closeButton = document.createElement('button');
