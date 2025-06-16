@@ -40,7 +40,6 @@
 <script>
     function initializePlaceMaps() {
         const mapContainers = document.querySelectorAll('.place-map:not([data-map-initialized])');
-
         mapContainers.forEach((container, index) => {
             container.setAttribute('data-map-initialized', 'true');
 
@@ -185,11 +184,7 @@
                             maintainAspectRatio: false,
                             scales: {
                                 x: {
-                                    stacked: true,
-                                    title: {
-                                        display: true,
-                                        text: 'Day'
-                                    }
+                                    stacked: true
                                 },
                                 y: {
                                     stacked: true,
@@ -306,17 +301,18 @@
                         options: {
                             plugins: {
                                 legend: {
-                                    display: true,
-                                    labels: {
-                                        // color: 'rgb(234,234,234)'
-                                    }
+                                    display: true
                                 }
                             },
                             responsive: true,
                             maintainAspectRatio: false,
                             scales: {
                                 x: {
-                                    stacked: true
+                                    stacked: true,
+                                    title: {
+                                        display: true,
+                                        text: 'Day'
+                                    }
                                 },
                                 y: {
                                     stacked: true,

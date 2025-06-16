@@ -140,8 +140,10 @@
     </div>
 
     <script th:inline="javascript">
-        initializePlaceMaps();
-        renderCharts();
+        window.setTimeout(() => {
+            initializePlaceMaps();
+            renderCharts();
+        }, 100)
     </script>
 
 </div>
@@ -204,8 +206,10 @@
     </div>
 
     <script th:inline="javascript">
-        initializePlaceMaps();
-        renderCharts();
+        window.setTimeout(() => {
+            initializePlaceMaps();
+            renderCharts();
+        }, 100)
     </script>
 </div>
 
