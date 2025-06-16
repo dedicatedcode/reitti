@@ -105,64 +105,26 @@
         <div class="months-grid">
             <div class="month-item" th:each="month : ${months}"
                  th:attr="hx-get='/statistics/' + ${year} + '/' + ${month}, hx-target='#month-details-' + ${month}"
-                 hx-trigger="revealed once">
-                <span th:text="#{${'month.' + month}}">JANUARY</span>
-                <div th:id="'month-details-' + ${month}" class="month-details">
-                    <!-- Month details will be loaded here -->
-                </div>
+                 hx-trigger="revealed">
+                <div th:id="'month-details-' + ${month}" class="month-details"></div>
             </div>
         </div>
     </div>
 
     <script th:inline="javascript">
         // Configuration object for this fragment
-        // const statisticsConfig = {
-        //     transportStatsData: /*[[${transportStats}]]*/ [],
-        //     monthlyTransportData: /*[[${monthlyTransportData}]]*/ [],
-        //     transportColors: {
-        //         'DRIVING': '#FF6384',
-        //         'WALKING': '#36A2EB',
-        //         'CYCLING': '#FFCE56',
-        //         'public_transport': '#4BC0C0',
-        //         'unknown': '#FF9F40'
-        //     }
-        // };
+        const statisticsConfig = {
+            transportStatsData: /*[[${transportStats}]]*/ [],
+            monthlyTransportData: /*[[${monthlyTransportData}]]*/ [],
+            transportColors: {
+                'DRIVING': '#FF6384',
+                'WALKING': '#36A2EB',
+                'CYCLING': '#FFCE56',
+                'public_transport': '#4BC0C0',
+                'unknown': '#FF9F40'
+            }
+        };
 
-        // Initialize place maps for this fragment
-        function initializePlaceMaps() {
-            const mapContainers = document.querySelectorAll('.place-map:not([data-map-initialized])');
-
-            mapContainers.forEach((container, index) => {
-                container.setAttribute('data-map-initialized', 'true');
-
-                const lat = parseFloat(container.getAttribute('data-lat')) || 53.8;
-                const lng = parseFloat(container.getAttribute('data-lng')) || 10.7;
-
-                const map = L.map(container, {
-                    center: [lat, lng],
-                    zoom: 15,
-                    zoomControl: false,
-                    attributionControl: false,
-                    dragging: false,
-                    touchZoom: false,
-                    doubleClickZoom: false,
-                    scrollWheelZoom: false,
-                    boxZoom: false,
-                    keyboard: false
-                });
-
-                L.tileLayer.grayscale('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: ''
-                }).addTo(map);
-
-                setTimeout(() => {
-                    map.invalidateSize();
-                }, 100);
-            });
-        }
-
-
-        // Execute initialization
         initializePlaceMaps();
     </script>
 
@@ -237,45 +199,8 @@
                 'unknown': '#FF9F40'
             }
         };
-        
-        // Initialize place maps for month content
-        function initializeMonthPlaceMaps() {
-            const mapContainers = document.querySelectorAll('.place-map:not([data-map-initialized])');
-            
-            mapContainers.forEach((container, index) => {
-                container.setAttribute('data-map-initialized', 'true');
-                
-                const lat = parseFloat(container.getAttribute('data-lat')) || 53.8;
-                const lng = parseFloat(container.getAttribute('data-lng')) || 10.7;
-                
-                const map = L.map(container, {
-                    center: [lat, lng],
-                    zoom: 15,
-                    zoomControl: false,
-                    attributionControl: false,
-                    dragging: false,
-                    touchZoom: false,
-                    doubleClickZoom: false,
-                    scrollWheelZoom: false,
-                    boxZoom: false,
-                    keyboard: false
-                });
-                
-                L.tileLayer.grayscale('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: ''
-                }).addTo(map);
-                
-                setTimeout(() => {
-                    map.invalidateSize();
-                }, 100);
-            });
-        }
-        
-        
-        // Execute initialization
-        setTimeout(() => {
-            initializeMonthPlaceMaps();
-        }, 100);
+        initializePlaceMaps();
+
     </script>
 </div>
 
