@@ -51,8 +51,8 @@
      th:attr="data-statistics-type=${statisticsType},
               data-year=${year},
               data-month=${month},
-              data-transport-stats=${transportStats != null ? #strings.escapeXml(transportStats) : '[]'},
-              data-monthly-transport=${monthlyTransportData != null ? #strings.escapeXml(monthlyTransportData) : '[]'}">
+              data-transport-stats=${transportStats != null ? transportStats : '[]'},
+              data-monthly-transport=${monthlyTransportData != null ? monthlyTransportData : '[]'}">
     <h2 th:text="${title}">Statistics</h2>
     
     <!-- Top Visits Section -->
@@ -145,8 +145,8 @@
 <div th:fragment="month-content" class="month-content"
      th:attr="data-year=${year},
               data-month=${month},
-              data-transport-stats=${transportStats != null ? #strings.escapeXml(transportStats) : '[]'},
-              data-daily-transport=${dailyTransportData != null ? #strings.escapeXml(dailyTransportData) : '[]'}">
+              data-transport-stats=${transportStats != null ? transportStats : '[]'},
+              data-daily-transport=${dailyTransportData != null ? dailyTransportData : '[]'}">
     <h4 th:text="${title}">Statistics for January 2024</h4>
     
     <!-- Check if there's any data available -->

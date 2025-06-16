@@ -2,6 +2,8 @@ package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.service.StatisticsService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -16,6 +18,9 @@ public class StatisticsController {
 
     @Autowired
     private StatisticsService statisticsService;
+    
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @GetMapping
     public String statistics(Model model) {
@@ -33,7 +38,14 @@ public class StatisticsController {
         model.addAttribute("statisticsType", "overall");
         model.addAttribute("title", "Overall Statistics");
         model.addAttribute("topVisits", statisticsService.getOverallTopVisits(user));
-        model.addAttribute("transportStats", statisticsService.getOverallTransportStatistics(user));
+        
+        try {
+            String transportStatsJson = objectMapper.writeValueAsString(statisticsService.getOverallTransportStatistics(user));
+            model.addAttribute("transportStats", transportStatsJson);
+        } catch (JsonProcessingException e) {
+            model.addAttribute("transportStats", "[]");
+        }
+        
         return "fragments/statistics :: statistics-content";
     }
 
@@ -43,8 +55,17 @@ public class StatisticsController {
         model.addAttribute("year", year);
         model.addAttribute("title", "Statistics for " + year);
         model.addAttribute("topVisits", statisticsService.getYearTopVisits(user, year));
-        model.addAttribute("transportStats", statisticsService.getYearTransportStatistics(user, year));
-        model.addAttribute("monthlyTransportData", statisticsService.getMonthlyTransportBreakdown(user, year));
+        
+        try {
+            String transportStatsJson = objectMapper.writeValueAsString(statisticsService.getYearTransportStatistics(user, year));
+            model.addAttribute("transportStats", transportStatsJson);
+            
+            String monthlyTransportJson = objectMapper.writeValueAsString(statisticsService.getMonthlyTransportBreakdown(user, year));
+            model.addAttribute("monthlyTransportData", monthlyTransportJson);
+        } catch (JsonProcessingException e) {
+            model.addAttribute("transportStats", "[]");
+            model.addAttribute("monthlyTransportData", "[]");
+        }
         
         // Add months for the year
         java.util.List<Integer> months = java.util.Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
@@ -61,8 +82,18 @@ public class StatisticsController {
         model.addAttribute("month", month);
         model.addAttribute("title", java.time.Month.of(month).name() + " " + year);
         model.addAttribute("topVisits", statisticsService.getMonthTopVisits(user, year, month));
-        model.addAttribute("transportStats", statisticsService.getMonthTransportStatistics(user, year, month));
-        model.addAttribute("dailyTransportData", statisticsService.getDailyTransportBreakdown(user, year, month));
+        
+        try {
+            String transportStatsJson = objectMapper.writeValueAsString(statisticsService.getMonthTransportStatistics(user, year, month));
+            model.addAttribute("transportStats", transportStatsJson);
+            
+            String dailyTransportJson = objectMapper.writeValueAsString(statisticsService.getDailyTransportBreakdown(user, year, month));
+            model.addAttribute("dailyTransportData", dailyTransportJson);
+        } catch (JsonProcessingException e) {
+            model.addAttribute("transportStats", "[]");
+            model.addAttribute("dailyTransportData", "[]");
+        }
+        
         return "fragments/statistics :: month-content";
     }
 }
