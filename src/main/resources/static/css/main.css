@@ -322,7 +322,7 @@ nav {
 }
 
 .timeline {
-    position: absolute;
+    position: fixed;
     top: 0;
     width: 50%;
     bottom: 0;

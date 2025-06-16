@@ -265,7 +265,8 @@
 <div th:fragment="month-content" class="month-content">
     <script th:inline="javascript">
         // Configuration object for month content - unique per month
-        const monthConfig_/*[[${year}]]*/_/*[[${month}]]*/ = {
+        const monthConfig_/*[[${year}]]*/_/*[[${month}]]*/
+            = {
             transportStatsData: /*[[${transportStats}]]*/ [],
             dailyTransportData: /*[[${dailyTransportData}]]*/ [],
             year: /*[[${year}]]*/ null,
