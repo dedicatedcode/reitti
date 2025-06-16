@@ -52,12 +52,12 @@ public class StatisticsService {
     
     public static class VisitStatistic {
         private final String placeName;
-        private final long totalStayTimeHours;
+        private final double totalStayTimeHours;
         private final int visitCount;
         private final Double latitude;
         private final Double longitude;
         
-        public VisitStatistic(String placeName, long totalStayTimeHours, int visitCount, Double latitude, Double longitude) {
+        public VisitStatistic(String placeName, double totalStayTimeHours, int visitCount, Double latitude, Double longitude) {
             this.placeName = placeName;
             this.totalStayTimeHours = totalStayTimeHours;
             this.visitCount = visitCount;
@@ -66,7 +66,7 @@ public class StatisticsService {
         }
         
         public String getPlaceName() { return placeName; }
-        public long getTotalStayTimeHours() { return totalStayTimeHours; }
+        public double getTotalStayTimeHours() { return totalStayTimeHours; }
         public int getVisitCount() { return visitCount; }
         public Double getLatitude() { return latitude; }
         public Double getLongitude() { return longitude; }
@@ -81,7 +81,7 @@ public class StatisticsService {
         public TransportStatistic(String transportMode, double totalDistanceKm, double totalDurationHours, int tripCount) {
             this.transportMode = transportMode;
             this.totalDistanceKm = totalDistanceKm;
-            this.totalDurationHours = totalDistanceKm;
+            this.totalDurationHours = totalDurationHours;
             this.tripCount = tripCount;
         }
         
@@ -107,8 +107,8 @@ public class StatisticsService {
                     Double latitude = (Double) row[3];
                     Double longitude = (Double) row[4];
                     
-                    // Convert seconds to hours
-                    long totalStayTimeHours = totalDurationSeconds / 3600;
+                    // Convert seconds to hours with decimal precision
+                    double totalStayTimeHours = totalDurationSeconds / 3600.0;
                     return new VisitStatistic(
                         placeName != null ? placeName : "Unknown Place",
                         totalStayTimeHours,
