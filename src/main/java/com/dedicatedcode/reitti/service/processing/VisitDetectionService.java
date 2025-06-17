@@ -129,12 +129,11 @@ public class VisitDetectionService {
         if (visitsToInsert.isEmpty()) {
             return;
         }
-        
         logger.debug("Bulk inserting {} visits", visitsToInsert.size());
         
         String sql = """
-            INSERT INTO visits (user_id, latitude, longitude, start_time, end_time, duration_seconds, processed, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO visits (user_id, latitude, longitude, start_time, end_time, duration_seconds, processed)
+            VALUES (?, ?, ?, ?, ?, ?, false) ON CONFLICT DO NOTHING;
             """;
         
         List<Object[]> batchArgs = visitsToInsert.stream()
@@ -144,10 +143,7 @@ public class VisitDetectionService {
                 visit.getLongitude(),
                 visit.getStartTime(),
                 visit.getEndTime(),
-                visit.getDurationSeconds(),
-                visit.isProcessed(),
-                Instant.now(),
-                Instant.now()
+                visit.getDurationSeconds()
             })
             .collect(Collectors.toList());
         
