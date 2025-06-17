@@ -41,9 +41,6 @@ public class SignificantPlace {
     @Column(nullable = false)
     private boolean geocoded = false;
 
-    @OneToMany(mappedBy = "place", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ProcessedVisit> visits = new ArrayList<>();
-
     public SignificantPlace() {}
 
     public SignificantPlace(User user,
@@ -118,14 +115,6 @@ public class SignificantPlace {
         this.category = category;
     }
 
-    public List<ProcessedVisit> getVisits() {
-        return visits;
-    }
-
-    public void setVisits(List<ProcessedVisit> visits) {
-        this.visits = visits;
-    }
-    
     public Point getGeom() {
         return geom;
     }

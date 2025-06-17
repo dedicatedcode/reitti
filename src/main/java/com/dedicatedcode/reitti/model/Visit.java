@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Objects;
 
 @Entity
 @Table(name = "visits")
@@ -114,5 +115,17 @@ public class Visit {
         if (startTime != null && endTime != null) {
             durationSeconds = Duration.between(startTime, endTime).getSeconds();
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        Visit visit = (Visit) o;
+        return Objects.equals(id, visit.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(id);
     }
 }
