@@ -30,6 +30,9 @@ public class ImmichIntegration {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
     
+    @Version
+    private Long version;
+    
     public ImmichIntegration() {
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
@@ -103,6 +106,14 @@ public class ImmichIntegration {
     
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+    
+    public Long getVersion() {
+        return version;
+    }
+    
+    public void setVersion(Long version) {
+        this.version = version;
     }
     
 }

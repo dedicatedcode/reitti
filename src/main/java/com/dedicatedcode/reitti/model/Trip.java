@@ -51,6 +51,9 @@ public class Trip {
     @JoinColumn(name = "end_visit_id")
     private ProcessedVisit endVisit;
 
+    @Version
+    private Long version;
+
     public Trip() {}
 
     public Trip(User user, SignificantPlace startPlace, SignificantPlace endPlace, Instant startTime, Instant endTime, Double estimatedDistanceMeters, String transportModeInferred, ProcessedVisit startVisit, ProcessedVisit endVisit) {
@@ -159,6 +162,14 @@ public class Trip {
 
     public void setEndVisit(ProcessedVisit endVisit) {
         this.endVisit = endVisit;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 
     @PrePersist

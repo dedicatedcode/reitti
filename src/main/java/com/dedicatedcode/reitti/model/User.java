@@ -36,6 +36,9 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Trip> trips = new ArrayList<>();
 
+    @Version
+    private Long version;
+
     public User() {}
     public User(String username, String displayName) {
         this.username = username;
@@ -123,6 +126,12 @@ public class User implements UserDetails {
         this.trips = trips;
     }
 
+    public Long getVersion() {
+        return version;
+    }
 
+    public void setVersion(Long version) {
+        this.version = version;
+    }
 
 }

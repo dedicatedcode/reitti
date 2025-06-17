@@ -34,6 +34,9 @@ public class Visit {
     @Column(nullable = false)
     private boolean processed = false;
 
+    @Version
+    private Long version;
+
     public Visit() {
     }
 
@@ -107,6 +110,14 @@ public class Visit {
 
     public void setProcessed(boolean processed) {
         this.processed = processed;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 
     @PrePersist

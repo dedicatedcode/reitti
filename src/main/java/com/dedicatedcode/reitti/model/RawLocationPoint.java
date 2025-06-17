@@ -33,6 +33,9 @@ public class RawLocationPoint {
     @Column(nullable = false)
     private boolean processed;
 
+    @Version
+    private Long version;
+
     public RawLocationPoint() {
     }
     public RawLocationPoint(User user, Instant timestamp, Point geom, Double accuracyMeters) {
@@ -108,6 +111,14 @@ public class RawLocationPoint {
 
     public void markProcessed() {
         this.processed = true;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 
     @Override

@@ -41,6 +41,9 @@ public class SignificantPlace {
     @Column(nullable = false)
     private boolean geocoded = false;
 
+    @Version
+    private Long version;
+
     public SignificantPlace() {}
 
     public SignificantPlace(User user,
@@ -129,6 +132,14 @@ public class SignificantPlace {
 
     public void setGeocoded(boolean geocoded) { 
         this.geocoded = geocoded; 
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 
     @Override

@@ -29,6 +29,8 @@ public class GeocodeService {
     @Column
     private Instant lastError;
     
+    @Version
+    private Long version;
     
     public GeocodeService() {}
     
@@ -58,5 +60,8 @@ public class GeocodeService {
     
     public Instant getLastError() { return lastError; }
     public void setLastError(Instant lastError) { this.lastError = lastError; }
+    
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
     
 }
