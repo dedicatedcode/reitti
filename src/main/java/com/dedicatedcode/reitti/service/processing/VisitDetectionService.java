@@ -126,7 +126,10 @@ public class VisitDetectionService {
         }
 
 
-        bulkUpdate(updateVisits).forEach(visit -> {
+        // Deduplicate visits by ID before bulk update
+        List<Visit> deduplicatedVisits = deduplicateVisitsById(updateVisits);
+        
+        bulkUpdate(deduplicatedVisits).forEach(visit -> {
             rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitUpdatedEvent(user.getUsername(), visit.getId()));
         });
         bulkInsert(user, createdVisits).forEach(visit -> {
@@ -280,6 +283,35 @@ public class VisitDetectionService {
         double latCentroid = weightedLatSum / weightSum;
         double lngCentroid = weightedLngSum / weightSum;
         return new GeoPoint(latCentroid, lngCentroid);
+    }
+
+    private List<Visit> deduplicateVisitsById(List<Visit> visits) {
+        Map<Long, Visit> visitMap = new HashMap<>();
+        
+        for (Visit visit : visits) {
+            Long visitId = visit.getId();
+            if (visitMap.containsKey(visitId)) {
+                Visit existing = visitMap.get(visitId);
+                
+                // Take the earliest start time
+                Instant earliestStart = visit.getStartTime().isBefore(existing.getStartTime()) 
+                    ? visit.getStartTime() : existing.getStartTime();
+                
+                // Take the latest end time
+                Instant latestEnd = visit.getEndTime().isAfter(existing.getEndTime()) 
+                    ? visit.getEndTime() : existing.getEndTime();
+                
+                // Update the existing visit with combined times
+                existing.setStartTime(earliestStart);
+                existing.setEndTime(latestEnd);
+                existing.setDurationSeconds(latestEnd.getEpochSecond() - earliestStart.getEpochSecond());
+                existing.setProcessed(false); // Mark as unprocessed since it was modified
+            } else {
+                visitMap.put(visitId, visit);
+            }
+        }
+        
+        return new ArrayList<>(visitMap.values());
     }
 
     private Visit createVisit(User user, Double longitude, Double latitude, StayPoint stayPoint) {
