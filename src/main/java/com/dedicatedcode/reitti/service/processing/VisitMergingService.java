@@ -23,6 +23,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.DoubleStream;
 
 @Service
 public class VisitMergingService {
@@ -58,22 +59,12 @@ public class VisitMergingService {
         this.geometryFactory = geometryFactory;
     }
 
-    @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE)
-    public void visitCreated(VisitCreatedEvent event) {
-        try {
-            handleEvent(event.getUsername(), event.getVisitId());
-        } catch (Exception e) {
-            logger.error("Could not handle event: {}", event);
-        }
-    }
-
-
-    @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE)
+    @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE, concurrency = "1")
     public void visitUpdated(VisitUpdatedEvent event) {
         try {
             handleEvent(event.getUsername(), event.getVisitId());
         } catch (Exception e) {
-            logger.debug("Could not handle event: {}", event);
+            logger.error("Could not handle event: {}", event);
         }
     }
 
@@ -117,6 +108,7 @@ public class VisitMergingService {
 
         List<ProcessedVisit> allProcessedVisitsInRange = this.processedVisitRepository.findByUserAndStartTimeGreaterThanEqualAndEndTimeLessThanEqual(user, searchStart, searchEnd);
         this.processedVisitRepository.deleteAll(allProcessedVisitsInRange);
+
         List<Visit> allVisits = this.visitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user, searchStart, searchEnd);
         if (allVisits.isEmpty()) {
             logger.info("No visits found for user: {}", user.getUsername());
@@ -129,11 +121,17 @@ public class VisitMergingService {
         // Process all visits chronologically to avoid overlaps
         List<ProcessedVisit> processedVisits = mergeVisitsChronologically(user, allVisits);
 
-        processedVisits.stream()
+        bulkInsert(user, processedVisits)
+                .stream()
                 .sorted(Comparator.comparing(ProcessedVisit::getStartTime))
                 .forEach(processedVisit -> this.rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, new ProcessedVisitCreatedEvent(user.getUsername(), processedVisit.getId())));
+
         logger.debug("Processed {} visits into {} merged visits for user: {}",
                 allVisits.size(), processedVisits.size(), user.getUsername());
+    }
+
+    private List<ProcessedVisit> bulkInsert(User user, List<ProcessedVisit> visitsToStore) {
+        return null;
     }
 
     private List<ProcessedVisit> mergeVisitsChronologically(User user, List<Visit> visits) {
@@ -264,7 +262,7 @@ public class VisitMergingService {
                 .collect(Collectors.joining(","));
         processedVisit.setOriginalVisitIds(visitIdsStr);
 
-        return processedVisitRepository.save(processedVisit);
+        return processedVisit;
     }
 
     private void publishSignificantPlaceCreatedEvent(SignificantPlace place) {
