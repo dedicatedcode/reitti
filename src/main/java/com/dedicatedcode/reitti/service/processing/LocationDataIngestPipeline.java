@@ -42,14 +42,7 @@ public class LocationDataIngestPipeline {
         }
 
         User user = userOpt.get();
-
-        List<RawLocationPoint> savedPoints = locationDataService.processLocationData(user, event.getPoints());
-
-        if (savedPoints.isEmpty()) {
-            logger.debug("No new points to process for user {}", user.getUsername());
-        } else {
-            logger.info("Saved {} new location points for user {}", savedPoints.size(), user.getUsername());
-        }
+        locationDataService.processLocationData(user, event.getPoints());
     }
 
 }
