@@ -151,8 +151,32 @@ public class VisitDetectionService {
         logger.debug("Successfully inserted {} visits", updateCounts.length);
     }
 
-    private void bulkUpdate(List<Visit> updateVisits) {
-
+    private void bulkUpdate(List<Visit> visitsToUpdate) {
+        if (visitsToUpdate.isEmpty()) {
+            return;
+        }
+        
+        logger.debug("Bulk updating {} visits", visitsToUpdate.size());
+        
+        String sql = """
+            UPDATE visits 
+            SET start_time = ?, end_time = ?, duration_seconds = ?, processed = ?, updated_at = ?
+            WHERE id = ?
+            """;
+        
+        List<Object[]> batchArgs = visitsToUpdate.stream()
+            .map(visit -> new Object[]{
+                visit.getStartTime(),
+                visit.getEndTime(),
+                visit.getDurationSeconds(),
+                visit.isProcessed(),
+                Instant.now(),
+                visit.getId()
+            })
+            .collect(Collectors.toList());
+        
+        int[] updateCounts = jdbcTemplate.batchUpdate(sql, batchArgs);
+        logger.debug("Successfully updated {} visits", updateCounts.length);
     }
 
     private List<StayPoint> detectStayPointsFromTrajectory(Map<Integer, List<RawLocationPoint>> points) {
