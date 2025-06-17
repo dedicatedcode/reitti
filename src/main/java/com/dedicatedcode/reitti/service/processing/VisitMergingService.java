@@ -16,6 +16,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -37,6 +38,7 @@ public class VisitMergingService {
     private final SignificantPlaceRepository significantPlaceRepository;
     private final RawLocationPointRepository rawLocationPointRepository;
     private final GeometryFactory geometryFactory;
+    private final JdbcTemplate jdbcTemplate;
     @Value("${reitti.visit.merge-threshold-seconds:300}")
     private long mergeThresholdSeconds;
     @Value("${reitti.visit.merge-threshold-meters:100}")
@@ -49,7 +51,8 @@ public class VisitMergingService {
                                RabbitTemplate rabbitTemplate,
                                SignificantPlaceRepository significantPlaceRepository,
                                RawLocationPointRepository rawLocationPointRepository,
-                               GeometryFactory geometryFactory) {
+                               GeometryFactory geometryFactory,
+                               JdbcTemplate jdbcTemplate) {
         this.visitRepository = visitRepository;
         this.processedVisitRepository = processedVisitRepository;
         this.userRepository = userRepository;
@@ -57,6 +60,7 @@ public class VisitMergingService {
         this.significantPlaceRepository = significantPlaceRepository;
         this.rawLocationPointRepository = rawLocationPointRepository;
         this.geometryFactory = geometryFactory;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE, concurrency = "1")
@@ -131,7 +135,37 @@ public class VisitMergingService {
     }
 
     private List<ProcessedVisit> bulkInsert(User user, List<ProcessedVisit> visitsToStore) {
-        return null;
+        if (visitsToStore.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        logger.debug("Bulk inserting {} processed visits for user {}", visitsToStore.size(), user.getUsername());
+        
+        String sql = """
+            INSERT INTO processed_visits (user_id, place_id, start_time, end_time, duration_seconds, merged_count, original_visit_ids, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """;
+        
+        List<Object[]> batchArgs = visitsToStore.stream()
+            .map(visit -> new Object[]{
+                visit.getUser().getId(),
+                visit.getPlace().getId(),
+                visit.getStartTime(),
+                visit.getEndTime(),
+                visit.getDurationSeconds(),
+                visit.getMergedCount(),
+                visit.getOriginalVisitIds(),
+                Instant.now(),
+                Instant.now()
+            })
+            .collect(Collectors.toList());
+        
+        int[] updateCounts = jdbcTemplate.batchUpdate(sql, batchArgs);
+        logger.debug("Successfully inserted {} processed visits", updateCounts.length);
+        
+        // Return the saved visits by querying them back from the database
+        // We need to get the generated IDs, so we'll save them through the repository
+        return processedVisitRepository.saveAll(visitsToStore);
     }
 
     private List<ProcessedVisit> mergeVisitsChronologically(User user, List<Visit> visits) {
