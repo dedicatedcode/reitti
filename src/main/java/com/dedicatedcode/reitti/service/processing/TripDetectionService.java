@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -57,6 +58,7 @@ public class TripDetectionService {
                 return;
             }
 
+            List<Trip> trips = new ArrayList<>();
             // Iterate through consecutive visits to detect trips
             for (int i = 0; i < visits.size() - 1; i++) {
                 ProcessedVisit startVisit = visits.get(i);
@@ -65,10 +67,13 @@ public class TripDetectionService {
                 // Create a trip between these two visits
                 createTripBetweenVisits(user, startVisit, endVisit);
             }
+
+            bulkInsert(trips);
+
         });
     }
 
-    private void createTripBetweenVisits(User user, ProcessedVisit startVisit, ProcessedVisit endVisit) {
+    private Trip createTripBetweenVisits(User user, ProcessedVisit startVisit, ProcessedVisit endVisit) {
         // Trip starts when the first visit ends
         Instant tripStartTime = startVisit.getEndTime();
 
@@ -77,26 +82,26 @@ public class TripDetectionService {
 
         if (this.processedVisitRepository.findById(startVisit.getId()).isEmpty() || this.processedVisitRepository.findById(endVisit.getId()).isEmpty()) {
             logger.debug("One of the following visits [{},{}] where already deleted. Will skip trip creation.", startVisit.getId(), endVisit.getId());
-            return;
+            return null;
         }
         // If end time is before or equal to start time, this is not a valid trip
         if (tripEndTime.isBefore(tripStartTime) || tripEndTime.equals(tripStartTime)) {
             logger.warn("Invalid trip time range detected for user {}: {} to {}",
                     user.getUsername(), tripStartTime, tripEndTime);
-            return;
+            return null;
         }
 
         // Check if a trip already exists with the same start and end times
         if (tripRepository.existsByUserAndStartTimeAndEndTime(user, tripStartTime, tripEndTime)) {
             logger.debug("Trip already exists for user {} from {} to {}",
                     user.getUsername(), tripStartTime, tripEndTime);
-            return;
+            return null;
         }
 
 
         if (tripRepository.existsByUserAndStartPlaceAndEndPlaceAndStartTimeAndEndTime(user, startVisit.getPlace(), endVisit.getPlace(), tripStartTime, tripEndTime))  {
             logger.debug("Duplicated trip detected, will not store it");
-            return;
+            return null;
         }
 
         // Get location points between the two visits
@@ -132,17 +137,7 @@ public class TripDetectionService {
                 startVisit.getPlace().getName(), endVisit.getPlace().getName(), Math.round(travelledDistanceMeters), transportMode);
 
         // Save and return the trip
-        try {
-            if (this.processedVisitRepository.existsById(trip.getStartVisit().getId()) &&  this.processedVisitRepository.existsById(trip.getEndVisit().getId())) {
-                try {
-                    tripRepository.save(trip);
-                } catch (Exception e) {
-                    logger.warn("Could not save trip.");
-                }
-            }
-        } catch (Exception e) {
-            logger.debug("Duplicated trip: [{}] detected. Will not store it.", trip);
-        }
+        return trip;
     }
 
     private double calculateDistanceBetweenPlaces(SignificantPlace place1, SignificantPlace place2) {
