@@ -2,6 +2,8 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.LocationProcessEvent;
+import com.dedicatedcode.reitti.event.VisitCreatedEvent;
+import com.dedicatedcode.reitti.event.VisitUpdatedEvent;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
 import com.dedicatedcode.reitti.repository.VisitRepository;
@@ -15,6 +17,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -34,6 +37,7 @@ public class VisitDetectionService {
 
     private final RabbitTemplate rabbitTemplate;
     private final JdbcTemplate jdbcTemplate;
+
     @Autowired
     public VisitDetectionService(
             RawLocationPointRepository rawLocationPointRepository,
@@ -121,62 +125,84 @@ public class VisitDetectionService {
             }
         }
 
-        bulkUpdate(updateVisits);
-        bulkInsert(createdVisits);
+
+        bulkUpdate(updateVisits).forEach(visit -> {
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitUpdatedEvent(user.getUsername(), visit.getId()));
+        });
+        bulkInsert(user, createdVisits).forEach(visit -> {
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitUpdatedEvent(user.getUsername(), visit.getId()));
+        });
     }
 
-    private void bulkInsert(List<Visit> visitsToInsert) {
+    private List<Visit> bulkInsert(User user, List<Visit> visitsToInsert) {
         if (visitsToInsert.isEmpty()) {
-            return;
+            return Collections.emptyList();
         }
         logger.debug("Bulk inserting {} visits", visitsToInsert.size());
-        
+
+        List<Visit> createdVisits = new ArrayList<>();
         String sql = """
-            INSERT INTO visits (user_id, latitude, longitude, start_time, end_time, duration_seconds, processed)
-            VALUES (?, ?, ?, ?, ?, ?, false) ON CONFLICT DO NOTHING;
-            """;
-        
+                INSERT INTO visits (user_id, latitude, longitude, start_time, end_time, duration_seconds, processed)
+                VALUES (?, ?, ?, ?, ?, ?, false) ON CONFLICT DO NOTHING;
+                """;
+
         List<Object[]> batchArgs = visitsToInsert.stream()
-            .map(visit -> new Object[]{
-                visit.getUser().getId(),
-                visit.getLatitude(),
-                visit.getLongitude(),
-                visit.getStartTime(),
-                visit.getEndTime(),
-                visit.getDurationSeconds()
-            })
-            .collect(Collectors.toList());
-        
+                .map(visit -> new Object[]{
+                        visit.getUser().getId(),
+                        visit.getLatitude(),
+                        visit.getLongitude(),
+                        Timestamp.from(visit.getStartTime()),
+                        Timestamp.from(visit.getEndTime()),
+                        visit.getDurationSeconds()
+                })
+                .collect(Collectors.toList());
+
         int[] updateCounts = jdbcTemplate.batchUpdate(sql, batchArgs);
-        logger.debug("Successfully inserted {} visits", updateCounts.length);
+        for (int i = 0; i < updateCounts.length; i++) {
+            int updateCount = updateCounts[i];
+            if (updateCount > 0) {
+                createdVisits.addAll(this.visitRepository.findByUserAndStartTimeAndEndTime(user,  visitsToInsert.get(i).getStartTime(), visitsToInsert.get(i).getEndTime()));
+            }
+        }
+        logger.debug("Successfully inserted {} visits", createdVisits.size());
+        return createdVisits;
     }
 
-    private void bulkUpdate(List<Visit> visitsToUpdate) {
+    private List<Visit> bulkUpdate(List<Visit> visitsToUpdate) {
         if (visitsToUpdate.isEmpty()) {
-            return;
+            return Collections.emptyList();
         }
-        
+
+        List<Visit> updatedVisits = new ArrayList<>();
         logger.debug("Bulk updating {} visits", visitsToUpdate.size());
-        
+
         String sql = """
-            UPDATE visits 
-            SET start_time = ?, end_time = ?, duration_seconds = ?, processed = ?, updated_at = ?
-            WHERE id = ?
-            """;
-        
+                UPDATE visits 
+                SET start_time = ?, end_time = ?, duration_seconds = ?, processed = ?
+                WHERE id = ? 
+                """;
+
         List<Object[]> batchArgs = visitsToUpdate.stream()
-            .map(visit -> new Object[]{
-                visit.getStartTime(),
-                visit.getEndTime(),
-                visit.getDurationSeconds(),
-                visit.isProcessed(),
-                Instant.now(),
-                visit.getId()
-            })
-            .collect(Collectors.toList());
-        
+                .map(visit -> new Object[]{
+                        Timestamp.from(visit.getStartTime()),
+                        Timestamp.from(visit.getEndTime()),
+                        visit.getDurationSeconds(),
+                        visit.isProcessed(),
+                        visit.getId()
+                })
+                .collect(Collectors.toList());
+
         int[] updateCounts = jdbcTemplate.batchUpdate(sql, batchArgs);
-        logger.debug("Successfully updated {} visits", updateCounts.length);
+
+        for (int i = 0; i < updateCounts.length; i++) {
+            int updateCount = updateCounts[i];
+            if (updateCount > 0) {
+                updatedVisits.add(visitsToUpdate.get(i));
+            }
+        }
+
+        logger.debug("Successfully updated {} visits", updatedVisits.size());
+        return updatedVisits;
     }
 
     private List<StayPoint> detectStayPointsFromTrajectory(Map<Integer, List<RawLocationPoint>> points) {
