@@ -122,11 +122,37 @@ public class VisitDetectionService {
         }
 
         bulkUpdate(updateVisits);
-        bulkInsert(updateVisits);
+        bulkInsert(createdVisits);
     }
 
-    private void bulkInsert(List<Visit> updateVisits) {
-
+    private void bulkInsert(List<Visit> visitsToInsert) {
+        if (visitsToInsert.isEmpty()) {
+            return;
+        }
+        
+        logger.debug("Bulk inserting {} visits", visitsToInsert.size());
+        
+        String sql = """
+            INSERT INTO visits (user_id, latitude, longitude, start_time, end_time, duration_seconds, processed, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """;
+        
+        List<Object[]> batchArgs = visitsToInsert.stream()
+            .map(visit -> new Object[]{
+                visit.getUser().getId(),
+                visit.getLatitude(),
+                visit.getLongitude(),
+                visit.getStartTime(),
+                visit.getEndTime(),
+                visit.getDurationSeconds(),
+                visit.isProcessed(),
+                Instant.now(),
+                Instant.now()
+            })
+            .collect(Collectors.toList());
+        
+        int[] updateCounts = jdbcTemplate.batchUpdate(sql, batchArgs);
+        logger.debug("Successfully inserted {} visits", updateCounts.length);
     }
 
     private void bulkUpdate(List<Visit> updateVisits) {
