@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 public class RawLocationPointProcessingTrigger {
@@ -23,6 +24,8 @@ public class RawLocationPointProcessingTrigger {
     private final RawLocationPointRepository rawLocationPointRepository;
     private final UserRepository userRepository;
     private final RabbitTemplate rabbitTemplate;
+
+    private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
     public RawLocationPointProcessingTrigger(RawLocationPointRepository rawLocationPointRepository,
                                              UserRepository userRepository, RabbitTemplate rabbitTemplate) {
@@ -34,26 +37,31 @@ public class RawLocationPointProcessingTrigger {
 
     @Scheduled(cron = "${reitti.process-data.schedule}")
     public void start() {
-        for (User user : userRepository.findAll()) {
-            List<RawLocationPoint> allUnprocessedPoints = rawLocationPointRepository.findByUserAndProcessedIsFalseOrderByTimestamp(user);
+        if (isRunning.get()) {
+            log.warn("Processing is already running, wil skip this run");
+        } else {
+            isRunning.set(true);
+            for (User user : userRepository.findAll()) {
+                List<RawLocationPoint> allUnprocessedPoints = rawLocationPointRepository.findByUserAndProcessedIsFalseOrderByTimestamp(user);
 
-            log.debug("Found [{}] unprocessed points for user [{}]", allUnprocessedPoints.size(), user.getId());
-            int i = 0;
-            while (i * BATCH_SIZE < allUnprocessedPoints.size()) {
-                int fromIndex = i * BATCH_SIZE;
-                int toIndex = Math.min((i + 1) * BATCH_SIZE, allUnprocessedPoints.size());
-                List<RawLocationPoint> currentPoints = allUnprocessedPoints.subList(fromIndex, toIndex);
-                Instant earliest = currentPoints.getFirst().getTimestamp();
-                Instant latest = currentPoints.getLast().getTimestamp();
-                this.rabbitTemplate
-                        .convertAndSend(RabbitMQConfig.EXCHANGE_NAME,
-                                RabbitMQConfig.STAY_DETECTION_ROUTING_KEY,
-                                new LocationProcessEvent(user.getUsername(), earliest, latest));
-                currentPoints.forEach(RawLocationPoint::markProcessed);
-                this.rawLocationPointRepository.saveAll(currentPoints);
-                i++;
+                log.debug("Found [{}] unprocessed points for user [{}]", allUnprocessedPoints.size(), user.getId());
+                int i = 0;
+                while (i * BATCH_SIZE < allUnprocessedPoints.size()) {
+                    int fromIndex = i * BATCH_SIZE;
+                    int toIndex = Math.min((i + 1) * BATCH_SIZE, allUnprocessedPoints.size());
+                    List<RawLocationPoint> currentPoints = allUnprocessedPoints.subList(fromIndex, toIndex);
+                    Instant earliest = currentPoints.getFirst().getTimestamp();
+                    Instant latest = currentPoints.getLast().getTimestamp();
+                    this.rabbitTemplate
+                            .convertAndSend(RabbitMQConfig.EXCHANGE_NAME,
+                                    RabbitMQConfig.STAY_DETECTION_ROUTING_KEY,
+                                    new LocationProcessEvent(user.getUsername(), earliest, latest));
+                    currentPoints.forEach(RawLocationPoint::markProcessed);
+                    this.rawLocationPointRepository.saveAll(currentPoints);
+                    i++;
+                }
             }
-
+            isRunning.set(false);
         }
     }
 }
