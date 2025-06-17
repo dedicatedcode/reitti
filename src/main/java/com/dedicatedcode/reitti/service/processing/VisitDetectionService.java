@@ -2,8 +2,6 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.LocationProcessEvent;
-import com.dedicatedcode.reitti.event.VisitCreatedEvent;
-import com.dedicatedcode.reitti.event.VisitUpdatedEvent;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
 import com.dedicatedcode.reitti.repository.VisitRepository;
@@ -14,6 +12,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -34,7 +33,7 @@ public class VisitDetectionService {
     private final VisitRepository visitRepository;
 
     private final RabbitTemplate rabbitTemplate;
-
+    private final JdbcTemplate jdbcTemplate;
     @Autowired
     public VisitDetectionService(
             RawLocationPointRepository rawLocationPointRepository,
@@ -43,7 +42,7 @@ public class VisitDetectionService {
             @Value("${reitti.staypoint.min-points:5}") int minPointsInCluster,
             UserService userService,
             VisitRepository visitRepository,
-            RabbitTemplate rabbitTemplate) {
+            RabbitTemplate rabbitTemplate, JdbcTemplate jdbcTemplate) {
         this.rawLocationPointRepository = rawLocationPointRepository;
         this.distanceThreshold = distanceThreshold;
         this.timeThreshold = timeThreshold;
@@ -51,6 +50,7 @@ public class VisitDetectionService {
         this.userService = userService;
         this.visitRepository = visitRepository;
         this.rabbitTemplate = rabbitTemplate;
+        this.jdbcTemplate = jdbcTemplate;
 
         logger.info("StayPointDetectionService initialized with: distanceThreshold={}m, timeThreshold={}s, minPointsInCluster={}",
                 distanceThreshold, timeThreshold, minPointsInCluster);
@@ -80,6 +80,9 @@ public class VisitDetectionService {
 
         logger.info("Detected {} stay points for user {}", stayPoints.size(), user.getUsername());
 
+        List<Visit> updateVisits = new ArrayList<>();
+        List<Visit> createdVisits = new ArrayList<>();
+
         for (StayPoint stayPoint : stayPoints) {
             List<Visit> existingVisitByStart = this.visitRepository.findByUserAndStartTime(user, stayPoint.getArrivalTime());
             List<Visit> existingVisitByEnd = this.visitRepository.findByUserAndEndTime(user, stayPoint.getDepartureTime());
@@ -107,27 +110,27 @@ public class VisitDetectionService {
                 }
 
                 if (changed) {
-                    try {
-                        visitRepository.save(visit);
-                        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitUpdatedEvent(user.getUsername(), visit.getId()));
-                    } catch (Exception e) {
-                        logger.debug("Could not save updated visit: {}", visit);
-                    }
+                    updateVisits.add(visit);
                 }
             }
 
             if (visitsToUpdate.isEmpty()) {
                 Visit visit = createVisit(user, stayPoint.getLongitude(), stayPoint.getLatitude(), stayPoint);
                 logger.debug("Creating new visit: {}", visit);
-
-                try {
-                    visit = visitRepository.save(visit);
-                    rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitCreatedEvent(user.getUsername(), visit.getId()));
-                } catch (Exception e) {
-                    logger.debug("Could not save new visit: {}", visit);
-                }
+                createdVisits.add(visit);
             }
         }
+
+        bulkUpdate(updateVisits);
+        bulkInsert(updateVisits);
+    }
+
+    private void bulkInsert(List<Visit> updateVisits) {
+
+    }
+
+    private void bulkUpdate(List<Visit> updateVisits) {
+
     }
 
     private List<StayPoint> detectStayPointsFromTrajectory(Map<Integer, List<RawLocationPoint>> points) {
