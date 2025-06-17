@@ -10,14 +10,17 @@ import com.dedicatedcode.reitti.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class TripDetectionService {
@@ -28,15 +31,18 @@ public class TripDetectionService {
     private final RawLocationPointRepository rawLocationPointRepository;
     private final TripRepository tripRepository;
     private final UserRepository userRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     public TripDetectionService(ProcessedVisitRepository processedVisitRepository,
                                 RawLocationPointRepository rawLocationPointRepository,
                                 TripRepository tripRepository,
-                                UserRepository userRepository) {
+                                UserRepository userRepository,
+                                JdbcTemplate jdbcTemplate) {
         this.processedVisitRepository = processedVisitRepository;
         this.rawLocationPointRepository = rawLocationPointRepository;
         this.tripRepository = tripRepository;
         this.userRepository = userRepository;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @RabbitListener(queues = RabbitMQConfig.DETECT_TRIP_QUEUE, concurrency = "1")
@@ -65,7 +71,10 @@ public class TripDetectionService {
                 ProcessedVisit endVisit = visits.get(i + 1);
 
                 // Create a trip between these two visits
-                createTripBetweenVisits(user, startVisit, endVisit);
+                Trip trip = createTripBetweenVisits(user, startVisit, endVisit);
+                if (trip != null) {
+                    trips.add(trip);
+                }
             }
 
             bulkInsert(trips);
@@ -171,5 +180,40 @@ public class TripDetectionService {
         } else {
             return "TRANSIT"; // High-speed transit like train
         }
+    }
+
+    private void bulkInsert(List<Trip> tripsToInsert) {
+        if (tripsToInsert.isEmpty()) {
+            return;
+        }
+        
+        logger.debug("Bulk inserting {} trips", tripsToInsert.size());
+        
+        String sql = """
+            INSERT INTO trips (user_id, start_place_id, end_place_id, start_visit_id, end_visit_id, start_time, end_time, 
+                              duration_seconds, estimated_distance_meters, travelled_distance_meters, transport_mode_inferred, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """;
+        
+        List<Object[]> batchArgs = tripsToInsert.stream()
+            .map(trip -> new Object[]{
+                trip.getUser().getId(),
+                trip.getStartPlace().getId(),
+                trip.getEndPlace().getId(),
+                trip.getStartVisit().getId(),
+                trip.getEndVisit().getId(),
+                Timestamp.from(trip.getStartTime()),
+                Timestamp.from(trip.getEndTime()),
+                trip.getDurationSeconds(),
+                trip.getEstimatedDistanceMeters(),
+                trip.getTravelledDistanceMeters(),
+                trip.getTransportModeInferred(),
+                Timestamp.from(Instant.now()),
+                Timestamp.from(Instant.now())
+            })
+            .collect(Collectors.toList());
+        
+        int[] updateCounts = jdbcTemplate.batchUpdate(sql, batchArgs);
+        logger.debug("Successfully inserted {} trips", updateCounts.length);
     }
 }
