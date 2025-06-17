@@ -129,6 +129,14 @@ public class VisitDetectionService {
         // Deduplicate visits by ID before bulk update
         List<Visit> deduplicatedVisits = deduplicateVisitsById(updateVisits);
         
+        // Check for time-based duplicates and remove them from database
+        List<Visit> duplicatesToDelete = findTimeDuplicates(deduplicatedVisits);
+        if (!duplicatesToDelete.isEmpty()) {
+            bulkDelete(duplicatesToDelete);
+            // Remove deleted visits from the list to update
+            deduplicatedVisits.removeAll(duplicatesToDelete);
+        }
+        
         bulkUpdate(deduplicatedVisits).forEach(visit -> {
             rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitUpdatedEvent(user.getUsername(), visit.getId()));
         });
@@ -312,6 +320,51 @@ public class VisitDetectionService {
         }
         
         return new ArrayList<>(visitMap.values());
+    }
+
+    private List<Visit> findTimeDuplicates(List<Visit> visits) {
+        Map<String, List<Visit>> timeGroups = new HashMap<>();
+        
+        // Group visits by start and end time
+        for (Visit visit : visits) {
+            String timeKey = visit.getStartTime() + "_" + visit.getEndTime();
+            timeGroups.computeIfAbsent(timeKey, k -> new ArrayList<>()).add(visit);
+        }
+        
+        List<Visit> duplicatesToDelete = new ArrayList<>();
+        
+        // For each time group with multiple visits, keep one and mark others for deletion
+        for (List<Visit> timeGroup : timeGroups.values()) {
+            if (timeGroup.size() > 1) {
+                // Sort by ID to have consistent behavior (keep the one with lowest ID)
+                timeGroup.sort(Comparator.comparing(Visit::getId));
+                // Add all except the first one to deletion list
+                duplicatesToDelete.addAll(timeGroup.subList(1, timeGroup.size()));
+                logger.debug("Found {} time-based duplicates for time range {}-{}", 
+                    timeGroup.size() - 1, 
+                    timeGroup.get(0).getStartTime(), 
+                    timeGroup.get(0).getEndTime());
+            }
+        }
+        
+        return duplicatesToDelete;
+    }
+
+    private void bulkDelete(List<Visit> visitsToDelete) {
+        if (visitsToDelete.isEmpty()) {
+            return;
+        }
+        
+        logger.debug("Bulk deleting {} visits", visitsToDelete.size());
+        
+        String sql = "DELETE FROM visits WHERE id = ?";
+        
+        List<Object[]> batchArgs = visitsToDelete.stream()
+                .map(visit -> new Object[]{visit.getId()})
+                .collect(Collectors.toList());
+        
+        int[] deleteCounts = jdbcTemplate.batchUpdate(sql, batchArgs);
+        logger.debug("Successfully deleted {} visits", deleteCounts.length);
     }
 
     private Visit createVisit(User user, Double longitude, Double latitude, StayPoint stayPoint) {
