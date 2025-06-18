@@ -117,6 +117,13 @@ public class VisitJdbcService {
     }
 
     public List<Visit> findAllByIds(List<Long> visitIds) {
-        return null;
+        if (visitIds == null || visitIds.isEmpty()) {
+            return List.of();
+        }
+        
+        String placeholders = String.join(",", visitIds.stream().map(id -> "?").toList());
+        String sql = "SELECT v.* FROM visits v WHERE v.id IN (" + placeholders + ")";
+        
+        return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, visitIds.toArray());
     }
 }
