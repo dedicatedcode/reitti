@@ -9,6 +9,8 @@ services:
       postgis:
         condition: service_healthy
         restart: true
+      redis:
+        condition: service_healthy
   postgis:
     image: postgis/postgis:17-3.5-alpine
     environment:
@@ -38,6 +40,17 @@ services:
       test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
       interval: 30s
       timeout: 10s
+      retries: 5
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
       retries: 5
 
 volumes:
