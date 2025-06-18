@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.model;
 
-import jakarta.persistence.*;
 import org.locationtech.jts.geom.Point;
 
 import java.time.Instant;
@@ -8,40 +7,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-@Entity
-@Table(name = "significant_places")
 public class SignificantPlace {
     
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
     private User user;
-    
-    @Column
     private String name;
-    
-    @Column
     private String address;
-    
-    @Column(nullable = false)
     private Double latitudeCentroid;
-    
-    @Column(nullable = false)
     private Double longitudeCentroid;
-    
-    @Column(columnDefinition = "geometry(Point,4326)")
     private Point geom;
-    
-    @Column
     private String category;
-
-    @Column(nullable = false)
     private boolean geocoded = false;
-
-    @Version
     private Long version;
 
     public SignificantPlace() {}

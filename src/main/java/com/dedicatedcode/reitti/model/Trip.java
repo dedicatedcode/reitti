@@ -1,57 +1,22 @@
 package com.dedicatedcode.reitti.model;
 
-import jakarta.persistence.*;
-
 import java.time.Duration;
 import java.time.Instant;
 
-@Entity
-@Table(name = "trips")
 public class Trip {
     
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
     private User user;
-    
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "start_place_id")
     private SignificantPlace startPlace;
-    
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "end_place_id")
     private SignificantPlace endPlace;
-    
-    @Column(nullable = false)
     private Instant startTime;
-    
-    @Column(nullable = false)
     private Instant endTime;
-    
-    @Column(nullable = false)
     private Long durationSeconds;
-    
-    @Column
     private Double estimatedDistanceMeters;
-    
-    @Column(name = "travelled_distance_meters")
     private Double travelledDistanceMeters;
-    
-    @Column
     private String transportModeInferred;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "start_visit_id")
     private ProcessedVisit startVisit;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "end_visit_id")
     private ProcessedVisit endVisit;
-
-    @Version
     private Long version;
 
     public Trip() {}
@@ -172,9 +137,7 @@ public class Trip {
         this.version = version;
     }
 
-    @PrePersist
-    @PreUpdate
-    private void calculateDuration() {
+    public void calculateDuration() {
         if (startTime != null && endTime != null) {
             durationSeconds = Duration.between(startTime, endTime).getSeconds();
         }

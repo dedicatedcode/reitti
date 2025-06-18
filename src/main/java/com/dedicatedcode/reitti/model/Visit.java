@@ -1,40 +1,19 @@
 package com.dedicatedcode.reitti.model;
 
-import jakarta.persistence.*;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 
-@Entity
-@Table(name = "visits")
 public class Visit {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
     private User user;
-
-    @Column(name = "longitude", nullable = false)
     private Double longitude;
-    @Column(name = "latitude", nullable = false)
     private Double latitude;
-    @Column(nullable = false)
     private Instant startTime;
-
-    @Column(nullable = false)
     private Instant endTime;
-
-    @Column(nullable = false)
     private Long durationSeconds;
-
-    @Column(nullable = false)
     private boolean processed = false;
-
-    @Version
     private Long version;
 
     public Visit() {
@@ -120,9 +99,7 @@ public class Visit {
         this.version = version;
     }
 
-    @PrePersist
-    @PreUpdate
-    private void calculateDuration() {
+    public void calculateDuration() {
         if (startTime != null && endTime != null) {
             durationSeconds = Duration.between(startTime, endTime).getSeconds();
         }
