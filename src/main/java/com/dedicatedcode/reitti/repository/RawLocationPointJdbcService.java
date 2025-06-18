@@ -147,9 +147,9 @@ public class RawLocationPointJdbcService {
                 java.sql.Timestamp.from(startTime), java.sql.Timestamp.from(endTime));
     }
 
-    // implement this method AI!
     public long count() {
-        return 0;
+        String sql = "SELECT COUNT(*) FROM raw_location_points";
+        return jdbcTemplate.queryForObject(sql, Long.class);
     }
 
     public static class ClusteredPoint {
