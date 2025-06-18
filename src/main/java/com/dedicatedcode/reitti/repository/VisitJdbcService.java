@@ -34,6 +34,12 @@ public class VisitJdbcService {
             rs.getLong("version")
     );
 
+    public List<Visit> findByUser(User user) {
+        String sql = "SELECT v.* " +
+                "FROM visits v " +
+                "WHERE v.user_id = ? ORDER BY start_time";
+        return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId());
+    }
     public List<Visit> findByUserAndStartTime(User user, Instant startTime) {
         String sql = "SELECT v.* " +
                 "FROM visits v " +
@@ -109,11 +115,6 @@ public class VisitJdbcService {
                 "WHERE v.id = ?";
         List<Visit> results = jdbcTemplate.query(sql, VISIT_ROW_MAPPER, id);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
-    }
-
-    public void deleteById(Long id) {
-        String sql = "DELETE FROM visits WHERE id = ?";
-        jdbcTemplate.update(sql, id);
     }
 
     public List<Visit> findAllByIds(List<Long> visitIds) {
