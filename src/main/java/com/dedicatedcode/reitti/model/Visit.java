@@ -6,103 +6,76 @@ import java.util.Objects;
 
 public class Visit {
 
-    private Long id;
-    private User user;
-    private Double longitude;
-    private Double latitude;
-    private Instant startTime;
-    private Instant endTime;
-    private Long durationSeconds;
-    private boolean processed = false;
-    private Long version;
+    private final Long id;
+    private final User user;
+    private final Double longitude;
+    private final Double latitude;
+    private final Instant startTime;
+    private final Instant endTime;
+    private final Long durationSeconds;
+    private final boolean processed;
+    private final Long version;
 
     public Visit() {
+        this(null, null, null, null, null, null, false, null);
     }
 
     public Visit(User user, Double longitude, Double latitude, Instant startTime, Instant endTime) {
+        this(null, user, longitude, latitude, startTime, endTime, false, null);
+    }
+    
+    public Visit(Long id, User user, Double longitude, Double latitude, Instant startTime, Instant endTime, boolean processed, Long version) {
+        this.id = id;
         this.user = user;
         this.longitude = longitude;
         this.latitude = latitude;
         this.startTime = startTime;
         this.endTime = endTime;
+        this.durationSeconds = (startTime != null && endTime != null) ? 
+            Duration.between(startTime, endTime).getSeconds() : null;
+        this.processed = processed;
+        this.version = version;
     }
 
     public Long getId() {
         return id;
     }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
-
     public User getUser() {
         return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
     }
 
     public Double getLongitude() {
         return longitude;
     }
 
-    public void setLongitude(Double longitude) {
-        this.longitude = longitude;
-    }
-
     public Double getLatitude() {
         return latitude;
-    }
-
-    public void setLatitude(Double latitude) {
-        this.latitude = latitude;
     }
 
     public Instant getStartTime() {
         return startTime;
     }
 
-    public void setStartTime(Instant startTime) {
-        this.startTime = startTime;
-    }
-
     public Instant getEndTime() {
         return endTime;
-    }
-
-    public void setEndTime(Instant endTime) {
-        this.endTime = endTime;
     }
 
     public Long getDurationSeconds() {
         return durationSeconds;
     }
 
-    public void setDurationSeconds(Long durationSeconds) {
-        this.durationSeconds = durationSeconds;
-    }
-
     public boolean isProcessed() {
         return processed;
-    }
-
-    public void setProcessed(boolean processed) {
-        this.processed = processed;
     }
 
     public Long getVersion() {
         return version;
     }
-
-    public void setVersion(Long version) {
-        this.version = version;
-    }
-
-    public void calculateDuration() {
-        if (startTime != null && endTime != null) {
-            durationSeconds = Duration.between(startTime, endTime).getSeconds();
-        }
+    
+    // Wither method
+    public Visit withProcessed(boolean processed) {
+        return new Visit(this.id, this.user, this.longitude, this.latitude, this.startTime, this.endTime, processed, this.version);
     }
 
     @Override

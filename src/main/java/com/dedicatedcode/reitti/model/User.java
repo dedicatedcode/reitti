@@ -9,24 +9,30 @@ import java.util.List;
 
 public class User implements UserDetails {
 
-    private Long id;
-    private String username;
-    private String password;
-    private String displayName;
-    private Long version;
+    private final Long id;
+    private final String username;
+    private final String password;
+    private final String displayName;
+    private final Long version;
 
-    public User() {}
+    public User() {
+        this(null, null, null, null, null);
+    }
+    
     public User(String username, String displayName) {
+        this(null, username, null, displayName, null);
+    }
+    
+    public User(Long id, String username, String password, String displayName, Long version) {
+        this.id = id;
         this.username = username;
+        this.password = password;
         this.displayName = displayName;
+        this.version = version;
     }
 
     public Long getId() {
         return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
     }
 
     public String getUsername() {
@@ -53,16 +59,8 @@ public class User implements UserDetails {
         return true;
     }
 
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
     public String getDisplayName() {
         return displayName;
-    }
-
-    public void setDisplayName(String displayName) {
-        this.displayName = displayName;
     }
 
     @Override
@@ -73,17 +71,22 @@ public class User implements UserDetails {
     public String getPassword() {
         return password;
     }
-    
-    public void setPassword(String password) {
-        this.password = password;
-    }
 
     public Long getVersion() {
         return version;
     }
+    
+    // Wither methods
+    public User withPassword(String password) {
+        return new User(this.id, this.username, password, this.displayName, this.version);
+    }
 
-    public void setVersion(Long version) {
-        this.version = version;
+    public User withDisplayName(String displayName) {
+        return new User(this.id, this.username, this.password, displayName, this.version);
+    }
+
+    public User withVersion(Long version) {
+        return new User(this.id, this.username, this.password, this.displayName, version);
     }
 
 }

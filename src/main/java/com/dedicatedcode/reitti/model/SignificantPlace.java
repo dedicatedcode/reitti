@@ -9,18 +9,20 @@ import java.util.Objects;
 
 public class SignificantPlace {
     
-    private Long id;
-    private User user;
-    private String name;
-    private String address;
-    private Double latitudeCentroid;
-    private Double longitudeCentroid;
-    private Point geom;
-    private String category;
-    private boolean geocoded = false;
-    private Long version;
+    private final Long id;
+    private final User user;
+    private final String name;
+    private final String address;
+    private final Double latitudeCentroid;
+    private final Double longitudeCentroid;
+    private final Point geom;
+    private final String category;
+    private final boolean geocoded;
+    private final Long version;
 
-    public SignificantPlace() {}
+    public SignificantPlace() {
+        this(null, null, null, null, null, null, null, null, false, null);
+    }
 
     public SignificantPlace(User user,
                             String name,
@@ -29,6 +31,11 @@ public class SignificantPlace {
                             Double longitudeCentroid,
                             Point geom,
                             String category) {
+        this(null, user, name, address, latitudeCentroid, longitudeCentroid, geom, category, false, null);
+    }
+    
+    public SignificantPlace(Long id, User user, String name, String address, Double latitudeCentroid, Double longitudeCentroid, Point geom, String category, boolean geocoded, Long version) {
+        this.id = id;
         this.user = user;
         this.name = name;
         this.address = address;
@@ -36,86 +43,57 @@ public class SignificantPlace {
         this.longitudeCentroid = longitudeCentroid;
         this.geom = geom;
         this.category = category;
+        this.geocoded = geocoded;
+        this.version = version;
     }
 
     public Long getId() {
         return id;
     }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
-
     public User getUser() {
         return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
     }
 
     public String getName() {
         return name;
     }
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
     public String getAddress() {
         return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
     }
 
     public Double getLatitudeCentroid() {
         return latitudeCentroid;
     }
 
-    public void setLatitudeCentroid(Double latitudeCentroid) {
-        this.latitudeCentroid = latitudeCentroid;
-    }
-
     public Double getLongitudeCentroid() {
         return longitudeCentroid;
-    }
-
-    public void setLongitudeCentroid(Double longitudeCentroid) {
-        this.longitudeCentroid = longitudeCentroid;
     }
 
     public String getCategory() {
         return category;
     }
 
-    public void setCategory(String category) {
-        this.category = category;
-    }
-
     public Point getGeom() {
         return geom;
-    }
-    
-    public void setGeom(Point geom) {
-        this.geom = geom;
     }
 
     public boolean isGeocoded() { 
         return geocoded; 
     }
 
-    public void setGeocoded(boolean geocoded) { 
-        this.geocoded = geocoded; 
-    }
-
     public Long getVersion() {
         return version;
     }
+    
+    // Wither methods
+    public SignificantPlace withGeocoded(boolean geocoded) {
+        return new SignificantPlace(this.id, this.user, this.name, this.address, this.latitudeCentroid, this.longitudeCentroid, this.geom, this.category, geocoded, this.version);
+    }
 
-    public void setVersion(Long version) {
-        this.version = version;
+    public SignificantPlace withName(String name) {
+        return new SignificantPlace(this.id, this.user, name, this.address, this.latitudeCentroid, this.longitudeCentroid, this.geom, this.category, this.geocoded, this.version);
     }
 
     @Override
