@@ -151,4 +151,9 @@ public class TripJdbcService {
         String sql = "DELETE FROM trips WHERE id = ?";
         jdbcTemplate.update(sql, id);
     }
+
+    public void deleteAll() {
+        String sql = "DELETE FROM trips";
+        jdbcTemplate.update(sql);
+    }
 }
