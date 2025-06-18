@@ -6,7 +6,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -26,15 +25,6 @@ public class User implements UserDetails {
     
     @Column(nullable = false)
     private String displayName;
-
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<SignificantPlace> significantPlaces = new ArrayList<>();
-    
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Visit> visits = new ArrayList<>();
-    
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Trip> trips = new ArrayList<>();
 
     @Version
     private Long version;
@@ -100,30 +90,6 @@ public class User implements UserDetails {
     
     public void setPassword(String password) {
         this.password = password;
-    }
-
-    public List<SignificantPlace> getSignificantPlaces() {
-        return significantPlaces;
-    }
-
-    public void setSignificantPlaces(List<SignificantPlace> significantPlaces) {
-        this.significantPlaces = significantPlaces;
-    }
-
-    public List<Visit> getVisits() {
-        return visits;
-    }
-
-    public void setVisits(List<Visit> visits) {
-        this.visits = visits;
-    }
-
-    public List<Trip> getTrips() {
-        return trips;
-    }
-
-    public void setTrips(List<Trip> trips) {
-        this.trips = trips;
     }
 
     public Long getVersion() {
