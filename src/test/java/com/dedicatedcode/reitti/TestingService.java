@@ -88,7 +88,6 @@ public class TestingService {
             throw new RuntimeException(e);
         }
         //now clear the database
-        //in the repositories, implement the deleteAll method AI!
         this.tripRepository.deleteAll();
         this.processedVisitRepository.deleteAll();
         this.visitRepository.deleteAll();
@@ -96,6 +95,6 @@ public class TestingService {
     }
 
     public User getUser() {
-
+        return userJdbcService.getUserById(1L);
     }
 }

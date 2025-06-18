@@ -152,6 +152,11 @@ public class RawLocationPointJdbcService {
         return jdbcTemplate.queryForObject(sql, Long.class);
     }
 
+    public void deleteAll() {
+        String sql = "DELETE FROM raw_location_points";
+        jdbcTemplate.update(sql);
+    }
+
     public static class ClusteredPoint {
         private final RawLocationPoint point;
         private final Integer clusterId;
