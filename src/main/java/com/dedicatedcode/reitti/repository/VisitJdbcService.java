@@ -127,4 +127,9 @@ public class VisitJdbcService {
         
         return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, visitIds.toArray());
     }
+
+    public void deleteAll() {
+        String sql = "DELETE FROM visits";
+        jdbcTemplate.update(sql);
+    }
 }

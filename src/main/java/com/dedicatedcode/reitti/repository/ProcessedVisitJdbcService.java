@@ -189,4 +189,9 @@ public class ProcessedVisitJdbcService {
         return results.isEmpty() ? null : results.getFirst();
     }
 
+    public void deleteAll() {
+        String sql = "DELETE FROM processed_visits";
+        jdbcTemplate.update(sql);
+    }
+
 }
