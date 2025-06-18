@@ -169,4 +169,8 @@ public class ProcessedVisitJdbcService {
         
         jdbcTemplate.update(sql, ids.toArray());
     }
+
+    public ProcessedVisit findByUserAndStartTimeAndEndTimeAndPlace(User user, Instant startTime, Instant endTime, SignificantPlace place) {
+        return null;
+    }
 }
