@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.model;
 
+import jakarta.persistence.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -7,12 +8,24 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.List;
 
+@Entity
+@Table(name = "users")
 public class User implements UserDetails {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private final Long id;
+    
+    @Column(nullable = false, unique = true)
     private final String username;
+    
+    @Column(nullable = false)
     private final String password;
+    
+    @Column(name = "display_name")
     private final String displayName;
+    
+    @Version
     private final Long version;
 
     public User() {
