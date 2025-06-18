@@ -1,5 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
+import com.dedicatedcode.reitti.model.Page;
+import com.dedicatedcode.reitti.model.PageRequest;
 import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.model.User;
 import org.locationtech.jts.geom.Point;
@@ -55,7 +57,7 @@ public class SignificantPlaceJdbcService {
         return jdbcTemplate.query(sql, SIGNIFICANT_PLACE_ROW_MAPPER, user.getId());
     }
     
-    public Page<SignificantPlace> findByUser(User user, Pageable pageable) {
+    public Page<SignificantPlace> findByUser(User user, PageRequest pageable) {
         String countSql = "SELECT COUNT(*) FROM significant_places WHERE user_id = ?";
         Integer total = jdbcTemplate.queryForObject(countSql, Integer.class, user.getId());
         
@@ -68,7 +70,7 @@ public class SignificantPlaceJdbcService {
         List<SignificantPlace> content = jdbcTemplate.query(sql, SIGNIFICANT_PLACE_ROW_MAPPER, 
             user.getId(), pageable.getPageSize(), pageable.getOffset());
         
-        return new PageImpl<>(content, pageable, total != null ? total : 0);
+        return new Page<>(content, pageable, total != null ? total : 0);
     }
     
     public List<SignificantPlace> findNearbyPlaces(Long userId, Point point, double distanceInMeters) {
