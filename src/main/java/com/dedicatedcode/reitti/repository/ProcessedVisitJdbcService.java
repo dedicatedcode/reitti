@@ -171,6 +171,14 @@ public class ProcessedVisitJdbcService {
     }
 
     public ProcessedVisit findByUserAndStartTimeAndEndTimeAndPlace(User user, Instant startTime, Instant endTime, SignificantPlace place) {
-        return null;
+        String sql = "SELECT pv.* " +
+                    "FROM processed_visits pv " +
+                    "WHERE pv.user_id = ? AND pv.start_time = ? AND pv.end_time = ? AND pv.place_id = ?";
+        List<ProcessedVisit> results = jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, 
+            user.getId(),
+            java.sql.Timestamp.from(startTime),
+            java.sql.Timestamp.from(endTime),
+            place.getId());
+        return results.isEmpty() ? null : results.get(0);
     }
 }
