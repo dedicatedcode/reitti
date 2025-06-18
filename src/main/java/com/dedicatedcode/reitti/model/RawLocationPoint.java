@@ -1,39 +1,26 @@
 package com.dedicatedcode.reitti.model;
 
-import jakarta.persistence.*;
 import org.locationtech.jts.geom.Point;
 
 import java.time.Instant;
 import java.util.Objects;
 
-@Entity
-@Table(name = "raw_location_points")
 public class RawLocationPoint {
     
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private final Long id;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
     private final User user;
     
-    @Column(nullable = false)
     private final Instant timestamp;
     
-    @Column(nullable = false)
     private final Double accuracyMeters;
     
-    @Column
     private final String activityProvided;
 
-    @Column(columnDefinition = "geometry(Point,4326)", nullable = false)
     private final Point geom;
 
-    @Column(nullable = false)
     private final boolean processed;
 
-    @Version
     private final Long version;
 
     public RawLocationPoint() {

@@ -1,38 +1,23 @@
 package com.dedicatedcode.reitti.model;
 
-import jakarta.persistence.*;
-
 import java.time.Instant;
 
-@Entity
-@Table(name = "processed_visits")
 public class ProcessedVisit {
     
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private final Long id;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
     private final User user;
     
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "place_id", nullable = false)
     private final SignificantPlace place;
     
-    @Column(name = "start_time", nullable = false)
     private final Instant startTime;
     
-    @Column(name = "end_time", nullable = false)
     private final Instant endTime;
     
-    @Column(name = "duration_seconds", nullable = false)
     private final Long durationSeconds;
     
-    @Column(name = "original_visit_ids")
     private final String originalVisitIds; // Comma-separated list of original visit IDs
     
-    @Column(name = "merged_count")
     private final Integer mergedCount;
     
     // Constructors
