@@ -156,6 +156,17 @@ public class ProcessedVisitJdbcService {
     }
 
     public void deleteAll(List<ProcessedVisit> processedVisits) {
-
+        if (processedVisits == null || processedVisits.isEmpty()) {
+            return;
+        }
+        
+        List<Long> ids = processedVisits.stream()
+                .map(ProcessedVisit::getId)
+                .toList();
+        
+        String placeholders = String.join(",", ids.stream().map(id -> "?").toList());
+        String sql = "DELETE FROM processed_visits WHERE id IN (" + placeholders + ")";
+        
+        jdbcTemplate.update(sql, ids.toArray());
     }
 }
