@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.controller.api;
 
 import com.dedicatedcode.reitti.model.ApiToken;
-import com.dedicatedcode.reitti.repository.UserRepository;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.ApiTokenService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -15,12 +15,12 @@ import java.util.Map;
 public class ApiTokenController {
 
     private final ApiTokenService apiTokenService;
-    private final UserRepository userRepository;
+    private final UserJdbcService userJdbcService;
 
     @Autowired
-    public ApiTokenController(ApiTokenService apiTokenService, UserRepository userRepository) {
+    public ApiTokenController(ApiTokenService apiTokenService, UserJdbcService userJdbcService) {
         this.apiTokenService = apiTokenService;
-        this.userRepository = userRepository;
+        this.userJdbcService = userJdbcService;
     }
 
     @PostMapping
@@ -33,7 +33,7 @@ public class ApiTokenController {
                     .body(Map.of("error", "Username and token name are required"));
         }
         
-        return userRepository.findByUsername(username)
+        return userJdbcService.findByUsername(username)
                 .map(user -> {
                     ApiToken token = apiTokenService.createToken(user, tokenName);
                     return ResponseEntity.ok(Map.of(

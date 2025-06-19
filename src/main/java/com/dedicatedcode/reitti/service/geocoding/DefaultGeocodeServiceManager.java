@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.service.geocoding;
 
 import com.dedicatedcode.reitti.model.GeocodeService;
-import com.dedicatedcode.reitti.repository.GeocodeServiceRepository;
+import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -22,16 +22,16 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultGeocodeServiceManager.class);
 
-    private final GeocodeServiceRepository geocodeServiceRepository;
+    private final GeocodeServiceJdbcService geocodeServiceJdbcService;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final int maxErrors;
 
-    public DefaultGeocodeServiceManager(GeocodeServiceRepository geocodeServiceRepository,
+    public DefaultGeocodeServiceManager(GeocodeServiceJdbcService geocodeServiceJdbcService,
                                         RestTemplate restTemplate,
                                         ObjectMapper objectMapper,
                                         @Value("${reitti.geocoding.max-errors}") int maxErrors) {
-        this.geocodeServiceRepository = geocodeServiceRepository;
+        this.geocodeServiceJdbcService = geocodeServiceJdbcService;
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
         this.maxErrors = maxErrors;
@@ -40,7 +40,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
     @Transactional
     @Override
     public Optional<GeocodeResult> reverseGeocode(double latitude, double longitude) {
-        List<GeocodeService> availableServices = geocodeServiceRepository.findByEnabledTrueOrderByLastUsedAsc();
+        List<GeocodeService> availableServices = geocodeServiceJdbcService.findByEnabledTrueOrderByLastUsedAsc();
 
         if (availableServices.isEmpty()) {
             logger.warn("No enabled geocoding services available");
@@ -58,7 +58,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
                     return result;
                 }
             } catch (Exception e) {
-                logger.warn("Geocoding failed for service {}: {}", service.getName(), e.getMessage());
+                logger.warn("Geocoding failed for service [{}]: [{}]", service.getName(), e.getMessage());
                 recordError(service);
             }
         }
@@ -71,7 +71,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
                 .replace("{lat}", String.valueOf(latitude))
                 .replace("{lng}", String.valueOf(longitude));
 
-        logger.debug("Geocoding with service {} using URL: {}", service.getName(), url);
+        logger.debug("Geocoding with service [{}] using URL: [{}]", service.getName(), url);
 
         try {
 
@@ -118,20 +118,20 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
     }
 
     private void recordSuccess(GeocodeService service) {
-        service.setLastUsed(Instant.now());
-        geocodeServiceRepository.save(service);
+        geocodeServiceJdbcService.save(service.withLastUsed(Instant.now()));
     }
 
     private void recordError(GeocodeService service) {
-        service.setErrorCount(service.getErrorCount() + 1);
-        service.setLastError(Instant.now());
+        GeocodeService update = service
+                .withIncrementedErrorCount()
+                .withLastError(Instant.now());
 
-        if (service.getErrorCount() >= maxErrors) {
-            service.setEnabled(false);
-            logger.warn("Geocoding service {} disabled due to too many errors ({}/{})",
-                    service.getName(), service.getErrorCount(), maxErrors);
+        if (update.getErrorCount() >= maxErrors) {
+            update = update.withEnabled(false);
+            logger.warn("Geocoding service [{}] disabled due to too many errors ([{}]/[{}])",
+                    update.getName(), update.getErrorCount(), maxErrors);
         }
 
-        geocodeServiceRepository.save(service);
+        geocodeServiceJdbcService.save(service);
     }
 }

@@ -6,7 +6,7 @@ import com.dedicatedcode.reitti.dto.ImmichSearchResponse;
 import com.dedicatedcode.reitti.dto.PhotoResponse;
 import com.dedicatedcode.reitti.model.ImmichIntegration;
 import com.dedicatedcode.reitti.model.User;
-import com.dedicatedcode.reitti.repository.ImmichIntegrationRepository;
+import com.dedicatedcode.reitti.repository.ImmichIntegrationJdbcService;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,33 +21,34 @@ import java.util.Optional;
 @Service
 public class ImmichIntegrationService {
     
-    private final ImmichIntegrationRepository immichIntegrationRepository;
+    private final ImmichIntegrationJdbcService immichIntegrationJdbcService;
     private final RestTemplate restTemplate;
     
-    public ImmichIntegrationService(ImmichIntegrationRepository immichIntegrationRepository, RestTemplate restTemplate) {
-        this.immichIntegrationRepository = immichIntegrationRepository;
+    public ImmichIntegrationService(ImmichIntegrationJdbcService immichIntegrationJdbcService, RestTemplate restTemplate) {
+        this.immichIntegrationJdbcService = immichIntegrationJdbcService;
         this.restTemplate = restTemplate;
     }
     
     public Optional<ImmichIntegration> getIntegrationForUser(User user) {
-        return immichIntegrationRepository.findByUser(user);
+        return immichIntegrationJdbcService.findByUser(user);
     }
     
     @Transactional
     public ImmichIntegration saveIntegration(User user, String serverUrl, String apiToken, boolean enabled) {
-        Optional<ImmichIntegration> existingIntegration = immichIntegrationRepository.findByUser(user);
+        Optional<ImmichIntegration> existingIntegration = immichIntegrationJdbcService.findByUser(user);
         
         ImmichIntegration integration;
         if (existingIntegration.isPresent()) {
-            integration = existingIntegration.get();
-            integration.setServerUrl(serverUrl);
-            integration.setApiToken(apiToken);
-            integration.setEnabled(enabled);
+            integration = existingIntegration.get()
+                    .withServerUrl(serverUrl)
+                    .withApiToken(apiToken)
+                    .withEnabled(enabled);
+
         } else {
-            integration = new ImmichIntegration(user, serverUrl, apiToken, enabled);
+            integration = new ImmichIntegration(serverUrl, apiToken, enabled);
         }
         
-        return immichIntegrationRepository.save(integration);
+        return immichIntegrationJdbcService.save(user, integration);
     }
     
     public boolean testConnection(String serverUrl, String apiToken) {

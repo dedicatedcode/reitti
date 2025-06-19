@@ -6,8 +6,6 @@ public class ImmichIntegration {
     
     private final Long id;
     
-    private final User user;
-    
     private final String serverUrl;
     
     private final String apiToken;
@@ -20,17 +18,13 @@ public class ImmichIntegration {
     
     private final Long version;
     
-    public ImmichIntegration() {
-        this(null, null, null, null, false, null, null, null);
+
+    public ImmichIntegration(String serverUrl, String apiToken, boolean enabled) {
+        this(null, serverUrl, apiToken, enabled, null, null, 1L);
     }
     
-    public ImmichIntegration(User user, String serverUrl, String apiToken, boolean enabled) {
-        this(null, user, serverUrl, apiToken, enabled, null, null, null);
-    }
-    
-    public ImmichIntegration(Long id, User user, String serverUrl, String apiToken, boolean enabled, Instant createdAt, Instant updatedAt, Long version) {
+    public ImmichIntegration(Long id, String serverUrl, String apiToken, boolean enabled, Instant createdAt, Instant updatedAt, Long version) {
         this.id = id;
-        this.user = user;
         this.serverUrl = serverUrl;
         this.apiToken = apiToken;
         this.enabled = enabled;
@@ -42,10 +36,6 @@ public class ImmichIntegration {
     // Getters
     public Long getId() {
         return id;
-    }
-    
-    public User getUser() {
-        return user;
     }
     
     public String getServerUrl() {
@@ -74,11 +64,18 @@ public class ImmichIntegration {
     
     // Wither methods
     public ImmichIntegration withEnabled(boolean enabled) {
-        return new ImmichIntegration(this.id, this.user, this.serverUrl, this.apiToken, enabled, this.createdAt, Instant.now(), this.version);
+        return new ImmichIntegration(this.id, this.serverUrl, this.apiToken, enabled, this.createdAt, Instant.now(), this.version);
+    }
+
+    public ImmichIntegration withServerUrl(String serverUrl) {
+        return new ImmichIntegration(this.id, serverUrl, this.apiToken, this.enabled, this.createdAt, this.updatedAt, version);
     }
 
     public ImmichIntegration withApiToken(String apiToken) {
-        return new ImmichIntegration(this.id, this.user, this.serverUrl, apiToken, this.enabled, this.createdAt, Instant.now(), this.version);
+        return new ImmichIntegration(this.id, this.serverUrl, apiToken, this.enabled, this.createdAt, Instant.now(), this.version);
     }
-    
+
+    public ImmichIntegration withId(Long id) {
+        return new ImmichIntegration(id, this.serverUrl, this.apiToken, this.enabled, this.createdAt, this.updatedAt, version);
+    }
 }

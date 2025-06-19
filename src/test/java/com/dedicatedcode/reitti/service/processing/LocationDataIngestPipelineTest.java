@@ -2,19 +2,19 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
-import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
+import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @IntegrationTest
 class LocationDataIngestPipelineTest {
 
     @Autowired
-    private RawLocationPointRepository repository;
+    private RawLocationPointJdbcService repository;
     @Autowired
     private TestingService helper;
     @Autowired

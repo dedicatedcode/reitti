@@ -1,45 +1,21 @@
 package com.dedicatedcode.reitti.model;
 
-import jakarta.persistence.*;
 import java.time.Instant;
 
-@Entity
-@Table(name = "geocode_services")
 public class GeocodeService {
     
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private final Long id;
-    
-    @Column(nullable = false)
     private final String name;
-    
-    @Column(nullable = false, length = 1000)
     private final String urlTemplate;
-    
-    @Column(nullable = false)
     private final boolean enabled;
-    
-    @Column(nullable = false)
     private final int errorCount;
-    
-    @Column
     private final Instant lastUsed;
-    
-    @Column
     private final Instant lastError;
-    
-    @Version
     private final Long version;
     
-    public GeocodeService() {
-        this(null, null, null, true, 0, null, null, null);
+    public GeocodeService(String name, String urlTemplate, boolean enabled, int errorCount, Instant lastUsed, Instant lastError) {
+        this(null, name, urlTemplate, enabled, errorCount, lastUsed, lastError, 1L);
     }
-    
-    public GeocodeService(String name, String urlTemplate) {
-        this(null, name, urlTemplate, true, 0, null, null, null);
-    }
-    
     public GeocodeService(Long id, String name, String urlTemplate, boolean enabled, int errorCount, Instant lastUsed, Instant lastError, Long version) {
         this.id = id;
         this.name = name;
@@ -73,5 +49,16 @@ public class GeocodeService {
     public GeocodeService withLastUsed(Instant lastUsed) {
         return new GeocodeService(this.id, this.name, this.urlTemplate, this.enabled, this.errorCount, lastUsed, this.lastError, this.version);
     }
-    
+
+    public  GeocodeService withLastError(Instant lastError) {
+        return new GeocodeService(this.id, this.name, this.urlTemplate, this.enabled, this.errorCount, this.lastUsed, lastError, this.version);
+    }
+
+    public GeocodeService withId(Long id) {
+        return new GeocodeService(id, this.name, this.urlTemplate, this.enabled, this.errorCount, this.lastUsed, lastError, this.version);
+    }
+
+    public GeocodeService resetErrorCount() {
+        return new GeocodeService(id, name, urlTemplate, this.enabled, 0, this.lastUsed, null, this.version);
+    }
 }

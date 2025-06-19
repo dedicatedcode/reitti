@@ -94,7 +94,4 @@ public class TestingService {
         this.rawLocationPointRepository.deleteAll();
     }
 
-    public User getUser() {
-        return userJdbcService.getUserById(1L);
-    }
 }

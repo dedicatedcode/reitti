@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.service;
+package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.User;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -20,12 +20,12 @@ import java.util.Optional;
 
 @Service
 @Transactional
-public class UserService {
+public class UserJdbcService {
 
     private final JdbcTemplate jdbcTemplate;
     private final PasswordEncoder passwordEncoder;
 
-    public UserService(JdbcTemplate jdbcTemplate, PasswordEncoder passwordEncoder) {
+    public UserJdbcService(JdbcTemplate jdbcTemplate, PasswordEncoder passwordEncoder) {
         this.jdbcTemplate = jdbcTemplate;
         this.passwordEncoder = passwordEncoder;
     }

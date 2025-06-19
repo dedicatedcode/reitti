@@ -3,7 +3,7 @@ package com.dedicatedcode.reitti.controller.api;
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.model.RawLocationPoint;
 import com.dedicatedcode.reitti.model.User;
-import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
+import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,11 +31,11 @@ public class LocationDataApiController {
     
     private static final Logger logger = LoggerFactory.getLogger(LocationDataApiController.class);
     
-    private final RawLocationPointRepository rawLocationPointRepository;
+    private final RawLocationPointJdbcService rawLocationPointJdbcService;
     
     @Autowired
-    public LocationDataApiController(RawLocationPointRepository rawLocationPointRepository) {
-        this.rawLocationPointRepository = rawLocationPointRepository;
+    public LocationDataApiController(RawLocationPointJdbcService rawLocationPointJdbcService) {
+        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
     }
 
     @GetMapping("/raw-location-points")
@@ -55,7 +55,7 @@ public class LocationDataApiController {
             User user = (User) userDetails;
             
             // Get raw location points for the user and date range
-            List<LocationDataRequest.LocationPoint> points = rawLocationPointRepository.findByUserAndTimestampBetweenOrderByTimestampAsc(user, startOfDay, endOfDay).stream()
+            List<LocationDataRequest.LocationPoint> points = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, startOfDay, endOfDay).stream()
                 .filter(point -> !point.getTimestamp().isBefore(startOfDay) && point.getTimestamp().isBefore(endOfDay))
                 .sorted(Comparator.comparing(RawLocationPoint::getTimestamp))
                     .map(point -> {

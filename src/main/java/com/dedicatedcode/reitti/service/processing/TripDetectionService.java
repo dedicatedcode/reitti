@@ -3,10 +3,10 @@ package com.dedicatedcode.reitti.service.processing;
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.ProcessedVisitCreatedEvent;
 import com.dedicatedcode.reitti.model.*;
-import com.dedicatedcode.reitti.repository.ProcessedVisitRepository;
-import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
-import com.dedicatedcode.reitti.repository.TripRepository;
-import com.dedicatedcode.reitti.repository.UserRepository;
+import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
+import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
+import com.dedicatedcode.reitti.repository.TripJdbcService;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -27,35 +27,35 @@ public class TripDetectionService {
 
     private static final Logger logger = LoggerFactory.getLogger(TripDetectionService.class);
 
-    private final ProcessedVisitRepository processedVisitRepository;
-    private final RawLocationPointRepository rawLocationPointRepository;
-    private final TripRepository tripRepository;
-    private final UserRepository userRepository;
+    private final ProcessedVisitJdbcService processedVisitJdbcService;
+    private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final TripJdbcService tripJdbcService;
+    private final UserJdbcService userJdbcService;
     private final JdbcTemplate jdbcTemplate;
 
-    public TripDetectionService(ProcessedVisitRepository processedVisitRepository,
-                                RawLocationPointRepository rawLocationPointRepository,
-                                TripRepository tripRepository,
-                                UserRepository userRepository,
+    public TripDetectionService(ProcessedVisitJdbcService processedVisitJdbcService,
+                                RawLocationPointJdbcService rawLocationPointJdbcService,
+                                TripJdbcService tripJdbcService,
+                                UserJdbcService userJdbcService,
                                 JdbcTemplate jdbcTemplate) {
-        this.processedVisitRepository = processedVisitRepository;
-        this.rawLocationPointRepository = rawLocationPointRepository;
-        this.tripRepository = tripRepository;
-        this.userRepository = userRepository;
+        this.processedVisitJdbcService = processedVisitJdbcService;
+        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.tripJdbcService = tripJdbcService;
+        this.userJdbcService = userJdbcService;
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    @RabbitListener(queues = RabbitMQConfig.DETECT_TRIP_QUEUE, concurrency = "1")
+    @RabbitListener(queues = RabbitMQConfig.DETECT_TRIP_QUEUE, concurrency = "1-16")
     public void visitCreated(ProcessedVisitCreatedEvent event) {
-        User user = this.userRepository.findByUsername(event.getUsername()).orElseThrow();
+        User user = this.userJdbcService.findByUsername(event.getUsername()).orElseThrow();
 
-        Optional<ProcessedVisit> createdVisit = this.processedVisitRepository.findByUserAndId(user, event.getVisitId());
+        Optional<ProcessedVisit> createdVisit = this.processedVisitJdbcService.findByUserAndId(user, event.getVisitId());
         createdVisit.ifPresent(visit -> {
             //find visits in timerange
             Instant searchStart = visit.getStartTime().minus(1, ChronoUnit.DAYS);
             Instant searchEnd = visit.getEndTime().plus(1, ChronoUnit.DAYS);
 
-            List<ProcessedVisit> visits = this.processedVisitRepository.findByUserAndTimeOverlap(user, searchStart, searchEnd);
+            List<ProcessedVisit> visits = this.processedVisitJdbcService.findByUserAndTimeOverlap(user, searchStart, searchEnd);
 
             visits.sort(Comparator.comparing(ProcessedVisit::getStartTime));
 
@@ -77,7 +77,7 @@ public class TripDetectionService {
                 }
             }
 
-            bulkInsert(trips);
+            bulkInsert(user, trips);
 
         });
     }
@@ -89,7 +89,7 @@ public class TripDetectionService {
         // Trip ends when the second visit starts
         Instant tripEndTime = endVisit.getStartTime();
 
-        if (this.processedVisitRepository.findById(startVisit.getId()).isEmpty() || this.processedVisitRepository.findById(endVisit.getId()).isEmpty()) {
+        if (this.processedVisitJdbcService.findById(startVisit.getId()).isEmpty() || this.processedVisitJdbcService.findById(endVisit.getId()).isEmpty()) {
             logger.debug("One of the following visits [{},{}] where already deleted. Will skip trip creation.", startVisit.getId(), endVisit.getId());
             return null;
         }
@@ -101,47 +101,30 @@ public class TripDetectionService {
         }
 
         // Check if a trip already exists with the same start and end times
-        if (tripRepository.existsByUserAndStartTimeAndEndTime(user, tripStartTime, tripEndTime)) {
+        if (tripJdbcService.existsByUserAndStartTimeAndEndTime(user, tripStartTime, tripEndTime)) {
             logger.debug("Trip already exists for user {} from {} to {}",
                     user.getUsername(), tripStartTime, tripEndTime);
             return null;
         }
 
-
-        if (tripRepository.existsByUserAndStartPlaceAndEndPlaceAndStartTimeAndEndTime(user, startVisit.getPlace(), endVisit.getPlace(), tripStartTime, tripEndTime))  {
-            logger.debug("Duplicated trip detected, will not store it");
-            return null;
-        }
-
         // Get location points between the two visits
-        List<RawLocationPoint> tripPoints = rawLocationPointRepository
+        List<RawLocationPoint> tripPoints = rawLocationPointJdbcService
                 .findByUserAndTimestampBetweenOrderByTimestampAsc(
                         user, tripStartTime, tripEndTime);
-
-        // Create a new trip
-        Trip trip = new Trip();
-        trip.setUser(user);
-        trip.setStartTime(tripStartTime);
-        trip.setEndTime(tripEndTime);
-
-        // Set start and end places
-        trip.setStartPlace(startVisit.getPlace());
-        trip.setEndPlace(endVisit.getPlace());
-
-        // Calculate estimated distance (straight-line distance between places)
         double estimatedDistanceInMeters = calculateDistanceBetweenPlaces(startVisit.getPlace(), endVisit.getPlace());
-        trip.setEstimatedDistanceMeters(estimatedDistanceInMeters);
-
-        // Calculate travelled distance (sum of distances between consecutive points)
         double travelledDistanceMeters = GeoUtils.calculateTripDistance(tripPoints);
-        trip.setTravelledDistanceMeters(travelledDistanceMeters);
-
-        // Infer transport mode based on speed and distance
+        // Create a new trip
         String transportMode = inferTransportMode(travelledDistanceMeters != 0 ? travelledDistanceMeters : estimatedDistanceInMeters, tripStartTime, tripEndTime);
-        trip.setTransportModeInferred(transportMode);
-
-        trip.setStartVisit(startVisit);
-        trip.setEndVisit(endVisit);
+        Trip trip = new Trip(
+                tripStartTime,
+                tripEndTime,
+                tripEndTime.getEpochSecond() - tripStartTime.getEpochSecond(),
+                estimatedDistanceInMeters,
+                travelledDistanceMeters,
+                transportMode,
+                startVisit,
+                endVisit
+        );
         logger.debug("Created trip from {} to {}: travelled distance={}m, mode={}",
                 startVisit.getPlace().getName(), endVisit.getPlace().getName(), Math.round(travelledDistanceMeters), transportMode);
 
@@ -182,7 +165,7 @@ public class TripDetectionService {
         }
     }
 
-    private void bulkInsert(List<Trip> tripsToInsert) {
+    private void bulkInsert(User user, List<Trip> tripsToInsert) {
         if (tripsToInsert.isEmpty()) {
             return;
         }
@@ -190,16 +173,14 @@ public class TripDetectionService {
         logger.debug("Bulk inserting {} trips", tripsToInsert.size());
         
         String sql = """
-            INSERT INTO trips (user_id, start_place_id, end_place_id, start_visit_id, end_visit_id, start_time, end_time, 
-                              duration_seconds, estimated_distance_meters, travelled_distance_meters, transport_mode_inferred, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO trips (user_id, start_visit_id, end_visit_id, start_time, end_time,
+                              duration_seconds, estimated_distance_meters, travelled_distance_meters, transport_mode_inferred, version)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING;
             """;
         
         List<Object[]> batchArgs = tripsToInsert.stream()
             .map(trip -> new Object[]{
-                trip.getUser().getId(),
-                trip.getStartPlace().getId(),
-                trip.getEndPlace().getId(),
+                    user.getId(),
                 trip.getStartVisit().getId(),
                 trip.getEndVisit().getId(),
                 Timestamp.from(trip.getStartTime()),
@@ -208,8 +189,7 @@ public class TripDetectionService {
                 trip.getEstimatedDistanceMeters(),
                 trip.getTravelledDistanceMeters(),
                 trip.getTransportModeInferred(),
-                Timestamp.from(Instant.now()),
-                Timestamp.from(Instant.now())
+                trip.getVersion()
             })
             .collect(Collectors.toList());
         

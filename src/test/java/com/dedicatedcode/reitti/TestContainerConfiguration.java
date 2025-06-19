@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti;
 
+import com.redis.testcontainers.RedisContainer;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
@@ -25,5 +26,11 @@ public class TestContainerConfiguration {
         return new RabbitMQContainer("rabbitmq:3-management")
                 .withExposedPorts(5672, 15672);
 
+    }
+
+    @Bean
+    @ServiceConnection
+    public RedisContainer redisContainer() {
+        return new RedisContainer("redis:7-alpine");
     }
 }

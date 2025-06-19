@@ -2,21 +2,23 @@ package com.dedicatedcode.reitti.event;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.List;
+
 public class VisitUpdatedEvent {
     private final String username;
-    private final long visitId;
+    private final List<Long> visitIds;
     public VisitUpdatedEvent(
             @JsonProperty String username,
-            @JsonProperty long visitId) {
+            @JsonProperty List<Long> visitIds) {
         this.username = username;
-        this.visitId = visitId;
+        this.visitIds = visitIds;
     }
 
     public String getUsername() {
         return username;
     }
 
-    public long getVisitId() {
-        return visitId;
+    public List<Long> getVisitIds() {
+        return visitIds;
     }
 }

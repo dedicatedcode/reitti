@@ -1,14 +1,10 @@
 package com.dedicatedcode.reitti.model;
 
-import java.time.Duration;
 import java.time.Instant;
 
 public class Trip {
     
     private final Long id;
-    private final User user;
-    private final SignificantPlace startPlace;
-    private final SignificantPlace endPlace;
     private final Instant startTime;
     private final Instant endTime;
     private final Long durationSeconds;
@@ -19,23 +15,15 @@ public class Trip {
     private final ProcessedVisit endVisit;
     private final Long version;
 
-    public Trip() {
-        this(null, null, null, null, null, null, null, null, null, null, null, null);
-    }
-
-    public Trip(User user, SignificantPlace startPlace, SignificantPlace endPlace, Instant startTime, Instant endTime, Double estimatedDistanceMeters, String transportModeInferred, ProcessedVisit startVisit, ProcessedVisit endVisit) {
-        this(null, user, startPlace, endPlace, startTime, endTime, estimatedDistanceMeters, null, transportModeInferred, startVisit, endVisit, null);
+    public Trip(Instant startTime, Instant endTime, Long durationSeconds, Double estimatedDistanceMeters, Double travelledDistanceMeters, String transportModeInferred, ProcessedVisit startVisit, ProcessedVisit endVisit) {
+        this(null, startTime, endTime, durationSeconds, estimatedDistanceMeters, travelledDistanceMeters, transportModeInferred, startVisit, endVisit, 1L);
     }
     
-    public Trip(Long id, User user, SignificantPlace startPlace, SignificantPlace endPlace, Instant startTime, Instant endTime, Double estimatedDistanceMeters, Double travelledDistanceMeters, String transportModeInferred, ProcessedVisit startVisit, ProcessedVisit endVisit, Long version) {
+    public Trip(Long id, Instant startTime, Instant endTime, Long durationSeconds, Double estimatedDistanceMeters, Double travelledDistanceMeters, String transportModeInferred, ProcessedVisit startVisit, ProcessedVisit endVisit, Long version) {
         this.id = id;
-        this.user = user;
-        this.startPlace = startPlace;
-        this.endPlace = endPlace;
         this.startTime = startTime;
         this.endTime = endTime;
-        this.durationSeconds = (startTime != null && endTime != null) ? 
-            Duration.between(startTime, endTime).getSeconds() : null;
+        this.durationSeconds = durationSeconds;
         this.estimatedDistanceMeters = estimatedDistanceMeters;
         this.travelledDistanceMeters = travelledDistanceMeters;
         this.transportModeInferred = transportModeInferred;
@@ -46,18 +34,6 @@ public class Trip {
 
     public Long getId() {
         return id;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public SignificantPlace getStartPlace() {
-        return startPlace;
-    }
-
-    public SignificantPlace getEndPlace() {
-        return endPlace;
     }
 
     public Instant getStartTime() {
@@ -96,5 +72,7 @@ public class Trip {
         return version;
     }
 
-
+    public Trip withId(Long id) {
+        return new Trip(id, this.startTime, this.endTime, this.durationSeconds, this.estimatedDistanceMeters, this.travelledDistanceMeters, this.transportModeInferred, this.startVisit, this.endVisit, this.version);
+    }
 }

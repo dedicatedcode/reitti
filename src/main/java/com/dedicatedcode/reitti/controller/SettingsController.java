@@ -1,13 +1,12 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.dto.TimelineResponse;
-import com.dedicatedcode.reitti.model.ApiToken;
-import com.dedicatedcode.reitti.model.GeocodeService;
-import com.dedicatedcode.reitti.model.SignificantPlace;
-import com.dedicatedcode.reitti.model.User;
-import com.dedicatedcode.reitti.repository.GeocodeServiceRepository;
+import com.dedicatedcode.reitti.model.*;
+import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
+import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.*;
-import com.dedicatedcode.reitti.model.ImmichIntegration;
+
 import java.util.Optional;
 import com.dedicatedcode.reitti.service.processing.RawLocationPointProcessingTrigger;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,14 +16,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.LocaleResolver;
 
 import java.io.IOException;
@@ -38,11 +37,12 @@ import java.util.stream.Collectors;
 public class SettingsController {
 
     private final ApiTokenService apiTokenService;
-    private final UserService userService;
+    private final UserJdbcService userJdbcService;
     private final QueueStatsService queueStatsService;
     private final PlaceService placeService;
+    private final SignificantPlaceJdbcService placeJdbcService;
     private final ImportHandler importHandler;
-    private final GeocodeServiceRepository geocodeServiceRepository;
+    private final GeocodeServiceJdbcService geocodeServiceJdbcService;
     private final RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger;
     private final ImmichIntegrationService immichIntegrationService;
     private final int maxErrors;
@@ -53,11 +53,11 @@ public class SettingsController {
     private static final Logger logger = LoggerFactory.getLogger(SettingsController.class);
 
     public SettingsController(ApiTokenService apiTokenService,
-                              UserService userService,
+                              UserJdbcService userJdbcService,
                               QueueStatsService queueStatsService,
-                              PlaceService placeService,
+                              PlaceService placeService, SignificantPlaceJdbcService placeJdbcService,
                               ImportHandler importHandler,
-                              GeocodeServiceRepository geocodeServiceRepository,
+                              GeocodeServiceJdbcService geocodeServiceJdbcService,
                               RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger,
                               ImmichIntegrationService immichIntegrationService,
                               @Value("${reitti.geocoding.max-errors}") int maxErrors,
@@ -65,11 +65,12 @@ public class SettingsController {
                               MessageSource messageSource,
                               LocaleResolver localeResolver) {
         this.apiTokenService = apiTokenService;
-        this.userService = userService;
+        this.userJdbcService = userJdbcService;
         this.queueStatsService = queueStatsService;
         this.placeService = placeService;
+        this.placeJdbcService = placeJdbcService;
         this.importHandler = importHandler;
-        this.geocodeServiceRepository = geocodeServiceRepository;
+        this.geocodeServiceJdbcService = geocodeServiceJdbcService;
         this.rawLocationPointProcessingTrigger = rawLocationPointProcessingTrigger;
         this.immichIntegrationService = immichIntegrationService;
         this.maxErrors = maxErrors;
@@ -98,7 +99,7 @@ public class SettingsController {
 
     @GetMapping("/api-tokens-content")
     public String getApiTokensContent(Authentication authentication, Model model) {
-        User currentUser = userService.getUserByUsername(authentication.getName());
+        User currentUser = userJdbcService.getUserByUsername(authentication.getName());
         model.addAttribute("tokens", apiTokenService.getTokensForUser(currentUser));
         return "fragments/settings :: api-tokens-content";
     }
@@ -106,7 +107,7 @@ public class SettingsController {
     @GetMapping("/users-content")
     public String getUsersContent(Authentication authentication, Model model) {
         String currentUsername = authentication.getName();
-        List<User> users = userService.getAllUsers();
+        List<User> users = userJdbcService.getAllUsers();
         model.addAttribute("users", users);
         model.addAttribute("currentUsername", currentUsername);
         return "fragments/settings :: users-content";
@@ -116,7 +117,7 @@ public class SettingsController {
     public String getPlacesContent(Authentication authentication,
                                    @RequestParam(defaultValue = "0") int page,
                                    Model model) {
-        User currentUser = userService.getUserByUsername(authentication.getName());
+        User currentUser = userJdbcService.getUserByUsername(authentication.getName());
         Page<SignificantPlace> placesPage = placeService.getPlacesForUser(currentUser, PageRequest.of(page, 20));
 
         // Convert to PlaceInfo objects
@@ -142,7 +143,7 @@ public class SettingsController {
 
     @PostMapping("/tokens")
     public String createToken(Authentication authentication, @RequestParam String name, Model model) {
-        User user = userService.getUserByUsername(authentication.getName());
+        User user = userJdbcService.getUserByUsername(authentication.getName());
 
         try {
             apiTokenService.createToken(user, name);
@@ -161,7 +162,7 @@ public class SettingsController {
 
     @PostMapping("/tokens/{tokenId}/delete")
     public String deleteToken(@PathVariable Long tokenId, Authentication authentication, Model model) {
-        User user = userService.getUserByUsername(authentication.getName());
+        User user = userJdbcService.getUserByUsername(authentication.getName());
 
         try {
             apiTokenService.deleteToken(tokenId);
@@ -181,14 +182,14 @@ public class SettingsController {
     @PostMapping("/users/{userId}/delete")
     public String deleteUser(@PathVariable Long userId, Authentication authentication, Model model) {
         String currentUsername = authentication.getName();
-        User currentUser = userService.getUserByUsername(currentUsername);
+        User currentUser = userJdbcService.getUserByUsername(currentUsername);
 
         // Prevent self-deletion
         if (currentUser.getId().equals(userId)) {
             model.addAttribute("errorMessage", getMessage("message.error.user.self.delete"));
         } else {
             try {
-                userService.deleteUser(userId);
+                userJdbcService.deleteUser(userId);
                 model.addAttribute("successMessage", getMessage("message.success.user.deleted"));
             } catch (Exception e) {
                 model.addAttribute("errorMessage", getMessage("message.error.user.deletion", e.getMessage()));
@@ -196,7 +197,7 @@ public class SettingsController {
         }
 
         // Get updated user list and add to model
-        List<User> users = userService.getAllUsers();
+        List<User> users = userJdbcService.getAllUsers();
         model.addAttribute("users", users);
         model.addAttribute("currentUsername", currentUsername);
 
@@ -209,19 +210,23 @@ public class SettingsController {
     public Map<String, Object> updatePlace(@PathVariable Long placeId,
                                            @RequestParam String name,
                                            Authentication authentication) {
+
+        User user = (User) authentication.getPrincipal();
         Map<String, Object> response = new HashMap<>();
+        if (this.placeJdbcService.exists(user, placeId)) {
+            try {
+                SignificantPlace significantPlace = placeJdbcService.findById(placeId).orElseThrow();
+                placeJdbcService.update(significantPlace.withName(name));
 
-        try {
-            User currentUser = userService.getUserByUsername(authentication.getName());
-            placeService.updatePlaceName(placeId, name, currentUser);
-
-            response.put("message", getMessage("message.success.place.updated"));
-            response.put("success", true);
-        } catch (Exception e) {
-            response.put("message", getMessage("message.error.place.update", e.getMessage()));
-            response.put("success", false);
+                response.put("message", getMessage("message.success.place.updated"));
+                response.put("success", true);
+            } catch (Exception e) {
+                response.put("message", getMessage("message.error.place.update", e.getMessage()));
+                response.put("success", false);
+            }
+        } else {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
-
         return response;
     }
 
@@ -234,14 +239,14 @@ public class SettingsController {
         String currentUsername = authentication.getName();
 
         try {
-            userService.createUser(username, displayName, password);
+            userJdbcService.createUser(username, displayName, password);
             model.addAttribute("successMessage", getMessage("message.success.user.created"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("message.error.user.creation", e.getMessage()));
         }
 
         // Get updated user list and add to model
-        List<User> users = userService.getAllUsers();
+        List<User> users = userJdbcService.getAllUsers();
         model.addAttribute("users", users);
         model.addAttribute("currentUsername", currentUsername);
 
@@ -257,11 +262,11 @@ public class SettingsController {
                              Authentication authentication,
                              Model model) {
         String currentUsername = authentication.getName();
-        User currentUser = userService.getUserById(userId);
+        User currentUser = userJdbcService.getUserById(userId);
         boolean isCurrentUser = currentUser.getId().equals(userId);
 
         try {
-            userService.updateUser(userId, username, displayName, password);
+            userJdbcService.updateUser(userId, username, displayName, password);
             model.addAttribute("successMessage", getMessage("message.success.user.updated"));
 
             // If the current user was updated, update the authentication
@@ -275,7 +280,7 @@ public class SettingsController {
         }
 
         // Get updated user list and add to model
-        List<User> users = userService.getAllUsers();
+        List<User> users = userJdbcService.getAllUsers();
         model.addAttribute("users", users);
         model.addAttribute("currentUsername", isCurrentUser ? username : currentUsername);
 
@@ -317,7 +322,7 @@ public class SettingsController {
 
     @GetMapping("/integrations-content")
     public String getIntegrationsContent(Authentication authentication, Model model, HttpServletRequest request) {
-        User currentUser = userService.getUserByUsername(authentication.getName());
+        User currentUser = userJdbcService.getUserByUsername(authentication.getName());
         List<ApiToken> tokens = apiTokenService.getTokensForUser(currentUser);
 
         // Add the first token if available
@@ -349,7 +354,7 @@ public class SettingsController {
 
     @GetMapping("/photos-content")
     public String getPhotosContent(Authentication authentication, Model model) {
-        User currentUser = userService.getUserByUsername(authentication.getName());
+        User currentUser = userJdbcService.getUserByUsername(authentication.getName());
         Optional<ImmichIntegration> integration = immichIntegrationService.getIntegrationForUser(currentUser);
         
         if (integration.isPresent()) {
@@ -368,7 +373,7 @@ public class SettingsController {
                                        @RequestParam(defaultValue = "false") boolean enabled,
                                        Authentication authentication,
                                        Model model) {
-        User currentUser = userService.getUserByUsername(authentication.getName());
+        User currentUser = userJdbcService.getUserByUsername(authentication.getName());
         
         try {
             ImmichIntegration integration = immichIntegrationService.saveIntegration(
@@ -379,12 +384,8 @@ public class SettingsController {
             model.addAttribute("successMessage", getMessage("integrations.immich.config.saved"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("integrations.immich.config.error", e.getMessage()));
-            
             // Re-populate form with submitted values
-            ImmichIntegration tempIntegration = new ImmichIntegration();
-            tempIntegration.setServerUrl(serverUrl);
-            tempIntegration.setApiToken(apiToken);
-            tempIntegration.setEnabled(enabled);
+            ImmichIntegration tempIntegration = new ImmichIntegration(serverUrl, apiToken, enabled);
             model.addAttribute("immichIntegration", tempIntegration);
             model.addAttribute("hasIntegration", true);
         }
@@ -598,7 +599,7 @@ public class SettingsController {
 
     @GetMapping("/geocode-services-content")
     public String getGeocodeServicesContent(Model model) {
-        model.addAttribute("geocodeServices", geocodeServiceRepository.findAllByOrderByNameAsc());
+        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
         model.addAttribute("maxErrors", maxErrors);
         return "fragments/settings :: geocode-services-content";
     }
@@ -608,47 +609,45 @@ public class SettingsController {
                                        @RequestParam String urlTemplate,
                                        Model model) {
         try {
-            GeocodeService service = new GeocodeService(name, urlTemplate);
-            geocodeServiceRepository.save(service);
+            GeocodeService service = new GeocodeService(name, urlTemplate, true, 0, null, null);
+            geocodeServiceJdbcService.save(service);
             model.addAttribute("successMessage", getMessage("message.success.geocode.created"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("message.error.geocode.creation", e.getMessage()));
         }
 
-        model.addAttribute("geocodeServices", geocodeServiceRepository.findAllByOrderByNameAsc());
+        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
         model.addAttribute("maxErrors", maxErrors);
         return "fragments/settings :: geocode-services-content";
     }
 
     @PostMapping("/geocode-services/{id}/toggle")
     public String toggleGeocodeService(@PathVariable Long id, Model model) {
-        GeocodeService service = geocodeServiceRepository.findById(id).orElseThrow();
-        service.setEnabled(!service.isEnabled());
+        GeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
+        service = service.withEnabled(!service.isEnabled());
         if (service.isEnabled()) {
-            service.setErrorCount(0);
+            service = service.resetErrorCount();
         }
-        geocodeServiceRepository.save(service);
-        model.addAttribute("geocodeServices", geocodeServiceRepository.findAllByOrderByNameAsc());
+        geocodeServiceJdbcService.save(service);
+        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
         model.addAttribute("maxErrors", maxErrors);
         return "fragments/settings :: geocode-services-content";
     }
 
     @PostMapping("/geocode-services/{id}/delete")
     public String deleteGeocodeService(@PathVariable Long id, Model model) {
-        GeocodeService service = geocodeServiceRepository.findById(id).orElseThrow();
-        geocodeServiceRepository.delete(service);
-        model.addAttribute("geocodeServices", geocodeServiceRepository.findAllByOrderByNameAsc());
+        GeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
+        geocodeServiceJdbcService.delete(service);
+        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
         model.addAttribute("maxErrors", maxErrors);
         return "fragments/settings :: geocode-services-content";
     }
 
     @PostMapping("/geocode-services/{id}/reset-errors")
     public String resetGeocodeServiceErrors(@PathVariable Long id, Model model) {
-        GeocodeService service = geocodeServiceRepository.findById(id).orElseThrow();
-        service.setErrorCount(0);
-        service.setEnabled(true);
-        geocodeServiceRepository.save(service);
-        model.addAttribute("geocodeServices", geocodeServiceRepository.findAllByOrderByNameAsc());
+        GeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
+        geocodeServiceJdbcService.save(service.resetErrorCount().withEnabled(true));
+        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
         model.addAttribute("maxErrors", maxErrors);
         return "fragments/settings :: geocode-services-content";
     }

@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.service;
+package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.ApiToken;
 import com.dedicatedcode.reitti.model.User;
@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 

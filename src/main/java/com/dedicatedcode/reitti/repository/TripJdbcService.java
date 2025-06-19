@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.repository;
 
+import com.dedicatedcode.reitti.model.ProcessedVisit;
 import com.dedicatedcode.reitti.model.Trip;
 import com.dedicatedcode.reitti.model.User;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -18,16 +19,17 @@ import java.util.Optional;
 public class TripJdbcService {
 
     private final JdbcTemplate jdbcTemplate;
-
-    public TripJdbcService(JdbcTemplate jdbcTemplate) {
+    private final ProcessedVisitJdbcService processedVisitJdbcService;
+    public TripJdbcService(JdbcTemplate jdbcTemplate, ProcessedVisitJdbcService processedVisitJdbcService) {
         this.jdbcTemplate = jdbcTemplate;
+        this.processedVisitJdbcService = processedVisitJdbcService;
     }
 
-    private static final RowMapper<Trip> TRIP_ROW_MAPPER = new RowMapper<Trip>() {
+    private final RowMapper<Trip> TRIP_ROW_MAPPER = new RowMapper<Trip>() {
         @Override
         public Trip mapRow(ResultSet rs, int rowNum) throws SQLException {
-            // Note: This is a simplified mapping - actual Trip entity would need
-            // proper handling of start/end places and visits
+            ProcessedVisit startVisit = processedVisitJdbcService.findById(rs.getLong("start_visit_id")).orElseThrow();
+            ProcessedVisit endVisit  = processedVisitJdbcService.findById(rs.getLong("end_visit_id")).orElseThrow();
             return new Trip(
                     rs.getLong("id"),
                     rs.getTimestamp("start_time").toInstant(),
@@ -36,8 +38,8 @@ public class TripJdbcService {
                     rs.getDouble("estimated_distance_meters"),
                     rs.getDouble("travelled_distance_meters"),
                     rs.getString("transport_mode_inferred"),
-                    null, // endPlace - would need join
-                    null, // endVisit - would need join
+                    startVisit,
+                    endVisit,
                     rs.getLong("version")
             );
         }

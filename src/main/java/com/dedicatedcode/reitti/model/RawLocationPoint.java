@@ -9,8 +9,6 @@ public class RawLocationPoint {
     
     private final Long id;
     
-    private final User user;
-    
     private final Instant timestamp;
     
     private final Double accuracyMeters;
@@ -24,20 +22,19 @@ public class RawLocationPoint {
     private final Long version;
 
     public RawLocationPoint() {
-        this(null, null, null, null, null, null, false, null);
+        this(null, null, null, null, null, false, null);
     }
     
-    public RawLocationPoint(User user, Instant timestamp, Point geom, Double accuracyMeters) {
-        this(null, user, timestamp, geom, accuracyMeters, null, false, null);
+    public RawLocationPoint(Instant timestamp, Point geom, Double accuracyMeters) {
+        this(null, timestamp, geom, accuracyMeters, null, false, null);
     }
     
-    public RawLocationPoint(User user, Instant timestamp, Point geom, Double accuracyMeters, String activityProvided) {
-        this(null, user, timestamp, geom, accuracyMeters, activityProvided, false, null);
+    public RawLocationPoint(Instant timestamp, Point geom, Double accuracyMeters, String activityProvided) {
+        this(null, timestamp, geom, accuracyMeters, activityProvided, false, null);
     }
     
-    public RawLocationPoint(Long id, User user, Instant timestamp, Point geom, Double accuracyMeters, String activityProvided, boolean processed, Long version) {
+    public RawLocationPoint(Long id, Instant timestamp, Point geom, Double accuracyMeters, String activityProvided, boolean processed, Long version) {
         this.id = id;
-        this.user = user;
         this.timestamp = timestamp;
         this.geom = geom;
         this.accuracyMeters = accuracyMeters;
@@ -48,10 +45,6 @@ public class RawLocationPoint {
 
     public Long getId() {
         return id;
-    }
-
-    public User getUser() {
-        return user;
     }
 
     public Instant getTimestamp() {
@@ -83,7 +76,11 @@ public class RawLocationPoint {
     }
 
     public RawLocationPoint markProcessed() {
-        return new RawLocationPoint(this.id, this.user, this.timestamp, this.geom, this.accuracyMeters, this.activityProvided, true, this.version);
+        return new RawLocationPoint(this.id, this.timestamp, this.geom, this.accuracyMeters, this.activityProvided, true, this.version);
+    }
+
+    public RawLocationPoint withId(Long id) {
+        return new RawLocationPoint(id, timestamp, geom, accuracyMeters, activityProvided, processed, version);
     }
 
     public Long getVersion() {
@@ -101,4 +98,5 @@ public class RawLocationPoint {
     public int hashCode() {
         return Objects.hashCode(id);
     }
+
 }

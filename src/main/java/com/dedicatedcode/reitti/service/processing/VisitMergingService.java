@@ -3,7 +3,6 @@ package com.dedicatedcode.reitti.service.processing;
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.ProcessedVisitCreatedEvent;
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
-import com.dedicatedcode.reitti.event.VisitCreatedEvent;
 import com.dedicatedcode.reitti.event.VisitUpdatedEvent;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.*;
@@ -18,77 +17,72 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.DoubleStream;
 
 @Service
 public class VisitMergingService {
 
     private static final Logger logger = LoggerFactory.getLogger(VisitMergingService.class);
 
-    private final VisitRepository visitRepository;
-    private final ProcessedVisitRepository processedVisitRepository;
-    private final UserRepository userRepository;
-    private final RabbitTemplate rabbitTemplate;
-    private final SignificantPlaceRepository significantPlaceRepository;
-    private final RawLocationPointRepository rawLocationPointRepository;
+    private final VisitJdbcService visitJdbcService;
+    private final ProcessedVisitJdbcService processedVisitJdbcService;
+    private final UserJdbcService userJdbcService;
+    private final SignificantPlaceJdbcService significantPlaceJdbcService;
+    private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final GeometryFactory geometryFactory;
     private final JdbcTemplate jdbcTemplate;
+    private final RabbitTemplate rabbitTemplate;
     @Value("${reitti.visit.merge-threshold-seconds:300}")
     private long mergeThresholdSeconds;
     @Value("${reitti.visit.merge-threshold-meters:100}")
     private long mergeThresholdMeters;
 
     @Autowired
-    public VisitMergingService(VisitRepository visitRepository,
-                               ProcessedVisitRepository processedVisitRepository,
-                               UserRepository userRepository,
+    public VisitMergingService(VisitJdbcService visitJdbcService,
+                               ProcessedVisitJdbcService processedVisitJdbcService,
+                               UserJdbcService userJdbcService,
                                RabbitTemplate rabbitTemplate,
-                               SignificantPlaceRepository significantPlaceRepository,
-                               RawLocationPointRepository rawLocationPointRepository,
+                               SignificantPlaceJdbcService significantPlaceJdbcService,
+                               RawLocationPointJdbcService rawLocationPointJdbcService,
                                GeometryFactory geometryFactory,
                                JdbcTemplate jdbcTemplate) {
-        this.visitRepository = visitRepository;
-        this.processedVisitRepository = processedVisitRepository;
-        this.userRepository = userRepository;
+        this.visitJdbcService = visitJdbcService;
+        this.processedVisitJdbcService = processedVisitJdbcService;
+        this.userJdbcService = userJdbcService;
         this.rabbitTemplate = rabbitTemplate;
-        this.significantPlaceRepository = significantPlaceRepository;
-        this.rawLocationPointRepository = rawLocationPointRepository;
+        this.significantPlaceJdbcService = significantPlaceJdbcService;
+        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.geometryFactory = geometryFactory;
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE, concurrency = "1")
+    @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE, concurrency = "1-16")
     public void visitUpdated(VisitUpdatedEvent event) {
-        try {
-            handleEvent(event.getUsername(), event.getVisitId());
-        } catch (Exception e) {
-            logger.error("Could not handle event: {}", event);
-        }
+        handleEvent(event.getUsername(), event.getVisitIds());
     }
 
-    private void handleEvent(String username, long visitId) {
-        Optional<User> user = userRepository.findByUsername(username);
+    private void handleEvent(String username, List<Long> visitIds) {
+        Optional<User> user = userJdbcService.findByUsername(username);
         if (user.isEmpty()) {
             logger.warn("User not found for userName: {}", username);
             return;
         }
-
-        Optional<Visit> visitOpt = this.visitRepository.findById(visitId);
-        if (visitOpt.isEmpty()) {
-            logger.debug("Visit not found for visitId: {}", visitId);
+        List<Visit> visits = this.visitJdbcService.findAllByIds(visitIds);
+        if (visits.isEmpty()) {
+            logger.debug("Visit not found for visitId: {}", visitIds);
             return;
         }
 
 
-        Visit visit = visitOpt.get();
-        Instant searchStart = visit.getStartTime().minus(1, ChronoUnit.DAYS);
-        Instant searchEnd = visit.getEndTime().plus(1, ChronoUnit.DAYS);
+        Instant searchStart = visits.stream().min(Comparator.comparing(Visit::getStartTime)).map(Visit::getStartTime).map(instant -> instant.minus(1, ChronoUnit.HOURS)).orElseThrow();
+        Instant searchEnd = visits.stream().max(Comparator.comparing(Visit::getEndTime)).map(Visit::getEndTime).map(instant -> instant.plus(1, ChronoUnit.HOURS)).orElseThrow();
         processAndMergeVisits(user.get(), searchStart.toEpochMilli(), searchEnd.toEpochMilli());
     }
 
@@ -98,8 +92,8 @@ public class VisitMergingService {
 
         Instant searchStart = Instant.ofEpochMilli(start);
         Instant searchEnd = Instant.ofEpochMilli(end);
-        List<ProcessedVisit> visitsAtStart = this.processedVisitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user, searchStart, searchEnd);
-        List<ProcessedVisit> visitsAtEnd = this.processedVisitRepository.findByUserAndEndTimeBetweenOrderByStartTimeAsc(user, searchStart, searchEnd);
+        List<ProcessedVisit> visitsAtStart = this.processedVisitJdbcService.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user, searchStart, searchEnd);
+        List<ProcessedVisit> visitsAtEnd = this.processedVisitJdbcService.findByUserAndEndTimeBetweenOrderByStartTimeAsc(user, searchStart, searchEnd);
 
         if (!visitsAtStart.isEmpty()) {
             searchStart = visitsAtStart.getFirst().getStartTime().minus(1, ChronoUnit.DAYS);
@@ -110,10 +104,11 @@ public class VisitMergingService {
         logger.debug("found {} processed visits at start and {} processed visits at end, will extend search window to {} and {}", visitsAtStart.size(), visitsAtEnd.size(), searchStart, searchEnd);
 
 
-        List<ProcessedVisit> allProcessedVisitsInRange = this.processedVisitRepository.findByUserAndStartTimeGreaterThanEqualAndEndTimeLessThanEqual(user, searchStart, searchEnd);
-        this.processedVisitRepository.deleteAll(allProcessedVisitsInRange);
-
-        List<Visit> allVisits = this.visitRepository.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user, searchStart, searchEnd);
+        List<ProcessedVisit> allProcessedVisitsInRange = this.processedVisitJdbcService.findByUserAndStartTimeGreaterThanEqualAndEndTimeLessThanEqual(user, searchStart, searchEnd);
+        this.processedVisitJdbcService.deleteAll(allProcessedVisitsInRange);
+        this.processedVisitJdbcService.deleteAll(visitsAtStart);
+        this.processedVisitJdbcService.deleteAll(visitsAtEnd);
+        List<Visit> allVisits = this.visitJdbcService.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user, searchStart, searchEnd);
         if (allVisits.isEmpty()) {
             logger.info("No visits found for user: {}", user.getUsername());
             return;
@@ -138,34 +133,37 @@ public class VisitMergingService {
         if (visitsToStore.isEmpty()) {
             return new ArrayList<>();
         }
-        
+
+        List<ProcessedVisit> result = new ArrayList<>();
         logger.debug("Bulk inserting {} processed visits for user {}", visitsToStore.size(), user.getUsername());
-        
+
         String sql = """
-            INSERT INTO processed_visits (user_id, place_id, start_time, end_time, duration_seconds, merged_count, original_visit_ids, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """;
-        
+                INSERT INTO processed_visits (user_id, place_id, start_time, end_time, duration_seconds, merged_count, original_visit_ids)
+                VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING;
+                """;
+
         List<Object[]> batchArgs = visitsToStore.stream()
-            .map(visit -> new Object[]{
-                visit.getUser().getId(),
-                visit.getPlace().getId(),
-                visit.getStartTime(),
-                visit.getEndTime(),
-                visit.getDurationSeconds(),
-                visit.getMergedCount(),
-                visit.getOriginalVisitIds(),
-                Instant.now(),
-                Instant.now()
-            })
-            .collect(Collectors.toList());
-        
+                .map(visit -> new Object[]{
+                        user.getId(),
+                        visit.getPlace().getId(),
+                        Timestamp.from(visit.getStartTime()),
+                        Timestamp.from(visit.getEndTime()),
+                        visit.getDurationSeconds(),
+                        visit.getMergedCount(),
+                        visit.getOriginalVisitIds()
+                })
+                .collect(Collectors.toList());
+
         int[] updateCounts = jdbcTemplate.batchUpdate(sql, batchArgs);
-        logger.debug("Successfully inserted {} processed visits", updateCounts.length);
-        
-        // Return the saved visits by querying them back from the database
-        // We need to get the generated IDs, so we'll save them through the repository
-        return processedVisitRepository.saveAll(visitsToStore);
+        for (int i = 0; i < updateCounts.length; i++) {
+            int updateCount = updateCounts[i];
+            if (updateCount > 0) {
+                Optional<ProcessedVisit> byUserAndStartTimeAndEndTimeAndPlace = this.processedVisitJdbcService.findByUserAndStartTimeAndEndTimeAndPlace(user, visitsToStore.get(i).getStartTime(), visitsToStore.get(i).getEndTime(), visitsToStore.get(i).getPlace());
+                byUserAndStartTimeAndEndTimeAndPlace.ifPresent(result::add);
+            }
+        }
+        logger.debug("Successfully inserted {} processed visits", result.size());
+        return result;
     }
 
     private List<ProcessedVisit> mergeVisitsChronologically(User user, List<Visit> visits) {
@@ -208,7 +206,7 @@ public class VisitMergingService {
 
             //fluke detections
             if (samePlace && !withinTimeThreshold) {
-                List<RawLocationPoint> pointsBetweenVisits = this.rawLocationPointRepository.findByUserAndTimestampBetweenOrderByTimestampAsc(user, currentEndTime, nextVisit.getStartTime());
+                List<RawLocationPoint> pointsBetweenVisits = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, currentEndTime, nextVisit.getStartTime());
                 if (pointsBetweenVisits.size() > 2) {
                     double travelledDistanceInMeters = GeoUtils.calculateTripDistance(pointsBetweenVisits);
                     shouldMergeWithNextVisit = travelledDistanceInMeters < mergeThresholdMeters;
@@ -261,23 +259,20 @@ public class VisitMergingService {
         // Create a point geometry
         Point point = geometryFactory.createPoint(new Coordinate(longitude, latitude));
         // Find places within the merge distance
-        return significantPlaceRepository.findNearbyPlaces(user.getId(), point, GeoUtils.metersToDegreesAtPosition(50, latitude)[0]);
+        return significantPlaceJdbcService.findNearbyPlaces(user.getId(), point, GeoUtils.metersToDegreesAtPosition(50, latitude)[0]);
     }
 
     private SignificantPlace createSignificantPlace(User user, Visit visit) {
-        // Create a point geometry
         Point point = geometryFactory.createPoint(new Coordinate(visit.getLongitude(), visit.getLatitude()));
 
         SignificantPlace significantPlace = new SignificantPlace(
-                user,
                 null, // name will be set later through reverse geocoding or user input
                 null, // address will be set later through reverse geocoding
                 visit.getLatitude(),
                 visit.getLongitude(),
                 point,
-                null
-        );
-        this.significantPlaceRepository.saveAndFlush(significantPlace);
+                null);
+        significantPlace = this.significantPlaceJdbcService.create(user, significantPlace);
         publishSignificantPlaceCreatedEvent(significantPlace);
         return significantPlace;
     }
@@ -286,17 +281,11 @@ public class VisitMergingService {
                                                 SignificantPlace place,
                                                 Instant startTime, Instant endTime,
                                                 Set<Long> originalVisitIds) {
-        // Create a new processed visit
-        ProcessedVisit processedVisit = new ProcessedVisit(user, place, startTime, endTime);
-        processedVisit.setMergedCount(originalVisitIds.size());
-
         // Store original visit IDs as comma-separated string
         String visitIdsStr = originalVisitIds.stream()
                 .map(Object::toString)
                 .collect(Collectors.joining(","));
-        processedVisit.setOriginalVisitIds(visitIdsStr);
-
-        return processedVisit;
+        return new ProcessedVisit(place, startTime, endTime, visitIdsStr, endTime.getEpochSecond() - startTime.getEpochSecond(), originalVisitIds.size());
     }
 
     private void publishSignificantPlaceCreatedEvent(SignificantPlace place) {

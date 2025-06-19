@@ -2,12 +2,11 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.LocationProcessEvent;
-import com.dedicatedcode.reitti.event.VisitCreatedEvent;
 import com.dedicatedcode.reitti.event.VisitUpdatedEvent;
 import com.dedicatedcode.reitti.model.*;
-import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
-import com.dedicatedcode.reitti.repository.VisitRepository;
-import com.dedicatedcode.reitti.service.UserService;
+import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.repository.VisitJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -31,28 +30,28 @@ public class VisitDetectionService {
     private final double distanceThreshold; // meters
     private final long timeThreshold; // seconds
     private final int minPointsInCluster; // Minimum points to form a valid cluster
-    private final UserService userService;
-    private final RawLocationPointRepository rawLocationPointRepository;
-    private final VisitRepository visitRepository;
+    private final UserJdbcService userJdbcService;
+    private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final VisitJdbcService visitJdbcService;
 
     private final RabbitTemplate rabbitTemplate;
     private final JdbcTemplate jdbcTemplate;
 
     @Autowired
     public VisitDetectionService(
-            RawLocationPointRepository rawLocationPointRepository,
+            RawLocationPointJdbcService rawLocationPointJdbcService,
             @Value("${reitti.staypoint.distance-threshold-meters:50}") double distanceThreshold,
             @Value("${reitti.visit.merge-threshold-seconds:300}") long timeThreshold,
             @Value("${reitti.staypoint.min-points:5}") int minPointsInCluster,
-            UserService userService,
-            VisitRepository visitRepository,
+            UserJdbcService userJdbcService,
+            VisitJdbcService visitJdbcService,
             RabbitTemplate rabbitTemplate, JdbcTemplate jdbcTemplate) {
-        this.rawLocationPointRepository = rawLocationPointRepository;
+        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.distanceThreshold = distanceThreshold;
         this.timeThreshold = timeThreshold;
         this.minPointsInCluster = minPointsInCluster;
-        this.userService = userService;
-        this.visitRepository = visitRepository;
+        this.userJdbcService = userJdbcService;
+        this.visitJdbcService = visitJdbcService;
         this.rabbitTemplate = rabbitTemplate;
         this.jdbcTemplate = jdbcTemplate;
 
@@ -63,15 +62,15 @@ public class VisitDetectionService {
     @RabbitListener(queues = RabbitMQConfig.STAY_DETECTION_QUEUE, concurrency = "1-16")
     public void detectStayPoints(LocationProcessEvent incoming) {
         logger.debug("Detecting stay points for user {} from {} to {} ", incoming.getUsername(), incoming.getEarliest(), incoming.getLatest());
-        User user = userService.getUserByUsername(incoming.getUsername());
+        User user = userJdbcService.getUserByUsername(incoming.getUsername());
         // Get points from 1 day before the earliest new point
         Instant windowStart = incoming.getEarliest().minus(Duration.ofDays(1));
         // Get points from 1 day after the latest new point
         Instant windowEnd = incoming.getLatest().plus(Duration.ofDays(1));
 
-        List<RawLocationPointRepository.ClusteredPoint> clusteredPointsInTimeRangeForUser = this.rawLocationPointRepository.findClusteredPointsInTimeRangeForUser(user, windowStart, windowEnd, minPointsInCluster, GeoUtils.metersToDegreesAtPosition(distanceThreshold, 50)[0]);
+        List<RawLocationPointJdbcService.ClusteredPoint> clusteredPointsInTimeRangeForUser = this.rawLocationPointJdbcService.findClusteredPointsInTimeRangeForUser(user, windowStart, windowEnd, minPointsInCluster, GeoUtils.metersToDegreesAtPosition(distanceThreshold, 50)[0]);
         Map<Integer, List<RawLocationPoint>> clusteredByLocation = new HashMap<>();
-        for (RawLocationPointRepository.ClusteredPoint clusteredPoint : clusteredPointsInTimeRangeForUser) {
+        for (RawLocationPointJdbcService.ClusteredPoint clusteredPoint : clusteredPointsInTimeRangeForUser) {
             if (clusteredPoint.getClusterId() != null) {
                 clusteredByLocation.computeIfAbsent(clusteredPoint.getClusterId(), k -> new ArrayList<>()).add(clusteredPoint.getPoint());
             }
@@ -88,9 +87,9 @@ public class VisitDetectionService {
         List<Visit> createdVisits = new ArrayList<>();
 
         for (StayPoint stayPoint : stayPoints) {
-            List<Visit> existingVisitByStart = this.visitRepository.findByUserAndStartTime(user, stayPoint.getArrivalTime());
-            List<Visit> existingVisitByEnd = this.visitRepository.findByUserAndEndTime(user, stayPoint.getDepartureTime());
-            List<Visit> overlappingVisits = this.visitRepository.findByUserAndStartTimeBeforeAndEndTimeAfter(user, stayPoint.getDepartureTime(), stayPoint.getArrivalTime());
+            List<Visit> existingVisitByStart = this.visitJdbcService.findByUserAndStartTime(user, stayPoint.getArrivalTime());
+            List<Visit> existingVisitByEnd = this.visitJdbcService.findByUserAndEndTime(user, stayPoint.getDepartureTime());
+            List<Visit> overlappingVisits = this.visitJdbcService.findByUserAndStartTimeBeforeAndEndTimeAfter(user, stayPoint.getDepartureTime(), stayPoint.getArrivalTime());
 
 
             Set<Visit> visitsToUpdate = new HashSet<>();
@@ -102,14 +101,12 @@ public class VisitDetectionService {
             for (Visit visit : visitsToUpdate) {
                 boolean changed = false;
                 if (stayPoint.getDepartureTime().isAfter(visit.getEndTime())) {
-                    visit.setEndTime(stayPoint.getDepartureTime());
-                    visit.setProcessed(false);
+                    visit = visit.withEndTime(stayPoint.getDepartureTime()).withProcessed(false);
                     changed = true;
                 }
 
                 if (stayPoint.getArrivalTime().isBefore(visit.getEndTime())) {
-                    visit.setStartTime(stayPoint.getArrivalTime().isBefore(visit.getStartTime()) ? stayPoint.getArrivalTime() : visit.getStartTime());
-                    visit.setProcessed(false);
+                    visit = visit.withStartTime(stayPoint.getArrivalTime()).withProcessed(false);
                     changed = true;
                 }
 
@@ -119,7 +116,7 @@ public class VisitDetectionService {
             }
 
             if (visitsToUpdate.isEmpty()) {
-                Visit visit = createVisit(user, stayPoint.getLongitude(), stayPoint.getLatitude(), stayPoint);
+                Visit visit = createVisit(stayPoint.getLongitude(), stayPoint.getLatitude(), stayPoint);
                 logger.debug("Creating new visit: {}", visit);
                 createdVisits.add(visit);
             }
@@ -128,7 +125,7 @@ public class VisitDetectionService {
 
         // Deduplicate visits by ID before bulk update
         List<Visit> deduplicatedVisits = deduplicateVisitsById(updateVisits);
-        
+
         // Check for time-based duplicates and remove them from database
         List<Visit> duplicatesToDelete = findTimeDuplicates(deduplicatedVisits);
         if (!duplicatesToDelete.isEmpty()) {
@@ -136,13 +133,12 @@ public class VisitDetectionService {
             // Remove deleted visits from the list to update
             deduplicatedVisits.removeAll(duplicatesToDelete);
         }
-        
-        bulkUpdate(deduplicatedVisits).forEach(visit -> {
-            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitUpdatedEvent(user.getUsername(), visit.getId()));
-        });
-        bulkInsert(user, createdVisits).forEach(visit -> {
-            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitUpdatedEvent(user.getUsername(), visit.getId()));
-        });
+
+        List<Long> updatedIds = bulkUpdate(deduplicatedVisits).stream().map(Visit::getId).toList();
+
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitUpdatedEvent(user.getUsername(), updatedIds));
+        List<Long> createdIds = bulkInsert(user, createdVisits).stream().map(Visit::getId).toList();
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitUpdatedEvent(user.getUsername(), createdIds));
     }
 
     private List<Visit> bulkInsert(User user, List<Visit> visitsToInsert) {
@@ -153,13 +149,13 @@ public class VisitDetectionService {
 
         List<Visit> createdVisits = new ArrayList<>();
         String sql = """
-                INSERT INTO visits (user_id, latitude, longitude, start_time, end_time, duration_seconds, processed)
-                VALUES (?, ?, ?, ?, ?, ?, false) ON CONFLICT DO NOTHING;
+                INSERT INTO visits (user_id, latitude, longitude, start_time, end_time, duration_seconds, processed, version)
+                VALUES (?, ?, ?, ?, ?, ?, false, 1) ON CONFLICT DO NOTHING;
                 """;
 
         List<Object[]> batchArgs = visitsToInsert.stream()
                 .map(visit -> new Object[]{
-                        visit.getUser().getId(),
+                        user.getId(),
                         visit.getLatitude(),
                         visit.getLongitude(),
                         Timestamp.from(visit.getStartTime()),
@@ -172,7 +168,7 @@ public class VisitDetectionService {
         for (int i = 0; i < updateCounts.length; i++) {
             int updateCount = updateCounts[i];
             if (updateCount > 0) {
-                createdVisits.addAll(this.visitRepository.findByUserAndStartTimeAndEndTime(user,  visitsToInsert.get(i).getStartTime(), visitsToInsert.get(i).getEndTime()));
+                createdVisits.addAll(this.visitJdbcService.findByUserAndStartTimeAndEndTime(user, visitsToInsert.get(i).getStartTime(), visitsToInsert.get(i).getEndTime()));
             }
         }
         logger.debug("Successfully inserted {} visits", createdVisits.size());
@@ -188,9 +184,9 @@ public class VisitDetectionService {
         logger.debug("Bulk updating {} visits", visitsToUpdate.size());
 
         String sql = """
-                UPDATE visits 
+                UPDATE visits
                 SET start_time = ?, end_time = ?, duration_seconds = ?, processed = ?
-                WHERE id = ? 
+                WHERE id = ?
                 """;
 
         List<Object[]> batchArgs = visitsToUpdate.stream()
@@ -295,44 +291,44 @@ public class VisitDetectionService {
 
     private List<Visit> deduplicateVisitsById(List<Visit> visits) {
         Map<Long, Visit> visitMap = new HashMap<>();
-        
+
         for (Visit visit : visits) {
             Long visitId = visit.getId();
             if (visitMap.containsKey(visitId)) {
                 Visit existing = visitMap.get(visitId);
-                
+
                 // Take the earliest start time
-                Instant earliestStart = visit.getStartTime().isBefore(existing.getStartTime()) 
-                    ? visit.getStartTime() : existing.getStartTime();
-                
+                Instant earliestStart = visit.getStartTime().isBefore(existing.getStartTime())
+                        ? visit.getStartTime() : existing.getStartTime();
+
                 // Take the latest end time
-                Instant latestEnd = visit.getEndTime().isAfter(existing.getEndTime()) 
-                    ? visit.getEndTime() : existing.getEndTime();
-                
+                Instant latestEnd = visit.getEndTime().isAfter(existing.getEndTime())
+                        ? visit.getEndTime() : existing.getEndTime();
+
                 // Update the existing visit with combined times
-                existing.setStartTime(earliestStart);
-                existing.setEndTime(latestEnd);
-                existing.setDurationSeconds(latestEnd.getEpochSecond() - earliestStart.getEpochSecond());
-                existing.setProcessed(false); // Mark as unprocessed since it was modified
+                visitMap.put(visitId, existing.withStartTime(earliestStart)
+                        .withEndTime(latestEnd)
+                        .withDurationSeconds(latestEnd.getEpochSecond() - earliestStart.getEpochSecond())
+                        .withProcessed(false));
             } else {
                 visitMap.put(visitId, visit);
             }
         }
-        
+
         return new ArrayList<>(visitMap.values());
     }
 
     private List<Visit> findTimeDuplicates(List<Visit> visits) {
         Map<String, List<Visit>> timeGroups = new HashMap<>();
-        
+
         // Group visits by start and end time
         for (Visit visit : visits) {
             String timeKey = visit.getStartTime() + "_" + visit.getEndTime();
             timeGroups.computeIfAbsent(timeKey, k -> new ArrayList<>()).add(visit);
         }
-        
+
         List<Visit> duplicatesToDelete = new ArrayList<>();
-        
+
         // For each time group with multiple visits, keep one and mark others for deletion
         for (List<Visit> timeGroup : timeGroups.values()) {
             if (timeGroup.size() > 1) {
@@ -340,13 +336,13 @@ public class VisitDetectionService {
                 timeGroup.sort(Comparator.comparing(Visit::getId));
                 // Add all except the first one to deletion list
                 duplicatesToDelete.addAll(timeGroup.subList(1, timeGroup.size()));
-                logger.debug("Found {} time-based duplicates for time range {}-{}", 
-                    timeGroup.size() - 1, 
-                    timeGroup.get(0).getStartTime(), 
-                    timeGroup.get(0).getEndTime());
+                logger.debug("Found {} time-based duplicates for time range {}-{}",
+                        timeGroup.size() - 1,
+                        timeGroup.getFirst().getStartTime(),
+                        timeGroup.getFirst().getEndTime());
             }
         }
-        
+
         return duplicatesToDelete;
     }
 
@@ -354,27 +350,20 @@ public class VisitDetectionService {
         if (visitsToDelete.isEmpty()) {
             return;
         }
-        
+
         logger.debug("Bulk deleting {} visits", visitsToDelete.size());
-        
+
         String sql = "DELETE FROM visits WHERE id = ?";
-        
+
         List<Object[]> batchArgs = visitsToDelete.stream()
                 .map(visit -> new Object[]{visit.getId()})
                 .collect(Collectors.toList());
-        
+
         int[] deleteCounts = jdbcTemplate.batchUpdate(sql, batchArgs);
         logger.debug("Successfully deleted {} visits", deleteCounts.length);
     }
 
-    private Visit createVisit(User user, Double longitude, Double latitude, StayPoint stayPoint) {
-        Visit visit = new Visit();
-        visit.setUser(user);
-        visit.setLongitude(longitude);
-        visit.setLatitude(latitude);
-        visit.setStartTime(stayPoint.getArrivalTime());
-        visit.setEndTime(stayPoint.getDepartureTime());
-        visit.setDurationSeconds(stayPoint.getDurationSeconds());
-        return visit;
+    private Visit createVisit(Double longitude, Double latitude, StayPoint stayPoint) {
+        return new Visit(longitude, latitude, stayPoint.getArrivalTime(), stayPoint.getDepartureTime(), stayPoint.getDurationSeconds(), false);
     }
 }

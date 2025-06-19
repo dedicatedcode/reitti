@@ -3,14 +3,15 @@ package com.dedicatedcode.reitti.service.processing;
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.ProcessedVisit;
+import com.dedicatedcode.reitti.model.Sort;
 import com.dedicatedcode.reitti.model.Visit;
-import com.dedicatedcode.reitti.repository.ProcessedVisitRepository;
-import com.dedicatedcode.reitti.repository.VisitRepository;
+import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.repository.VisitJdbcService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
@@ -26,11 +27,12 @@ class VisitDetectionServiceTest {
     private TestingService testingService;
 
     @Autowired
-    private VisitRepository visitRepository;
+    private VisitJdbcService visitRepository;
 
     @Autowired
-    private ProcessedVisitRepository processedVisitRepository;
-
+    private ProcessedVisitJdbcService processedVisitRepository;
+    @Autowired
+    private UserJdbcService userJdbcService;
     @Value("${reitti.visit.merge-threshold-seconds}")
     private int visitMergeThresholdSeconds;
 
@@ -48,11 +50,11 @@ class VisitDetectionServiceTest {
 
         this.testingService.awaitDataImport(600);
 
-        List<Visit> persistedVisits = this.visitRepository.findAll(Sort.by(Sort.Direction.ASC, "startTime"));
+        List<Visit> persistedVisits = this.visitRepository.findByUser(userJdbcService.getUserById(1L));
 
         assertEquals(11, persistedVisits.size());
 
-        List<ProcessedVisit> processedVisits = this.processedVisitRepository.findAll(Sort.by(Sort.Direction.ASC, "startTime"));
+        List<ProcessedVisit> processedVisits = this.processedVisitRepository.findByUser(userJdbcService.getUserById(1L));
 
         assertEquals(10, processedVisits.size());
 

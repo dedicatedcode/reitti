@@ -30,7 +30,7 @@ public class TestUtils {
                    double x = Double.parseDouble(pointString.substring(0, pointString.indexOf(" ")));
                    double y = Double.parseDouble(pointString.substring(pointString.indexOf(" ") + 1, pointString.length() - 1));
                    Point point = FACTORY.createPoint(new Coordinate(x, y));
-                   return new RawLocationPoint(null, timestamp, point, Double.parseDouble(row.getField(1)));
+                   return new RawLocationPoint(timestamp, point, Double.parseDouble(row.getField(1)));
                }).toList();
     }
 }

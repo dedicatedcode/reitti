@@ -1,8 +1,6 @@
 package com.dedicatedcode.reitti.dto;
 
 
-import org.springframework.data.geo.Point;
-
 import java.time.Instant;
 import java.util.List;
 
@@ -23,10 +21,10 @@ public class TimelineResponse {
         private final Instant startTime;
         private final Instant endTime;
         private final Long durationSeconds;
-        
+
         // For visits
         private final PlaceInfo place;
-        
+
         // For trips
         private final PlaceInfo startPlace;
         private final PlaceInfo endPlace;
@@ -99,3 +97,4 @@ public class TimelineResponse {
     public record PlaceInfo(Long id, String name, String address, String category, Double latitude, Double longitude) {
     }
 }
+

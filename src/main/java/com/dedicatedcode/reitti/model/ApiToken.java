@@ -1,37 +1,21 @@
 package com.dedicatedcode.reitti.model;
 
-import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
 
-@Entity
-@Table(name = "api_tokens")
 public class ApiToken {
     
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private final Long id;
     
-    @Column(nullable = false, unique = true)
     private final String token;
     
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "user_id", nullable = false)
     private final User user;
     
-    @Column(nullable = false)
     private final String name;
     
-    @Column(nullable = false)
     private final Instant createdAt;
     
-    @Column
     private final Instant lastUsedAt;
-    
-    // Constructors
-    public ApiToken() {
-        this(null, null, null, null, null, null);
-    }
     
     public ApiToken(User user, String name) {
         this(null, null, user, name, null, null);

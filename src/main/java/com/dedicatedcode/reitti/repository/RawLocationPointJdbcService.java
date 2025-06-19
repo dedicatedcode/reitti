@@ -7,8 +7,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -18,57 +17,41 @@ import java.util.Optional;
 public class RawLocationPointJdbcService {
 
     private final JdbcTemplate jdbcTemplate;
+    private final RowMapper<RawLocationPoint> rawLocationPointRowMapper;
+    private final PointReaderWriter pointReaderWriter;
 
-    public RawLocationPointJdbcService(JdbcTemplate jdbcTemplate) {
+    public RawLocationPointJdbcService(JdbcTemplate jdbcTemplate, PointReaderWriter pointReaderWriter) {
         this.jdbcTemplate = jdbcTemplate;
+        this.rawLocationPointRowMapper = (rs, rowNum) -> new RawLocationPoint(
+                rs.getLong("id"),
+                rs.getTimestamp("timestamp").toInstant(),
+                pointReaderWriter.read(rs.getString("geom")),
+                rs.getDouble("accuracy_meters"),
+                rs.getString("activity_provided"),
+                rs.getBoolean("processed"),
+                rs.getLong("version")
+        );
+
+        this.pointReaderWriter = pointReaderWriter;
     }
 
-    private static final RowMapper<RawLocationPoint> RAW_LOCATION_POINT_ROW_MAPPER = new RowMapper<RawLocationPoint>() {
-        @Override
-        public RawLocationPoint mapRow(ResultSet rs, int rowNum) throws SQLException {
-            return new RawLocationPoint(
-                    rs.getLong("id"),
-                    rs.getTimestamp("timestamp").toInstant(),
-                    null,
-                    rs.getDouble("accuracy_meters"),
-                    rs.getString("activity_provided"),
-                    rs.getBoolean("processed"),
-                    rs.getLong("version")
-            );
-        }
-    };
 
     public List<RawLocationPoint> findByUserAndTimestampBetweenOrderByTimestampAsc(
             User user, Instant startTime, Instant endTime) {
-        String sql = "SELECT rlp.id, rlp.timestamp, rlp.accuracy_meters, rlp.activity_provided, rlp.processed, " +
-                "u.id as user_id, u.username, u.password, u.display_name, u.version as user_version " +
+        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.activity_provided, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.version " +
                 "FROM raw_location_points rlp " +
-                "JOIN users u ON rlp.user_id = u.id " +
                 "WHERE rlp.user_id = ? AND rlp.timestamp BETWEEN ? AND ? " +
                 "ORDER BY rlp.timestamp ASC";
-        return jdbcTemplate.query(sql, RAW_LOCATION_POINT_ROW_MAPPER,
-                user.getId(), java.sql.Timestamp.from(startTime), java.sql.Timestamp.from(endTime));
-    }
-
-    public Optional<RawLocationPoint> findByUserAndTimestamp(User user, Instant timestamp) {
-        String sql = "SELECT rlp.id, rlp.timestamp, rlp.accuracy_meters, rlp.activity_provided, rlp.processed, " +
-                "u.id as user_id, u.username, u.password, u.display_name, u.version as user_version " +
-                "FROM raw_location_points rlp " +
-                "JOIN users u ON rlp.user_id = u.id " +
-                "WHERE rlp.user_id = ? AND rlp.timestamp = ?";
-        List<RawLocationPoint> results = jdbcTemplate.query(sql, RAW_LOCATION_POINT_ROW_MAPPER,
-                user.getId(), java.sql.Timestamp.from(timestamp));
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+        return jdbcTemplate.query(sql, rawLocationPointRowMapper,
+                user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
     }
 
     public List<RawLocationPoint> findByUserAndProcessedIsFalseOrderByTimestamp(User user) {
-        String sql = "SELECT rlp.id, rlp.timestamp, rlp.accuracy_meters, rlp.activity_provided, rlp.processed, " +
-                "u.id as user_id, u.username, u.password, u.display_name, u.version as user_version " +
+        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.activity_provided, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.version " +
                 "FROM raw_location_points rlp " +
-                "JOIN users u ON rlp.user_id = u.id " +
                 "WHERE rlp.user_id = ? AND rlp.processed = false " +
                 "ORDER BY rlp.timestamp";
-        return jdbcTemplate.query(sql, RAW_LOCATION_POINT_ROW_MAPPER, user.getId());
+        return jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId());
     }
 
     public List<Integer> findDistinctYearsByUser(User user) {
@@ -81,25 +64,25 @@ public class RawLocationPointJdbcService {
 
     public RawLocationPoint create(User user, RawLocationPoint rawLocationPoint) {
         String sql = "INSERT INTO raw_location_points (user_id, timestamp, accuracy_meters, activity_provided, geom, processed) " +
-                "VALUES (?, ?, ?, ?, ?, ?) RETURNING id";
+                "VALUES (?, ?, ?, ?, CAST(? AS geometry), ?) RETURNING id";
         Long id = jdbcTemplate.queryForObject(sql, Long.class,
                 user.getId(),
-                java.sql.Timestamp.from(rawLocationPoint.getTimestamp()),
+                Timestamp.from(rawLocationPoint.getTimestamp()),
                 rawLocationPoint.getAccuracyMeters(),
                 rawLocationPoint.getActivityProvided(),
-                rawLocationPoint.getGeom(), // Would need PostGIS handling
+                rawLocationPoint.getGeom().toString(), // Would need PostGIS handling
                 rawLocationPoint.isProcessed()
         );
         return rawLocationPoint.withId(id);
     }
 
     public RawLocationPoint update(RawLocationPoint rawLocationPoint) {
-        String sql = "UPDATE raw_location_points SET timestamp = ?, accuracy_meters = ?, activity_provided = ?, geom = ?, processed = ? WHERE id = ?";
+        String sql = "UPDATE raw_location_points SET timestamp = ?, accuracy_meters = ?, activity_provided = ?, geom = CAST(? AS geometry), processed = ? WHERE id = ?";
         jdbcTemplate.update(sql,
-                java.sql.Timestamp.from(rawLocationPoint.getTimestamp()),
+                Timestamp.from(rawLocationPoint.getTimestamp()),
                 rawLocationPoint.getAccuracyMeters(),
                 rawLocationPoint.getActivityProvided(),
-                rawLocationPoint.getGeom(), // Would need PostGIS handling
+                rawLocationPoint.getGeom().toString(), // Would need PostGIS handling
                 rawLocationPoint.isProcessed(),
                 rawLocationPoint.getId()
         );
@@ -107,12 +90,10 @@ public class RawLocationPointJdbcService {
     }
 
     public Optional<RawLocationPoint> findById(Long id) {
-        String sql = "SELECT rlp.id, rlp.timestamp, rlp.accuracy_meters, rlp.activity_provided, rlp.processed, " +
-                "u.id as user_id, u.username, u.password, u.display_name, u.version as user_version " +
+        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.activity_provided, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.version " +
                 "FROM raw_location_points rlp " +
-                "JOIN users u ON rlp.user_id = u.id " +
                 "WHERE rlp.id = ?";
-        List<RawLocationPoint> results = jdbcTemplate.query(sql, RAW_LOCATION_POINT_ROW_MAPPER, id);
+        List<RawLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper, id);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
@@ -123,7 +104,7 @@ public class RawLocationPointJdbcService {
 
     public List<ClusteredPoint> findClusteredPointsInTimeRangeForUser(
             User user, Instant startTime, Instant endTime, int minimumPoints, double distanceInMeters) {
-        String sql = "SELECT rlp.*, " +
+        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.activity_provided, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.version , " +
                 "ST_ClusterDBSCAN(rlp.geom, ?, ?) over () AS cluster_id " +
                 "FROM raw_location_points rlp " +
                 "WHERE rlp.user_id = ? AND rlp.timestamp BETWEEN ? AND ?";
@@ -133,7 +114,7 @@ public class RawLocationPointJdbcService {
                     RawLocationPoint point = new RawLocationPoint(
                             rs.getLong("id"),
                             rs.getTimestamp("timestamp").toInstant(),
-                            null,
+                            this.pointReaderWriter.read(rs.getString("geom")),
                             rs.getDouble("accuracy_meters"),
                             rs.getString("activity_provided"),
                             rs.getBoolean("processed"),
@@ -144,7 +125,7 @@ public class RawLocationPointJdbcService {
 
                     return new ClusteredPoint(point, clusterId);
                 }, distanceInMeters, minimumPoints, user.getId(),
-                java.sql.Timestamp.from(startTime), java.sql.Timestamp.from(endTime));
+                Timestamp.from(startTime), Timestamp.from(endTime));
     }
 
     public long count() {

@@ -1,28 +1,23 @@
 package com.dedicatedcode.reitti.controller;
 
-import com.dedicatedcode.reitti.dto.TimelineResponse;
 import com.dedicatedcode.reitti.model.ProcessedVisit;
-import com.dedicatedcode.reitti.model.RawLocationPoint;
 import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.model.Trip;
 import com.dedicatedcode.reitti.model.User;
-import com.dedicatedcode.reitti.repository.ProcessedVisitRepository;
-import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
-import com.dedicatedcode.reitti.repository.TripRepository;
-import com.dedicatedcode.reitti.repository.UserRepository;
+import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
+import com.dedicatedcode.reitti.repository.TripJdbcService;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,20 +26,17 @@ import java.util.Map;
 @Controller
 public class TimelineViewController {
 
-    private final RawLocationPointRepository rawLocationPointRepository;
-    private final UserRepository userRepository;
-    private final ProcessedVisitRepository processedVisitRepository;
-    private final TripRepository tripRepository;
+    private final UserJdbcService userJdbcService;
+    private final ProcessedVisitJdbcService processedVisitJdbcService;
+    private final TripJdbcService tripJdbcService;
 
     @Autowired
-    public TimelineViewController(RawLocationPointRepository rawLocationPointRepository, 
-                                 UserRepository userRepository,
-                                 ProcessedVisitRepository processedVisitRepository,
-                                 TripRepository tripRepository) {
-        this.rawLocationPointRepository = rawLocationPointRepository;
-        this.userRepository = userRepository;
-        this.processedVisitRepository = processedVisitRepository;
-        this.tripRepository = tripRepository;
+    public TimelineViewController(UserJdbcService userJdbcService,
+                                  ProcessedVisitJdbcService processedVisitJdbcService,
+                                  TripJdbcService tripJdbcService) {
+        this.userJdbcService = userJdbcService;
+        this.processedVisitJdbcService = processedVisitJdbcService;
+        this.tripJdbcService = tripJdbcService;
     }
     
     /**
@@ -67,7 +59,7 @@ public class TimelineViewController {
         LocalDate date = selectedDate != null ? selectedDate : LocalDate.now();
         
         // Find the user
-        User user = userRepository.findById(userId)
+        User user = userJdbcService.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         
         // Convert LocalDate to start and end Instant for the selected date
@@ -75,9 +67,9 @@ public class TimelineViewController {
         Instant endOfDay = date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().minusMillis(1);
         
         // Get processed visits and trips for the user and date range
-        List<ProcessedVisit> processedVisits = processedVisitRepository.findByUserAndTimeOverlap(
+        List<ProcessedVisit> processedVisits = processedVisitJdbcService.findByUserAndTimeOverlap(
                 user, startOfDay, endOfDay);
-        List<Trip> trips = tripRepository.findByUserAndTimeOverlap(
+        List<Trip> trips = tripJdbcService.findByUserAndTimeOverlap(
                 user, startOfDay, endOfDay);
         
         // Convert to format expected by the frontend
@@ -118,14 +110,14 @@ public class TimelineViewController {
             tripEntry.put("endTime", formatTime(trip.getEndTime()));
             
             // Get origin and destination coordinates if available
-            if (trip.getStartPlace() != null) {
-                tripEntry.put("startLatitude", trip.getStartPlace().getLatitudeCentroid());
-                tripEntry.put("startLongitude", trip.getStartPlace().getLongitudeCentroid());
+            if (trip.getStartVisit().getPlace() != null) {
+                tripEntry.put("startLatitude", trip.getStartVisit().getPlace().getLatitudeCentroid());
+                tripEntry.put("startLongitude", trip.getStartVisit().getPlace().getLongitudeCentroid());
             }
             
-            if (trip.getEndPlace() != null) {
-                tripEntry.put("endLatitude", trip.getEndPlace().getLatitudeCentroid());
-                tripEntry.put("endLongitude", trip.getEndPlace().getLongitudeCentroid());
+            if (trip.getEndVisit().getPlace() != null) {
+                tripEntry.put("endLatitude", trip.getEndVisit().getPlace().getLatitudeCentroid());
+                tripEntry.put("endLongitude", trip.getEndVisit().getPlace().getLongitudeCentroid());
             }
             
             if (trip.getTransportModeInferred() != null) {

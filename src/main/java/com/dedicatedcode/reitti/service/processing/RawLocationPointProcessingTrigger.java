@@ -4,8 +4,8 @@ import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.LocationProcessEvent;
 import com.dedicatedcode.reitti.model.RawLocationPoint;
 import com.dedicatedcode.reitti.model.User;
-import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
-import com.dedicatedcode.reitti.repository.UserRepository;
+import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -23,19 +23,20 @@ public class RawLocationPointProcessingTrigger {
     private static final Logger log = LoggerFactory.getLogger(RawLocationPointProcessingTrigger.class);
     private static final int BATCH_SIZE = 100;
 
-    private final RawLocationPointRepository rawLocationPointRepository;
-    private final UserRepository userRepository;
+    private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final UserJdbcService userJdbcService;
     private final RabbitTemplate rabbitTemplate;
     private final JdbcTemplate jdbcTemplate;
 
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
-    public RawLocationPointProcessingTrigger(RawLocationPointRepository rawLocationPointRepository,
-                                             UserRepository userRepository, RabbitTemplate rabbitTemplate,
+    public RawLocationPointProcessingTrigger(RawLocationPointJdbcService rawLocationPointJdbcService,
+                                             UserJdbcService userJdbcService,
+                                             RabbitTemplate rabbitTemplate,
                                              JdbcTemplate jdbcTemplate) {
 
-        this.rawLocationPointRepository = rawLocationPointRepository;
-        this.userRepository = userRepository;
+        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.userJdbcService = userJdbcService;
         this.rabbitTemplate = rabbitTemplate;
         this.jdbcTemplate = jdbcTemplate;
     }
@@ -46,8 +47,8 @@ public class RawLocationPointProcessingTrigger {
             log.warn("Processing is already running, wil skip this run");
         } else {
             isRunning.set(true);
-            for (User user : userRepository.findAll()) {
-                List<RawLocationPoint> allUnprocessedPoints = rawLocationPointRepository.findByUserAndProcessedIsFalseOrderByTimestamp(user);
+            for (User user : userJdbcService.findAll()) {
+                List<RawLocationPoint> allUnprocessedPoints = rawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestamp(user);
 
                 log.debug("Found [{}] unprocessed points for user [{}]", allUnprocessedPoints.size(), user.getId());
                 int i = 0;

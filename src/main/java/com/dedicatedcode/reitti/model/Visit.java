@@ -7,7 +7,6 @@ import java.util.Objects;
 public class Visit {
 
     private final Long id;
-    private final User user;
     private final Double longitude;
     private final Double latitude;
     private final Instant startTime;
@@ -16,33 +15,22 @@ public class Visit {
     private final boolean processed;
     private final Long version;
 
-    public Visit() {
-        this(null, null, null, null, null, null, false, null);
+    public Visit(Double longitude, Double latitude, Instant startTime, Instant endTime, Long durationSeconds, boolean processed) {
+        this(null, longitude, latitude, startTime, endTime, durationSeconds, processed, 1L);
     }
-
-    public Visit(User user, Double longitude, Double latitude, Instant startTime, Instant endTime) {
-        this(null, user, longitude, latitude, startTime, endTime, false, null);
-    }
-    
-    public Visit(Long id, User user, Double longitude, Double latitude, Instant startTime, Instant endTime, boolean processed, Long version) {
+    public Visit(Long id, Double longitude, Double latitude, Instant startTime, Instant endTime, Long durationSeconds, boolean processed, Long version) {
         this.id = id;
-        this.user = user;
         this.longitude = longitude;
         this.latitude = latitude;
         this.startTime = startTime;
         this.endTime = endTime;
-        this.durationSeconds = (startTime != null && endTime != null) ? 
-            Duration.between(startTime, endTime).getSeconds() : null;
+        this.durationSeconds = durationSeconds;
         this.processed = processed;
         this.version = version;
     }
 
     public Long getId() {
         return id;
-    }
-
-    public User getUser() {
-        return user;
     }
 
     public Double getLongitude() {
@@ -72,10 +60,24 @@ public class Visit {
     public Long getVersion() {
         return version;
     }
-    
-    // Wither method
+
+    public Visit withId(Long id) {
+        return new Visit(id, longitude, latitude, startTime, endTime, durationSeconds, processed, version);
+    }
+    public Visit withStartTime(Instant startTime) {
+        return new Visit(this.id, this.longitude, this.latitude, startTime, endTime, this.durationSeconds, this.processed, this.version);
+    }
+
+    public Visit withEndTime(Instant endTime) {
+        return new Visit(this.id, this.longitude, this.latitude, this.startTime, endTime, this.durationSeconds, this.processed, this.version);
+    }
+
     public Visit withProcessed(boolean processed) {
-        return new Visit(this.id, this.user, this.longitude, this.latitude, this.startTime, this.endTime, processed, this.version);
+        return new Visit(this.id, this.longitude, this.latitude, this.startTime, this.endTime, this.durationSeconds, processed, this.version);
+    }
+
+    public Visit withDurationSeconds(long durationSeconds) {
+        return new Visit(this.id, this.longitude, this.latitude, this.startTime, this.endTime, durationSeconds, processed, this.version);
     }
 
     @Override
@@ -89,4 +91,5 @@ public class Visit {
     public int hashCode() {
         return Objects.hashCode(id);
     }
+
 }
