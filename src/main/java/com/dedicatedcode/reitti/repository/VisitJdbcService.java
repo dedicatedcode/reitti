@@ -145,6 +145,14 @@ public class VisitJdbcService {
     }
 
     public void delete(List<Visit> affectedVisits) {
-        //implement this  AI!
+        if (affectedVisits == null || affectedVisits.isEmpty()) {
+            return;
+        }
+        
+        String placeholders = String.join(",", affectedVisits.stream().map(visit -> "?").toList());
+        String sql = "DELETE FROM visits WHERE id IN (" + placeholders + ")";
+        
+        Object[] ids = affectedVisits.stream().map(Visit::getId).toArray();
+        jdbcTemplate.update(sql, ids);
     }
 }
