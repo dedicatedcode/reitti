@@ -94,7 +94,11 @@ public class ProcessedVisitJdbcService {
     }
 
     public List<ProcessedVisit> findByUserAndStartTimeBeforeEqualAndEndTimeAfterEqual(User user, Instant endTime, Instant startTime) {
-        //implement AI!
+        String sql = "SELECT pv.* " +
+                "FROM processed_visits pv " +
+                "WHERE pv.user_id = ? AND pv.start_time <= ? AND pv.end_time >= ?";
+        return jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, user.getId(),
+                java.sql.Timestamp.from(endTime), java.sql.Timestamp.from(startTime));
     }
     public List<ProcessedVisit> findByUserAndStartTimeGreaterThanEqualAndEndTimeLessThanEqual(User user, Instant startTimeIsGreaterThan, Instant endTimeIsLessThan) {
         String sql = "SELECT pv.* " +
