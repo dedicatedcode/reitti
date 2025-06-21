@@ -40,6 +40,7 @@ public class VisitJdbcService {
                 "WHERE v.user_id = ? ORDER BY start_time";
         return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId());
     }
+
     public List<Visit> findByUserAndStartTime(User user, Instant startTime) {
         String sql = "SELECT v.* " +
                 "FROM visits v " +
@@ -131,5 +132,9 @@ public class VisitJdbcService {
     public void deleteAll() {
         String sql = "DELETE FROM visits";
         jdbcTemplate.update(sql);
+    }
+
+    public List<Visit> findByUserAndTimeAfterAndStartTimeBefore(User user, Instant windowEnd, Instant windowStart) {
+        return null; //implement this method AI! 
     }
 }
