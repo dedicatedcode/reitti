@@ -135,6 +135,11 @@ public class VisitJdbcService {
     }
 
     public List<Visit> findByUserAndTimeAfterAndStartTimeBefore(User user, Instant windowEnd, Instant windowStart) {
-        return null; //implement this method AI! 
+        String sql = "SELECT v.* " +
+                "FROM visits v " +
+                "WHERE v.user_id = ? AND v.end_time > ? AND v.start_time < ? " +
+                "ORDER BY v.start_time ASC";
+        return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(),
+                java.sql.Timestamp.from(windowEnd), java.sql.Timestamp.from(windowStart));
     }
 }
