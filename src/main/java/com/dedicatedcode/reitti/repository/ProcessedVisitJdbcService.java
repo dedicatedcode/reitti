@@ -44,6 +44,13 @@ public class ProcessedVisitJdbcService {
         }
     };
 
+    public List<ProcessedVisit> findAll() {
+        String sql = "SELECT pv.* " +
+                "FROM processed_visits pv " +
+                "ORDER BY pv.start_time";
+        return jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER);
+
+    }
     public List<ProcessedVisit> findByUser(User user) {
         String sql = "SELECT pv.* " +
                 "FROM processed_visits pv " +
@@ -86,6 +93,9 @@ public class ProcessedVisitJdbcService {
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
+    public List<ProcessedVisit> findByUserAndStartTimeBeforeEqualAndEndTimeAfterEqual(User user, Instant endTime, Instant startTime) {
+        //implement AI!
+    }
     public List<ProcessedVisit> findByUserAndStartTimeGreaterThanEqualAndEndTimeLessThanEqual(User user, Instant startTimeIsGreaterThan, Instant endTimeIsLessThan) {
         String sql = "SELECT pv.* " +
                 "FROM processed_visits pv " +
@@ -157,11 +167,6 @@ public class ProcessedVisitJdbcService {
                 "WHERE pv.id = ?";
         List<ProcessedVisit> results = jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, id);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
-    }
-
-    public void deleteById(Long id) {
-        String sql = "DELETE FROM processed_visits WHERE id = ?";
-        jdbcTemplate.update(sql, id);
     }
 
     public void deleteAll(List<ProcessedVisit> processedVisits) {
