@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -45,14 +46,14 @@ public class VisitJdbcService {
         String sql = "SELECT v.* " +
                 "FROM visits v " +
                 "WHERE v.user_id = ? AND v.start_time = ?";
-        return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(), java.sql.Timestamp.from(startTime));
+        return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(), Timestamp.from(startTime));
     }
 
     public List<Visit> findByUserAndEndTime(User user, Instant departureTime) {
         String sql = "SELECT v.* " +
                 "FROM visits v " +
                 "WHERE v.user_id = ? AND v.end_time = ?";
-        return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(), java.sql.Timestamp.from(departureTime));
+        return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(), Timestamp.from(departureTime));
     }
 
     public List<Visit> findByUserAndStartTimeBetweenOrderByStartTimeAsc(User user, Instant startTime, Instant endTime) {
@@ -61,7 +62,7 @@ public class VisitJdbcService {
                 "WHERE v.user_id = ? AND v.start_time BETWEEN ? AND ? " +
                 "ORDER BY v.start_time ASC";
         return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(),
-                java.sql.Timestamp.from(startTime), java.sql.Timestamp.from(endTime));
+                Timestamp.from(startTime), Timestamp.from(endTime));
     }
 
     public List<Visit> findByUserAndStartTimeBeforeAndEndTimeAfter(User user, Instant startTimeBefore, Instant endTimeAfter) {
@@ -69,7 +70,7 @@ public class VisitJdbcService {
                 "FROM visits v " +
                 "WHERE v.user_id = ? AND v.start_time < ? AND v.end_time > ?";
         return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(),
-                java.sql.Timestamp.from(startTimeBefore), java.sql.Timestamp.from(endTimeAfter));
+                Timestamp.from(startTimeBefore), Timestamp.from(endTimeAfter));
     }
 
     public List<Visit> findByUserAndStartTimeAndEndTime(User user, Instant startTime, Instant endTime) {
@@ -77,7 +78,7 @@ public class VisitJdbcService {
                 "FROM visits v " +
                 "WHERE v.user_id = ? AND v.start_time = ? AND v.end_time = ?";
         return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(),
-                java.sql.Timestamp.from(startTime), java.sql.Timestamp.from(endTime));
+                Timestamp.from(startTime), Timestamp.from(endTime));
     }
 
     public Visit create(User user, Visit visit) {
@@ -87,8 +88,8 @@ public class VisitJdbcService {
                 user.getId(),
                 visit.getLongitude(),
                 visit.getLatitude(),
-                java.sql.Timestamp.from(visit.getStartTime()),
-                java.sql.Timestamp.from(visit.getEndTime()),
+                Timestamp.from(visit.getStartTime()),
+                Timestamp.from(visit.getEndTime()),
                 visit.getDurationSeconds(),
                 visit.isProcessed(),
                 visit.getVersion()
@@ -101,8 +102,8 @@ public class VisitJdbcService {
         jdbcTemplate.update(sql,
                 visit.getLongitude(),
                 visit.getLatitude(),
-                java.sql.Timestamp.from(visit.getStartTime()),
-                java.sql.Timestamp.from(visit.getEndTime()),
+                Timestamp.from(visit.getStartTime()),
+                Timestamp.from(visit.getEndTime()),
                 visit.getDurationSeconds(),
                 visit.isProcessed(),
                 visit.getId()
@@ -138,8 +139,12 @@ public class VisitJdbcService {
         String sql = "SELECT v.* " +
                 "FROM visits v " +
                 "WHERE v.user_id = ? AND v.end_time > ? AND v.start_time < ? " +
-                "ORDER BY v.start_time ASC";
+                "ORDER BY v.start_time";
         return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(),
-                java.sql.Timestamp.from(windowEnd), java.sql.Timestamp.from(windowStart));
+                Timestamp.from(windowEnd), Timestamp.from(windowStart));
+    }
+
+    public void delete(List<Visit> affectedVisits) {
+        //implement this  AI!
     }
 }
