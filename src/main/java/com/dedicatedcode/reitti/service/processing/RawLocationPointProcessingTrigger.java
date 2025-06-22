@@ -65,7 +65,6 @@ public class RawLocationPointProcessingTrigger {
                                     new LocationProcessEvent(user.getUsername(), earliest.minus(10, ChronoUnit.MINUTES), latest.plus(10, ChronoUnit.MINUTES)));
                     currentPoints.forEach(RawLocationPoint::markProcessed);
                     bulkUpdateProcessedStatus(currentPoints);
-                    //check if this loops calculates and terminates corrctly to not miss any data while handling batchs AI!
                     i++;
                 }
             }
