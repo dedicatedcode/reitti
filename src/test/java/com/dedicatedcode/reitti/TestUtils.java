@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti;
 
+import com.dedicatedcode.reitti.model.GeoPoint;
 import com.dedicatedcode.reitti.model.RawLocationPoint;
 import de.siegmar.fastcsv.reader.CsvReader;
 import org.locationtech.jts.geom.Coordinate;
@@ -55,7 +56,7 @@ public class TestUtils {
             Document document = builder.parse(inputStream);
 
             NodeList trackPoints = document.getElementsByTagName("trkpt");
-            List<GPXPoint> points = new ArrayList<>();
+            List<TimestampedGeoPoint> points = new ArrayList<>();
 
             for (int i = 0; i < trackPoints.getLength(); i++) {
                 Element trkpt = (Element) trackPoints.item(i);
@@ -66,14 +67,14 @@ public class TestUtils {
                 if (timeNodes.getLength() > 0) {
                     String timeStr = timeNodes.item(0).getTextContent();
                     Instant timestamp = Instant.parse(timeStr);
-                    points.add(new GPXPoint(lat, lon, timestamp));
+                    points.add(new TimestampedGeoPoint(new GeoPoint(lat, lon), timestamp));
                 }
             }
 
-            points.sort(Comparator.comparing(GPXPoint::timestamp));
+            points.sort(Comparator.comparing(TimestampedGeoPoint::timestamp));
             
-            for (GPXPoint point : points) {
-                System.out.println("Lat: " + point.latitude() + ", Lon: " + point.longitude() + ", Time: " + point.timestamp());
+            for (TimestampedGeoPoint point : points) {
+                System.out.println("Lat: " + point.geoPoint().latitude() + ", Lon: " + point.geoPoint().longitude() + ", Time: " + point.timestamp());
             }
 
         } catch (Exception e) {
@@ -82,5 +83,5 @@ public class TestUtils {
         }
     }
 
-    private record GPXPoint(double latitude, double longitude, Instant timestamp) {}
+    private record TimestampedGeoPoint(GeoPoint geoPoint, Instant timestamp) {}
 }
