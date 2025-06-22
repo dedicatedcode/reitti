@@ -6,10 +6,18 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public class TestUtils {
@@ -35,7 +43,44 @@ public class TestUtils {
     }
 
     public static void printGPXFile(String path) {
-        // implement a method, which loads a resouce specified by name and prints every point inside the gpx file to the console.
-        // it should have them sorted by timestamp. AI!
+        try {
+            InputStream inputStream = TestUtils.class.getResourceAsStream(path);
+            if (inputStream == null) {
+                System.err.println("Resource not found: " + path);
+                return;
+            }
+
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document document = builder.parse(inputStream);
+
+            NodeList trackPoints = document.getElementsByTagName("trkpt");
+            List<GPXPoint> points = new ArrayList<>();
+
+            for (int i = 0; i < trackPoints.getLength(); i++) {
+                Element trkpt = (Element) trackPoints.item(i);
+                double lat = Double.parseDouble(trkpt.getAttribute("lat"));
+                double lon = Double.parseDouble(trkpt.getAttribute("lon"));
+                
+                NodeList timeNodes = trkpt.getElementsByTagName("time");
+                if (timeNodes.getLength() > 0) {
+                    String timeStr = timeNodes.item(0).getTextContent();
+                    Instant timestamp = Instant.parse(timeStr);
+                    points.add(new GPXPoint(lat, lon, timestamp));
+                }
+            }
+
+            points.sort(Comparator.comparing(GPXPoint::timestamp));
+            
+            for (GPXPoint point : points) {
+                System.out.println("Lat: " + point.latitude() + ", Lon: " + point.longitude() + ", Time: " + point.timestamp());
+            }
+
+        } catch (Exception e) {
+            System.err.println("Error parsing GPX file: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
+
+    private record GPXPoint(double latitude, double longitude, Instant timestamp) {}
 }
