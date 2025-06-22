@@ -33,4 +33,9 @@ public class TestUtils {
                    return new RawLocationPoint(timestamp, point, Double.parseDouble(row.getField(1)));
                }).toList();
     }
+
+    public static void printGPXFile(String path) {
+        // implement a method, which loads a resouce specified by name and prints every point inside the gpx file to the console.
+        // it should have them sorted by timestamp. AI!
+    }
 }
