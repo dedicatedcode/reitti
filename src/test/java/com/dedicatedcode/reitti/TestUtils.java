@@ -18,7 +18,6 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 public class TestUtils {
@@ -71,8 +70,6 @@ public class TestUtils {
                 }
             }
 
-            points.sort(Comparator.comparing(TimestampedGeoPoint::timestamp));
-            
             for (TimestampedGeoPoint point : points) {
                 System.out.println("Lat: " + point.geoPoint().latitude() + ", Lon: " + point.geoPoint().longitude() + ", Time: " + point.timestamp());
             }
