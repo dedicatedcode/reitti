@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 public class VisitMergingService {
@@ -36,6 +38,7 @@ public class VisitMergingService {
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final GeometryFactory geometryFactory;
     private final RabbitTemplate rabbitTemplate;
+    private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
     @Value("${reitti.visit.merge-threshold-seconds:300}")
     private long mergeThresholdSeconds;
     @Value("${reitti.visit.merge-threshold-meters:100}")
@@ -63,20 +66,27 @@ public class VisitMergingService {
     }
 
     private void handleEvent(String username, List<Long> visitIds) {
-        Optional<User> user = userJdbcService.findByUsername(username);
-        if (user.isEmpty()) {
-            logger.warn("User not found for userName: {}", username);
-            return;
-        }
-        List<Visit> visits = this.visitJdbcService.findAllByIds(visitIds);
-        if (visits.isEmpty()) {
-            logger.debug("Visit not found for visitId: {}", visitIds);
-            return;
-        }
+        ReentrantLock userLock = userLocks.computeIfAbsent(username, k -> new ReentrantLock());
+        
+        userLock.lock();
+        try {
+            Optional<User> user = userJdbcService.findByUsername(username);
+            if (user.isEmpty()) {
+                logger.warn("User not found for userName: {}", username);
+                return;
+            }
+            List<Visit> visits = this.visitJdbcService.findAllByIds(visitIds);
+            if (visits.isEmpty()) {
+                logger.debug("Visit not found for visitId: {}", visitIds);
+                return;
+            }
 
-        Instant searchStart = visits.stream().min(Comparator.comparing(Visit::getStartTime)).map(Visit::getStartTime).orElseThrow();
-        Instant searchEnd = visits.stream().max(Comparator.comparing(Visit::getEndTime)).map(Visit::getEndTime).orElseThrow();
-        processAndMergeVisits(user.get(), searchStart.toEpochMilli(), searchEnd.toEpochMilli());
+            Instant searchStart = visits.stream().min(Comparator.comparing(Visit::getStartTime)).map(Visit::getStartTime).orElseThrow();
+            Instant searchEnd = visits.stream().max(Comparator.comparing(Visit::getEndTime)).map(Visit::getEndTime).orElseThrow();
+            processAndMergeVisits(user.get(), searchStart.toEpochMilli(), searchEnd.toEpochMilli());
+        } finally {
+            userLock.unlock();
+        }
     }
 
     private void processAndMergeVisits(User user, Long start, Long end) {
