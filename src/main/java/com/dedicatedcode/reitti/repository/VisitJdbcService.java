@@ -169,7 +169,6 @@ public class VisitJdbcService {
             }
         }
         
-        // If all versions match, proceed with deletion
         String placeholders = String.join(",", affectedVisits.stream().map(visit -> "?").toList());
         String sql = "DELETE FROM visits WHERE id IN (" + placeholders + ")";
         
@@ -180,10 +179,15 @@ public class VisitJdbcService {
     public Optional<Visit> findVisitBefore(User user, Instant searchStart) {
         String sql = "SELECT v.* " +
                 "FROM visits v " +
-                "WHERE v.user_id = ? AND v.start_time < ? " +
-                "ORDER BY v.start_time DESC " +
+                "WHERE v.user_id = ? AND v.end_time < ? " +
+                "ORDER BY v.end_time DESC " +
                 "LIMIT 1";
         List<Visit> results = jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(), Timestamp.from(searchStart));
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
+    }
+
+    public Optional<Visit> findVisitAfter(User user, Instant searchEnd) {
+        //AI!
+        return null;
     }
 }
