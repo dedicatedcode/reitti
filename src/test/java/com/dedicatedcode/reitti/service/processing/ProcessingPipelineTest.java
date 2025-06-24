@@ -57,9 +57,12 @@ public class ProcessingPipelineTest {
 
 
         List<Trip> trips = currenTrips();
- //AI!
+        assertEquals(4, trips.size());
         assertTrip(trips.get(0), "2025-06-17T05:39:50.330Z", MOLTKESTR, "2025-06-17T05:44:39.578Z", ST_THOMAS);
-        assertTrip(trips.get(1), "2025-06-17T05:39:50.330Z", MOLTKESTR, "2025-06-17T05:44:39.578Z", ST_THOMAS);
+        assertTrip(trips.get(1), "2025-06-17T05:54:32.974Z", ST_THOMAS, "2025-06-17T05:58:10.797Z", MOLTKESTR);
+        assertTrip(trips.get(2), "2025-06-17T13:08:53.346Z", MOLTKESTR, "2025-06-17T13:12:33.214Z", ST_THOMAS);
+        assertTrip(trips.get(3), "2025-06-17T13:18:20.778Z", ST_THOMAS, "2025-06-17T13:22:00.725Z", MOLTKESTR);
+        
         testingService.importAndProcess("/data/gpx/20250618.gpx");
 
         processedVisits = currentVisits();
@@ -132,5 +135,18 @@ public class ProcessingPipelineTest {
 
     private List<Trip> currenTrips() {
         return this.tripJdbcService.findByUser(testingService.admin());
+    }
+
+    private static void assertTrip(Trip trip, String startTime, GeoPoint startLocation, String endTime, GeoPoint endLocation) {
+        assertEquals(Instant.parse(startTime), trip.getStartTime());
+        assertEquals(Instant.parse(endTime), trip.getEndTime());
+        
+        GeoPoint actualStartLocation = GeoPoint.from(trip.getStartVisit().getPlace().getGeom());
+        assertTrue(startLocation.near(actualStartLocation), 
+            "Start locations are not near to each other. \nExpected [" + actualStartLocation + "] to be in range \nto [" + startLocation + "]");
+        
+        GeoPoint actualEndLocation = GeoPoint.from(trip.getEndVisit().getPlace().getGeom());
+        assertTrue(endLocation.near(actualEndLocation), 
+            "End locations are not near to each other. \nExpected [" + actualEndLocation + "] to be in range \nto [" + endLocation + "]");
     }
 }
