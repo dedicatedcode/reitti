@@ -74,11 +74,8 @@ public class VisitMergingService {
             return;
         }
 
-
-
-
-        Instant searchStart = visits.stream().min(Comparator.comparing(Visit::getStartTime)).map(Visit::getStartTime).map(instant -> instant.minus(1, ChronoUnit.DAYS)).orElseThrow();
-        Instant searchEnd = visits.stream().max(Comparator.comparing(Visit::getEndTime)).map(Visit::getEndTime).map(instant -> instant.plus(1, ChronoUnit.DAYS)).orElseThrow();
+        Instant searchStart = visits.stream().min(Comparator.comparing(Visit::getStartTime)).map(Visit::getStartTime).orElseThrow();
+        Instant searchEnd = visits.stream().max(Comparator.comparing(Visit::getEndTime)).map(Visit::getEndTime).orElseThrow();
         processAndMergeVisits(user.get(), searchStart.toEpochMilli(), searchEnd.toEpochMilli());
     }
 
@@ -101,8 +98,6 @@ public class VisitMergingService {
             }
         }
 
-        searchStart = searchStart.minus(1, ChronoUnit.DAYS);
-        searchEnd = searchEnd.plus(1, ChronoUnit.DAYS);
         List<Visit> allVisits = this.visitJdbcService.findByUserAndTimeAfterAndStartTimeBefore(user, searchStart, searchEnd);
         if (allVisits.isEmpty()) {
             logger.info("No visits found for user: {}", user.getUsername());
@@ -162,7 +157,7 @@ public class VisitMergingService {
                     double travelledDistanceInMeters = GeoUtils.calculateTripDistance(pointsBetweenVisits);
                     shouldMergeWithNextVisit = travelledDistanceInMeters < mergeThresholdMeters;
                 } else {
-                    logger.debug("Skipping creation of new visit because there are no points tracked between {} and {}", currentEndTime, nextVisit.getStartTime());
+                    logger.debug("There are no points tracked between {} and {}. Will merge consecutive visits because they are on the same place", currentEndTime, nextVisit.getStartTime());
                     shouldMergeWithNextVisit = true;
                 }
             }
@@ -225,6 +220,7 @@ public class VisitMergingService {
 
     private ProcessedVisit createProcessedVisit(SignificantPlace place,
                                                 Instant startTime, Instant endTime) {
+        logger.debug("Creating processed visit for place [{}] between [{}] and [{}]", place.getId(), startTime, endTime);
         return new ProcessedVisit(place, startTime, endTime, endTime.getEpochSecond() - startTime.getEpochSecond());
     }
 
