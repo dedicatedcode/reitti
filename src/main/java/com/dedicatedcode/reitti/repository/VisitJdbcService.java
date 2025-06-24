@@ -187,7 +187,12 @@ public class VisitJdbcService {
     }
 
     public Optional<Visit> findVisitAfter(User user, Instant searchEnd) {
-        //AI!
-        return null;
+        String sql = "SELECT v.* " +
+                "FROM visits v " +
+                "WHERE v.user_id = ? AND v.start_time > ? " +
+                "ORDER BY v.start_time ASC " +
+                "LIMIT 1";
+        List<Visit> results = jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(), Timestamp.from(searchEnd));
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 }
