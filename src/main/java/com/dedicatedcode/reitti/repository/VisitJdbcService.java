@@ -112,7 +112,7 @@ public class VisitJdbcService {
     public List<Visit> findByUserAndTimeAfterAndStartTimeBefore(User user, Instant windowStart, Instant windowEnd) {
         String sql = "SELECT v.* " +
                 "FROM visits v " +
-                "WHERE v.user_id = ? AND v.end_time > ? AND v.start_time < ? " +
+                "WHERE v.user_id = ? AND v.end_time >= ? AND v.start_time <= ? " +
                 "ORDER BY v.start_time";
         return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(),
                 Timestamp.from(windowStart), Timestamp.from(windowEnd));
@@ -164,7 +164,7 @@ public class VisitJdbcService {
                 throw new OptimisticLockException("Visit with id " + visit.getId() + " does not exist");
             }
             
-            if (!versions.get(0).equals(visit.getVersion())) {
+            if (!versions.getFirst().equals(visit.getVersion())) {
                 throw new OptimisticLockException("Visit with id " + visit.getId() + " was modified by another transaction");
             }
         }
@@ -175,5 +175,10 @@ public class VisitJdbcService {
         
         Object[] ids = affectedVisits.stream().map(Visit::getId).toArray();
         jdbcTemplate.update(sql, ids);
+    }
+
+    public Optional<Visit> findVisitBefore(User user, Instant searchStart) {
+        //implement this AI!
+        return null;
     }
 }
