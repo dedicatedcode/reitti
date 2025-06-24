@@ -178,7 +178,12 @@ public class VisitJdbcService {
     }
 
     public Optional<Visit> findVisitBefore(User user, Instant searchStart) {
-        //implement this AI!
-        return null;
+        String sql = "SELECT v.* " +
+                "FROM visits v " +
+                "WHERE v.user_id = ? AND v.start_time < ? " +
+                "ORDER BY v.start_time DESC " +
+                "LIMIT 1";
+        List<Visit> results = jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(), Timestamp.from(searchStart));
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 }
