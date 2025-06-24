@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class VisitJdbcService {
-
+    // for every method which updates or deletes an entity, make sure that the version field in Visits actually matches the version stored, if not throw a checked exception. AI!
     private final JdbcTemplate jdbcTemplate;
 
     public VisitJdbcService(JdbcTemplate jdbcTemplate) {
