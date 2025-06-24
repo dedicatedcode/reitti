@@ -13,8 +13,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -197,6 +199,38 @@ public class ProcessedVisitJdbcService {
                 Timestamp.from(endTime),
                 place.getId());
         return Optional.ofNullable(results.isEmpty() ? null : results.getFirst());
+    }
+
+    public List<ProcessedVisit> bulkInsert(User user, List<ProcessedVisit> visitsToStore) {
+        if (visitsToStore.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<ProcessedVisit> result = new ArrayList<>();
+
+        String sql = """
+                INSERT INTO processed_visits (user_id, place_id, start_time, end_time, duration_seconds)
+                VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING;
+                """;
+
+        List<Object[]> batchArgs = visitsToStore.stream()
+                .map(visit -> new Object[]{
+                        user.getId(),
+                        visit.getPlace().getId(),
+                        Timestamp.from(visit.getStartTime()),
+                        Timestamp.from(visit.getEndTime()),
+                        visit.getDurationSeconds()})
+                .collect(Collectors.toList());
+
+        int[] updateCounts = jdbcTemplate.batchUpdate(sql, batchArgs);
+        for (int i = 0; i < updateCounts.length; i++) {
+            int updateCount = updateCounts[i];
+            if (updateCount > 0) {
+                Optional<ProcessedVisit> byUserAndStartTimeAndEndTimeAndPlace = this.findByUserAndStartTimeAndEndTimeAndPlace(user, visitsToStore.get(i).getStartTime(), visitsToStore.get(i).getEndTime(), visitsToStore.get(i).getPlace());
+                byUserAndStartTimeAndEndTimeAndPlace.ifPresent(result::add);
+            }
+        }
+        return result;
     }
 
     public void deleteAll() {

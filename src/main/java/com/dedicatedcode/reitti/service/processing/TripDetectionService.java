@@ -8,17 +8,14 @@ import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 public class TripDetectionService {
@@ -29,18 +26,15 @@ public class TripDetectionService {
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final TripJdbcService tripJdbcService;
     private final UserJdbcService userJdbcService;
-    private final JdbcTemplate jdbcTemplate;
 
     public TripDetectionService(ProcessedVisitJdbcService processedVisitJdbcService,
                                 RawLocationPointJdbcService rawLocationPointJdbcService,
                                 TripJdbcService tripJdbcService,
-                                UserJdbcService userJdbcService,
-                                JdbcTemplate jdbcTemplate) {
+                                UserJdbcService userJdbcService) {
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.tripJdbcService = tripJdbcService;
         this.userJdbcService = userJdbcService;
-        this.jdbcTemplate = jdbcTemplate;
     }
 
     public void visitCreated(ProcessedVisitCreatedEvent event) {
@@ -74,7 +68,7 @@ public class TripDetectionService {
                 }
             }
 
-            bulkInsert(user, trips);
+            tripJdbcService.bulkInsert(user, trips);
 
         });
     }
@@ -162,35 +156,4 @@ public class TripDetectionService {
         }
     }
 
-    private void bulkInsert(User user, List<Trip> tripsToInsert) {
-        if (tripsToInsert.isEmpty()) {
-            return;
-        }
-        
-        logger.debug("Bulk inserting {} trips", tripsToInsert.size());
-        
-        String sql = """
-            INSERT INTO trips (user_id, start_visit_id, end_visit_id, start_time, end_time,
-                              duration_seconds, estimated_distance_meters, travelled_distance_meters, transport_mode_inferred, version)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING;
-            """;
-        
-        List<Object[]> batchArgs = tripsToInsert.stream()
-            .map(trip -> new Object[]{
-                    user.getId(),
-                trip.getStartVisit().getId(),
-                trip.getEndVisit().getId(),
-                Timestamp.from(trip.getStartTime()),
-                Timestamp.from(trip.getEndTime()),
-                trip.getDurationSeconds(),
-                trip.getEstimatedDistanceMeters(),
-                trip.getTravelledDistanceMeters(),
-                trip.getTransportModeInferred(),
-                trip.getVersion()
-            })
-            .collect(Collectors.toList());
-        
-        int[] updateCounts = jdbcTemplate.batchUpdate(sql, batchArgs);
-        logger.debug("Successfully inserted {} trips", updateCounts.length);
-    }
 }

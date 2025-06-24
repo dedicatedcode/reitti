@@ -14,10 +14,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -25,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 public class VisitMergingService {
@@ -38,7 +35,6 @@ public class VisitMergingService {
     private final SignificantPlaceJdbcService significantPlaceJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final GeometryFactory geometryFactory;
-    private final JdbcTemplate jdbcTemplate;
     private final RabbitTemplate rabbitTemplate;
     @Value("${reitti.visit.merge-threshold-seconds:300}")
     private long mergeThresholdSeconds;
@@ -52,8 +48,7 @@ public class VisitMergingService {
                                RabbitTemplate rabbitTemplate,
                                SignificantPlaceJdbcService significantPlaceJdbcService,
                                RawLocationPointJdbcService rawLocationPointJdbcService,
-                               GeometryFactory geometryFactory,
-                               JdbcTemplate jdbcTemplate) {
+                               GeometryFactory geometryFactory) {
         this.visitJdbcService = visitJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.userJdbcService = userJdbcService;
@@ -61,7 +56,6 @@ public class VisitMergingService {
         this.significantPlaceJdbcService = significantPlaceJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.geometryFactory = geometryFactory;
-        this.jdbcTemplate = jdbcTemplate;
     }
 
     public void visitUpdated(VisitUpdatedEvent event) {
@@ -118,7 +112,7 @@ public class VisitMergingService {
         // Process all visits chronologically to avoid overlaps
         List<ProcessedVisit> processedVisits = mergeVisitsChronologically(user, allVisits);
 
-        bulkInsert(user, processedVisits)
+        processedVisitJdbcService.bulkInsert(user, processedVisits)
                 .stream()
                 .sorted(Comparator.comparing(ProcessedVisit::getStartTime))
                 .forEach(processedVisit -> this.rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, new ProcessedVisitCreatedEvent(user.getUsername(), processedVisit.getId())));
@@ -127,39 +121,6 @@ public class VisitMergingService {
                 allVisits.size(), processedVisits.size(), user.getUsername());
     }
 
-    private List<ProcessedVisit> bulkInsert(User user, List<ProcessedVisit> visitsToStore) {
-        if (visitsToStore.isEmpty()) {
-            return new ArrayList<>();
-        }
-
-        List<ProcessedVisit> result = new ArrayList<>();
-        logger.debug("Bulk inserting {} processed visits for user {}", visitsToStore.size(), user.getUsername());
-
-        String sql = """
-                INSERT INTO processed_visits (user_id, place_id, start_time, end_time, duration_seconds)
-                VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING;
-                """;
-
-        List<Object[]> batchArgs = visitsToStore.stream()
-                .map(visit -> new Object[]{
-                        user.getId(),
-                        visit.getPlace().getId(),
-                        Timestamp.from(visit.getStartTime()),
-                        Timestamp.from(visit.getEndTime()),
-                        visit.getDurationSeconds()})
-                .collect(Collectors.toList());
-
-        int[] updateCounts = jdbcTemplate.batchUpdate(sql, batchArgs);
-        for (int i = 0; i < updateCounts.length; i++) {
-            int updateCount = updateCounts[i];
-            if (updateCount > 0) {
-                Optional<ProcessedVisit> byUserAndStartTimeAndEndTimeAndPlace = this.processedVisitJdbcService.findByUserAndStartTimeAndEndTimeAndPlace(user, visitsToStore.get(i).getStartTime(), visitsToStore.get(i).getEndTime(), visitsToStore.get(i).getPlace());
-                byUserAndStartTimeAndEndTimeAndPlace.ifPresent(result::add);
-            }
-        }
-        logger.debug("Successfully inserted {} processed visits", result.size());
-        return result;
-    }
 
     private List<ProcessedVisit> mergeVisitsChronologically(User user, List<Visit> visits) {
         List<ProcessedVisit> result = new ArrayList<>();

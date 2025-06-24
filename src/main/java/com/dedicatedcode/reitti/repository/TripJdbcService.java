@@ -13,6 +13,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -152,6 +153,35 @@ public class TripJdbcService {
     public void deleteById(Long id) {
         String sql = "DELETE FROM trips WHERE id = ?";
         jdbcTemplate.update(sql, id);
+    }
+
+    public void bulkInsert(User user, List<Trip> tripsToInsert) {
+        if (tripsToInsert.isEmpty()) {
+            return;
+        }
+        
+        String sql = """
+            INSERT INTO trips (user_id, start_visit_id, end_visit_id, start_time, end_time,
+                              duration_seconds, estimated_distance_meters, travelled_distance_meters, transport_mode_inferred, version)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING;
+            """;
+        
+        List<Object[]> batchArgs = tripsToInsert.stream()
+            .map(trip -> new Object[]{
+                    user.getId(),
+                trip.getStartVisit().getId(),
+                trip.getEndVisit().getId(),
+                Timestamp.from(trip.getStartTime()),
+                Timestamp.from(trip.getEndTime()),
+                trip.getDurationSeconds(),
+                trip.getEstimatedDistanceMeters(),
+                trip.getTravelledDistanceMeters(),
+                trip.getTransportModeInferred(),
+                trip.getVersion()
+            })
+            .collect(Collectors.toList());
+        
+        jdbcTemplate.batchUpdate(sql, batchArgs);
     }
 
     public void deleteAll() {

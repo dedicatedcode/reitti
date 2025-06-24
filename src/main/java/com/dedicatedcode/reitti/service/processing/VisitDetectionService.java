@@ -12,15 +12,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class VisitDetectionService {
@@ -35,7 +32,6 @@ public class VisitDetectionService {
     private final VisitJdbcService visitJdbcService;
 
     private final RabbitTemplate rabbitTemplate;
-    private final JdbcTemplate jdbcTemplate;
 
     @Autowired
     public VisitDetectionService(
@@ -45,7 +41,7 @@ public class VisitDetectionService {
             @Value("${reitti.staypoint.min-points:5}") int minPointsInCluster,
             UserJdbcService userJdbcService,
             VisitJdbcService visitJdbcService,
-            RabbitTemplate rabbitTemplate, JdbcTemplate jdbcTemplate) {
+            RabbitTemplate rabbitTemplate) {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.distanceThreshold = distanceThreshold;
         this.timeThreshold = timeThreshold;
@@ -53,7 +49,6 @@ public class VisitDetectionService {
         this.userJdbcService = userJdbcService;
         this.visitJdbcService = visitJdbcService;
         this.rabbitTemplate = rabbitTemplate;
-        this.jdbcTemplate = jdbcTemplate;
 
         logger.info("StayPointDetectionService initialized with: distanceThreshold={}m, timeThreshold={}s, minPointsInCluster={}",
                 distanceThreshold, timeThreshold, minPointsInCluster);
@@ -118,43 +113,10 @@ public class VisitDetectionService {
                 createdVisits.add(visit);
         }
 
-        List<Long> createdIds = bulkInsert(user, createdVisits).stream().map(Visit::getId).toList();
+        List<Long> createdIds = visitJdbcService.bulkInsert(user, createdVisits).stream().map(Visit::getId).toList();
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitUpdatedEvent(user.getUsername(), createdIds));
     }
 
-    private List<Visit> bulkInsert(User user, List<Visit> visitsToInsert) {
-        if (visitsToInsert.isEmpty()) {
-            return Collections.emptyList();
-        }
-        logger.debug("Bulk inserting {} visits", visitsToInsert.size());
-
-        List<Visit> createdVisits = new ArrayList<>();
-        String sql = """
-                INSERT INTO visits (user_id, latitude, longitude, start_time, end_time, duration_seconds, processed, version)
-                VALUES (?, ?, ?, ?, ?, ?, false, 1) ON CONFLICT DO NOTHING;
-                """;
-
-        List<Object[]> batchArgs = visitsToInsert.stream()
-                .map(visit -> new Object[]{
-                        user.getId(),
-                        visit.getLatitude(),
-                        visit.getLongitude(),
-                        Timestamp.from(visit.getStartTime()),
-                        Timestamp.from(visit.getEndTime()),
-                        visit.getDurationSeconds()
-                })
-                .collect(Collectors.toList());
-
-        int[] updateCounts = jdbcTemplate.batchUpdate(sql, batchArgs);
-        for (int i = 0; i < updateCounts.length; i++) {
-            int updateCount = updateCounts[i];
-            if (updateCount > 0) {
-                createdVisits.addAll(this.visitJdbcService.findByUserAndStartTimeAndEndTime(user, visitsToInsert.get(i).getStartTime(), visitsToInsert.get(i).getEndTime()));
-            }
-        }
-        logger.debug("Successfully inserted {} visits", createdVisits.size());
-        return createdVisits;
-    }
 
     private List<StayPoint> detectStayPointsFromTrajectory(Map<Integer, List<RawLocationPoint>> points) {
         logger.debug("Starting cluster-based stay point detection with {} different spatial clusters.", points.size());
@@ -290,22 +252,6 @@ public class VisitDetectionService {
         return duplicatesToDelete;
     }
 
-    private void bulkDelete(List<Visit> visitsToDelete) {
-        if (visitsToDelete.isEmpty()) {
-            return;
-        }
-
-        logger.debug("Bulk deleting {} visits", visitsToDelete.size());
-
-        String sql = "DELETE FROM visits WHERE id = ?";
-
-        List<Object[]> batchArgs = visitsToDelete.stream()
-                .map(visit -> new Object[]{visit.getId()})
-                .collect(Collectors.toList());
-
-        int[] deleteCounts = jdbcTemplate.batchUpdate(sql, batchArgs);
-        logger.debug("Successfully deleted {} visits", deleteCounts.length);
-    }
 
     private Visit createVisit(Double longitude, Double latitude, StayPoint stayPoint) {
         return new Visit(longitude, latitude, stayPoint.getArrivalTime(), stayPoint.getDepartureTime(), stayPoint.getDurationSeconds(), false);

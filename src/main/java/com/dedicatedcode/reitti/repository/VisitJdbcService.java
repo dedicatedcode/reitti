@@ -9,8 +9,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -109,6 +111,38 @@ public class VisitJdbcService {
                 "ORDER BY v.start_time";
         return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(),
                 Timestamp.from(windowStart), Timestamp.from(windowEnd));
+    }
+
+    public List<Visit> bulkInsert(User user, List<Visit> visitsToInsert) {
+        if (visitsToInsert.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<Visit> createdVisits = new ArrayList<>();
+        String sql = """
+                INSERT INTO visits (user_id, latitude, longitude, start_time, end_time, duration_seconds, processed, version)
+                VALUES (?, ?, ?, ?, ?, ?, false, 1) ON CONFLICT DO NOTHING;
+                """;
+
+        List<Object[]> batchArgs = visitsToInsert.stream()
+                .map(visit -> new Object[]{
+                        user.getId(),
+                        visit.getLatitude(),
+                        visit.getLongitude(),
+                        Timestamp.from(visit.getStartTime()),
+                        Timestamp.from(visit.getEndTime()),
+                        visit.getDurationSeconds()
+                })
+                .collect(Collectors.toList());
+
+        int[] updateCounts = jdbcTemplate.batchUpdate(sql, batchArgs);
+        for (int i = 0; i < updateCounts.length; i++) {
+            int updateCount = updateCounts[i];
+            if (updateCount > 0) {
+                createdVisits.addAll(this.findByUserAndStartTimeAndEndTime(user, visitsToInsert.get(i).getStartTime(), visitsToInsert.get(i).getEndTime()));
+            }
+        }
+        return createdVisits;
     }
 
     public void delete(List<Visit> affectedVisits) {

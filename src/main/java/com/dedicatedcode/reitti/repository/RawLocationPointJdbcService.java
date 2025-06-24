@@ -1,7 +1,10 @@
 package com.dedicatedcode.reitti.repository;
 
+import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.model.RawLocationPoint;
 import com.dedicatedcode.reitti.model.User;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -9,8 +12,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -19,8 +25,9 @@ public class RawLocationPointJdbcService {
     private final JdbcTemplate jdbcTemplate;
     private final RowMapper<RawLocationPoint> rawLocationPointRowMapper;
     private final PointReaderWriter pointReaderWriter;
+    private final GeometryFactory geometryFactory;
 
-    public RawLocationPointJdbcService(JdbcTemplate jdbcTemplate, PointReaderWriter pointReaderWriter) {
+    public RawLocationPointJdbcService(JdbcTemplate jdbcTemplate, PointReaderWriter pointReaderWriter, GeometryFactory geometryFactory) {
         this.jdbcTemplate = jdbcTemplate;
         this.rawLocationPointRowMapper = (rs, rowNum) -> new RawLocationPoint(
                 rs.getLong("id"),
@@ -33,6 +40,7 @@ public class RawLocationPointJdbcService {
         );
 
         this.pointReaderWriter = pointReaderWriter;
+        this.geometryFactory = geometryFactory;
     }
 
 
@@ -131,6 +139,43 @@ public class RawLocationPointJdbcService {
     public long count() {
         String sql = "SELECT COUNT(*) FROM raw_location_points";
         return jdbcTemplate.queryForObject(sql, Long.class);
+    }
+
+    public void bulkInsert(User user, List<LocationDataRequest.LocationPoint> points) {
+        if (points.isEmpty()) {
+            return;
+        }
+        
+        String sql = "INSERT INTO raw_location_points (user_id , activity_provided, timestamp, accuracy_meters, geom, processed) " +
+                "VALUES (?, ?,  ?,  ?, CAST(? AS geometry), false) ON CONFLICT DO NOTHING;";
+
+        List<Object[]> batchArgs = new ArrayList<>();
+        for (LocationDataRequest.LocationPoint point : points) {
+            ZonedDateTime parse = ZonedDateTime.parse(point.getTimestamp());
+            Timestamp timestamp = Timestamp.from(parse.toInstant());
+            batchArgs.add(new Object[]{
+                    user.getId(),
+                    point.getActivity(),
+                    timestamp,
+                    point.getAccuracyMeters(),
+                    geometryFactory.createPoint(new Coordinate(point.getLongitude(), point.getLatitude())).toString()
+            });
+        }
+        jdbcTemplate.batchUpdate(sql, batchArgs);
+    }
+
+    public void bulkUpdateProcessedStatus(List<RawLocationPoint> points) {
+        if (points.isEmpty()) {
+            return;
+        }
+        
+        String sql = "UPDATE raw_location_points SET processed = true WHERE id = ?";
+        
+        List<Object[]> batchArgs = points.stream()
+                .map(point -> new Object[]{point.getId()})
+                .collect(Collectors.toList());
+        
+        jdbcTemplate.batchUpdate(sql, batchArgs);
     }
 
     public void deleteAll() {
