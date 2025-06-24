@@ -17,7 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -81,41 +80,39 @@ public class VisitMergingService {
         }
 
 
-        Instant searchStart = visits.stream().min(Comparator.comparing(Visit::getStartTime)).map(Visit::getStartTime).map(instant -> instant.minus(1, ChronoUnit.HOURS)).orElseThrow();
-        Instant searchEnd = visits.stream().max(Comparator.comparing(Visit::getEndTime)).map(Visit::getEndTime).map(instant -> instant.plus(1, ChronoUnit.HOURS)).orElseThrow();
+
+
+        Instant searchStart = visits.stream().min(Comparator.comparing(Visit::getStartTime)).map(Visit::getStartTime).map(instant -> instant.minus(1, ChronoUnit.DAYS)).orElseThrow();
+        Instant searchEnd = visits.stream().max(Comparator.comparing(Visit::getEndTime)).map(Visit::getEndTime).map(instant -> instant.plus(1, ChronoUnit.DAYS)).orElseThrow();
         processAndMergeVisits(user.get(), searchStart.toEpochMilli(), searchEnd.toEpochMilli());
     }
 
     private void processAndMergeVisits(User user, Long start, Long end) {
         logger.info("Processing and merging visits for user: {}", user.getUsername());
 
-
         Instant searchStart = Instant.ofEpochMilli(start);
         Instant searchEnd = Instant.ofEpochMilli(end);
-        List<ProcessedVisit> visitsAtStart = this.processedVisitJdbcService.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user, searchStart, searchEnd);
-        List<ProcessedVisit> visitsAtEnd = this.processedVisitJdbcService.findByUserAndEndTimeBetweenOrderByStartTimeAsc(user, searchStart, searchEnd);
 
-        if (!visitsAtStart.isEmpty()) {
-            searchStart = visitsAtStart.getFirst().getStartTime().minus(1, ChronoUnit.DAYS);
-        }
-        if (!visitsAtEnd.isEmpty()) {
-            searchEnd = visitsAtEnd.getLast().getEndTime().plus(1, ChronoUnit.DAYS);
-        }
-        logger.debug("found {} processed visits at start and {} processed visits at end, will extend search window to {} and {}", visitsAtStart.size(), visitsAtEnd.size(), searchStart, searchEnd);
-
-
-        List<ProcessedVisit> allProcessedVisitsInRange = this.processedVisitJdbcService.findByUserAndStartTimeGreaterThanEqualAndEndTimeLessThanEqual(user, searchStart, searchEnd);
+        List<ProcessedVisit> allProcessedVisitsInRange = this.processedVisitJdbcService.findByUserAndStartTimeBeforeEqualAndEndTimeAfterEqual(user, searchEnd, searchStart);
+        logger.debug("found [{}] processed visits in range [{}] to [{}]", allProcessedVisitsInRange.size(), searchStart, searchEnd);
         this.processedVisitJdbcService.deleteAll(allProcessedVisitsInRange);
-        this.processedVisitJdbcService.deleteAll(visitsAtStart);
-        this.processedVisitJdbcService.deleteAll(visitsAtEnd);
-        List<Visit> allVisits = this.visitJdbcService.findByUserAndStartTimeBetweenOrderByStartTimeAsc(user, searchStart, searchEnd);
+
+        if (!allProcessedVisitsInRange.isEmpty()) {
+            if (allProcessedVisitsInRange.getFirst().getStartTime().isBefore(searchStart)) {
+                searchStart = allProcessedVisitsInRange.getFirst().getStartTime();
+            }
+            if (allProcessedVisitsInRange.getLast().getStartTime().isAfter(searchEnd)) {
+                searchEnd = allProcessedVisitsInRange.getLast().getStartTime();
+            }
+        }
+
+        searchStart = searchStart.minus(1, ChronoUnit.DAYS);
+        searchEnd = searchEnd.plus(1, ChronoUnit.DAYS);
+        List<Visit> allVisits = this.visitJdbcService.findByUserAndTimeAfterAndStartTimeBefore(user, searchStart, searchEnd);
         if (allVisits.isEmpty()) {
             logger.info("No visits found for user: {}", user.getUsername());
             return;
         }
-
-        // Sort all visits chronologically
-        allVisits.sort(Comparator.comparing(Visit::getStartTime));
 
         // Process all visits chronologically to avoid overlaps
         List<ProcessedVisit> processedVisits = mergeVisitsChronologically(user, allVisits);
@@ -138,8 +135,8 @@ public class VisitMergingService {
         logger.debug("Bulk inserting {} processed visits for user {}", visitsToStore.size(), user.getUsername());
 
         String sql = """
-                INSERT INTO processed_visits (user_id, place_id, start_time, end_time, duration_seconds, merged_count, original_visit_ids)
-                VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING;
+                INSERT INTO processed_visits (user_id, place_id, start_time, end_time, duration_seconds)
+                VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING;
                 """;
 
         List<Object[]> batchArgs = visitsToStore.stream()
@@ -148,10 +145,7 @@ public class VisitMergingService {
                         visit.getPlace().getId(),
                         Timestamp.from(visit.getStartTime()),
                         Timestamp.from(visit.getEndTime()),
-                        visit.getDurationSeconds(),
-                        visit.getMergedCount(),
-                        visit.getOriginalVisitIds()
-                })
+                        visit.getDurationSeconds()})
                 .collect(Collectors.toList());
 
         int[] updateCounts = jdbcTemplate.batchUpdate(sql, batchArgs);
@@ -173,15 +167,10 @@ public class VisitMergingService {
             return result;
         }
 
-        // Sort visits chronologically
-        visits.sort(Comparator.comparing(Visit::getStartTime));
-
         // Start with the first visit
         Visit currentVisit = visits.getFirst();
         Instant currentStartTime = currentVisit.getStartTime();
         Instant currentEndTime = currentVisit.getEndTime();
-        Set<Long> mergedVisitIds = new HashSet<>();
-        mergedVisitIds.add(currentVisit.getId());
 
         // Find or create a place for the first visit
         List<SignificantPlace> nearbyPlaces = findNearbyPlaces(user, currentVisit.getLatitude(), currentVisit.getLongitude());
@@ -220,25 +209,20 @@ public class VisitMergingService {
                 // Merge this visit with the current one
                 currentEndTime = nextVisit.getEndTime().isAfter(currentEndTime) ?
                         nextVisit.getEndTime() : currentEndTime;
-                mergedVisitIds.add(nextVisit.getId());
             } else {
                 // Create a processed visit from the current merged set
-                ProcessedVisit processedVisit = createProcessedVisit(user, currentPlace, currentStartTime,
-                        currentEndTime, mergedVisitIds);
+                ProcessedVisit processedVisit = createProcessedVisit(currentPlace, currentStartTime, currentEndTime);
                 result.add(processedVisit);
 
                 // Start a new merged set with this visit
                 currentStartTime = nextVisit.getStartTime();
                 currentEndTime = nextVisit.getEndTime();
                 currentPlace = nextPlace;
-                mergedVisitIds = new HashSet<>();
-                mergedVisitIds.add(nextVisit.getId());
             }
         }
 
         // Add the last merged set
-        ProcessedVisit processedVisit = createProcessedVisit(user, currentPlace, currentStartTime,
-                currentEndTime, mergedVisitIds);
+        ProcessedVisit processedVisit = createProcessedVisit(currentPlace, currentStartTime, currentEndTime);
 
         result.add(processedVisit);
 
@@ -277,15 +261,9 @@ public class VisitMergingService {
         return significantPlace;
     }
 
-    private ProcessedVisit createProcessedVisit(User user,
-                                                SignificantPlace place,
-                                                Instant startTime, Instant endTime,
-                                                Set<Long> originalVisitIds) {
-        // Store original visit IDs as comma-separated string
-        String visitIdsStr = originalVisitIds.stream()
-                .map(Object::toString)
-                .collect(Collectors.joining(","));
-        return new ProcessedVisit(place, startTime, endTime, visitIdsStr, endTime.getEpochSecond() - startTime.getEpochSecond(), originalVisitIds.size());
+    private ProcessedVisit createProcessedVisit(SignificantPlace place,
+                                                Instant startTime, Instant endTime) {
+        return new ProcessedVisit(place, startTime, endTime, endTime.getEpochSecond() - startTime.getEpochSecond());
     }
 
     private void publishSignificantPlaceCreatedEvent(SignificantPlace place) {

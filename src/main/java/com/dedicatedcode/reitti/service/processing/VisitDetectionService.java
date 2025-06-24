@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -63,12 +64,40 @@ public class VisitDetectionService {
     public void detectStayPoints(LocationProcessEvent incoming) {
         logger.debug("Detecting stay points for user {} from {} to {} ", incoming.getUsername(), incoming.getEarliest(), incoming.getLatest());
         User user = userJdbcService.getUserByUsername(incoming.getUsername());
-        // Get points from 1 day before the earliest new point
-        Instant windowStart = incoming.getEarliest().minus(Duration.ofDays(1));
+        // We extend the search window slightly to catch visits spanning midnight
+        Instant windowStart = incoming.getEarliest().minus(5, ChronoUnit.MINUTES);
         // Get points from 1 day after the latest new point
-        Instant windowEnd = incoming.getLatest().plus(Duration.ofDays(1));
+        Instant windowEnd = incoming.getLatest().plus(5, ChronoUnit.MINUTES);
 
-        List<RawLocationPointJdbcService.ClusteredPoint> clusteredPointsInTimeRangeForUser = this.rawLocationPointJdbcService.findClusteredPointsInTimeRangeForUser(user, windowStart, windowEnd, minPointsInCluster, GeoUtils.metersToDegreesAtPosition(distanceThreshold, 50)[0]);
+
+
+        /*
+        -----+++++----------+++++------+++++++---+++----------------++++++++-----------------------------------------------
+        ----------------------#-------------------#------------------------------------------------------------------------
+        --------------------++#++------+++++++---+#+-----------------------------------------------------------------------
+         */
+        List<Visit> affectedVisits = this.visitJdbcService.findByUserAndTimeAfterAndStartTimeBefore(user, windowStart, windowEnd);
+        if (logger.isDebugEnabled()) {
+            logger.debug("Found [{}] visits which touch the timerange from [{}] to [{}]", affectedVisits.size(), windowStart, windowEnd);
+            affectedVisits.forEach(visit -> {logger.debug("Visit [{}] from [{}] to [{}] at [{},{}]", visit.getId(), visit.getStartTime(), visit.getEndTime(), visit.getLongitude(), visit.getLatitude());});
+
+        }
+        this.visitJdbcService.delete(affectedVisits);
+
+        if (!affectedVisits.isEmpty()) {
+            if (affectedVisits.getFirst().getStartTime().isBefore(windowStart)) {
+                windowStart = affectedVisits.getFirst().getStartTime();
+            }
+
+            if (affectedVisits.getLast().getEndTime().isAfter(windowEnd)) {
+                windowEnd = affectedVisits.getLast().getEndTime();
+            }
+        }
+        logger.debug("Searching for points in the timerange from [{}] to [{}]", windowStart, windowEnd);
+
+        double baseLatitude = affectedVisits.isEmpty() ? 50 : affectedVisits.getFirst().getLatitude();
+        double[] metersAsDegrees = GeoUtils.metersToDegreesAtPosition(distanceThreshold, baseLatitude);
+        List<RawLocationPointJdbcService.ClusteredPoint> clusteredPointsInTimeRangeForUser = this.rawLocationPointJdbcService.findClusteredPointsInTimeRangeForUser(user, windowStart, windowEnd, minPointsInCluster, metersAsDegrees[0]);
         Map<Integer, List<RawLocationPoint>> clusteredByLocation = new HashMap<>();
         for (RawLocationPointJdbcService.ClusteredPoint clusteredPoint : clusteredPointsInTimeRangeForUser) {
             if (clusteredPoint.getClusterId() != null) {
@@ -76,67 +105,21 @@ public class VisitDetectionService {
             }
         }
 
-        logger.debug("Found {} point clusters in the processing window", clusteredByLocation.size());
+        logger.debug("Found {} point clusters in the processing window from [{}] to [{}]", clusteredByLocation.size(), windowStart, windowEnd);
 
         // Apply the stay point detection algorithm
         List<StayPoint> stayPoints = detectStayPointsFromTrajectory(clusteredByLocation);
 
         logger.info("Detected {} stay points for user {}", stayPoints.size(), user.getUsername());
 
-        List<Visit> updateVisits = new ArrayList<>();
         List<Visit> createdVisits = new ArrayList<>();
 
         for (StayPoint stayPoint : stayPoints) {
-            List<Visit> existingVisitByStart = this.visitJdbcService.findByUserAndStartTime(user, stayPoint.getArrivalTime());
-            List<Visit> existingVisitByEnd = this.visitJdbcService.findByUserAndEndTime(user, stayPoint.getDepartureTime());
-            List<Visit> overlappingVisits = this.visitJdbcService.findByUserAndStartTimeBeforeAndEndTimeAfter(user, stayPoint.getDepartureTime(), stayPoint.getArrivalTime());
-
-
-            Set<Visit> visitsToUpdate = new HashSet<>();
-            visitsToUpdate.addAll(existingVisitByStart);
-            visitsToUpdate.addAll(existingVisitByEnd);
-            visitsToUpdate.addAll(overlappingVisits);
-
-
-            for (Visit visit : visitsToUpdate) {
-                boolean changed = false;
-                if (stayPoint.getDepartureTime().isAfter(visit.getEndTime())) {
-                    visit = visit.withEndTime(stayPoint.getDepartureTime()).withProcessed(false);
-                    changed = true;
-                }
-
-                if (stayPoint.getArrivalTime().isBefore(visit.getEndTime())) {
-                    visit = visit.withStartTime(stayPoint.getArrivalTime()).withProcessed(false);
-                    changed = true;
-                }
-
-                if (changed) {
-                    updateVisits.add(visit);
-                }
-            }
-
-            if (visitsToUpdate.isEmpty()) {
                 Visit visit = createVisit(stayPoint.getLongitude(), stayPoint.getLatitude(), stayPoint);
                 logger.debug("Creating new visit: {}", visit);
                 createdVisits.add(visit);
-            }
         }
 
-
-        // Deduplicate visits by ID before bulk update
-        List<Visit> deduplicatedVisits = deduplicateVisitsById(updateVisits);
-
-        // Check for time-based duplicates and remove them from database
-        List<Visit> duplicatesToDelete = findTimeDuplicates(deduplicatedVisits);
-        if (!duplicatesToDelete.isEmpty()) {
-            bulkDelete(duplicatesToDelete);
-            // Remove deleted visits from the list to update
-            deduplicatedVisits.removeAll(duplicatesToDelete);
-        }
-
-        List<Long> updatedIds = bulkUpdate(deduplicatedVisits).stream().map(Visit::getId).toList();
-
-        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitUpdatedEvent(user.getUsername(), updatedIds));
         List<Long> createdIds = bulkInsert(user, createdVisits).stream().map(Visit::getId).toList();
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitUpdatedEvent(user.getUsername(), createdIds));
     }
@@ -173,43 +156,6 @@ public class VisitDetectionService {
         }
         logger.debug("Successfully inserted {} visits", createdVisits.size());
         return createdVisits;
-    }
-
-    private List<Visit> bulkUpdate(List<Visit> visitsToUpdate) {
-        if (visitsToUpdate.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        List<Visit> updatedVisits = new ArrayList<>();
-        logger.debug("Bulk updating {} visits", visitsToUpdate.size());
-
-        String sql = """
-                UPDATE visits
-                SET start_time = ?, end_time = ?, duration_seconds = ?, processed = ?
-                WHERE id = ?
-                """;
-
-        List<Object[]> batchArgs = visitsToUpdate.stream()
-                .map(visit -> new Object[]{
-                        Timestamp.from(visit.getStartTime()),
-                        Timestamp.from(visit.getEndTime()),
-                        visit.getDurationSeconds(),
-                        visit.isProcessed(),
-                        visit.getId()
-                })
-                .collect(Collectors.toList());
-
-        int[] updateCounts = jdbcTemplate.batchUpdate(sql, batchArgs);
-
-        for (int i = 0; i < updateCounts.length; i++) {
-            int updateCount = updateCounts[i];
-            if (updateCount > 0) {
-                updatedVisits.add(visitsToUpdate.get(i));
-            }
-        }
-
-        logger.debug("Successfully updated {} visits", updatedVisits.size());
-        return updatedVisits;
     }
 
     private List<StayPoint> detectStayPointsFromTrajectory(Map<Integer, List<RawLocationPoint>> points) {

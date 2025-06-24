@@ -39,6 +39,8 @@ public class LocationDataIngestPipeline {
 
     @RabbitListener(queues = RabbitMQConfig.LOCATION_DATA_QUEUE, concurrency = "4-16")
     public void processLocationData(LocationDataEvent event) {
+        long start = System.currentTimeMillis();
+
         logger.debug("Starting processing pipeline for user {} with {} points",
                 event.getUsername(), event.getPoints().size());
 
@@ -67,6 +69,7 @@ public class LocationDataIngestPipeline {
             });
         }
         jdbcTemplate.batchUpdate(sql, batchArgs);
+        logger.debug("Finished processing pipeline for user [{}] in [{}]ms", event.getUsername(), System.currentTimeMillis() - start);
     }
 
 }
