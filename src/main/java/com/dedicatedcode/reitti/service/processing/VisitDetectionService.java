@@ -60,7 +60,6 @@ public class VisitDetectionService {
                 distanceThreshold, timeThreshold, minPointsInCluster);
     }
 
-    @RabbitListener(queues = RabbitMQConfig.STAY_DETECTION_QUEUE, concurrency = "1-16")
     public void detectStayPoints(LocationProcessEvent incoming) {
         logger.debug("Detecting stay points for user {} from {} to {} ", incoming.getUsername(), incoming.getEarliest(), incoming.getLatest());
         User user = userJdbcService.getUserByUsername(incoming.getUsername());

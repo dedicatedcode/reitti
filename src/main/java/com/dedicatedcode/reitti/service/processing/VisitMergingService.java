@@ -62,7 +62,6 @@ public class VisitMergingService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE, concurrency = "1-16")
     public void visitUpdated(VisitUpdatedEvent event) {
         handleEvent(event.getUsername(), event.getVisitIds());
     }

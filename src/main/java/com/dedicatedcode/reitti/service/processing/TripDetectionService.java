@@ -45,7 +45,6 @@ public class TripDetectionService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    @RabbitListener(queues = RabbitMQConfig.DETECT_TRIP_QUEUE, concurrency = "1-16")
     public void visitCreated(ProcessedVisitCreatedEvent event) {
         User user = this.userJdbcService.findByUsername(event.getUsername()).orElseThrow();
 

@@ -37,7 +37,6 @@ public class LocationDataIngestPipeline {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    @RabbitListener(queues = RabbitMQConfig.LOCATION_DATA_QUEUE, concurrency = "4-16")
     public void processLocationData(LocationDataEvent event) {
         long start = System.currentTimeMillis();
 
