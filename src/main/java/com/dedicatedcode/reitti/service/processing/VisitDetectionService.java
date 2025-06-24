@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.LocationProcessEvent;
 import com.dedicatedcode.reitti.event.VisitUpdatedEvent;
 import com.dedicatedcode.reitti.model.*;
+import com.dedicatedcode.reitti.repository.OptimisticLockException;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.VisitJdbcService;
@@ -18,6 +19,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class VisitDetectionService {
@@ -62,8 +64,6 @@ public class VisitDetectionService {
         // Get points from 1 day after the latest new point
         Instant windowEnd = incoming.getLatest().plus(5, ChronoUnit.MINUTES);
 
-
-
         /*
         -----+++++----------+++++------+++++++---+++----------------++++++++-----------------------------------------------
         ----------------------#-------------------#------------------------------------------------------------------------
@@ -75,7 +75,11 @@ public class VisitDetectionService {
             affectedVisits.forEach(visit -> {logger.debug("Visit [{}] from [{}] to [{}] at [{},{}]", visit.getId(), visit.getStartTime(), visit.getEndTime(), visit.getLongitude(), visit.getLatitude());});
 
         }
-        this.visitJdbcService.delete(affectedVisits);
+        try {
+            this.visitJdbcService.delete(affectedVisits);
+        } catch (OptimisticLockException e) {
+            throw new RuntimeException(e);
+        }
 
         if (!affectedVisits.isEmpty()) {
             if (affectedVisits.getFirst().getStartTime().isBefore(windowStart)) {
@@ -194,64 +198,6 @@ public class VisitDetectionService {
         double lngCentroid = weightedLngSum / weightSum;
         return new GeoPoint(latCentroid, lngCentroid);
     }
-
-    private List<Visit> deduplicateVisitsById(List<Visit> visits) {
-        Map<Long, Visit> visitMap = new HashMap<>();
-
-        for (Visit visit : visits) {
-            Long visitId = visit.getId();
-            if (visitMap.containsKey(visitId)) {
-                Visit existing = visitMap.get(visitId);
-
-                // Take the earliest start time
-                Instant earliestStart = visit.getStartTime().isBefore(existing.getStartTime())
-                        ? visit.getStartTime() : existing.getStartTime();
-
-                // Take the latest end time
-                Instant latestEnd = visit.getEndTime().isAfter(existing.getEndTime())
-                        ? visit.getEndTime() : existing.getEndTime();
-
-                // Update the existing visit with combined times
-                visitMap.put(visitId, existing.withStartTime(earliestStart)
-                        .withEndTime(latestEnd)
-                        .withDurationSeconds(latestEnd.getEpochSecond() - earliestStart.getEpochSecond())
-                        .withProcessed(false));
-            } else {
-                visitMap.put(visitId, visit);
-            }
-        }
-
-        return new ArrayList<>(visitMap.values());
-    }
-
-    private List<Visit> findTimeDuplicates(List<Visit> visits) {
-        Map<String, List<Visit>> timeGroups = new HashMap<>();
-
-        // Group visits by start and end time
-        for (Visit visit : visits) {
-            String timeKey = visit.getStartTime() + "_" + visit.getEndTime();
-            timeGroups.computeIfAbsent(timeKey, k -> new ArrayList<>()).add(visit);
-        }
-
-        List<Visit> duplicatesToDelete = new ArrayList<>();
-
-        // For each time group with multiple visits, keep one and mark others for deletion
-        for (List<Visit> timeGroup : timeGroups.values()) {
-            if (timeGroup.size() > 1) {
-                // Sort by ID to have consistent behavior (keep the one with lowest ID)
-                timeGroup.sort(Comparator.comparing(Visit::getId));
-                // Add all except the first one to deletion list
-                duplicatesToDelete.addAll(timeGroup.subList(1, timeGroup.size()));
-                logger.debug("Found {} time-based duplicates for time range {}-{}",
-                        timeGroup.size() - 1,
-                        timeGroup.getFirst().getStartTime(),
-                        timeGroup.getFirst().getEndTime());
-            }
-        }
-
-        return duplicatesToDelete;
-    }
-
 
     private Visit createVisit(Double longitude, Double latitude, StayPoint stayPoint) {
         return new Visit(longitude, latitude, stayPoint.getArrivalTime(), stayPoint.getDepartureTime(), stayPoint.getDurationSeconds(), false);
