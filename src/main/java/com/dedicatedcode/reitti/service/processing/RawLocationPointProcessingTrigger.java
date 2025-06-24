@@ -14,7 +14,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -62,7 +61,7 @@ public class RawLocationPointProcessingTrigger {
                     this.rabbitTemplate
                             .convertAndSend(RabbitMQConfig.EXCHANGE_NAME,
                                     RabbitMQConfig.STAY_DETECTION_ROUTING_KEY,
-                                    new LocationProcessEvent(user.getUsername(), earliest.minus(10, ChronoUnit.MINUTES), latest.plus(10, ChronoUnit.MINUTES)));
+                                    new LocationProcessEvent(user.getUsername(), earliest, latest));
                     currentPoints.forEach(RawLocationPoint::markProcessed);
                     bulkUpdateProcessedStatus(currentPoints);
                     i++;

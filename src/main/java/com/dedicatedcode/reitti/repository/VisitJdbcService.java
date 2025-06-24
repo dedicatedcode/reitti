@@ -7,8 +7,6 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
@@ -40,37 +38,6 @@ public class VisitJdbcService {
                 "FROM visits v " +
                 "WHERE v.user_id = ? ORDER BY start_time";
         return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId());
-    }
-
-    public List<Visit> findByUserAndStartTime(User user, Instant startTime) {
-        String sql = "SELECT v.* " +
-                "FROM visits v " +
-                "WHERE v.user_id = ? AND v.start_time = ?";
-        return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(), Timestamp.from(startTime));
-    }
-
-    public List<Visit> findByUserAndEndTime(User user, Instant departureTime) {
-        String sql = "SELECT v.* " +
-                "FROM visits v " +
-                "WHERE v.user_id = ? AND v.end_time = ?";
-        return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(), Timestamp.from(departureTime));
-    }
-
-    public List<Visit> findByUserAndStartTimeBetweenOrderByStartTimeAsc(User user, Instant startTime, Instant endTime) {
-        String sql = "SELECT v.* " +
-                "FROM visits v " +
-                "WHERE v.user_id = ? AND v.start_time BETWEEN ? AND ? " +
-                "ORDER BY v.start_time ASC";
-        return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(),
-                Timestamp.from(startTime), Timestamp.from(endTime));
-    }
-
-    public List<Visit> findByUserAndStartTimeBeforeAndEndTimeAfter(User user, Instant startTimeBefore, Instant endTimeAfter) {
-        String sql = "SELECT v.* " +
-                "FROM visits v " +
-                "WHERE v.user_id = ? AND v.start_time < ? AND v.end_time > ?";
-        return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(),
-                Timestamp.from(startTimeBefore), Timestamp.from(endTimeAfter));
     }
 
     public List<Visit> findByUserAndStartTimeAndEndTime(User user, Instant startTime, Instant endTime) {
@@ -135,13 +102,13 @@ public class VisitJdbcService {
         jdbcTemplate.update(sql);
     }
 
-    public List<Visit> findByUserAndTimeAfterAndStartTimeBefore(User user, Instant windowEnd, Instant windowStart) {
+    public List<Visit> findByUserAndTimeAfterAndStartTimeBefore(User user, Instant windowStart, Instant windowEnd) {
         String sql = "SELECT v.* " +
                 "FROM visits v " +
                 "WHERE v.user_id = ? AND v.end_time > ? AND v.start_time < ? " +
                 "ORDER BY v.start_time";
         return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(),
-                Timestamp.from(windowEnd), Timestamp.from(windowStart));
+                Timestamp.from(windowStart), Timestamp.from(windowEnd));
     }
 
     public void delete(List<Visit> affectedVisits) {

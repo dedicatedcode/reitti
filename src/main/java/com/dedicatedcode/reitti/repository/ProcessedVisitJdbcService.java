@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -36,9 +37,7 @@ public class ProcessedVisitJdbcService {
                     place,
                     rs.getTimestamp("start_time").toInstant(),
                     rs.getTimestamp("end_time").toInstant(),
-                    rs.getString("original_visit_ids"),
                     rs.getLong("duration_seconds"),
-                    rs.getInt("merged_count"),
                     rs.getLong("version")
             );
         }
@@ -63,7 +62,7 @@ public class ProcessedVisitJdbcService {
                 "FROM processed_visits pv " +
                 "WHERE pv.user_id = ? AND pv.start_time <= ? AND pv.end_time >= ?";
         return jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, user.getId(),
-                java.sql.Timestamp.from(endTime), java.sql.Timestamp.from(startTime));
+                Timestamp.from(endTime), Timestamp.from(startTime));
     }
 
     public List<ProcessedVisit> findByUserAndStartTimeBetweenOrderByStartTimeAsc(
@@ -73,7 +72,7 @@ public class ProcessedVisitJdbcService {
                 "WHERE pv.user_id = ? AND pv.start_time BETWEEN ? AND ? " +
                 "ORDER BY pv.start_time ASC";
         return jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, user.getId(),
-                java.sql.Timestamp.from(startTime), java.sql.Timestamp.from(endTime));
+                Timestamp.from(startTime), Timestamp.from(endTime));
     }
 
     public List<ProcessedVisit> findByUserAndEndTimeBetweenOrderByStartTimeAsc(User user, Instant endTimeAfter, Instant endTimeBefore) {
@@ -82,7 +81,7 @@ public class ProcessedVisitJdbcService {
                 "WHERE pv.user_id = ? AND pv.end_time BETWEEN ? AND ? " +
                 "ORDER BY pv.start_time ASC";
         return jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, user.getId(),
-                java.sql.Timestamp.from(endTimeAfter), java.sql.Timestamp.from(endTimeBefore));
+                Timestamp.from(endTimeAfter), Timestamp.from(endTimeBefore));
     }
 
     public Optional<ProcessedVisit> findByUserAndId(User user, long id) {
@@ -96,16 +95,16 @@ public class ProcessedVisitJdbcService {
     public List<ProcessedVisit> findByUserAndStartTimeBeforeEqualAndEndTimeAfterEqual(User user, Instant endTime, Instant startTime) {
         String sql = "SELECT pv.* " +
                 "FROM processed_visits pv " +
-                "WHERE pv.user_id = ? AND pv.start_time <= ? AND pv.end_time >= ?";
+                "WHERE pv.user_id = ? AND pv.start_time <= ? AND pv.end_time >= ? ORDER BY start_time";
         return jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, user.getId(),
-                java.sql.Timestamp.from(endTime), java.sql.Timestamp.from(startTime));
+                Timestamp.from(endTime), Timestamp.from(startTime));
     }
     public List<ProcessedVisit> findByUserAndStartTimeGreaterThanEqualAndEndTimeLessThanEqual(User user, Instant startTimeIsGreaterThan, Instant endTimeIsLessThan) {
         String sql = "SELECT pv.* " +
                 "FROM processed_visits pv " +
                 "WHERE pv.user_id = ? AND pv.start_time >= ? AND pv.end_time <= ?";
         return jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, user.getId(),
-                java.sql.Timestamp.from(startTimeIsGreaterThan), java.sql.Timestamp.from(endTimeIsLessThan));
+                Timestamp.from(startTimeIsGreaterThan), Timestamp.from(endTimeIsLessThan));
     }
 
     public List<Object[]> findTopPlacesByStayTimeWithLimit(User user, long limit) {
@@ -137,7 +136,7 @@ public class ProcessedVisitJdbcService {
                 rs.getLong(3),
                 rs.getDouble(4),
                 rs.getDouble(5)
-        }, user.getId(), java.sql.Timestamp.from(startTime), java.sql.Timestamp.from(endTime), limit);
+        }, user.getId(), Timestamp.from(startTime), Timestamp.from(endTime), limit);
     }
 
     public ProcessedVisit create(User user, ProcessedVisit visit) {
@@ -145,8 +144,8 @@ public class ProcessedVisitJdbcService {
                 "VALUES (?, ?, ?, ?, ?, 1) RETURNING id";
         Long id = jdbcTemplate.queryForObject(sql, Long.class,
                 user.getId(),
-                java.sql.Timestamp.from(visit.getStartTime()),
-                java.sql.Timestamp.from(visit.getEndTime()),
+                Timestamp.from(visit.getStartTime()),
+                Timestamp.from(visit.getEndTime()),
                 visit.getDurationSeconds(),
                 visit.getPlace() != null ? visit.getPlace().getId() : null
         );
@@ -156,8 +155,8 @@ public class ProcessedVisitJdbcService {
     public ProcessedVisit update(ProcessedVisit visit) {
         String sql = "UPDATE processed_visits SET start_time = ?, end_time = ?, duration_seconds = ?, place_id = ? WHERE id = ?";
         jdbcTemplate.update(sql,
-                java.sql.Timestamp.from(visit.getStartTime()),
-                java.sql.Timestamp.from(visit.getEndTime()),
+                Timestamp.from(visit.getStartTime()),
+                Timestamp.from(visit.getEndTime()),
                 visit.getDurationSeconds(),
                 visit.getPlace().getId(),
                 visit.getId()
@@ -194,8 +193,8 @@ public class ProcessedVisitJdbcService {
                 "WHERE pv.user_id = ? AND pv.start_time = ? AND pv.end_time = ? AND pv.place_id = ?";
         List<ProcessedVisit> results = jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER,
                 user.getId(),
-                java.sql.Timestamp.from(startTime),
-                java.sql.Timestamp.from(endTime),
+                Timestamp.from(startTime),
+                Timestamp.from(endTime),
                 place.getId());
         return Optional.ofNullable(results.isEmpty() ? null : results.getFirst());
     }

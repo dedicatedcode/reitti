@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.service.processing;
 
-import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.ProcessedVisitCreatedEvent;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
@@ -9,7 +8,6 @@ import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 

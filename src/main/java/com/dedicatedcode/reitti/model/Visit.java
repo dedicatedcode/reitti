@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.model;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 
@@ -92,4 +91,14 @@ public class Visit {
         return Objects.hashCode(id);
     }
 
+    @Override
+    public String toString() {
+        return "Visit{" +
+                "id=" + id +
+                ", start,end=" + startTime +" -> " + endTime +
+                ", lat,long=" + latitude +"," + longitude +
+                ", durationSeconds=" + durationSeconds +
+                ", processed=" + processed +
+                '}';
+    }
 }

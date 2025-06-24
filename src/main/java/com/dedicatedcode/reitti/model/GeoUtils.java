@@ -24,6 +24,11 @@ public final class GeoUtils {
         return EARTH_RADIUS * c;
     }
 
+    public static double distanceInMeters(GeoPoint p1, GeoPoint p2) {
+        return distanceInMeters(
+                p1.latitude(), p1.longitude(),
+                p2.latitude(), p2.longitude());
+    }
     public static double distanceInMeters(RawLocationPoint p1, RawLocationPoint p2) {
         return distanceInMeters(
                 p1.getLatitude(), p1.getLongitude(),

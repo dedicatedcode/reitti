@@ -1,10 +1,12 @@
-package com.dedicatedcode.reitti.service.processing;
+package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
-import com.dedicatedcode.reitti.event.LocationDataEvent;
-import com.dedicatedcode.reitti.event.LocationProcessEvent;
-import com.dedicatedcode.reitti.event.ProcessedVisitCreatedEvent;
-import com.dedicatedcode.reitti.event.VisitUpdatedEvent;
+import com.dedicatedcode.reitti.event.*;
+import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
+import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
+import com.dedicatedcode.reitti.service.processing.TripDetectionService;
+import com.dedicatedcode.reitti.service.processing.VisitDetectionService;
+import com.dedicatedcode.reitti.service.processing.VisitMergingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -20,16 +22,19 @@ public class MessageDispatcherService {
     private final VisitDetectionService visitDetectionService;
     private final VisitMergingService visitMergingService;
     private final TripDetectionService tripDetectionService;
+    private final ReverseGeocodingListener reverseGeocodingListener;
 
     @Autowired
     public MessageDispatcherService(LocationDataIngestPipeline locationDataIngestPipeline,
                                     VisitDetectionService visitDetectionService,
                                     VisitMergingService visitMergingService,
-                                    TripDetectionService tripDetectionService) {
+                                    TripDetectionService tripDetectionService,
+                                    ReverseGeocodingListener reverseGeocodingListener) {
         this.locationDataIngestPipeline = locationDataIngestPipeline;
         this.visitDetectionService = visitDetectionService;
         this.visitMergingService = visitMergingService;
         this.tripDetectionService = tripDetectionService;
+        this.reverseGeocodingListener = reverseGeocodingListener;
     }
 
     @RabbitListener(queues = RabbitMQConfig.LOCATION_DATA_QUEUE, concurrency = "4-16")
@@ -54,5 +59,11 @@ public class MessageDispatcherService {
     public void handleTripDetection(ProcessedVisitCreatedEvent event) {
         logger.debug("Dispatching ProcessedVisitCreatedEvent for user: {}", event.getUsername());
         tripDetectionService.visitCreated(event);
+    }
+
+    @RabbitListener(queues = RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE, concurrency = "1-16")
+    public void handleSignificantPlaceCreated(SignificantPlaceCreatedEvent event) {
+        logger.debug("Dispatching SignificantPlaceCreatedEvent for place: {}", event.getPlaceId());
+        reverseGeocodingListener.handleSignificantPlaceCreated(event);
     }
 }

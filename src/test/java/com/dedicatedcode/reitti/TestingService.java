@@ -57,14 +57,22 @@ public class TestingService {
         }
     }
 
+    public User admin() {
+        return this.userJdbcService.getUserById(1L);
+    }
     public void triggerProcessingPipeline() {
         trigger.start();
+    }
+
+    public void triggerProcessingPipeline(int timeoout) {
+        trigger.start();
+        awaitDataImport(timeoout);
     }
 
     public void awaitDataImport(int seconds) {
         this.lastRun.set(0);
         Awaitility.await()
-                .pollInterval(10, TimeUnit.SECONDS)
+                .pollInterval(seconds / 10, TimeUnit.SECONDS)
                 .atMost(seconds, TimeUnit.SECONDS)
                 .alias("Wait for Queues to be empty").until(() -> {
                     boolean queuesArEmpty = QUEUES_TO_CHECK.stream().allMatch(name -> this.rabbitAdmin.getQueueInfo(name).getMessageCount() == 0);
@@ -94,4 +102,9 @@ public class TestingService {
         this.rawLocationPointRepository.deleteAll();
     }
 
+    public void importAndProcess(String path) {
+        importData(path);
+        awaitDataImport(10);
+        triggerProcessingPipeline(20);
+    }
 }

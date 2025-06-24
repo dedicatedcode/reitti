@@ -9,11 +9,15 @@ import org.locationtech.jts.geom.Point;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.text.MessageFormat;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -23,7 +27,7 @@ import java.util.List;
 public class TestUtils {
     private static final GeometryFactory FACTORY = new GeometryFactory();
     public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.n ZZZZZ");
-
+    private static final Logger LOGGER = LoggerFactory.getLogger(TestUtils.class);
     public static List<RawLocationPoint> loadFromCsv(String name) {
         CsvReader reader = CsvReader.builder().build(new InputStreamReader(TestUtils.class.getResourceAsStream(name)));
 
@@ -46,7 +50,7 @@ public class TestUtils {
         try {
             InputStream inputStream = TestUtils.class.getResourceAsStream(path);
             if (inputStream == null) {
-                System.err.println("Resource not found: " + path);
+                LOGGER.error("Resource not found: [{}]", path);
                 return;
             }
 
@@ -55,8 +59,6 @@ public class TestUtils {
             Document document = builder.parse(inputStream);
 
             NodeList trackPoints = document.getElementsByTagName("trkpt");
-            List<TimestampedGeoPoint> points = new ArrayList<>();
-
             for (int i = 0; i < trackPoints.getLength(); i++) {
                 Element trkpt = (Element) trackPoints.item(i);
                 double lat = Double.parseDouble(trkpt.getAttribute("lat"));
@@ -66,19 +68,13 @@ public class TestUtils {
                 if (timeNodes.getLength() > 0) {
                     String timeStr = timeNodes.item(0).getTextContent();
                     Instant timestamp = Instant.parse(timeStr);
-                    points.add(new TimestampedGeoPoint(new GeoPoint(lat, lon), timestamp));
+                    LOGGER.info("Lat: {}, Lon: {}, Time: {}", lat, lon, timestamp);
                 }
             }
 
-            for (TimestampedGeoPoint point : points) {
-                System.out.println("Lat: " + point.geoPoint().latitude() + ", Lon: " + point.geoPoint().longitude() + ", Time: " + point.timestamp());
-            }
-
         } catch (Exception e) {
-            System.err.println("Error parsing GPX file: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.error("Error parsing GPX file: ", e);
+
         }
     }
-
-    private record TimestampedGeoPoint(GeoPoint geoPoint, Instant timestamp) {}
 }

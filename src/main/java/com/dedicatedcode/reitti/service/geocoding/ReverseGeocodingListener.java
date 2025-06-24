@@ -1,12 +1,10 @@
 package com.dedicatedcode.reitti.service.geocoding;
 
-import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -26,7 +24,6 @@ public class ReverseGeocodingListener {
         this.geocodeServiceManager = geocodeServiceManager;
     }
 
-    @RabbitListener(queues = RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE, concurrency = "1-16")
     public void handleSignificantPlaceCreated(SignificantPlaceCreatedEvent event) {
         logger.info("Received SignificantPlaceCreatedEvent for place ID: {}", event.getPlaceId());
 
