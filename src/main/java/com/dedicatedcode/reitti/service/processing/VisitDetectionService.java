@@ -19,6 +19,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,6 +36,7 @@ public class VisitDetectionService {
     private final VisitJdbcService visitJdbcService;
 
     private final RabbitTemplate rabbitTemplate;
+    private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
 
     @Autowired
     public VisitDetectionService(
@@ -57,8 +60,13 @@ public class VisitDetectionService {
     }
 
     public void detectStayPoints(LocationProcessEvent incoming) {
-        logger.debug("Detecting stay points for user {} from {} to {} ", incoming.getUsername(), incoming.getEarliest(), incoming.getLatest());
-        User user = userJdbcService.getUserByUsername(incoming.getUsername());
+        String username = incoming.getUsername();
+        ReentrantLock userLock = userLocks.computeIfAbsent(username, k -> new ReentrantLock());
+        
+        userLock.lock();
+        try {
+            logger.debug("Detecting stay points for user {} from {} to {} ", username, incoming.getEarliest(), incoming.getLatest());
+            User user = userJdbcService.getUserByUsername(username);
         // We extend the search window slightly to catch visits spanning midnight
         Instant windowStart = incoming.getEarliest().minus(5, ChronoUnit.MINUTES);
         // Get points from 1 day after the latest new point
@@ -119,6 +127,9 @@ public class VisitDetectionService {
 
         List<Long> createdIds = visitJdbcService.bulkInsert(user, createdVisits).stream().map(Visit::getId).toList();
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitUpdatedEvent(user.getUsername(), createdIds));
+        } finally {
+            userLock.unlock();
+        }
     }
 
 
