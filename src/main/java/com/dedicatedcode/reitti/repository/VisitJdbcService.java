@@ -17,7 +17,6 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class VisitJdbcService {
-    // for every method which updates or deletes an entity, make sure that the version field in Visits actually matches the version stored, if not throw a checked exception. AI!
     private final JdbcTemplate jdbcTemplate;
 
     public VisitJdbcService(JdbcTemplate jdbcTemplate) {
@@ -66,18 +65,24 @@ public class VisitJdbcService {
         return visit.withId(id);
     }
 
-    public Visit update(Visit visit) {
-        String sql = "UPDATE visits SET longitude = ?, latitude = ?, start_time = ?, end_time = ?, duration_seconds = ?, processed = ? WHERE id = ?";
-        jdbcTemplate.update(sql,
+    public Visit update(Visit visit) throws OptimisticLockException {
+        String sql = "UPDATE visits SET longitude = ?, latitude = ?, start_time = ?, end_time = ?, duration_seconds = ?, processed = ?, version = version + 1 WHERE id = ? AND version = ?";
+        int rowsUpdated = jdbcTemplate.update(sql,
                 visit.getLongitude(),
                 visit.getLatitude(),
                 Timestamp.from(visit.getStartTime()),
                 Timestamp.from(visit.getEndTime()),
                 visit.getDurationSeconds(),
                 visit.isProcessed(),
-                visit.getId()
+                visit.getId(),
+                visit.getVersion()
         );
-        return visit;
+        
+        if (rowsUpdated == 0) {
+            throw new OptimisticLockException("Visit with id " + visit.getId() + " was modified by another transaction or does not exist");
+        }
+        
+        return visit.withVersion(visit.getVersion() + 1);
     }
 
     public Optional<Visit> findById(Long id) {
@@ -145,11 +150,26 @@ public class VisitJdbcService {
         return createdVisits;
     }
 
-    public void delete(List<Visit> affectedVisits) {
+    public void delete(List<Visit> affectedVisits) throws OptimisticLockException {
         if (affectedVisits == null || affectedVisits.isEmpty()) {
             return;
         }
         
+        // Check versions for all visits before deleting any
+        for (Visit visit : affectedVisits) {
+            String checkSql = "SELECT version FROM visits WHERE id = ?";
+            List<Long> versions = jdbcTemplate.queryForList(checkSql, Long.class, visit.getId());
+            
+            if (versions.isEmpty()) {
+                throw new OptimisticLockException("Visit with id " + visit.getId() + " does not exist");
+            }
+            
+            if (!versions.get(0).equals(visit.getVersion())) {
+                throw new OptimisticLockException("Visit with id " + visit.getId() + " was modified by another transaction");
+            }
+        }
+        
+        // If all versions match, proceed with deletion
         String placeholders = String.join(",", affectedVisits.stream().map(visit -> "?").toList());
         String sql = "DELETE FROM visits WHERE id IN (" + placeholders + ")";
         
