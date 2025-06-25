@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 public class TripDetectionService {
@@ -26,6 +28,7 @@ public class TripDetectionService {
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final TripJdbcService tripJdbcService;
     private final UserJdbcService userJdbcService;
+    private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
 
     public TripDetectionService(ProcessedVisitJdbcService processedVisitJdbcService,
                                 RawLocationPointJdbcService rawLocationPointJdbcService,
@@ -38,39 +41,47 @@ public class TripDetectionService {
     }
 
     public void visitCreated(ProcessedVisitCreatedEvent event) {
-        User user = this.userJdbcService.findByUsername(event.getUsername()).orElseThrow();
+        String username = event.getUsername();
+        ReentrantLock userLock = userLocks.computeIfAbsent(username, k -> new ReentrantLock());
+        
+        userLock.lock();
+        try {
+            User user = this.userJdbcService.findByUsername(username).orElseThrow();
 
-        Optional<ProcessedVisit> createdVisit = this.processedVisitJdbcService.findByUserAndId(user, event.getVisitId());
-        createdVisit.ifPresent(visit -> {
-            //find visits in timerange
-            Instant searchStart = visit.getStartTime().minus(1, ChronoUnit.DAYS);
-            Instant searchEnd = visit.getEndTime().plus(1, ChronoUnit.DAYS);
+            Optional<ProcessedVisit> createdVisit = this.processedVisitJdbcService.findByUserAndId(user, event.getVisitId());
+            createdVisit.ifPresent(visit -> {
+                //find visits in timerange
+                Instant searchStart = visit.getStartTime().minus(1, ChronoUnit.DAYS);
+                Instant searchEnd = visit.getEndTime().plus(1, ChronoUnit.DAYS);
 
-            List<ProcessedVisit> visits = this.processedVisitJdbcService.findByUserAndTimeOverlap(user, searchStart, searchEnd);
+                List<ProcessedVisit> visits = this.processedVisitJdbcService.findByUserAndTimeOverlap(user, searchStart, searchEnd);
 
-            visits.sort(Comparator.comparing(ProcessedVisit::getStartTime));
+                visits.sort(Comparator.comparing(ProcessedVisit::getStartTime));
 
-            if (visits.size() < 2) {
-                logger.info("Not enough visits to detect trips for user: {}", user.getUsername());
-                return;
-            }
-
-            List<Trip> trips = new ArrayList<>();
-            // Iterate through consecutive visits to detect trips
-            for (int i = 0; i < visits.size() - 1; i++) {
-                ProcessedVisit startVisit = visits.get(i);
-                ProcessedVisit endVisit = visits.get(i + 1);
-
-                // Create a trip between these two visits
-                Trip trip = createTripBetweenVisits(user, startVisit, endVisit);
-                if (trip != null) {
-                    trips.add(trip);
+                if (visits.size() < 2) {
+                    logger.info("Not enough visits to detect trips for user: {}", user.getUsername());
+                    return;
                 }
-            }
 
-            tripJdbcService.bulkInsert(user, trips);
+                List<Trip> trips = new ArrayList<>();
+                // Iterate through consecutive visits to detect trips
+                for (int i = 0; i < visits.size() - 1; i++) {
+                    ProcessedVisit startVisit = visits.get(i);
+                    ProcessedVisit endVisit = visits.get(i + 1);
 
-        });
+                    // Create a trip between these two visits
+                    Trip trip = createTripBetweenVisits(user, startVisit, endVisit);
+                    if (trip != null) {
+                        trips.add(trip);
+                    }
+                }
+
+                tripJdbcService.bulkInsert(user, trips);
+
+            });
+        } finally {
+            userLock.unlock();
+        }
     }
 
     private Trip createTripBetweenVisits(User user, ProcessedVisit startVisit, ProcessedVisit endVisit) {
