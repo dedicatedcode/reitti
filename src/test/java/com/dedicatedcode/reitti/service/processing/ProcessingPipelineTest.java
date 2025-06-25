@@ -84,6 +84,15 @@ public class ProcessingPipelineTest {
         assertVisit(processedVisits.get(7), "2025-06-18T13:05:04.278Z","2025-06-18T13:13:16.416Z", ST_THOMAS);
         assertVisit(processedVisits.get(8), "2025-06-18T13:34:07Z","2025-06-18T15:50:40Z", GARTEN);
         assertVisit(processedVisits.get(9), "2025-06-18T16:05:49.301Z","2025-06-18T21:59:29.055Z", MOLTKESTR);
+
+        trips = currenTrips();
+        assertEquals(9, trips.size());
+        assertTrip(trips.get(0), "2025-06-17T05:39:50.330Z", MOLTKESTR, "2025-06-17T05:44:39.578Z", ST_THOMAS);
+        assertTrip(trips.get(1), "2025-06-17T05:54:32.974Z", ST_THOMAS, "2025-06-17T05:58:10.797Z", MOLTKESTR);
+        assertTrip(trips.get(2), "2025-06-17T13:08:53.346Z", MOLTKESTR, "2025-06-17T13:12:33.214Z", ST_THOMAS);
+        assertTrip(trips.get(3), "2025-06-17T13:18:20.778Z", ST_THOMAS, "2025-06-17T13:22:00.725Z", MOLTKESTR);
+        //add the remaining assertions AI!
+
     }
 
     @Test
