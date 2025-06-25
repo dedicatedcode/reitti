@@ -33,13 +33,17 @@ public class ProcessedVisitJdbcService {
         @Override
         public ProcessedVisit mapRow(ResultSet rs, int rowNum) throws SQLException {
             SignificantPlace place = significantPlaceJdbcService.findById(rs.getLong("place_id")).orElseThrow();
+            Long processedVisitId = rs.getLong("id");
+            List<Long> mergedTripIds = getMergedTripIds(processedVisitId);
+            
             return new ProcessedVisit(
-                    rs.getLong("id"),
+                    processedVisitId,
                     place,
                     rs.getTimestamp("start_time").toInstant(),
                     rs.getTimestamp("end_time").toInstant(),
                     rs.getLong("duration_seconds"),
                     rs.getLong("version"),
+                    mergedTripIds
             );
         }
     };
@@ -174,7 +178,6 @@ public class ProcessedVisitJdbcService {
         return Optional.ofNullable(results.isEmpty() ? null : results.getFirst());
     }
 
-    //when inserting data, make sure to also update the table visits_to_processed_visits. This should also be added when constructing a ProcessedVisit. AI!
     public List<ProcessedVisit> bulkInsert(User user, List<ProcessedVisit> visitsToStore) {
         if (visitsToStore.isEmpty()) {
             return new ArrayList<>();
@@ -201,10 +204,34 @@ public class ProcessedVisitJdbcService {
             int updateCount = updateCounts[i];
             if (updateCount > 0) {
                 Optional<ProcessedVisit> byUserAndStartTimeAndEndTimeAndPlace = this.findByUserAndStartTimeAndEndTimeAndPlace(user, visitsToStore.get(i).getStartTime(), visitsToStore.get(i).getEndTime(), visitsToStore.get(i).getPlace());
-                byUserAndStartTimeAndEndTimeAndPlace.ifPresent(result::add);
+                if (byUserAndStartTimeAndEndTimeAndPlace.isPresent()) {
+                    ProcessedVisit processedVisit = byUserAndStartTimeAndEndTimeAndPlace.get();
+                    
+                    // Insert into visits_to_processed_visits table if there are merged trip IDs
+                    if (visitsToStore.get(i).getMergedTripIds() != null && !visitsToStore.get(i).getMergedTripIds().isEmpty()) {
+                        insertVisitsToProcessedVisits(processedVisit.getId(), visitsToStore.get(i).getMergedTripIds());
+                    }
+                    
+                    result.add(processedVisit);
+                }
             }
         }
         return result;
+    }
+
+    private void insertVisitsToProcessedVisits(Long processedVisitId, List<Long> visitIds) {
+        String sql = "INSERT INTO visits_to_processed_visits (processed_visit_id, visit_id) VALUES (?, ?) ON CONFLICT DO NOTHING";
+        
+        List<Object[]> batchArgs = visitIds.stream()
+                .map(visitId -> new Object[]{processedVisitId, visitId})
+                .collect(Collectors.toList());
+        
+        jdbcTemplate.batchUpdate(sql, batchArgs);
+    }
+
+    private List<Long> getMergedTripIds(Long processedVisitId) {
+        String sql = "SELECT visit_id FROM visits_to_processed_visits WHERE processed_visit_id = ?";
+        return jdbcTemplate.queryForList(sql, Long.class, processedVisitId);
     }
 
     public void deleteAll() {
