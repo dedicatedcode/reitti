@@ -53,14 +53,15 @@ public class TripJdbcService {
                 "WHERE t.user_id = ? ORDER BY start_time";
         return jdbcTemplate.query(sql, TRIP_ROW_MAPPER, user.getId());
     }
-    //add order by start time to any returning query AI!
+
     public List<Trip> findByUserAndTimeOverlap(User user, Instant startTime, Instant endTime) {
         String sql = "SELECT t.* " +
                 "FROM trips t " +
                 "WHERE t.user_id = ? " +
                 "AND ((t.start_time <= ? AND t.end_time >= ?) OR " +
                 "(t.start_time >= ? AND t.start_time <= ?) OR " +
-                "(t.end_time >= ? AND t.end_time <= ?))";
+                "(t.end_time >= ? AND t.end_time <= ?)) " +
+                "ORDER BY start_time";
         return jdbcTemplate.query(sql, TRIP_ROW_MAPPER, user.getId(),
                 Timestamp.from(endTime), Timestamp.from(startTime),
                 Timestamp.from(startTime), Timestamp.from(endTime),
