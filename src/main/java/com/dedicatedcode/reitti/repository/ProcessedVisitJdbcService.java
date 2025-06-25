@@ -3,7 +3,6 @@ package com.dedicatedcode.reitti.repository;
 import com.dedicatedcode.reitti.model.ProcessedVisit;
 import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.model.User;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -40,7 +39,7 @@ public class ProcessedVisitJdbcService {
                     rs.getTimestamp("start_time").toInstant(),
                     rs.getTimestamp("end_time").toInstant(),
                     rs.getLong("duration_seconds"),
-                    rs.getLong("version")
+                    rs.getLong("version"),
             );
         }
     };
@@ -67,25 +66,6 @@ public class ProcessedVisitJdbcService {
                 Timestamp.from(endTime), Timestamp.from(startTime));
     }
 
-    public List<ProcessedVisit> findByUserAndStartTimeBetweenOrderByStartTimeAsc(
-            User user, Instant startTime, Instant endTime) {
-        String sql = "SELECT pv.* " +
-                "FROM processed_visits pv " +
-                "WHERE pv.user_id = ? AND pv.start_time BETWEEN ? AND ? " +
-                "ORDER BY pv.start_time ASC";
-        return jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, user.getId(),
-                Timestamp.from(startTime), Timestamp.from(endTime));
-    }
-
-    public List<ProcessedVisit> findByUserAndEndTimeBetweenOrderByStartTimeAsc(User user, Instant endTimeAfter, Instant endTimeBefore) {
-        String sql = "SELECT pv.* " +
-                "FROM processed_visits pv " +
-                "WHERE pv.user_id = ? AND pv.end_time BETWEEN ? AND ? " +
-                "ORDER BY pv.start_time ASC";
-        return jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, user.getId(),
-                Timestamp.from(endTimeAfter), Timestamp.from(endTimeBefore));
-    }
-
     public Optional<ProcessedVisit> findByUserAndId(User user, long id) {
         String sql = "SELECT pv.* " +
                 "FROM processed_visits pv " +
@@ -100,13 +80,6 @@ public class ProcessedVisitJdbcService {
                 "WHERE pv.user_id = ? AND pv.start_time <= ? AND pv.end_time >= ? ORDER BY start_time";
         return jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, user.getId(),
                 Timestamp.from(endTime), Timestamp.from(startTime));
-    }
-    public List<ProcessedVisit> findByUserAndStartTimeGreaterThanEqualAndEndTimeLessThanEqual(User user, Instant startTimeIsGreaterThan, Instant endTimeIsLessThan) {
-        String sql = "SELECT pv.* " +
-                "FROM processed_visits pv " +
-                "WHERE pv.user_id = ? AND pv.start_time >= ? AND pv.end_time <= ?";
-        return jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, user.getId(),
-                Timestamp.from(startTimeIsGreaterThan), Timestamp.from(endTimeIsLessThan));
     }
 
     public List<Object[]> findTopPlacesByStayTimeWithLimit(User user, long limit) {
@@ -201,6 +174,7 @@ public class ProcessedVisitJdbcService {
         return Optional.ofNullable(results.isEmpty() ? null : results.getFirst());
     }
 
+    //when inserting data, make sure to also update the table visits_to_processed_visits. This should also be added when constructing a ProcessedVisit. AI!
     public List<ProcessedVisit> bulkInsert(User user, List<ProcessedVisit> visitsToStore) {
         if (visitsToStore.isEmpty()) {
             return new ArrayList<>();
