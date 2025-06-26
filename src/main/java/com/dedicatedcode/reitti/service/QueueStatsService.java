@@ -15,7 +15,7 @@ public class QueueStatsService {
     private final RabbitAdmin rabbitAdmin;
 
     private static final int LOOKBACK_HOURS = 24;
-    private static final long DEFAULT_PROCESSING_TIME = 2;
+    private static final long DEFAULT_PROCESSING_TIME = 2000;
 
     private final List<String> QUEUES = List.of(
             RabbitMQConfig.LOCATION_DATA_QUEUE,
@@ -56,7 +56,7 @@ public class QueueStatsService {
             long processingTimePerMessage = estimateProcessingTimePerMessage(queueName);
             List<ProcessingRecord> history = processingHistory.get(queueName);
             LocalDateTime now = LocalDateTime.now();
-            history.add(new ProcessingRecord(now, processingTimePerMessage));
+            history.add(new ProcessingRecord(now, this.rabbitAdmin.getQueueInfo(queueName).getMessageCount(), processingTimePerMessage));
             cleanupOldRecords(history, now);
         }
         
@@ -149,6 +149,6 @@ public class QueueStatsService {
     }
 
 
-    private record ProcessingRecord(LocalDateTime timestamp, long processingTimeMs) { }
+    private record ProcessingRecord(LocalDateTime timestamp, long numberOfMessages, long processingTimeMs) { }
 
 }

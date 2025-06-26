@@ -610,43 +610,7 @@
         <p><strong th:text="#{geocoding.example}">Example:</strong> <code>https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lng}&zoom=18&addressdetails=1</code></p>
     </div>
 
-    <!-- Geocoding Execution Section -->
-    <div style="border: 1px solid #28a745; border-radius: 4px; padding: 15px; margin-bottom: 20px; background-color: #f8fff9;">
-        <h4 th:text="#{geocoding.execution.title}">Geocoding Execution</h4>
-        <p th:text="#{geocoding.execution.description}">Manually trigger geocoding operations for your significant places</p>
-        
-        <div class="geocoding-actions" style="display: flex; gap: 20px; flex-wrap: wrap;">
-            <div class="action-card" style="border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; flex: 1; min-width: 300px;">
-                <h5 th:text="#{geocoding.run.title}">Run Geocoding</h5>
-                <p th:text="#{geocoding.run.description}">Process all significant places that haven't been geocoded yet</p>
-                <button class="btn" 
-                        hx-post="/settings/geocode-services/run-geocoding" 
-                        hx-target="#geocode-services" 
-                        hx-swap="innerHTML"
-                        th:attr="hx-confirm=#{geocoding.run.confirm}"
-                        th:text="#{geocoding.run.button}">
-                    Start Geocoding
-                </button>
-            </div>
 
-            <div class="action-card" style="border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; flex: 1; min-width: 300px;">
-                <h5 th:text="#{geocoding.clear.title}">Clear and Re-geocode All</h5>
-                <p th:text="#{geocoding.clear.description}">Clear all existing geocoding data and re-process all significant places</p>
-                <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 10px; margin: 10px 0; color: #856404;">
-                    <strong>⚠️ Warning:</strong> <span th:text="#{geocoding.clear.warning}">This will clear all existing address information and re-geocode all places</span>
-                </div>
-                <button class="btn btn-danger" 
-                        hx-post="/settings/geocode-services/clear-and-rerun" 
-                        hx-target="#geocode-services" 
-                        hx-swap="innerHTML"
-                        th:attr="hx-confirm=#{geocoding.clear.confirm}"
-                        th:text="#{geocoding.clear.button}">
-                    Clear and Re-geocode
-                </button>
-            </div>
-        </div>
-    </div>
-    
     <form hx-post="/settings/geocode-services" hx-target="#geocode-services" hx-swap="innerHTML" class="geocode-service-form" style="margin-bottom: 20px;">
         <h3 th:text="#{geocoding.add.title}">Add New Geocoding Service</h3>
         <div class="form-group">
@@ -712,6 +676,41 @@
             </tr>
         </tbody>
     </table>
+
+    <!-- Geocoding Execution Section -->
+    <div style="border: 1px solid #b3d9ff; border-radius: 4px; padding: 15px; margin-bottom: 20px;">
+        <h4 th:text="#{geocoding.execution.title}">Geocoding Execution</h4>
+        <p th:text="#{geocoding.execution.description}">Manually trigger geocoding operations for your significant places</p>
+
+        <div class="action-card">
+            <h4 th:text="#{geocoding.run.title}">Run Geocoding</h4>
+            <p th:text="#{geocoding.run.description}">Process all significant places that haven't been geocoded yet</p>
+            <button class="btn"
+                    hx-post="/settings/geocode-services/run-geocoding"
+                    hx-target="#geocode-services"
+                    hx-swap="innerHTML"
+                    th:attr="hx-confirm=#{geocoding.run.confirm}"
+                    th:text="#{geocoding.run.button}">
+                Start Geocoding
+            </button>
+        </div>
+        <div class="action-card">
+            <h4 th:text="#{geocoding.clear.title}">Clear and Re-geocode All</h4>
+            <p th:text="#{geocoding.clear.description}">Clear all existing geocoding data and re-process all significant places</p>
+            <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 10px; margin: 10px 0; color: #856404;">
+                <strong>⚠️ Warning:</strong> <span th:text="#{geocoding.clear.warning}">This will clear all existing address information and re-geocode all places</span>
+            </div>
+            <button class="btn btn-danger"
+                    hx-post="/settings/geocode-services/clear-and-rerun"
+                    hx-target="#geocode-services"
+                    hx-swap="innerHTML"
+                    th:attr="hx-confirm=#{geocoding.clear.confirm}"
+                    th:text="#{geocoding.clear.button}">
+                Clear and Re-geocode
+            </button>
+        </div>
+    </div>
+
 </div>
 
 <!-- About Content Fragment -->
