@@ -514,6 +514,22 @@
             </button>
         </div>
 
+        <div class="action-card" style="border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
+            <h4 th:text="#{data.clear.reprocess.title}">Clear and Reprocess All Data</h4>
+            <p th:text="#{data.clear.reprocess.description}">Clear all processed data (visits, trips, processed visits) while preserving significant places and raw location points. Raw location points will be marked as unprocessed and the processing pipeline will be triggered automatically.</p>
+            <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 10px; margin: 10px 0; color: #856404;">
+                <strong>⚠️ Warning:</strong> <span th:text="#{data.clear.reprocess.warning}">This action will permanently delete all visits, trips, and processed visits. This cannot be undone.</span>
+            </div>
+            <button class="btn btn-danger" 
+                    hx-post="/settings/manage-data/clear-and-reprocess" 
+                    hx-target="#manage-data" 
+                    hx-swap="innerHTML"
+                    th:attr="hx-confirm=#{data.clear.reprocess.confirm}"
+                    th:text="#{data.clear.reprocess.button}">
+                Clear and Reprocess
+            </button>
+        </div>
+
     </div>
 </div>
 

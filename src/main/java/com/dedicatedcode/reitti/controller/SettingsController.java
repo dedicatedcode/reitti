@@ -597,6 +597,59 @@ public class SettingsController {
         return "fragments/settings :: manage-data-content";
     }
 
+    @PostMapping("/manage-data/clear-and-reprocess")
+    public String clearAndReprocess(Authentication authentication, Model model) {
+        if (!dataManagementEnabled) {
+            throw new RuntimeException("Data management is not enabled");
+        }
+
+        try {
+            User currentUser = userJdbcService.getUserByUsername(authentication.getName());
+            
+            // Clear all processed data except SignificantPlaces
+            // This would need to be implemented in appropriate service classes
+            // For now, we'll assume these methods exist or need to be created
+            clearProcessedDataExceptPlaces(currentUser);
+            
+            // Mark all raw location points as unprocessed
+            markRawLocationPointsAsUnprocessed(currentUser);
+            
+            // Trigger processing pipeline
+            rawLocationPointProcessingTrigger.start();
+            
+            model.addAttribute("successMessage", getMessage("data.clear.reprocess.success"));
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", getMessage("data.clear.reprocess.error", e.getMessage()));
+        }
+
+        return "fragments/settings :: manage-data-content";
+    }
+
+    private void clearProcessedDataExceptPlaces(User user) {
+        // This method would need to be implemented to clear:
+        // - All visits for the user
+        // - All trips for the user  
+        // - All processed visits for the user
+        // But preserve SignificantPlaces
+        
+        // These would need to be implemented in the respective service classes:
+        // visitJdbcService.deleteAllForUser(user);
+        // tripJdbcService.deleteAllForUser(user);
+        // processedVisitJdbcService.deleteAllForUser(user);
+        
+        throw new UnsupportedOperationException("clearProcessedDataExceptPlaces not yet implemented");
+    }
+
+    private void markRawLocationPointsAsUnprocessed(User user) {
+        // This method would need to be implemented to mark all raw location points
+        // for the user as unprocessed
+        
+        // This would need to be implemented in RawLocationPointJdbcService:
+        // rawLocationPointJdbcService.markAllAsUnprocessedForUser(user);
+        
+        throw new UnsupportedOperationException("markRawLocationPointsAsUnprocessed not yet implemented");
+    }
+
     @GetMapping("/geocode-services-content")
     public String getGeocodeServicesContent(Model model) {
         model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
