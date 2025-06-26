@@ -176,6 +176,7 @@ The included `docker-compose.yml` provides a complete setup with:
 | `REDIS_PORT`        | Redis port                         | 6379     |
 | `REDIS_USERNAME`    | Redis username (optional)          |          |
 | `REDIS_PASSWORD`    | Redis password (optional)          |          |
+| `DANGEROUS_LIFE`    | Enables data management features that can reset/delete all database data (⚠️ USE WITH CAUTION) | false |
 | `SERVER_PORT`       | Application server port            | 8080     |
 | `APP_UID`           | User ID to run the application as  | 1000     |
 | `APP_GID`           | Group ID to run the application as | 1000     |
