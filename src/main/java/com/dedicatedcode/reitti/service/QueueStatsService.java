@@ -55,7 +55,7 @@ public class QueueStatsService {
             long avgProcessingTime = calculateAverageProcessingTime(name);
             long estimatedTime = currentMessageCount * avgProcessingTime;
             
-            return new QueueStats(name, currentMessageCount, formatProcessingTime(estimatedTime), calculateProgress(currentMessageCount, 100));
+            return new QueueStats(name, currentMessageCount, formatProcessingTime(estimatedTime), calculateProgress(name, currentMessageCount));
         }).toList();
     }
 
@@ -129,9 +129,32 @@ public class QueueStatsService {
         }
     }
 
-    private int calculateProgress(int count, int maxExpected) {
-        if (count <= 0) return 0;
-        if (count >= maxExpected) return 100;
-        return (int) ((count / (double) maxExpected) * 100);
+    private int calculateProgress(String queueName, int currentMessageCount) {
+        if (currentMessageCount == 0) return 100; // No messages = fully processed
+        
+        List<ProcessingRecord> history = processingHistory.get(queueName);
+        if (history.isEmpty()) {
+            // No processing history, base progress on queue size
+            // Smaller queues show higher progress
+            if (currentMessageCount <= 5) return 80;
+            if (currentMessageCount <= 20) return 60;
+            if (currentMessageCount <= 100) return 40;
+            return 20;
+        }
+        
+        // Calculate processing trend over recent history
+        Integer previousCount = previousMessageCounts.get(queueName);
+        if (previousCount != null && previousCount > currentMessageCount) {
+            // Messages are being processed - higher progress
+            int processedRecently = previousCount - currentMessageCount;
+            double processingRate = Math.min(100, (processedRecently / (double) Math.max(1, previousCount)) * 100);
+            return Math.max(50, (int) (50 + processingRate / 2)); // 50-100% range when actively processing
+        }
+        
+        // Queue is stable or growing - lower progress based on size
+        if (currentMessageCount <= 10) return 70;
+        if (currentMessageCount <= 50) return 50;
+        if (currentMessageCount <= 200) return 30;
+        return 10;
     }
 }
