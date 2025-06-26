@@ -3,11 +3,9 @@ package com.dedicatedcode.reitti.service;
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.actuate.endpoint.web.Link;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -16,10 +14,7 @@ public class QueueStatsService {
 
     private final RabbitAdmin rabbitAdmin;
 
-    // Time range in hours to look back for calculating averages
     private static final int LOOKBACK_HOURS = 24;
-    
-    // Default processing time if no historical data available (in milliseconds)
     private static final long DEFAULT_PROCESSING_TIME = 2;
 
     private final List<String> QUEUES = List.of(
@@ -29,16 +24,13 @@ public class QueueStatsService {
             RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE,
             RabbitMQConfig.DETECT_TRIP_QUEUE);
 
-    // Store processing times for each queue: queueName -> List of (timestamp, processingTimeMs)
     private final Map<String, List<ProcessingRecord>> processingHistory = new ConcurrentHashMap<>();
     
-    // Store previous message counts to detect when messages are processed
     private final Map<String, Integer> previousMessageCounts = new ConcurrentHashMap<>();
 
     @Autowired
     public QueueStatsService(RabbitAdmin rabbitAdmin) {
         this.rabbitAdmin = rabbitAdmin;
-        // Initialize tracking for all queues
         QUEUES.forEach(queue -> {
             processingHistory.put(queue, new ArrayList<>());
             previousMessageCounts.put(queue, 0);
@@ -71,33 +63,23 @@ public class QueueStatsService {
         Integer previousCount = previousMessageCounts.get(queueName);
         
         if (previousCount != null && currentMessageCount < previousCount) {
-            // Messages were processed, record the processing time
-            int processedMessages = previousCount - currentMessageCount;
-            long processingTimePerMessage = estimateProcessingTimePerMessage(queueName, processedMessages);
-            
+            long processingTimePerMessage = estimateProcessingTimePerMessage(queueName);
             List<ProcessingRecord> history = processingHistory.get(queueName);
             LocalDateTime now = LocalDateTime.now();
-            
-            // Add a record for the processed messages
             history.add(new ProcessingRecord(now, processingTimePerMessage));
-            
-            // Clean up old records outside the lookback window
             cleanupOldRecords(history, now);
         }
         
         previousMessageCounts.put(queueName, currentMessageCount);
     }
 
-    private long estimateProcessingTimePerMessage(String queueName, int processedMessages) {
-        // This is a simplified estimation - in a real implementation you might
-        // track actual start/end times of processing batches
+    private long estimateProcessingTimePerMessage(String queueName) {
         List<ProcessingRecord> history = processingHistory.get(queueName);
         
         if (history.isEmpty()) {
             return DEFAULT_PROCESSING_TIME;
         }
         
-        // Use the most recent average as an estimate for the just-processed messages
         return calculateAverageFromHistory(history);
     }
 
@@ -123,7 +105,7 @@ public class QueueStatsService {
     }
 
     private void cleanupOldRecords(List<ProcessingRecord> history, LocalDateTime now) {
-        LocalDateTime cutoff = now.minus(LOOKBACK_HOURS, ChronoUnit.HOURS);
+        LocalDateTime cutoff = now.minusHours(LOOKBACK_HOURS);
         history.removeIf(record -> record.timestamp.isBefore(cutoff));
     }
 
