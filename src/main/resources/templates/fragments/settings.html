@@ -160,9 +160,11 @@
     </div>
 
     <div class="places-grid" th:if="${!isEmpty}">
-        <div class="place-card" th:each="place : ${places}">
-            <div class="place-map" th:id="'map-' + ${place.id()}" th:data-lat="${place.latitude()}" th:data-lng="${place.longitude()}" ></div>
-            <div class="place-details">
+        <div class="place-stats-card" th:each="place : ${places}">
+            <div class="place-map-container">
+                <div class="place-map" th:id="'map-' + ${place.id()}" th:data-lat="${place.latitude()}" th:data-lng="${place.longitude()}" ></div>
+            </div>
+            <div class="place-details text-align-left">
                 <form th:id="'place-form-' + ${place.id()}"  autocomplete="off"
                       th:attr="hx-post=@{/settings/places/{id}/update(id=${place.id()})}"
                       hx-swap="none">

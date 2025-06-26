@@ -63,7 +63,7 @@ public class RawLocationPointJdbcService {
     }
 
     public List<Integer> findDistinctYearsByUser(User user) {
-        String sql = "SELECT DISTINCT EXTRACT(YEAR FROM timestamp)::integer " +
+        String sql = "SELECT DISTINCT EXTRACT(YEAR FROM timestamp) " +
                 "FROM raw_location_points " +
                 "WHERE user_id = ? " +
                 "ORDER BY EXTRACT(YEAR FROM timestamp) DESC";
