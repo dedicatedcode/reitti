@@ -20,6 +20,7 @@
 
 <div class="timeline">
     <span class="timeline-header">
+        <a th:href="@{/}"><img class="logo" th:src="@{/img/logo.png}" alt="reitti logo" title="reitti" src="/img/logo.png"></a>
         <a href="/" class="nav-link" th:title="#{nav.timeline}"><i class="lni lni-route-1"></i></a>
         <form th:action="@{/logout}" method="post" >
             <button type="submit" class="nav-link" style="font-size: 1.4rem;" th:title="#{nav.logout.tooltip}"><i

@@ -852,6 +852,20 @@ input[type=file]::file-selector-button:hover {
 .background-dark {
     background: var(--color-background-dark);
 }
+
+.logo {
+    width: auto;
+    height: 32px;
+    padding: 6px 8px 0px;
+    vertical-align: bottom;
+    opacity: 0.8;
+    transition: opacity 0.2s ease-in-out;
+}
+
+.logo:hover {
+    opacity: 1;
+}
+
 @media (max-width: 800px) {
     .timeline-entry .entry-description {
         font-size: 1.2rem;

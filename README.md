@@ -1,4 +1,6 @@
-# Reitti
+
+![](.github/banner.png)
+
 
 Reitti is a comprehensive personal location tracking and analysis application that helps you understand your movement patterns and significant places. The name "Reitti" comes from Finnish, meaning "route" or "path".
 
