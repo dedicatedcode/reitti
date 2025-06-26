@@ -142,6 +142,10 @@ docker run -p 8080:8080 \
   -e RABBITMQ_PORT=5672 \
   -e RABBITMQ_USER=reitti \
   -e RABBITMQ_PASSWORD=reitti \
+  -e REDIS_HOST=redis \
+  -e REDIS_PORT=6379 \
+  -e REDIS_PASSWORD= \
+  -e REDIS_DATABASE=0 \
   dedicatedcode/reitti:latest
 ```
 
@@ -150,6 +154,7 @@ docker run -p 8080:8080 \
 The included `docker-compose.yml` provides a complete setup with:
 - PostgreSQL with PostGIS extensions
 - RabbitMQ for message processing
+- Redis for caching and session storage
 - Reitti application with proper networking
 - Persistent data volumes
 - Health checks and restart policies
@@ -167,6 +172,10 @@ The included `docker-compose.yml` provides a complete setup with:
 | `RABBITMQ_PORT` | RabbitMQ port | 5672 |
 | `RABBITMQ_USER` | RabbitMQ username | reitti |
 | `RABBITMQ_PASSWORD` | RabbitMQ password | reitti |
+| `REDIS_HOST` | Redis host | redis |
+| `REDIS_PORT` | Redis port | 6379 |
+| `REDIS_PASSWORD` | Redis password (optional) | |
+| `REDIS_DATABASE` | Redis database number | 0 |
 | `SERVER_PORT` | Application server port | 8080 |
 | `APP_UID` | User ID to run the application as | 1000 |
 | `APP_GID` | Group ID to run the application as | 1000 |

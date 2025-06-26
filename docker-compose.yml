@@ -11,6 +11,11 @@ services:
         restart: true
       redis:
         condition: service_healthy
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - REDIS_DATABASE=0
   postgis:
     image: postgis/postgis:17-3.5-alpine
     environment:
