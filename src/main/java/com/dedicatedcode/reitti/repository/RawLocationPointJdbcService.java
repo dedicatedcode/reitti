@@ -183,6 +183,11 @@ public class RawLocationPointJdbcService {
         jdbcTemplate.update(sql);
     }
 
+    public void markAllAsUnprocessedForUser(User user) {
+        String sql = "UPDATE raw_location_points SET processed = false WHERE user_id = ?";
+        jdbcTemplate.update(sql, user.getId());
+    }
+
     public static class ClusteredPoint {
         private final RawLocationPoint point;
         private final Integer clusterId;
