@@ -23,7 +23,7 @@ public class VisitJdbcService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    private static final RowMapper<Visit> VISIT_ROW_MAPPER = (rs, rowNum) -> new Visit(
+    private static final RowMapper<Visit> VISIT_ROW_MAPPER = (rs, _) -> new Visit(
             rs.getLong("id"),
             rs.getDouble("longitude"),
             rs.getDouble("latitude"),
@@ -97,13 +97,14 @@ public class VisitJdbcService {
         if (visitIds == null || visitIds.isEmpty()) {
             return List.of();
         }
-        
-        String placeholders = String.join(",", visitIds.stream().map(id -> "?").toList());
+
+        String placeholders = String.join(",", visitIds.stream().map(_ -> "?").toList());
         String sql = "SELECT v.* FROM visits v WHERE v.id IN (" + placeholders + ")";
         
         return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, visitIds.toArray());
     }
 
+    @SuppressWarnings("SqlWithoutWhere")
     public void deleteAll() {
         String sql = "DELETE FROM visits";
         jdbcTemplate.update(sql);
@@ -168,31 +169,11 @@ public class VisitJdbcService {
                 throw new OptimisticLockException("Visit with id " + visit.getId() + " was modified by another transaction");
             }
         }
-        
-        String placeholders = String.join(",", affectedVisits.stream().map(visit -> "?").toList());
+
+        String placeholders = String.join(",", affectedVisits.stream().map(_ -> "?").toList());
         String sql = "DELETE FROM visits WHERE id IN (" + placeholders + ")";
         
         Object[] ids = affectedVisits.stream().map(Visit::getId).toArray();
         jdbcTemplate.update(sql, ids);
-    }
-
-    public Optional<Visit> findVisitBefore(User user, Instant searchStart) {
-        String sql = "SELECT v.* " +
-                "FROM visits v " +
-                "WHERE v.user_id = ? AND v.end_time < ? " +
-                "ORDER BY v.end_time DESC " +
-                "LIMIT 1";
-        List<Visit> results = jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(), Timestamp.from(searchStart));
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
-    }
-
-    public Optional<Visit> findVisitAfter(User user, Instant searchEnd) {
-        String sql = "SELECT v.* " +
-                "FROM visits v " +
-                "WHERE v.user_id = ? AND v.start_time > ? " +
-                "ORDER BY v.start_time ASC " +
-                "LIMIT 1";
-        List<Visit> results = jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(), Timestamp.from(searchEnd));
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 }

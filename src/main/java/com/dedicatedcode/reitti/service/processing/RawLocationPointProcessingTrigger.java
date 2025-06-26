@@ -53,6 +53,7 @@ public class RawLocationPointProcessingTrigger {
                     List<RawLocationPoint> currentPoints = allUnprocessedPoints.subList(fromIndex, toIndex);
                     Instant earliest = currentPoints.getFirst().getTimestamp();
                     Instant latest = currentPoints.getLast().getTimestamp();
+                    log.debug("Scheduling stay detection event for user [{}] and points between [{}] and [{}]", user.getId(), earliest, latest);
                     this.rabbitTemplate
                             .convertAndSend(RabbitMQConfig.EXCHANGE_NAME,
                                     RabbitMQConfig.STAY_DETECTION_ROUTING_KEY,

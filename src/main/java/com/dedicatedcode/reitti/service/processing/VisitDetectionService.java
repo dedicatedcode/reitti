@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
 public class VisitDetectionService {
     private static final Logger logger = LoggerFactory.getLogger(VisitDetectionService.class);
 
-    // Parameters for stay point detection
     private final double distanceThreshold; // meters
     private final long timeThreshold; // seconds
     private final int minPointsInCluster; // Minimum points to form a valid cluster
@@ -61,7 +60,7 @@ public class VisitDetectionService {
 
     public void detectStayPoints(LocationProcessEvent incoming) {
         String username = incoming.getUsername();
-        ReentrantLock userLock = userLocks.computeIfAbsent(username, k -> new ReentrantLock());
+        ReentrantLock userLock = userLocks.computeIfAbsent(username, _ -> new ReentrantLock());
         
         userLock.lock();
         try {
@@ -80,12 +79,14 @@ public class VisitDetectionService {
         List<Visit> affectedVisits = this.visitJdbcService.findByUserAndTimeAfterAndStartTimeBefore(user, windowStart, windowEnd);
         if (logger.isDebugEnabled()) {
             logger.debug("Found [{}] visits which touch the timerange from [{}] to [{}]", affectedVisits.size(), windowStart, windowEnd);
-            affectedVisits.forEach(visit -> {logger.debug("Visit [{}] from [{}] to [{}] at [{},{}]", visit.getId(), visit.getStartTime(), visit.getEndTime(), visit.getLongitude(), visit.getLatitude());});
+            affectedVisits.forEach(visit -> logger.debug("Visit [{}] from [{}] to [{}] at [{},{}]", visit.getId(), visit.getStartTime(), visit.getEndTime(), visit.getLongitude(), visit.getLatitude()));
 
         }
         try {
             this.visitJdbcService.delete(affectedVisits);
+            logger.debug("Deleted [{}] visits with ids [{}]", affectedVisits.size(), affectedVisits.stream().map(Visit::getId).map(Object::toString).collect(Collectors.joining()));
         } catch (OptimisticLockException e) {
+            logger.error("Optimistic lock exception", e);
             throw new RuntimeException(e);
         }
 
@@ -106,7 +107,7 @@ public class VisitDetectionService {
         Map<Integer, List<RawLocationPoint>> clusteredByLocation = new HashMap<>();
         for (RawLocationPointJdbcService.ClusteredPoint clusteredPoint : clusteredPointsInTimeRangeForUser) {
             if (clusteredPoint.getClusterId() != null) {
-                clusteredByLocation.computeIfAbsent(clusteredPoint.getClusterId(), k -> new ArrayList<>()).add(clusteredPoint.getPoint());
+                clusteredByLocation.computeIfAbsent(clusteredPoint.getClusterId(), _ -> new ArrayList<>()).add(clusteredPoint.getPoint());
             }
         }
 

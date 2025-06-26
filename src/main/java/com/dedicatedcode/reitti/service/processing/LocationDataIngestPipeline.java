@@ -30,9 +30,6 @@ public class LocationDataIngestPipeline {
     public void processLocationData(LocationDataEvent event) {
         long start = System.currentTimeMillis();
 
-        logger.debug("Starting processing pipeline for user {} with {} points",
-                event.getUsername(), event.getPoints().size());
-
         Optional<User> userOpt = userJdbcService.findByUsername(event.getUsername());
 
         if (userOpt.isEmpty()) {
@@ -43,7 +40,7 @@ public class LocationDataIngestPipeline {
         User user = userOpt.get();
         List<LocationDataRequest.LocationPoint> points = event.getPoints();
         rawLocationPointJdbcService.bulkInsert(user, points);
-        logger.debug("Finished processing pipeline for user [{}] in [{}]ms", event.getUsername(), System.currentTimeMillis() - start);
+        logger.info("Finished storing points for user [{}] in [{}]ms", event.getUsername(), System.currentTimeMillis() - start);
     }
 
 }

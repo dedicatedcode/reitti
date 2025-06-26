@@ -1,21 +1,17 @@
 package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.IntegrationTest;
-import com.dedicatedcode.reitti.TestConstants;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.GeoPoint;
 import com.dedicatedcode.reitti.model.ProcessedVisit;
 import com.dedicatedcode.reitti.model.Trip;
-import com.dedicatedcode.reitti.model.Visit;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
-import com.dedicatedcode.reitti.repository.VisitJdbcService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Instant;
-import java.util.Comparator;
 import java.util.List;
 
 import static com.dedicatedcode.reitti.TestConstants.Points.*;
@@ -34,9 +30,6 @@ public class ProcessingPipelineTest {
     @Autowired
     private TripJdbcService tripJdbcService;
 
-    @Autowired
-    private VisitJdbcService visitJdbcService;
-
     @BeforeEach
     public void setUp() {
         this.testingService.clearData();
@@ -54,7 +47,6 @@ public class ProcessingPipelineTest {
         assertVisit(processedVisits.get(2), "2025-06-17T05:58:10.797Z", "2025-06-17T13:08:53.346Z", MOLTKESTR);
         assertVisit(processedVisits.get(3), "2025-06-17T13:12:33.214Z", "2025-06-17T13:18:20.778Z", ST_THOMAS);
         assertVisit(processedVisits.get(4), "2025-06-17T13:22:00.725Z", "2025-06-17T21:59:44.876Z", MOLTKESTR);
-
 
         List<Trip> trips = currenTrips();
         assertEquals(4, trips.size());

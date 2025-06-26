@@ -37,31 +37,31 @@ public class MessageDispatcherService {
         this.reverseGeocodingListener = reverseGeocodingListener;
     }
 
-    @RabbitListener(queues = RabbitMQConfig.LOCATION_DATA_QUEUE, concurrency = "4-16")
+    @RabbitListener(queues = RabbitMQConfig.LOCATION_DATA_QUEUE, concurrency = "${reitti.events.concurrency}")
     public void handleLocationData(LocationDataEvent event) {
         logger.debug("Dispatching LocationDataEvent for user: {}", event.getUsername());
         locationDataIngestPipeline.processLocationData(event);
     }
 
-    @RabbitListener(queues = RabbitMQConfig.STAY_DETECTION_QUEUE, concurrency = "1-16")
+    @RabbitListener(queues = RabbitMQConfig.STAY_DETECTION_QUEUE, concurrency = "${reitti.events.concurrency}")
     public void handleStayDetection(LocationProcessEvent event) {
         logger.debug("Dispatching LocationProcessEvent for user: {}", event.getUsername());
         visitDetectionService.detectStayPoints(event);
     }
 
-    @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE, concurrency = "1-16")
+    @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE, concurrency = "1")
     public void handleVisitMerging(VisitUpdatedEvent event) {
         logger.debug("Dispatching VisitUpdatedEvent for user: {}", event.getUsername());
         visitMergingService.visitUpdated(event);
     }
 
-    @RabbitListener(queues = RabbitMQConfig.DETECT_TRIP_QUEUE, concurrency = "1-16")
+    @RabbitListener(queues = RabbitMQConfig.DETECT_TRIP_QUEUE, concurrency = "${reitti.events.concurrency}")
     public void handleTripDetection(ProcessedVisitCreatedEvent event) {
         logger.debug("Dispatching ProcessedVisitCreatedEvent for user: {}", event.getUsername());
         tripDetectionService.visitCreated(event);
     }
 
-    @RabbitListener(queues = RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE, concurrency = "1-16")
+    @RabbitListener(queues = RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE, concurrency = "${reitti.events.concurrency}")
     public void handleSignificantPlaceCreated(SignificantPlaceCreatedEvent event) {
         logger.debug("Dispatching SignificantPlaceCreatedEvent for place: {}", event.getPlaceId());
         reverseGeocodingListener.handleSignificantPlaceCreated(event);

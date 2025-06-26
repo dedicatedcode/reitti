@@ -63,20 +63,9 @@ public class Visit {
     public Visit withId(Long id) {
         return new Visit(id, longitude, latitude, startTime, endTime, durationSeconds, processed, version);
     }
-    public Visit withStartTime(Instant startTime) {
-        return new Visit(this.id, this.longitude, this.latitude, startTime, endTime, this.durationSeconds, this.processed, this.version);
-    }
 
-    public Visit withEndTime(Instant endTime) {
-        return new Visit(this.id, this.longitude, this.latitude, this.startTime, endTime, this.durationSeconds, this.processed, this.version);
-    }
-
-    public Visit withProcessed(boolean processed) {
-        return new Visit(this.id, this.longitude, this.latitude, this.startTime, this.endTime, this.durationSeconds, processed, this.version);
-    }
-
-    public Visit withDurationSeconds(long durationSeconds) {
-        return new Visit(this.id, this.longitude, this.latitude, this.startTime, this.endTime, durationSeconds, processed, this.version);
+    public Visit withVersion(long version) {
+        return new Visit(this.id, this.longitude, this.latitude, this.startTime, this.endTime, durationSeconds, processed, version);
     }
 
     @Override
@@ -94,11 +83,14 @@ public class Visit {
     @Override
     public String toString() {
         return "Visit{" +
-                "id=" + id +
-                ", start,end=" + startTime +" -> " + endTime +
-                ", lat,long=" + latitude +"," + longitude +
+                "latitude=" + latitude +
+                ", id=" + id +
+                ", longitude=" + longitude +
+                ", startTime=" + startTime +
+                ", endTime=" + endTime +
                 ", durationSeconds=" + durationSeconds +
                 ", processed=" + processed +
+                ", version=" + version +
                 '}';
     }
 }
