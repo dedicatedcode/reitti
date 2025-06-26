@@ -110,6 +110,11 @@ public class VisitJdbcService {
         jdbcTemplate.update(sql);
     }
 
+    public void deleteAllForUser(User user) {
+        String sql = "DELETE FROM visits WHERE user_id = ?";
+        jdbcTemplate.update(sql, user.getId());
+    }
+
     public List<Visit> findByUserAndTimeAfterAndStartTimeBefore(User user, Instant windowStart, Instant windowEnd) {
         String sql = "SELECT v.* " +
                 "FROM visits v " +

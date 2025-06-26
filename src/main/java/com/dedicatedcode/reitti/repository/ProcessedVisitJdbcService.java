@@ -239,4 +239,9 @@ public class ProcessedVisitJdbcService {
         jdbcTemplate.update(sql);
     }
 
+    public void deleteAllForUser(User user) {
+        String sql = "DELETE FROM processed_visits WHERE user_id = ?";
+        jdbcTemplate.update(sql, user.getId());
+    }
+
 }

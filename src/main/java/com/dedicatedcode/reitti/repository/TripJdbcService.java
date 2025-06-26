@@ -175,4 +175,9 @@ public class TripJdbcService {
         String sql = "DELETE FROM trips";
         jdbcTemplate.update(sql);
     }
+
+    public void deleteAllForUser(User user) {
+        String sql = "DELETE FROM trips WHERE user_id = ?";
+        jdbcTemplate.update(sql, user.getId());
+    }
 }

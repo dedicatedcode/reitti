@@ -2,9 +2,7 @@ package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.dto.TimelineResponse;
 import com.dedicatedcode.reitti.model.*;
-import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
-import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
-import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.*;
 
 import java.util.Optional;
@@ -45,6 +43,10 @@ public class SettingsController {
     private final GeocodeServiceJdbcService geocodeServiceJdbcService;
     private final RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger;
     private final ImmichIntegrationService immichIntegrationService;
+    private final VisitJdbcService visitJdbcService;
+    private final TripJdbcService tripJdbcService;
+    private final ProcessedVisitJdbcService processedVisitJdbcService;
+    private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final int maxErrors;
     private final boolean dataManagementEnabled;
     private final MessageSource messageSource;
@@ -60,6 +62,10 @@ public class SettingsController {
                               GeocodeServiceJdbcService geocodeServiceJdbcService,
                               RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger,
                               ImmichIntegrationService immichIntegrationService,
+                              VisitJdbcService visitJdbcService,
+                              TripJdbcService tripJdbcService,
+                              ProcessedVisitJdbcService processedVisitJdbcService,
+                              RawLocationPointJdbcService rawLocationPointJdbcService,
                               @Value("${reitti.geocoding.max-errors}") int maxErrors,
                               @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                               MessageSource messageSource,
@@ -73,6 +79,10 @@ public class SettingsController {
         this.geocodeServiceJdbcService = geocodeServiceJdbcService;
         this.rawLocationPointProcessingTrigger = rawLocationPointProcessingTrigger;
         this.immichIntegrationService = immichIntegrationService;
+        this.visitJdbcService = visitJdbcService;
+        this.tripJdbcService = tripJdbcService;
+        this.processedVisitJdbcService = processedVisitJdbcService;
+        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.maxErrors = maxErrors;
         this.dataManagementEnabled = dataManagementEnabled;
         this.messageSource = messageSource;
@@ -478,6 +488,13 @@ public class SettingsController {
                 message += ". Errors: " + errorMessages;
             }
             model.addAttribute("uploadSuccessMessage", message);
+            
+            // Trigger processing pipeline for imported data
+            try {
+                rawLocationPointProcessingTrigger.start();
+            } catch (Exception e) {
+                logger.warn("Failed to trigger processing pipeline after GPX import", e);
+            }
         } else {
             model.addAttribute("uploadErrorMessage", "No files were processed successfully. " + errorMessages);
         }
@@ -506,6 +523,13 @@ public class SettingsController {
 
             if ((Boolean) result.get("success")) {
                 model.addAttribute("uploadSuccessMessage", result.get("message"));
+                
+                // Trigger processing pipeline for imported data
+                try {
+                    rawLocationPointProcessingTrigger.start();
+                } catch (Exception e) {
+                    logger.warn("Failed to trigger processing pipeline after Google Takeout import", e);
+                }
             } else {
                 model.addAttribute("uploadErrorMessage", result.get("error"));
             }
@@ -566,6 +590,13 @@ public class SettingsController {
                 message += ". Errors: " + errorMessages;
             }
             model.addAttribute("uploadSuccessMessage", message);
+            
+            // Trigger processing pipeline for imported data
+            try {
+                rawLocationPointProcessingTrigger.start();
+            } catch (Exception e) {
+                logger.warn("Failed to trigger processing pipeline after GeoJSON import", e);
+            }
         } else {
             model.addAttribute("uploadErrorMessage", "No files were processed successfully. " + errorMessages);
         }
@@ -626,28 +657,16 @@ public class SettingsController {
     }
 
     private void clearProcessedDataExceptPlaces(User user) {
-        // This method would need to be implemented to clear:
-        // - All visits for the user
-        // - All trips for the user  
-        // - All processed visits for the user
-        // But preserve SignificantPlaces
-        
-        // These would need to be implemented in the respective service classes:
-        // visitJdbcService.deleteAllForUser(user);
-        // tripJdbcService.deleteAllForUser(user);
-        // processedVisitJdbcService.deleteAllForUser(user);
-        
-        throw new UnsupportedOperationException("clearProcessedDataExceptPlaces not yet implemented");
+        // Clear all processed data except SignificantPlaces
+        // Order matters due to foreign key constraints
+        tripJdbcService.deleteAllForUser(user);
+        processedVisitJdbcService.deleteAllForUser(user);
+        visitJdbcService.deleteAllForUser(user);
     }
 
     private void markRawLocationPointsAsUnprocessed(User user) {
-        // This method would need to be implemented to mark all raw location points
-        // for the user as unprocessed
-        
-        // This would need to be implemented in RawLocationPointJdbcService:
-        // rawLocationPointJdbcService.markAllAsUnprocessedForUser(user);
-        
-        throw new UnsupportedOperationException("markRawLocationPointsAsUnprocessed not yet implemented");
+        // Mark all raw location points for the user as unprocessed
+        rawLocationPointJdbcService.markAllAsUnprocessedForUser(user);
     }
 
     @GetMapping("/geocode-services-content")
