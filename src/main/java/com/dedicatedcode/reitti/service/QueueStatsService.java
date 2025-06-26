@@ -37,16 +37,6 @@ public class QueueStatsService {
         });
     }
 
-    private static class ProcessingRecord {
-        final LocalDateTime timestamp;
-        final long processingTimeMs;
-        
-        ProcessingRecord(LocalDateTime timestamp, long processingTimeMs) {
-            this.timestamp = timestamp;
-            this.processingTimeMs = processingTimeMs;
-        }
-    }
-
     public List<QueueStats> getQueueStats() {
         return QUEUES.stream().map(name -> {
             int currentMessageCount = getMessageCount(name);
@@ -157,4 +147,8 @@ public class QueueStatsService {
         if (currentMessageCount <= 200) return 30;
         return 10;
     }
+
+
+    private record ProcessingRecord(LocalDateTime timestamp, long processingTimeMs) { }
+
 }
