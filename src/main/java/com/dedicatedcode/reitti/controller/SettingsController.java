@@ -7,6 +7,9 @@ import com.dedicatedcode.reitti.service.*;
 
 import java.util.Optional;
 import com.dedicatedcode.reitti.service.processing.RawLocationPointProcessingTrigger;
+import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -47,6 +50,7 @@ public class SettingsController {
     private final TripJdbcService tripJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final RabbitTemplate rabbitTemplate;
     private final int maxErrors;
     private final boolean dataManagementEnabled;
     private final MessageSource messageSource;
@@ -66,6 +70,7 @@ public class SettingsController {
                               TripJdbcService tripJdbcService,
                               ProcessedVisitJdbcService processedVisitJdbcService,
                               RawLocationPointJdbcService rawLocationPointJdbcService,
+                              RabbitTemplate rabbitTemplate,
                               @Value("${reitti.geocoding.max-errors}") int maxErrors,
                               @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                               MessageSource messageSource,
@@ -83,6 +88,7 @@ public class SettingsController {
         this.tripJdbcService = tripJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.rabbitTemplate = rabbitTemplate;
         this.maxErrors = maxErrors;
         this.dataManagementEnabled = dataManagementEnabled;
         this.messageSource = messageSource;
@@ -719,6 +725,76 @@ public class SettingsController {
     public String resetGeocodeServiceErrors(@PathVariable Long id, Model model) {
         GeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
         geocodeServiceJdbcService.save(service.resetErrorCount().withEnabled(true));
+        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
+        model.addAttribute("maxErrors", maxErrors);
+        return "fragments/settings :: geocode-services-content";
+    }
+
+    @PostMapping("/geocode-services/run-geocoding")
+    public String runGeocoding(Authentication authentication, Model model) {
+        try {
+            User currentUser = userJdbcService.getUserByUsername(authentication.getName());
+            
+            // Find all non-geocoded significant places for the user
+            List<SignificantPlace> nonGeocodedPlaces = placeJdbcService.findNonGeocodedByUser(currentUser);
+            
+            if (nonGeocodedPlaces.isEmpty()) {
+                model.addAttribute("successMessage", getMessage("geocoding.no.places"));
+            } else {
+                // Send SignificantPlaceCreatedEvent for each non-geocoded place
+                for (SignificantPlace place : nonGeocodedPlaces) {
+                    SignificantPlaceCreatedEvent event = new SignificantPlaceCreatedEvent(
+                        place.getId(), 
+                        place.getLatitudeCentroid(),
+                        place.getLongitudeCentroid()
+                    );
+                    rabbitTemplate.convertAndSend(RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE, event);
+                }
+                
+                model.addAttribute("successMessage", getMessage("geocoding.run.success", nonGeocodedPlaces.size()));
+            }
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", getMessage("geocoding.run.error", e.getMessage()));
+        }
+
+        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
+        model.addAttribute("maxErrors", maxErrors);
+        return "fragments/settings :: geocode-services-content";
+    }
+
+    @PostMapping("/geocode-services/clear-and-rerun")
+    public String clearAndRerunGeocoding(Authentication authentication, Model model) {
+        try {
+            User currentUser = userJdbcService.getUserByUsername(authentication.getName());
+            
+            // Find all significant places for the user
+            List<SignificantPlace> allPlaces = placeJdbcService.findAllByUser(currentUser);
+            
+            if (allPlaces.isEmpty()) {
+                model.addAttribute("successMessage", getMessage("geocoding.no.places"));
+            } else {
+                // Clear geocoding data for all places
+                for (SignificantPlace place : allPlaces) {
+                    SignificantPlace clearedPlace = place.withGeocoded(false).withAddress(null);
+                    placeJdbcService.update(clearedPlace);
+                }
+                
+                // Send SignificantPlaceCreatedEvent for each place
+                for (SignificantPlace place : allPlaces) {
+                    SignificantPlaceCreatedEvent event = new SignificantPlaceCreatedEvent(
+                        place.getId(), 
+                        place.getLatitudeCentroid(),
+                        place.getLongitudeCentroid()
+                    );
+                    rabbitTemplate.convertAndSend(RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE, event);
+                }
+                
+                model.addAttribute("successMessage", getMessage("geocoding.clear.success", allPlaces.size()));
+            }
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", getMessage("geocoding.clear.error", e.getMessage()));
+        }
+
         model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
         model.addAttribute("maxErrors", maxErrors);
         return "fragments/settings :: geocode-services-content";

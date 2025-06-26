@@ -102,4 +102,20 @@ public class SignificantPlaceJdbcService {
     public boolean exists(User user, Long id) {
         return Boolean.TRUE.equals(this.jdbcTemplate.queryForObject("SELECT true FROM significant_places WHERE user_id = ? AND id = ?", Boolean.class, user.getId(), id));
     }
+
+    public List<SignificantPlace> findNonGeocodedByUser(User user) {
+        String sql = "SELECT sp.id, sp.address, sp.category, sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id, ST_AsText(sp.geom) as geom, sp.geocoded, sp.version " +
+                "FROM significant_places sp " +
+                "WHERE sp.user_id = ? AND sp.geocoded = false " +
+                "ORDER BY sp.id";
+        return jdbcTemplate.query(sql, significantPlaceRowMapper, user.getId());
+    }
+
+    public List<SignificantPlace> findAllByUser(User user) {
+        String sql = "SELECT sp.id, sp.address, sp.category, sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id, ST_AsText(sp.geom) as geom, sp.geocoded, sp.version " +
+                "FROM significant_places sp " +
+                "WHERE sp.user_id = ? " +
+                "ORDER BY sp.id";
+        return jdbcTemplate.query(sql, significantPlaceRowMapper, user.getId());
+    }
 }

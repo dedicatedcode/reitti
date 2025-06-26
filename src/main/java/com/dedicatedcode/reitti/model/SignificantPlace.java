@@ -94,6 +94,10 @@ public class SignificantPlace implements Serializable {
         return new SignificantPlace(this.id, this.name, address, this.latitudeCentroid, this.longitudeCentroid, this.geom, this.category, this.geocoded, this.version);
     }
 
+    public SignificantPlace withCategory(String category) {
+        return new SignificantPlace(this.id, this.name, this.address, this.latitudeCentroid, this.longitudeCentroid, this.geom, category, this.geocoded, this.version);
+    }
+
     public SignificantPlace withId(Long id) {
         return new SignificantPlace(id, this.name, address, this.latitudeCentroid, this.longitudeCentroid, this.geom, this.category, this.geocoded, this.version);
     }
