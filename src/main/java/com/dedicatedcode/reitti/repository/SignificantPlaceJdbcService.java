@@ -23,7 +23,7 @@ public class SignificantPlaceJdbcService {
 
     public SignificantPlaceJdbcService(JdbcTemplate jdbcTemplate, PointReaderWriter pointReaderWriter) {
         this.jdbcTemplate = jdbcTemplate;
-        this.significantPlaceRowMapper = (rs, rowNum) -> new SignificantPlace(
+        this.significantPlaceRowMapper = (rs, _) -> new SignificantPlace(
                 rs.getLong("id"),
                 rs.getString("name"),
                 rs.getString("address"),
