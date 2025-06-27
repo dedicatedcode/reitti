@@ -52,6 +52,17 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
+.date-item.unavailable {
+    opacity: 0.4;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.date-item.unavailable:hover {
+    background-color: transparent;
+    transform: none;
+}
+
 .date-item .day-name {
     font-size: 0.8rem;
     opacity: 0.8;
