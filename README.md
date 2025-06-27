@@ -234,6 +234,100 @@ Connect with Immich photo servers to:
 - Show images on the timeline map
 - Browse photo galleries by location and date
 
+## Reverse Geocoding Options
+
+Reitti supports multiple approaches for reverse geocoding (converting coordinates to human-readable addresses). You can choose the option that best fits your privacy, performance, and storage requirements.
+
+### Option 1: Self-hosted Photon (Recommended)
+
+The included docker-compose.yml configuration provides a local Photon instance for complete privacy and optimal performance.
+
+**Included Configuration:**
+```yaml
+photon:
+  image: rtuszik/photon-docker:latest
+  environment:
+    - UPDATE_STRATEGY=PARALLEL
+    - COUNTRY_CODE=de
+  volumes:
+    - photon-data:/photon/photon_data
+  ports:
+    - "2322:2322"
+```
+
+**Storage Requirements:**
+- **Country-specific**: 1-10GB depending on country size
+- **Global dataset**: ~200GB for the complete worldwide index
+- **PARALLEL mode**: Doubles storage requirements during updates (400GB total for global)
+
+**Configuration Options:**
+- **COUNTRY_CODE**: Set to your main country code (e.g., `de`, `us`, `fr`) to save space
+- **UPDATE_STRATEGY=PARALLEL**: Faster updates but requires double storage space
+- **Remove COUNTRY_CODE**: Download complete global dataset for worldwide coverage
+
+**Benefits:**
+- Complete privacy - no external API calls
+- Fastest response times with no rate limits
+- No dependency on external service availability
+- No API usage fees or quotas
+
+### Option 2: External Geocoding Services Only
+
+Remove the Photon service from docker-compose.yml and rely solely on configured external geocoding services.
+
+**To disable Photon:**
+1. Remove the `photon` service from docker-compose.yml
+2. Remove `PHOTON_BASE_URL` environment variable from the reitti service
+3. Configure external geocoding services in Settings → Geocoding
+
+**Supported Services:**
+- Nominatim (OpenStreetMap)
+- Custom geocoding APIs
+- Multiple services with automatic failover
+
+**Benefits:**
+- No local storage requirements
+- Immediate setup without data downloads
+- Access to multiple geocoding providers
+
+### Option 3: Hybrid Approach (Default)
+
+Use both Photon and external services for maximum reliability.
+
+**How it works:**
+1. Photon is tried first for fast local geocoding
+2. External services are used as fallback if Photon returns no results
+3. Automatic failover ensures continuous operation
+
+**Configuration:**
+- Keep Photon service in docker-compose.yml
+- Configure additional geocoding services in Settings → Geocoding
+- Services are tried in order with automatic error handling
+
+### Choosing the Right Option
+
+| Requirement | Photon Only | External Only | Hybrid |
+|-------------|-------------|---------------|--------|
+| **Privacy** | ✅ Complete | ❌ Limited | ⚠️ Partial |
+| **Performance** | ✅ Fastest | ❌ Network dependent | ✅ Fast with fallback |
+| **Storage** | ❌ High (1-200GB) | ✅ None | ❌ High (1-200GB) |
+| **Setup Time** | ❌ Hours to days | ✅ Immediate | ❌ Hours to days |
+| **Reliability** | ⚠️ Single point | ⚠️ External dependency | ✅ Multiple sources |
+| **Cost** | ✅ Free | ⚠️ May have limits | ✅ Free with backup |
+
+### Initial Setup Considerations
+
+**For Photon:**
+- Plan for significant disk space (see storage requirements above)
+- Initial data download can take hours to days depending on dataset size
+- Consider starting with country-specific data and expanding later
+- Monitor disk space during initial setup, especially with PARALLEL mode
+
+**For External Services:**
+- Configure multiple services for redundancy
+- Check rate limits and usage policies
+- Consider geographic coverage of different providers
+
 ## Technologies
 
 - **Backend**: Spring Boot, Spring Data JPA, Spring Security
