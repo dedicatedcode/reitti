@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.service.geocoding;
 
-import com.dedicatedcode.reitti.model.GeocodeService;
+import com.dedicatedcode.reitti.model.RemoteGeocodeService;
 import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,15 +23,18 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
     private static final Logger logger = LoggerFactory.getLogger(DefaultGeocodeServiceManager.class);
 
     private final GeocodeServiceJdbcService geocodeServiceJdbcService;
+    private final List<GeocodeService> fixedGeocodeServices;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final int maxErrors;
 
     public DefaultGeocodeServiceManager(GeocodeServiceJdbcService geocodeServiceJdbcService,
+                                        List<GeocodeService> fixedGeocodeServices,
                                         RestTemplate restTemplate,
                                         ObjectMapper objectMapper,
                                         @Value("${reitti.geocoding.max-errors}") int maxErrors) {
         this.geocodeServiceJdbcService = geocodeServiceJdbcService;
+        this.fixedGeocodeServices = fixedGeocodeServices;
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
         this.maxErrors = maxErrors;
@@ -40,14 +43,23 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
     @Transactional
     @Override
     public Optional<GeocodeResult> reverseGeocode(double latitude, double longitude) {
-        List<GeocodeService> availableServices = geocodeServiceJdbcService.findByEnabledTrueOrderByLastUsedAsc();
+        if (!fixedGeocodeServices.isEmpty()) {
+            logger.debug("Fixed geocode-service available, will first try this.");
+            Optional<GeocodeResult> geocodeResult = callGeocodeService(fixedGeocodeServices, latitude, longitude);
+            if (geocodeResult.isPresent()) {
+                return geocodeResult;
+            }
+        }
+        List<RemoteGeocodeService> availableServices = geocodeServiceJdbcService.findByEnabledTrueOrderByLastUsedAsc();
 
         if (availableServices.isEmpty()) {
             logger.warn("No enabled geocoding services available");
             return Optional.empty();
         }
+        return callGeocodeService(availableServices, latitude, longitude);
+    }
 
-        // Shuffle to distribute load randomly
+    private Optional<GeocodeResult> callGeocodeService(List<? extends GeocodeService> availableServices, double latitude, double longitude) {
         Collections.shuffle(availableServices);
 
         for (GeocodeService service : availableServices) {
@@ -118,20 +130,24 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
     }
 
     private void recordSuccess(GeocodeService service) {
-        geocodeServiceJdbcService.save(service.withLastUsed(Instant.now()));
+        if (service instanceof RemoteGeocodeService) {
+            geocodeServiceJdbcService.save(((RemoteGeocodeService) service).withLastUsed(Instant.now()));
+        }
     }
 
     private void recordError(GeocodeService service) {
-        GeocodeService update = service
-                .withIncrementedErrorCount()
-                .withLastError(Instant.now());
+        if (service instanceof RemoteGeocodeService) {
+            RemoteGeocodeService update = ((RemoteGeocodeService) service)
+                    .withIncrementedErrorCount()
+                    .withLastError(Instant.now());
 
-        if (update.getErrorCount() >= maxErrors) {
-            update = update.withEnabled(false);
-            logger.warn("Geocoding service [{}] disabled due to too many errors ([{}]/[{}])",
-                    update.getName(), update.getErrorCount(), maxErrors);
+            if (update.getErrorCount() >= maxErrors) {
+                update = update.withEnabled(false);
+                logger.warn("Geocoding service [{}] disabled due to too many errors ([{}]/[{}])",
+                        update.getName(), update.getErrorCount(), maxErrors);
+            }
+
+            geocodeServiceJdbcService.save(update);
         }
-
-        geocodeServiceJdbcService.save(service);
     }
 }

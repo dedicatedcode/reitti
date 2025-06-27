@@ -722,7 +722,7 @@ public class SettingsController {
                                        @RequestParam String urlTemplate,
                                        Model model) {
         try {
-            GeocodeService service = new GeocodeService(name, urlTemplate, true, 0, null, null);
+            RemoteGeocodeService service = new RemoteGeocodeService(name, urlTemplate, true, 0, null, null);
             geocodeServiceJdbcService.save(service);
             model.addAttribute("successMessage", getMessage("message.success.geocode.created"));
         } catch (Exception e) {
@@ -736,7 +736,7 @@ public class SettingsController {
 
     @PostMapping("/geocode-services/{id}/toggle")
     public String toggleGeocodeService(@PathVariable Long id, Model model) {
-        GeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
+        RemoteGeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
         service = service.withEnabled(!service.isEnabled());
         if (service.isEnabled()) {
             service = service.resetErrorCount();
@@ -749,7 +749,7 @@ public class SettingsController {
 
     @PostMapping("/geocode-services/{id}/delete")
     public String deleteGeocodeService(@PathVariable Long id, Model model) {
-        GeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
+        RemoteGeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
         geocodeServiceJdbcService.delete(service);
         model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
         model.addAttribute("maxErrors", maxErrors);
@@ -758,7 +758,7 @@ public class SettingsController {
 
     @PostMapping("/geocode-services/{id}/reset-errors")
     public String resetGeocodeServiceErrors(@PathVariable Long id, Model model) {
-        GeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
+        RemoteGeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
         geocodeServiceJdbcService.save(service.resetErrorCount().withEnabled(true));
         model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
         model.addAttribute("maxErrors", maxErrors);
