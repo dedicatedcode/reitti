@@ -508,6 +508,12 @@ class HorizontalDatePicker {
         dateItem.className = 'date-item';
         dateItem.dataset.date = this.formatDate(date);
         
+        // Check if this date is unavailable
+        const isUnavailable = this.isDateUnavailable(date);
+        if (isUnavailable) {
+            dateItem.classList.add('unavailable');
+        }
+        
         // Check if this date is selected
         if (this.isSameDay(date, this.options.selectedDate)) {
             dateItem.classList.add('selected');
@@ -770,6 +776,30 @@ class HorizontalDatePicker {
         return date1.getDate() === date2.getDate() && 
                date1.getMonth() === date2.getMonth() && 
                date1.getFullYear() === date2.getFullYear();
+    }
+    
+    // Check if a date is unavailable
+    isDateUnavailable(date) {
+        // Check if date is outside min/max range
+        if (this.options.minDate && date < new Date(this.options.minDate)) {
+            return true;
+        }
+        
+        if (this.options.maxDate && date > new Date(this.options.maxDate)) {
+            return true;
+        }
+        
+        // Check if future dates are not allowed
+        if (!this.options.allowFutureDates) {
+            const today = new Date();
+            today.setHours(23, 59, 59, 59);
+            
+            if (date > today) {
+                return true;
+            }
+        }
+        
+        return false;
     }
     
     // Handle scroll end event
