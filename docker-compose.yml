@@ -60,7 +60,7 @@ services:
       - UPDATE_STRATEGY=PARALLEL
       - COUNTRY_CODE=de #set your main country code here to save space or drop this line to fetch the whole index.
     volumes:
-      - photon_data:/photon/photon_data
+      - photon-data:/photon/photon_data
 volumes:
   postgis-data:
   rabbitmq-data:
