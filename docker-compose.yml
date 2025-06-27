@@ -61,6 +61,8 @@ services:
       - COUNTRY_CODE=de #set your main country code here to save space or drop this line to fetch the whole index.
     volumes:
       - photon-data:/photon/photon_data
+    ports:
+      - "2322:2322"
 volumes:
   postgis-data:
   rabbitmq-data:
