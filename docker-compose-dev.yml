@@ -40,8 +40,18 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  photon:
+    image: rtuszik/photon-docker:latest
+    environment:
+      - UPDATE_STRATEGY=PARALLEL
+      - COUNTRY_CODE=de
+    ports:
+      - "2322:2322"
+    volumes:
+      - photon-data:/photon/photon_data
 
 volumes:
   postgis-data:
   redis-data:
   rabbitmq-data:
+  photon-data:

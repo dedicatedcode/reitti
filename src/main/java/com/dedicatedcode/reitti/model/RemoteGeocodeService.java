@@ -29,7 +29,6 @@ public class RemoteGeocodeService implements GeocodeService {
         this.version = version;
     }
     
-    // Getters
     public Long getId() { return id; }
     public String getName() { return name; }
     public String getUrlTemplate() { return urlTemplate; }
@@ -38,7 +37,7 @@ public class RemoteGeocodeService implements GeocodeService {
     public Instant getLastUsed() { return lastUsed; }
     public Instant getLastError() { return lastError; }
     public Long getVersion() { return version; }
-    
+
     // Wither methods
     public RemoteGeocodeService withEnabled(boolean enabled) {
         return new RemoteGeocodeService(this.id, this.name, this.urlTemplate, enabled, this.errorCount, this.lastUsed, this.lastError, this.version);

@@ -21,6 +21,6 @@ public class PhotonGeocodeService implements GeocodeService {
 
     @Override
     public String getUrlTemplate() {
-        return baseUrl + "/reverse?lon={lon}&lat={lat}" ;
+        return baseUrl + "/reverse?lon={lng}&lat={lat}&limit=10&layer=house&layer=locality&radius=0.03";
     }
 }

@@ -43,7 +43,7 @@
         </div>
 
         <!-- API Tokens Section -->
-        <div id="api-tokens" class="settings-section active" hx-get="/settings/api-tokens-content"
+        <div id="api-tokens" class="settings-section" hx-get="/settings/api-tokens-content"
              hx-trigger="revealed, every 30s">
             <div class="htmx-indicator">Loading tokens...</div>
         </div>
@@ -74,7 +74,7 @@
         </div>
 
         <!-- Job Status Section -->
-        <div id="job-status" class="settings-section" hx-get="/settings/queue-stats-content"
+        <div id="job-status" class="settings-section active" hx-get="/settings/queue-stats-content"
              hx-trigger="revealed, every 5s">
             <div class="htmx-indicator">Loading queue stats...</div>
         </div>

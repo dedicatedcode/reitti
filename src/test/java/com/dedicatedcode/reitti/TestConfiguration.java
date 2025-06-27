@@ -16,7 +16,7 @@ public class TestConfiguration {
     public GeocodeServiceManager geocodeServiceManager() {
         return (latitude, longitude) -> {
             String label = latitude + "," + longitude;
-            return Optional.of(new GeocodeResult(label, "Test Street " + geocodes.getAndIncrement(), "Test City", "Test District"));
+            return Optional.of(new GeocodeResult(label, "Test Street " + geocodes.getAndIncrement(), "1", "Test City", "12345","Test District"));
         };
     }
 }

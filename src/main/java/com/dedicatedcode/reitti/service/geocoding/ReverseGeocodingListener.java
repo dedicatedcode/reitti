@@ -42,19 +42,19 @@ public class ReverseGeocodingListener {
                 GeocodeResult result = resultOpt.get();
                 String label = result.label();
                 String street = result.street();
+                String houseNumber = result.houseNumber();
+                String postcode = result.postcode();
                 String city = result.city();
-                String district = result.district();
 
-                // Set the name to the street or district if available
-                if (!street.isEmpty()) {
-                    place = place.withName(street);
-                } else if (!district.isEmpty()) {
-                    place = place.withName(district);
-                } else if (!city.isEmpty()) {
-                    place = place.withName(city);
+                if (!label.isEmpty()) {
+                    place = place.withName(label)
+                            .withAddress(String.format("%s %s, %s %s", street, houseNumber, postcode, city));
+                } else {
+                    place = place.withName(street)
+                            .withAddress(String.format("%s %s, %s %s", street, houseNumber, postcode, city));
                 }
 
-                significantPlaceJdbcService.update(place.withAddress(label).withGeocoded(true));
+                significantPlaceJdbcService.update(place.withGeocoded(true));
                 logger.info("Updated place ID: {} with geocoding data: {}", place.getId(), label);
             } else {
                 logger.warn("No geocoding results found for place ID: {}", place.getId());

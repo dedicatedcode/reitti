@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.geocoding;
 
 import com.dedicatedcode.reitti.model.RemoteGeocodeService;
 import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -45,7 +46,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
     public Optional<GeocodeResult> reverseGeocode(double latitude, double longitude) {
         if (!fixedGeocodeServices.isEmpty()) {
             logger.debug("Fixed geocode-service available, will first try this.");
-            Optional<GeocodeResult> geocodeResult = callGeocodeService(fixedGeocodeServices, latitude, longitude);
+            Optional<GeocodeResult> geocodeResult = callGeocodeService(fixedGeocodeServices, latitude, longitude, true);
             if (geocodeResult.isPresent()) {
                 return geocodeResult;
             }
@@ -56,15 +57,15 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
             logger.warn("No enabled geocoding services available");
             return Optional.empty();
         }
-        return callGeocodeService(availableServices, latitude, longitude);
+        return callGeocodeService(availableServices, latitude, longitude, false);
     }
 
-    private Optional<GeocodeResult> callGeocodeService(List<? extends GeocodeService> availableServices, double latitude, double longitude) {
+    private Optional<GeocodeResult> callGeocodeService(List<? extends GeocodeService> availableServices, double latitude, double longitude, boolean photon) {
         Collections.shuffle(availableServices);
 
         for (GeocodeService service : availableServices) {
             try {
-                Optional<GeocodeResult> result = performGeocode(service, latitude, longitude);
+                Optional<GeocodeResult> result = performGeocode(service, latitude, longitude, photon);
                 if (result.isPresent()) {
                     recordSuccess(service);
                     return result;
@@ -78,7 +79,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
         return Optional.empty();
     }
 
-    private Optional<GeocodeResult> performGeocode(GeocodeService service, double latitude, double longitude) {
+    private Optional<GeocodeResult> performGeocode(GeocodeService service, double latitude, double longitude, boolean photon) {
         String url = service.getUrlTemplate()
                 .replace("{lat}", String.valueOf(latitude))
                 .replace("{lng}", String.valueOf(longitude));
@@ -88,44 +89,63 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
         try {
 
             String response = restTemplate.getForObject(url, String.class);
-            JsonNode root = objectMapper.readTree(response);
-            JsonNode features = root.path("features");
-
-            if (features.isArray() && !features.isEmpty()) {
-                JsonNode properties = features.get(0).path("properties");
-
-                String label;
-                String street;
-                String city;
-                String district;
-
-                //try to find elements from address;
-                JsonNode address = properties.path("address");
-                if (address.isMissingNode()) {
-                    label = properties.path("formatted").asText("");
-                    street = properties.path("street").asText("");
-                    city = properties.path("city").asText("");
-                    district = properties.path("district").asText("");
-                } else {
-                    label = properties.path("name").asText("");
-                    street = address.path("road").asText("");
-                    city = address.path("city").asText("");
-                    district = address.path("city_district").asText("");
-                }
-
-
-                if (label.isEmpty() && !street.isEmpty()) {
-                    label = street;
-                }
-                if (StringUtils.hasText(label)) {
-                    return Optional.of(new GeocodeResult(label, street, city, district));
-                }
-            }
+            return photon ? extractPhotonResult(response) : extractGeoCodeResult(response);
 
         } catch (Exception e) {
             throw new RuntimeException("Failed to call geocoding service: " + e.getMessage(), e);
         }
+    }
 
+    private Optional<GeocodeResult> extractPhotonResult(String response) throws JsonProcessingException {
+        JsonNode root = objectMapper.readTree(response);
+        JsonNode features = root.path("features");
+        if (features.isArray() && !features.isEmpty()) {
+            JsonNode properties = features.get(0).path("properties");
+            String name = properties.path("name").asText();
+            String city = properties.path("city").asText();
+            String street = properties.path("street").asText();
+            String district = properties.path("district").asText();
+            String housenumber = properties.path("housenumber").asText();
+            String postcode = properties.path("postcode").asText();
+
+            return Optional.of(new GeocodeResult(name, street, housenumber, city, postcode, district));
+        }
+        return Optional.empty();
+    }
+    private Optional<GeocodeResult> extractGeoCodeResult(String response) throws JsonProcessingException {
+        JsonNode root = objectMapper.readTree(response);
+        JsonNode features = root.path("features");
+
+        if (features.isArray() && !features.isEmpty()) {
+            JsonNode properties = features.get(0).path("properties");
+
+            String label;
+            String street;
+            String city;
+            String district;
+
+            //try to find elements from address;
+            JsonNode address = properties.path("address");
+            if (address.isMissingNode()) {
+                label = properties.path("formatted").asText("");
+                street = properties.path("street").asText("");
+                city = properties.path("city").asText("");
+                district = properties.path("district").asText("");
+            } else {
+                label = properties.path("name").asText("");
+                street = address.path("road").asText("");
+                city = address.path("city").asText("");
+                district = address.path("city_district").asText("");
+            }
+
+
+            if (label.isEmpty() && !street.isEmpty()) {
+                label = street;
+            }
+            if (StringUtils.hasText(label)) {
+                return Optional.of(new GeocodeResult(label, street, "", city,  "", district));
+            }
+        }
         return Optional.empty();
     }
 
