@@ -177,7 +177,14 @@
                         <div><strong th:text="#{places.category.label}">Category:</strong> <span th:text="${place.category() ?: #messages.msg('places.category.not.categorized')}"></span></div>
                         <div><strong th:text="#{places.coordinates.label}">Coordinates:</strong> <span th:text="${place.latitude() + ', ' + place.longitude()}"></span></div>
                     </div>
-                    <button type="submit" class="btn" th:text="#{form.update}">Update</button>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button type="submit" class="btn" th:text="#{form.update}">Update</button>
+                        <button type="button" 
+                                class="btn btn-secondary"
+                                th:attr="hx-post=@{/settings/places/{id}/geocode(id=${place.id()})}, hx-confirm=#{places.geocode.confirm}"
+                                hx-swap="none"
+                                th:text="#{places.geocode.button}">Geocode</button>
+                    </div>
                 </form>
             </div>
         </div>

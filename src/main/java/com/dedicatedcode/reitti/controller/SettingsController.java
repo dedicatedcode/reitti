@@ -246,6 +246,41 @@ public class SettingsController {
         return response;
     }
 
+    @PostMapping("/places/{placeId}/geocode")
+    @ResponseBody
+    public Map<String, Object> geocodePlace(@PathVariable Long placeId,
+                                            Authentication authentication) {
+
+        User user = (User) authentication.getPrincipal();
+        Map<String, Object> response = new HashMap<>();
+        if (this.placeJdbcService.exists(user, placeId)) {
+            try {
+                SignificantPlace significantPlace = placeJdbcService.findById(placeId).orElseThrow();
+                
+                // Clear geocoding data and mark as not geocoded
+                SignificantPlace clearedPlace = significantPlace.withGeocoded(false).withAddress(null);
+                placeJdbcService.update(clearedPlace);
+                
+                // Send SignificantPlaceCreatedEvent to trigger geocoding
+                SignificantPlaceCreatedEvent event = new SignificantPlaceCreatedEvent(
+                    significantPlace.getId(), 
+                    significantPlace.getLatitudeCentroid(),
+                    significantPlace.getLongitudeCentroid()
+                );
+                rabbitTemplate.convertAndSend(RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE, event);
+
+                response.put("message", getMessage("places.geocode.success"));
+                response.put("success", true);
+            } catch (Exception e) {
+                response.put("message", getMessage("places.geocode.error", e.getMessage()));
+                response.put("success", false);
+            }
+        } else {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+        return response;
+    }
+
     @PostMapping("/users")
     public String createUser(@RequestParam String username,
                              @RequestParam String displayName,
