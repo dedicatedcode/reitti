@@ -44,8 +44,8 @@ public class SignificantPlaceJdbcService {
 
         String sql = "SELECT sp.id, sp.address, sp.category, sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id, ST_AsText(sp.geom) as geom, sp.geocoded, sp.version" +
                 " FROM significant_places sp " +
-                "WHERE sp.user_id = ? " +
-                "LIMIT ? OFFSET ?";
+                "WHERE sp.user_id = ? ORDER BY sp.id " +
+                "LIMIT ? OFFSET ? ";
         List<SignificantPlace> content = jdbcTemplate.query(sql, significantPlaceRowMapper,
                 user.getId(), pageable.getPageSize(), pageable.getOffset());
 
