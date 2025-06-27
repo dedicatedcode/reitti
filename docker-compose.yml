@@ -56,3 +56,4 @@ services:
 volumes:
   postgis-data:
   rabbitmq-data:
+  redis-data:
