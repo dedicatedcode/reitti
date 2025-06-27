@@ -11,6 +11,8 @@ services:
         restart: true
       redis:
         condition: service_healthy
+    environment:
+      PHOTON_BASE_URL: http://photon:2322
   postgis:
     image: postgis/postgis:17-3.5-alpine
     environment:
@@ -52,8 +54,15 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
+  photon:
+    image: rtuszik/photon-docker:latest
+    environment:
+      - UPDATE_STRATEGY=PARALLEL
+      - COUNTRY_CODE=de #set your main country code here to save space or drop this line to fetch the whole index.
+    volumes:
+      - photon_data:/photon/photon_data
 volumes:
   postgis-data:
   rabbitmq-data:
   redis-data:
+  photon-data:
