@@ -162,7 +162,7 @@
     </span>
 
     <div class="timeline-container">
-        <div id="loading-indicator" style="display: none;" th:text="#{timeline.loading}">Loading...</div>
+        <div id="loading-indicator" style="display: none;" class="timeline-entry" th:text="#{timeline.loading}">Loading...</div>
         <!-- Timeline entries will be loaded here -->
     </div>
 </div>
@@ -749,7 +749,6 @@
         new HorizontalDatePicker({
             container: document.getElementById('horizontal-date-picker-container'),
             selectedDate: dateToUse,
-            autoSelectOnScroll: true, // Enable auto-select on scroll
             showNavButtons: false, // Show navigation buttons
             daysToShow: 21, // Show more days
             showMonthRow: true, // Enable month selection row
