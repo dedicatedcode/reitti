@@ -711,22 +711,23 @@ class HorizontalDatePicker {
         this.monthRowContainer.innerHTML = '';
         
         const selectedYear = this.options.selectedDate.getFullYear();
-        
+
+
+        // Add Today button if enabled
+        if (this.options.showTodayButton) {
+            const todayButton = document.createElement('div');
+            todayButton.className = 'today-button';
+            todayButton.innerHTML = `<i class="fas fa-calendar-day"></i> ${window.locale?.today || 'Today'}`;
+            todayButton.addEventListener('click', () => {
+                this.goToToday();
+            });
+            this.monthRowContainer.appendChild(todayButton);
+        }
         // Create year row if enabled
         if (this.options.showYearRow) {
             const yearRow = document.createElement('div');
             yearRow.className = 'year-row';
-            
-            // Add Today button if enabled
-            if (this.options.showTodayButton) {
-                const todayButton = document.createElement('div');
-                todayButton.className = 'today-button';
-                todayButton.innerHTML = `<i class="fas fa-calendar-day"></i> ${window.locale?.today || 'Today'}`;
-                todayButton.addEventListener('click', () => {
-                    this.goToToday();
-                });
-                yearRow.appendChild(todayButton);
-            }
+
             
             // Calculate how many years to show before and after the selected year
             const yearsToShow = this.options.yearsToShow;
