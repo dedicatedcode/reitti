@@ -54,7 +54,6 @@
 
 .date-item.unavailable {
     opacity: 0.4;
-    color: #999;
     cursor: not-allowed;
 }
 
