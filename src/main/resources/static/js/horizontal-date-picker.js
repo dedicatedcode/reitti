@@ -650,6 +650,61 @@ class HorizontalDatePicker {
         
         return false;
     }
+    
+    // Check if a year is unavailable
+    isYearUnavailable(year) {
+        // Check if the entire year is outside min/max range
+        const yearStart = new Date(year, 0, 1);
+        const yearEnd = new Date(year, 11, 31);
+        
+        if (this.options.minDate && yearEnd < new Date(this.options.minDate)) {
+            return true;
+        }
+        
+        if (this.options.maxDate && yearStart > new Date(this.options.maxDate)) {
+            return true;
+        }
+        
+        // Check if future years are not allowed
+        if (!this.options.allowFutureDates) {
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            
+            if (year > currentYear) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    // Check if a month is unavailable
+    isMonthUnavailable(year, month) {
+        // Check if the entire month is outside min/max range
+        const monthStart = new Date(year, month, 1);
+        const monthEnd = new Date(year, month + 1, 0);
+        
+        if (this.options.minDate && monthEnd < new Date(this.options.minDate)) {
+            return true;
+        }
+        
+        if (this.options.maxDate && monthStart > new Date(this.options.maxDate)) {
+            return true;
+        }
+        
+        // Check if future months are not allowed
+        if (!this.options.allowFutureDates) {
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonth = today.getMonth();
+            
+            if (year > currentYear || (year === currentYear && month > currentMonth)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
 
     // Populate the month row
     populateMonthRow() {
@@ -686,13 +741,21 @@ class HorizontalDatePicker {
                 yearItem.textContent = year;
                 yearItem.dataset.year = year;
                 
+                // Check if this year is unavailable
+                const isUnavailable = this.isYearUnavailable(year);
+                if (isUnavailable) {
+                    yearItem.classList.add('unavailable');
+                }
+                
                 // Mark selected year
                 if (year === selectedYear) {
                     yearItem.classList.add('selected');
                 }
                 
                 yearItem.addEventListener('click', () => {
-                    this.selectYear(year);
+                    if (!isUnavailable) {
+                        this.selectYear(year);
+                    }
                 });
                 yearRow.appendChild(yearItem);
             }
@@ -721,6 +784,12 @@ class HorizontalDatePicker {
             monthItem.dataset.year = year;
             monthItem.dataset.month = month;
             
+            // Check if this month is unavailable
+            const isUnavailable = this.isMonthUnavailable(year, month);
+            if (isUnavailable) {
+                monthItem.classList.add('unavailable');
+            }
+            
             // Check if this is the selected month
             if (year === this.options.selectedDate.getFullYear() && 
                 month === this.options.selectedDate.getMonth()) {
@@ -738,7 +807,9 @@ class HorizontalDatePicker {
                     month === this.options.selectedDate.getMonth()) {
                     return; // Do nothing if clicking on already selected month
                 }
-                this.selectMonth(year, month);
+                if (!isUnavailable) {
+                    this.selectMonth(year, month);
+                }
             });
             
             monthRow.appendChild(monthItem);

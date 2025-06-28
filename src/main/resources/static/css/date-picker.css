@@ -179,6 +179,16 @@
     color: white;
 }
 
+.year-item.unavailable {
+    opacity: 0.4;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.year-item.unavailable:hover {
+    background-color: transparent;
+}
+
 .month-row {
     display: flex;
     overflow-x: auto;
@@ -213,6 +223,16 @@
 .month-item.selected {
     background-color: #4a89dc;
     color: white;
+}
+
+.month-item.unavailable {
+    opacity: 0.4;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.month-item.unavailable:hover {
+    background-color: transparent;
 }
 
 .month-item .year-label {
