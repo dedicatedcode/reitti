@@ -15,6 +15,7 @@ import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.time.Instant;
@@ -76,8 +77,44 @@ public class TestUtils {
         }
     }
 
-    public List<LocationDataRequest.LocationPoint> readFromTableOutput(String path) {
+    public static List<LocationDataRequest.LocationPoint> readFromTableOutput(String path) {
+        try {
+            InputStream inputStream = TestUtils.class.getResourceAsStream(path);
+            if (inputStream == null) {
+                LOGGER.error("Resource not found: [{}]", path);
+                return List.of();
+            }
 
-        // create code toread a text file line by line AI!
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+                return reader.lines()
+                        .skip(1) // Skip header line
+                        .map(line -> {
+                            try {
+                                String[] parts = line.split("\t");
+                                if (parts.length >= 3) {
+                                    double latitude = Double.parseDouble(parts[0]);
+                                    double longitude = Double.parseDouble(parts[1]);
+                                    String timestamp = parts[2];
+                                    
+                                    LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
+                                    point.setLatitude(latitude);
+                                    point.setLongitude(longitude);
+                                    point.setTimestamp(timestamp);
+                                    
+                                    return point;
+                                }
+                                return null;
+                            } catch (Exception e) {
+                                LOGGER.warn("Failed to parse line: {}", line, e);
+                                return null;
+                            }
+                        })
+                        .filter(point -> point != null)
+                        .toList();
+            }
+        } catch (Exception e) {
+            LOGGER.error("Error reading table file: {}", path, e);
+            return List.of();
+        }
     }
 }
