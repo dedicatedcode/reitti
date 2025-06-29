@@ -537,6 +537,22 @@
             </button>
         </div>
 
+        <div class="action-card" style="border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
+            <h4 th:text="#{data.remove.all.title}">Remove All Data</h4>
+            <p th:text="#{data.remove.all.description}">Remove all data except significant places. This will permanently delete all raw location points, visits, trips, and processed visits while preserving your significant places.</p>
+            <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; padding: 10px; margin: 10px 0; color: #721c24;">
+                <strong>⚠️ Danger:</strong> <span th:text="#{data.remove.all.warning}">This action will permanently delete ALL location data except significant places. This cannot be undone.</span>
+            </div>
+            <button class="btn btn-danger" 
+                    hx-post="/settings/manage-data/remove-all-data" 
+                    hx-target="#manage-data" 
+                    hx-swap="innerHTML"
+                    th:attr="hx-confirm=#{data.remove.all.confirm}"
+                    th:text="#{data.remove.all.button}">
+                Remove All Data
+            </button>
+        </div>
+
     </div>
 </div>
 

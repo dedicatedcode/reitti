@@ -716,6 +716,28 @@ public class SettingsController {
         return "fragments/settings :: manage-data-content";
     }
 
+    @PostMapping("/manage-data/remove-all-data")
+    public String removeAllData(Authentication authentication, Model model) {
+        if (!dataManagementEnabled) {
+            throw new RuntimeException("Data management is not enabled");
+        }
+
+        try {
+            String username = authentication.getName();
+            User currentUser = userJdbcService.findByUsername(username)
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+            
+            // Remove all data except SignificantPlaces
+            removeAllDataExceptPlaces(currentUser);
+            
+            model.addAttribute("successMessage", getMessage("data.remove.all.success"));
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", getMessage("data.remove.all.error", e.getMessage()));
+        }
+
+        return "fragments/settings :: manage-data-content";
+    }
+
     private void clearProcessedDataExceptPlaces(User user) {
         // Clear all processed data except SignificantPlaces
         // Order matters due to foreign key constraints
@@ -727,6 +749,15 @@ public class SettingsController {
     private void markRawLocationPointsAsUnprocessed(User user) {
         // Mark all raw location points for the user as unprocessed
         rawLocationPointJdbcService.markAllAsUnprocessedForUser(user);
+    }
+
+    private void removeAllDataExceptPlaces(User user) {
+        // Remove all data except SignificantPlaces
+        // Order matters due to foreign key constraints
+        tripJdbcService.deleteAllForUser(user);
+        processedVisitJdbcService.deleteAllForUser(user);
+        visitJdbcService.deleteAllForUser(user);
+        rawLocationPointJdbcService.deleteAllForUser(user);
     }
 
     @GetMapping("/geocode-services-content")
