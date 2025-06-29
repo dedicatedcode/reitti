@@ -8,6 +8,7 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.shaded.com.google.common.io.LineReader;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -76,6 +77,7 @@ public class TestUtils {
     }
 
     public List<LocationDataRequest.LocationPoint> readFromTableOutput(String path) {
-        // read the file src/main/test/resources/data/table/2013-06-03.table and create a parser to return a list of LocationPoints AI!
+
+        // create code toread a text file line by line AI!
     }
 }
