@@ -136,9 +136,6 @@ public class VisitMergingService {
         Instant currentStartTime = currentVisit.getStartTime();
         Instant currentEndTime = currentVisit.getEndTime();
 
-        List<Long> mergedVisitIds = new ArrayList<>();
-        mergedVisitIds.add(currentVisit.getId());
-
         // Find or create a place for the first visit
         List<SignificantPlace> nearbyPlaces = findNearbyPlaces(user, currentVisit.getLatitude(), currentVisit.getLongitude());
         SignificantPlace currentPlace = nearbyPlaces.isEmpty() ?
@@ -176,23 +173,20 @@ public class VisitMergingService {
                 // Merge this visit with the current one
                 currentEndTime = nextVisit.getEndTime().isAfter(currentEndTime) ?
                         nextVisit.getEndTime() : currentEndTime;
-                mergedVisitIds.add(nextVisit.getId());
             } else {
                 // Create a processed visit from the current merged set
-                ProcessedVisit processedVisit = createProcessedVisit(currentPlace, currentStartTime, currentEndTime, mergedVisitIds);
+                ProcessedVisit processedVisit = createProcessedVisit(currentPlace, currentStartTime, currentEndTime);
                 result.add(processedVisit);
 
                 // Start a new merged set with this visit
                 currentStartTime = nextVisit.getStartTime();
                 currentEndTime = nextVisit.getEndTime();
                 currentPlace = nextPlace;
-                mergedVisitIds = new ArrayList<>();
-                mergedVisitIds.add(nextVisit.getId());
             }
         }
 
         // Add the last merged set
-        ProcessedVisit processedVisit = createProcessedVisit(currentPlace, currentStartTime, currentEndTime, mergedVisitIds);
+        ProcessedVisit processedVisit = createProcessedVisit(currentPlace, currentStartTime, currentEndTime);
 
         result.add(processedVisit);
 
@@ -231,10 +225,9 @@ public class VisitMergingService {
         return significantPlace;
     }
 
-    private ProcessedVisit createProcessedVisit(SignificantPlace place,
-                                                Instant startTime, Instant endTime, List<Long> mergedTripIds) {
+    private ProcessedVisit createProcessedVisit(SignificantPlace place, Instant startTime, Instant endTime) {
         logger.debug("Creating processed visit for place [{}] between [{}] and [{}]", place.getId(), startTime, endTime);
-        return new ProcessedVisit(place, startTime, endTime, endTime.getEpochSecond() - startTime.getEpochSecond(), mergedTripIds);
+        return new ProcessedVisit(place, startTime, endTime, endTime.getEpochSecond() - startTime.getEpochSecond());
     }
 
     private void publishSignificantPlaceCreatedEvent(SignificantPlace place) {

@@ -11,20 +11,18 @@ public class ProcessedVisit {
     private final Instant endTime;
     private final Long durationSeconds;
     private final Long version;
-    private final List<Long> mergedTripIds;
 
-    public ProcessedVisit(SignificantPlace place, Instant startTime, Instant endTime, Long durationSeconds, List<Long> mergedTripIds) {
-        this(null, place, startTime, endTime, durationSeconds, 1L, mergedTripIds);
+    public ProcessedVisit(SignificantPlace place, Instant startTime, Instant endTime, Long durationSeconds) {
+        this(null, place, startTime, endTime, durationSeconds, 1L);
     }
 
-    public ProcessedVisit(Long id, SignificantPlace place, Instant startTime, Instant endTime, Long durationSeconds, Long version, List<Long> mergedTripIds) {
+    public ProcessedVisit(Long id, SignificantPlace place, Instant startTime, Instant endTime, Long durationSeconds, Long version) {
         this.id = id;
         this.place = place;
         this.startTime = startTime;
         this.endTime = endTime;
         this.durationSeconds = durationSeconds;
         this.version = version;
-        this.mergedTripIds = mergedTripIds;
     }
 
     public Long getId() {
@@ -51,16 +49,12 @@ public class ProcessedVisit {
         return this.version;
     }
 
-    public List<Long> getMergedTripIds() {
-        return mergedTripIds;
-    }
-
     public ProcessedVisit withId(Long id) {
-        return new ProcessedVisit(id, this.place, this.startTime, this.endTime, this.durationSeconds, this.version, this.mergedTripIds);
+        return new ProcessedVisit(id, this.place, this.startTime, this.endTime, this.durationSeconds, this.version);
     }
 
     public ProcessedVisit withVersion(long version) {
-        return new ProcessedVisit(this.id, this.place, this.startTime, this.endTime, this.durationSeconds, version, this.mergedTripIds);
+        return new ProcessedVisit(this.id, this.place, this.startTime, this.endTime, this.durationSeconds, version);
     }
 
     @Override
