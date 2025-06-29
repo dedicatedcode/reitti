@@ -188,6 +188,10 @@ public class RawLocationPointJdbcService {
         jdbcTemplate.update(sql, user.getId());
     }
 
+    public void deleteAllForUser(User user) {
+        //AI!
+    }
+
     public static class ClusteredPoint {
         private final RawLocationPoint point;
         private final Integer clusterId;
