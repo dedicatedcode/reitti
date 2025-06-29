@@ -1,27 +1,24 @@
 package com.dedicatedcode.reitti;
 
-import com.dedicatedcode.reitti.model.GeoPoint;
+import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.model.RawLocationPoint;
 import de.siegmar.fastcsv.reader.CsvReader;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.text.MessageFormat;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 
 public class TestUtils {
@@ -76,5 +73,9 @@ public class TestUtils {
             LOGGER.error("Error parsing GPX file: ", e);
 
         }
+    }
+
+    public List<LocationDataRequest.LocationPoint> readFromTableOutput(String path) {
+        // read the file src/main/test/resources/data/table/2013-06-03.table and create a parser to return a list of LocationPoints AI!
     }
 }
