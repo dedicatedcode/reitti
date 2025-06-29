@@ -3,7 +3,6 @@ package com.dedicatedcode.reitti.service.processing;
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.ProcessedVisit;
-import com.dedicatedcode.reitti.model.Sort;
 import com.dedicatedcode.reitti.model.Visit;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
@@ -12,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
@@ -50,11 +50,13 @@ class VisitDetectionServiceTest {
 
         this.testingService.awaitDataImport(600);
 
-        List<Visit> persistedVisits = this.visitRepository.findByUser(userJdbcService.getUserById(1L));
+        List<Visit> persistedVisits = this.visitRepository.findByUser(userJdbcService.findById(1L)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + (Long) 1L)));
 
         assertEquals(11, persistedVisits.size());
 
-        List<ProcessedVisit> processedVisits = this.processedVisitRepository.findByUser(userJdbcService.getUserById(1L));
+        List<ProcessedVisit> processedVisits = this.processedVisitRepository.findByUser(userJdbcService.findById(1L)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + (Long) 1L)));
 
         assertEquals(10, processedVisits.size());
 

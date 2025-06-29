@@ -8,6 +8,7 @@ import com.dedicatedcode.reitti.service.processing.RawLocationPointProcessingTri
 import org.awaitility.Awaitility;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
@@ -46,7 +47,8 @@ public class TestingService {
     private RawLocationPointProcessingTrigger trigger;
 
     public void importData(String path) {
-        User admin = userJdbcService.getUserById(1L);
+        User admin = userJdbcService.findById(1L)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + (Long) 1L));
         InputStream is = getClass().getResourceAsStream(path);
         if (path.endsWith(".gpx")) {
             importHandler.importGpx(is, admin);
@@ -58,7 +60,8 @@ public class TestingService {
     }
 
     public User admin() {
-        return this.userJdbcService.getUserById(1L);
+        return this.userJdbcService.findById(1L)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + (Long) 1L));
     }
     public void triggerProcessingPipeline() {
         trigger.start();

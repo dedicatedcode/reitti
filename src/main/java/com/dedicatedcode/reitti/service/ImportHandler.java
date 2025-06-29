@@ -82,8 +82,6 @@ public class ImportHandler {
                                 if (point != null) {
                                     batch.add(point);
                                     processedCount.incrementAndGet();
-                                    
-                                    // Process in batches to avoid memory issues
 
                                     if (batch.size() >= batchSize) {
                                         sendToQueue(user, batch);

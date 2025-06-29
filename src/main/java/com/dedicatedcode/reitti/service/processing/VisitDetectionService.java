@@ -65,7 +65,7 @@ public class VisitDetectionService {
         userLock.lock();
         try {
             logger.debug("Detecting stay points for user {} from {} to {} ", username, incoming.getEarliest(), incoming.getLatest());
-            User user = userJdbcService.getUserByUsername(username);
+            User user = userJdbcService.findByUsername(username).orElseThrow();
         // We extend the search window slightly to catch visits spanning midnight
         Instant windowStart = incoming.getEarliest().minus(5, ChronoUnit.MINUTES);
         // Get points from 1 day after the latest new point
