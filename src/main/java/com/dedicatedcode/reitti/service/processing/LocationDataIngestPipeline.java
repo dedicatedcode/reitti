@@ -8,12 +8,10 @@ import com.dedicatedcode.reitti.repository.UserJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 public class LocationDataIngestPipeline {
@@ -22,7 +20,6 @@ public class LocationDataIngestPipeline {
     private final GeoPointAnomalyFilter geoPointAnomalyFilter;
     private final UserJdbcService userJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
-    private final long accuracyInMetersThreshold;
 
     @Autowired
     public LocationDataIngestPipeline(GeoPointAnomalyFilter geoPointAnomalyFilter,
@@ -31,7 +28,6 @@ public class LocationDataIngestPipeline {
         this.geoPointAnomalyFilter = geoPointAnomalyFilter;
         this.userJdbcService = userJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
-        this.accuracyInMetersThreshold = accuracyInMetersThreshold;
     }
 
     public void processLocationData(LocationDataEvent event) {
