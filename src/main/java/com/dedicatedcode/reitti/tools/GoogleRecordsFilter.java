@@ -45,10 +45,31 @@ public class GoogleRecordsFilter {
         JsonNode root = mapper.readTree(new FileReader(filePath));
         JsonNode filtered = filter(root, date);
 
-
-        // write the filtered JsonNode to a file in output_dir which takes the input filename and appends the date befor the extensions AI!
-
-
+        // Create output filename by appending date before extension
+        Path inputPath = Paths.get(filePath);
+        String inputFileName = inputPath.getFileName().toString();
+        String nameWithoutExtension;
+        String extension;
+        
+        int lastDotIndex = inputFileName.lastIndexOf('.');
+        if (lastDotIndex > 0) {
+            nameWithoutExtension = inputFileName.substring(0, lastDotIndex);
+            extension = inputFileName.substring(lastDotIndex);
+        } else {
+            nameWithoutExtension = inputFileName;
+            extension = "";
+        }
+        
+        String outputFileName = nameWithoutExtension + "_" + date + extension;
+        Path outputPath = Paths.get(outputDir, outputFileName);
+        
+        // Ensure output directory exists
+        Files.createDirectories(Paths.get(outputDir));
+        
+        // Write filtered JSON to output file
+        mapper.writerWithDefaultPrettyPrinter().writeValue(outputPath.toFile(), filtered);
+        
+        System.out.println("Filtered data written to: " + outputPath);
     }
 
     private static JsonNode filter(JsonNode root, String date) {
