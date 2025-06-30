@@ -1,5 +1,7 @@
 package com.dedicatedcode.reitti.model;
 
+import com.dedicatedcode.reitti.dto.LocationDataRequest;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -29,13 +31,14 @@ public final class GeoUtils {
                 p1.latitude(), p1.longitude(),
                 p2.latitude(), p2.longitude());
     }
-    public static double distanceInMeters(RawLocationPoint p1, RawLocationPoint p2) {
+
+    public static double distanceInMeters(LocationDataRequest.LocationPoint p1, LocationDataRequest.LocationPoint p2) {
         return distanceInMeters(
                 p1.getLatitude(), p1.getLongitude(),
                 p2.getLatitude(), p2.getLongitude());
     }
 
-    public static double distanceInMeters(StayPoint p1, StayPoint p2) {
+    public static double distanceInMeters(RawLocationPoint p1, RawLocationPoint p2) {
         return distanceInMeters(
                 p1.getLatitude(), p1.getLongitude(),
                 p2.getLatitude(), p2.getLongitude());

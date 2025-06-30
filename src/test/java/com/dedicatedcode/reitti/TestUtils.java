@@ -8,7 +8,6 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.shaded.com.google.common.io.LineReader;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -87,20 +86,26 @@ public class TestUtils {
 
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
                 return reader.lines()
-                        .skip(1) // Skip header line
+                        .skip(3) // Skip header line
                         .map(line -> {
                             try {
-                                String[] parts = line.split("\t");
+                                String[] parts = line.split("\\|");
                                 if (parts.length >= 3) {
-                                    double latitude = Double.parseDouble(parts[0]);
-                                    double longitude = Double.parseDouble(parts[1]);
-                                    String timestamp = parts[2];
-                                    
+                                    Double accuracy = Double.parseDouble(parts[0].trim());
+                                    String timestamp = parts[1].trim().replace(" ", "T") + ":00";
+
+                                    String pointValue  = parts[2].trim();
+                                    pointValue = pointValue.substring(6, pointValue.length() - 1);
+                                    String[] pointParts = pointValue.split(" ");
+                                    double longitude = Double.parseDouble(pointParts[0]);
+                                    double latitude = Double.parseDouble(pointParts[1]);
+
                                     LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
                                     point.setLatitude(latitude);
                                     point.setLongitude(longitude);
                                     point.setTimestamp(timestamp);
-                                    
+                                    point.setAccuracyMeters(accuracy);
+
                                     return point;
                                 }
                                 return null;
