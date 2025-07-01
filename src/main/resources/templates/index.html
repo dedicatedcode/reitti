@@ -168,7 +168,6 @@
          hx-vals='js:{"date": getSelectedDate()}'
          hx-indicator="#loading-indicator">
         <div id="loading-indicator" class="timeline-entry" th:text="#{timeline.loading}">Loading...</div>
-        <!-- Timeline entries will be loaded here via HTMX -->
     </div>
 </div>
 
@@ -220,6 +219,14 @@
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get('date') || new Date().toISOString().split('T')[0];
     }
+
+    const fitToBoundsConfig = {
+        padding: [50, 100]
+    };
+
+    const fitToBoundsConfigZoomed = {
+        padding: [50, 100]
+    };
 
     document.addEventListener('DOMContentLoaded', function () {
         // Settings overlay functionality
@@ -366,7 +373,6 @@
             photoClient.onMapMoveEnd();
         });
 
-        // Function to load timeline data (now handled by HTMX, but keep for photo loading)
         function loadTimelineData(date) {
             // Load photos for the selected date
             photoClient.updatePhotosForDate(date);
@@ -389,12 +395,13 @@
         function updateMapWithRawPoints(rawPointsData) {
             // Remove existing raw points path
             rawPointsPath.remove();
-            
+
             // Add raw location points if available
             if (rawPointsData && rawPointsData.points && rawPointsData.points.length > 0) {
                 const rawPointsCoords = rawPointsData.points.map(point => [point.latitude, point.longitude]);
                 rawPointsPath.setLatLngs(rawPointsCoords);
                 rawPointsPath.addTo(map);
+                map.fitBounds(rawPointsCoords, fitToBoundsConfig)
             }
         }
 
@@ -421,7 +428,7 @@
             if (event.detail.target.classList.contains('timeline-container')) {
                 // Timeline content has been updated, update map markers
                 updateMapFromTimeline();
-                
+                loadTimelineData(getSelectedDate())
                 // Initialize scroll indicator after timeline is updated
                 if (window.timelineScrollIndicator) {
                     window.timelineScrollIndicator.cleanup();
@@ -476,7 +483,6 @@
                     const durationElement = entryElement.querySelector('.entry-duration');
                     if (durationElement) {
                         const durationText = durationElement.textContent;
-                        // Simple parsing - you might want to improve this
                         const durationMs = parseDurationText(durationText);
                         group.totalDurationMs += durationMs;
                     }
@@ -502,7 +508,7 @@
                 const radius = Math.min(maxRadius, Math.max(minRadius, baseRadius + (logScale * (maxRadius - baseRadius))));
 
                 // Create marker
-                const marker = L.circleMarker([lat, lng], {
+                L.circleMarker([lat, lng], {
                     radius: 5,
                     fillColor: '#ff6c00',
                     color: '#fff',
@@ -537,10 +543,7 @@
 
             // Fit map to bounds if we have valid coordinates
             if (hasValidCoords) {
-                map.fitBounds(bounds, {
-                    padding: [50, 50],
-                    maxZoom: 16
-                });
+                map.fitBounds(bounds, fitToBoundsConfig);
             }
         }
 
@@ -556,7 +559,11 @@
         document.querySelector('.timeline-container').addEventListener('click', function (event) {
             const entry = event.target.closest('.timeline-entry');
             if (!entry) return;
-            
+
+            const editingElement = event.target.closest('.editing');
+            if (editingElement || event.target.classList.contains('edit-icon')) {
+                return;
+            }
             // Check if this entry is already active (deselection case)
             const isCurrentlyActive = entry.classList.contains('active');
             
@@ -570,10 +577,7 @@
             if (isCurrentlyActive) {
                 // Deselection: zoom back to original bounds showing all data
                 if (window.originalBounds && window.originalBounds.isValid()) {
-                    map.flyToBounds(window.originalBounds, {
-                        padding: [50, 50],
-                        maxZoom: 16
-                    });
+                    map.flyToBounds(window.originalBounds, fitToBoundsConfig);
                 }
             } else {
                 // Selection: zoom to specific entry
@@ -598,10 +602,7 @@
                 }
                     
                 if (newBounds.isValid()) {
-                    map.flyToBounds(newBounds, {
-                        padding: [50, 50],
-                        maxZoom: 16
-                    });
+                    map.flyToBounds(newBounds, fitToBoundsConfigZoomed);
                 }
             }
         });
@@ -634,7 +635,6 @@
             onDateSelect: (date, formattedDate) => {
                 // Update URL
                 updateUrlWithDate(formattedDate);
-
                 // Trigger HTMX reload of timeline
                 document.body.dispatchEvent(new CustomEvent('dateChanged'));
             },

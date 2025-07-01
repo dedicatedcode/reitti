@@ -6,12 +6,19 @@
 .edit-icon {
     opacity: 0;
     margin-left: 8px;
-    cursor: pointer;
     transition: opacity 0.2s ease;
-    font-size: 0.9em;
+    cursor: pointer;
+    font-size: 1.6rem;
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: gray;
+    border: 1px solid wheat;
+    color: wheat;
+    border-radius: 4px;
 }
 
-.place-name-container:hover .edit-icon {
+.timeline-entry.active .place-name-container:hover .edit-icon {
     opacity: 1;
 }
 
@@ -42,15 +49,18 @@
 }
 
 .save-btn:hover {
-    background: rgba(0, 255, 0, 0.2);
+    color: rgba(0, 255, 0, 0.2);
+    background: none;
 }
 
 .cancel-btn:hover {
-    background: rgba(255, 0, 0, 0.2);
+    color: rgba(255, 0, 0, 0.2);
+    background: none;
 }
 
 .place-name-container.editing {
-    background: rgba(255, 255, 255, 0.05);
-    padding: 2px 4px;
     border-radius: 3px;
+    font-size: 1.4rem;
+    float: left;
+    min-width: 700px;
 }

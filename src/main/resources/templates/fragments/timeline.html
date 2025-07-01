@@ -9,12 +9,16 @@
     <div th:if="${entries == null or entries.isEmpty()}" class="timeline-entry" th:text="#{timeline.no.data}">
         No timeline data available for this date.
     </div>
-    
+    <div id="loading-indicator" class="htmx-indicator" th:text="#{timeline.loading}">
+        loading ...
+    </div>
+
     <div th:each="entry : ${entries}" 
          th:class="|timeline-entry ${entry.type.name().toLowerCase()}|"
          th:data-id="${entry.id}"
          th:data-lat="${entry.place?.latitudeCentroid}"
-         th:data-lng="${entry.place?.longitudeCentroid}">
+         th:data-lng="${entry.place?.longitudeCentroid}"
+         th:data-path="${entry.path}">
         
         <!-- Entry Description -->
         <div class="entry-description">

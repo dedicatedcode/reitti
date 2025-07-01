@@ -1,13 +1,9 @@
 package com.dedicatedcode.reitti.controller;
 
-import com.dedicatedcode.reitti.model.ProcessedVisit;
-import com.dedicatedcode.reitti.model.SignificantPlace;
-import com.dedicatedcode.reitti.model.Trip;
-import com.dedicatedcode.reitti.model.User;
-import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
-import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
-import com.dedicatedcode.reitti.repository.TripJdbcService;
-import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.model.*;
+import com.dedicatedcode.reitti.repository.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
@@ -28,24 +24,30 @@ import java.util.List;
 @RequestMapping("/timeline")
 public class TimelineController {
 
+    private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final SignificantPlaceJdbcService placeService;
     private final UserJdbcService userJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final TripJdbcService tripJdbcService;
+    private final ObjectMapper objectMapper;
 
     @Autowired
-    public TimelineController(SignificantPlaceJdbcService placeService,
-                             UserJdbcService userJdbcService,
-                             ProcessedVisitJdbcService processedVisitJdbcService,
-                             TripJdbcService tripJdbcService) {
+    public TimelineController(RawLocationPointJdbcService rawLocationPointJdbcService,
+                              SignificantPlaceJdbcService placeService,
+                              UserJdbcService userJdbcService,
+                              ProcessedVisitJdbcService processedVisitJdbcService,
+                              TripJdbcService tripJdbcService,
+                              ObjectMapper objectMapper) {
+        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.placeService = placeService;
         this.userJdbcService = userJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.tripJdbcService = tripJdbcService;
+        this.objectMapper = objectMapper;
     }
 
     @GetMapping("/content")
-    public String getTimelineContent(@RequestParam String date, Principal principal, Model model) {
+    public String getTimelineContent(@RequestParam String date, Principal principal, Model model) throws JsonProcessingException {
         LocalDate selectedDate = LocalDate.parse(date);
         
         // Find the user by username
@@ -63,7 +65,7 @@ public class TimelineController {
                 user, startOfDay, endOfDay);
         
         // Convert to timeline entries
-        List<TimelineEntry> entries = buildTimelineEntries(processedVisits, trips);
+        List<TimelineEntry> entries = buildTimelineEntries(user, processedVisits, trips);
         
         model.addAttribute("entries", entries);
         return "fragments/timeline :: timeline-content";
@@ -72,7 +74,7 @@ public class TimelineController {
     /**
      * Build timeline entries from processed visits and trips
      */
-    private List<TimelineEntry> buildTimelineEntries(List<ProcessedVisit> processedVisits, List<Trip> trips) {
+    private List<TimelineEntry> buildTimelineEntries(User user, List<ProcessedVisit> processedVisits, List<Trip> trips) throws JsonProcessingException {
         List<TimelineEntry> entries = new ArrayList<>();
         
         // Add processed visits to timeline
@@ -100,7 +102,14 @@ public class TimelineController {
             entry.setEndTime(trip.getEndTime());
             entry.setFormattedTimeRange(formatTimeRange(trip.getStartTime(), trip.getEndTime()));
             entry.setFormattedDuration(formatDuration(trip.getStartTime(), trip.getEndTime()));
-            
+
+            List<RawLocationPoint> path = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, trip.getStartTime(), trip.getEndTime());
+            List<PointInfo> pathPoints = new ArrayList<>();
+            pathPoints.add(new PointInfo(trip.getStartVisit().getPlace().getLatitudeCentroid(), trip.getStartVisit().getPlace().getLongitudeCentroid(), trip.getStartTime(), 0.0));
+            pathPoints.addAll(path.stream().map(p -> new PointInfo(p.getLatitude(), p.getLongitude(), p.getTimestamp(), p.getAccuracyMeters())).toList());
+            pathPoints.add(new PointInfo(trip.getEndVisit().getPlace().getLatitudeCentroid(), trip.getEndVisit().getPlace().getLongitudeCentroid(), trip.getEndTime(), 0.0));
+
+            entry.setPath(objectMapper.writeValueAsString(pathPoints));
             if (trip.getTravelledDistanceMeters() != null) {
                 entry.setDistanceMeters(trip.getTravelledDistanceMeters());
             } else if (trip.getEstimatedDistanceMeters() != null) {
@@ -144,7 +153,10 @@ public class TimelineController {
             return minutes + "m";
         }
     }
-    
+
+
+    public record PointInfo(Double latitude, Double longitude, Instant timestamp, Double accuracy) {
+    }
     /**
      * Inner class to represent timeline entries for the template
      */
@@ -154,6 +166,7 @@ public class TimelineController {
         private String id;
         private Type type;
         private SignificantPlace place;
+        private String path;
         private Instant startTime;
         private Instant endTime;
         private String formattedTimeRange;
@@ -188,6 +201,9 @@ public class TimelineController {
         
         public String getTransportMode() { return transportMode; }
         public void setTransportMode(String transportMode) { this.transportMode = transportMode; }
+
+        public String getPath() { return path; }
+        public void setPath(String path) { this.path = path; }
     }
 
     @GetMapping("/places/edit-form/{id}")

@@ -1,19 +1,17 @@
 package com.dedicatedcode.reitti.controller;
 
-import com.dedicatedcode.reitti.dto.TimelineResponse;
+import com.dedicatedcode.reitti.config.RabbitMQConfig;
+import com.dedicatedcode.reitti.dto.PlaceInfo;
+import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.*;
-
-import java.util.Optional;
 import com.dedicatedcode.reitti.service.processing.RawLocationPointProcessingTrigger;
-import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -142,8 +140,8 @@ public class SettingsController {
         Page<SignificantPlace> placesPage = placeService.getPlacesForUser(currentUser, PageRequest.of(page, 20));
 
         // Convert to PlaceInfo objects
-        List<TimelineResponse.PlaceInfo> places = placesPage.getContent().stream()
-                .map(place -> new TimelineResponse.PlaceInfo(
+        List<PlaceInfo> places = placesPage.getContent().stream()
+                .map(place -> new PlaceInfo(
                         place.getId(),
                         place.getName(),
                         place.getAddress(),

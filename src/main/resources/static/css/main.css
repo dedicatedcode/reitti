@@ -366,22 +366,6 @@ nav {
     position: relative;
 }
 
-.timeline-entry .entry-description i {
-    display: none;
-    cursor: pointer;
-    font-size: 1.6rem;
-    top: 0;
-    right: 0;
-    background: gray;
-    border: 1px solid wheat;
-    color: wheat;
-    border-radius: 4px;
-}
-
-.timeline-entry.active .entry-description:hover i {
-    display: inline;
-    position: absolute;
-}
 
 .htmx-request .htmx-indicator {
     display: inline;
@@ -726,14 +710,6 @@ input[type=file]::file-selector-button:hover {
     overflow: hidden;
     border: 3px solid var(--color-highlight);
     position: relative;
-}
-
-.place-name {
-    font-size: 1.3rem;
-    font-weight: 500;
-    color: var(--color-highlight);
-    margin-bottom: 0.8rem;
-    word-wrap: break-word;
 }
 
 .place-stats {
