@@ -5,9 +5,9 @@ import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.model.Trip;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
+import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
-import com.dedicatedcode.reitti.service.PlaceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
@@ -21,21 +21,20 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 
 @Controller
 @RequestMapping("/timeline")
 public class TimelineController {
 
-    private final PlaceService placeService;
+    private final SignificantPlaceJdbcService placeService;
     private final UserJdbcService userJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final TripJdbcService tripJdbcService;
 
     @Autowired
-    public TimelineController(PlaceService placeService,
+    public TimelineController(SignificantPlaceJdbcService placeService,
                              UserJdbcService userJdbcService,
                              ProcessedVisitJdbcService processedVisitJdbcService,
                              TripJdbcService tripJdbcService) {
@@ -116,7 +115,7 @@ public class TimelineController {
         }
         
         // Sort timeline entries by start time
-        entries.sort((e1, e2) -> e1.getStartTime().compareTo(e2.getStartTime()));
+        entries.sort(Comparator.comparing(TimelineEntry::getStartTime));
         
         return entries;
     }
@@ -193,21 +192,21 @@ public class TimelineController {
 
     @GetMapping("/places/edit-form/{id}")
     public String getPlaceEditForm(@PathVariable Long id, Model model) {
-        SignificantPlace place = placeService.findById(id);
+        SignificantPlace place = placeService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         model.addAttribute("place", place);
         return "fragments/place-edit :: edit-form";
     }
 
     @PutMapping("/places/{id}")
     public String updatePlace(@PathVariable Long id, @RequestParam String name, Model model) {
-        SignificantPlace updated = placeService.updateName(id, name);
-        model.addAttribute("place", updated);
+        SignificantPlace place = placeService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        model.addAttribute("place", placeService.update(place.withName(name)));
         return "fragments/place-edit :: view-mode";
     }
 
     @GetMapping("/places/view/{id}")
     public String getPlaceView(@PathVariable Long id, Model model) {
-        SignificantPlace place = placeService.findById(id);
+        SignificantPlace place = placeService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         model.addAttribute("place", place);
         return "fragments/place-edit :: view-mode";
     }
