@@ -542,7 +542,10 @@
                 descElement.className = 'entry-description';
 
                 if (entry.type === 'VISIT') {
-                    descElement.textContent = entry.place ? entry.place.name || 'Unknown Place' : 'Unknown Place';
+
+
+                    descElement.innerHTML =
+                        `<span>${entry.place ? entry.place.name || 'Unknown Place' : 'Unknown Place'}</span> <i class="lni lni-pencil-1"></i></div>`
                 } else if (entry.type === 'TRIP') {
                     descElement.textContent = window.locale.trip;
                     if (entry.distanceMeters) {
