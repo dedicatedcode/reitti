@@ -11,11 +11,10 @@
     </div>
     
     <div th:each="entry : ${entries}" 
-         th:class="|timeline-entry ${entry.type.toLowerCase()}|"
+         th:class="|timeline-entry ${entry.type.name().toLowerCase()}|"
          th:data-id="${entry.id}"
          th:data-lat="${entry.place?.latitudeCentroid}"
-         th:data-lng="${entry.place?.longitudeCentroid}"
-         th:data-path="${entry.path != null ? #strings.escapeXml(entry.pathAsJson) : null}">
+         th:data-lng="${entry.place?.longitudeCentroid}">
         
         <!-- Entry Description -->
         <div class="entry-description">
@@ -45,11 +44,11 @@
                     <span th:text="${#numbers.formatDecimal(entry.distanceMeters / 1000, 1, 1)} + ' km'">5.2 km</span>
                 </span>
                 <span th:if="${entry.transportMode != null}">
-                    <span th:switch="${entry.transportMode.name()}">
+                    <span th:switch="${entry.transportMode}">
                         <span th:case="'WALKING'" th:text="#{timeline.transport.walking}">by foot</span>
                         <span th:case="'CYCLING'" th:text="#{timeline.transport.cycling}">by bike</span>
                         <span th:case="'DRIVING'" th:text="#{timeline.transport.driving}">by car</span>
-                        <span th:case="*" th:text="${entry.transportMode.name()}">unknown</span>
+                        <span th:case="*" th:text="${entry.transportMode}">unknown</span>
                     </span>
                 </span>
             </span>
