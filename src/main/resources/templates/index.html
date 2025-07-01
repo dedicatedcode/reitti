@@ -349,17 +349,14 @@
         }
 
         // Initialize the map
-        const map = L.map('map').setView([60.1699, 24.9384], 12); // Helsinki coordinates as default
+        const map = L.map('map', {zoomControl: false, attributionControl: false}).setView([60.1699, 24.9384], 12); // Helsinki coordinates as default
         L.tileLayer.grayscale('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank">Humanitarian OpenStreetMap Team</a> hosted by <a href="https://openstreetmap.fr/" target="_blank">OpenStreetMap France</a>'
         }).addTo(map);
 
-        // Add scale control
-        L.control.scale({
-            imperial: false,
-            metric: true
-        }).addTo(map);
+        L.control.attribution({position: 'topright'}).addAttribution('&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank">Humanitarian OpenStreetMap Team</a> hosted by <a href="https://openstreetmap.fr/" target="_blank">OpenStreetMap France</a>')
+            .addTo(map)
 
         // Initialize photo client
         const photoClient = new PhotoClient(map);
