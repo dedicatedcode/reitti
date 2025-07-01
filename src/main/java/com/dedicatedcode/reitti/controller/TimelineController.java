@@ -2,7 +2,6 @@ package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.service.PlaceService;
-import com.dedicatedcode.reitti.service.TimelineService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -15,7 +14,6 @@ import java.time.LocalDate;
 @RequestMapping("/timeline")
 public class TimelineController {
 
-    private final TimelineService timelineService;
     private final PlaceService placeService;
 
     @Autowired
