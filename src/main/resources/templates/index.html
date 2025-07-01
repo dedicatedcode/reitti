@@ -162,9 +162,13 @@
         </form>
     </span>
 
-    <div class="timeline-container">
-        <div id="loading-indicator" style="display: none;" class="timeline-entry" th:text="#{timeline.loading}">Loading...</div>
-        <!-- Timeline entries will be loaded here -->
+    <div class="timeline-container" 
+         hx-get="/timeline/content"
+         hx-trigger="load, dateChanged from:body"
+         hx-vals='js:{"date": getSelectedDate()}'
+         hx-indicator="#loading-indicator">
+        <div id="loading-indicator" class="timeline-entry" th:text="#{timeline.loading}">Loading...</div>
+        <!-- Timeline entries will be loaded here via HTMX -->
     </div>
 </div>
 
@@ -210,6 +214,12 @@
     
     // Set locale for HumanizeDuration
     const currentLocale = /*[[${#locale.language}]]*/ 'en';
+
+    // Helper function for HTMX to get current selected date
+    function getSelectedDate() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('date') || new Date().toISOString().split('T')[0];
+    }
 
     document.addEventListener('DOMContentLoaded', function () {
         // Settings overlay functionality
@@ -765,8 +775,8 @@
                 // Update URL
                 updateUrlWithDate(formattedDate);
 
-                // Load timeline data
-                loadTimelineData(formattedDate);
+                // Trigger HTMX reload of timeline
+                document.body.dispatchEvent(new CustomEvent('dateChanged'));
             },
             onDateDeselect: () => {
                 // Clear photos when no date is selected

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+
+<div th:fragment="timeline-content">
+    <div th:if="${entries == null or entries.isEmpty()}" class="timeline-entry" th:text="#{timeline.no.data}">
+        No timeline data available for this date.
+    </div>
+    
+    <div th:each="entry : ${entries}" 
+         th:class="|timeline-entry ${entry.type.toLowerCase()}|"
+         th:data-id="${entry.id}"
+         th:data-lat="${entry.place?.latitudeCentroid}"
+         th:data-lng="${entry.place?.longitudeCentroid}"
+         th:data-path="${entry.path != null ? #strings.escapeXml(entry.pathAsJson) : null}">
+        
+        <!-- Entry Description -->
+        <div class="entry-description">
+            <!-- Visit with editable place name -->
+            <div th:if="${entry.type.name() == 'VISIT'}" class="place-name-container">
+                <span class="place-name" th:text="${entry.place?.name ?: 'Unknown Place'}">Place Name</span>
+                <i class="lni lni-pencil-1 edit-icon" 
+                   th:hx-get="@{/timeline/places/edit-form/{id}(id=${entry.place?.id})}"
+                   hx-target="closest .place-name-container"
+                   hx-swap="outerHTML"
+                   th:if="${entry.place?.id != null}"></i>
+            </div>
+            
+            <!-- Trip description -->
+            <span th:if="${entry.type.name() == 'TRIP'}" th:text="#{timeline.trip}">Trip</span>
+        </div>
+        
+        <!-- Duration and Distance -->
+        <span class="entry-duration">
+            <span th:if="${entry.type.name() == 'VISIT'}">
+                <span th:text="#{timeline.duration}">Duration</span>: 
+                <span th:text="${entry.formattedDuration}">1h 30m</span>
+            </span>
+            <span th:if="${entry.type.name() == 'TRIP'}">
+                <span th:if="${entry.distanceMeters != null}">
+                    <span th:text="#{timeline.distance}">Distance</span>: 
+                    <span th:text="${#numbers.formatDecimal(entry.distanceMeters / 1000, 1, 1)} + ' km'">5.2 km</span>
+                </span>
+                <span th:if="${entry.transportMode != null}">
+                    <span th:switch="${entry.transportMode.name()}">
+                        <span th:case="'WALKING'" th:text="#{timeline.transport.walking}">by foot</span>
+                        <span th:case="'CYCLING'" th:text="#{timeline.transport.cycling}">by bike</span>
+                        <span th:case="'DRIVING'" th:text="#{timeline.transport.driving}">by car</span>
+                        <span th:case="*" th:text="${entry.transportMode.name()}">unknown</span>
+                    </span>
+                </span>
+            </span>
+        </span>
+        
+        <!-- Time -->
+        <div class="entry-time">
+            <span th:text="${entry.formattedTimeRange}">09:00 - 10:30</span>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
