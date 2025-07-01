@@ -61,6 +61,7 @@ Reitti is a comprehensive personal location tracking and analysis application th
 - Docker and Docker Compose
 - PostgreSQL database with spatial extensions (PostGIS)
 - RabbitMQ for message processing
+- Redis for caching
 
 ### Quick Start with Docker
 
@@ -72,7 +73,7 @@ The easiest way to get started is using Docker Compose:
    cd reitti
    ```
 
-2. Start all services (PostgreSQL, RabbitMQ, and Reitti)
+2. Start all services (PostgreSQL, RabbitMQ, Redis and Reitti)
    ```bash
    docker-compose up -d
    ```
