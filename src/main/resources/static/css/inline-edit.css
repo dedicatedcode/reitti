@@ -1,0 +1,56 @@
+.place-name-container {
+    position: relative;
+    display: inline-block;
+}
+
+.edit-icon {
+    opacity: 0;
+    margin-left: 8px;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+    font-size: 0.9em;
+}
+
+.place-name-container:hover .edit-icon {
+    opacity: 1;
+}
+
+.inline-edit-form {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.place-name-input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: inherit;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: inherit;
+    font-family: inherit;
+}
+
+.save-btn, .cancel-btn {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+.save-btn:hover {
+    background: rgba(0, 255, 0, 0.2);
+}
+
+.cancel-btn:hover {
+    background: rgba(255, 0, 0, 0.2);
+}
+
+.place-name-container.editing {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 4px;
+    border-radius: 3px;
+}
