@@ -47,16 +47,19 @@ public class TimelineController {
     }
 
     @GetMapping("/content")
-    public String getTimelineContent(@RequestParam String date, Principal principal, Model model) throws JsonProcessingException {
+    public String getTimelineContent(@RequestParam String date, 
+                                   @RequestParam(required = false, defaultValue = "UTC") String timezone,
+                                   Principal principal, Model model) throws JsonProcessingException {
         LocalDate selectedDate = LocalDate.parse(date);
+        ZoneId userTimezone = ZoneId.of(timezone);
         
         // Find the user by username
         User user = userJdbcService.findByUsername(principal.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         
-        // Convert LocalDate to start and end Instant for the selected date
-        Instant startOfDay = selectedDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
-        Instant endOfDay = selectedDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().minusMillis(1);
+        // Convert LocalDate to start and end Instant for the selected date in user's timezone
+        Instant startOfDay = selectedDate.atStartOfDay(userTimezone).toInstant();
+        Instant endOfDay = selectedDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
         
         // Get processed visits and trips for the user and date range
         List<ProcessedVisit> processedVisits = processedVisitJdbcService.findByUserAndTimeOverlap(
@@ -65,7 +68,7 @@ public class TimelineController {
                 user, startOfDay, endOfDay);
         
         // Convert to timeline entries
-        List<TimelineEntry> entries = buildTimelineEntries(user, processedVisits, trips);
+        List<TimelineEntry> entries = buildTimelineEntries(user, processedVisits, trips, userTimezone, selectedDate);
         
         model.addAttribute("entries", entries);
         return "fragments/timeline :: timeline-content";
@@ -74,7 +77,7 @@ public class TimelineController {
     /**
      * Build timeline entries from processed visits and trips
      */
-    private List<TimelineEntry> buildTimelineEntries(User user, List<ProcessedVisit> processedVisits, List<Trip> trips) throws JsonProcessingException {
+    private List<TimelineEntry> buildTimelineEntries(User user, List<ProcessedVisit> processedVisits, List<Trip> trips, ZoneId timezone, LocalDate selectedDate) throws JsonProcessingException {
         List<TimelineEntry> entries = new ArrayList<>();
         
         // Add processed visits to timeline
@@ -87,7 +90,7 @@ public class TimelineController {
                 entry.setPlace(place);
                 entry.setStartTime(visit.getStartTime());
                 entry.setEndTime(visit.getEndTime());
-                entry.setFormattedTimeRange(formatTimeRange(visit.getStartTime(), visit.getEndTime()));
+                entry.setFormattedTimeRange(formatTimeRange(visit.getStartTime(), visit.getEndTime(), timezone, selectedDate));
                 entry.setFormattedDuration(formatDuration(visit.getStartTime(), visit.getEndTime()));
                 entries.add(entry);
             }
@@ -100,7 +103,7 @@ public class TimelineController {
             entry.setType(TimelineEntry.Type.TRIP);
             entry.setStartTime(trip.getStartTime());
             entry.setEndTime(trip.getEndTime());
-            entry.setFormattedTimeRange(formatTimeRange(trip.getStartTime(), trip.getEndTime()));
+            entry.setFormattedTimeRange(formatTimeRange(trip.getStartTime(), trip.getEndTime(), timezone, selectedDate));
             entry.setFormattedDuration(formatDuration(trip.getStartTime(), trip.getEndTime()));
 
             List<RawLocationPoint> path = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, trip.getStartTime(), trip.getEndTime());
@@ -132,10 +135,29 @@ public class TimelineController {
     /**
      * Format time range for display
      */
-    private String formatTimeRange(Instant startTime, Instant endTime) {
+    private String formatTimeRange(Instant startTime, Instant endTime, ZoneId timezone, LocalDate selectedDate) {
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
-        String start = startTime.atZone(ZoneId.systemDefault()).format(timeFormatter);
-        String end = endTime.atZone(ZoneId.systemDefault()).format(timeFormatter);
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("MMM d HH:mm");
+        
+        LocalDate startDate = startTime.atZone(timezone).toLocalDate();
+        LocalDate endDate = endTime.atZone(timezone).toLocalDate();
+        
+        String start, end;
+        
+        // If start time is not on the selected date, show date + time
+        if (!startDate.equals(selectedDate)) {
+            start = startTime.atZone(timezone).format(dateTimeFormatter);
+        } else {
+            start = startTime.atZone(timezone).format(timeFormatter);
+        }
+        
+        // If end time is not on the selected date, show date + time
+        if (!endDate.equals(selectedDate)) {
+            end = endTime.atZone(timezone).format(dateTimeFormatter);
+        } else {
+            end = endTime.atZone(timezone).format(timeFormatter);
+        }
+        
         return start + " - " + end;
     }
     
