@@ -165,7 +165,7 @@
     <div class="timeline-container" 
          hx-get="/timeline/content"
          hx-trigger="load, dateChanged from:body"
-         hx-vals='js:{"date": getSelectedDate()}'
+         hx-vals='js:{"date": getSelectedDate(), "timezone": getUserTimezone()}'
          hx-indicator="#loading-indicator">
         <div id="loading-indicator" class="timeline-entry" th:text="#{timeline.loading}">Loading...</div>
     </div>
@@ -218,6 +218,11 @@
     function getSelectedDate() {
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get('date') || new Date().toISOString().split('T')[0];
+    }
+
+    // Helper function for HTMX to get user timezone
+    function getUserTimezone() {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone;
     }
 
     const fitToBoundsConfig = {
