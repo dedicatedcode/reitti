@@ -256,8 +256,8 @@
             <h3 th:text="#{upload.google.title}">Google Takeout</h3>
             <p class="description" th:text="#{upload.google.description}">
                 Upload location history from Google Takeout. Export your data from Google 
-                (takeout.google.com) and upload the Location History JSON file. This contains 
-                your location history with timestamps and activity information.
+                (takeout.google.com) and upload the Records.json file from the Location History folder. 
+                Note: Only the Records.json file format is supported, not the older JSON format.
             </p>
             <form id="takeout-upload-form"
                   hx-post="/settings/import/google-takeout"
