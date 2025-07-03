@@ -98,6 +98,8 @@ For development or custom deployments:
 
 3. Access the application at `http://localhost:8080`
 
+Default user name and password is `admin`
+
 ### Building Docker Image
 
 ```bash
