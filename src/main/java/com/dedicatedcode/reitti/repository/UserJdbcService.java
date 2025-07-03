@@ -7,16 +7,12 @@ import org.springframework.cache.annotation.Caching;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.List;
 import java.util.Optional;
 
@@ -43,21 +39,9 @@ public class UserJdbcService {
     
     public User createUser(String username, String displayName, String password) {
         User user = new User(null, username, passwordEncoder.encode(password), displayName, null);
-        String sql = "INSERT INTO users (username, password, display_name) VALUES (?, ?, ?) RETURNING id, version";
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-
-        jdbcTemplate.update(connection -> {
-            PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-            ps.setString(1, user.getUsername());
-            ps.setString(2, user.getPassword());
-            ps.setString(3, user.getDisplayName());
-            return ps;
-        }, keyHolder);
-
-        Long id = keyHolder.getKey().longValue();
-        Long version = 1L; // Initial version
-
-        return new User(id, user.getUsername(), user.getPassword(), user.getDisplayName(), version);
+        String sql = "INSERT INTO users (username, password, display_name) VALUES (?, ?, ?) RETURNING id";
+        Long id = jdbcTemplate.queryForObject(sql, Long.class, username, password, displayName);
+        return new User(id, user.getUsername(), user.getPassword(), user.getDisplayName(), 1L);
     }
 
     @Caching(evict = {
