@@ -49,7 +49,7 @@ public class ImmichIntegrationJdbcService {
         if (immichIntegration.getId() == null) {
             // Insert new record
             String sql = "INSERT INTO immich_integrations (user_id, server_url, api_token, enabled, created_at, updated_at, version) " +
-                    "VALUES (?, ?, ?, ?, ?, ?) RETURNING id";
+                    "VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id";
             Instant now = Instant.now();
             Long id = jdbcTemplate.queryForObject(sql, Long.class,
                     user.getId(),
