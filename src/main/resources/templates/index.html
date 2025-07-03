@@ -226,12 +226,11 @@
     }
 
     const fitToBoundsConfig = {
-        padding: [50, 100]
+        paddingTopLeft: [100,0],
+        paddingBottomRight: [100, 300],
+        zoomSnap: 0.1
     };
 
-    const fitToBoundsConfigZoomed = {
-        padding: [50, 100]
-    };
 
     document.addEventListener('DOMContentLoaded', function () {
         // Settings overlay functionality
@@ -607,7 +606,7 @@
                 }
                     
                 if (newBounds.isValid()) {
-                    map.flyToBounds(newBounds, fitToBoundsConfigZoomed);
+                    map.flyToBounds(newBounds, fitToBoundsConfig);
                 }
             }
         });
