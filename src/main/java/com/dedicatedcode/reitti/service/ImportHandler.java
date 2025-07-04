@@ -315,9 +315,28 @@ public class ImportHandler {
             return null;
         }
         
-        // Check if we have the required fields in the position object
-        if (!positionNode.has("latitudeE7") ||
-                !positionNode.has("longitudeE7")) {
+        double latitude, longitude;
+        
+        // Handle different coordinate formats
+        if (positionNode.has("LatLng")) {
+            // New format: "LatLng": "53.8633043°, 10.7011529°"
+            String latLngStr = positionNode.get("LatLng").asText();
+            try {
+                String[] coords = parseLatLngString(latLngStr);
+                if (coords == null) {
+                    return null;
+                }
+                latitude = Double.parseDouble(coords[0]);
+                longitude = Double.parseDouble(coords[1]);
+            } catch (NumberFormatException e) {
+                logger.warn("Error parsing LatLng string: {}", latLngStr);
+                return null;
+            }
+        } else if (positionNode.has("latitudeE7") && positionNode.has("longitudeE7")) {
+            // Old format: latitudeE7 and longitudeE7
+            latitude = positionNode.get("latitudeE7").asDouble() / 10000000.0;
+            longitude = positionNode.get("longitudeE7").asDouble() / 10000000.0;
+        } else {
             return null;
         }
         
@@ -335,17 +354,15 @@ public class ImportHandler {
 
         LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
 
-        // Convert latitudeE7 and longitudeE7 to standard decimal format
-        double latitude = positionNode.get("latitudeE7").asDouble() / 10000000.0;
-        double longitude = positionNode.get("longitudeE7").asDouble() / 10000000.0;
-
         point.setLatitude(latitude);
         point.setLongitude(longitude);
         point.setTimestamp(timestamp);
 
         // Set accuracy if available (check both signal and position nodes)
         Double accuracy = null;
-        if (positionNode.has("accuracy")) {
+        if (positionNode.has("accuracyMeters")) {
+            accuracy = positionNode.get("accuracyMeters").asDouble();
+        } else if (positionNode.has("accuracy")) {
             accuracy = positionNode.get("accuracy").asDouble();
         } else if (signalNode.has("accuracy")) {
             accuracy = signalNode.get("accuracy").asDouble();
@@ -510,6 +527,37 @@ public class ImportHandler {
         }
         
         return processedCount;
+    }
+
+    /**
+     * Parses a LatLng string in format "53.8633043°, 10.7011529°" to extract latitude and longitude
+     */
+    private String[] parseLatLngString(String latLngStr) {
+        if (latLngStr == null || latLngStr.trim().isEmpty()) {
+            return null;
+        }
+        
+        try {
+            // Remove degree symbols and split by comma
+            String cleaned = latLngStr.replace("°", "").trim();
+            String[] parts = cleaned.split(",");
+            
+            if (parts.length != 2) {
+                return null;
+            }
+            
+            String latStr = parts[0].trim();
+            String lngStr = parts[1].trim();
+            
+            // Validate that they are valid numbers
+            Double.parseDouble(latStr);
+            Double.parseDouble(lngStr);
+            
+            return new String[]{latStr, lngStr};
+        } catch (Exception e) {
+            logger.warn("Failed to parse LatLng string: {}", latLngStr);
+            return null;
+        }
     }
 
     private void sendToQueue(User user, List<LocationDataRequest.LocationPoint> batch) {
