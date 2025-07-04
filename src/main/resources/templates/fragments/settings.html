@@ -258,14 +258,14 @@
                 Upload location history from Google. We support two formats:
             </p>
             <div style="margin: 15px 0; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                <h4>📱 New Format (timeline.json)</h4>
-                <p>From your Android phone: <strong>Settings → Location → Location Services → Timeline → Export Timeline</strong></p>
-                <p>This exports a timeline.json file with your recent location data.</p>
+                <h4 th:text="#{upload.google.new.format.title}">📱 New Format (timeline.json)</h4>
+                <p th:text="#{upload.google.new.format.instructions}">From your Android phone: Settings → Location → Location Services → Timeline → Export Timeline</p>
+                <p th:text="#{upload.google.new.format.description}">This exports a timeline.json file with your recent location data.</p>
             </div>
             <div style="margin: 15px 0; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                <h4>🌐 Old Format (Records.json)</h4>
-                <p>From Google Takeout: Export your data from <strong>takeout.google.com</strong> and upload the Records.json file from the Location History folder.</p>
-                <p>This contains your complete historical location data.</p>
+                <h4 th:text="#{upload.google.old.format.title}">🌐 Old Format (Records.json)</h4>
+                <p th:text="#{upload.google.old.format.instructions}">From Google Takeout: Export your data from takeout.google.com and upload the Records.json file from the Location History folder.</p>
+                <p th:text="#{upload.google.old.format.description}">This contains your complete historical location data.</p>
             </div>
             <form id="takeout-upload-form"
                   hx-post="/settings/import/google-takeout"
