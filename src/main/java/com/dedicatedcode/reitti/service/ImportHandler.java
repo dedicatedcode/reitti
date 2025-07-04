@@ -57,50 +57,35 @@ public class ImportHandler {
             JsonFactory factory = objectMapper.getFactory();
             JsonParser parser = factory.createParser(inputStream);
             
-            // Find the "locations" array
+            List<LocationDataRequest.LocationPoint> batch = new ArrayList<>(batchSize);
+            boolean foundData = false;
+            
+            // Look for either "locations" array (old format) or "rawSignals" array (new format)
             while (parser.nextToken() != null) {
-                if (parser.getCurrentToken() == JsonToken.FIELD_NAME && 
-                    "locations".equals(parser.currentName())) {
+                if (parser.getCurrentToken() == JsonToken.FIELD_NAME) {
+                    String fieldName = parser.currentName();
                     
-                    // Move to the array
-                    parser.nextToken(); // Should be START_ARRAY
-                    
-                    if (parser.getCurrentToken() != JsonToken.START_ARRAY) {
-                        return Map.of("success", false, "error", "Invalid format: 'locations' is not an array");
+                    if ("locations".equals(fieldName)) {
+                        // Old Records.json format
+                        foundData = true;
+                        processedCount.addAndGet(processLocationsArray(parser, batch, user));
+                        break;
+                    } else if ("rawSignals".equals(fieldName)) {
+                        // New format with rawSignals array
+                        foundData = true;
+                        processedCount.addAndGet(processRawSignalsArray(parser, batch, user));
+                        break;
                     }
-                    
-                    List<LocationDataRequest.LocationPoint> batch = new ArrayList<>(batchSize);
-                    
-                    // Process each location in the array
-                    while (parser.nextToken() != JsonToken.END_ARRAY) {
-                        if (parser.getCurrentToken() == JsonToken.START_OBJECT) {
-                            // Parse the location object
-                            JsonNode locationNode = objectMapper.readTree(parser);
-                            
-                            try {
-                                LocationDataRequest.LocationPoint point = convertGoogleTakeoutLocation(locationNode);
-                                if (point != null) {
-                                    batch.add(point);
-                                    processedCount.incrementAndGet();
-
-                                    if (batch.size() >= batchSize) {
-                                        sendToQueue(user, batch);
-                                        batch.clear();
-                                    }
-                                }
-                            } catch (Exception e) {
-                                logger.warn("Error processing location entry: {}", e.getMessage());
-                            }
-                        }
-                    }
-                    
-                    // Process any remaining locations
-                    if (!batch.isEmpty()) {
-                        sendToQueue(user, batch);
-                    }
-                    
-                    break;
                 }
+            }
+            
+            if (!foundData) {
+                return Map.of("success", false, "error", "Invalid format: neither 'locations' nor 'rawSignals' array found");
+            }
+            
+            // Process any remaining locations
+            if (!batch.isEmpty()) {
+                sendToQueue(user, batch);
             }
             
             logger.info("Successfully imported and queued {} location points from Google Takeout for user {}", 
@@ -290,7 +275,7 @@ public class ImportHandler {
     }
 
     /**
-     * Converts a Google Takeout location entry to our LocationPoint format
+     * Converts a Google Takeout location entry to our LocationPoint format (old Records.json format)
      */
     private LocationDataRequest.LocationPoint convertGoogleTakeoutLocation(JsonNode locationNode) {
         // Check if we have the required fields
@@ -317,6 +302,56 @@ public class ImportHandler {
         } else {
             point.setAccuracyMeters(100.0);
         }
+
+        return point;
+    }
+    
+    /**
+     * Converts a raw signal with position data to our LocationPoint format (new format)
+     */
+    private LocationDataRequest.LocationPoint convertRawSignalPosition(JsonNode signalNode) {
+        JsonNode positionNode = signalNode.get("position");
+        if (positionNode == null) {
+            return null;
+        }
+        
+        // Check if we have the required fields in the position object
+        if (!positionNode.has("latitudeE7") ||
+                !positionNode.has("longitudeE7")) {
+            return null;
+        }
+        
+        // Check for timestamp - it might be in the signal node or position node
+        String timestamp = null;
+        if (signalNode.has("timestamp")) {
+            timestamp = signalNode.get("timestamp").asText();
+        } else if (positionNode.has("timestamp")) {
+            timestamp = positionNode.get("timestamp").asText();
+        }
+        
+        if (timestamp == null || timestamp.isEmpty()) {
+            return null;
+        }
+
+        LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
+
+        // Convert latitudeE7 and longitudeE7 to standard decimal format
+        double latitude = positionNode.get("latitudeE7").asDouble() / 10000000.0;
+        double longitude = positionNode.get("longitudeE7").asDouble() / 10000000.0;
+
+        point.setLatitude(latitude);
+        point.setLongitude(longitude);
+        point.setTimestamp(timestamp);
+
+        // Set accuracy if available (check both signal and position nodes)
+        Double accuracy = null;
+        if (positionNode.has("accuracy")) {
+            accuracy = positionNode.get("accuracy").asDouble();
+        } else if (signalNode.has("accuracy")) {
+            accuracy = signalNode.get("accuracy").asDouble();
+        }
+        
+        point.setAccuracyMeters(accuracy != null ? accuracy : 100.0);
 
         return point;
     }
@@ -394,6 +429,87 @@ public class ImportHandler {
         point.setAccuracyMeters(accuracy != null ? accuracy : 50.0); // Default accuracy of 50 meters
 
         return point;
+    }
+
+    /**
+     * Processes the old Records.json format with "locations" array
+     */
+    private int processLocationsArray(JsonParser parser, List<LocationDataRequest.LocationPoint> batch, User user) throws IOException {
+        int processedCount = 0;
+        
+        // Move to the array
+        parser.nextToken(); // Should be START_ARRAY
+        
+        if (parser.getCurrentToken() != JsonToken.START_ARRAY) {
+            throw new IOException("Invalid format: 'locations' is not an array");
+        }
+        
+        // Process each location in the array
+        while (parser.nextToken() != JsonToken.END_ARRAY) {
+            if (parser.getCurrentToken() == JsonToken.START_OBJECT) {
+                // Parse the location object
+                JsonNode locationNode = objectMapper.readTree(parser);
+                
+                try {
+                    LocationDataRequest.LocationPoint point = convertGoogleTakeoutLocation(locationNode);
+                    if (point != null) {
+                        batch.add(point);
+                        processedCount++;
+
+                        if (batch.size() >= batchSize) {
+                            sendToQueue(user, batch);
+                            batch.clear();
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.warn("Error processing location entry: {}", e.getMessage());
+                }
+            }
+        }
+        
+        return processedCount;
+    }
+    
+    /**
+     * Processes the new format with "rawSignals" array containing position elements
+     */
+    private int processRawSignalsArray(JsonParser parser, List<LocationDataRequest.LocationPoint> batch, User user) throws IOException {
+        int processedCount = 0;
+        
+        // Move to the array
+        parser.nextToken(); // Should be START_ARRAY
+        
+        if (parser.getCurrentToken() != JsonToken.START_ARRAY) {
+            throw new IOException("Invalid format: 'rawSignals' is not an array");
+        }
+        
+        // Process each signal in the array
+        while (parser.nextToken() != JsonToken.END_ARRAY) {
+            if (parser.getCurrentToken() == JsonToken.START_OBJECT) {
+                // Parse the signal object
+                JsonNode signalNode = objectMapper.readTree(parser);
+                
+                try {
+                    // Check if this signal contains position data
+                    if (signalNode.has("position")) {
+                        LocationDataRequest.LocationPoint point = convertRawSignalPosition(signalNode);
+                        if (point != null) {
+                            batch.add(point);
+                            processedCount++;
+
+                            if (batch.size() >= batchSize) {
+                                sendToQueue(user, batch);
+                                batch.clear();
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.warn("Error processing raw signal entry: {}", e.getMessage());
+                }
+            }
+        }
+        
+        return processedCount;
     }
 
     private void sendToQueue(User user, List<LocationDataRequest.LocationPoint> batch) {
