@@ -29,7 +29,7 @@ class LocationDataIngestPipelineTest {
     @Transactional
     void shouldStoreLocationDataIntoRepository() {
         helper.importData("/data/gpx/20250601.gpx");
-        testingService.awaitDataImport(600);
+        testingService.awaitDataImport(20);
         assertEquals(2463, this.repository.count());
     }
 }

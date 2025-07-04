@@ -24,8 +24,8 @@
 
 
 <div class="timeline">
-    <span class="timeline-header">
-        <a th:href="@{/}"><img class="logo" th:src="@{/img/logo.png}" alt="reitti logo" title="reitti" src="/img/logo.png"></a>
+    <div class="timeline-header">
+        <span><img class="logo" th:src="@{/img/logo.png}" alt="reitti logo" title="reitti" src="/img/logo.png"></span>
         <a href="/statistics" class="nav-link" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
         <a href="/settings" class="nav-link" th:title="#{nav.settings.tooltip}"><i class="lni lni-gear-1"></i></a>
         <form th:action="@{/logout}" method="post" >
@@ -33,8 +33,7 @@
                     class="lni lni-exit"></i>
             </button>
         </form>
-    </span>
-
+    </div>
     <div class="timeline-container" 
          hx-get="/timeline/content"
          hx-trigger="load, dateChanged from:body"

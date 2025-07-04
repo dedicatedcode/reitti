@@ -12,18 +12,19 @@
     <script src="/js/TileLayer.Grayscale.js"></script>
 </head>
 <body class="settings-page">
-    <!-- Navigation header -->
-    <div class="settings-header">
-        <a th:href="@{/}" class="back-link">
-            <i class="lni lni-arrow-left"></i>
-            <span th:text="#{nav.back.to.timeline}">Back to Timeline</span>
-        </a>
-        <h1 th:text="#{settings.title}">Settings</h1>
-    </div>
-
     <div class="settings-container">
         <!-- Settings navigation sidebar -->
         <div class="settings-nav">
+            <div class="timeline-header">
+                <a th:href="@{/}"><img class="logo" th:src="@{/img/logo.png}" alt="reitti logo" title="reitti" src="/img/logo.png"></a>
+                <a href="/" class="nav-link" th:title="#{nav.timeline}"><i class="lni lni-route-1"></i></a>
+                <a href="/statistics" class="nav-link" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
+                <form th:action="@{/logout}" method="post" >
+                    <button type="submit" class="nav-link" style="font-size: 1.4rem;" th:title="#{nav.logout.tooltip}"><i
+                            class="lni lni-exit"></i>
+                    </button>
+                </form>
+            </div>
             <div class="settings-nav-item active" data-target="job-status" th:text="#{settings.job.status}">Job Status</div>
             <div class="settings-nav-item" data-target="file-upload" th:text="#{settings.import.data}">Import Data</div>
             <div class="settings-nav-item" data-target="api-tokens" th:text="#{settings.api.tokens}">API Tokens</div>

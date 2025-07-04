@@ -4,8 +4,6 @@ import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.model.User;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.factory.annotation.Value;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
@@ -13,7 +11,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.w3c.dom.Document;
@@ -25,7 +25,6 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -317,7 +316,6 @@ public class ImportHandler {
         
         double latitude, longitude;
         
-        // Handle different coordinate formats
         if (positionNode.has("LatLng")) {
             // New format: "LatLng": "53.8633043°, 10.7011529°"
             String latLngStr = positionNode.get("LatLng").asText();
@@ -332,10 +330,6 @@ public class ImportHandler {
                 logger.warn("Error parsing LatLng string: {}", latLngStr);
                 return null;
             }
-        } else if (positionNode.has("latitudeE7") && positionNode.has("longitudeE7")) {
-            // Old format: latitudeE7 and longitudeE7
-            latitude = positionNode.get("latitudeE7").asDouble() / 10000000.0;
-            longitude = positionNode.get("longitudeE7").asDouble() / 10000000.0;
         } else {
             return null;
         }

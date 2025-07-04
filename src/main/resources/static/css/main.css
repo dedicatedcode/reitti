@@ -944,12 +944,12 @@ input[type=file]::file-selector-button:hover {
 }
 
 .settings-header {
-    background-color: var(--color-background-dark-light);
-    padding: 20px;
-    border-bottom: 1px solid var(--color-highlight);
-    display: flex;
-    align-items: center;
-    gap: 20px;
+    width: 250px;
+    background: linear-gradient(90deg, rgb(17, 17, 17) 0%, rgba(59, 59, 59, 0.49) 76%, rgba(255, 255, 255, 0) 100%);
+    flex-shrink: 0;
+    display: block;
+    margin-bottom: 0;
+    border-bottom: none;
 }
 
 .back-link {
@@ -977,14 +977,12 @@ input[type=file]::file-selector-button:hover {
 
 .settings-container {
     display: flex;
-    min-height: calc(100vh - 80px);
+    height: 100vh;
 }
 
 .settings-page .settings-nav {
     width: 250px;
-    background-color: var(--color-background-dark-light);
-    border-right: 1px solid var(--color-highlight);
-    padding: 20px 0;
+    background: linear-gradient(90deg, rgb(17, 17, 17) 0%, rgba(59, 59, 59, 0.49) 76%, rgba(255, 255, 255, 0) 100%);
     flex-shrink: 0;
     display: block;
     margin-bottom: 0;
@@ -1006,8 +1004,6 @@ input[type=file]::file-selector-button:hover {
 }
 
 .settings-page .settings-nav-item.active {
-    background-color: var(--color-background-dark);
-    border-left-color: var(--color-highlight);
     border-bottom: none;
     font-weight: bold;
     color: var(--color-highlight);
@@ -1070,7 +1066,7 @@ input[type=file]::file-selector-button:hover {
         white-space: nowrap;
         border-left: none;
         border-bottom: 3px solid transparent;
-        padding: 10px 15px;
+        padding: 18px 8px;
     }
     
     .settings-page .settings-nav-item.active {
