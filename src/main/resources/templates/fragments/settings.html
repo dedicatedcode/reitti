@@ -255,10 +255,18 @@
         <div class="upload-option">
             <h3 th:text="#{upload.google.title}">Google Takeout</h3>
             <p class="description" th:text="#{upload.google.description}">
-                Upload location history from Google Takeout. Export your data from Google 
-                (takeout.google.com) and upload the Records.json file from the Location History folder. 
-                Note: Only the Records.json file format is supported, not the older JSON format.
+                Upload location history from Google. We support two formats:
             </p>
+            <div style="margin: 15px 0; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                <h4>📱 New Format (timeline.json)</h4>
+                <p>From your Android phone: <strong>Settings → Location → Location Services → Timeline → Export Timeline</strong></p>
+                <p>This exports a timeline.json file with your recent location data.</p>
+            </div>
+            <div style="margin: 15px 0; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                <h4>🌐 Old Format (Records.json)</h4>
+                <p>From Google Takeout: Export your data from <strong>takeout.google.com</strong> and upload the Records.json file from the Location History folder.</p>
+                <p>This contains your complete historical location data.</p>
+            </div>
             <form id="takeout-upload-form"
                   hx-post="/settings/import/google-takeout"
                   hx-target="#file-upload"
@@ -267,7 +275,7 @@
                 <div class="form-group">
                     <input type="file" name="file" accept=".json" required>
                 </div>
-                <button type="submit" class="btn" th:text="#{upload.button.google}">Upload Google Takeout</button>
+                <button type="submit" class="btn" th:text="#{upload.button.google}">Upload Google Location Data</button>
             </form>
             <progress id='progress-google' value='0' max='100'  style="display: none"></progress>
             <script>
