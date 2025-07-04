@@ -112,6 +112,12 @@ public class SettingsController {
         return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
     }
 
+    @GetMapping("")
+    public String settingsPage(Model model) {
+        model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+        return "settings";
+    }
+
     @GetMapping("/api-tokens-content")
     public String getApiTokensContent(Authentication authentication, Model model) {
         String username = authentication.getName();

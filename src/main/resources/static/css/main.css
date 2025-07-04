@@ -933,3 +933,158 @@ input[type=file]::file-selector-button:hover {
 .text-align-left {
     text-align: left;
 }
+
+/* Settings Page Styles */
+.settings-page {
+    background-color: var(--color-background-dark);
+    color: var(--color-text-white);
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.settings-header {
+    background-color: var(--color-background-dark-light);
+    padding: 20px;
+    border-bottom: 1px solid var(--color-highlight);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.back-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-text-white);
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.back-link:hover {
+    background-color: var(--color-background-dark);
+    color: var(--color-highlight);
+}
+
+.settings-header h1 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 300;
+    color: var(--color-highlight);
+}
+
+.settings-container {
+    display: flex;
+    min-height: calc(100vh - 80px);
+}
+
+.settings-page .settings-nav {
+    width: 250px;
+    background-color: var(--color-background-dark-light);
+    border-right: 1px solid var(--color-highlight);
+    padding: 20px 0;
+    flex-shrink: 0;
+    display: block;
+    margin-bottom: 0;
+    border-bottom: none;
+}
+
+.settings-page .settings-nav-item {
+    padding: 15px 25px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    border-bottom: none;
+    transition: all 0.2s ease;
+    color: var(--color-text-white);
+}
+
+.settings-page .settings-nav-item:hover {
+    background-color: var(--color-background-dark);
+    border-left-color: var(--color-highlight);
+}
+
+.settings-page .settings-nav-item.active {
+    background-color: var(--color-background-dark);
+    border-left-color: var(--color-highlight);
+    border-bottom: none;
+    font-weight: bold;
+    color: var(--color-highlight);
+}
+
+.settings-content-area {
+    flex: 1;
+    padding: 30px;
+    overflow-y: auto;
+}
+
+.settings-page .settings-section {
+    display: none;
+    background-color: transparent;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.settings-page .settings-section.active {
+    display: block;
+}
+
+.settings-page .settings-section input {
+    color: var(--color-highlight);
+    background: var(--color-background-dark-light);
+}
+
+.settings-page .settings-section input:focus {
+    border: 2px solid var(--color-highlight);
+}
+
+.settings-page .settings-section code {
+    font-size: 1rem;
+    font-weight: bold;
+    color: var(--color-text-white);
+}
+
+.settings-page .settings-section .btn {
+    border: 1px solid;
+}
+
+/* Mobile responsiveness for settings page */
+@media (max-width: 768px) {
+    .settings-container {
+        flex-direction: column;
+    }
+    
+    .settings-page .settings-nav {
+        width: 100%;
+        display: flex;
+        overflow-x: auto;
+        padding: 10px 0;
+        border-right: none;
+        border-bottom: 1px solid var(--color-highlight);
+    }
+    
+    .settings-page .settings-nav-item {
+        white-space: nowrap;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+        padding: 10px 15px;
+    }
+    
+    .settings-page .settings-nav-item.active {
+        border-left: none;
+        border-bottom-color: var(--color-highlight);
+    }
+    
+    .settings-content-area {
+        padding: 20px;
+    }
+    
+    .settings-header {
+        padding: 15px;
+    }
+    
+    .settings-header h1 {
+        font-size: 1.5rem;
+    }
+}

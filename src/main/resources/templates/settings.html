@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{settings.title}">Settings - Reitti</title>
+    <link rel="stylesheet" href="/css/leaflet.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/lineicons.css">
+    <script src="/js/htmx.min.js"></script>
+    <script src="/js/leaflet.js"></script>
+    <script src="/js/TileLayer.Grayscale.js"></script>
+</head>
+<body class="settings-page">
+    <!-- Navigation header -->
+    <div class="settings-header">
+        <a th:href="@{/}" class="back-link">
+            <i class="lni lni-arrow-left"></i>
+            <span th:text="#{nav.back.to.timeline}">Back to Timeline</span>
+        </a>
+        <h1 th:text="#{settings.title}">Settings</h1>
+    </div>
+
+    <div class="settings-container">
+        <!-- Settings navigation sidebar -->
+        <div class="settings-nav">
+            <div class="settings-nav-item active" data-target="job-status" th:text="#{settings.job.status}">Job Status</div>
+            <div class="settings-nav-item" data-target="file-upload" th:text="#{settings.import.data}">Import Data</div>
+            <div class="settings-nav-item" data-target="api-tokens" th:text="#{settings.api.tokens}">API Tokens</div>
+            <div class="settings-nav-item" data-target="user-management" th:text="#{settings.user.management}">User Management</div>
+            <div class="settings-nav-item" data-target="places-management" th:text="#{settings.places}">Places</div>
+            <div class="settings-nav-item" data-target="geocode-services" th:text="#{settings.geocoding}">Geocoding</div>
+            <div class="settings-nav-item" data-target="manage-data" th:if="${dataManagementEnabled}" th:text="#{settings.manage.data}">Manage Data</div>
+            <div class="settings-nav-item" data-target="language-settings" th:text="#{language.select}">Select Language</div>
+            <div class="settings-nav-item" data-target="integrations" hx-get="/settings/integrations-content" hx-target="#integrations" th:text="#{settings.integrations}">Integrations</div>
+            <div class="settings-nav-item" data-target="about-section" th:text="#{settings.about}">About</div>
+        </div>
+
+        <!-- Settings content area -->
+        <div class="settings-content-area">
+            <!-- API Tokens Section -->
+            <div id="api-tokens" class="settings-section" hx-get="/settings/api-tokens-content"
+                 hx-trigger="revealed, every 30s">
+                <div class="htmx-indicator">Loading tokens...</div>
+            </div>
+
+            <!-- User Management Section -->
+            <div id="user-management" class="settings-section" hx-get="/settings/users-content" hx-trigger="revealed">
+                <div class="htmx-indicator">Loading users...</div>
+            </div>
+
+            <!-- Places Management Section -->
+            <div id="places-management" class="settings-section">
+                <div class="htmx-indicator">Loading places...</div>
+            </div>
+
+            <!-- Geocoding Services Section -->
+            <div id="geocode-services" class="settings-section">
+                <div class="htmx-indicator">Loading geocoding services...</div>
+            </div>
+
+            <!-- Integrations Section -->
+            <div id="integrations" class="settings-section">
+                <div class="htmx-indicator">Loading integrations...</div>
+            </div>
+
+            <!-- Manage Data Section -->
+            <div th:if="${dataManagementEnabled}" id="manage-data" class="settings-section">
+                <div class="htmx-indicator">Loading data management...</div>
+            </div>
+
+            <!-- Job Status Section -->
+            <div id="job-status" class="settings-section active" hx-get="/settings/queue-stats-content"
+                 hx-trigger="revealed, every 5s">
+                <div class="htmx-indicator">Loading queue stats...</div>
+            </div>
+
+            <!-- File Upload Section -->
+            <div id="file-upload" class="settings-section">
+                <div class="htmx-indicator">Loading file upload options...</div>
+            </div>
+
+            <!-- Language Settings Section -->
+            <div id="language-settings" class="settings-section" hx-get="/settings/language-content">
+                <div class="htmx-indicator">Loading language options...</div>
+            </div>
+
+            <!-- About Section -->
+            <div id="about-section" class="settings-section">
+                <div class="htmx-indicator">Loading about information...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function initPlaceMaps() {
+            document.querySelectorAll('.place-map:not(.leaflet-container)').forEach(mapElement => {
+                const lat = parseFloat(mapElement.dataset.lat);
+                const lng = parseFloat(mapElement.dataset.lng);
+                const placeMap = L.map(mapElement, {
+                    zoomControl: false,
+                    attributionControl: false,
+                    dragging: false,
+                    scrollWheelZoom: false
+                })
+
+                L.tileLayer.grayscale('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank">Humanitarian OpenStreetMap Team</a> hosted by <a href="https://openstreetmap.fr/" target="_blank">OpenStreetMap France</a>'
+                }).addTo(placeMap);
+
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    placeMap.setView([lat, lng], 14);
+
+                    L.circleMarker([lat, lng], {
+                        radius: 8,
+                        fillColor: '#4a89dc',
+                        color: '#fff',
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(placeMap);
+                    placeMap.invalidateSize();
+                }
+            });
+        }
+
+        document.body.addEventListener('htmx:afterSwap', function (event) {
+            if (event.detail.target.id === 'places-management' ||
+                event.detail.target.closest('#places-management')) {
+                initPlaceMaps();
+            }
+
+            // Handle form resets after successful submission
+            if (event.detail.target.id === 'user-management' ||
+                event.detail.target.closest('#user-management')) {
+                // Find and reset any forms in the user management section
+                const forms = event.detail.target.querySelectorAll('form');
+                forms.forEach(form => {
+                    form.reset();
+                });
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // Tab navigation in settings with htmx
+            const navItems = document.querySelectorAll('.settings-nav-item');
+            const sections = document.querySelectorAll('.settings-section');
+
+            navItems.forEach(item => {
+                item.addEventListener('click', function () {
+                    const target = this.getAttribute('data-target');
+
+                    // Update active nav item
+                    navItems.forEach(nav => nav.classList.remove('active'));
+                    this.classList.add('active');
+
+                    // Show target section
+                    sections.forEach(section => {
+                        section.classList.remove('active');
+                        if (section.id === target) {
+                            section.classList.add('active');
+                            
+                            // If this is the places tab, load its content if not already loaded
+                            if (target === 'places-management' && !section.hasAttribute('hx-triggered')) {
+                                section.setAttribute('hx-get', '/settings/places-content?page=0');
+                                section.setAttribute('hx-trigger', 'load');
+                                section.setAttribute('hx-triggered', 'true');
+                                htmx.process(section);
+                            }
+                            
+                            // If this is the file upload tab, load its content if not already loaded
+                            if (target === 'file-upload' && !section.hasAttribute('hx-triggered')) {
+                                section.setAttribute('hx-get', '/settings/file-upload-content');
+                                section.setAttribute('hx-trigger', 'load once');
+                                section.setAttribute('hx-triggered', 'true');
+                                htmx.process(section);
+                            }
+
+                            // If this is the geocoding tab, load its content if not already loaded
+                            if (target === 'geocode-services' && !section.hasAttribute('hx-triggered')) {
+                                section.setAttribute('hx-get', '/settings/geocode-services-content');
+                                section.setAttribute('hx-trigger', 'load once');
+                                section.setAttribute('hx-triggered', 'true');
+                                htmx.process(section);
+                            }
+
+                            // If this is the manage data tab, load its content if not already loaded
+                            if (target === 'manage-data' && !section.hasAttribute('hx-triggered')) {
+                                section.setAttribute('hx-get', '/settings/manage-data-content');
+                                section.setAttribute('hx-trigger', 'load once');
+                                section.setAttribute('hx-triggered', 'true');
+                                htmx.process(section);
+                            }
+                            // If this is the about tab, load its content if not already loaded
+                            if (target === 'about-section' && !section.hasAttribute('hx-triggered')) {
+                                section.setAttribute('hx-get', '/settings/about-content');
+                                section.setAttribute('hx-trigger', 'load once');
+                                section.setAttribute('hx-triggered', 'true');
+                                htmx.process(section);
+                            }
+                            // If this is the language data tab, load its content if not already loaded
+                            if (target === 'language-settings' && !section.hasAttribute('hx-triggered')) {
+                                section.setAttribute('hx-get', '/settings/language-content');
+                                section.setAttribute('hx-trigger', 'load once');
+                                section.setAttribute('hx-triggered', 'true');
+                                htmx.process(section);
+                            }
+                        }
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>
