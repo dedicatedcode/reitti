@@ -1,0 +1,187 @@
+{
+  "semanticSegments": [
+    {
+      "startTime": "2025-07-04T09:00:00.000+02:00",
+      "endTime": "2025-07-04T11:00:00.000+02:00",
+      "timelinePath": [
+        {
+          "point": "53.86324°, 10.7011764°",
+          "time": "2025-07-04T09:38:00.000+02:00"
+        }
+      ]
+    }
+  ],
+  "rawSignals": [
+    {
+      "position": {
+        "LatLng": "53.8633043°, 10.7011529°",
+        "accuracyMeters": 3,
+        "altitudeMeters": 53.70000076293945,
+        "source": "UNKNOWN",
+        "timestamp": "2025-07-03T19:46:13.000+02:00",
+        "speedMetersPerSecond": 0.00535565847530961
+      }
+    },
+    {
+      "wifiScan": {
+        "deliveryTime": "2025-07-04T09:37:34.000+02:00",
+        "devicesRecords": [
+          {
+            "mac": 81764197721093,
+            "rawRssi": -92
+          },
+          {
+            "mac": 4880535074783,
+            "rawRssi": -71
+          },
+          {
+            "mac": 176353769414806,
+            "rawRssi": -78
+          },
+          {
+            "mac": 4880535074782,
+            "rawRssi": -64
+          },
+          {
+            "mac": 123486069126043,
+            "rawRssi": -76
+          },
+          {
+            "mac": 79565160561131,
+            "rawRssi": -93
+          },
+          {
+            "mac": 118796079720199,
+            "rawRssi": -82
+          },
+          {
+            "mac": 176156956989012,
+            "rawRssi": -60
+          },
+          {
+            "mac": 176156956989009,
+            "rawRssi": -63
+          },
+          {
+            "mac": 233833088632553,
+            "rawRssi": -82
+          },
+          {
+            "mac": 13685719791895,
+            "rawRssi": -86
+          },
+          {
+            "mac": 5175406356058,
+            "rawRssi": -76
+          },
+          {
+            "mac": 103893075959292,
+            "rawRssi": -85
+          },
+          {
+            "mac": 79565174465541,
+            "rawRssi": -93
+          },
+          {
+            "mac": 207775459763230,
+            "rawRssi": -61
+          },
+          {
+            "mac": 272875381228876,
+            "rawRssi": -71
+          },
+          {
+            "mac": 236032111888024,
+            "rawRssi": -68
+          },
+          {
+            "mac": 207775459763231,
+            "rawRssi": -73
+          },
+          {
+            "mac": 251751037760296,
+            "rawRssi": -69
+          },
+          {
+            "mac": 251751037760295,
+            "rawRssi": -58
+          },
+          {
+            "mac": 253950061015831,
+            "rawRssi": -61
+          },
+          {
+            "mac": 176353769414803,
+            "rawRssi": -70
+          },
+          {
+            "mac": 13685728359545,
+            "rawRssi": -80
+          },
+          {
+            "mac": 253950061015863,
+            "rawRssi": -60
+          },
+          {
+            "mac": 176156956988992,
+            "rawRssi": -44
+          },
+          {
+            "mac": 162987945711694,
+            "rawRssi": -78
+          },
+          {
+            "mac": 66207235812212,
+            "rawRssi": -93
+          },
+          {
+            "mac": 176156956988996,
+            "rawRssi": -36
+          },
+          {
+            "mac": 245000064254810,
+            "rawRssi": -73
+          }
+        ]
+      }
+    },
+    {
+      "activityRecord": {
+        "probableActivities": [
+          {
+            "type": "STILL",
+            "confidence": 0.9700000286102295
+          },
+          {
+            "type": "IN_VEHICLE",
+            "confidence": 0.019999999552965164
+          },
+          {
+            "type": "IN_ROAD_VEHICLE",
+            "confidence": 0.019999999552965164
+          },
+          {
+            "type": "IN_ROAD_VEHICLE",
+            "confidence": 0.019999999552965164
+          },
+          {
+            "type": "IN_RAIL_VEHICLE",
+            "confidence": 0.009999999776482582
+          }
+        ],
+        "timestamp": "2025-07-04T09:37:37.000+02:00"
+      }
+    },
+    {
+      "position": {
+        "LatLng": "53.86324°, 10.7011764°",
+        "accuracyMeters": 12,
+        "altitudeMeters": 53.70000076293945,
+        "source": "UNKNOWN",
+        "timestamp": "2025-07-04T09:37:38.000+02:00",
+        "speedMetersPerSecond": 0.27601006627082825
+      }
+    }
+  ],
+  "userLocationProfile": {}
+}
