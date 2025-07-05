@@ -7,20 +7,18 @@ public class OwnTracksRecorderIntegration {
     private final String username;
     private final String deviceId;
     private final boolean enabled;
-    private final User user;
     private final Long version;
 
     public OwnTracksRecorderIntegration(String baseUrl, String username, String deviceId, boolean enabled) {
-        this(null, baseUrl, username, deviceId, enabled, null, null);
+        this(null, baseUrl, username, deviceId, enabled, null);
     }
 
-    public OwnTracksRecorderIntegration(Long id, String baseUrl, String username, String deviceId, boolean enabled, User user, Long version) {
+    public OwnTracksRecorderIntegration(Long id, String baseUrl, String username, String deviceId, boolean enabled, Long version) {
         this.id = id;
         this.baseUrl = baseUrl;
         this.username = username;
         this.deviceId = deviceId;
         this.enabled = enabled;
-        this.user = user;
         this.version = version;
     }
 
@@ -44,27 +42,20 @@ public class OwnTracksRecorderIntegration {
         return enabled;
     }
 
-    public User getUser() {
-        return user;
-    }
-
     public Long getVersion() {
         return version;
     }
 
     public OwnTracksRecorderIntegration withEnabled(boolean enabled) {
-        return new OwnTracksRecorderIntegration(this.id, this.baseUrl, this.username, this.deviceId, enabled, this.user, this.version);
+        return new OwnTracksRecorderIntegration(this.id, this.baseUrl, this.username, this.deviceId, enabled, this.version);
     }
 
-    public OwnTracksRecorderIntegration withUser(User user) {
-        return new OwnTracksRecorderIntegration(this.id, this.baseUrl, this.username, this.deviceId, this.enabled, user, this.version);
-    }
 
     public OwnTracksRecorderIntegration withId(Long id) {
-        return new OwnTracksRecorderIntegration(id, this.baseUrl, this.username, this.deviceId, this.enabled, this.user, this.version);
+        return new OwnTracksRecorderIntegration(id, this.baseUrl, this.username, this.deviceId, this.enabled, this.version);
     }
 
     public OwnTracksRecorderIntegration withVersion(Long version) {
-        return new OwnTracksRecorderIntegration(this.id, this.baseUrl, this.username, this.deviceId, this.enabled, this.user, version);
+        return new OwnTracksRecorderIntegration(this.id, this.baseUrl, this.username, this.deviceId, this.enabled, version);
     }
 }

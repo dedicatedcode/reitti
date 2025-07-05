@@ -514,7 +514,6 @@ public class SettingsController {
 
         List<ApiToken> tokens = apiTokenService.getTokensForUser(currentUser);
 
-        // Add the first token if available
         if (!tokens.isEmpty()) {
             model.addAttribute("firstToken", tokens.getFirst().getToken());
             model.addAttribute("hasToken", true);

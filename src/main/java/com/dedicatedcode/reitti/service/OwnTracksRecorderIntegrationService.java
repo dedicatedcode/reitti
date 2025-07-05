@@ -61,10 +61,9 @@ public class OwnTracksRecorderIntegrationService {
                     username.trim(),
                     deviceId.trim(),
                     enabled,
-                    user,
                     existing.getVersion()
             );
-            return jdbcService.save(updated);
+            return jdbcService.update(updated);
         } else {
             // Create new integration
             OwnTracksRecorderIntegration newIntegration = new OwnTracksRecorderIntegration(
@@ -72,8 +71,8 @@ public class OwnTracksRecorderIntegrationService {
                     username.trim(),
                     deviceId.trim(),
                     enabled
-            ).withUser(user);
-            return jdbcService.save(newIntegration);
+            );
+            return jdbcService.save(user, newIntegration);
         }
     }
 
