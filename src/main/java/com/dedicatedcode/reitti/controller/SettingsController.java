@@ -511,9 +511,19 @@ public class SettingsController {
         String currentUsername = authentication.getName();
         User currentUser = userJdbcService.findByUsername(currentUsername)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUsername));
-        
+
+
+        List<ApiToken> tokens = apiTokenService.getTokensForUser(currentUser);
+
+        // Add the first token if available
+        if (!tokens.isEmpty()) {
+            model.addAttribute("firstToken", tokens.getFirst().getToken());
+            model.addAttribute("hasToken", true);
+        } else {
+            model.addAttribute("hasToken", false);
+        }
         try {
-            // TODO: Implement OwnTracksRecorderIntegrationService.saveIntegration
+            // TODO: Implement OwnTracksRecorderIntegrationService.saveIntegration AI! 
             // OwnTracksRecorderIntegration integration = ownTracksRecorderIntegrationService.saveIntegration(
             //     currentUser, baseUrl, username, deviceId, enabled);
             
