@@ -45,6 +45,7 @@ public class SettingsController {
     private final GeocodeServiceJdbcService geocodeServiceJdbcService;
     private final RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger;
     private final ImmichIntegrationService immichIntegrationService;
+    private final OwnTracksRecorderIntegrationService ownTracksRecorderIntegrationService;
     private final VisitJdbcService visitJdbcService;
     private final TripJdbcService tripJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
@@ -65,6 +66,7 @@ public class SettingsController {
                               GeocodeServiceJdbcService geocodeServiceJdbcService,
                               RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger,
                               ImmichIntegrationService immichIntegrationService,
+                              OwnTracksRecorderIntegrationService ownTracksRecorderIntegrationService,
                               VisitJdbcService visitJdbcService,
                               TripJdbcService tripJdbcService,
                               ProcessedVisitJdbcService processedVisitJdbcService,
@@ -83,6 +85,7 @@ public class SettingsController {
         this.geocodeServiceJdbcService = geocodeServiceJdbcService;
         this.rawLocationPointProcessingTrigger = rawLocationPointProcessingTrigger;
         this.immichIntegrationService = immichIntegrationService;
+        this.ownTracksRecorderIntegrationService = ownTracksRecorderIntegrationService;
         this.visitJdbcService = visitJdbcService;
         this.tripJdbcService = tripJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
@@ -417,17 +420,13 @@ public class SettingsController {
 
         model.addAttribute("serverUrl", serverUrl.toString());
 
-        // TODO: Add OwnTracks Recorder integration data when service is implemented
-        // Optional<OwnTracksRecorderIntegration> recorderIntegration = ownTracksRecorderIntegrationService.getIntegrationForUser(currentUser);
-        // if (recorderIntegration.isPresent()) {
-        //     model.addAttribute("ownTracksRecorderIntegration", recorderIntegration.get());
-        //     model.addAttribute("hasRecorderIntegration", true);
-        // } else {
-        //     model.addAttribute("hasRecorderIntegration", false);
-        // }
-        
-        // For now, set as no integration
-        model.addAttribute("hasRecorderIntegration", false);
+        Optional<OwnTracksRecorderIntegration> recorderIntegration = ownTracksRecorderIntegrationService.getIntegrationForUser(currentUser);
+        if (recorderIntegration.isPresent()) {
+            model.addAttribute("ownTracksRecorderIntegration", recorderIntegration.get());
+            model.addAttribute("hasRecorderIntegration", true);
+        } else {
+            model.addAttribute("hasRecorderIntegration", false);
+        }
 
         return "fragments/settings :: integrations-content";
     }
@@ -523,21 +522,19 @@ public class SettingsController {
             model.addAttribute("hasToken", false);
         }
         try {
-            // TODO: Implement OwnTracksRecorderIntegrationService.saveIntegration
-            // OwnTracksRecorderIntegration integration = ownTracksRecorderIntegrationService.saveIntegration(
-            //     currentUser, baseUrl, username, deviceId, enabled);
+            OwnTracksRecorderIntegration integration = ownTracksRecorderIntegrationService.saveIntegration(
+                currentUser, baseUrl, username, deviceId, enabled);
             
-            // For now, just add success message
             model.addAttribute("successMessage", getMessage("integrations.owntracks.recorder.config.saved"));
-            
-            // TODO: Add integration to model when service is implemented
-            // model.addAttribute("ownTracksRecorderIntegration", integration);
-            // model.addAttribute("hasRecorderIntegration", true);
+            model.addAttribute("ownTracksRecorderIntegration", integration);
+            model.addAttribute("hasRecorderIntegration", true);
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("integrations.owntracks.recorder.config.error", e.getMessage()));
             
             // Re-populate form with submitted values for error case
-            // TODO: Create temporary integration object when model is available
+            OwnTracksRecorderIntegration tempIntegration = new OwnTracksRecorderIntegration(baseUrl, username, deviceId, enabled);
+            model.addAttribute("ownTracksRecorderIntegration", tempIntegration);
+            model.addAttribute("hasRecorderIntegration", true);
         }
         
         return "fragments/settings :: integrations-content";
@@ -551,11 +548,7 @@ public class SettingsController {
         Map<String, Object> response = new HashMap<>();
         
         try {
-            // TODO: Implement OwnTracksRecorderIntegrationService.testConnection
-            // boolean connectionSuccessful = ownTracksRecorderIntegrationService.testConnection(baseUrl, username, deviceId);
-            
-            // For now, simulate a successful connection test
-            boolean connectionSuccessful = true;
+            boolean connectionSuccessful = ownTracksRecorderIntegrationService.testConnection(baseUrl, username, deviceId);
             
             if (connectionSuccessful) {
                 response.put("success", true);
