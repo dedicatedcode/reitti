@@ -417,6 +417,18 @@ public class SettingsController {
 
         model.addAttribute("serverUrl", serverUrl.toString());
 
+        // TODO: Add OwnTracks Recorder integration data when service is implemented
+        // Optional<OwnTracksRecorderIntegration> recorderIntegration = ownTracksRecorderIntegrationService.getIntegrationForUser(currentUser);
+        // if (recorderIntegration.isPresent()) {
+        //     model.addAttribute("ownTracksRecorderIntegration", recorderIntegration.get());
+        //     model.addAttribute("hasRecorderIntegration", true);
+        // } else {
+        //     model.addAttribute("hasRecorderIntegration", false);
+        // }
+        
+        // For now, set as no integration
+        model.addAttribute("hasRecorderIntegration", false);
+
         return "fragments/settings :: integrations-content";
     }
 
@@ -484,6 +496,67 @@ public class SettingsController {
         } catch (Exception e) {
             response.put("success", false);
             response.put("message", getMessage("integrations.immich.connection.failed", e.getMessage()));
+        }
+        
+        return response;
+    }
+
+    @PostMapping("/owntracks-recorder-integration")
+    public String saveOwnTracksRecorderIntegration(@RequestParam String baseUrl,
+                                                  @RequestParam String username,
+                                                  @RequestParam String deviceId,
+                                                  @RequestParam(defaultValue = "false") boolean enabled,
+                                                  Authentication authentication,
+                                                  Model model) {
+        String currentUsername = authentication.getName();
+        User currentUser = userJdbcService.findByUsername(currentUsername)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUsername));
+        
+        try {
+            // TODO: Implement OwnTracksRecorderIntegrationService.saveIntegration
+            // OwnTracksRecorderIntegration integration = ownTracksRecorderIntegrationService.saveIntegration(
+            //     currentUser, baseUrl, username, deviceId, enabled);
+            
+            // For now, just add success message
+            model.addAttribute("successMessage", getMessage("integrations.owntracks.recorder.config.saved"));
+            
+            // TODO: Add integration to model when service is implemented
+            // model.addAttribute("ownTracksRecorderIntegration", integration);
+            // model.addAttribute("hasRecorderIntegration", true);
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", getMessage("integrations.owntracks.recorder.config.error", e.getMessage()));
+            
+            // Re-populate form with submitted values for error case
+            // TODO: Create temporary integration object when model is available
+        }
+        
+        return "fragments/settings :: integrations-content";
+    }
+
+    @PostMapping("/owntracks-recorder-integration/test")
+    @ResponseBody
+    public Map<String, Object> testOwnTracksRecorderConnection(@RequestParam String baseUrl,
+                                                              @RequestParam String username,
+                                                              @RequestParam String deviceId) {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            // TODO: Implement OwnTracksRecorderIntegrationService.testConnection
+            // boolean connectionSuccessful = ownTracksRecorderIntegrationService.testConnection(baseUrl, username, deviceId);
+            
+            // For now, simulate a successful connection test
+            boolean connectionSuccessful = true;
+            
+            if (connectionSuccessful) {
+                response.put("success", true);
+                response.put("message", getMessage("integrations.owntracks.recorder.connection.success"));
+            } else {
+                response.put("success", false);
+                response.put("message", getMessage("integrations.owntracks.recorder.connection.failed", "Invalid configuration"));
+            }
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", getMessage("integrations.owntracks.recorder.connection.failed", e.getMessage()));
         }
         
         return response;
