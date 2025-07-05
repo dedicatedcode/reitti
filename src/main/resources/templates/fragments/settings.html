@@ -382,6 +382,114 @@
                         </ol>
                     </div>
                 </div>
+
+                <div class="integration-section">
+                    <h3 th:text="#{integrations.owntracks.recorder.title}">📊 OwnTracks Recorder Integration</h3>
+                    <p th:text="#{integrations.owntracks.recorder.description}">Connect to an OwnTracks Recorder instance to fetch location data from specific users and devices.</p>
+                    
+                    <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+                        <span th:text="${successMessage}">Configuration saved successfully</span>
+                    </div>
+                    <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+                        <span th:text="${errorMessage}">Error message</span>
+                    </div>
+                    
+                    <form hx-post="/settings/owntracks-recorder-integration" hx-target="#integrations" hx-swap="innerHTML" class="owntracks-recorder-form" style="margin-top: 20px;" autocomplete="off">
+                        <div class="form-group">
+                            <label for="recorderBaseUrl" th:text="#{integrations.owntracks.recorder.base.url}">Base URL</label>
+                            <input type="url" 
+                                   id="recorderBaseUrl" 
+                                   name="baseUrl" 
+                                   required
+                                   autocomplete="off"
+                                   th:placeholder="#{integrations.owntracks.recorder.base.url.placeholder}"
+                                   th:value="${hasRecorderIntegration ? ownTracksRecorderIntegration.baseUrl : ''}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="recorderUsername" th:text="#{integrations.owntracks.recorder.username}">Username</label>
+                            <input type="text" 
+                                   id="recorderUsername" 
+                                   name="username" 
+                                   required
+                                   autocomplete="off"
+                                   th:placeholder="#{integrations.owntracks.recorder.username.placeholder}"
+                                   th:value="${hasRecorderIntegration ? ownTracksRecorderIntegration.username : ''}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="recorderDeviceId" th:text="#{integrations.owntracks.recorder.device.id}">Device ID</label>
+                            <input type="text" 
+                                   id="recorderDeviceId" 
+                                   name="deviceId" 
+                                   required
+                                   autocomplete="off"
+                                   th:placeholder="#{integrations.owntracks.recorder.device.id.placeholder}"
+                                   th:value="${hasRecorderIntegration ? ownTracksRecorderIntegration.deviceId : ''}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" 
+                                       name="enabled" 
+                                       value="true"
+                                       th:checked="${hasRecorderIntegration && ownTracksRecorderIntegration.enabled}">
+                                <span th:text="#{integrations.owntracks.recorder.enabled}">Enable Integration</span>
+                            </label>
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px; margin-top: 20px;">
+                            <button type="submit" class="btn" th:text="#{integrations.owntracks.recorder.save}">Save Configuration</button>
+                            <button type="button" 
+                                    class="btn" 
+                                    id="test-recorder-connection-btn"
+                                    th:text="#{integrations.owntracks.recorder.test.connection}">Test Connection</button>
+                        </div>
+                    </form>
+                    
+                    <div id="recorder-connection-test-result" style="margin-top: 10px;"></div>
+                    
+                    <script>
+                        document.getElementById('test-recorder-connection-btn').addEventListener('click', function() {
+                            const baseUrl = document.getElementById('recorderBaseUrl').value;
+                            const username = document.getElementById('recorderUsername').value;
+                            const deviceId = document.getElementById('recorderDeviceId').value;
+                            const resultDiv = document.getElementById('recorder-connection-test-result');
+                            
+                            if (!baseUrl || !username || !deviceId) {
+                                resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">Please fill in Base URL, Username, and Device ID</div>';
+                                return;
+                            }
+                            
+                            // Show loading state
+                            resultDiv.innerHTML = '<div style="color: var(--color-text-white);">Testing connection...</div>';
+                            
+                            // Make AJAX request to test connection
+                            fetch('/settings/owntracks-recorder-integration/test', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                },
+                                body: new URLSearchParams({
+                                    baseUrl: baseUrl,
+                                    username: username,
+                                    deviceId: deviceId
+                                })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    resultDiv.innerHTML = '<div class="alert alert-success" style="display: block;">' + data.message + '</div>';
+                                } else {
+                                    resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + data.message + '</div>';
+                                }
+                            })
+                            .catch(error => {
+                                resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">Connection test failed: ' + error.message + '</div>';
+                            });
+                        });
+                    </script>
+                </div>
             </div>
         </details>
         <details>
