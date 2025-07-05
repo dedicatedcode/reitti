@@ -23,6 +23,8 @@ public class OwnTracksRecorderIntegrationJdbcService {
     }
 
     private final RowMapper<OwnTracksRecorderIntegration> rowMapper = (rs, rowNum) -> {
+        java.sql.Timestamp timestamp = rs.getTimestamp("last_successful_fetch");
+        java.time.Instant lastSuccessfulFetch = timestamp != null ? timestamp.toInstant() : null;
 
         return new OwnTracksRecorderIntegration(
                 rs.getLong("id"),
@@ -30,13 +32,14 @@ public class OwnTracksRecorderIntegrationJdbcService {
                 rs.getString("username"),
                 rs.getString("device_id"),
                 rs.getBoolean("enabled"),
+                lastSuccessfulFetch,
                 rs.getLong("version")
         );
     };
 
     public Optional<OwnTracksRecorderIntegration> findByUser(User user) {
         try {
-            String sql = "SELECT id, base_url, username, device_id, enabled, user_id, version FROM owntracks_recorder_integration WHERE user_id = ?";
+            String sql = "SELECT id, base_url, username, device_id, enabled, last_successful_fetch, user_id, version FROM owntracks_recorder_integration WHERE user_id = ?";
             OwnTracksRecorderIntegration integration = jdbcTemplate.queryForObject(sql, rowMapper, user.getId());
             return Optional.of(integration);
         } catch (EmptyResultDataAccessException e) {
@@ -45,7 +48,7 @@ public class OwnTracksRecorderIntegrationJdbcService {
     }
 
     public OwnTracksRecorderIntegration save(User user, OwnTracksRecorderIntegration integration) {
-        String sql = "INSERT INTO owntracks_recorder_integration (base_url, username, device_id, enabled, user_id, version) VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO owntracks_recorder_integration (base_url, username, device_id, enabled, last_successful_fetch, user_id, version) VALUES (?, ?, ?, ?, ?, ?, ?)";
         
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
@@ -54,8 +57,13 @@ public class OwnTracksRecorderIntegrationJdbcService {
             ps.setString(2, integration.getUsername());
             ps.setString(3, integration.getDeviceId());
             ps.setBoolean(4, integration.isEnabled());
-            ps.setLong(5, user.getId());
-            ps.setLong(6, 1L); // Initial version
+            if (integration.getLastSuccessfulFetch() != null) {
+                ps.setTimestamp(5, java.sql.Timestamp.from(integration.getLastSuccessfulFetch()));
+            } else {
+                ps.setTimestamp(5, null);
+            }
+            ps.setLong(6, user.getId());
+            ps.setLong(7, 1L); // Initial version
             return ps;
         }, keyHolder);
 
@@ -64,13 +72,14 @@ public class OwnTracksRecorderIntegrationJdbcService {
     }
 
     public OwnTracksRecorderIntegration update(OwnTracksRecorderIntegration integration) {
-        String sql = "UPDATE owntracks_recorder_integration SET base_url = ?, username = ?, device_id = ?, enabled = ?, version = version + 1 WHERE id = ? AND version = ?";
+        String sql = "UPDATE owntracks_recorder_integration SET base_url = ?, username = ?, device_id = ?, enabled = ?, last_successful_fetch = ?, version = version + 1 WHERE id = ? AND version = ?";
         
         int rowsAffected = jdbcTemplate.update(sql,
                 integration.getBaseUrl(),
                 integration.getUsername(),
                 integration.getDeviceId(),
                 integration.isEnabled(),
+                integration.getLastSuccessfulFetch() != null ? java.sql.Timestamp.from(integration.getLastSuccessfulFetch()) : null,
                 integration.getId(),
                 integration.getVersion());
 

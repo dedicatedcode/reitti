@@ -61,6 +61,7 @@ public class OwnTracksRecorderIntegrationService {
                     username.trim(),
                     deviceId.trim(),
                     enabled,
+                    existing.getLastSuccessfulFetch(),
                     existing.getVersion()
             );
             return jdbcService.update(updated);
