@@ -67,7 +67,7 @@ public class OwnTracksRecorderIntegrationJdbcService {
             return ps;
         }, keyHolder);
 
-        Long id = keyHolder.getKey().longValue();
+        Long id = (Long) keyHolder.getKeys().get("id");
         return integration.withId(id).withVersion(1L);
     }
 

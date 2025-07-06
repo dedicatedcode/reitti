@@ -8,13 +8,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Optional;
 
 @Service
-@Transactional
 public class OwnTracksRecorderIntegrationService {
 
     private static final Logger logger = LoggerFactory.getLogger(OwnTracksRecorderIntegrationService.class);
@@ -27,7 +25,6 @@ public class OwnTracksRecorderIntegrationService {
         this.restTemplate = new RestTemplate();
     }
 
-    @Transactional(readOnly = true)
     public Optional<OwnTracksRecorderIntegration> getIntegrationForUser(User user) {
         return jdbcService.findByUser(user);
     }
@@ -53,7 +50,6 @@ public class OwnTracksRecorderIntegrationService {
         Optional<OwnTracksRecorderIntegration> existingIntegration = jdbcService.findByUser(user);
         
         if (existingIntegration.isPresent()) {
-            // Update existing integration
             OwnTracksRecorderIntegration existing = existingIntegration.get();
             OwnTracksRecorderIntegration updated = new OwnTracksRecorderIntegration(
                     existing.getId(),
@@ -66,7 +62,6 @@ public class OwnTracksRecorderIntegrationService {
             );
             return jdbcService.update(updated);
         } else {
-            // Create new integration
             OwnTracksRecorderIntegration newIntegration = new OwnTracksRecorderIntegration(
                     normalizedBaseUrl,
                     username.trim(),
@@ -79,22 +74,17 @@ public class OwnTracksRecorderIntegrationService {
 
     public boolean testConnection(String baseUrl, String username, String deviceId) {
         try {
-            // Normalize base URL
             String normalizedBaseUrl = baseUrl.trim();
             if (normalizedBaseUrl.endsWith("/")) {
                 normalizedBaseUrl = normalizedBaseUrl.substring(0, normalizedBaseUrl.length() - 1);
             }
 
-            // Test connection by trying to access the API endpoint
-            // OwnTracks Recorder typically has an API endpoint like /api/0/locations
             String testUrl = normalizedBaseUrl + "/api/0/locations";
             
             logger.debug("Testing OwnTracks Recorder connection to: {}", testUrl);
             
             ResponseEntity<String> response = restTemplate.getForEntity(testUrl, String.class);
-            
-            // Consider the connection successful if we get any response (even 401/403)
-            // since it means the server is reachable
+
             HttpStatus statusCode = (HttpStatus) response.getStatusCode();
             boolean isSuccessful = statusCode.is2xxSuccessful() || 
                                  statusCode == HttpStatus.UNAUTHORIZED || 
@@ -102,7 +92,6 @@ public class OwnTracksRecorderIntegrationService {
             
             logger.debug("OwnTracks Recorder connection test result: {} (status: {})", isSuccessful, statusCode);
             return isSuccessful;
-            
         } catch (Exception e) {
             logger.warn("Failed to test OwnTracks Recorder connection to {}: {}", baseUrl, e.getMessage());
             return false;

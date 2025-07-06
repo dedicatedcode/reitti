@@ -1,24 +1,21 @@
 package com.dedicatedcode.reitti.repository;
 
+import com.dedicatedcode.reitti.IntegrationTest;
+import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.OwnTracksRecorderIntegration;
 import com.dedicatedcode.reitti.model.User;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
-@ActiveProfiles("test")
-@Transactional
 @IntegrationTest
 class OwnTracksRecorderIntegrationJdbcServiceTest {
 
@@ -28,19 +25,19 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    private User testUser;
-
-    @BeforeEach
-    void setUp() {
-        // Create a test user
-        testUser = createTestUser("testuser", "password", "Test User");
-    }
+    @Autowired
+    private TestingService testingService;
 
     @Test
     void findByUser_WhenNoIntegrationExists_ReturnsEmpty() {
-        Optional<OwnTracksRecorderIntegration> result = service.findByUser(testUser);
+        Optional<OwnTracksRecorderIntegration> result = service.findByUser(this.testingService.admin());
         
         assertThat(result).isEmpty();
+    }
+
+    @AfterEach
+    void tearDown() {
+        this.service.findByUser(this.testingService.admin()).ifPresent(ownTracksRecorderIntegration -> {this.service.delete(ownTracksRecorderIntegration);});
     }
 
     @Test
@@ -52,7 +49,7 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 true
         );
 
-        OwnTracksRecorderIntegration saved = service.save(testUser, integration);
+        OwnTracksRecorderIntegration saved = service.save(this.testingService.admin(), integration);
 
         assertThat(saved.getId()).isNotNull();
         assertThat(saved.getBaseUrl()).isEqualTo("http://localhost:8083");
@@ -76,7 +73,7 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 null
         );
 
-        OwnTracksRecorderIntegration saved = service.save(testUser, integration);
+        OwnTracksRecorderIntegration saved = service.save(this.testingService.admin(), integration);
 
         assertThat(saved.getLastSuccessfulFetch()).isEqualTo(now);
     }
@@ -90,10 +87,10 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "device123",
                 true
         );
-        service.save(testUser, integration);
+        service.save(this.testingService.admin(), integration);
 
         // Then find it
-        Optional<OwnTracksRecorderIntegration> result = service.findByUser(testUser);
+        Optional<OwnTracksRecorderIntegration> result = service.findByUser(this.testingService.admin());
 
         assertThat(result).isPresent();
         assertThat(result.get().getBaseUrl()).isEqualTo("http://localhost:8083");
@@ -111,7 +108,7 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "device123",
                 true
         );
-        OwnTracksRecorderIntegration saved = service.save(testUser, integration);
+        OwnTracksRecorderIntegration saved = service.save(this.testingService.admin(), integration);
 
         // Update it
         OwnTracksRecorderIntegration updated = new OwnTracksRecorderIntegration(
@@ -144,7 +141,7 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "device123",
                 true
         );
-        OwnTracksRecorderIntegration saved = service.save(testUser, integration);
+        OwnTracksRecorderIntegration saved = service.save(this.testingService.admin(), integration);
 
         // Try to update with wrong version
         OwnTracksRecorderIntegration updated = new OwnTracksRecorderIntegration(
@@ -171,13 +168,13 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "device123",
                 true
         );
-        OwnTracksRecorderIntegration saved = service.save(testUser, integration);
+        OwnTracksRecorderIntegration saved = service.save(this.testingService.admin(), integration);
 
         // Delete it
         service.delete(saved);
 
         // Verify it's gone
-        Optional<OwnTracksRecorderIntegration> result = service.findByUser(testUser);
+        Optional<OwnTracksRecorderIntegration> result = service.findByUser(this.testingService.admin());
         assertThat(result).isEmpty();
     }
 
@@ -190,14 +187,15 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "device123",
                 true
         );
-        service.save(testUser, integration);
+        service.save(this.testingService.admin(), integration);
 
         // Create second user
-        User otherUser = createTestUser("otheruser", "password", "Other User");
+        User otherUser = createTestUser(UUID.randomUUID().toString(), "password", UUID.randomUUID().toString());
 
         // Try to find integration for second user
         Optional<OwnTracksRecorderIntegration> result = service.findByUser(otherUser);
         assertThat(result).isEmpty();
+
     }
 
     private User createTestUser(String username, String password, String displayName) {
