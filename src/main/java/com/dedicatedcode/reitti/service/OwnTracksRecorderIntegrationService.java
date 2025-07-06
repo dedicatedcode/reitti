@@ -21,6 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -200,12 +203,13 @@ public class OwnTracksRecorderIntegrationService {
         try {
             String apiUrl;
             if (fromTime != null) {
-                // the from field is actually not a timestamp but the day in the formation of 2025-01-04 AI!
-                apiUrl = String.format("%s/api/0/locations?user=%s&device=%s&from=%d",
+                LocalDate fromDate = fromTime.atOffset(ZoneOffset.UTC).toLocalDate();
+                String fromDateString = fromDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
+                apiUrl = String.format("%s/api/0/locations?user=%s&device=%s&from=%s",
                         integration.getBaseUrl(),
                         integration.getUsername(),
                         integration.getDeviceId(),
-                        fromTime.getEpochSecond());
+                        fromDateString);
             } else {
                 apiUrl = String.format("%s/api/0/locations?user=%s&device=%s",
                         integration.getBaseUrl(),
