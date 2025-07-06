@@ -172,7 +172,7 @@ public class OwnTracksRecorderIntegrationService {
                 normalizedBaseUrl = normalizedBaseUrl.substring(0, normalizedBaseUrl.length() - 1);
             }
 
-            String testUrl = normalizedBaseUrl + "/api/0/locations";
+            String testUrl = normalizedBaseUrl + "/api/0/locations?user=%s&device=%s".formatted(username, deviceId);
             
             logger.debug("Testing OwnTracks Recorder connection to: {}", testUrl);
             
@@ -218,7 +218,7 @@ public class OwnTracksRecorderIntegrationService {
                     apiUrl,
                     HttpMethod.GET,
                     null,
-                    new ParameterizedTypeReference<List<OwntracksLocationRequest>>() {}
+                    new ParameterizedTypeReference<>() {}
             );
             
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
