@@ -66,12 +66,11 @@ public class OwnTracksRecorderIntegrationService {
             processedIntegrations++;
             
             try {
-                // Calculate the "from" timestamp: lastSuccessfulFetch - 1 minute, or 24 hours ago if never fetched
                 Instant fromTime;
                 if (integration.getLastSuccessfulFetch() != null) {
                     fromTime = integration.getLastSuccessfulFetch().minus(1, ChronoUnit.MINUTES);
                 } else {
-                    fromTime = Instant.now().minus(24, ChronoUnit.HOURS);
+                    fromTime = null;
                 }
                 
                 // Fetch location data from OwnTracks Recorder
@@ -199,8 +198,7 @@ public class OwnTracksRecorderIntegrationService {
 
     private List<OwntracksLocationRequest> fetchLocationData(OwnTracksRecorderIntegration integration, Instant fromTime) {
         try {
-            // Build the API URL for fetching locations
-            // OwnTracks Recorder API: GET /api/0/locations?user={user}&device={device}&from={timestamp}
+            // fromTime can be null. Create a different url without the from AI!
             String apiUrl = String.format("%s/api/0/locations?user=%s&device=%s&from=%d",
                     integration.getBaseUrl(),
                     integration.getUsername(),
