@@ -564,6 +564,47 @@ public class SettingsController {
         return response;
     }
 
+    @PostMapping("/owntracks-recorder-integration/delete")
+    public String deleteOwnTracksRecorderIntegration(Authentication authentication, Model model, HttpServletRequest request) {
+        String currentUsername = authentication.getName();
+        User currentUser = userJdbcService.findByUsername(currentUsername)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUsername));
+
+        try {
+            ownTracksRecorderIntegrationService.deleteIntegration(currentUser);
+            model.addAttribute("successMessage", getMessage("integrations.owntracks.recorder.config.deleted"));
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", getMessage("integrations.owntracks.recorder.config.delete.error", e.getMessage()));
+        }
+
+        // Re-populate the integrations content
+        List<ApiToken> tokens = apiTokenService.getTokensForUser(currentUser);
+        if (!tokens.isEmpty()) {
+            model.addAttribute("firstToken", tokens.getFirst().getToken());
+            model.addAttribute("hasToken", true);
+        } else {
+            model.addAttribute("hasToken", false);
+        }
+
+        // Build the server URL
+        String scheme = request.getScheme();
+        String serverName = request.getServerName();
+        int serverPort = request.getServerPort();
+
+        StringBuilder serverUrl = new StringBuilder();
+        serverUrl.append(scheme).append("://").append(serverName);
+
+        if ((scheme.equals("http") && serverPort != 80) ||
+                (scheme.equals("https") && serverPort != 443)) {
+            serverUrl.append(":").append(serverPort);
+        }
+
+        model.addAttribute("serverUrl", serverUrl.toString());
+        model.addAttribute("hasRecorderIntegration", false);
+
+        return "fragments/settings :: integrations-content";
+    }
+
     @GetMapping("/user-form")
     public String getUserForm(@RequestParam(required = false) Long userId,
                               @RequestParam(required = false) String username,
