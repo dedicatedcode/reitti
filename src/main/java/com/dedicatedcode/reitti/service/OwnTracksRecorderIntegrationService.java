@@ -198,12 +198,19 @@ public class OwnTracksRecorderIntegrationService {
 
     private List<OwntracksLocationRequest> fetchLocationData(OwnTracksRecorderIntegration integration, Instant fromTime) {
         try {
-            // fromTime can be null. Create a different url without the from AI!
-            String apiUrl = String.format("%s/api/0/locations?user=%s&device=%s&from=%d",
-                    integration.getBaseUrl(),
-                    integration.getUsername(),
-                    integration.getDeviceId(),
-                    fromTime.getEpochSecond());
+            String apiUrl;
+            if (fromTime != null) {
+                apiUrl = String.format("%s/api/0/locations?user=%s&device=%s&from=%d",
+                        integration.getBaseUrl(),
+                        integration.getUsername(),
+                        integration.getDeviceId(),
+                        fromTime.getEpochSecond());
+            } else {
+                apiUrl = String.format("%s/api/0/locations?user=%s&device=%s",
+                        integration.getBaseUrl(),
+                        integration.getUsername(),
+                        integration.getDeviceId());
+            }
             
             logger.debug("Fetching location data from: {}", apiUrl);
             
