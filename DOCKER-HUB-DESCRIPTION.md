@@ -98,8 +98,9 @@ Configure real-time location tracking with:
 
 ## Tags
 
-- `latest` - Latest stable release
-- `x.y.z` - Specific version releases
+- `develop` - **Bleeding Edge**: Built from every push to main branch. For developers and early adopters who want the newest features and don't mind potential instability.
+- `latest` - **Stable Release**: Updated with each stable release. For most users who want reliable, tested functionality with new features.
+- `x.y.z` - **Conservative**: Specific version releases for users who want full control over updates and prefer to manually choose when to upgrade.
 
 ## Source Code
 
