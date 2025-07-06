@@ -41,7 +41,7 @@ public class OwnTracksRecorderIntegrationJdbcService {
         try {
             String sql = "SELECT id, base_url, username, device_id, enabled, last_successful_fetch, user_id, version FROM owntracks_recorder_integration WHERE user_id = ?";
             OwnTracksRecorderIntegration integration = jdbcTemplate.queryForObject(sql, rowMapper, user.getId());
-            return Optional.of(integration);
+            return Optional.ofNullable(integration);
         } catch (EmptyResultDataAccessException e) {
             return Optional.empty();
         }

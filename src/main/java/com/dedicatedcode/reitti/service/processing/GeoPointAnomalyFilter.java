@@ -37,7 +37,6 @@ public class GeoPointAnomalyFilter {
         detectedAnomalies.addAll(detectAccuracyAnomalies(points));
         detectedAnomalies.addAll(detectSpeedAnomalies(points));
         detectedAnomalies.addAll(detectDistanceJumpAnomalies(points));
-//        detectedAnomalies.addAll(detectClusteringAnomalies(points));
         detectedAnomalies.addAll(detectDirectionAnomalies(points));
 
         // Filter out anomalies
@@ -136,47 +135,6 @@ public class GeoPointAnomalyFilter {
 
         return anomalies;
     }
-
-    /**
-     * Detect points that are far from the main cluster
-     */
-    private Set<LocationDataRequest.LocationPoint> detectClusteringAnomalies(List<LocationDataRequest.LocationPoint> points) {
-        Set<LocationDataRequest.LocationPoint> anomalies = new HashSet<>();
-
-        if (points.size() < config.minPointsForClustering) {
-            return anomalies;
-        }
-
-        // Calculate center of mass
-        double avgLat = points.stream().mapToDouble(LocationDataRequest.LocationPoint::getLatitude).average().orElse(0);
-        double avgLng = points.stream().mapToDouble(LocationDataRequest.LocationPoint::getLongitude).average().orElse(0);
-
-        // Calculate distances from center
-        List<Double> distances = points.stream()
-                .mapToDouble(point -> GeoUtils.distanceInMeters(avgLat, avgLng, point.getLatitude(), point.getLongitude()))
-                .boxed()
-                .collect(Collectors.toList());
-
-        // Calculate statistics
-        double meanDistance = distances.stream().mapToDouble(Double::doubleValue).average().orElse(0);
-        double stdDev = calculateStandardDeviation(distances, meanDistance);
-
-        // Mark outliers
-        for (int i = 0; i < points.size(); i++) {
-            double distance = distances.get(i);
-            double threshold = isEdgePoint(i, points.size()) ?
-                    meanDistance + (stdDev * config.clusterDeviationMultiplier * config.edgeToleranceMultiplier) :
-                    meanDistance + (stdDev * config.clusterDeviationMultiplier);
-
-            if (distance > threshold) {
-                anomalies.add(points.get(i));
-            }
-        }
-        logger.debug("Filtering out [{}] points because they are to far off the cluster.", anomalies.size());
-
-        return anomalies;
-    }
-
     /**
      * Detect sudden direction changes that might indicate errors
      */
@@ -257,13 +215,6 @@ public class GeoPointAnomalyFilter {
 
     private boolean isEdgePoint(int index, int totalSize) {
         return index == 0 || index == totalSize - 1;
-    }
-
-    private double calculateStandardDeviation(List<Double> values, double mean) {
-        double sumSquaredDiffs = values.stream()
-                .mapToDouble(value -> Math.pow(value - mean, 2))
-                .sum();
-        return Math.sqrt(sumSquaredDiffs / values.size());
     }
 
     private double calculateBearing(LocationDataRequest.LocationPoint from, LocationDataRequest.LocationPoint to) {

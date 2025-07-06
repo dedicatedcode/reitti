@@ -36,7 +36,7 @@ public class LocationDataIngestPipeline {
         Optional<User> userOpt = userJdbcService.findByUsername(event.getUsername());
 
         if (userOpt.isEmpty()) {
-            logger.warn("User not found for name: {}", event.getUsername());
+            logger.warn("User not found for name: [{}]", event.getUsername());
             return;
         }
 
@@ -44,7 +44,6 @@ public class LocationDataIngestPipeline {
         List<LocationDataRequest.LocationPoint> points = event.getPoints();
         List<LocationDataRequest.LocationPoint> filtered = this.geoPointAnomalyFilter.filterAnomalies(points);
         rawLocationPointJdbcService.bulkInsert(user, filtered);
-        logger.info("Finished storing points [{}]for user [{}] in [{}]ms. Filtered out [{}] points.", filtered.size(), event.getUsername(), System.currentTimeMillis() - start, points.size() - filtered.size());
+        logger.info("Finished storing points [{}] for user [{}] in [{}]ms. Filtered out [{}] points.", filtered.size(), event.getUsername(), System.currentTimeMillis() - start, points.size() - filtered.size());
     }
-
 }

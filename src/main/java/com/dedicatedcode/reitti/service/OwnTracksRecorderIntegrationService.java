@@ -313,7 +313,7 @@ public class OwnTracksRecorderIntegrationService {
 
     private Set<YearMonth> fetchAvailableMonths(OwnTracksRecorderIntegration integration) {
         try {
-            String recsUrl = String.format("%s/api/0/recs?user=%s&device=%s", 
+            String recsUrl = String.format("%s/api/0/list?user=%s&device=%s",
                                          integration.getBaseUrl(), 
                                          integration.getUsername(), 
                                          integration.getDeviceId());

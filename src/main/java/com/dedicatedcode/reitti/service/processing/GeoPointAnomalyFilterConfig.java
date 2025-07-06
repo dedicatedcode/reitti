@@ -8,9 +8,7 @@ public class GeoPointAnomalyFilterConfig {
     public final double maxSpeedKmh;           // Maximum reasonable speed
     public final double maxAccuracyMeters;     // Maximum acceptable accuracy
     public final double maxDistanceJumpMeters; // Maximum jump between points
-    public final double clusterDeviationMultiplier = 3.0; // Standard deviations for clustering
     public final double edgeToleranceMultiplier = 1.5;   // Extra tolerance for edge points
-    public final int minPointsForClustering = 5;        // Minimum points needed for cluster analysis
 
     public GeoPointAnomalyFilterConfig(
             @Value("${reitti.geo-point-filter.max-speed-kmh:1000}") double maxSpeedKmh,
