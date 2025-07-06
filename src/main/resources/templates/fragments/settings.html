@@ -261,6 +261,9 @@
                 <h4 th:text="#{upload.google.new.format.title}">📱 New Format (timeline.json)</h4>
                 <p th:text="#{upload.google.new.format.instructions}">From your Android phone: Settings → Location → Location Services → Timeline → Export Timeline</p>
                 <p th:text="#{upload.google.new.format.description}">This exports a timeline.json file with your recent location data.</p>
+                <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 10px; margin: 10px 0; color: #856404;">
+                    <strong>ℹ️ Notice:</strong> <span th:text="#{upload.google.new.format.notice}">Timeline.json files exported from Google Maps on iOS are currently not supported. These files lack the raw location data that Reitti requires for its calculations.</span>
+                </div>
             </div>
             <div style="margin: 15px 0; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
                 <h4 th:text="#{upload.google.old.format.title}">🌐 Old Format (Records.json)</h4>
