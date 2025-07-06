@@ -390,7 +390,8 @@ public class SettingsController {
     }
 
     @GetMapping("/integrations-content")
-    public String getIntegrationsContent(Authentication authentication, Model model, HttpServletRequest request) {
+    public String getIntegrationsContent(Authentication authentication, Model model, HttpServletRequest request,
+                                        @RequestParam(required = false) String openSection) {
         String username = authentication.getName();
         User currentUser = userJdbcService.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
@@ -428,6 +429,9 @@ public class SettingsController {
             model.addAttribute("hasRecorderIntegration", false);
         }
 
+        // Add the open section parameter
+        model.addAttribute("openSection", openSection);
+
         return "fragments/settings :: integrations-content";
     }
 
@@ -453,10 +457,43 @@ public class SettingsController {
                                        @RequestParam String apiToken,
                                        @RequestParam(defaultValue = "false") boolean enabled,
                                        Authentication authentication,
-                                       Model model) {
+                                       Model model,
+                                       HttpServletRequest request) {
         String username = authentication.getName();
         User currentUser = userJdbcService.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+        
+        // Add common integration attributes
+        List<ApiToken> tokens = apiTokenService.getTokensForUser(currentUser);
+        if (!tokens.isEmpty()) {
+            model.addAttribute("firstToken", tokens.getFirst().getToken());
+            model.addAttribute("hasToken", true);
+        } else {
+            model.addAttribute("hasToken", false);
+        }
+
+        // Build the server URL
+        String scheme = request.getScheme();
+        String serverName = request.getServerName();
+        int serverPort = request.getServerPort();
+
+        StringBuilder serverUrlBuilder = new StringBuilder();
+        serverUrlBuilder.append(scheme).append("://").append(serverName);
+
+        if ((scheme.equals("http") && serverPort != 80) ||
+                (scheme.equals("https") && serverPort != 443)) {
+            serverUrlBuilder.append(":").append(serverPort);
+        }
+
+        model.addAttribute("serverUrl", serverUrlBuilder.toString());
+
+        Optional<OwnTracksRecorderIntegration> recorderIntegration = ownTracksRecorderIntegrationService.getIntegrationForUser(currentUser);
+        if (recorderIntegration.isPresent()) {
+            model.addAttribute("ownTracksRecorderIntegration", recorderIntegration.get());
+            model.addAttribute("hasRecorderIntegration", true);
+        } else {
+            model.addAttribute("hasRecorderIntegration", false);
+        }
         
         try {
             ImmichIntegration integration = immichIntegrationService.saveIntegration(
@@ -473,7 +510,10 @@ public class SettingsController {
             model.addAttribute("hasIntegration", true);
         }
         
-        return "fragments/settings :: photos-content";
+        // Keep photos section open
+        model.addAttribute("openSection", "photos");
+        
+        return "fragments/settings :: integrations-content";
     }
 
     @PostMapping("/immich-integration/test")
@@ -506,7 +546,8 @@ public class SettingsController {
                                                   @RequestParam String deviceId,
                                                   @RequestParam(defaultValue = "false") boolean enabled,
                                                   Authentication authentication,
-                                                  Model model) {
+                                                  Model model,
+                                                  HttpServletRequest request) {
         String currentUsername = authentication.getName();
         User currentUser = userJdbcService.findByUsername(currentUsername)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUsername));
@@ -520,6 +561,22 @@ public class SettingsController {
         } else {
             model.addAttribute("hasToken", false);
         }
+        
+        // Build the server URL
+        String scheme = request.getScheme();
+        String serverName = request.getServerName();
+        int serverPort = request.getServerPort();
+
+        StringBuilder serverUrl = new StringBuilder();
+        serverUrl.append(scheme).append("://").append(serverName);
+
+        if ((scheme.equals("http") && serverPort != 80) ||
+                (scheme.equals("https") && serverPort != 443)) {
+            serverUrl.append(":").append(serverPort);
+        }
+
+        model.addAttribute("serverUrl", serverUrl.toString());
+        
         try {
             OwnTracksRecorderIntegration integration = ownTracksRecorderIntegrationService.saveIntegration(
                 currentUser, baseUrl, username, deviceId, enabled);
@@ -535,6 +592,9 @@ public class SettingsController {
             model.addAttribute("ownTracksRecorderIntegration", tempIntegration);
             model.addAttribute("hasRecorderIntegration", true);
         }
+        
+        // Keep external data stores section open
+        model.addAttribute("openSection", "external-data-stores");
         
         return "fragments/settings :: integrations-content";
     }
@@ -649,6 +709,9 @@ public class SettingsController {
         } else {
             model.addAttribute("hasRecorderIntegration", false);
         }
+
+        // Keep external data stores section open
+        model.addAttribute("openSection", "external-data-stores");
 
         return "fragments/settings :: integrations-content";
     }

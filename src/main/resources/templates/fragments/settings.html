@@ -328,7 +328,7 @@
     
     <!-- Data Ingestion Collapsible Section -->
     <div>
-        <details>
+        <details th:attr="open=${openSection == 'data-ingestion' ? 'open' : null}">
             <summary>
                 <i class="lni lni-phone"></i> <span th:text="#{integrations.data.ingestion.title}">Data Ingestion</span>
             </summary>
@@ -387,7 +387,7 @@
                 </div>
             </div>
         </details>
-        <details>
+        <details th:attr="open=${openSection == 'external-data-stores' ? 'open' : null}">
             <summary>
                 <i class="lni lni-database-2"></i> <span th:text="#{integrations.data-stores.title}">External Data Stores</span>
             </summary>
@@ -538,7 +538,7 @@
                 </div>
             </div>
         </details>
-        <details>
+        <details th:attr="open=${openSection == 'photos' ? 'open' : null}">
             <summary>
                 <i class="lni lni-photos"></i> <span th:text="#{integrations.photos.title}">Photos</span>
             </summary>
@@ -567,7 +567,7 @@
         <h3 th:text="#{integrations.immich.title}">🖼️ Immich Integration</h3>
         <p th:text="#{integrations.immich.description}">Immich is a self-hosted photo and video backup solution. Connect your Immich instance to show photos taken at specific locations and dates on your timeline map.</p>
         
-        <form hx-post="/settings/immich-integration" hx-target="#photos-section" hx-swap="innerHTML" class="immich-form" style="margin-top: 20px;" autocomplete="off" >
+        <form hx-post="/settings/immich-integration" hx-target="#integrations" hx-swap="innerHTML" class="immich-form" style="margin-top: 20px;" autocomplete="off" >
             <div class="form-group">
                 <label for="serverUrl" th:text="#{integrations.immich.server.url}">Server URL</label>
                 <input type="url" 
