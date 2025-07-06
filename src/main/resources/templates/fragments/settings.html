@@ -455,6 +455,13 @@
                                     class="btn"
                                     id="test-recorder-connection-btn"
                                     th:text="#{integrations.owntracks.recorder.test.connection}">Test Connection</button>
+                            <button type="button"
+                                    class="btn"
+                                    th:if="${hasRecorderIntegration}"
+                                    th:attr="hx-post=@{/settings/owntracks-recorder-integration/load-historical}, hx-confirm=#{integrations.owntracks.recorder.load.historical.confirm}"
+                                    hx-target="#integrations"
+                                    hx-swap="innerHTML"
+                                    th:text="#{integrations.owntracks.recorder.load.historical}">Load Historical Data</button>
                         </div>
                     </form>
 

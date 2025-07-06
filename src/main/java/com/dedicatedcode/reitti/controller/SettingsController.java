@@ -605,6 +605,54 @@ public class SettingsController {
         return "fragments/settings :: integrations-content";
     }
 
+    @PostMapping("/owntracks-recorder-integration/load-historical")
+    public String loadOwnTracksRecorderHistoricalData(Authentication authentication, Model model, HttpServletRequest request) {
+        String currentUsername = authentication.getName();
+        User currentUser = userJdbcService.findByUsername(currentUsername)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUsername));
+
+        try {
+            ownTracksRecorderIntegrationService.loadHistoricalData(currentUser);
+            model.addAttribute("successMessage", getMessage("integrations.owntracks.recorder.load.historical.success"));
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", getMessage("integrations.owntracks.recorder.load.historical.error", e.getMessage()));
+        }
+
+        // Re-populate the integrations content
+        List<ApiToken> tokens = apiTokenService.getTokensForUser(currentUser);
+        if (!tokens.isEmpty()) {
+            model.addAttribute("firstToken", tokens.getFirst().getToken());
+            model.addAttribute("hasToken", true);
+        } else {
+            model.addAttribute("hasToken", false);
+        }
+
+        // Build the server URL
+        String scheme = request.getScheme();
+        String serverName = request.getServerName();
+        int serverPort = request.getServerPort();
+
+        StringBuilder serverUrl = new StringBuilder();
+        serverUrl.append(scheme).append("://").append(serverName);
+
+        if ((scheme.equals("http") && serverPort != 80) ||
+                (scheme.equals("https") && serverPort != 443)) {
+            serverUrl.append(":").append(serverPort);
+        }
+
+        model.addAttribute("serverUrl", serverUrl.toString());
+
+        Optional<OwnTracksRecorderIntegration> recorderIntegration = ownTracksRecorderIntegrationService.getIntegrationForUser(currentUser);
+        if (recorderIntegration.isPresent()) {
+            model.addAttribute("ownTracksRecorderIntegration", recorderIntegration.get());
+            model.addAttribute("hasRecorderIntegration", true);
+        } else {
+            model.addAttribute("hasRecorderIntegration", false);
+        }
+
+        return "fragments/settings :: integrations-content";
+    }
+
     @GetMapping("/user-form")
     public String getUserForm(@RequestParam(required = false) Long userId,
                               @RequestParam(required = false) String username,
