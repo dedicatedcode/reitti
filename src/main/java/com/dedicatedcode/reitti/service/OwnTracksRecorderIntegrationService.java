@@ -1,16 +1,30 @@
 package com.dedicatedcode.reitti.service;
 
+import com.dedicatedcode.reitti.config.RabbitMQConfig;
+import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
+import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.model.OwnTracksRecorderIntegration;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.OwnTracksRecorderIntegrationJdbcService;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -19,17 +33,90 @@ public class OwnTracksRecorderIntegrationService {
     private static final Logger logger = LoggerFactory.getLogger(OwnTracksRecorderIntegrationService.class);
     
     private final OwnTracksRecorderIntegrationJdbcService jdbcService;
+    private final UserJdbcService userJdbcService;
+    private final RabbitTemplate rabbitTemplate;
     private final RestTemplate restTemplate;
 
-    public OwnTracksRecorderIntegrationService(OwnTracksRecorderIntegrationJdbcService jdbcService) {
+    public OwnTracksRecorderIntegrationService(OwnTracksRecorderIntegrationJdbcService jdbcService,
+                                             UserJdbcService userJdbcService,
+                                             RabbitTemplate rabbitTemplate) {
         this.jdbcService = jdbcService;
+        this.userJdbcService = userJdbcService;
+        this.rabbitTemplate = rabbitTemplate;
         this.restTemplate = new RestTemplate();
     }
 
     @Scheduled(cron = "${reitti.imports.owntracks-recorder.schedule}")
+    @Transactional
     void importNewData() {
-        // iterate over all users, if a OwnTracksRecorderIntegration for a particular user is available. Fetch all data since lastSuccessfulFetch - 1min.
-        // Convert the data like IngestApiController.receiveOwntracksData() and send it to the queue. AI!
+        logger.debug("Starting OwnTracks Recorder data import");
+        
+        List<User> allUsers = userJdbcService.findAll();
+        int processedIntegrations = 0;
+        int totalLocationPoints = 0;
+        
+        for (User user : allUsers) {
+            Optional<OwnTracksRecorderIntegration> integrationOpt = jdbcService.findByUser(user);
+            
+            if (integrationOpt.isEmpty() || !integrationOpt.get().isEnabled()) {
+                continue;
+            }
+            
+            OwnTracksRecorderIntegration integration = integrationOpt.get();
+            processedIntegrations++;
+            
+            try {
+                // Calculate the "from" timestamp: lastSuccessfulFetch - 1 minute, or 24 hours ago if never fetched
+                Instant fromTime;
+                if (integration.getLastSuccessfulFetch() != null) {
+                    fromTime = integration.getLastSuccessfulFetch().minus(1, ChronoUnit.MINUTES);
+                } else {
+                    fromTime = Instant.now().minus(24, ChronoUnit.HOURS);
+                }
+                
+                // Fetch location data from OwnTracks Recorder
+                List<OwntracksLocationRequest> locationData = fetchLocationData(integration, fromTime);
+                
+                if (!locationData.isEmpty()) {
+                    // Convert to LocationPoints and filter valid ones
+                    List<LocationDataRequest.LocationPoint> validPoints = new ArrayList<>();
+                    
+                    for (OwntracksLocationRequest owntracksData : locationData) {
+                        if (owntracksData.isLocationUpdate()) {
+                            LocationDataRequest.LocationPoint locationPoint = owntracksData.toLocationPoint();
+                            if (locationPoint.getTimestamp() != null) {
+                                validPoints.add(locationPoint);
+                            }
+                        }
+                    }
+                    
+                    if (!validPoints.isEmpty()) {
+                        // Send to queue like IngestApiController does
+                        LocationDataEvent event = new LocationDataEvent(user.getUsername(), validPoints);
+                        
+                        rabbitTemplate.convertAndSend(
+                            RabbitMQConfig.EXCHANGE_NAME,
+                            RabbitMQConfig.LOCATION_DATA_ROUTING_KEY,
+                            event
+                        );
+                        
+                        totalLocationPoints += validPoints.size();
+                        logger.debug("Imported {} location points for user {}", validPoints.size(), user.getUsername());
+                    }
+                }
+                
+                // Update lastSuccessfulFetch timestamp
+                OwnTracksRecorderIntegration updatedIntegration = integration.withLastSuccessfulFetch(Instant.now());
+                jdbcService.update(updatedIntegration);
+                
+            } catch (Exception e) {
+                logger.error("Failed to import data for user {} from OwnTracks Recorder: {}", 
+                           user.getUsername(), e.getMessage(), e);
+            }
+        }
+        
+        logger.info("OwnTracks Recorder import completed: processed {} integrations, imported {} location points", 
+                   processedIntegrations, totalLocationPoints);
     }
 
     public Optional<OwnTracksRecorderIntegration> getIntegrationForUser(User user) {
@@ -108,5 +195,39 @@ public class OwnTracksRecorderIntegrationService {
     public void deleteIntegration(User user) {
         Optional<OwnTracksRecorderIntegration> integration = jdbcService.findByUser(user);
         integration.ifPresent(jdbcService::delete);
+    }
+
+    private List<OwntracksLocationRequest> fetchLocationData(OwnTracksRecorderIntegration integration, Instant fromTime) {
+        try {
+            // Build the API URL for fetching locations
+            // OwnTracks Recorder API: GET /api/0/locations?user={user}&device={device}&from={timestamp}
+            String apiUrl = String.format("%s/api/0/locations?user=%s&device=%s&from=%d",
+                    integration.getBaseUrl(),
+                    integration.getUsername(),
+                    integration.getDeviceId(),
+                    fromTime.getEpochSecond());
+            
+            logger.debug("Fetching location data from: {}", apiUrl);
+            
+            ResponseEntity<List<OwntracksLocationRequest>> response = restTemplate.exchange(
+                    apiUrl,
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<List<OwntracksLocationRequest>>() {}
+            );
+            
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                logger.debug("Successfully fetched {} location records from OwnTracks Recorder", 
+                           response.getBody().size());
+                return response.getBody();
+            } else {
+                logger.warn("Unexpected response from OwnTracks Recorder: {}", response.getStatusCode());
+                return Collections.emptyList();
+            }
+            
+        } catch (Exception e) {
+            logger.error("Failed to fetch location data from OwnTracks Recorder: {}", e.getMessage());
+            return Collections.emptyList();
+        }
     }
 }
