@@ -22,9 +22,12 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class OwnTracksRecorderIntegrationService {
@@ -212,39 +215,59 @@ public class OwnTracksRecorderIntegrationService {
         OwnTracksRecorderIntegration integration = integrationOpt.get();
         
         try {
-
-
-            List<OwntracksLocationRequest> locationData = fetchLocationData(integration, null);
+            // First, fetch all recs for the user
+            Set<YearMonth> availableMonths = fetchAvailableMonths(integration);
             
-            if (!locationData.isEmpty()) {
-                // Convert to LocationPoints and filter valid ones
-                List<LocationDataRequest.LocationPoint> validPoints = new ArrayList<>();
-                
-                for (OwntracksLocationRequest owntracksData : locationData) {
-                    if (owntracksData.isLocationUpdate()) {
-                        LocationDataRequest.LocationPoint locationPoint = owntracksData.toLocationPoint();
-                        if (locationPoint.getTimestamp() != null && locationPoint.getAccuracyMeters() != null) {
-                            validPoints.add(locationPoint);
+            if (availableMonths.isEmpty()) {
+                logger.info("No historical data found for user {}", user.getUsername());
+                return;
+            }
+            
+            logger.info("Found {} months of historical data for user {}", availableMonths.size(), user.getUsername());
+            
+            int totalLocationPoints = 0;
+            
+            // For each month, fetch location data
+            for (YearMonth month : availableMonths) {
+                try {
+                    List<OwntracksLocationRequest> monthlyLocationData = fetchLocationDataForMonth(integration, month);
+                    
+                    if (!monthlyLocationData.isEmpty()) {
+                        // Convert to LocationPoints and filter valid ones
+                        List<LocationDataRequest.LocationPoint> validPoints = new ArrayList<>();
+                        
+                        for (OwntracksLocationRequest owntracksData : monthlyLocationData) {
+                            if (owntracksData.isLocationUpdate()) {
+                                LocationDataRequest.LocationPoint locationPoint = owntracksData.toLocationPoint();
+                                if (locationPoint.getTimestamp() != null && locationPoint.getAccuracyMeters() != null) {
+                                    validPoints.add(locationPoint);
+                                }
+                            }
+                        }
+                        
+                        if (!validPoints.isEmpty()) {
+                            // Send to queue like IngestApiController does
+                            LocationDataEvent event = new LocationDataEvent(user.getUsername(), validPoints);
+                            
+                            rabbitTemplate.convertAndSend(
+                                RabbitMQConfig.EXCHANGE_NAME,
+                                RabbitMQConfig.LOCATION_DATA_ROUTING_KEY,
+                                event
+                            );
+                            
+                            totalLocationPoints += validPoints.size();
+                            logger.debug("Loaded {} location points for user {} from month {}", 
+                                       validPoints.size(), user.getUsername(), month);
                         }
                     }
+                } catch (Exception e) {
+                    logger.error("Failed to load data for user {} from month {}: {}", 
+                               user.getUsername(), month, e.getMessage(), e);
+                    // Continue with other months
                 }
-                
-                if (!validPoints.isEmpty()) {
-                    // Send to queue like IngestApiController does
-                    LocationDataEvent event = new LocationDataEvent(user.getUsername(), validPoints);
-                    
-                    rabbitTemplate.convertAndSend(
-                        RabbitMQConfig.EXCHANGE_NAME,
-                        RabbitMQConfig.LOCATION_DATA_ROUTING_KEY,
-                        event
-                    );
-                    logger.info("Loaded {} historical location points for user {}", validPoints.size(), user.getUsername());
-                } else {
-                    logger.info("No valid location points found in historical data for user {}", user.getUsername());
-                }
-            } else {
-                logger.info("No historical data found for user {}", user.getUsername());
             }
+            
+            logger.info("Loaded {} total historical location points for user {}", totalLocationPoints, user.getUsername());
             
         } catch (Exception e) {
             logger.error("Failed to load historical data for user {} from OwnTracks Recorder: {}", 
@@ -286,6 +309,74 @@ public class OwnTracksRecorderIntegrationService {
             logger.warn("Unexpected response from OwnTracks Recorder: {}", response.getStatusCode());
             return Collections.emptyList();
         }
+    }
+
+    private Set<YearMonth> fetchAvailableMonths(OwnTracksRecorderIntegration integration) {
+        try {
+            String recsUrl = String.format("%s/api/0/recs?user=%s&device=%s", 
+                                         integration.getBaseUrl(), 
+                                         integration.getUsername(), 
+                                         integration.getDeviceId());
+            
+            logger.debug("Fetching available recs from: {}", recsUrl);
+            
+            ResponseEntity<OwntracksRecsResponse> response = restTemplate.exchange(
+                    recsUrl,
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<>() {}
+            );
+            
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                Set<YearMonth> months = new HashSet<>();
+                Pattern datePattern = Pattern.compile("/(\\d{4})-(\\d{2})\\.rec$");
+                
+                for (String recPath : response.getBody().results) {
+                    Matcher matcher = datePattern.matcher(recPath);
+                    if (matcher.find()) {
+                        int year = Integer.parseInt(matcher.group(1));
+                        int month = Integer.parseInt(matcher.group(2));
+                        months.add(YearMonth.of(year, month));
+                    }
+                }
+                
+                logger.debug("Extracted {} unique months from {} rec files", months.size(), response.getBody().results.size());
+                return months;
+            } else {
+                logger.warn("Unexpected response when fetching recs: {}", response.getStatusCode());
+                return Collections.emptySet();
+            }
+        } catch (Exception e) {
+            logger.error("Failed to fetch available months from OwnTracks Recorder: {}", e.getMessage());
+            return Collections.emptySet();
+        }
+    }
+    
+    private List<OwntracksLocationRequest> fetchLocationDataForMonth(OwnTracksRecorderIntegration integration, YearMonth month) {
+        try {
+            LocalDateTime fromDate = month.atDay(1).atStartOfDay();
+            LocalDateTime toDate = month.atEndOfMonth().atTime(23, 59, 59);
+            
+            String fromDateString = fromDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            String toDateString = toDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            
+            String apiUrl = String.format("%s/api/0/locations?user=%s&device=%s&from=%s&to=%s&limit=10000", 
+                                        integration.getBaseUrl(), 
+                                        integration.getUsername(), 
+                                        integration.getDeviceId(), 
+                                        fromDateString, 
+                                        toDateString);
+            
+            return fetchData(apiUrl);
+        } catch (Exception e) {
+            logger.error("Failed to fetch location data for month {}: {}", month, e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private static class OwntracksRecsResponse {
+        @JsonProperty
+        private List<String> results;
     }
 
     private static class OwntracksRecorderResponse {
