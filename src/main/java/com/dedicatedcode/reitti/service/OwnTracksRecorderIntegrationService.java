@@ -104,12 +104,28 @@ public class OwnTracksRecorderIntegrationService {
                         
                         totalLocationPoints += validPoints.size();
                         logger.debug("Imported {} location points for user {}", validPoints.size(), user.getUsername());
+                        
+                        // Find the latest timestamp from the received data
+                        Instant latestTimestamp = validPoints.stream()
+                                .map(LocationDataRequest.LocationPoint::getTimestamp)
+                                .filter(timestamp -> timestamp != null)
+                                .map(Instant::parse)
+                                .max(Instant::compareTo)
+                                .orElse(Instant.now());
+                        
+                        // Update lastSuccessfulFetch with the latest timestamp from the data
+                        OwnTracksRecorderIntegration updatedIntegration = integration.withLastSuccessfulFetch(latestTimestamp);
+                        jdbcService.update(updatedIntegration);
+                    } else {
+                        // If no valid points, still update the timestamp to current time to avoid re-fetching the same empty data
+                        OwnTracksRecorderIntegration updatedIntegration = integration.withLastSuccessfulFetch(Instant.now());
+                        jdbcService.update(updatedIntegration);
                     }
+                } else {
+                    // If no location data was fetched, still update the timestamp to current time
+                    OwnTracksRecorderIntegration updatedIntegration = integration.withLastSuccessfulFetch(Instant.now());
+                    jdbcService.update(updatedIntegration);
                 }
-                
-                // Update lastSuccessfulFetch timestamp. But we do not want to store the current time, we need to store the latest timestamp of the received data AI!
-                OwnTracksRecorderIntegration updatedIntegration = integration.withLastSuccessfulFetch(Instant.now());
-                jdbcService.update(updatedIntegration);
                 
             } catch (Exception e) {
                 logger.error("Failed to import data for user {} from OwnTracks Recorder: {}", 
