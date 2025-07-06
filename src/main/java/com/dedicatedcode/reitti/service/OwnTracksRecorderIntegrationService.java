@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -23,6 +24,12 @@ public class OwnTracksRecorderIntegrationService {
     public OwnTracksRecorderIntegrationService(OwnTracksRecorderIntegrationJdbcService jdbcService) {
         this.jdbcService = jdbcService;
         this.restTemplate = new RestTemplate();
+    }
+
+    @Scheduled(cron = "${reitti.imports.owntracks-recorder.schedule}")
+    void importNewData() {
+        // iterate over all users, if a OwnTracksRecorderIntegration for a particular user is available. Fetch all data since lastSuccessfulFetch - 1min.
+        // Convert the data like IngestApiController.receiveOwntracksData() and send it to the queue. AI!
     }
 
     public Optional<OwnTracksRecorderIntegration> getIntegrationForUser(User user) {
