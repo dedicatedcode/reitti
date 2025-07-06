@@ -107,7 +107,7 @@ public class OwnTracksRecorderIntegrationService {
                     }
                 }
                 
-                // Update lastSuccessfulFetch timestamp
+                // Update lastSuccessfulFetch timestamp. But we do not want to store the current time, we need to store the latest timestamp of the received data AI!
                 OwnTracksRecorderIntegration updatedIntegration = integration.withLastSuccessfulFetch(Instant.now());
                 jdbcService.update(updatedIntegration);
                 
