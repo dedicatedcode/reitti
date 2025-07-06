@@ -457,43 +457,10 @@ public class SettingsController {
                                        @RequestParam String apiToken,
                                        @RequestParam(defaultValue = "false") boolean enabled,
                                        Authentication authentication,
-                                       Model model,
-                                       HttpServletRequest request) {
+                                       Model model) {
         String username = authentication.getName();
         User currentUser = userJdbcService.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-        
-        // Add common integration attributes
-        List<ApiToken> tokens = apiTokenService.getTokensForUser(currentUser);
-        if (!tokens.isEmpty()) {
-            model.addAttribute("firstToken", tokens.getFirst().getToken());
-            model.addAttribute("hasToken", true);
-        } else {
-            model.addAttribute("hasToken", false);
-        }
-
-        // Build the server URL
-        String scheme = request.getScheme();
-        String serverName = request.getServerName();
-        int serverPort = request.getServerPort();
-
-        StringBuilder serverUrlBuilder = new StringBuilder();
-        serverUrlBuilder.append(scheme).append("://").append(serverName);
-
-        if ((scheme.equals("http") && serverPort != 80) ||
-                (scheme.equals("https") && serverPort != 443)) {
-            serverUrlBuilder.append(":").append(serverPort);
-        }
-
-        model.addAttribute("serverUrl", serverUrlBuilder.toString());
-
-        Optional<OwnTracksRecorderIntegration> recorderIntegration = ownTracksRecorderIntegrationService.getIntegrationForUser(currentUser);
-        if (recorderIntegration.isPresent()) {
-            model.addAttribute("ownTracksRecorderIntegration", recorderIntegration.get());
-            model.addAttribute("hasRecorderIntegration", true);
-        } else {
-            model.addAttribute("hasRecorderIntegration", false);
-        }
         
         try {
             ImmichIntegration integration = immichIntegrationService.saveIntegration(
@@ -510,10 +477,7 @@ public class SettingsController {
             model.addAttribute("hasIntegration", true);
         }
         
-        // Keep photos section open
-        model.addAttribute("openSection", "photos");
-        
-        return "fragments/settings :: integrations-content";
+        return "fragments/settings :: photos-content";
     }
 
     @PostMapping("/immich-integration/test")
