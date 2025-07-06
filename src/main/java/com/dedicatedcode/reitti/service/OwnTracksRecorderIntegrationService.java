@@ -8,6 +8,7 @@ import com.dedicatedcode.reitti.model.OwnTracksRecorderIntegration;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.OwnTracksRecorderIntegrationJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -21,14 +22,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class OwnTracksRecorderIntegrationService {
@@ -71,7 +68,7 @@ public class OwnTracksRecorderIntegrationService {
             try {
                 Instant fromTime;
                 if (integration.getLastSuccessfulFetch() != null) {
-                    fromTime = integration.getLastSuccessfulFetch().minus(1, ChronoUnit.MINUTES);
+                    fromTime = integration.getLastSuccessfulFetch();
                 } else {
                     fromTime = null;
                 }
@@ -86,14 +83,13 @@ public class OwnTracksRecorderIntegrationService {
                     for (OwntracksLocationRequest owntracksData : locationData) {
                         if (owntracksData.isLocationUpdate()) {
                             LocationDataRequest.LocationPoint locationPoint = owntracksData.toLocationPoint();
-                            if (locationPoint.getTimestamp() != null) {
+                            if (locationPoint.getTimestamp() != null && locationPoint.getAccuracyMeters() != null) {
                                 validPoints.add(locationPoint);
                             }
                         }
                     }
                     
                     if (!validPoints.isEmpty()) {
-                        // Send to queue like IngestApiController does
                         LocationDataEvent event = new LocationDataEvent(user.getUsername(), validPoints);
                         
                         rabbitTemplate.convertAndSend(
@@ -107,24 +103,17 @@ public class OwnTracksRecorderIntegrationService {
                         
                         // Find the latest timestamp from the received data
                         Instant latestTimestamp = validPoints.stream()
-                                .map(LocationDataRequest.LocationPoint::getTimestamp)
-                                .filter(timestamp -> timestamp != null)
+                                .map(LocationDataRequest.LocationPoint::getTimestamp).filter(Objects::nonNull)
                                 .map(Instant::parse)
-                                .max(Instant::compareTo)
-                                .orElse(Instant.now());
-                        
-                        // Update lastSuccessfulFetch with the latest timestamp from the data
-                        OwnTracksRecorderIntegration updatedIntegration = integration.withLastSuccessfulFetch(latestTimestamp);
-                        jdbcService.update(updatedIntegration);
-                    } else {
-                        // If no valid points, still update the timestamp to current time to avoid re-fetching the same empty data
-                        OwnTracksRecorderIntegration updatedIntegration = integration.withLastSuccessfulFetch(Instant.now());
-                        jdbcService.update(updatedIntegration);
+                                .max(Instant::compareTo).orElse(null);
+
+                        if (latestTimestamp != null) {
+                            // Update lastSuccessfulFetch with the latest timestamp from the data
+                            OwnTracksRecorderIntegration updatedIntegration = integration.withLastSuccessfulFetch(latestTimestamp);
+                            jdbcService.update(updatedIntegration);
+                        }
+
                     }
-                } else {
-                    // If no location data was fetched, still update the timestamp to current time
-                    OwnTracksRecorderIntegration updatedIntegration = integration.withLastSuccessfulFetch(Instant.now());
-                    jdbcService.update(updatedIntegration);
                 }
                 
             } catch (Exception e) {
@@ -133,7 +122,7 @@ public class OwnTracksRecorderIntegrationService {
             }
         }
         
-        logger.info("OwnTracks Recorder import completed: processed {} integrations, imported {} location points", 
+        logger.debug("OwnTracks Recorder import completed: processed {} integrations, imported {} location points",
                    processedIntegrations, totalLocationPoints);
     }
 
@@ -218,24 +207,16 @@ public class OwnTracksRecorderIntegrationService {
     private List<OwntracksLocationRequest> fetchLocationData(OwnTracksRecorderIntegration integration, Instant fromTime) {
         try {
             String apiUrl;
-            if (fromTime != null) {
-                LocalDate fromDate = fromTime.atOffset(ZoneOffset.UTC).toLocalDate();
-                String fromDateString = fromDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
-                apiUrl = String.format("%s/api/0/locations?user=%s&device=%s&from=%s",
-                        integration.getBaseUrl(),
-                        integration.getUsername(),
-                        integration.getDeviceId(),
-                        fromDateString);
-            } else {
-                apiUrl = String.format("%s/api/0/locations?user=%s&device=%s",
-                        integration.getBaseUrl(),
-                        integration.getUsername(),
-                        integration.getDeviceId());
+            if (fromTime == null) {
+                fromTime = Instant.ofEpochSecond(0);
             }
-            
+            LocalDateTime fromDate = fromTime.atOffset(ZoneOffset.UTC).toLocalDateTime();
+            String fromDateString = fromDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            apiUrl = String.format("%s/api/0/locations?user=%s&device=%s&from=%s&limit=500", integration.getBaseUrl(), integration.getUsername(), integration.getDeviceId(), fromDateString);
+
             logger.debug("Fetching location data from: {}", apiUrl);
-            
-            ResponseEntity<List<OwntracksLocationRequest>> response = restTemplate.exchange(
+
+            ResponseEntity<OwntracksRecorderResponse> response = restTemplate.exchange(
                     apiUrl,
                     HttpMethod.GET,
                     null,
@@ -243,9 +224,8 @@ public class OwnTracksRecorderIntegrationService {
             );
             
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                logger.debug("Successfully fetched {} location records from OwnTracks Recorder", 
-                           response.getBody().size());
-                return response.getBody();
+                logger.debug("Successfully fetched {} location records from OwnTracks Recorder", response.getBody().data.size());
+                return response.getBody().data;
             } else {
                 logger.warn("Unexpected response from OwnTracks Recorder: {}", response.getStatusCode());
                 return Collections.emptyList();
@@ -255,5 +235,19 @@ public class OwnTracksRecorderIntegrationService {
             logger.error("Failed to fetch location data from OwnTracks Recorder: {}", e.getMessage());
             return Collections.emptyList();
         }
+    }
+
+    private static class OwntracksRecorderResponse {
+        @JsonProperty
+        private int count;
+
+        @JsonProperty
+        private List<OwntracksLocationRequest> data;
+
+        @JsonProperty
+        private int status;
+
+        @JsonProperty
+        private String version;
     }
 }
