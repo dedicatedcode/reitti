@@ -18,7 +18,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
@@ -47,7 +46,6 @@ public class OwnTracksRecorderIntegrationService {
     }
 
     @Scheduled(cron = "${reitti.imports.owntracks-recorder.schedule}")
-    @Transactional
     void importNewData() {
         logger.debug("Starting OwnTracks Recorder data import");
         
@@ -70,7 +68,7 @@ public class OwnTracksRecorderIntegrationService {
                 if (integration.getLastSuccessfulFetch() != null) {
                     fromTime = integration.getLastSuccessfulFetch();
                 } else {
-                    fromTime = null;
+                    fromTime = Instant.now();
                 }
                 
                 // Fetch location data from OwnTracks Recorder
@@ -214,7 +212,8 @@ public class OwnTracksRecorderIntegrationService {
         OwnTracksRecorderIntegration integration = integrationOpt.get();
         
         try {
-            // Fetch all historical data (no fromTime parameter)
+
+
             List<OwntracksLocationRequest> locationData = fetchLocationData(integration, null);
             
             if (!locationData.isEmpty()) {
@@ -239,19 +238,6 @@ public class OwnTracksRecorderIntegrationService {
                         RabbitMQConfig.LOCATION_DATA_ROUTING_KEY,
                         event
                     );
-                    
-                    // Find the latest timestamp from the received data
-                    Instant latestTimestamp = validPoints.stream()
-                            .map(LocationDataRequest.LocationPoint::getTimestamp)
-                            .filter(Objects::nonNull)
-                            .map(Instant::parse)
-                            .max(Instant::compareTo)
-                            .orElse(Instant.now());
-                    
-                    // Update lastSuccessfulFetch with the latest timestamp from the data
-                    OwnTracksRecorderIntegration updatedIntegration = integration.withLastSuccessfulFetch(latestTimestamp);
-                    jdbcService.update(updatedIntegration);
-                    
                     logger.info("Loaded {} historical location points for user {}", validPoints.size(), user.getUsername());
                 } else {
                     logger.info("No valid location points found in historical data for user {}", user.getUsername());
@@ -276,26 +262,28 @@ public class OwnTracksRecorderIntegrationService {
             LocalDateTime fromDate = fromTime.atOffset(ZoneOffset.UTC).toLocalDateTime();
             String fromDateString = fromDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
             apiUrl = String.format("%s/api/0/locations?user=%s&device=%s&from=%s&limit=500", integration.getBaseUrl(), integration.getUsername(), integration.getDeviceId(), fromDateString);
-
-            logger.debug("Fetching location data from: {}", apiUrl);
-
-            ResponseEntity<OwntracksRecorderResponse> response = restTemplate.exchange(
-                    apiUrl,
-                    HttpMethod.GET,
-                    null,
-                    new ParameterizedTypeReference<>() {}
-            );
-            
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                logger.debug("Successfully fetched {} location records from OwnTracks Recorder", response.getBody().data.size());
-                return response.getBody().data;
-            } else {
-                logger.warn("Unexpected response from OwnTracks Recorder: {}", response.getStatusCode());
-                return Collections.emptyList();
-            }
-            
+            return fetchData(apiUrl);
         } catch (Exception e) {
             logger.error("Failed to fetch location data from OwnTracks Recorder: {}", e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private List<OwntracksLocationRequest> fetchData(String apiUrl) {
+        logger.debug("Fetching location data from: {}", apiUrl);
+
+        ResponseEntity<OwntracksRecorderResponse> response = restTemplate.exchange(
+                apiUrl,
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<>() {}
+        );
+
+        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+            logger.debug("Successfully fetched {} location records from OwnTracks Recorder", response.getBody().data.size());
+            return response.getBody().data;
+        } else {
+            logger.warn("Unexpected response from OwnTracks Recorder: {}", response.getStatusCode());
             return Collections.emptyList();
         }
     }
