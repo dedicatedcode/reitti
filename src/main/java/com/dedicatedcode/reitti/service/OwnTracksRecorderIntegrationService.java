@@ -204,6 +204,69 @@ public class OwnTracksRecorderIntegrationService {
         integration.ifPresent(jdbcService::delete);
     }
 
+    public void loadHistoricalData(User user) {
+        Optional<OwnTracksRecorderIntegration> integrationOpt = jdbcService.findByUser(user);
+        
+        if (integrationOpt.isEmpty() || !integrationOpt.get().isEnabled()) {
+            throw new IllegalStateException("No enabled OwnTracks Recorder integration found for user");
+        }
+        
+        OwnTracksRecorderIntegration integration = integrationOpt.get();
+        
+        try {
+            // Fetch all historical data (no fromTime parameter)
+            List<OwntracksLocationRequest> locationData = fetchLocationData(integration, null);
+            
+            if (!locationData.isEmpty()) {
+                // Convert to LocationPoints and filter valid ones
+                List<LocationDataRequest.LocationPoint> validPoints = new ArrayList<>();
+                
+                for (OwntracksLocationRequest owntracksData : locationData) {
+                    if (owntracksData.isLocationUpdate()) {
+                        LocationDataRequest.LocationPoint locationPoint = owntracksData.toLocationPoint();
+                        if (locationPoint.getTimestamp() != null && locationPoint.getAccuracyMeters() != null) {
+                            validPoints.add(locationPoint);
+                        }
+                    }
+                }
+                
+                if (!validPoints.isEmpty()) {
+                    // Send to queue like IngestApiController does
+                    LocationDataEvent event = new LocationDataEvent(user.getUsername(), validPoints);
+                    
+                    rabbitTemplate.convertAndSend(
+                        RabbitMQConfig.EXCHANGE_NAME,
+                        RabbitMQConfig.LOCATION_DATA_ROUTING_KEY,
+                        event
+                    );
+                    
+                    // Find the latest timestamp from the received data
+                    Instant latestTimestamp = validPoints.stream()
+                            .map(LocationDataRequest.LocationPoint::getTimestamp)
+                            .filter(Objects::nonNull)
+                            .map(Instant::parse)
+                            .max(Instant::compareTo)
+                            .orElse(Instant.now());
+                    
+                    // Update lastSuccessfulFetch with the latest timestamp from the data
+                    OwnTracksRecorderIntegration updatedIntegration = integration.withLastSuccessfulFetch(latestTimestamp);
+                    jdbcService.update(updatedIntegration);
+                    
+                    logger.info("Loaded {} historical location points for user {}", validPoints.size(), user.getUsername());
+                } else {
+                    logger.info("No valid location points found in historical data for user {}", user.getUsername());
+                }
+            } else {
+                logger.info("No historical data found for user {}", user.getUsername());
+            }
+            
+        } catch (Exception e) {
+            logger.error("Failed to load historical data for user {} from OwnTracks Recorder: {}", 
+                       user.getUsername(), e.getMessage(), e);
+            throw new RuntimeException("Failed to load historical data: " + e.getMessage(), e);
+        }
+    }
+
     private List<OwntracksLocationRequest> fetchLocationData(OwnTracksRecorderIntegration integration, Instant fromTime) {
         try {
             String apiUrl;
