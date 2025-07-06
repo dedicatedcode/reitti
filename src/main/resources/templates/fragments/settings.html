@@ -457,6 +457,7 @@
                                     th:text="#{integrations.owntracks.recorder.test.connection}">Test Connection</button>
                             <button type="button"
                                     class="btn"
+                                    id="load-historical-btn"
                                     th:if="${hasRecorderIntegration}"
                                     th:attr="hx-post=@{/settings/owntracks-recorder-integration/load-historical}, hx-confirm=#{integrations.owntracks.recorder.load.historical.confirm}"
                                     hx-target="#integrations"
@@ -506,6 +507,33 @@
                                     resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">Connection test failed: ' + error.message + '</div>';
                                 });
                         });
+
+                        // Add loading indicator for Load Historical Data button
+                        document.addEventListener('htmx:beforeRequest', function(evt) {
+                            if (evt.detail.elt.id === 'load-historical-btn') {
+                                evt.detail.elt.innerHTML = '<span style="display: inline-flex; align-items: center; gap: 8px;"><span style="width: 16px; height: 16px; border: 2px solid #ffffff; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></span>Loading Historical Data...</span>';
+                                evt.detail.elt.disabled = true;
+                            }
+                        });
+
+                        document.addEventListener('htmx:afterRequest', function(evt) {
+                            if (evt.detail.elt.id === 'load-historical-btn') {
+                                // Button will be replaced by the response, so no need to reset
+                            }
+                        });
+
+                        // Add CSS for spinner animation
+                        if (!document.querySelector('#spinner-styles')) {
+                            const style = document.createElement('style');
+                            style.id = 'spinner-styles';
+                            style.textContent = `
+                                @keyframes spin {
+                                    0% { transform: rotate(0deg); }
+                                    100% { transform: rotate(360deg); }
+                                }
+                            `;
+                            document.head.appendChild(style);
+                        }
                     </script>
                 </div>
             </div>
