@@ -200,6 +200,7 @@ public class OwnTracksRecorderIntegrationService {
         try {
             String apiUrl;
             if (fromTime != null) {
+                // the from field is actually not a timestamp but the day in the formation of 2025-01-04 AI!
                 apiUrl = String.format("%s/api/0/locations?user=%s&device=%s&from=%d",
                         integration.getBaseUrl(),
                         integration.getUsername(),
