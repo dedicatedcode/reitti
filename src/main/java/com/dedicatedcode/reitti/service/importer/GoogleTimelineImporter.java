@@ -170,17 +170,24 @@ public class GoogleTimelineImporter {
     private record LatLng(double latitude, double longitude) {}
 
     /**
-     * Parses a LatLng string in format "53.8633043°, 10.7011529°" to extract latitude and longitude
+     * Parses a LatLng string in format "53.8633043°, 10.7011529°" or "geo:55.605843,13.007508" to extract latitude and longitude
      */
     private String[] parseLatLngString(String latLngStr) {
-        //there is now also this latLngString geo:55.605843,13.007508 we need to support AI!
         if (latLngStr == null || latLngStr.trim().isEmpty()) {
             return null;
         }
         
         try {
-            // Remove degree symbols and split by comma
-            String cleaned = latLngStr.replace("°", "").trim();
+            String cleaned = latLngStr.trim();
+            
+            // Handle geo: format
+            if (cleaned.startsWith("geo:")) {
+                cleaned = cleaned.substring(4); // Remove "geo:" prefix
+            } else {
+                // Handle degree format - remove degree symbols
+                cleaned = cleaned.replace("°", "");
+            }
+            
             String[] parts = cleaned.split(",");
             
             if (parts.length != 2) {
