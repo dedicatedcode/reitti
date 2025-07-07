@@ -234,7 +234,35 @@ public class GoogleTimelineRandomizer {
     }
 
     private static void adjustGeoPoint(double longitudeAdjustment, JsonNode point, ObjectNode jsonNode, String name) {
-        //here the format is "geo:55.605487,13.007670". We need to do the same as the adjustPoint method but in this format. AI!
+        String pointText = point.asText();
+        
+        // Parse the point text in format "geo:55.605487,13.007670"
+        if (pointText.startsWith("geo:")) {
+            String coordinates = pointText.substring(4); // Remove "geo:" prefix
+            String[] parts = coordinates.split(",");
+            
+            if (parts.length == 2) {
+                try {
+                    double latitude = Double.parseDouble(parts[0].trim());
+                    double longitude = Double.parseDouble(parts[1].trim());
+                    
+                    // Apply longitude adjustment
+                    double adjustedLongitude = longitude + longitudeAdjustment;
+                    
+                    // Format back to the original geo: format
+                    String adjustedPoint = String.format("geo:%.7f,%.7f", latitude, adjustedLongitude);
+                    
+                    // Add the adjusted value to the JSON node
+                    jsonNode.put(name, adjustedPoint);
+                } catch (NumberFormatException e) {
+                    System.err.println("Failed to parse geo coordinates: " + pointText);
+                }
+            } else {
+                System.err.println("Invalid geo format: " + pointText);
+            }
+        } else {
+            System.err.println("Point text does not start with 'geo:': " + pointText);
+        }
     }
     private static void adjustPoint(double longitudeAdjustment, JsonNode point, ObjectNode jsonNode, String name) {
         String pointText = point.asText();
