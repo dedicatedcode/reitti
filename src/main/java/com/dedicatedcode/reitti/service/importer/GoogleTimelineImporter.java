@@ -173,6 +173,7 @@ public class GoogleTimelineImporter {
      * Parses a LatLng string in format "53.8633043°, 10.7011529°" to extract latitude and longitude
      */
     private String[] parseLatLngString(String latLngStr) {
+        //there is now also this latLngString geo:55.605843,13.007508 we need to support AI!
         if (latLngStr == null || latLngStr.trim().isEmpty()) {
             return null;
         }
