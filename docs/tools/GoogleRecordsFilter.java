@@ -16,7 +16,8 @@ public class GoogleRecordsFilter {
             System.err.println("Usage: GoogleRecordsFilter <file-path> <date> <output-dir>");
             System.exit(1);
         }
-        
+
+        //make the arguments into named arguments AI!
         String filePath = args[0];
         String date = args[1];
         String outputDir = args[2];
