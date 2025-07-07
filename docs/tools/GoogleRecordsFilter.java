@@ -12,15 +12,37 @@ import java.nio.file.Paths;
 public class GoogleRecordsFilter {
 
     public static void main(String[] args) {
-        if (args.length != 3) {
-            System.err.println("Usage: GoogleRecordsFilter <file-path> <date> <output-dir>");
+        if (args.length == 0) {
+            System.err.println("Usage: GoogleRecordsFilter --file=<path> --date=<date> --output-dir=<dir>");
             System.exit(1);
         }
 
-        //make the arguments into named arguments AI!
-        String filePath = args[0];
-        String date = args[1];
-        String outputDir = args[2];
+        String filePath = null;
+        String date = null;
+        String outputDir = null;
+
+        // Parse named arguments
+        for (String arg : args) {
+            if (arg.startsWith("--file=")) {
+                filePath = arg.substring("--file=".length());
+            } else if (arg.startsWith("--date=")) {
+                date = arg.substring("--date=".length());
+            } else if (arg.startsWith("--output-dir=")) {
+                outputDir = arg.substring("--output-dir=".length());
+            } else {
+                System.err.println("Unknown argument: " + arg);
+                System.err.println("Usage: GoogleRecordsFilter --file=<path> --date=<date> --output-dir=<dir>");
+                System.exit(1);
+            }
+        }
+
+        // Validate required arguments
+        if (filePath == null || date == null || outputDir == null) {
+            System.err.println("Missing required arguments: --file, --date, and --output-dir are all required");
+            System.err.println("Usage: GoogleRecordsFilter --file=<path> --date=<date> --output-dir=<dir>");
+            System.exit(1);
+        }
+
         try {
             load(filePath, outputDir, date);
         } catch (IOException e) {
