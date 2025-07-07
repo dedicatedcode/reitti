@@ -21,22 +21,24 @@ public class GoogleTimelineRandomizer {
 
     public static void main(String[] args) {
         if (args.length == 0) {
-            System.err.println("Usage: GoogleTimelineRandomizer --file=<path> --output-dir=<dir> [--max-semantic-segments=<num>] [--max-raw-signals=<num>]");
+            System.err.println("Usage: GoogleTimelineRandomizer --file=<path> --output-dir=<dir> --mode=<android|ios> [--max-semantic-segments=<num>] [--max-raw-signals=<num>]");
             System.exit(1);
         }
 
         String filePath = null;
         String outputDir = null;
+        String mode = null;
         Integer maxSemanticSegments = null;
         Integer maxRawSignals = null;
 
-        //add a new mandatory arg naem mode with the available values android or ios AI!
         // Parse named arguments
         for (String arg : args) {
             if (arg.startsWith("--file=")) {
                 filePath = arg.substring("--file=".length());
             } else if (arg.startsWith("--output-dir=")) {
                 outputDir = arg.substring("--output-dir=".length());
+            } else if (arg.startsWith("--mode=")) {
+                mode = arg.substring("--mode=".length());
             } else if (arg.startsWith("--max-semantic-segments=")) {
                 try {
                     maxSemanticSegments = Integer.parseInt(arg.substring("--max-semantic-segments=".length()));
@@ -53,15 +55,21 @@ public class GoogleTimelineRandomizer {
                 }
             } else {
                 System.err.println("Unknown argument: " + arg);
-                System.err.println("Usage: GoogleTimelineRandomizer --file-path=<path> --output-dir=<dir> [--max-semantic-segments=<num>] [--max-raw-signals=<num>]");
+                System.err.println("Usage: GoogleTimelineRandomizer --file=<path> --output-dir=<dir> --mode=<android|ios> [--max-semantic-segments=<num>] [--max-raw-signals=<num>]");
                 System.exit(1);
             }
         }
 
         // Validate required arguments
-        if (filePath == null || outputDir == null) {
-            System.err.println("Missing required arguments: --file-path and --output-dir are required");
-            System.err.println("Usage: GoogleTimelineRandomizer --file-path=<path> --output-dir=<dir> [--max-semantic-segments=<num>] [--max-raw-signals=<num>]");
+        if (filePath == null || outputDir == null || mode == null) {
+            System.err.println("Missing required arguments: --file, --output-dir and --mode are required");
+            System.err.println("Usage: GoogleTimelineRandomizer --file=<path> --output-dir=<dir> --mode=<android|ios> [--max-semantic-segments=<num>] [--max-raw-signals=<num>]");
+            System.exit(1);
+        }
+
+        // Validate mode argument
+        if (!mode.equals("android") && !mode.equals("ios")) {
+            System.err.println("Invalid mode value: " + mode + ". Must be 'android' or 'ios'");
             System.exit(1);
         }
 
@@ -71,14 +79,14 @@ public class GoogleTimelineRandomizer {
         double longitudeAdjustment = random.nextDouble(-20, 20);
         
         try {
-            load(filePath, outputDir, timeAdjustments, longitudeAdjustment, maxSemanticSegments, maxRawSignals);
+            load(filePath, outputDir, mode, timeAdjustments, longitudeAdjustment, maxSemanticSegments, maxRawSignals);
         } catch (IOException e) {
             System.err.println("Error loading file: " + e.getMessage());
             System.exit(1);
         }
     }
 
-    private static void load(String filePath, String outputDir, int timeAdjustmentInMinutes, double longitudeAdjustment, Integer maxSemanticSegments, Integer maxRawSignals) throws IOException {
+    private static void load(String filePath, String outputDir, String mode, int timeAdjustmentInMinutes, double longitudeAdjustment, Integer maxSemanticSegments, Integer maxRawSignals) throws IOException {
         Path path = Paths.get(filePath);
 
         if (!Files.exists(path)) {
