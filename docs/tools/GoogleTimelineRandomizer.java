@@ -23,6 +23,7 @@ public class GoogleTimelineRandomizer {
             System.err.println("Usage: GoogleTimelineRandomizer <file-path> <output-dir>");
             System.exit(1);
         }
+        //add optional args max-semantic-segments and max-raw-signals AI!
 
 
         int timeAdjustments = random.nextInt(3600 * 7);
