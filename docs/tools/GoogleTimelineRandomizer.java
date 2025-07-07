@@ -61,14 +61,14 @@ public class GoogleTimelineRandomizer {
                 adjustTime(timeAdjustmentInMinutes, current.get("startTime"), current, "startTime");
             }
             if (current.has("endTime")) {
-                adjustTime(timeAdjustmentInMinutes, current.get("endTime"), current, "startTime");
+                adjustTime(timeAdjustmentInMinutes, current.get("endTime"), current, "endTime");
             }
             if (current.has("timelinePath")) {
                 ArrayNode timelinePath = (ArrayNode) current.get("timelinePath");
                 for (JsonNode jsonNode : timelinePath) {
                     if (jsonNode.isObject()) {
                         if (jsonNode.has("time")) {
-                            adjustTime(timeAdjustmentInMinutes, jsonNode.get("time"), (ObjectNode) jsonNode, "startTime");
+                            adjustTime(timeAdjustmentInMinutes, jsonNode.get("time"), (ObjectNode) jsonNode, "time");
                         }
                         if (jsonNode.has("point")) {
                             adjustPoint(longitudeAdjustment, jsonNode.get("point"), (ObjectNode) jsonNode);
@@ -102,14 +102,39 @@ public class GoogleTimelineRandomizer {
         // Ensure output directory exists
         Files.createDirectories(Paths.get(outputDir));
 
-        // Write filtered JSON to output file
-        mapper.writerWithDefaultPrettyPrinter().writeValue(outputPath.toFile(), null);
+        // Write randomized JSON to output file
+        mapper.writerWithDefaultPrettyPrinter().writeValue(outputPath.toFile(), root);
 
         System.out.println("Filtered data written to: " + outputPath);
     }
 
-    private static void adjustPoint(double longitudeAdjustment, JsonNode point, ObjectNode jsonNode, String name) {
-        //pasres the point text which is in this format point -> {TextNode@1939}"-27.4127738°, 153.0617186°", add the longitude adustment and add the adjusted value under name to the jsonNode AI!
+    private static void adjustPoint(double longitudeAdjustment, JsonNode point, ObjectNode jsonNode) {
+        String pointText = point.asText();
+        
+        // Parse the point text in format "-27.4127738°, 153.0617186°"
+        // Remove degree symbols and split by comma
+        String cleaned = pointText.replace("°", "").trim();
+        String[] parts = cleaned.split(",");
+        
+        if (parts.length == 2) {
+            try {
+                double latitude = Double.parseDouble(parts[0].trim());
+                double longitude = Double.parseDouble(parts[1].trim());
+                
+                // Apply longitude adjustment
+                double adjustedLongitude = longitude + longitudeAdjustment;
+                
+                // Format back to the original format with degree symbols
+                String adjustedPoint = String.format("%.7f°, %.7f°", latitude, adjustedLongitude);
+                
+                // Add the adjusted value to the JSON node
+                jsonNode.put("point", adjustedPoint);
+            } catch (NumberFormatException e) {
+                System.err.println("Failed to parse point coordinates: " + pointText);
+            }
+        } else {
+            System.err.println("Invalid point format: " + pointText);
+        }
     }
 
     private static void adjustTime(int timeAdjustmentInMinutes, JsonNode jsonNode, ObjectNode current, String name) {
