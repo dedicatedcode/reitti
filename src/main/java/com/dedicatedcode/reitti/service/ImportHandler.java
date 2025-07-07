@@ -1,9 +1,7 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.model.User;
-import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
-import com.dedicatedcode.reitti.service.importer.GoogleTakeoutImporter;
-import com.dedicatedcode.reitti.service.importer.GpxImporter;
+import com.dedicatedcode.reitti.service.importer.*;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
