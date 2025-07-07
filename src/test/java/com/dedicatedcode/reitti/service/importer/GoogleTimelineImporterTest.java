@@ -5,8 +5,10 @@ import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.model.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -27,7 +29,18 @@ class GoogleTimelineImporterTest {
         assertTrue(result.containsKey("success"));
         assertTrue((Boolean) result.get("success"));
 
-        //create a spy to retrieve all LocationDataEvents pushed into RabbitMQ AI!
-        verify(mock, times(3)).convertAndSend(eq(RabbitMQConfig.EXCHANGE_NAME), eq(RabbitMQConfig.LOCATION_DATA_ROUTING_KEY), any(LocationDataEvent.class));
+        // Create a spy to retrieve all LocationDataEvents pushed into RabbitMQ
+        ArgumentCaptor<LocationDataEvent> eventCaptor = ArgumentCaptor.forClass(LocationDataEvent.class);
+        verify(mock, times(3)).convertAndSend(eq(RabbitMQConfig.EXCHANGE_NAME), eq(RabbitMQConfig.LOCATION_DATA_ROUTING_KEY), eventCaptor.capture());
+        
+        List<LocationDataEvent> capturedEvents = eventCaptor.getAllValues();
+        assertEquals(3, capturedEvents.size());
+        
+        // Verify that all events are for the correct user
+        for (LocationDataEvent event : capturedEvents) {
+            assertEquals("test", event.getUsername());
+            assertNotNull(event.getPoints());
+            assertFalse(event.getPoints().isEmpty());
+        }
     }
 }
