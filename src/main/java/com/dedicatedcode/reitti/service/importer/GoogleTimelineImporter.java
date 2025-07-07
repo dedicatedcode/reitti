@@ -23,12 +23,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class GoogleTimelineImporter {
     
     private static final Logger logger = LoggerFactory.getLogger(GoogleTimelineImporter.class);
+    private static final Random random = new Random();
     
     private final ObjectMapper objectMapper;
     private final ImportBatchProcessor batchProcessor;
@@ -75,8 +77,9 @@ public class GoogleTimelineImporter {
                         long increment = durationBetween /  minStayPointDetectionPoints;
                         ZonedDateTime currentTime = startTime.plusSeconds(increment);
                         while (currentTime.isBefore(endTime)) {
-                            //when inserting the latLng, move it randomly around the last latLng but not more than distanceThresholdMeters away. AI!
-                            createAndScheduleLocationPoint(latLng.get(), currentTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), user, batch);
+                            // Move randomly around the visit location within the distance threshold
+                            LatLng randomizedLocation = addRandomOffset(latLng.get(), distanceThresholdMeters);
+                            createAndScheduleLocationPoint(randomizedLocation, currentTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), user, batch);
                             processedCount.incrementAndGet();
                             currentTime = currentTime.plusSeconds(increment);
                         }
@@ -144,6 +147,30 @@ public class GoogleTimelineImporter {
             return Optional.empty();
         }
     }
+    /**
+     * Adds a random offset to a location within the specified distance threshold
+     */
+    private LatLng addRandomOffset(LatLng original, int maxDistanceMeters) {
+        // Convert distance to approximate degrees (rough approximation)
+        // 1 degree latitude ≈ 111,000 meters
+        // 1 degree longitude ≈ 111,000 * cos(latitude) meters
+        double latOffsetDegrees = (maxDistanceMeters / 111000.0) * (random.nextDouble() * 2 - 1);
+        double lonOffsetDegrees = (maxDistanceMeters / (111000.0 * Math.cos(Math.toRadians(original.latitude)))) * (random.nextDouble() * 2 - 1);
+        
+        // Ensure we don't exceed the maximum distance by scaling if necessary
+        double actualDistance = Math.sqrt(latOffsetDegrees * latOffsetDegrees + lonOffsetDegrees * lonOffsetDegrees) * 111000.0;
+        if (actualDistance > maxDistanceMeters) {
+            double scale = maxDistanceMeters / actualDistance;
+            latOffsetDegrees *= scale;
+            lonOffsetDegrees *= scale;
+        }
+        
+        return new LatLng(
+            original.latitude + latOffsetDegrees,
+            original.longitude + lonOffsetDegrees
+        );
+    }
+
     private record LatLng(double latitude, double longitude) {}
 
     /**
