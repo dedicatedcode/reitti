@@ -98,11 +98,19 @@ public class GoogleTimelineRandomizer {
         }
 
         ObjectMapper mapper = new ObjectMapper();
-        ObjectNode root = (ObjectNode) mapper.readTree(new FileReader(filePath));
+        JsonNode root = mapper.readTree(new FileReader(filePath));
 
-        ArrayNode semanticSegments = (ArrayNode) root.path("semanticSegments");
-        ArrayNode rawSignals = (ArrayNode) root.path("rawSignals");
-        root.set("userLocationProfile", new ObjectNode(JsonNodeFactory.instance));
+
+        ArrayNode semanticSegments;
+        ArrayNode rawSignals;
+        if (mode.equals("android")) {
+            semanticSegments = (ArrayNode) root.path("semanticSegments");
+            rawSignals = (ArrayNode) root.path("rawSignals");
+            ((ObjectNode)root).set("userLocationProfile", new ObjectNode(JsonNodeFactory.instance));
+        } else {
+            semanticSegments = (ArrayNode) root;
+            rawSignals = null;
+        }
         // Limit semantic segments if specified
         if (maxSemanticSegments != null && semanticSegments.size() > maxSemanticSegments) {
             // Create new array with limited segments
@@ -110,18 +118,22 @@ public class GoogleTimelineRandomizer {
             for (int i = 0; i < maxSemanticSegments; i++) {
                 limitedSemanticSegments.add(semanticSegments.get(i));
             }
-            ((ObjectNode) root).set("semanticSegments", limitedSemanticSegments);
+            if (mode.equals("android")) {
+                ((ObjectNode)root).set("semanticSegments", limitedSemanticSegments);
+            } else {
+                root = limitedSemanticSegments;
+            }
             semanticSegments = limitedSemanticSegments;
         }
 
         // Limit raw signals if specified
-        if (maxRawSignals != null && rawSignals.size() > maxRawSignals) {
+        if (maxRawSignals != null && rawSignals != null && rawSignals.size() > maxRawSignals) {
             // Create new array with limited signals
             ArrayNode limitedRawSignals = rawSignals.arrayNode();
             for (int i = 0; i < maxRawSignals; i++) {
                 limitedRawSignals.add(rawSignals.get(i));
             }
-            root.set("rawSignals", limitedRawSignals);
+            ((ObjectNode)root).set("rawSignals", limitedRawSignals);
             rawSignals = limitedRawSignals;
         }
 
@@ -176,20 +188,22 @@ public class GoogleTimelineRandomizer {
             }
         }
 
-        for (JsonNode rawSignal : rawSignals) {
-            ObjectNode current = (ObjectNode) rawSignal;
-            if (current.has("position")) {
-                ObjectNode position = (ObjectNode) current.get("position");
-                if (position.has("LatLng")) {
-                    adjustPoint(longitudeAdjustment, position.get("LatLng"), position, "LatLng");
+        if (rawSignals != null) {
+            for (JsonNode rawSignal : rawSignals) {
+                ObjectNode current = (ObjectNode) rawSignal;
+                if (current.has("position")) {
+                    ObjectNode position = (ObjectNode) current.get("position");
+                    if (position.has("LatLng")) {
+                        adjustPoint(longitudeAdjustment, position.get("LatLng"), position, "LatLng");
+                    }
+                    if (position.has("timestamp")) {
+                        adjustTime(timeAdjustmentInMinutes, position.get("timestamp"), position, "timestamp");
+                    }
                 }
-                if (position.has("timestamp")) {
-                    adjustTime(timeAdjustmentInMinutes, position.get("timestamp"), position, "timestamp");
-                }
-            }
 
-            if (current.has("wifiScan")) {
-                current.set("wifiScan", new ObjectNode(JsonNodeFactory.instance));
+                if (current.has("wifiScan")) {
+                    current.set("wifiScan", new ObjectNode(JsonNodeFactory.instance));
+                }
             }
         }
         // Create output filename by appending date before extension
@@ -219,6 +233,9 @@ public class GoogleTimelineRandomizer {
         System.out.println("Filtered data written to: " + outputPath);
     }
 
+    private static void adjustGeoPoint(double longitudeAdjustment, JsonNode point, ObjectNode jsonNode, String name) {
+        //here the format is "geo:55.605487,13.007670". We need to do the same as the adjustPoint method but in this format. AI!
+    }
     private static void adjustPoint(double longitudeAdjustment, JsonNode point, ObjectNode jsonNode, String name) {
         String pointText = point.asText();
         
