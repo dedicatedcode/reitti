@@ -752,7 +752,7 @@ public class SettingsController {
             model.addAttribute("uploadErrorMessage", "No files were processed successfully. " + errorMessages);
         }
 
-        return "fragments/settings :: file-upload-content";
+        return "fragments/file-upload :: file-upload-content";
     }
 
     @PostMapping("/import/google-records")
@@ -893,7 +893,7 @@ public class SettingsController {
             model.addAttribute("uploadErrorMessage", "No files were processed successfully. " + errorMessages);
         }
 
-        return "fragments/settings :: file-upload-content";
+        return "fragments/file-upload :: file-upload-content";
     }
 
     @GetMapping("/manage-data-content")
