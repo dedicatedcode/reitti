@@ -20,7 +20,7 @@ public class GoogleTimelineRandomizer {
 
     public static void main(String[] args) {
         if (args.length == 0) {
-            System.err.println("Usage: GoogleTimelineRandomizer --file-path=<path> --output-dir=<dir> [--max-semantic-segments=<num>] [--max-raw-signals=<num>]");
+            System.err.println("Usage: GoogleTimelineRandomizer --file=<path> --output-dir=<dir> [--max-semantic-segments=<num>] [--max-raw-signals=<num>]");
             System.exit(1);
         }
 
@@ -31,8 +31,8 @@ public class GoogleTimelineRandomizer {
 
         // Parse named arguments
         for (String arg : args) {
-            if (arg.startsWith("--file-path=")) {
-                filePath = arg.substring("--file-path=".length());
+            if (arg.startsWith("--file=")) {
+                filePath = arg.substring("--file=".length());
             } else if (arg.startsWith("--output-dir=")) {
                 outputDir = arg.substring("--output-dir=".length());
             } else if (arg.startsWith("--max-semantic-segments=")) {
@@ -240,21 +240,4 @@ public class GoogleTimelineRandomizer {
         long newTime = currentTime.toEpochSecond() +  (timeAdjustmentInMinutes * 60L);
         current.put(name, ZonedDateTime.ofInstant(Instant.ofEpochSecond(newTime), currentTime.getZone()).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
     }
-
-    private static JsonNode filter(JsonNode root, String date) {
-        System.out.println("Filtering locations for date " + date);
-        ObjectMapper objectMapper = new ObjectMapper();
-        ObjectNode rootNode = objectMapper.createObjectNode();
-        ArrayNode locations = objectMapper.createArrayNode();
-        rootNode.set("locations", locations);
-
-        JsonNode existingLocations = root.get("locations");
-        for (JsonNode existingLocation : existingLocations) {
-            if (existingLocation.path("timestamp").asText().startsWith(date)) {
-                locations.add(existingLocation);
-            }
-        }
-        return rootNode;
-    }
-
 }
