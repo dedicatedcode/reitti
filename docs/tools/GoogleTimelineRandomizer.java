@@ -19,12 +19,10 @@ public class GoogleTimelineRandomizer {
     private static final Random random = new Random();
 
     public static void main(String[] args) {
-        if (args.length != 2) {
-            System.err.println("Usage: GoogleTimelineRandomizer <file-path> <output-dir>");
+        if (args.length < 2 || args.length > 4) {
+            System.err.println("Usage: GoogleTimelineRandomizer <file-path> <output-dir> [max-semantic-segments] [max-raw-signals]");
             System.exit(1);
         }
-        //add optional args max-semantic-segments and max-raw-signals AI!
-
 
         int timeAdjustments = random.nextInt(3600 * 7);
         if (random.nextBoolean()) timeAdjustments *= -1;
@@ -33,15 +31,37 @@ public class GoogleTimelineRandomizer {
 
         String filePath = args[0];
         String outputDir = args[1];
+        
+        Integer maxSemanticSegments = null;
+        Integer maxRawSignals = null;
+        
+        if (args.length >= 3) {
+            try {
+                maxSemanticSegments = Integer.parseInt(args[2]);
+            } catch (NumberFormatException e) {
+                System.err.println("Invalid max-semantic-segments value: " + args[2]);
+                System.exit(1);
+            }
+        }
+        
+        if (args.length >= 4) {
+            try {
+                maxRawSignals = Integer.parseInt(args[3]);
+            } catch (NumberFormatException e) {
+                System.err.println("Invalid max-raw-signals value: " + args[3]);
+                System.exit(1);
+            }
+        }
+        
         try {
-            load(filePath, outputDir, timeAdjustments, longitudeAdjustment);
+            load(filePath, outputDir, timeAdjustments, longitudeAdjustment, maxSemanticSegments, maxRawSignals);
         } catch (IOException e) {
             System.err.println("Error loading file: " + e.getMessage());
             System.exit(1);
         }
     }
 
-    private static void load(String filePath, String outputDir, int timeAdjustmentInMinutes, double longitudeAdjustment) throws IOException {
+    private static void load(String filePath, String outputDir, int timeAdjustmentInMinutes, double longitudeAdjustment, Integer maxSemanticSegments, Integer maxRawSignals) throws IOException {
         Path path = Paths.get(filePath);
 
         if (!Files.exists(path)) {
@@ -57,6 +77,28 @@ public class GoogleTimelineRandomizer {
 
         ArrayNode semanticSegments = (ArrayNode) root.path("semanticSegments");
         ArrayNode rawSignals = (ArrayNode) root.path("rawSignals");
+
+        // Limit semantic segments if specified
+        if (maxSemanticSegments != null && semanticSegments.size() > maxSemanticSegments) {
+            // Create new array with limited segments
+            ArrayNode limitedSemanticSegments = semanticSegments.arrayNode();
+            for (int i = 0; i < maxSemanticSegments; i++) {
+                limitedSemanticSegments.add(semanticSegments.get(i));
+            }
+            ((ObjectNode) root).set("semanticSegments", limitedSemanticSegments);
+            semanticSegments = limitedSemanticSegments;
+        }
+
+        // Limit raw signals if specified
+        if (maxRawSignals != null && rawSignals.size() > maxRawSignals) {
+            // Create new array with limited signals
+            ArrayNode limitedRawSignals = rawSignals.arrayNode();
+            for (int i = 0; i < maxRawSignals; i++) {
+                limitedRawSignals.add(rawSignals.get(i));
+            }
+            ((ObjectNode) root).set("rawSignals", limitedRawSignals);
+            rawSignals = limitedRawSignals;
+        }
 
         for (JsonNode segment : semanticSegments) {
             ObjectNode current = (ObjectNode) segment;
