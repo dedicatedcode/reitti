@@ -22,10 +22,12 @@ class GoogleTimelineImporterTest {
         RabbitTemplate mock = mock(RabbitTemplate.class);
         GoogleTimelineImporter importHandler = new GoogleTimelineImporter(new ObjectMapper(), new ImportBatchProcessor(mock, 100));
         User user = new User("test", "Test User");
-        Map<String, Object> result = importHandler.importGoogleTimeline(getClass().getResourceAsStream("/data/google/Zeitachse.json"), user);
+        Map<String, Object> result = importHandler.importGoogleTimeline(getClass().getResourceAsStream("/data/google/tl_randomized.json"), user);
 
         assertTrue(result.containsKey("success"));
         assertTrue((Boolean) result.get("success"));
+
+        //create a spy to retrieve all LocationDataEvents pushed into RabbitMQ AI!
         verify(mock, times(3)).convertAndSend(eq(RabbitMQConfig.EXCHANGE_NAME), eq(RabbitMQConfig.LOCATION_DATA_ROUTING_KEY), any(LocationDataEvent.class));
     }
 }
