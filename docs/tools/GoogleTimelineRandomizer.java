@@ -19,8 +19,47 @@ public class GoogleTimelineRandomizer {
     private static final Random random = new Random();
 
     public static void main(String[] args) {
-        if (args.length < 2 || args.length > 4) {
-            System.err.println("Usage: GoogleTimelineRandomizer <file-path> <output-dir> [max-semantic-segments] [max-raw-signals]");
+        if (args.length == 0) {
+            System.err.println("Usage: GoogleTimelineRandomizer --file-path=<path> --output-dir=<dir> [--max-semantic-segments=<num>] [--max-raw-signals=<num>]");
+            System.exit(1);
+        }
+
+        String filePath = null;
+        String outputDir = null;
+        Integer maxSemanticSegments = null;
+        Integer maxRawSignals = null;
+
+        // Parse named arguments
+        for (String arg : args) {
+            if (arg.startsWith("--file-path=")) {
+                filePath = arg.substring("--file-path=".length());
+            } else if (arg.startsWith("--output-dir=")) {
+                outputDir = arg.substring("--output-dir=".length());
+            } else if (arg.startsWith("--max-semantic-segments=")) {
+                try {
+                    maxSemanticSegments = Integer.parseInt(arg.substring("--max-semantic-segments=".length()));
+                } catch (NumberFormatException e) {
+                    System.err.println("Invalid max-semantic-segments value: " + arg);
+                    System.exit(1);
+                }
+            } else if (arg.startsWith("--max-raw-signals=")) {
+                try {
+                    maxRawSignals = Integer.parseInt(arg.substring("--max-raw-signals=".length()));
+                } catch (NumberFormatException e) {
+                    System.err.println("Invalid max-raw-signals value: " + arg);
+                    System.exit(1);
+                }
+            } else {
+                System.err.println("Unknown argument: " + arg);
+                System.err.println("Usage: GoogleTimelineRandomizer --file-path=<path> --output-dir=<dir> [--max-semantic-segments=<num>] [--max-raw-signals=<num>]");
+                System.exit(1);
+            }
+        }
+
+        // Validate required arguments
+        if (filePath == null || outputDir == null) {
+            System.err.println("Missing required arguments: --file-path and --output-dir are required");
+            System.err.println("Usage: GoogleTimelineRandomizer --file-path=<path> --output-dir=<dir> [--max-semantic-segments=<num>] [--max-raw-signals=<num>]");
             System.exit(1);
         }
 
@@ -28,30 +67,6 @@ public class GoogleTimelineRandomizer {
         if (random.nextBoolean()) timeAdjustments *= -1;
 
         double longitudeAdjustment = random.nextDouble(-10, 10);
-
-        String filePath = args[0];
-        String outputDir = args[1];
-        
-        Integer maxSemanticSegments = null;
-        Integer maxRawSignals = null;
-        
-        if (args.length >= 3) {
-            try {
-                maxSemanticSegments = Integer.parseInt(args[2]);
-            } catch (NumberFormatException e) {
-                System.err.println("Invalid max-semantic-segments value: " + args[2]);
-                System.exit(1);
-            }
-        }
-        
-        if (args.length >= 4) {
-            try {
-                maxRawSignals = Integer.parseInt(args[3]);
-            } catch (NumberFormatException e) {
-                System.err.println("Invalid max-raw-signals value: " + args[3]);
-                System.exit(1);
-            }
-        }
         
         try {
             load(filePath, outputDir, timeAdjustments, longitudeAdjustment, maxSemanticSegments, maxRawSignals);
