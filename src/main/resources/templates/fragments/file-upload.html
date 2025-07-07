@@ -64,56 +64,51 @@
         </div>
 
         <div class="upload-option">
-            <h3 th:text="#{upload.google.title}">Google Takeout</h3>
-            <p class="description" th:text="#{upload.google.description}">
-                Upload location history from Google. We support two formats:
-            </p>
-            <div>
-                <h3 th:text="#{upload.google.new.format.title}">New Format (timeline.json)</h3>
-                <p><strong>Android:</strong> <span th:text="#{upload.google.new.format.instructions}">From your Android phone: Settings → Location → Location Services → Timeline → Export Timeline</span></p>
-                <p><strong>iOS:</strong> <span th:text="#{upload.google.new.format.ios.instructions}">From iOS Google Maps: Open Google Maps → Click on your Profile → Settings → Personal content → Export Timeline Data</span></p>
-                <p th:text="#{upload.google.new.format.description}">This exports a timeline.json file with your recent location data.</p>
+            <h3 th:text="#{upload.google.new.format.title}">📱 New Format (timeline.json)</h3>
+            <p><strong>Android:</strong> <span th:text="#{upload.google.new.format.instructions}">From your Android phone: Settings → Location → Location Services → Timeline → Export Timeline</span></p>
+            <p><strong>iOS:</strong> <span th:text="#{upload.google.new.format.ios.instructions}">From iOS Google Maps: Open Google Maps → Click on your Profile → Settings → Personal content → Export Timeline Data</span></p>
+            <p class="description" th:text="#{upload.google.new.format.description}">This exports a timeline.json file with your recent location data.</p>
 
-                <form id="timeline-upload-form"
-                      hx-post="/settings/import/google-timeline"
-                      hx-target="#file-upload"
-                      hx-swap="innerHTML"
-                      hx-encoding="multipart/form-data">
-                    <div class="form-group">
-                        <input type="file" name="file" accept=".json" required>
-                    </div>
-                    <button type="submit" class="btn" th:text="#{upload.button.google.timeline}">Upload Timeline Data</button>
-                </form>
-                <progress id='progress-timeline' value='0' max='100'  style="display: none"></progress>
-                <script>
-                    htmx.on('#timeline-upload-form', 'htmx:xhr:progress', function(evt) {
-                        htmx.find('#progress-timeline').setAttribute('value', evt.detail.loaded/evt.detail.total * 100)
-                        htmx.find('#progress-timeline').setAttribute('style', null)
-                    });
-                </script>
-            </div>
-            <div>
-                <h4 th:text="#{upload.google.old.format.title}">🌐 Old Format (Records.json)</h4>
-                <p th:text="#{upload.google.old.format.instructions}">From Google Takeout: Export your data from takeout.google.com and upload the Records.json file from the Location History folder.</p>
-                <p th:text="#{upload.google.old.format.description}">This contains your complete historical location data.</p>
-                <form id="records-upload-form"
-                      hx-post="/settings/import/google-records"
-                      hx-target="#file-upload"
-                      hx-swap="innerHTML"
-                      hx-encoding="multipart/form-data">
-                    <div class="form-group">
-                        <input type="file" name="file" accept=".json" required>
-                    </div>
-                    <button type="submit" class="btn" th:text="#{upload.button.google.records}">Upload Records Data</button>
-                </form>
-                <progress id='progress-records' value='0' max='100'  style="display: none"></progress>
-                <script>
-                    htmx.on('#records-upload-form', 'htmx:xhr:progress', function(evt) {
-                        htmx.find('#progress-records').setAttribute('value', evt.detail.loaded/evt.detail.total * 100)
-                        htmx.find('#progress-records').setAttribute('style', null)
-                    });
-                </script>
-            </div>
+            <form id="timeline-upload-form"
+                  hx-post="/settings/import/google-timeline"
+                  hx-target="#file-upload"
+                  hx-swap="innerHTML"
+                  hx-encoding="multipart/form-data">
+                <div class="form-group">
+                    <input type="file" name="file" accept=".json" required>
+                </div>
+                <button type="submit" class="btn" th:text="#{upload.button.google.timeline}">Upload Timeline Data</button>
+            </form>
+            <progress id='progress-timeline' value='0' max='100'  style="display: none"></progress>
+            <script>
+                htmx.on('#timeline-upload-form', 'htmx:xhr:progress', function(evt) {
+                    htmx.find('#progress-timeline').setAttribute('value', evt.detail.loaded/evt.detail.total * 100)
+                    htmx.find('#progress-timeline').setAttribute('style', null)
+                });
+            </script>
+        </div>
+
+        <div class="upload-option">
+            <h3 th:text="#{upload.google.old.format.title}">🌐 Old Format (Records.json)</h3>
+            <p th:text="#{upload.google.old.format.instructions}">From Google Takeout: Export your data from takeout.google.com and upload the Records.json file from the Location History folder.</p>
+            <p class="description" th:text="#{upload.google.old.format.description}">This contains your complete historical location data.</p>
+            <form id="records-upload-form"
+                  hx-post="/settings/import/google-records"
+                  hx-target="#file-upload"
+                  hx-swap="innerHTML"
+                  hx-encoding="multipart/form-data">
+                <div class="form-group">
+                    <input type="file" name="file" accept=".json" required>
+                </div>
+                <button type="submit" class="btn" th:text="#{upload.button.google.records}">Upload Records Data</button>
+            </form>
+            <progress id='progress-records' value='0' max='100'  style="display: none"></progress>
+            <script>
+                htmx.on('#records-upload-form', 'htmx:xhr:progress', function(evt) {
+                    htmx.find('#progress-records').setAttribute('value', evt.detail.loaded/evt.detail.total * 100)
+                    htmx.find('#progress-records').setAttribute('style', null)
+                });
+            </script>
         </div>
         
 
