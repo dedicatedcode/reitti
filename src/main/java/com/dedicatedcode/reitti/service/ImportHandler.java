@@ -1,7 +1,10 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.model.User;
-import com.dedicatedcode.reitti.service.importer.*;
+import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
+import com.dedicatedcode.reitti.service.importer.GoogleRecordsImporter;
+import com.dedicatedcode.reitti.service.importer.GoogleTimelineImporter;
+import com.dedicatedcode.reitti.service.importer.GpxImporter;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
@@ -10,19 +13,16 @@ import java.util.Map;
 @Service
 public class ImportHandler {
     
-    private final GoogleTakeoutImporter googleTakeoutImporter;
     private final GoogleRecordsImporter googleRecordsImporter;
     private final GoogleTimelineImporter googleTimelineImporter;
     private final GpxImporter gpxImporter;
     private final GeoJsonImporter geoJsonImporter;
 
     public ImportHandler(
-            GoogleTakeoutImporter googleTakeoutImporter,
             GoogleRecordsImporter googleRecordsImporter,
             GoogleTimelineImporter googleTimelineImporter,
             GpxImporter gpxImporter,
             GeoJsonImporter geoJsonImporter) {
-        this.googleTakeoutImporter = googleTakeoutImporter;
         this.googleRecordsImporter = googleRecordsImporter;
         this.googleTimelineImporter = googleTimelineImporter;
         this.gpxImporter = gpxImporter;

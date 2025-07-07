@@ -5,11 +5,13 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.io.FileReader;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Random;
 
 public class GoogleTimelineRandomizer {
@@ -52,8 +54,8 @@ public class GoogleTimelineRandomizer {
         ObjectMapper mapper = new ObjectMapper();
         JsonNode root = mapper.readTree(new FileReader(filePath));
 
-        JsonNode semanticSegments = root.path("semanticSegments");
-        JsonNode rawSignals = root.path("rawSignals");
+        ArrayNode semanticSegments = (ArrayNode) root.path("semanticSegments");
+        ArrayNode rawSignals = (ArrayNode) root.path("rawSignals");
 
         for (JsonNode segment : semanticSegments) {
             ObjectNode current = (ObjectNode) segment;
@@ -71,15 +73,52 @@ public class GoogleTimelineRandomizer {
                             adjustTime(timeAdjustmentInMinutes, jsonNode.get("time"), (ObjectNode) jsonNode, "time");
                         }
                         if (jsonNode.has("point")) {
-                            adjustPoint(longitudeAdjustment, jsonNode.get("point"), (ObjectNode) jsonNode);
+                            adjustPoint(longitudeAdjustment, jsonNode.get("point"), (ObjectNode) jsonNode, "point");
                         }
                     }
 
                 }
             }
+            if (current.has("visit")) {
+                ObjectNode visit = (ObjectNode) current.get("visit");
+                if (visit.has("topCandidate")) {
+                    ObjectNode topCandidate = (ObjectNode) visit.get("topCandidate");
+                    if (topCandidate.has("placeLocation")) {
+                        ObjectNode placeLocation = (ObjectNode) topCandidate.get("placeLocation");
+                        if (placeLocation.has("latLng")) {
+                            adjustPoint(longitudeAdjustment, placeLocation.get("latLng"), placeLocation, "latLng");
+                        }
+                    }
+                }
+            }
+            if (current.has("activity")) {
+                ObjectNode activity = (ObjectNode) current.get("activity");
+                if (activity.has("start")) {
+                    ObjectNode start = (ObjectNode) activity.get("start");
+                    if (start.has("latLng")) {
+                        adjustPoint(longitudeAdjustment, start.get("latLng"), start, "latLng");
+                    }
+                }
+                if (activity.has("end")) {
+                    ObjectNode end = (ObjectNode) activity.get("end");
+                    if (end.has("latLng")) {
+                        adjustPoint(longitudeAdjustment, end.get("latLng"), end, "latLng");
+                    }
+                }
+            }
         }
-        for (JsonNode jsonNode : root) {
-            System.out.println();
+
+        for (JsonNode rawSignal : rawSignals) {
+            ObjectNode current = (ObjectNode) rawSignal;
+            if (current.has("position")) {
+                ObjectNode position = (ObjectNode) current.get("position");
+                if (position.has("LatLng")) {
+                    adjustPoint(longitudeAdjustment, position.get("LatLng"), position, "LatLng");
+                }
+                if (position.has("timestamp")) {
+                    adjustTime(timeAdjustmentInMinutes, position.get("timestamp"), position, "timestamp");
+                }
+            }
         }
         // Create output filename by appending date before extension
         Path inputPath = Paths.get(filePath);
@@ -108,7 +147,7 @@ public class GoogleTimelineRandomizer {
         System.out.println("Filtered data written to: " + outputPath);
     }
 
-    private static void adjustPoint(double longitudeAdjustment, JsonNode point, ObjectNode jsonNode) {
+    private static void adjustPoint(double longitudeAdjustment, JsonNode point, ObjectNode jsonNode, String name) {
         String pointText = point.asText();
         
         // Parse the point text in format "-27.4127738°, 153.0617186°"
@@ -128,7 +167,7 @@ public class GoogleTimelineRandomizer {
                 String adjustedPoint = String.format("%.7f°, %.7f°", latitude, adjustedLongitude);
                 
                 // Add the adjusted value to the JSON node
-                jsonNode.put("point", adjustedPoint);
+                jsonNode.put(name, adjustedPoint);
             } catch (NumberFormatException e) {
                 System.err.println("Failed to parse point coordinates: " + pointText);
             }
@@ -141,7 +180,7 @@ public class GoogleTimelineRandomizer {
         String currentValue = jsonNode.asText();
         ZonedDateTime currentTime = ZonedDateTime.parse(currentValue);
         long newTime = currentTime.toEpochSecond() +  (timeAdjustmentInMinutes * 60L);
-        current.put(name, ZonedDateTime.ofInstant(Instant.ofEpochSecond(newTime), currentTime.getZone()).toString());
+        current.put(name, ZonedDateTime.ofInstant(Instant.ofEpochSecond(newTime), currentTime.getZone()).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
     }
 
     private static JsonNode filter(JsonNode root, String date) {

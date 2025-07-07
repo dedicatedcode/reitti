@@ -5,18 +5,20 @@ import com.dedicatedcode.reitti.service.ImportHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -30,36 +32,6 @@ public class ImportDataApiController {
     @Autowired
     public ImportDataApiController(ImportHandler importHandler) {
         this.importHandler = importHandler;
-    }
-
-    @PostMapping("/import/google-takeout")
-    public ResponseEntity<?> importGoogleTakeout(
-            @RequestParam("file") MultipartFile file) {
-
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        User user = (User) authentication.getPrincipal();
-
-        if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "File is empty"));
-        }
-
-        if (!file.getOriginalFilename().endsWith(".json")) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Only JSON files are supported"));
-        }
-
-        try (InputStream inputStream = file.getInputStream()) {
-            Map<String, Object> result = importHandler.importGoogleTakeout(inputStream, user);
-
-            if ((Boolean) result.get("success")) {
-                return ResponseEntity.accepted().body(result);
-            } else {
-                return ResponseEntity.badRequest().body(result);
-            }
-        } catch (IOException e) {
-            logger.error("Error processing Google Takeout file", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "error", "Error processing file: " + e.getMessage()));
-        }
     }
 
     @PostMapping("/import/gpx")
