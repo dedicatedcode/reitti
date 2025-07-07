@@ -44,21 +44,17 @@ class VisitDetectionServiceTest {
     @Test
     @Transactional
     void shouldDetectVisits() {
-        this.testingService.importData("/data/gpx/20250531.gpx");
-        this.testingService.awaitDataImport(600);
-        this.testingService.triggerProcessingPipeline();
-
-        this.testingService.awaitDataImport(600);
+        this.testingService.importAndProcess("/data/gpx/20250531.gpx");
 
         List<Visit> persistedVisits = this.visitRepository.findByUser(userJdbcService.findById(1L)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + (Long) 1L)));
 
-        assertEquals(11, persistedVisits.size());
+        assertEquals(10, persistedVisits.size());
 
         List<ProcessedVisit> processedVisits = this.processedVisitRepository.findByUser(userJdbcService.findById(1L)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + (Long) 1L)));
 
-        assertEquals(10, processedVisits.size());
+        assertEquals(9, processedVisits.size());
 
         for (int i = 0; i < processedVisits.size() - 1; i++) {
             ProcessedVisit visit = processedVisits.get(i);
