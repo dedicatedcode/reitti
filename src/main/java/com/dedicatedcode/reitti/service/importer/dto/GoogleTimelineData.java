@@ -1,9 +1,11 @@
 package com.dedicatedcode.reitti.service.importer.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
+@JsonIgnoreProperties({"userLocationProfile"})
 public class GoogleTimelineData {
     
     @JsonProperty("semanticSegments")
@@ -11,7 +13,7 @@ public class GoogleTimelineData {
     
     @JsonProperty("rawSignals")
     private List<RawSignal> rawSignals;
-    
+
     public List<SemanticSegment> getSemanticSegments() {
         return semanticSegments;
     }

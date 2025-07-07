@@ -1,6 +1,7 @@
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.io.FileReader;
@@ -66,7 +67,7 @@ public class GoogleTimelineRandomizer {
         int timeAdjustments = random.nextInt(3600 * 7);
         if (random.nextBoolean()) timeAdjustments *= -1;
 
-        double longitudeAdjustment = random.nextDouble(-10, 10);
+        double longitudeAdjustment = random.nextDouble(-20, 20);
         
         try {
             load(filePath, outputDir, timeAdjustments, longitudeAdjustment, maxSemanticSegments, maxRawSignals);
@@ -88,11 +89,11 @@ public class GoogleTimelineRandomizer {
         }
 
         ObjectMapper mapper = new ObjectMapper();
-        JsonNode root = mapper.readTree(new FileReader(filePath));
+        ObjectNode root = (ObjectNode) mapper.readTree(new FileReader(filePath));
 
         ArrayNode semanticSegments = (ArrayNode) root.path("semanticSegments");
         ArrayNode rawSignals = (ArrayNode) root.path("rawSignals");
-
+        root.set("userLocationProfile", new ObjectNode(JsonNodeFactory.instance));
         // Limit semantic segments if specified
         if (maxSemanticSegments != null && semanticSegments.size() > maxSemanticSegments) {
             // Create new array with limited segments
@@ -111,7 +112,7 @@ public class GoogleTimelineRandomizer {
             for (int i = 0; i < maxRawSignals; i++) {
                 limitedRawSignals.add(rawSignals.get(i));
             }
-            ((ObjectNode) root).set("rawSignals", limitedRawSignals);
+            root.set("rawSignals", limitedRawSignals);
             rawSignals = limitedRawSignals;
         }
 
@@ -176,6 +177,10 @@ public class GoogleTimelineRandomizer {
                 if (position.has("timestamp")) {
                     adjustTime(timeAdjustmentInMinutes, position.get("timestamp"), position, "timestamp");
                 }
+            }
+
+            if (current.has("wifiScan")) {
+                current.set("wifiScan", new ObjectNode(JsonNodeFactory.instance));
             }
         }
         // Create output filename by appending date before extension

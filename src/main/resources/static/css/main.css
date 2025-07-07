@@ -224,6 +224,51 @@ tr:hover {
     color: var(--color-text-white);
     flex: 1;
     min-width: 200px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.queue-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
+}
+
+
+.upload-option {
+    background-color: var(--color-background-dark);
+    border-radius: 8px;
+    padding: 15px;
+    border: 1px solid var(--color-highlight);
+    color: var(--color-text-white);
+    flex: 1;
+    min-width: 200px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    margin-bottom: 15px;
+}
+
+.upload-option:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
+}
+
+.settings-card h3 {
+    margin-top: 0;
+}
+
+.settings-card {
+    background-color: var(--color-background-dark);
+    border-radius: 8px;
+    padding: 15px;
+    border: 1px solid var(--color-highlight);
+    color: var(--color-text-white);
+    flex: 1;
+    min-width: 200px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    margin-bottom: 15px;
+}
+
+.settings-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
 }
 
 .queue-name {
@@ -1085,4 +1130,10 @@ input[type=file]::file-selector-button:hover {
     .settings-header h1 {
         font-size: 1.5rem;
     }
+}
+
+button:disabled {
+    background: #9b9b9b;
+    cursor: not-allowed;
+    color: white;
 }

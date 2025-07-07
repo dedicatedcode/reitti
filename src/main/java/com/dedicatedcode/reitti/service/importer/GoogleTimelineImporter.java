@@ -19,11 +19,7 @@ import java.io.InputStream;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
@@ -74,11 +70,11 @@ public class GoogleTimelineImporter {
                         ZonedDateTime startTime = ZonedDateTime.parse(semanticSegment.getStartTime());
                         ZonedDateTime endTime = ZonedDateTime.parse(semanticSegment.getEndTime());
                         long durationBetween = Duration.between(startTime.toInstant(), endTime.toInstant()).toSeconds();
-                        long increment = durationBetween /  minStayPointDetectionPoints;
+                        long increment = Math.max(10, durationBetween / (minStayPointDetectionPoints * 10L));
                         ZonedDateTime currentTime = startTime.plusSeconds(increment);
                         while (currentTime.isBefore(endTime)) {
                             // Move randomly around the visit location within the distance threshold
-                            LatLng randomizedLocation = addRandomOffset(latLng.get(), distanceThresholdMeters);
+                            LatLng randomizedLocation = addRandomOffset(latLng.get(), distanceThresholdMeters / 3);
                             createAndScheduleLocationPoint(randomizedLocation, currentTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), user, batch);
                             processedCount.incrementAndGet();
                             currentTime = currentTime.plusSeconds(increment);

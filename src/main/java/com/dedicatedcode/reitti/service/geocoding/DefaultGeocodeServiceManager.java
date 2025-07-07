@@ -84,7 +84,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
                 .replace("{lat}", String.valueOf(latitude))
                 .replace("{lng}", String.valueOf(longitude));
 
-        logger.debug("Geocoding with service [{}] using URL: [{}]", service.getName(), url);
+        logger.info("Geocoding with service [{}] using URL: [{}]", service.getName(), url);
 
         try {
 

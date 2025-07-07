@@ -14,7 +14,7 @@
     </div>
     
     <div class="upload-options">
-        <div class="upload-option">
+        <div class="settings-card">
             <h3 th:text="#{upload.gpx.title}">GPX Files</h3>
             <p class="description" th:text="#{upload.gpx.description}">
                 Upload GPX files from your GPS devices or tracking apps. GPX files contain waypoints, 
@@ -37,7 +37,7 @@
                 });
             </script>
         </div>
-        <div class="upload-option">
+        <div class="settings-card">
             <h3 th:text="#{upload.geojson.title}">GeoJSON Files</h3>
             <p class="description" th:text="#{upload.geojson.description}">
                 Upload GeoJSON files containing Point features with location data. GeoJSON files
@@ -62,8 +62,7 @@
                 });
             </script>
         </div>
-
-        <div class="upload-option">
+        <div class="settings-card">
             <h3 th:text="#{upload.google.new.format.title}">📱 New Format (timeline.json)</h3>
             <p><strong>Android:</strong> <span th:text="#{upload.google.new.format.instructions}">From your Android phone: Settings → Location → Location Services → Timeline → Export Timeline</span></p>
             <p><strong>iOS:</strong> <span th:text="#{upload.google.new.format.ios.instructions}">From iOS Google Maps: Open Google Maps → Click on your Profile → Settings → Personal content → Export Timeline Data</span></p>
@@ -87,8 +86,7 @@
                 });
             </script>
         </div>
-
-        <div class="upload-option">
+        <div class="settings-card">
             <h3 th:text="#{upload.google.old.format.title}">🌐 Old Format (Records.json)</h3>
             <p th:text="#{upload.google.old.format.instructions}">From Google Takeout: Export your data from takeout.google.com and upload the Records.json file from the Location History folder.</p>
             <p class="description" th:text="#{upload.google.old.format.description}">This contains your complete historical location data.</p>
@@ -110,8 +108,6 @@
                 });
             </script>
         </div>
-        
-
     </div>
 </div>
 

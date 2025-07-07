@@ -9,7 +9,10 @@ public class RawSignal {
     
     @JsonProperty("wifiScan")
     private WifiScan wifiScan;
-    
+
+    @JsonProperty("activityRecord")
+    private ActivityRecord activityRecord;
+
     public Position getPosition() {
         return position;
     }
@@ -24,5 +27,13 @@ public class RawSignal {
     
     public void setWifiScan(WifiScan wifiScan) {
         this.wifiScan = wifiScan;
+    }
+
+    public ActivityRecord getActivityRecord() {
+        return activityRecord;
+    }
+
+    public void setActivityRecord(ActivityRecord activityRecord) {
+        this.activityRecord = activityRecord;
     }
 }

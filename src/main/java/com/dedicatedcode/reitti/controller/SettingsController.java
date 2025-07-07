@@ -424,7 +424,7 @@ public class SettingsController {
         Optional<OwnTracksRecorderIntegration> recorderIntegration = ownTracksRecorderIntegrationService.getIntegrationForUser(currentUser);
         if (recorderIntegration.isPresent()) {
             model.addAttribute("ownTracksRecorderIntegration", recorderIntegration.get());
-            model.addAttribute("hasRecorderIntegration", true);
+            model.addAttribute("hasRecorderIntegration", recorderIntegration.get().isEnabled());
         } else {
             model.addAttribute("hasRecorderIntegration", false);
         }
@@ -547,14 +547,14 @@ public class SettingsController {
             
             model.addAttribute("successMessage", getMessage("integrations.owntracks.recorder.config.saved"));
             model.addAttribute("ownTracksRecorderIntegration", integration);
-            model.addAttribute("hasRecorderIntegration", true);
+            model.addAttribute("hasRecorderIntegration", enabled);
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("integrations.owntracks.recorder.config.error", e.getMessage()));
             
             // Re-populate form with submitted values for error case
             OwnTracksRecorderIntegration tempIntegration = new OwnTracksRecorderIntegration(baseUrl, username, deviceId, enabled);
             model.addAttribute("ownTracksRecorderIntegration", tempIntegration);
-            model.addAttribute("hasRecorderIntegration", true);
+            model.addAttribute("hasRecorderIntegration", enabled);
         }
         
         // Keep external data stores section open
@@ -669,7 +669,7 @@ public class SettingsController {
         Optional<OwnTracksRecorderIntegration> recorderIntegration = ownTracksRecorderIntegrationService.getIntegrationForUser(currentUser);
         if (recorderIntegration.isPresent()) {
             model.addAttribute("ownTracksRecorderIntegration", recorderIntegration.get());
-            model.addAttribute("hasRecorderIntegration", true);
+            model.addAttribute("hasRecorderIntegration", recorderIntegration.get().isEnabled());
         } else {
             model.addAttribute("hasRecorderIntegration", false);
         }
