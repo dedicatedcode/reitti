@@ -19,11 +19,11 @@ class GoogleTimelineImporterTest {
 
 
     @Test
-    void shouldParseNewGoogleTakeOutFile() {
+    void shouldParseNewGoogleTakeOutFileFromAndroid() {
         RabbitTemplate mock = mock(RabbitTemplate.class);
         GoogleTimelineImporter importHandler = new GoogleTimelineImporter(new ObjectMapper(), new ImportBatchProcessor(mock, 100), 5, 100);
         User user = new User("test", "Test User");
-        Map<String, Object> result = importHandler.importGoogleTimeline(getClass().getResourceAsStream("/data/google/tl_randomized.json"), user);
+        Map<String, Object> result = importHandler.importGoogleTimeline(getClass().getResourceAsStream("/data/google/timeline_from_android_randomized.json"), user);
 
         assertTrue(result.containsKey("success"));
         assertTrue((Boolean) result.get("success"));
@@ -43,5 +43,14 @@ class GoogleTimelineImporterTest {
 
             event.getPoints().forEach(point -> assertNotNull(point.getAccuracyMeters()));
         }
+    }
+
+    @Test
+    void shouldParseNewGoogleTakeOutFileFromIOS() {
+        RabbitTemplate mock = mock(RabbitTemplate.class);
+        GoogleTimelineImporter importHandler = new GoogleTimelineImporter(new ObjectMapper(), new ImportBatchProcessor(mock, 100), 5, 100);
+        User user = new User("test", "Test User");
+        Map<String, Object> result = importHandler.importGoogleTimeline(getClass().getResourceAsStream("/data/google/timeline_from_android_randomized.json"), user);
+
     }
 }

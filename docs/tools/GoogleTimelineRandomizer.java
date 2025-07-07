@@ -98,19 +98,11 @@ public class GoogleTimelineRandomizer {
         }
 
         ObjectMapper mapper = new ObjectMapper();
-        JsonNode root = mapper.readTree(new FileReader(filePath));
+        ObjectNode root = (ObjectNode) mapper.readTree(new FileReader(filePath));
 
-
-        ArrayNode semanticSegments;
-        ArrayNode rawSignals;
-        if (mode.equals("android")) {
-            semanticSegments = (ArrayNode) root.path("semanticSegments");
-            rawSignals = (ArrayNode) root.path("rawSignals");
-            ((ObjectNode)root).set("userLocationProfile", new ObjectNode(JsonNodeFactory.instance));
-        } else {
-            semanticSegments = (ArrayNode) root;
-            rawSignals = null;
-        }
+        ArrayNode semanticSegments = (ArrayNode) root.path("semanticSegments");
+        ArrayNode rawSignals = (ArrayNode) root.path("rawSignals");
+        root.set("userLocationProfile", new ObjectNode(JsonNodeFactory.instance));
         // Limit semantic segments if specified
         if (maxSemanticSegments != null && semanticSegments.size() > maxSemanticSegments) {
             // Create new array with limited segments
@@ -118,24 +110,21 @@ public class GoogleTimelineRandomizer {
             for (int i = 0; i < maxSemanticSegments; i++) {
                 limitedSemanticSegments.add(semanticSegments.get(i));
             }
-            if (mode.equals("android")) {
-                ((ObjectNode)root).set("semanticSegments", limitedSemanticSegments);
-            } else {
-                root = limitedSemanticSegments;
-            }
+            ((ObjectNode) root).set("semanticSegments", limitedSemanticSegments);
             semanticSegments = limitedSemanticSegments;
         }
 
         // Limit raw signals if specified
-        if (maxRawSignals != null && rawSignals != null && rawSignals.size() > maxRawSignals) {
+        if (maxRawSignals != null && rawSignals.size() > maxRawSignals) {
             // Create new array with limited signals
             ArrayNode limitedRawSignals = rawSignals.arrayNode();
             for (int i = 0; i < maxRawSignals; i++) {
                 limitedRawSignals.add(rawSignals.get(i));
             }
-            ((ObjectNode)root).set("rawSignals", limitedRawSignals);
+            root.set("rawSignals", limitedRawSignals);
             rawSignals = limitedRawSignals;
         }
+
 
         for (JsonNode segment : semanticSegments) {
             ObjectNode current = (ObjectNode) segment;
