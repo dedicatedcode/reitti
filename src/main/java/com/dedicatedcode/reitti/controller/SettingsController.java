@@ -365,7 +365,7 @@ public class SettingsController {
 
     @GetMapping("/file-upload-content")
     public String getDataImportContent() {
-        return "fragments/settings :: file-upload-content";
+        return "fragments/file-upload :: file-upload-content";
     }
 
     @GetMapping("/language-content")
@@ -701,7 +701,7 @@ public class SettingsController {
 
         if (files.length == 0) {
             model.addAttribute("uploadErrorMessage", "No files selected");
-            return "fragments/settings :: file-upload-content";
+            return "fragments/file-upload :: file-upload-content";
         }
 
         int totalProcessed = 0;
@@ -763,12 +763,12 @@ public class SettingsController {
 
         if (file.isEmpty() || file.getOriginalFilename() == null) {
             model.addAttribute("uploadErrorMessage", "File is empty");
-            return "fragments/settings :: file-upload-content";
+            return "fragments/file-upload :: file-upload-content";
         }
 
         if (!file.getOriginalFilename().endsWith(".json")) {
             model.addAttribute("uploadErrorMessage", "Only JSON files are supported");
-            return "fragments/settings :: file-upload-content";
+            return "fragments/file-upload :: file-upload-content";
         }
 
         try (InputStream inputStream = file.getInputStream()) {
@@ -787,10 +787,10 @@ public class SettingsController {
                 model.addAttribute("uploadErrorMessage", result.get("error"));
             }
 
-            return "fragments/settings :: file-upload-content";
+            return "fragments/file-upload :: file-upload-content";
         } catch (IOException e) {
             model.addAttribute("uploadErrorMessage", "Error processing file: " + e.getMessage());
-            return "fragments/settings :: file-upload-content";
+            return "fragments/file-upload :: file-upload-content";
         }
     }
 
@@ -807,7 +807,7 @@ public class SettingsController {
 
         if (!file.getOriginalFilename().endsWith(".json")) {
             model.addAttribute("uploadErrorMessage", "Only JSON files are supported");
-            return "fragments/settings :: file-upload-content";
+            return "fragments/file-upload :: file-upload-content";
         }
 
         try (InputStream inputStream = file.getInputStream()) {
@@ -826,10 +826,10 @@ public class SettingsController {
                 model.addAttribute("uploadErrorMessage", result.get("error"));
             }
 
-            return "fragments/settings :: file-upload-content";
+            return "fragments/file-upload :: file-upload-content";
         } catch (IOException e) {
             model.addAttribute("uploadErrorMessage", "Error processing file: " + e.getMessage());
-            return "fragments/settings :: file-upload-content";
+            return "fragments/file-upload :: file-upload-content";
         }
     }
 
