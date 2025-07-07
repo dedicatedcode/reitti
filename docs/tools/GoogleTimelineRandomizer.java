@@ -30,6 +30,7 @@ public class GoogleTimelineRandomizer {
         Integer maxSemanticSegments = null;
         Integer maxRawSignals = null;
 
+        //add a new mandatory arg naem mode with the available values android or ios AI!
         // Parse named arguments
         for (String arg : args) {
             if (arg.startsWith("--file=")) {
