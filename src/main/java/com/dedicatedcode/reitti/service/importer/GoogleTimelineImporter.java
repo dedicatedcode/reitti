@@ -2,20 +2,27 @@ package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.service.importer.dto.GoogleTimelineData;
+import com.dedicatedcode.reitti.service.importer.dto.SemanticSegment;
+import com.dedicatedcode.reitti.service.importer.dto.TimelinePathPoint;
+import com.dedicatedcode.reitti.service.importer.dto.Visit;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
@@ -25,10 +32,18 @@ public class GoogleTimelineImporter {
     
     private final ObjectMapper objectMapper;
     private final ImportBatchProcessor batchProcessor;
-    
-    public GoogleTimelineImporter(ObjectMapper objectMapper, ImportBatchProcessor batchProcessor) {
+    private final int minStayPointDetectionPoints;
+    private final int distanceThresholdMeters;
+
+    public GoogleTimelineImporter(ObjectMapper objectMapper,
+                                  ImportBatchProcessor batchProcessor,
+                                  @Value("${reitti.staypoint.min-points}") int minStayPointDetectionPoints,
+                                  @Value("${reitti.staypoint.distance-threshold-meters}") int distanceThresholdMeters
+                                  ) {
         this.objectMapper = objectMapper;
         this.batchProcessor = batchProcessor;
+        this.minStayPointDetectionPoints = minStayPointDetectionPoints;
+        this.distanceThresholdMeters = distanceThresholdMeters;
     }
     
     public Map<String, Object> importGoogleTimeline(InputStream inputStream, User user) {
@@ -41,24 +56,48 @@ public class GoogleTimelineImporter {
             
             List<LocationDataRequest.LocationPoint> batch = new ArrayList<>(batchProcessor.getBatchSize());
             boolean foundData = false;
-            
-            // Look for "rawSignals" array (new Timeline format)
-            while (parser.nextToken() != null) {
-                if (parser.getCurrentToken() == JsonToken.FIELD_NAME) {
-                    String fieldName = parser.currentName();
-                    
-                    if ("rawSignals".equals(fieldName)) {
-                        foundData = true;
-                        processedCount.addAndGet(processRawSignalsArray(parser, batch, user));
-                        break;
+
+            GoogleTimelineData timelineData = objectMapper.readValue(parser, GoogleTimelineData.class);
+            List<SemanticSegment> semanticSegments = timelineData.getSemanticSegments();
+            logger.info("Found {} semantic segments", semanticSegments.size());
+            for (SemanticSegment semanticSegment : semanticSegments) {
+                if (semanticSegment.getVisit() != null) {
+                    Visit visit = semanticSegment.getVisit();
+                    logger.info("Found visit at [{}] from start [{}] to end [{}]. Will insert at least [{}] synthetic geo locations.", visit.getTopCandidate().getPlaceLocation().getLatLng(), semanticSegment.getStartTime(), semanticSegment.getEndTime(), minStayPointDetectionPoints);
+
+                    Optional<LatLng> latLng = parseLatLng(visit.getTopCandidate().getPlaceLocation().getLatLng());
+                    if (latLng.isPresent()) {
+                        createAndScheduleLocationPoint(latLng.get(), semanticSegment.getStartTime(), user, batch);
+                        processedCount.incrementAndGet();
+                        ZonedDateTime startTime = ZonedDateTime.parse(semanticSegment.getStartTime());
+                        ZonedDateTime endTime = ZonedDateTime.parse(semanticSegment.getEndTime());
+                        long durationBetween = Duration.between(startTime.toInstant(), endTime.toInstant()).toSeconds();
+                        long increment = durationBetween /  minStayPointDetectionPoints;
+                        ZonedDateTime currentTime = startTime.plusSeconds(increment);
+                        while (currentTime.isBefore(endTime)) {
+                            //when inserting the latLng, move it randomly around the last latLng but not more than distanceThresholdMeters away. AI!
+                            createAndScheduleLocationPoint(latLng.get(), currentTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), user, batch);
+                            processedCount.incrementAndGet();
+                            currentTime = currentTime.plusSeconds(increment);
+                        }
+                        createAndScheduleLocationPoint(latLng.get(), semanticSegment.getEndTime(), user, batch);
+                        processedCount.incrementAndGet();
+
+                    }
+                }
+
+                if (semanticSegment.getTimelinePath() != null) {
+                    List<TimelinePathPoint> timelinePath = semanticSegment.getTimelinePath();
+                    logger.info("Found timeline path from start [{}] to end [{}]. Will insert [{}] synthetic geo locations based on timeline path.", semanticSegment.getStartTime(), semanticSegment.getEndTime(), timelinePath.size());
+                    for (TimelinePathPoint timelinePathPoint : timelinePath) {
+                        parseLatLng(timelinePathPoint.getPoint()).ifPresent(location -> {
+                            createAndScheduleLocationPoint(location, timelinePathPoint.getTime(), user, batch);
+                            processedCount.incrementAndGet();
+                        });
                     }
                 }
             }
-            
-            if (!foundData) {
-                return Map.of("success", false, "error", "Invalid format: 'rawSignals' array not found in Timeline data");
-            }
-            
+
             // Process any remaining locations
             if (!batch.isEmpty()) {
                 batchProcessor.sendToQueue(user, batch);
@@ -78,111 +117,35 @@ public class GoogleTimelineImporter {
             return Map.of("success", false, "error", "Error processing Google Timeline file: " + e.getMessage());
         }
     }
-    
-    /**
-     * Processes the new Timeline format with "rawSignals" array containing position elements
-     */
-    private int processRawSignalsArray(JsonParser parser, List<LocationDataRequest.LocationPoint> batch, User user) throws IOException {
-        int processedCount = 0;
-        
-        // Move to the array
-        parser.nextToken(); // Should be START_ARRAY
-        
-        if (parser.getCurrentToken() != JsonToken.START_ARRAY) {
-            throw new IOException("Invalid format: 'rawSignals' is not an array");
-        }
-        
-        // Process each signal in the array
-        while (parser.nextToken() != JsonToken.END_ARRAY) {
-            if (parser.getCurrentToken() == JsonToken.START_OBJECT) {
-                // Parse the signal object
-                JsonNode signalNode = objectMapper.readTree(parser);
-                
-                try {
-                    // Check if this signal contains position data
-                    if (signalNode.has("position")) {
-                        LocationDataRequest.LocationPoint point = convertRawSignalPosition(signalNode);
-                        if (point != null) {
-                            batch.add(point);
-                            processedCount++;
 
-                            if (batch.size() >= batchProcessor.getBatchSize()) {
-                                batchProcessor.sendToQueue(user, batch);
-                                batch.clear();
-                            }
-                        }
-                    }
-                } catch (Exception e) {
-                    logger.warn("Error processing raw signal entry: {}", e.getMessage());
-                }
-            }
-        }
-        
-        return processedCount;
-    }
-    
-    /**
-     * Converts a raw signal with position data to our LocationPoint format (Timeline format)
-     */
-    private LocationDataRequest.LocationPoint convertRawSignalPosition(JsonNode signalNode) {
-        JsonNode positionNode = signalNode.get("position");
-        if (positionNode == null) {
-            return null;
-        }
-        
-        double latitude, longitude;
-        
-        if (positionNode.has("LatLng")) {
-            // Timeline format: "LatLng": "53.8633043°, 10.7011529°"
-            String latLngStr = positionNode.get("LatLng").asText();
-            try {
-                String[] coords = parseLatLngString(latLngStr);
-                if (coords == null) {
-                    return null;
-                }
-                latitude = Double.parseDouble(coords[0]);
-                longitude = Double.parseDouble(coords[1]);
-            } catch (NumberFormatException e) {
-                logger.warn("Error parsing LatLng string: {}", latLngStr);
-                return null;
-            }
-        } else {
-            return null;
-        }
-        
-        // Check for timestamp - it might be in the signal node or position node
-        String timestamp = null;
-        if (signalNode.has("timestamp")) {
-            timestamp = signalNode.get("timestamp").asText();
-        } else if (positionNode.has("timestamp")) {
-            timestamp = positionNode.get("timestamp").asText();
-        }
-        
-        if (timestamp == null || timestamp.isEmpty()) {
-            return null;
-        }
 
+    void createAndScheduleLocationPoint(LatLng latLng, String timestamp, User user, List<LocationDataRequest.LocationPoint> batch) {
         LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
-
-        point.setLatitude(latitude);
-        point.setLongitude(longitude);
+        point.setLatitude(latLng.latitude);
+        point.setLongitude(latLng.longitude);
         point.setTimestamp(timestamp);
-
-        // Set accuracy if available (check both signal and position nodes)
-        Double accuracy = null;
-        if (positionNode.has("accuracyMeters")) {
-            accuracy = positionNode.get("accuracyMeters").asDouble();
-        } else if (positionNode.has("accuracy")) {
-            accuracy = positionNode.get("accuracy").asDouble();
-        } else if (signalNode.has("accuracy")) {
-            accuracy = signalNode.get("accuracy").asDouble();
+        point.setAccuracyMeters(10.0);
+        batch.add(point);
+        if (batch.size() >= batchProcessor.getBatchSize()) {
+            batchProcessor.sendToQueue(user, batch);
+            batch.clear();
         }
-        
-        point.setAccuracyMeters(accuracy != null ? accuracy : 100.0);
-
-        return point;
     }
-    
+
+    private Optional<LatLng> parseLatLng(String input) {
+        try {
+            String[] coords = parseLatLngString(input);
+            if (coords == null) {
+                return Optional.empty();
+            }
+            return Optional.of(new LatLng(Double.parseDouble(coords[0]), Double.parseDouble(coords[1])));
+        } catch (NumberFormatException e) {
+            logger.warn("Error parsing LatLng string: {}", input);
+            return Optional.empty();
+        }
+    }
+    private record LatLng(double latitude, double longitude) {}
+
     /**
      * Parses a LatLng string in format "53.8633043°, 10.7011529°" to extract latitude and longitude
      */
