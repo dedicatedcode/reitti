@@ -29,9 +29,6 @@ public class ImportHandler {
         this.geoJsonImporter = geoJsonImporter;
     }
     
-    public Map<String, Object> importGoogleTakeout(InputStream inputStream, User user) {
-        return googleTakeoutImporter.importGoogleTakeout(inputStream, user);
-    }
     
     public Map<String, Object> importGoogleRecords(InputStream inputStream, User user) {
         return googleRecordsImporter.importGoogleRecords(inputStream, user);
