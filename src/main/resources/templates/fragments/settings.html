@@ -516,12 +516,6 @@
                             }
                         });
 
-                        document.addEventListener('htmx:afterRequest', function(evt) {
-                            if (evt.detail.elt.id === 'load-historical-btn') {
-                                // Button will be replaced by the response, so no need to reset
-                            }
-                        });
-
                         // Add CSS for spinner animation
                         if (!document.querySelector('#spinner-styles')) {
                             const style = document.createElement('style');
