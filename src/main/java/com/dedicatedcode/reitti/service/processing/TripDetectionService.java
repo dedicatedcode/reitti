@@ -56,8 +56,6 @@ public class TripDetectionService {
 
                 List<ProcessedVisit> visits = this.processedVisitJdbcService.findByUserAndTimeOverlap(user, searchStart, searchEnd);
 
-                visits.sort(Comparator.comparing(ProcessedVisit::getStartTime));
-
                 if (visits.size() < 2) {
                     logger.info("Not enough visits to detect trips for user: {}", user.getUsername());
                     return;

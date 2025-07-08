@@ -63,7 +63,7 @@ public class ProcessedVisitJdbcService {
     public List<ProcessedVisit> findByUserAndTimeOverlap(User user, Instant startTime, Instant endTime) {
         String sql = "SELECT pv.* " +
                 "FROM processed_visits pv " +
-                "WHERE pv.user_id = ? AND pv.start_time <= ? AND pv.end_time >= ?";
+                "WHERE pv.user_id = ? AND pv.start_time <= ? AND pv.end_time >= ? ORDER BY pv.start_time";
         return jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, user.getId(),
                 Timestamp.from(endTime), Timestamp.from(startTime));
     }
@@ -71,7 +71,7 @@ public class ProcessedVisitJdbcService {
     public Optional<ProcessedVisit> findByUserAndId(User user, long id) {
         String sql = "SELECT pv.* " +
                 "FROM processed_visits pv " +
-                "WHERE pv.user_id = ? AND pv.id = ?";
+                "WHERE pv.user_id = ? AND pv.id = ? ORDER BY pv.start_time";
         List<ProcessedVisit> results = jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, user.getId(), id);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
