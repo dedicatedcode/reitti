@@ -27,15 +27,15 @@
                 <div class="form-group">
                     <input type="file" name="files" accept=".gpx" multiple required>
                 </div>
-                <button type="submit" class="btn" th:text="#{upload.button.gpx}">Upload GPX File</button>
+                <button type="submit" class="btn upload-btn" th:text="#{upload.button.gpx}">Upload GPX File</button>
+                <div class="spinner" style="display: none;">
+                    <div class="spinner-border" role="status">
+                        <span class="sr-only">Processing...</span>
+                    </div>
+                    <span>Processing GPX files...</span>
+                </div>
             </form>
             <progress id='progress-gpx' value='0' max='100' style="display: none"></progress>
-            <script>
-                htmx.on('#gpx-upload-form', 'htmx:xhr:progress', function(evt) {
-                    htmx.find('#progress-gpx').setAttribute('value', evt.detail.loaded/evt.detail.total * 100)
-                    htmx.find('#progress-gpx').setAttribute('style', null)
-                });
-            </script>
         </div>
         <div class="settings-card">
             <h3 th:text="#{upload.geojson.title}">GeoJSON Files</h3>
@@ -52,15 +52,15 @@
                 <div class="form-group">
                     <input type="file" name="files" accept=".geojson,.json" multiple required>
                 </div>
-                <button type="submit" class="btn" th:text="#{upload.button.geojson}">Upload GeoJSON File</button>
+                <button type="submit" class="btn upload-btn" th:text="#{upload.button.geojson}">Upload GeoJSON File</button>
+                <div class="spinner" style="display: none;">
+                    <div class="spinner-border" role="status">
+                        <span class="sr-only">Processing...</span>
+                    </div>
+                    <span>Processing GeoJSON files...</span>
+                </div>
             </form>
             <progress id='progress-geojson' value='0' max='100' style="display: none"></progress>
-            <script>
-                htmx.on('#geojson-upload-form', 'htmx:xhr:progress', function(evt) {
-                    htmx.find('#progress-geojson').setAttribute('value', evt.detail.loaded/evt.detail.total * 100)
-                    htmx.find('#progress-geojson').setAttribute('style', null)
-                });
-            </script>
         </div>
         <div class="settings-card">
             <h3 th:text="#{upload.google.android.format.title}">📱 Android Timeline (timeline.json)</h3>
@@ -75,15 +75,15 @@
                 <div class="form-group">
                     <input type="file" name="file" accept=".json" required>
                 </div>
-                <button type="submit" class="btn" th:text="#{upload.button.google.timeline.android}">Upload Android Timeline Data</button>
+                <button type="submit" class="btn upload-btn" th:text="#{upload.button.google.timeline.android}">Upload Android Timeline Data</button>
+                <div class="spinner" style="display: none;">
+                    <div class="spinner-border" role="status">
+                        <span class="sr-only">Processing...</span>
+                    </div>
+                    <span>Processing Android Timeline...</span>
+                </div>
             </form>
             <progress id='progress-timeline-android' value='0' max='100'  style="display: none"></progress>
-            <script>
-                htmx.on('#timeline-android-upload-form', 'htmx:xhr:progress', function(evt) {
-                    htmx.find('#progress-timeline-android').setAttribute('value', evt.detail.loaded/evt.detail.total * 100)
-                    htmx.find('#progress-timeline-android').setAttribute('style', null)
-                });
-            </script>
         </div>
         <div class="settings-card">
             <h3 th:text="#{upload.google.ios.format.title}">📱 iOS Timeline (timeline.json)</h3>
@@ -98,15 +98,15 @@
                 <div class="form-group">
                     <input type="file" name="file" accept=".json" required>
                 </div>
-                <button type="submit" class="btn" th:text="#{upload.button.google.timeline.ios}">Upload iOS Timeline Data</button>
+                <button type="submit" class="btn upload-btn" th:text="#{upload.button.google.timeline.ios}">Upload iOS Timeline Data</button>
+                <div class="spinner" style="display: none;">
+                    <div class="spinner-border" role="status">
+                        <span class="sr-only">Processing...</span>
+                    </div>
+                    <span>Processing iOS Timeline...</span>
+                </div>
             </form>
             <progress id='progress-timeline-ios' value='0' max='100'  style="display: none"></progress>
-            <script>
-                htmx.on('#timeline-ios-upload-form', 'htmx:xhr:progress', function(evt) {
-                    htmx.find('#progress-timeline-ios').setAttribute('value', evt.detail.loaded/evt.detail.total * 100)
-                    htmx.find('#progress-timeline-ios').setAttribute('style', null)
-                });
-            </script>
         </div>
         <div class="settings-card">
             <h3 th:text="#{upload.google.old.format.title}">🌐 Old Format (Records.json)</h3>
@@ -120,18 +120,110 @@
                 <div class="form-group">
                     <input type="file" name="file" accept=".json" required>
                 </div>
-                <button type="submit" class="btn" th:text="#{upload.button.google.records}">Upload Records Data</button>
+                <button type="submit" class="btn upload-btn" th:text="#{upload.button.google.records}">Upload Records Data</button>
+                <div class="spinner" style="display: none;">
+                    <div class="spinner-border" role="status">
+                        <span class="sr-only">Processing...</span>
+                    </div>
+                    <span>Processing Records data...</span>
+                </div>
             </form>
             <progress id='progress-records' value='0' max='100'  style="display: none"></progress>
-            <script>
-                htmx.on('#records-upload-form', 'htmx:xhr:progress', function(evt) {
-                    htmx.find('#progress-records').setAttribute('value', evt.detail.loaded/evt.detail.total * 100)
-                    htmx.find('#progress-records').setAttribute('style', null)
-                });
-            </script>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Function to disable all upload buttons and show spinners
+    function disableAllUploads() {
+        const uploadButtons = document.querySelectorAll('.upload-btn');
+        const spinners = document.querySelectorAll('.spinner');
+        
+        uploadButtons.forEach(button => {
+            button.disabled = true;
+            button.style.display = 'none';
+        });
+        
+        spinners.forEach(spinner => {
+            spinner.style.display = 'flex';
+        });
+    }
+    
+    // Function to enable all upload buttons and hide spinners
+    function enableAllUploads() {
+        const uploadButtons = document.querySelectorAll('.upload-btn');
+        const spinners = document.querySelectorAll('.spinner');
+        
+        uploadButtons.forEach(button => {
+            button.disabled = false;
+            button.style.display = 'inline-block';
+        });
+        
+        spinners.forEach(spinner => {
+            spinner.style.display = 'none';
+        });
+    }
+    
+    // Listen for HTMX request start events on all upload forms
+    document.body.addEventListener('htmx:beforeRequest', function(evt) {
+        const form = evt.target;
+        if (form.id && form.id.includes('upload-form')) {
+            disableAllUploads();
+        }
+    });
+    
+    // Listen for HTMX request completion events
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        const form = evt.target;
+        if (form.id && form.id.includes('upload-form')) {
+            enableAllUploads();
+        }
+    });
+    
+    // Handle progress events
+    document.body.addEventListener('htmx:xhr:progress', function(evt) {
+        const form = evt.target;
+        if (form.id) {
+            const progressId = form.id.replace('-upload-form', '').replace('-', '-');
+            const progressElement = document.getElementById('progress-' + progressId);
+            if (progressElement) {
+                progressElement.setAttribute('value', evt.detail.loaded/evt.detail.total * 100);
+                progressElement.style.display = 'block';
+            }
+        }
+    });
+});
+</script>
+
+<style>
+.spinner {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.spinner-border {
+    width: 1rem;
+    height: 1rem;
+    border: 0.125em solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spinner-border 0.75s linear infinite;
+}
+
+@keyframes spinner-border {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.upload-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+</style>
 
 </body>
 </html>
