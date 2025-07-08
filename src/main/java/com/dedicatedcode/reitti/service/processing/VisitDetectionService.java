@@ -36,6 +36,8 @@ public class VisitDetectionService {
 
     private final RabbitTemplate rabbitTemplate;
     private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, List<LocationProcessEvent>> userEventHistory = new ConcurrentHashMap<>();
+    private static final int MAX_EVENT_HISTORY = 10;
 
     @Autowired
     public VisitDetectionService(
@@ -64,7 +66,27 @@ public class VisitDetectionService {
         
         userLock.lock();
         try {
-            // add a map per user where we store the last 10 events with earliest and latest. If a new event comes in and it is already contained there, do nothing. In the finally block we should remove that. AI!
+            // Check if this event is already being processed or has been processed recently
+            List<LocationProcessEvent> eventHistory = userEventHistory.computeIfAbsent(username, k -> new ArrayList<>());
+            
+            // Check if we already have this exact time range in our recent history
+            boolean alreadyProcessed = eventHistory.stream().anyMatch(event -> 
+                event.getEarliest().equals(incoming.getEarliest()) && 
+                event.getLatest().equals(incoming.getLatest())
+            );
+            
+            if (alreadyProcessed) {
+                logger.debug("Skipping duplicate event for user {} from {} to {} - already processed recently", 
+                    username, incoming.getEarliest(), incoming.getLatest());
+                return;
+            }
+            
+            // Add current event to history and maintain max size
+            eventHistory.add(incoming);
+            if (eventHistory.size() > MAX_EVENT_HISTORY) {
+                eventHistory.remove(0); // Remove oldest event
+            }
+            
             logger.debug("Detecting stay points for user {} from {} to {} ", username, incoming.getEarliest(), incoming.getLatest());
             User user = userJdbcService.findByUsername(username).orElseThrow();
         // We extend the search window slightly to catch visits spanning midnight
@@ -130,6 +152,11 @@ public class VisitDetectionService {
         List<Long> createdIds = visitJdbcService.bulkInsert(user, createdVisits).stream().map(Visit::getId).toList();
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitUpdatedEvent(user.getUsername(), createdIds));
         } finally {
+            // Clean up event history for this user if it gets too large
+            List<LocationProcessEvent> eventHistory = userEventHistory.get(username);
+            if (eventHistory != null && eventHistory.size() > MAX_EVENT_HISTORY) {
+                eventHistory.subList(0, eventHistory.size() - MAX_EVENT_HISTORY).clear();
+            }
             userLock.unlock();
         }
     }
