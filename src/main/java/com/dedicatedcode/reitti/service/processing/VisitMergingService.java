@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 public class VisitMergingService {
@@ -39,6 +41,7 @@ public class VisitMergingService {
     private final long mergeThresholdSeconds;
     private final long mergeThresholdMeters;
     private final int searchRangeExtensionInHours;
+    private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
 
     @Autowired
     public VisitMergingService(VisitJdbcService visitJdbcService,
@@ -64,7 +67,15 @@ public class VisitMergingService {
     }
 
     public void visitUpdated(VisitUpdatedEvent event) {
-        handleEvent(event.getUsername(), event.getVisitIds());
+        String username = event.getUsername();
+        ReentrantLock userLock = userLocks.computeIfAbsent(username, _ -> new ReentrantLock());
+        
+        userLock.lock();
+        try {
+            handleEvent(username, event.getVisitIds());
+        } finally {
+            userLock.unlock();
+        }
     }
 
     private void handleEvent(String username, List<Long> visitIds) {
