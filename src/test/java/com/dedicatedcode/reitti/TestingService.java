@@ -5,7 +5,7 @@ import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
 import com.dedicatedcode.reitti.service.importer.GpxImporter;
-import com.dedicatedcode.reitti.service.processing.RawLocationPointProcessingTrigger;
+import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import org.awaitility.Awaitility;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,7 +47,7 @@ public class TestingService {
     @Autowired
     private VisitJdbcService visitRepository;
     @Autowired
-    private RawLocationPointProcessingTrigger trigger;
+    private ProcessingPipelineTrigger trigger;
 
     public void importData(String path) {
         User admin = userJdbcService.findById(1L)

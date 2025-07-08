@@ -25,6 +25,8 @@ public class RabbitMQConfig {
     public static final String SIGNIFICANT_PLACE_ROUTING_KEY = "significant.place.created";
     public static final String DETECT_TRIP_QUEUE = "detect-trip-queue";
     public static final String DETECT_TRIP_ROUTING_KEY = "detect.trip.created";
+    public static final String TRIGGER_PROCESSING_PIPELINE_QUEUE = "trigger-processing-queue";
+    public static final String TRIGGER_PROCESSING_PIPELINE_ROUTING_KEY = "trigger.processing.start";
 
     @Bean
     public TopicExchange exchange() {
@@ -57,6 +59,11 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Queue triggerProcessingQueue() {
+        return new Queue(TRIGGER_PROCESSING_PIPELINE_QUEUE, false);
+    }
+
+    @Bean
     public Binding locationDataBinding(Queue locationDataQueue, TopicExchange exchange) {
         return BindingBuilder.bind(locationDataQueue).to(exchange).with(LOCATION_DATA_ROUTING_KEY);
     }
@@ -79,6 +86,11 @@ public class RabbitMQConfig {
     @Bean
     public Binding stayDetectionBinding(Queue stayDetectionQueue, TopicExchange exchange) {
         return BindingBuilder.bind(stayDetectionQueue).to(exchange).with(STAY_DETECTION_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding triggerProcessingBinding(Queue triggerProcessingQueue, TopicExchange exchange) {
+        return BindingBuilder.bind(triggerProcessingQueue).to(exchange).with(TRIGGER_PROCESSING_PIPELINE_ROUTING_KEY);
     }
 
     @Bean

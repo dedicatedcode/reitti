@@ -3,10 +3,7 @@ package com.dedicatedcode.reitti.service;
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.*;
 import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
-import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
-import com.dedicatedcode.reitti.service.processing.TripDetectionService;
-import com.dedicatedcode.reitti.service.processing.VisitDetectionService;
-import com.dedicatedcode.reitti.service.processing.VisitMergingService;
+import com.dedicatedcode.reitti.service.processing.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -23,18 +20,21 @@ public class MessageDispatcherService {
     private final VisitMergingService visitMergingService;
     private final TripDetectionService tripDetectionService;
     private final ReverseGeocodingListener reverseGeocodingListener;
+    private final ProcessingPipelineTrigger processingPipelineTrigger;
 
     @Autowired
     public MessageDispatcherService(LocationDataIngestPipeline locationDataIngestPipeline,
                                     VisitDetectionService visitDetectionService,
                                     VisitMergingService visitMergingService,
                                     TripDetectionService tripDetectionService,
-                                    ReverseGeocodingListener reverseGeocodingListener) {
+                                    ReverseGeocodingListener reverseGeocodingListener,
+                                    ProcessingPipelineTrigger processingPipelineTrigger) {
         this.locationDataIngestPipeline = locationDataIngestPipeline;
         this.visitDetectionService = visitDetectionService;
         this.visitMergingService = visitMergingService;
         this.tripDetectionService = tripDetectionService;
         this.reverseGeocodingListener = reverseGeocodingListener;
+        this.processingPipelineTrigger = processingPipelineTrigger;
     }
 
     @RabbitListener(queues = RabbitMQConfig.LOCATION_DATA_QUEUE, concurrency = "${reitti.events.concurrency}")
@@ -65,5 +65,11 @@ public class MessageDispatcherService {
     public void handleSignificantPlaceCreated(SignificantPlaceCreatedEvent event) {
         logger.debug("Dispatching SignificantPlaceCreatedEvent for place: {}", event.getPlaceId());
         reverseGeocodingListener.handleSignificantPlaceCreated(event);
+    }
+
+    @RabbitListener(queues = RabbitMQConfig.TRIGGER_PROCESSING_PIPELINE_QUEUE, concurrency = "${reitti.events.concurrency}")
+    public void handleTriggerProcessingEvent(TriggerProcessingEvent event) {
+        logger.debug("Dispatching TriggerProcessingEvent for user: {}", event.getUsername());
+        processingPipelineTrigger.handle(event);
     }
 }
