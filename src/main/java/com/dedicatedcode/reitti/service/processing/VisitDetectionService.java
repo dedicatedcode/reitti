@@ -64,6 +64,7 @@ public class VisitDetectionService {
         
         userLock.lock();
         try {
+            // add a map per user where we store the last 10 events with earliest and latest. If a new event comes in and it is already contained there, do nothing. In the finally block we should remove that. AI!
             logger.debug("Detecting stay points for user {} from {} to {} ", username, incoming.getEarliest(), incoming.getLatest());
             User user = userJdbcService.findByUsername(username).orElseThrow();
         // We extend the search window slightly to catch visits spanning midnight
