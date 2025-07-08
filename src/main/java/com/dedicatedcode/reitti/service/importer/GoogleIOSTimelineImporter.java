@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -32,7 +33,7 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
         super(objectMapper, batchProcessor, minStayPointDetectionPoints, distanceThresholdMeters, mergeThresholdSeconds);
     }
 
-    public Map<String, Object> importTimeline(InputStream inputStream, User user) {
+    public Map<String, Object> importGoogleTimelineFromIOS(InputStream inputStream, User user) {
         AtomicInteger processedCount = new AtomicInteger(0);
 
         try {
@@ -50,7 +51,28 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
                     IOSVisit visit = semanticSegment.getVisit();
                     logger.info("Found visit at [{}] from start [{}] to end [{}]. Will insert at least [{}] synthetic geo locations.", visit.getTopCandidate().getPlaceLocation(), semanticSegment.getStartTime(), semanticSegment.getEndTime(), minStayPointDetectionPoints);
                     Optional<LatLng> latLng = parseLatLng(visit.getTopCandidate().getPlaceLocation());
-                    latLng.ifPresent(lng -> processedCount.addAndGet(handleVisit(user, start, end, lng, batch)));
+                    latLng.ifPresent(lng -> {
+                        createAndScheduleLocationPoint(lng, start, user, batch);
+                        processedCount.incrementAndGet();
+                        
+                        long durationBetween = java.time.Duration.between(start.toInstant(), end.toInstant()).toSeconds();
+                        if (durationBetween > mergeThresholdSeconds) {
+                            long increment = Math.max(10, durationBetween / (minStayPointDetectionPoints * 2L));
+                            ZonedDateTime currentTime = start.plusSeconds(increment);
+                            while (currentTime.isBefore(end)) {
+                                // Move randomly around the visit location within the distance threshold
+                                LatLng randomizedLocation = addRandomOffset(lng, (int) (distanceThresholdMeters / 2.5));
+                                createAndScheduleLocationPoint(randomizedLocation, currentTime, user, batch);
+                                processedCount.incrementAndGet();
+                                currentTime = currentTime.plusSeconds(increment);
+                            }
+                            logger.debug("Inserting synthetic points into import to simulate stays at [{}] from [{}] till [{}]", lng, start, end);
+                        } else {
+                            logger.info("Skipping creating synthetic points at [{}] since duration was less then [{}] seconds ", lng, mergeThresholdSeconds);
+                        }
+                        createAndScheduleLocationPoint(lng, end, user, batch);
+                        processedCount.incrementAndGet();
+                    });
                 }
 
                 if (semanticSegment.getTimelinePath() != null) {
@@ -86,7 +108,7 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
         }
     }
 
-    private static String getStartTime(IOSSemanticSegment semanticSegment) {
-        return semanticSegment.getStartTime();
+    private void createAndScheduleLocationPoint(LatLng latLng, ZonedDateTime timestamp, User user, List<LocationDataRequest.LocationPoint> batch) {
+        createAndScheduleLocationPoint(latLng, timestamp.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), user, batch);
     }
 }

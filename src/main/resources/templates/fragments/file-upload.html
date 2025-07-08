@@ -63,26 +63,48 @@
             </script>
         </div>
         <div class="settings-card">
-            <h3 th:text="#{upload.google.new.format.title}">📱 New Format (timeline.json)</h3>
+            <h3 th:text="#{upload.google.android.format.title}">📱 Android Timeline (timeline.json)</h3>
             <p><strong>Android:</strong> <span th:text="#{upload.google.new.format.instructions}">From your Android phone: Settings → Location → Location Services → Timeline → Export Timeline</span></p>
-            <p><strong>iOS:</strong> <span th:text="#{upload.google.new.format.ios.instructions}">From iOS Google Maps: Open Google Maps → Click on your Profile → Settings → Personal content → Export Timeline Data</span></p>
-            <p class="description" th:text="#{upload.google.new.format.description}">This exports a timeline.json file with your recent location data.</p>
+            <p class="description" th:text="#{upload.google.android.format.description}">This exports a timeline.json file with your recent location data from Android devices.</p>
 
-            <form id="timeline-upload-form"
-                  hx-post="/import/google-timeline"
+            <form id="timeline-android-upload-form"
+                  hx-post="/import/google-timeline-android"
                   hx-target="#file-upload"
                   hx-swap="innerHTML"
                   hx-encoding="multipart/form-data">
                 <div class="form-group">
                     <input type="file" name="file" accept=".json" required>
                 </div>
-                <button type="submit" class="btn" th:text="#{upload.button.google.timeline}">Upload Timeline Data</button>
+                <button type="submit" class="btn" th:text="#{upload.button.google.timeline.android}">Upload Android Timeline Data</button>
             </form>
-            <progress id='progress-timeline' value='0' max='100'  style="display: none"></progress>
+            <progress id='progress-timeline-android' value='0' max='100'  style="display: none"></progress>
             <script>
-                htmx.on('#timeline-upload-form', 'htmx:xhr:progress', function(evt) {
-                    htmx.find('#progress-timeline').setAttribute('value', evt.detail.loaded/evt.detail.total * 100)
-                    htmx.find('#progress-timeline').setAttribute('style', null)
+                htmx.on('#timeline-android-upload-form', 'htmx:xhr:progress', function(evt) {
+                    htmx.find('#progress-timeline-android').setAttribute('value', evt.detail.loaded/evt.detail.total * 100)
+                    htmx.find('#progress-timeline-android').setAttribute('style', null)
+                });
+            </script>
+        </div>
+        <div class="settings-card">
+            <h3 th:text="#{upload.google.ios.format.title}">📱 iOS Timeline (timeline.json)</h3>
+            <p><strong>iOS:</strong> <span th:text="#{upload.google.new.format.ios.instructions}">From iOS Google Maps: Open Google Maps → Click on your Profile → Settings → Personal content → Export Timeline Data</span></p>
+            <p class="description" th:text="#{upload.google.ios.format.description}">This exports a timeline.json file with your recent location data from iOS devices.</p>
+
+            <form id="timeline-ios-upload-form"
+                  hx-post="/import/google-timeline-ios"
+                  hx-target="#file-upload"
+                  hx-swap="innerHTML"
+                  hx-encoding="multipart/form-data">
+                <div class="form-group">
+                    <input type="file" name="file" accept=".json" required>
+                </div>
+                <button type="submit" class="btn" th:text="#{upload.button.google.timeline.ios}">Upload iOS Timeline Data</button>
+            </form>
+            <progress id='progress-timeline-ios' value='0' max='100'  style="display: none"></progress>
+            <script>
+                htmx.on('#timeline-ios-upload-form', 'htmx:xhr:progress', function(evt) {
+                    htmx.find('#progress-timeline-ios').setAttribute('value', evt.detail.loaded/evt.detail.total * 100)
+                    htmx.find('#progress-timeline-ios').setAttribute('style', null)
                 });
             </script>
         </div>

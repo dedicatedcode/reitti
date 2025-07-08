@@ -139,10 +139,10 @@ public class FileImportController {
         }
     }
 
-    @PostMapping("/google-timeline")
-    public String importGoogleTimeline(@RequestParam("file") MultipartFile file,
-                                      Authentication authentication,
-                                      Model model) {
+    @PostMapping("/google-timeline-android")
+    public String importGoogleTimelineAndroid(@RequestParam("file") MultipartFile file,
+                                             Authentication authentication,
+                                             Model model) {
         User user = (User) authentication.getPrincipal();
 
         if (file.isEmpty() || file.getOriginalFilename() == null) {
@@ -165,7 +165,46 @@ public class FileImportController {
                 try {
                     rawLocationPointProcessingTrigger.start();
                 } catch (Exception e) {
-                    logger.warn("Failed to trigger processing pipeline after Google Timeline import", e);
+                    logger.warn("Failed to trigger processing pipeline after Google Timeline Android import", e);
+                }
+            } else {
+                model.addAttribute("uploadErrorMessage", result.get("error"));
+            }
+
+            return "fragments/file-upload :: file-upload-content";
+        } catch (IOException e) {
+            model.addAttribute("uploadErrorMessage", "Error processing file: " + e.getMessage());
+            return "fragments/file-upload :: file-upload-content";
+        }
+    }
+
+    @PostMapping("/google-timeline-ios")
+    public String importGoogleTimelineIOS(@RequestParam("file") MultipartFile file,
+                                         Authentication authentication,
+                                         Model model) {
+        User user = (User) authentication.getPrincipal();
+
+        if (file.isEmpty() || file.getOriginalFilename() == null) {
+            model.addAttribute("uploadErrorMessage", "File is empty");
+            return "fragments/file-upload :: file-upload-content";
+        }
+
+        if (!file.getOriginalFilename().endsWith(".json")) {
+            model.addAttribute("uploadErrorMessage", "Only JSON files are supported");
+            return "fragments/file-upload :: file-upload-content";
+        }
+
+        try (InputStream inputStream = file.getInputStream()) {
+            Map<String, Object> result = importHandler.importGoogleTimelineFromIOS(inputStream, user);
+
+            if ((Boolean) result.get("success")) {
+                model.addAttribute("uploadSuccessMessage", result.get("message"));
+                
+                // Trigger processing pipeline for imported data
+                try {
+                    rawLocationPointProcessingTrigger.start();
+                } catch (Exception e) {
+                    logger.warn("Failed to trigger processing pipeline after Google Timeline iOS import", e);
                 }
             } else {
                 model.addAttribute("uploadErrorMessage", result.get("error"));
