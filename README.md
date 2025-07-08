@@ -80,7 +80,7 @@ The easiest way to get started is using Docker Compose:
 
 3. Access the application at `http://localhost:8080`
 
-4. Create your first user account through the web interface
+4. Login with admin:admin
 
 ### Development Setup
 
@@ -98,7 +98,7 @@ For development or custom deployments:
 
 3. Access the application at `http://localhost:8080`
 
-Default user name and password is `admin`
+Default username and password is `admin`
 
 ### Building Docker Image
 
@@ -114,11 +114,10 @@ docker build -t reitti/reitti:latest .
 
 After starting the application:
 
-1. **Create User Account**: Set up your first user account
-2. **Generate API Token**: Create an API token in Settings → API Tokens for mobile app integration
-3. **Configure Geocoding**: Add geocoding services in Settings → Geocoding for address resolution
-4. **Import Data**: Upload your location data via Settings → Import Data
-5. **Set up Mobile Apps**: Configure OwnTracks or GPSLogger for real-time tracking
+1. **Generate API Token**: Create an API token in Settings → API Tokens for mobile app integration
+2. **Configure Geocoding**: Add geocoding services in Settings → Geocoding for address resolution
+3. **Import Data**: Upload your location data via Settings → Import Data
+4. **Set up Mobile Apps**: Configure OwnTracks or GPSLogger for real-time tracking
 
 ## Docker Deployment
 
