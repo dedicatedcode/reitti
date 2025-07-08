@@ -212,6 +212,67 @@
                 });
             });
         });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Function to disable all upload buttons and show spinners
+            function disableAllUploads() {
+                const uploadButtons = document.querySelectorAll('.upload-btn');
+                const spinners = document.querySelectorAll('.spinner');
+
+                uploadButtons.forEach(button => {
+                    button.disabled = true;
+                    button.style.display = 'none';
+                });
+
+                spinners.forEach(spinner => {
+                    spinner.style.display = 'flex';
+                });
+            }
+
+            // Function to enable all upload buttons and hide spinners
+            function enableAllUploads() {
+                const uploadButtons = document.querySelectorAll('.upload-btn');
+                const spinners = document.querySelectorAll('.spinner');
+
+                uploadButtons.forEach(button => {
+                    button.disabled = false;
+                    button.style.display = 'inline-block';
+                });
+
+                spinners.forEach(spinner => {
+                    spinner.style.display = 'none';
+                });
+            }
+
+            // Listen for HTMX request start events on all upload forms
+            document.body.addEventListener('htmx:beforeRequest', function(evt) {
+                const form = evt.target;
+                if (form.id && form.id.includes('upload-form')) {
+                    disableAllUploads();
+                }
+            });
+
+            // Listen for HTMX request completion events
+            document.body.addEventListener('htmx:afterRequest', function(evt) {
+                const form = evt.target;
+                if (form.id && form.id.includes('upload-form')) {
+                    enableAllUploads();
+                }
+            });
+
+            // Handle progress events
+            document.body.addEventListener('htmx:xhr:progress', function(evt) {
+                const form = evt.target;
+                if (form.id) {
+                    const progressId = form.id.replace('-upload-form', '').replace('-', '-');
+                    const progressElement = document.getElementById('progress-' + progressId);
+                    if (progressElement) {
+                        progressElement.setAttribute('value', evt.detail.loaded/evt.detail.total * 100);
+                        progressElement.style.display = 'block';
+                    }
+                }
+            });
+        });
     </script>
 </body>
 </html>

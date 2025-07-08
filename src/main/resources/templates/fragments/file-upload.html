@@ -32,7 +32,7 @@
                     <div class="spinner-border" role="status">
                         <span class="sr-only">Processing...</span>
                     </div>
-                    <span>Processing GPX files...</span>
+                    <span>Processing ...</span>
                 </div>
             </form>
             <progress id='progress-gpx' value='0' max='100' style="display: none"></progress>
@@ -57,7 +57,7 @@
                     <div class="spinner-border" role="status">
                         <span class="sr-only">Processing...</span>
                     </div>
-                    <span>Processing GeoJSON files...</span>
+                    <span>Processing ...</span>
                 </div>
             </form>
             <progress id='progress-geojson' value='0' max='100' style="display: none"></progress>
@@ -80,7 +80,7 @@
                     <div class="spinner-border" role="status">
                         <span class="sr-only">Processing...</span>
                     </div>
-                    <span>Processing Android Timeline...</span>
+                    <span>Processing ...</span>
                 </div>
             </form>
             <progress id='progress-timeline-android' value='0' max='100'  style="display: none"></progress>
@@ -125,7 +125,7 @@
                     <div class="spinner-border" role="status">
                         <span class="sr-only">Processing...</span>
                     </div>
-                    <span>Processing Records data...</span>
+                    <span>Processing ...</span>
                 </div>
             </form>
             <progress id='progress-records' value='0' max='100'  style="display: none"></progress>
@@ -133,97 +133,6 @@
     </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Function to disable all upload buttons and show spinners
-    function disableAllUploads() {
-        const uploadButtons = document.querySelectorAll('.upload-btn');
-        const spinners = document.querySelectorAll('.spinner');
-        
-        uploadButtons.forEach(button => {
-            button.disabled = true;
-            button.style.display = 'none';
-        });
-        
-        spinners.forEach(spinner => {
-            spinner.style.display = 'flex';
-        });
-    }
-    
-    // Function to enable all upload buttons and hide spinners
-    function enableAllUploads() {
-        const uploadButtons = document.querySelectorAll('.upload-btn');
-        const spinners = document.querySelectorAll('.spinner');
-        
-        uploadButtons.forEach(button => {
-            button.disabled = false;
-            button.style.display = 'inline-block';
-        });
-        
-        spinners.forEach(spinner => {
-            spinner.style.display = 'none';
-        });
-    }
-    
-    // Listen for HTMX request start events on all upload forms
-    document.body.addEventListener('htmx:beforeRequest', function(evt) {
-        const form = evt.target;
-        if (form.id && form.id.includes('upload-form')) {
-            disableAllUploads();
-        }
-    });
-    
-    // Listen for HTMX request completion events
-    document.body.addEventListener('htmx:afterRequest', function(evt) {
-        const form = evt.target;
-        if (form.id && form.id.includes('upload-form')) {
-            enableAllUploads();
-        }
-    });
-    
-    // Handle progress events
-    document.body.addEventListener('htmx:xhr:progress', function(evt) {
-        const form = evt.target;
-        if (form.id) {
-            const progressId = form.id.replace('-upload-form', '').replace('-', '-');
-            const progressElement = document.getElementById('progress-' + progressId);
-            if (progressElement) {
-                progressElement.setAttribute('value', evt.detail.loaded/evt.detail.total * 100);
-                progressElement.style.display = 'block';
-            }
-        }
-    });
-});
-</script>
-
-<style>
-.spinner {
-    display: none;
-    align-items: center;
-    gap: 10px;
-    margin-top: 10px;
-}
-
-.spinner-border {
-    width: 1rem;
-    height: 1rem;
-    border: 0.125em solid currentColor;
-    border-right-color: transparent;
-    border-radius: 50%;
-    animation: spinner-border 0.75s linear infinite;
-}
-
-@keyframes spinner-border {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-.upload-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-</style>
 
 </body>
 </html>
