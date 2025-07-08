@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.service.importer.*;
-import com.dedicatedcode.reitti.service.processing.RawLocationPointProcessingTrigger;
+import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
@@ -24,19 +24,16 @@ public class FileImportController {
 
     private static final Logger logger = LoggerFactory.getLogger(FileImportController.class);
     
-    private final RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger;
     private final GpxImporter gpxImporter;
     private final GoogleRecordsImporter googleRecordsImporter;
     private final GoogleAndroidTimelineImporter googleAndroidTimelineImporter;
     private final GoogleIOSTimelineImporter googleTimelineIOSImporter;
     private final GeoJsonImporter geoJsonImporter;
 
-    public FileImportController(RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger,
-                                GpxImporter gpxImporter,
+    public FileImportController(GpxImporter gpxImporter,
                                 GoogleRecordsImporter googleRecordsImporter,
                                 GoogleAndroidTimelineImporter googleAndroidTimelineImporter,
                                 GoogleIOSTimelineImporter googleTimelineIOSImporter, GeoJsonImporter geoJsonImporter) {
-        this.rawLocationPointProcessingTrigger = rawLocationPointProcessingTrigger;
         this.gpxImporter = gpxImporter;
         this.googleRecordsImporter = googleRecordsImporter;
         this.googleAndroidTimelineImporter = googleAndroidTimelineImporter;
@@ -97,13 +94,6 @@ public class FileImportController {
                 message += ". Errors: " + errorMessages;
             }
             model.addAttribute("uploadSuccessMessage", message);
-            
-            // Trigger processing pipeline for imported data
-            try {
-                rawLocationPointProcessingTrigger.start();
-            } catch (Exception e) {
-                logger.warn("Failed to trigger processing pipeline after GPX import", e);
-            }
         } else {
             model.addAttribute("uploadErrorMessage", "No files were processed successfully. " + errorMessages);
         }
@@ -132,13 +122,6 @@ public class FileImportController {
 
             if ((Boolean) result.get("success")) {
                 model.addAttribute("uploadSuccessMessage", result.get("message"));
-                
-                // Trigger processing pipeline for imported data
-                try {
-                    rawLocationPointProcessingTrigger.start();
-                } catch (Exception e) {
-                    logger.warn("Failed to trigger processing pipeline after Google Records import", e);
-                }
             } else {
                 model.addAttribute("uploadErrorMessage", result.get("error"));
             }
@@ -171,13 +154,6 @@ public class FileImportController {
 
             if ((Boolean) result.get("success")) {
                 model.addAttribute("uploadSuccessMessage", result.get("message"));
-                
-                // Trigger processing pipeline for imported data
-                try {
-                    rawLocationPointProcessingTrigger.start();
-                } catch (Exception e) {
-                    logger.warn("Failed to trigger processing pipeline after Google Timeline Android import", e);
-                }
             } else {
                 model.addAttribute("uploadErrorMessage", result.get("error"));
             }
@@ -210,13 +186,6 @@ public class FileImportController {
 
             if ((Boolean) result.get("success")) {
                 model.addAttribute("uploadSuccessMessage", result.get("message"));
-                
-                // Trigger processing pipeline for imported data
-                try {
-                    rawLocationPointProcessingTrigger.start();
-                } catch (Exception e) {
-                    logger.warn("Failed to trigger processing pipeline after Google Timeline iOS import", e);
-                }
             } else {
                 model.addAttribute("uploadErrorMessage", result.get("error"));
             }
@@ -277,13 +246,6 @@ public class FileImportController {
                 message += ". Errors: " + errorMessages;
             }
             model.addAttribute("uploadSuccessMessage", message);
-            
-            // Trigger processing pipeline for imported data
-            try {
-                rawLocationPointProcessingTrigger.start();
-            } catch (Exception e) {
-                logger.warn("Failed to trigger processing pipeline after GeoJSON import", e);
-            }
         } else {
             model.addAttribute("uploadErrorMessage", "No files were processed successfully. " + errorMessages);
         }

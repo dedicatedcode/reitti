@@ -6,7 +6,7 @@ import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.*;
-import com.dedicatedcode.reitti.service.processing.RawLocationPointProcessingTrigger;
+import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -54,7 +54,7 @@ public class SettingsController {
     private final MessageSource messageSource;
     private final LocaleResolver localeResolver;
     private final Properties gitProperties = new Properties();
-    private final RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger;
+    private final ProcessingPipelineTrigger processingPipelineTrigger;
 
     public SettingsController(ApiTokenService apiTokenService,
                               UserJdbcService userJdbcService,
@@ -72,7 +72,7 @@ public class SettingsController {
                               @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                               MessageSource messageSource,
                               LocaleResolver localeResolver,
-                              RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger) {
+                              ProcessingPipelineTrigger processingPipelineTrigger) {
         this.apiTokenService = apiTokenService;
         this.userJdbcService = userJdbcService;
         this.queueStatsService = queueStatsService;
@@ -90,7 +90,7 @@ public class SettingsController {
         this.dataManagementEnabled = dataManagementEnabled;
         this.messageSource = messageSource;
         this.localeResolver = localeResolver;
-        this.rawLocationPointProcessingTrigger = rawLocationPointProcessingTrigger;
+        this.processingPipelineTrigger = processingPipelineTrigger;
         loadGitProperties();
     }
 
@@ -699,7 +699,7 @@ public class SettingsController {
         }
 
         try {
-            rawLocationPointProcessingTrigger.start();
+            processingPipelineTrigger.start();
             model.addAttribute("successMessage", getMessage("data.process.success"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("data.process.error", e.getMessage()));
@@ -727,7 +727,7 @@ public class SettingsController {
             // Mark all raw location points as unprocessed
             markRawLocationPointsAsUnprocessed(currentUser);
             
-            rawLocationPointProcessingTrigger.start();
+            processingPipelineTrigger.start();
             
             model.addAttribute("successMessage", getMessage("data.clear.reprocess.success"));
         } catch (Exception e) {

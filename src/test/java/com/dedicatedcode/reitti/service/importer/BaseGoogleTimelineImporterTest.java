@@ -5,7 +5,7 @@ import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.ProcessedVisit;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
-import com.dedicatedcode.reitti.service.processing.RawLocationPointProcessingTrigger;
+import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -28,7 +28,7 @@ class BaseGoogleTimelineImporterTest {
     private ProcessedVisitJdbcService visitJdbcService;
 
     @Autowired
-    private RawLocationPointProcessingTrigger trigger;
+    private ProcessingPipelineTrigger trigger;
     @Test
     void shouldParseNewGoogleTakeOutFileFromAndroid() {
         User user = testingService.admin();
