@@ -811,7 +811,7 @@ public class SettingsController {
         }
 
         try (InputStream inputStream = file.getInputStream()) {
-            Map<String, Object> result = importHandler.importGoogleTimeline(inputStream, user);
+            Map<String, Object> result = importHandler.importGoogleTimelineFromAndroid(inputStream, user);
 
             if ((Boolean) result.get("success")) {
                 model.addAttribute("uploadSuccessMessage", result.get("message"));
