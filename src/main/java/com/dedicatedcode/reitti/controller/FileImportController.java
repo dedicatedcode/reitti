@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.model.User;
-import com.dedicatedcode.reitti.service.ImportHandler;
+import com.dedicatedcode.reitti.service.importer.*;
 import com.dedicatedcode.reitti.service.processing.RawLocationPointProcessingTrigger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,13 +24,24 @@ public class FileImportController {
 
     private static final Logger logger = LoggerFactory.getLogger(FileImportController.class);
     
-    private final ImportHandler importHandler;
     private final RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger;
+    private final GpxImporter gpxImporter;
+    private final GoogleRecordsImporter googleRecordsImporter;
+    private final GoogleAndroidTimelineImporter googleAndroidTimelineImporter;
+    private final GoogleIOSTimelineImporter googleTimelineIOSImporter;
+    private final GeoJsonImporter geoJsonImporter;
 
-    public FileImportController(ImportHandler importHandler,
-                                RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger) {
-        this.importHandler = importHandler;
+    public FileImportController(RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger,
+                                GpxImporter gpxImporter,
+                                GoogleRecordsImporter googleRecordsImporter,
+                                GoogleAndroidTimelineImporter googleAndroidTimelineImporter,
+                                GoogleIOSTimelineImporter googleTimelineIOSImporter, GeoJsonImporter geoJsonImporter) {
         this.rawLocationPointProcessingTrigger = rawLocationPointProcessingTrigger;
+        this.gpxImporter = gpxImporter;
+        this.googleRecordsImporter = googleRecordsImporter;
+        this.googleAndroidTimelineImporter = googleAndroidTimelineImporter;
+        this.googleTimelineIOSImporter = googleTimelineIOSImporter;
+        this.geoJsonImporter = geoJsonImporter;
     }
 
     @GetMapping("/file-upload-content")
@@ -65,7 +76,7 @@ public class FileImportController {
             }
 
             try (InputStream inputStream = file.getInputStream()) {
-                Map<String, Object> result = importHandler.importGpx(inputStream, user);
+                Map<String, Object> result = this.gpxImporter.importGpx(inputStream, user);
 
                 if ((Boolean) result.get("success")) {
                     totalProcessed += (Integer) result.get("pointsReceived");
@@ -117,7 +128,7 @@ public class FileImportController {
         }
 
         try (InputStream inputStream = file.getInputStream()) {
-            Map<String, Object> result = importHandler.importGoogleRecords(inputStream, user);
+            Map<String, Object> result = this.googleRecordsImporter.importGoogleRecords(inputStream, user);
 
             if ((Boolean) result.get("success")) {
                 model.addAttribute("uploadSuccessMessage", result.get("message"));
@@ -156,7 +167,7 @@ public class FileImportController {
         }
 
         try (InputStream inputStream = file.getInputStream()) {
-            Map<String, Object> result = importHandler.importGoogleTimelineFromAndroid(inputStream, user);
+            Map<String, Object> result = this.googleAndroidTimelineImporter.importTimeline(inputStream, user);
 
             if ((Boolean) result.get("success")) {
                 model.addAttribute("uploadSuccessMessage", result.get("message"));
@@ -195,7 +206,7 @@ public class FileImportController {
         }
 
         try (InputStream inputStream = file.getInputStream()) {
-            Map<String, Object> result = importHandler.importGoogleTimelineFromIOS(inputStream, user);
+            Map<String, Object> result = this.googleTimelineIOSImporter.importTimeline(inputStream, user);
 
             if ((Boolean) result.get("success")) {
                 model.addAttribute("uploadSuccessMessage", result.get("message"));
@@ -245,7 +256,7 @@ public class FileImportController {
             }
 
             try (InputStream inputStream = file.getInputStream()) {
-                Map<String, Object> result = importHandler.importGeoJson(inputStream, user);
+                Map<String, Object> result = this.geoJsonImporter.importGeoJson(inputStream, user);
 
                 if ((Boolean) result.get("success")) {
                     totalProcessed += (Integer) result.get("pointsReceived");

@@ -13,7 +13,6 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -33,7 +32,7 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
         super(objectMapper, batchProcessor, minStayPointDetectionPoints, distanceThresholdMeters, mergeThresholdSeconds);
     }
 
-    public Map<String, Object> importGoogleTimelineFromIOS(InputStream inputStream, User user) {
+    public Map<String, Object> importTimeline(InputStream inputStream, User user) {
         AtomicInteger processedCount = new AtomicInteger(0);
 
         try {
@@ -106,9 +105,5 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
             logger.error("Error processing Google Timeline file", e);
             return Map.of("success", false, "error", "Error processing Google Timeline file: " + e.getMessage());
         }
-    }
-
-    private void createAndScheduleLocationPoint(LatLng latLng, ZonedDateTime timestamp, User user, List<LocationDataRequest.LocationPoint> batch) {
-        createAndScheduleLocationPoint(latLng, timestamp.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), user, batch);
     }
 }
