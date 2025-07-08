@@ -39,7 +39,10 @@ public class ImportBatchProcessor {
                 event
         );
         logger.info("Queued batch of {} locations for processing", batch.size());
+
+        //we want to trigger the queue "trigger-processing-queue" when there are no more batches are comming in for 30 seconds. If there are new ones comming in, the timer should be reset. This should not block this method. AI!
     }
+
     
     public int getBatchSize() {
         return batchSize;
