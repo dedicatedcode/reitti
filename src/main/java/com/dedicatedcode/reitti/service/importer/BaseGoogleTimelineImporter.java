@@ -7,6 +7,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 
+import java.time.Duration;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -26,7 +29,7 @@ public abstract class BaseGoogleTimelineImporter {
                                       ImportBatchProcessor batchProcessor,
                                       @Value("${reitti.staypoint.min-points}") int minStayPointDetectionPoints,
                                       @Value("${reitti.staypoint.distance-threshold-meters}") int distanceThresholdMeters,
-                                      @Value("${reitti.staypoint.merge-threshold-seconds}") int mergeThresholdSeconds) {
+                                      @Value("${reitti.visit.merge-threshold-seconds}") int mergeThresholdSeconds) {
         this.objectMapper = objectMapper;
         this.batchProcessor = batchProcessor;
         this.minStayPointDetectionPoints = minStayPointDetectionPoints;
@@ -34,11 +37,33 @@ public abstract class BaseGoogleTimelineImporter {
         this.mergeThresholdSeconds = mergeThresholdSeconds;
     }
 
-    protected void createAndScheduleLocationPoint(LatLng latLng, String timestamp, User user, List<LocationDataRequest.LocationPoint> batch) {
+    protected int handleVisit(User user, ZonedDateTime startTime, ZonedDateTime endTime, LatLng latLng, List<LocationDataRequest.LocationPoint> batch) {
+        createAndScheduleLocationPoint(latLng, startTime, user, batch);
+        int count = 1;
+        long durationBetween = Duration.between(startTime.toInstant(), endTime.toInstant()).toSeconds();
+        if (durationBetween > mergeThresholdSeconds) {
+            long increment = Math.max(10, durationBetween / (minStayPointDetectionPoints * 2L));
+            ZonedDateTime currentTime = startTime.plusSeconds(increment);
+            while (currentTime.isBefore(endTime)) {
+                // Move randomly around the visit location within the distance threshold
+                LatLng randomizedLocation = addRandomOffset(latLng, (int) (distanceThresholdMeters / 2.5));
+                createAndScheduleLocationPoint(randomizedLocation, currentTime, user, batch);
+                count+=1;
+                currentTime = currentTime.plusSeconds(increment);
+            }
+            logger.debug("Inserting synthetic points into import to simulate stays at [{}] from [{}] till [{}]", latLng, startTime, endTime);
+        } else {
+            logger.info("Skipping creating synthetic points at [{}] since duration was less then [{}] seconds ", latLng, mergeThresholdSeconds);
+        }
+        createAndScheduleLocationPoint(latLng, endTime, user, batch);
+        return count + 1;
+    }
+
+    protected void createAndScheduleLocationPoint(LatLng latLng, ZonedDateTime timestamp, User user, List<LocationDataRequest.LocationPoint> batch) {
         LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
         point.setLatitude(latLng.latitude);
         point.setLongitude(latLng.longitude);
-        point.setTimestamp(timestamp);
+        point.setTimestamp(timestamp.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
         point.setAccuracyMeters(10.0);
         batch.add(point);
         if (batch.size() >= batchProcessor.getBatchSize()) {

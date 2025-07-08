@@ -19,10 +19,10 @@ public class GoogleTimelineImporter {
     }
     
     public Map<String, Object> importGoogleTimelineFromIOS(InputStream inputStream, User user) {
-        return iosImporter.importGoogleTimelineFromIOS(inputStream, user);
+        return iosImporter.importTimeline(inputStream, user);
     }
 
     public Map<String, Object> importGoogleTimelineFromAndroid(InputStream inputStream, User user) {
-        return androidImporter.importGoogleTimelineFromAndroid(inputStream, user);
+        return androidImporter.importTimeline(inputStream, user);
     }
 }

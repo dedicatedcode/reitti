@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.io.FileReader;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -98,7 +97,91 @@ public class GoogleTimelineRandomizer {
         }
 
         ObjectMapper mapper = new ObjectMapper();
-        ObjectNode root = (ObjectNode) mapper.readTree(new FileReader(filePath));
+        JsonNode root;
+        if (mode.equals("android")) {
+            root = modifyAndroidFile((ObjectNode) mapper.readTree(new FileReader(filePath)), timeAdjustmentInMinutes, longitudeAdjustment, maxSemanticSegments, maxRawSignals);
+        } else if (mode.equals("ios")) {
+            ArrayNode semanticSegments = (ArrayNode) mapper.readTree(new FileReader(filePath));
+            if (maxSemanticSegments == null) {
+                root = modifyIosFile(semanticSegments, timeAdjustmentInMinutes, longitudeAdjustment);
+            } else {
+                ArrayNode newArray = mapper.createArrayNode();
+                for (int i = 0; i < maxSemanticSegments; i++) {
+                    newArray.add(semanticSegments.get(i));
+                }
+                root = modifyIosFile(newArray, timeAdjustmentInMinutes, longitudeAdjustment);
+            }
+        } else {
+            throw new IOException("Invalid mode value: " + mode);
+        }
+
+        // Create output filename by appending date before extension
+        Path inputPath = Paths.get(filePath);
+        String inputFileName = inputPath.getFileName().toString();
+        String nameWithoutExtension;
+        String extension;
+
+        int lastDotIndex = inputFileName.lastIndexOf('.');
+        if (lastDotIndex > 0) {
+            nameWithoutExtension = inputFileName.substring(0, lastDotIndex);
+            extension = inputFileName.substring(lastDotIndex);
+        } else {
+            nameWithoutExtension = inputFileName;
+            extension = "";
+        }
+
+        String outputFileName = nameWithoutExtension + "_randomized" + extension;
+        Path outputPath = Paths.get(outputDir, outputFileName);
+
+        // Ensure output directory exists
+        Files.createDirectories(Paths.get(outputDir));
+
+        // Write randomized JSON to output file
+        mapper.writerWithDefaultPrettyPrinter().writeValue(outputPath.toFile(), root);
+
+        System.out.println("Filtered data written to: " + outputPath);
+    }
+
+    private static JsonNode modifyIosFile(ArrayNode semanticSegments, int timeAdjustmentInMinutes, double longitudeAdjustment) {
+        for (JsonNode semanticSegment : semanticSegments) {
+            ObjectNode current = (ObjectNode) semanticSegment;
+            if (current.has("endTime")) {
+                adjustTime(timeAdjustmentInMinutes, current, "endTime");
+            }
+            if (current.has("startTime")) {
+                adjustTime(timeAdjustmentInMinutes, current, "startTime");
+            }
+
+            if (current.has("activity")) {
+                ObjectNode activity = (ObjectNode) current.get("activity");
+                if (activity.has("start")) {
+                    adjustGeoPoint(longitudeAdjustment, activity, "start");
+                }
+                if (activity.has("end")) {
+                    adjustGeoPoint(longitudeAdjustment, activity, "end");
+                }
+            }
+            if (current.has("visit")) {
+                ObjectNode visit = (ObjectNode) current.get("visit");
+                if (visit.has("topCandidate") && visit.path("topCandidate").has("placeLocation")) {
+                    adjustGeoPoint(longitudeAdjustment, (ObjectNode) visit.get("topCandidate"), "placeLocation");
+                }
+            }
+            if (current.has("timelinePath")) {
+                ArrayNode timelinePath = (ArrayNode) current.get("timelinePath");
+                for (JsonNode jsonNode : timelinePath) {
+                    if (jsonNode.has("point")) {
+                        adjustGeoPoint(longitudeAdjustment, (ObjectNode) jsonNode, "point");
+                    }
+                }
+            }
+        }
+
+        return semanticSegments;
+    }
+
+    private static JsonNode modifyAndroidFile(ObjectNode root, int timeAdjustmentInMinutes, double longitudeAdjustment, Integer maxSemanticSegments, Integer maxRawSignals) {
+
 
         ArrayNode semanticSegments = (ArrayNode) root.path("semanticSegments");
         ArrayNode rawSignals = (ArrayNode) root.path("rawSignals");
@@ -129,17 +212,17 @@ public class GoogleTimelineRandomizer {
         for (JsonNode segment : semanticSegments) {
             ObjectNode current = (ObjectNode) segment;
             if (current.has("startTime")) {
-                adjustTime(timeAdjustmentInMinutes, current.get("startTime"), current, "startTime");
+                adjustTime(timeAdjustmentInMinutes, current, "startTime");
             }
             if (current.has("endTime")) {
-                adjustTime(timeAdjustmentInMinutes, current.get("endTime"), current, "endTime");
+                adjustTime(timeAdjustmentInMinutes, current, "endTime");
             }
             if (current.has("timelinePath")) {
                 ArrayNode timelinePath = (ArrayNode) current.get("timelinePath");
                 for (JsonNode jsonNode : timelinePath) {
                     if (jsonNode.isObject()) {
                         if (jsonNode.has("time")) {
-                            adjustTime(timeAdjustmentInMinutes, jsonNode.get("time"), (ObjectNode) jsonNode, "time");
+                            adjustTime(timeAdjustmentInMinutes, (ObjectNode) jsonNode, "time");
                         }
                         if (jsonNode.has("point")) {
                             adjustPoint(longitudeAdjustment, jsonNode.get("point"), (ObjectNode) jsonNode, "point");
@@ -186,7 +269,7 @@ public class GoogleTimelineRandomizer {
                         adjustPoint(longitudeAdjustment, position.get("LatLng"), position, "LatLng");
                     }
                     if (position.has("timestamp")) {
-                        adjustTime(timeAdjustmentInMinutes, position.get("timestamp"), position, "timestamp");
+                        adjustTime(timeAdjustmentInMinutes, position, "timestamp");
                     }
                 }
 
@@ -195,35 +278,12 @@ public class GoogleTimelineRandomizer {
                 }
             }
         }
-        // Create output filename by appending date before extension
-        Path inputPath = Paths.get(filePath);
-        String inputFileName = inputPath.getFileName().toString();
-        String nameWithoutExtension;
-        String extension;
 
-        int lastDotIndex = inputFileName.lastIndexOf('.');
-        if (lastDotIndex > 0) {
-            nameWithoutExtension = inputFileName.substring(0, lastDotIndex);
-            extension = inputFileName.substring(lastDotIndex);
-        } else {
-            nameWithoutExtension = inputFileName;
-            extension = "";
-        }
-
-        String outputFileName = nameWithoutExtension + "_randomized" + extension;
-        Path outputPath = Paths.get(outputDir, outputFileName);
-
-        // Ensure output directory exists
-        Files.createDirectories(Paths.get(outputDir));
-
-        // Write randomized JSON to output file
-        mapper.writerWithDefaultPrettyPrinter().writeValue(outputPath.toFile(), root);
-
-        System.out.println("Filtered data written to: " + outputPath);
+        return root;
     }
 
-    private static void adjustGeoPoint(double longitudeAdjustment, JsonNode point, ObjectNode jsonNode, String name) {
-        String pointText = point.asText();
+    private static void adjustGeoPoint(double longitudeAdjustment, ObjectNode jsonNode, String name) {
+        String pointText = jsonNode.get(name).asText();
         
         // Parse the point text in format "geo:55.605487,13.007670"
         if (pointText.startsWith("geo:")) {
@@ -282,8 +342,8 @@ public class GoogleTimelineRandomizer {
         }
     }
 
-    private static void adjustTime(int timeAdjustmentInMinutes, JsonNode jsonNode, ObjectNode current, String name) {
-        String currentValue = jsonNode.asText();
+    private static void adjustTime(int timeAdjustmentInMinutes, ObjectNode current, String name) {
+        String currentValue = current.get(name).asText();
         ZonedDateTime currentTime = ZonedDateTime.parse(currentValue);
         long newTime = currentTime.toEpochSecond() +  (timeAdjustmentInMinutes * 60L);
         current.put(name, ZonedDateTime.ofInstant(Instant.ofEpochSecond(newTime), currentTime.getZone()).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));

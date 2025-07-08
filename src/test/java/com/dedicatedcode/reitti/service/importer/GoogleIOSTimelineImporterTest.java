@@ -15,26 +15,25 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-class GoogleTimelineImporterTest {
-
+class GoogleIOSTimelineImporterTest {
 
     @Test
-    void shouldParseNewGoogleTakeOutFileFromAndroid() {
+    void shouldParseNewGoogleTakeOutFileFromIOS() {
         RabbitTemplate mock = mock(RabbitTemplate.class);
-        GoogleTimelineImporter importHandler = new GoogleTimelineImporter(new ObjectMapper(), new ImportBatchProcessor(mock, 100), 5, 100);
+        GoogleIOSTimelineImporter importHandler = new GoogleIOSTimelineImporter(new ObjectMapper(), new ImportBatchProcessor(mock, 100), 5, 100, 300);
         User user = new User("test", "Test User");
-        Map<String, Object> result = importHandler.importGoogleTimeline(getClass().getResourceAsStream("/data/google/timeline_from_android_randomized.json"), user);
+        Map<String, Object> result = importHandler.importTimeline(getClass().getResourceAsStream("/data/google/timeline_from_ios_randomized.json"), user);
 
         assertTrue(result.containsKey("success"));
         assertTrue((Boolean) result.get("success"));
 
         // Create a spy to retrieve all LocationDataEvents pushed into RabbitMQ
         ArgumentCaptor<LocationDataEvent> eventCaptor = ArgumentCaptor.forClass(LocationDataEvent.class);
-        verify(mock, times(5)).convertAndSend(eq(RabbitMQConfig.EXCHANGE_NAME), eq(RabbitMQConfig.LOCATION_DATA_ROUTING_KEY), eventCaptor.capture());
-        
+        verify(mock, times(3)).convertAndSend(eq(RabbitMQConfig.EXCHANGE_NAME), eq(RabbitMQConfig.LOCATION_DATA_ROUTING_KEY), eventCaptor.capture());
+
         List<LocationDataEvent> capturedEvents = eventCaptor.getAllValues();
-        assertEquals(5, capturedEvents.size());
-        
+        assertEquals(3, capturedEvents.size());
+
         // Verify that all events are for the correct user
         for (LocationDataEvent event : capturedEvents) {
             assertEquals("test", event.getUsername());
@@ -43,14 +42,6 @@ class GoogleTimelineImporterTest {
 
             event.getPoints().forEach(point -> assertNotNull(point.getAccuracyMeters()));
         }
-    }
-
-    @Test
-    void shouldParseNewGoogleTakeOutFileFromIOS() {
-        RabbitTemplate mock = mock(RabbitTemplate.class);
-        GoogleTimelineImporter importHandler = new GoogleTimelineImporter(new ObjectMapper(), new ImportBatchProcessor(mock, 100), 5, 100);
-        User user = new User("test", "Test User");
-        Map<String, Object> result = importHandler.importGoogleTimeline(getClass().getResourceAsStream("/data/google/timeline_from_android_randomized.json"), user);
 
     }
 }

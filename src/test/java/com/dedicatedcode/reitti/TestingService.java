@@ -3,7 +3,8 @@ package com.dedicatedcode.reitti;
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.*;
-import com.dedicatedcode.reitti.service.ImportHandler;
+import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
+import com.dedicatedcode.reitti.service.importer.GpxImporter;
 import com.dedicatedcode.reitti.service.processing.RawLocationPointProcessingTrigger;
 import org.awaitility.Awaitility;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
@@ -32,7 +33,9 @@ public class TestingService {
     @Autowired
     private UserJdbcService userJdbcService;
     @Autowired
-    private ImportHandler importHandler;
+    private GpxImporter gpxImporter;
+    @Autowired
+    private GeoJsonImporter geoJsonImporter;
     @Autowired
     private RawLocationPointJdbcService rawLocationPointRepository;
     @Autowired
@@ -51,9 +54,9 @@ public class TestingService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + (Long) 1L));
         InputStream is = getClass().getResourceAsStream(path);
         if (path.endsWith(".gpx")) {
-            importHandler.importGpx(is, admin);
+            gpxImporter.importGpx(is, admin);
         } else if (path.endsWith(".geojson")) {
-            importHandler.importGeoJson(is, admin);
+            geoJsonImporter.importGeoJson(is, admin);
         } else {
             throw new IllegalStateException("Unsupported file type: " + path);
         }

@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.*;
+import com.dedicatedcode.reitti.service.processing.RawLocationPointProcessingTrigger;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -33,6 +34,7 @@ import java.util.stream.Collectors;
 @Controller
 @RequestMapping("/settings")
 public class SettingsController {
+    private static final Logger logger = LoggerFactory.getLogger(SettingsController.class);
 
     private final ApiTokenService apiTokenService;
     private final UserJdbcService userJdbcService;
@@ -52,7 +54,7 @@ public class SettingsController {
     private final MessageSource messageSource;
     private final LocaleResolver localeResolver;
     private final Properties gitProperties = new Properties();
-    private static final Logger logger = LoggerFactory.getLogger(SettingsController.class);
+    private final RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger;
 
     public SettingsController(ApiTokenService apiTokenService,
                               UserJdbcService userJdbcService,
@@ -69,7 +71,8 @@ public class SettingsController {
                               @Value("${reitti.geocoding.max-errors}") int maxErrors,
                               @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                               MessageSource messageSource,
-                              LocaleResolver localeResolver) {
+                              LocaleResolver localeResolver,
+                              RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger) {
         this.apiTokenService = apiTokenService;
         this.userJdbcService = userJdbcService;
         this.queueStatsService = queueStatsService;
@@ -87,6 +90,7 @@ public class SettingsController {
         this.dataManagementEnabled = dataManagementEnabled;
         this.messageSource = messageSource;
         this.localeResolver = localeResolver;
+        this.rawLocationPointProcessingTrigger = rawLocationPointProcessingTrigger;
         loadGitProperties();
     }
 
@@ -685,9 +689,6 @@ public class SettingsController {
         return "fragments/settings :: user-form";
     }
 
-
-
-
     @GetMapping("/manage-data-content")
     public String getManageDataContent(Model model) {
         if (!dataManagementEnabled) {
@@ -731,7 +732,6 @@ public class SettingsController {
             // Mark all raw location points as unprocessed
             markRawLocationPointsAsUnprocessed(currentUser);
             
-            // Trigger processing pipeline
             rawLocationPointProcessingTrigger.start();
             
             model.addAttribute("successMessage", getMessage("data.clear.reprocess.success"));
@@ -753,7 +753,6 @@ public class SettingsController {
             User currentUser = userJdbcService.findByUsername(username)
                     .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
             
-            // Remove all data except SignificantPlaces
             removeAllDataExceptPlaces(currentUser);
             
             model.addAttribute("successMessage", getMessage("data.remove.all.success"));
@@ -765,21 +764,16 @@ public class SettingsController {
     }
 
     private void clearProcessedDataExceptPlaces(User user) {
-        // Clear all processed data except SignificantPlaces
-        // Order matters due to foreign key constraints
         tripJdbcService.deleteAllForUser(user);
         processedVisitJdbcService.deleteAllForUser(user);
         visitJdbcService.deleteAllForUser(user);
     }
 
     private void markRawLocationPointsAsUnprocessed(User user) {
-        // Mark all raw location points for the user as unprocessed
         rawLocationPointJdbcService.markAllAsUnprocessedForUser(user);
     }
 
     private void removeAllDataExceptPlaces(User user) {
-        // Remove all data except SignificantPlaces
-        // Order matters due to foreign key constraints
         tripJdbcService.deleteAllForUser(user);
         processedVisitJdbcService.deleteAllForUser(user);
         visitJdbcService.deleteAllForUser(user);
