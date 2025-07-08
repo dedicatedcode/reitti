@@ -29,10 +29,10 @@ class GoogleIOSTimelineImporterTest {
 
         // Create a spy to retrieve all LocationDataEvents pushed into RabbitMQ
         ArgumentCaptor<LocationDataEvent> eventCaptor = ArgumentCaptor.forClass(LocationDataEvent.class);
-        verify(mock, times(3)).convertAndSend(eq(RabbitMQConfig.EXCHANGE_NAME), eq(RabbitMQConfig.LOCATION_DATA_ROUTING_KEY), eventCaptor.capture());
+        verify(mock, times(236)).convertAndSend(eq(RabbitMQConfig.EXCHANGE_NAME), eq(RabbitMQConfig.LOCATION_DATA_ROUTING_KEY), eventCaptor.capture());
 
         List<LocationDataEvent> capturedEvents = eventCaptor.getAllValues();
-        assertEquals(3, capturedEvents.size());
+        assertEquals(236, capturedEvents.size());
 
         // Verify that all events are for the correct user
         for (LocationDataEvent event : capturedEvents) {

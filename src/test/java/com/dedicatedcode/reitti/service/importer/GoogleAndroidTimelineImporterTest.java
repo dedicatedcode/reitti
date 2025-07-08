@@ -22,7 +22,7 @@ class GoogleAndroidTimelineImporterTest {
         RabbitTemplate mock = mock(RabbitTemplate.class);
         GoogleAndroidTimelineImporter importHandler = new GoogleAndroidTimelineImporter(new ObjectMapper(), new ImportBatchProcessor(mock, 100), 5, 100, 300);
         User user = new User("test", "Test User");
-        Map<String, Object> result = importHandler.importGoogleTimelineFromAndroid(getClass().getResourceAsStream("/data/google/timeline_from_android_randomized.json"), user);
+        Map<String, Object> result = importHandler.importTimeline(getClass().getResourceAsStream("/data/google/timeline_from_android_randomized.json"), user);
 
         assertTrue(result.containsKey("success"));
         assertTrue((Boolean) result.get("success"));

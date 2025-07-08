@@ -16,8 +16,8 @@ import java.util.Random;
 
 public abstract class BaseGoogleTimelineImporter {
     
-    protected static final Logger logger = LoggerFactory.getLogger(BaseGoogleTimelineImporter.class);
-    protected static final Random random = new Random();
+    private static final Logger logger = LoggerFactory.getLogger(BaseGoogleTimelineImporter.class);
+    private static final Random random = new Random();
     
     protected final ObjectMapper objectMapper;
     protected final ImportBatchProcessor batchProcessor;
@@ -38,16 +38,15 @@ public abstract class BaseGoogleTimelineImporter {
     }
 
     protected int handleVisit(User user, ZonedDateTime startTime, ZonedDateTime endTime, LatLng latLng, List<LocationDataRequest.LocationPoint> batch) {
+        logger.info("Found visit at [{}] from start [{}] to end [{}]. Will insert at least [{}] synthetic geo locations.", latLng, startTime, endTime, minStayPointDetectionPoints);
         createAndScheduleLocationPoint(latLng, startTime, user, batch);
         int count = 1;
         long durationBetween = Duration.between(startTime.toInstant(), endTime.toInstant()).toSeconds();
         if (durationBetween > mergeThresholdSeconds) {
-            long increment = Math.max(10, durationBetween / (minStayPointDetectionPoints * 2L));
+            long increment = 60;
             ZonedDateTime currentTime = startTime.plusSeconds(increment);
             while (currentTime.isBefore(endTime)) {
-                // Move randomly around the visit location within the distance threshold
-                LatLng randomizedLocation = addRandomOffset(latLng, (int) (distanceThresholdMeters / 2.5));
-                createAndScheduleLocationPoint(randomizedLocation, currentTime, user, batch);
+                createAndScheduleLocationPoint(latLng, currentTime, user, batch);
                 count+=1;
                 currentTime = currentTime.plusSeconds(increment);
             }
@@ -66,6 +65,7 @@ public abstract class BaseGoogleTimelineImporter {
         point.setTimestamp(timestamp.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
         point.setAccuracyMeters(10.0);
         batch.add(point);
+        logger.trace("Created location point at [{}]", point);
         if (batch.size() >= batchProcessor.getBatchSize()) {
             batchProcessor.sendToQueue(user, batch);
             batch.clear();
@@ -83,30 +83,6 @@ public abstract class BaseGoogleTimelineImporter {
             logger.warn("Error parsing LatLng string: {}", input);
             return Optional.empty();
         }
-    }
-
-    /**
-     * Adds a random offset to a location within the specified distance threshold
-     */
-    protected LatLng addRandomOffset(LatLng original, int maxDistanceMeters) {
-        // Convert distance to approximate degrees (rough approximation)
-        // 1 degree latitude ≈ 111,000 meters
-        // 1 degree longitude ≈ 111,000 * cos(latitude) meters
-        double latOffsetDegrees = (maxDistanceMeters / 111000.0) * (random.nextDouble() * 2 - 1);
-        double lonOffsetDegrees = (maxDistanceMeters / (111000.0 * Math.cos(Math.toRadians(original.latitude)))) * (random.nextDouble() * 2 - 1);
-        
-        // Ensure we don't exceed the maximum distance by scaling if necessary
-        double actualDistance = Math.sqrt(latOffsetDegrees * latOffsetDegrees + lonOffsetDegrees * lonOffsetDegrees) * 111000.0;
-        if (actualDistance > maxDistanceMeters) {
-            double scale = maxDistanceMeters / actualDistance;
-            latOffsetDegrees *= scale;
-            lonOffsetDegrees *= scale;
-        }
-        
-        return new LatLng(
-            original.latitude + latOffsetDegrees,
-            original.longitude + lonOffsetDegrees
-        );
     }
 
     protected record LatLng(double latitude, double longitude) {}

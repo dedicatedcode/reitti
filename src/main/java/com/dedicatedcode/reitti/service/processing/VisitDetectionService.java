@@ -36,8 +36,6 @@ public class VisitDetectionService {
 
     private final RabbitTemplate rabbitTemplate;
     private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, List<LocationProcessEvent>> userEventHistory = new ConcurrentHashMap<>();
-    private static final int MAX_EVENT_HISTORY = 10;
 
     @Autowired
     public VisitDetectionService(
@@ -66,97 +64,71 @@ public class VisitDetectionService {
         
         userLock.lock();
         try {
-            // Check if this event is already being processed or has been processed recently
-            List<LocationProcessEvent> eventHistory = userEventHistory.computeIfAbsent(username, k -> new ArrayList<>());
-            
-            // Check if we already have this exact time range in our recent history
-            boolean alreadyProcessed = eventHistory.stream().anyMatch(event -> 
-                event.getEarliest().equals(incoming.getEarliest()) && 
-                event.getLatest().equals(incoming.getLatest())
-            );
-            
-            if (alreadyProcessed) {
-                logger.debug("Skipping duplicate event for user {} from {} to {} - already processed recently", 
-                    username, incoming.getEarliest(), incoming.getLatest());
-                return;
-            }
-            
-            // Add current event to history and maintain max size
-            eventHistory.add(incoming);
-            if (eventHistory.size() > MAX_EVENT_HISTORY) {
-                eventHistory.remove(0); // Remove oldest event
-            }
-            
             logger.debug("Detecting stay points for user {} from {} to {} ", username, incoming.getEarliest(), incoming.getLatest());
             User user = userJdbcService.findByUsername(username).orElseThrow();
-        // We extend the search window slightly to catch visits spanning midnight
-        Instant windowStart = incoming.getEarliest().minus(5, ChronoUnit.MINUTES);
-        // Get points from 1 day after the latest new point
-        Instant windowEnd = incoming.getLatest().plus(5, ChronoUnit.MINUTES);
+            // We extend the search window slightly to catch visits spanning midnight
+            Instant windowStart = incoming.getEarliest().minus(5, ChronoUnit.MINUTES);
+            // Get points from 1 day after the latest new point
+            Instant windowEnd = incoming.getLatest().plus(5, ChronoUnit.MINUTES);
 
-        /*
-        -----+++++----------+++++------+++++++---+++----------------++++++++-----------------------------------------------
-        ----------------------#-------------------#------------------------------------------------------------------------
-        --------------------++#++------+++++++---+#+-----------------------------------------------------------------------
-         */
-        List<Visit> affectedVisits = this.visitJdbcService.findByUserAndTimeAfterAndStartTimeBefore(user, windowStart, windowEnd);
-        if (logger.isDebugEnabled()) {
-            logger.debug("Found [{}] visits which touch the timerange from [{}] to [{}]", affectedVisits.size(), windowStart, windowEnd);
-            affectedVisits.forEach(visit -> logger.debug("Visit [{}] from [{}] to [{}] at [{},{}]", visit.getId(), visit.getStartTime(), visit.getEndTime(), visit.getLongitude(), visit.getLatitude()));
+            /*
+            -----+++++----------+++++------+++++++---+++----------------++++++++-----------------------------------------------
+            ----------------------#-------------------#------------------------------------------------------------------------
+            --------------------++#++------+++++++---+#+-----------------------------------------------------------------------
+             */
+            List<Visit> affectedVisits = this.visitJdbcService.findByUserAndTimeAfterAndStartTimeBefore(user, windowStart, windowEnd);
+            if (logger.isDebugEnabled()) {
+                logger.debug("Found [{}] visits which touch the timerange from [{}] to [{}]", affectedVisits.size(), windowStart, windowEnd);
+                affectedVisits.forEach(visit -> logger.debug("Visit [{}] from [{}] to [{}] at [{},{}]", visit.getId(), visit.getStartTime(), visit.getEndTime(), visit.getLongitude(), visit.getLatitude()));
 
-        }
-        try {
-            this.visitJdbcService.delete(affectedVisits);
-            logger.debug("Deleted [{}] visits with ids [{}]", affectedVisits.size(), affectedVisits.stream().map(Visit::getId).map(Object::toString).collect(Collectors.joining()));
-        } catch (OptimisticLockException e) {
-            logger.error("Optimistic lock exception", e);
-            throw new RuntimeException(e);
-        }
-
-        if (!affectedVisits.isEmpty()) {
-            if (affectedVisits.getFirst().getStartTime().isBefore(windowStart)) {
-                windowStart = affectedVisits.getFirst().getStartTime();
+            }
+            try {
+                this.visitJdbcService.delete(affectedVisits);
+                logger.debug("Deleted [{}] visits with ids [{}]", affectedVisits.size(), affectedVisits.stream().map(Visit::getId).map(Object::toString).collect(Collectors.joining()));
+            } catch (OptimisticLockException e) {
+                logger.error("Optimistic lock exception", e);
+                throw new RuntimeException(e);
             }
 
-            if (affectedVisits.getLast().getEndTime().isAfter(windowEnd)) {
-                windowEnd = affectedVisits.getLast().getEndTime();
+            if (!affectedVisits.isEmpty()) {
+                if (affectedVisits.getFirst().getStartTime().isBefore(windowStart)) {
+                    windowStart = affectedVisits.getFirst().getStartTime();
+                }
+
+                if (affectedVisits.getLast().getEndTime().isAfter(windowEnd)) {
+                    windowEnd = affectedVisits.getLast().getEndTime();
+                }
             }
-        }
-        logger.debug("Searching for points in the timerange from [{}] to [{}]", windowStart, windowEnd);
+            logger.debug("Searching for points in the timerange from [{}] to [{}]", windowStart, windowEnd);
 
-        double baseLatitude = affectedVisits.isEmpty() ? 50 : affectedVisits.getFirst().getLatitude();
-        double[] metersAsDegrees = GeoUtils.metersToDegreesAtPosition(distanceThreshold, baseLatitude);
-        List<RawLocationPointJdbcService.ClusteredPoint> clusteredPointsInTimeRangeForUser = this.rawLocationPointJdbcService.findClusteredPointsInTimeRangeForUser(user, windowStart, windowEnd, minPointsInCluster, metersAsDegrees[0]);
-        Map<Integer, List<RawLocationPoint>> clusteredByLocation = new HashMap<>();
-        for (RawLocationPointJdbcService.ClusteredPoint clusteredPoint : clusteredPointsInTimeRangeForUser) {
-            if (clusteredPoint.getClusterId() != null) {
-                clusteredByLocation.computeIfAbsent(clusteredPoint.getClusterId(), _ -> new ArrayList<>()).add(clusteredPoint.getPoint());
+            double baseLatitude = affectedVisits.isEmpty() ? 50 : affectedVisits.getFirst().getLatitude();
+            double[] metersAsDegrees = GeoUtils.metersToDegreesAtPosition(distanceThreshold, baseLatitude);
+            List<RawLocationPointJdbcService.ClusteredPoint> clusteredPointsInTimeRangeForUser = this.rawLocationPointJdbcService.findClusteredPointsInTimeRangeForUser(user, windowStart, windowEnd, minPointsInCluster, metersAsDegrees[0]);
+            Map<Integer, List<RawLocationPoint>> clusteredByLocation = new HashMap<>();
+            for (RawLocationPointJdbcService.ClusteredPoint clusteredPoint : clusteredPointsInTimeRangeForUser) {
+                if (clusteredPoint.getClusterId() != null) {
+                    clusteredByLocation.computeIfAbsent(clusteredPoint.getClusterId(), _ -> new ArrayList<>()).add(clusteredPoint.getPoint());
+                }
             }
-        }
 
-        logger.debug("Found {} point clusters in the processing window from [{}] to [{}]", clusteredByLocation.size(), windowStart, windowEnd);
+            logger.debug("Found {} point clusters in the processing window from [{}] to [{}]", clusteredByLocation.size(), windowStart, windowEnd);
 
-        // Apply the stay point detection algorithm
-        List<StayPoint> stayPoints = detectStayPointsFromTrajectory(clusteredByLocation);
+            // Apply the stay point detection algorithm
+            List<StayPoint> stayPoints = detectStayPointsFromTrajectory(clusteredByLocation);
 
-        logger.info("Detected {} stay points for user {}", stayPoints.size(), user.getUsername());
+            logger.info("Detected {} stay points for user {}", stayPoints.size(), user.getUsername());
 
-        List<Visit> createdVisits = new ArrayList<>();
+            List<Visit> createdVisits = new ArrayList<>();
 
-        for (StayPoint stayPoint : stayPoints) {
-                Visit visit = createVisit(stayPoint.getLongitude(), stayPoint.getLatitude(), stayPoint);
-                logger.debug("Creating new visit: {}", visit);
-                createdVisits.add(visit);
-        }
+            for (StayPoint stayPoint : stayPoints) {
+                    Visit visit = createVisit(stayPoint.getLongitude(), stayPoint.getLatitude(), stayPoint);
+                    logger.debug("Creating new visit: {}", visit);
+                    createdVisits.add(visit);
+            }
 
-        List<Long> createdIds = visitJdbcService.bulkInsert(user, createdVisits).stream().map(Visit::getId).toList();
-        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitUpdatedEvent(user.getUsername(), createdIds));
+            List<Long> createdIds = visitJdbcService.bulkInsert(user, createdVisits).stream().map(Visit::getId).toList();
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitUpdatedEvent(user.getUsername(), createdIds));
         } finally {
-            // Clean up event history for this user if it gets too large
-            List<LocationProcessEvent> eventHistory = userEventHistory.get(username);
-            if (eventHistory != null && eventHistory.size() > MAX_EVENT_HISTORY) {
-                eventHistory.subList(0, eventHistory.size() - MAX_EVENT_HISTORY).clear();
-            }
             userLock.unlock();
         }
     }

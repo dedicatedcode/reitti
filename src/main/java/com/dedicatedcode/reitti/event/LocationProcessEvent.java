@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 
 public class LocationProcessEvent implements Serializable {
     private final String username;
@@ -34,5 +35,17 @@ public class LocationProcessEvent implements Serializable {
 
     public Instant getLatest() {
         return latest;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        LocationProcessEvent that = (LocationProcessEvent) o;
+        return Objects.equals(username, that.username) && Objects.equals(earliest, that.earliest) && Objects.equals(latest, that.latest);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(username, earliest, latest);
     }
 }

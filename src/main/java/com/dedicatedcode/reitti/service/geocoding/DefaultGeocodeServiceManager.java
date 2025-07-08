@@ -138,7 +138,6 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
                 district = address.path("city_district").asText("");
             }
 
-
             if (label.isEmpty() && !street.isEmpty()) {
                 label = street;
             }

@@ -23,8 +23,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 public class VisitMergingService {
@@ -41,7 +39,6 @@ public class VisitMergingService {
     private final long mergeThresholdSeconds;
     private final long mergeThresholdMeters;
     private final int searchRangeExtensionInHours;
-    private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
 
     @Autowired
     public VisitMergingService(VisitJdbcService visitJdbcService,
@@ -68,27 +65,20 @@ public class VisitMergingService {
 
     public void visitUpdated(VisitUpdatedEvent event) {
         String username = event.getUsername();
-        ReentrantLock userLock = userLocks.computeIfAbsent(username, _ -> new ReentrantLock());
-        
-        userLock.lock();
-        try {
-            handleEvent(username, event.getVisitIds());
-        } finally {
-            userLock.unlock();
-        }
+        handleEvent(username, event.getVisitIds());
     }
 
     private void handleEvent(String username, List<Long> visitIds) {
-            Optional<User> user = userJdbcService.findByUsername(username);
-            if (user.isEmpty()) {
-                logger.warn("User not found for userName: {}", username);
-                return;
-            }
-            List<Visit> visits = this.visitJdbcService.findAllByIds(visitIds);
-            if (visits.isEmpty()) {
-                logger.debug("Visit not found for visitId: [{}]", visitIds);
-                return;
-            }
+        Optional<User> user = userJdbcService.findByUsername(username);
+        if (user.isEmpty()) {
+            logger.warn("User not found for userName: {}", username);
+            return;
+        }
+        List<Visit> visits = this.visitJdbcService.findAllByIds(visitIds);
+        if (visits.isEmpty()) {
+            logger.debug("Visit not found for visitId: [{}]", visitIds);
+            return;
+        }
 
         Instant searchStart = visits.stream().min(Comparator.comparing(Visit::getStartTime)).map(Visit::getStartTime).map(instant -> instant.minus(searchRangeExtensionInHours, ChronoUnit.HOURS)).orElseThrow();
         Instant searchEnd = visits.stream().max(Comparator.comparing(Visit::getEndTime)).map(Visit::getEndTime).map(instant -> instant.plus(searchRangeExtensionInHours, ChronoUnit.HOURS)).orElseThrow();

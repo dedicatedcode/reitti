@@ -93,5 +93,16 @@ public class LocationDataRequest {
         public void setActivity(String activity) {
             this.activity = activity;
         }
+
+        @Override
+        public String toString() {
+            return "LocationPoint{" +
+                    "latitude=" + latitude +
+                    ", longitude=" + longitude +
+                    ", timestamp='" + timestamp + '\'' +
+                    ", accuracyMeters=" + accuracyMeters +
+                    ", activity='" + activity + '\'' +
+                    '}';
+        }
     }
 }

@@ -9,6 +9,8 @@ import com.dedicatedcode.reitti.service.importer.dto.Visit;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -24,6 +26,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
+
+    private static final Logger logger = LoggerFactory.getLogger(GoogleAndroidTimelineImporter.class);
 
     public GoogleAndroidTimelineImporter(ObjectMapper objectMapper,
                                          ImportBatchProcessor batchProcessor,
@@ -47,10 +51,9 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
             logger.info("Found {} semantic segments", semanticSegments.size());
             for (SemanticSegment semanticSegment : semanticSegments) {
                 ZonedDateTime start = ZonedDateTime.parse(semanticSegment.getStartTime(), DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-                ZonedDateTime end = ZonedDateTime.parse(semanticSegment.getStartTime(), DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+                ZonedDateTime end = ZonedDateTime.parse(semanticSegment.getEndTime(), DateTimeFormatter.ISO_OFFSET_DATE_TIME);
                 if (semanticSegment.getVisit() != null) {
                     Visit visit = semanticSegment.getVisit();
-                    logger.info("Found visit at [{}] from start [{}] to end [{}]. Will insert at least [{}] synthetic geo locations.", visit.getTopCandidate().getPlaceLocation().getLatLng(), semanticSegment.getStartTime(), semanticSegment.getEndTime(), minStayPointDetectionPoints);
                     Optional<LatLng> latLng = parseLatLng(visit.getTopCandidate().getPlaceLocation().getLatLng());
                     if (latLng.isPresent()) {
                         latLng.ifPresent(lng -> processedCount.addAndGet(handleVisit(user, start, end, lng, batch)));

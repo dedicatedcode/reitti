@@ -66,9 +66,6 @@ public class TestingService {
         return this.userJdbcService.findById(1L)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + (Long) 1L));
     }
-    public void triggerProcessingPipeline() {
-        trigger.start();
-    }
 
     public void triggerProcessingPipeline(int timeoout) {
         trigger.start();
