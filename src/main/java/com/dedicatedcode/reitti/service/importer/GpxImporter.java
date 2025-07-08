@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.service.ImportStateHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -22,10 +23,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class GpxImporter {
     
     private static final Logger logger = LoggerFactory.getLogger(GpxImporter.class);
-    
+
+    private final ImportStateHolder stateHolder;
     private final ImportBatchProcessor batchProcessor;
     
-    public GpxImporter(ImportBatchProcessor batchProcessor) {
+    public GpxImporter(ImportStateHolder stateHolder, ImportBatchProcessor batchProcessor) {
+        this.stateHolder = stateHolder;
         this.batchProcessor = batchProcessor;
     }
     
@@ -33,6 +36,7 @@ public class GpxImporter {
         AtomicInteger processedCount = new AtomicInteger(0);
         
         try {
+            stateHolder.importStarted();
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             DocumentBuilder builder = factory.newDocumentBuilder();
             Document document = builder.parse(inputStream);
@@ -84,6 +88,8 @@ public class GpxImporter {
         } catch (Exception e) {
             logger.error("Error processing GPX file", e);
             return Map.of("success", false, "error", "Error processing GPX file: " + e.getMessage());
+        } finally {
+            stateHolder.importFinished();
         }
     }
     

@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
@@ -24,10 +25,12 @@ public class GoogleRecordsImporter {
     private static final Logger logger = LoggerFactory.getLogger(GoogleRecordsImporter.class);
     
     private final ObjectMapper objectMapper;
+    private final ImportStateHolder stateHolder;
     private final ImportBatchProcessor batchProcessor;
     
-    public GoogleRecordsImporter(ObjectMapper objectMapper, ImportBatchProcessor batchProcessor) {
+    public GoogleRecordsImporter(ObjectMapper objectMapper, ImportStateHolder stateHolder, ImportBatchProcessor batchProcessor) {
         this.objectMapper = objectMapper;
+        this.stateHolder = stateHolder;
         this.batchProcessor = batchProcessor;
     }
     
@@ -35,6 +38,7 @@ public class GoogleRecordsImporter {
         AtomicInteger processedCount = new AtomicInteger(0);
         
         try {
+            stateHolder.importStarted();
             // Use Jackson's streaming API to process the file
             JsonFactory factory = objectMapper.getFactory();
             JsonParser parser = factory.createParser(inputStream);
@@ -76,6 +80,8 @@ public class GoogleRecordsImporter {
         } catch (IOException e) {
             logger.error("Error processing Google Records file", e);
             return Map.of("success", false, "error", "Error processing Google Records file: " + e.getMessage());
+        } finally {
+            stateHolder.importFinished();
         }
     }
     

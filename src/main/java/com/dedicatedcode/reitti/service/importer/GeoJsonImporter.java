@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -21,10 +22,12 @@ public class GeoJsonImporter {
     private static final Logger logger = LoggerFactory.getLogger(GeoJsonImporter.class);
     
     private final ObjectMapper objectMapper;
+    private final ImportStateHolder stateHolder;
     private final ImportBatchProcessor batchProcessor;
     
-    public GeoJsonImporter(ObjectMapper objectMapper, ImportBatchProcessor batchProcessor) {
+    public GeoJsonImporter(ObjectMapper objectMapper, ImportStateHolder stateHolder, ImportBatchProcessor batchProcessor) {
         this.objectMapper = objectMapper;
+        this.stateHolder = stateHolder;
         this.batchProcessor = batchProcessor;
     }
     
@@ -32,6 +35,7 @@ public class GeoJsonImporter {
         AtomicInteger processedCount = new AtomicInteger(0);
 
         try {
+            stateHolder.importStarted();
             JsonNode rootNode = objectMapper.readTree(inputStream);
 
             // Check if it's a valid GeoJSON
@@ -101,6 +105,8 @@ public class GeoJsonImporter {
         } catch (IOException e) {
             logger.error("Error processing GeoJSON file", e);
             return Map.of("success", false, "error", "Error processing GeoJSON file: " + e.getMessage());
+        } finally {
+            stateHolder.importFinished();
         }
     }
     

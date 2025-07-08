@@ -17,8 +17,7 @@ import java.util.Random;
 public abstract class BaseGoogleTimelineImporter {
     
     private static final Logger logger = LoggerFactory.getLogger(BaseGoogleTimelineImporter.class);
-    private static final Random random = new Random();
-    
+
     protected final ObjectMapper objectMapper;
     protected final ImportBatchProcessor batchProcessor;
     protected final int minStayPointDetectionPoints;

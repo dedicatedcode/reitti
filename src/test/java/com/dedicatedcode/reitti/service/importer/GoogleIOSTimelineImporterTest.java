@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.service.importer;
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -20,7 +21,7 @@ class GoogleIOSTimelineImporterTest {
     @Test
     void shouldParseNewGoogleTakeOutFileFromIOS() {
         RabbitTemplate mock = mock(RabbitTemplate.class);
-        GoogleIOSTimelineImporter importHandler = new GoogleIOSTimelineImporter(new ObjectMapper(), new ImportBatchProcessor(mock, 100), 5, 100, 300);
+        GoogleIOSTimelineImporter importHandler = new GoogleIOSTimelineImporter(new ObjectMapper(), new ImportStateHolder(), new ImportBatchProcessor(mock, 100), 5, 100, 300);
         User user = new User("test", "Test User");
         Map<String, Object> result = importHandler.importTimeline(getClass().getResourceAsStream("/data/google/timeline_from_ios_randomized.json"), user);
 
@@ -29,10 +30,10 @@ class GoogleIOSTimelineImporterTest {
 
         // Create a spy to retrieve all LocationDataEvents pushed into RabbitMQ
         ArgumentCaptor<LocationDataEvent> eventCaptor = ArgumentCaptor.forClass(LocationDataEvent.class);
-        verify(mock, times(236)).convertAndSend(eq(RabbitMQConfig.EXCHANGE_NAME), eq(RabbitMQConfig.LOCATION_DATA_ROUTING_KEY), eventCaptor.capture());
+        verify(mock, times(118)).convertAndSend(eq(RabbitMQConfig.EXCHANGE_NAME), eq(RabbitMQConfig.LOCATION_DATA_ROUTING_KEY), eventCaptor.capture());
 
         List<LocationDataEvent> capturedEvents = eventCaptor.getAllValues();
-        assertEquals(236, capturedEvents.size());
+        assertEquals(118, capturedEvents.size());
 
         // Verify that all events are for the correct user
         for (LocationDataEvent event : capturedEvents) {

@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.importer.dto.GoogleTimelineData;
 import com.dedicatedcode.reitti.service.importer.dto.SemanticSegment;
 import com.dedicatedcode.reitti.service.importer.dto.TimelinePathPoint;
@@ -28,19 +29,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
 
     private static final Logger logger = LoggerFactory.getLogger(GoogleAndroidTimelineImporter.class);
+    private final ImportStateHolder stateHolder;
 
     public GoogleAndroidTimelineImporter(ObjectMapper objectMapper,
+                                         ImportStateHolder stateHolder,
                                          ImportBatchProcessor batchProcessor,
                                          @Value("${reitti.staypoint.min-points}") int minStayPointDetectionPoints,
                                          @Value("${reitti.staypoint.distance-threshold-meters}") int distanceThresholdMeters,
                                          @Value("${reitti.visit.merge-threshold-seconds}") int mergeThresholdSeconds) {
         super(objectMapper, batchProcessor, minStayPointDetectionPoints, distanceThresholdMeters, mergeThresholdSeconds);
+        this.stateHolder = stateHolder;
     }
 
     public Map<String, Object> importTimeline(InputStream inputStream, User user) {
         AtomicInteger processedCount = new AtomicInteger(0);
         
         try {
+            this.stateHolder.importStarted();
             JsonFactory factory = objectMapper.getFactory();
             JsonParser parser = factory.createParser(inputStream);
             
@@ -89,6 +94,8 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
         } catch (IOException e) {
             logger.error("Error processing Google Timeline file", e);
             return Map.of("success", false, "error", "Error processing Google Timeline file: " + e.getMessage());
+        } finally {
+            stateHolder.importFinished();
         }
     }
 }

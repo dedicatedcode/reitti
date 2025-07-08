@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.importer.dto.ios.IOSSemanticSegment;
 import com.dedicatedcode.reitti.service.importer.dto.ios.IOSVisit;
 import com.fasterxml.jackson.core.JsonFactory;
@@ -26,19 +27,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Component
 public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
     private static final Logger logger = LoggerFactory.getLogger(GoogleIOSTimelineImporter.class);
+    private final ImportStateHolder stateHolder;
 
     public GoogleIOSTimelineImporter(ObjectMapper objectMapper,
+                                     ImportStateHolder stateHolder,
                                      ImportBatchProcessor batchProcessor,
                                      @Value("${reitti.staypoint.min-points}") int minStayPointDetectionPoints,
                                      @Value("${reitti.staypoint.distance-threshold-meters}") int distanceThresholdMeters,
                                      @Value("${reitti.visit.merge-threshold-seconds}") int mergeThresholdSeconds) {
         super(objectMapper, batchProcessor, minStayPointDetectionPoints, distanceThresholdMeters, mergeThresholdSeconds);
+        this.stateHolder = stateHolder;
     }
 
     public Map<String, Object> importTimeline(InputStream inputStream, User user) {
         AtomicInteger processedCount = new AtomicInteger(0);
 
         try {
+            stateHolder.importStarted();
             JsonFactory factory = objectMapper.getFactory();
             JsonParser parser = factory.createParser(inputStream);
 
@@ -85,6 +90,8 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
         } catch (IOException e) {
             logger.error("Error processing Google Timeline file", e);
             return Map.of("success", false, "error", "Error processing Google Timeline file: " + e.getMessage());
+        } finally {
+            stateHolder.importFinished();
         }
     }
 }
