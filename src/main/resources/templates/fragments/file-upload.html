@@ -21,7 +21,7 @@
                 tracks, and routes with timestamps that can be processed into your location history.
             </p>
             <form id="gpx-upload-form"
-                  hx-post="/settings/import/gpx"
+                  hx-post="/import/gpx"
                   hx-target="#file-upload"
                   hx-encoding="multipart/form-data">
                 <div class="form-group">
@@ -45,7 +45,7 @@
                 Supports both single Feature and FeatureCollection formats.
             </p>
             <form id="geojson-upload-form"
-                  hx-post="/settings/import/geojson"
+                  hx-post="/import/geojson"
                   hx-target="#file-upload"
                   hx-swap="innerHTML"
                   hx-encoding="multipart/form-data">
@@ -69,7 +69,7 @@
             <p class="description" th:text="#{upload.google.new.format.description}">This exports a timeline.json file with your recent location data.</p>
 
             <form id="timeline-upload-form"
-                  hx-post="/settings/import/google-timeline"
+                  hx-post="/import/google-timeline"
                   hx-target="#file-upload"
                   hx-swap="innerHTML"
                   hx-encoding="multipart/form-data">
@@ -91,7 +91,7 @@
             <p th:text="#{upload.google.old.format.instructions}">From Google Takeout: Export your data from takeout.google.com and upload the Records.json file from the Location History folder.</p>
             <p class="description" th:text="#{upload.google.old.format.description}">This contains your complete historical location data.</p>
             <form id="records-upload-form"
-                  hx-post="/settings/import/google-records"
+                  hx-post="/import/google-records"
                   hx-target="#file-upload"
                   hx-swap="innerHTML"
                   hx-encoding="multipart/form-data">

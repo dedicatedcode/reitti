@@ -6,7 +6,6 @@ import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.*;
-import com.dedicatedcode.reitti.service.processing.RawLocationPointProcessingTrigger;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -22,12 +21,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.LocaleResolver;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -41,9 +38,7 @@ public class SettingsController {
     private final QueueStatsService queueStatsService;
     private final PlaceService placeService;
     private final SignificantPlaceJdbcService placeJdbcService;
-    private final ImportHandler importHandler;
     private final GeocodeServiceJdbcService geocodeServiceJdbcService;
-    private final RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger;
     private final ImmichIntegrationService immichIntegrationService;
     private final OwnTracksRecorderIntegrationService ownTracksRecorderIntegrationService;
     private final VisitJdbcService visitJdbcService;
@@ -62,9 +57,7 @@ public class SettingsController {
                               UserJdbcService userJdbcService,
                               QueueStatsService queueStatsService,
                               PlaceService placeService, SignificantPlaceJdbcService placeJdbcService,
-                              ImportHandler importHandler,
                               GeocodeServiceJdbcService geocodeServiceJdbcService,
-                              RawLocationPointProcessingTrigger rawLocationPointProcessingTrigger,
                               ImmichIntegrationService immichIntegrationService,
                               OwnTracksRecorderIntegrationService ownTracksRecorderIntegrationService,
                               VisitJdbcService visitJdbcService,
@@ -81,9 +74,7 @@ public class SettingsController {
         this.queueStatsService = queueStatsService;
         this.placeService = placeService;
         this.placeJdbcService = placeJdbcService;
-        this.importHandler = importHandler;
         this.geocodeServiceJdbcService = geocodeServiceJdbcService;
-        this.rawLocationPointProcessingTrigger = rawLocationPointProcessingTrigger;
         this.immichIntegrationService = immichIntegrationService;
         this.ownTracksRecorderIntegrationService = ownTracksRecorderIntegrationService;
         this.visitJdbcService = visitJdbcService;
@@ -365,7 +356,7 @@ public class SettingsController {
 
     @GetMapping("/file-upload-content")
     public String getDataImportContent() {
-        return "fragments/file-upload :: file-upload-content";
+        return "redirect:/import/file-upload-content";
     }
 
     @GetMapping("/language-content")
