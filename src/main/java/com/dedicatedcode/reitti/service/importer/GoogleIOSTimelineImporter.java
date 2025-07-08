@@ -32,7 +32,7 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
         super(objectMapper, batchProcessor, minStayPointDetectionPoints, distanceThresholdMeters, mergeThresholdSeconds);
     }
 
-    public Map<String, Object> importTimeline(InputStream inputStream, User user) {
+    public Map<String, Object> importGoogleTimelineFromIOS(InputStream inputStream, User user) {
         AtomicInteger processedCount = new AtomicInteger(0);
 
         try {
