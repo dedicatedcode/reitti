@@ -607,8 +607,11 @@ class HorizontalDatePicker {
     }
     
     parseDate(dateString) {
-        //split the date incoming date string and create the date with the parts AI! 
-        return new Date(dateString);
+        const parts = dateString.split('-');
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+        const day = parseInt(parts[2], 10);
+        return new Date(year, month, day);
     }
     
     getDayName(date) {
