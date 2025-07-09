@@ -438,7 +438,6 @@ class HorizontalDatePicker {
         if (!this.options.allowFutureDates) {
             const today = new Date();
             today.setHours(23, 59, 59, 59);
-            
             if (dateToSelect > today) {
                 return; // Don't select future dates if not allowed
             }
@@ -608,6 +607,7 @@ class HorizontalDatePicker {
     }
     
     parseDate(dateString) {
+        //split the date incoming date string and create the date with the parts AI! 
         return new Date(dateString);
     }
     
