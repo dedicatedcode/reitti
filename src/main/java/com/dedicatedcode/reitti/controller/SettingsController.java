@@ -359,11 +359,6 @@ public class SettingsController {
         return "fragments/settings :: queue-stats-content";
     }
 
-    @GetMapping("/file-upload-content")
-    public String getDataImportContent() {
-        return "redirect:/import/file-upload-content";
-    }
-
     @GetMapping("/language-content")
     public String getLanguageContent() {
         return "fragments/settings :: language-content";

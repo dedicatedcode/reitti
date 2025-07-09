@@ -172,7 +172,7 @@
                             
                             // If this is the file upload tab, load its content if not already loaded
                             if (target === 'file-upload' && !section.hasAttribute('hx-triggered')) {
-                                section.setAttribute('hx-get', '/settings/file-upload-content');
+                                section.setAttribute('hx-get', '/import/file-upload-content');
                                 section.setAttribute('hx-trigger', 'load once');
                                 section.setAttribute('hx-triggered', 'true');
                                 htmx.process(section);
