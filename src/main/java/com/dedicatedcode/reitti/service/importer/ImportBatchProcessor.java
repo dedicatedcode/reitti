@@ -5,20 +5,16 @@ import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.User;
+import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PreDestroy;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 @Component
 public class ImportBatchProcessor {
@@ -67,7 +63,7 @@ public class ImportBatchProcessor {
                 TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(username);
                 rabbitTemplate.convertAndSend(
                         RabbitMQConfig.EXCHANGE_NAME,
-                        "trigger-processing",
+                        RabbitMQConfig.TRIGGER_PROCESSING_PIPELINE_ROUTING_KEY,
                         triggerEvent
                 );
                 logger.info("Triggered processing for user: {}", username);
