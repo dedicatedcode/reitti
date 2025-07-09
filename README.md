@@ -187,6 +187,7 @@ The included `docker-compose.yml` provides a complete setup with:
 | `REDIS_USERNAME`    | Redis username (optional)          |          |
 | `REDIS_PASSWORD`    | Redis password (optional)          |          |
 | `PHOTON_BASE_URL`   | Base URL for Photon geocoding service |          |
+| `PROCESSING_WAIT_TIME` | How many seconds to wait after the last data input before starting to process all unprocessed data | 15 |
 | `DANGEROUS_LIFE`    | Enables data management features that can reset/delete all database data (⚠️ USE WITH CAUTION) | false |
 | `SERVER_PORT`       | Application server port            | 8080     |
 | `APP_UID`           | User ID to run the application as  | 1000     |
