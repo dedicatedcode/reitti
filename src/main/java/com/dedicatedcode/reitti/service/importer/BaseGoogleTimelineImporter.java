@@ -61,7 +61,7 @@ public abstract class BaseGoogleTimelineImporter {
         LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
         point.setLatitude(latLng.latitude);
         point.setLongitude(latLng.longitude);
-        point.setTimestamp(timestamp.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+        point.setTimestamp(timestamp.withNano(0).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
         point.setAccuracyMeters(10.0);
         batch.add(point);
         logger.trace("Created location point at [{}]", point);

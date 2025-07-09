@@ -23,14 +23,17 @@ public class ImportBatchProcessor {
     
     private final RabbitTemplate rabbitTemplate;
     private final int batchSize;
+    private final int processingIdleStartTime;
     private final ScheduledExecutorService scheduler;
     private final ConcurrentHashMap<String, ScheduledFuture<?>> pendingTriggers;
     
     public ImportBatchProcessor(
             RabbitTemplate rabbitTemplate,
-            @Value("${reitti.import.batch-size:100}") int batchSize) {
+            @Value("${reitti.import.batch-size:100}") int batchSize,
+            @Value("${reitti.import.processing-idle-start-time:15}") int processingIdleStartTime) {
         this.rabbitTemplate = rabbitTemplate;
         this.batchSize = batchSize;
+        this.processingIdleStartTime = processingIdleStartTime;
         this.scheduler = Executors.newScheduledThreadPool(2);
         this.pendingTriggers = new ConcurrentHashMap<>();
     }
@@ -71,7 +74,7 @@ public class ImportBatchProcessor {
             } catch (Exception e) {
                 logger.error("Failed to trigger processing for user: {}", username, e);
             }
-        }, 30, TimeUnit.SECONDS);
+        }, processingIdleStartTime, TimeUnit.SECONDS);
         
         pendingTriggers.put(username, newTrigger);
     }

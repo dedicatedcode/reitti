@@ -21,7 +21,7 @@ class GoogleAndroidTimelineImporterTest {
     @Test
     void shouldParseNewGoogleTakeOutFileFromAndroid() {
         RabbitTemplate mock = mock(RabbitTemplate.class);
-        GoogleAndroidTimelineImporter importHandler = new GoogleAndroidTimelineImporter(new ObjectMapper(), new ImportStateHolder(), new ImportBatchProcessor(mock, 100), 5, 100, 300);
+        GoogleAndroidTimelineImporter importHandler = new GoogleAndroidTimelineImporter(new ObjectMapper(), new ImportStateHolder(), new ImportBatchProcessor(mock, 100, 15), 5, 100, 300);
         User user = new User("test", "Test User");
         Map<String, Object> result = importHandler.importTimeline(getClass().getResourceAsStream("/data/google/timeline_from_android_randomized.json"), user);
 

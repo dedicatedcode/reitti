@@ -20,7 +20,7 @@ class GoogleRecordsImporterTest {
     @Test
     void shouldParseOldFormat() {
         RabbitTemplate mock = mock(RabbitTemplate.class);
-        GoogleRecordsImporter importHandler = new GoogleRecordsImporter(new ObjectMapper(), new ImportStateHolder(), new ImportBatchProcessor(mock, 100));
+        GoogleRecordsImporter importHandler = new GoogleRecordsImporter(new ObjectMapper(), new ImportStateHolder(), new ImportBatchProcessor(mock, 100, 15));
         User user = new User("test", "Test User");
         Map<String, Object> result = importHandler.importGoogleRecords(getClass().getResourceAsStream("/data/google/Records.json"), user);
 

@@ -21,7 +21,7 @@ class GoogleIOSTimelineImporterTest {
     @Test
     void shouldParseNewGoogleTakeOutFileFromIOS() {
         RabbitTemplate mock = mock(RabbitTemplate.class);
-        GoogleIOSTimelineImporter importHandler = new GoogleIOSTimelineImporter(new ObjectMapper(), new ImportStateHolder(), new ImportBatchProcessor(mock, 100), 5, 100, 300);
+        GoogleIOSTimelineImporter importHandler = new GoogleIOSTimelineImporter(new ObjectMapper(), new ImportStateHolder(), new ImportBatchProcessor(mock, 100, 15), 5, 100, 300);
         User user = new User("test", "Test User");
         Map<String, Object> result = importHandler.importTimeline(getClass().getResourceAsStream("/data/google/timeline_from_ios_randomized.json"), user);
 
