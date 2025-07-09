@@ -150,10 +150,10 @@
 
         function loadTimelineData(date) {
             // Load photos for the selected date
-            photoClient.updatePhotosForDate(date);
+            photoClient.updatePhotosForDate(date, getUserTimezone());
 
             // Fetch raw location points for map display
-            fetch(`/api/v1/raw-location-points?date=${date}`).then(response => {
+            fetch(`/api/v1/raw-location-points?date=${date}&timezone=${getUserTimezone()}`).then(response => {
                 if (!response.ok) {
                     console.warn('Could not fetch raw location points');
                     return { points: [] };

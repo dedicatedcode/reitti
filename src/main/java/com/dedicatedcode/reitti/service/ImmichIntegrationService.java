@@ -7,12 +7,16 @@ import com.dedicatedcode.reitti.dto.PhotoResponse;
 import com.dedicatedcode.reitti.model.ImmichIntegration;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.ImmichIntegrationJdbcService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +24,9 @@ import java.util.Optional;
 
 @Service
 public class ImmichIntegrationService {
-    
+
+    private static final Logger log = LoggerFactory.getLogger(ImmichIntegrationService.class);
+
     private final ImmichIntegrationJdbcService immichIntegrationJdbcService;
     private final RestTemplate restTemplate;
     
@@ -80,7 +86,7 @@ public class ImmichIntegrationService {
         }
     }
     
-    public List<PhotoResponse> searchPhotosForDay(User user, LocalDate date) {
+    public List<PhotoResponse> searchPhotosForDay(User user, LocalDate date, String timezone) {
         Optional<ImmichIntegration> integrationOpt = getIntegrationForUser(user);
         
         if (integrationOpt.isEmpty() || !integrationOpt.get().isEnabled()) {
@@ -93,12 +99,13 @@ public class ImmichIntegrationService {
             String baseUrl = integration.getServerUrl().endsWith("/") ? 
                 integration.getServerUrl() : integration.getServerUrl() + "/";
             String searchUrl = baseUrl + "api/search/metadata";
-            
-            // Create date range for the specific day
-            String startOfDay = date.atStartOfDay().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-            String endOfDay = date.plusDays(1).atStartOfDay().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-            
-            ImmichSearchRequest searchRequest = new ImmichSearchRequest(startOfDay, endOfDay);
+
+            ZoneId userTimezone = ZoneId.of(timezone);
+            // Convert LocalDate to start and end Instant for the selected date in user's timezone
+            Instant startOfDay = date.atStartOfDay(userTimezone).toInstant();
+            Instant endOfDay = date.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
+
+            ImmichSearchRequest searchRequest = new ImmichSearchRequest(DateTimeFormatter.ISO_INSTANT.format(startOfDay), DateTimeFormatter.ISO_INSTANT.format(endOfDay));
             
             HttpHeaders headers = new HttpHeaders();
             headers.add("x-api-key", integration.getApiToken());
@@ -119,7 +126,7 @@ public class ImmichIntegrationService {
             }
             
         } catch (Exception e) {
-            // Log error but don't throw - return empty list
+            log.error("Unable to search immich data:", e);
         }
         
         return new ArrayList<>();

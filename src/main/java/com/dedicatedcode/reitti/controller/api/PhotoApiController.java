@@ -29,9 +29,10 @@ public class PhotoApiController {
     @GetMapping("/day/{date}")
     public ResponseEntity<List<PhotoResponse>> getPhotosForDay(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false, defaultValue = "UTC") String timezone,
             @AuthenticationPrincipal User user) {
         
-        List<PhotoResponse> photos = immichIntegrationService.searchPhotosForDay(user, date);
+        List<PhotoResponse> photos = immichIntegrationService.searchPhotosForDay(user, date, timezone);
         return ResponseEntity.ok(photos);
     }
     

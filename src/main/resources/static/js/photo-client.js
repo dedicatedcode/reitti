@@ -10,11 +10,11 @@ class PhotoClient {
      * Update photos for the selected date
      * @param {string} date - Date in YYYY-MM-DD format
      */
-    async updatePhotosForDate(date) {
+    async updatePhotosForDate(date, timezone) {
         this.currentDate = date;
         
         try {
-            const response = await fetch(`/api/v1/photos/day/${date}`);
+            const response = await fetch(`/api/v1/photos/day/${date}?timezone=${timezone}`);
             if (!response.ok) {
                 console.warn('Could not fetch photos for date:', date);
                 this.photos = [];

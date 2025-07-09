@@ -39,18 +39,19 @@ public class LocationDataApiController {
     }
 
     @GetMapping("/raw-location-points")
-    public ResponseEntity<?> getRawLocationPoints(@RequestParam("date") String dateStr) {
+    public ResponseEntity<?> getRawLocationPoints(@RequestParam("date") String dateStr,
+                                                  @RequestParam(required = false, defaultValue = "UTC") String timezone) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         
         try {
-            // Parse the date string (expected format: YYYY-MM-DD)
             LocalDate date = LocalDate.parse(dateStr);
-            
-            // Create start and end instants for the day
-            Instant startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant();
-            Instant endOfDay = date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
-            
+            ZoneId userTimezone = ZoneId.of(timezone);
+
+            // Convert LocalDate to start and end Instant for the selected date in user's timezone
+            Instant startOfDay = date.atStartOfDay(userTimezone).toInstant();
+            Instant endOfDay = date.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
+
             // Get the user from the repository
             User user = (User) userDetails;
             
