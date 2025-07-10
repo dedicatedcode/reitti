@@ -158,7 +158,6 @@ public class UserSettingsControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testuser")
     void deleteUser_SelfDeletion_ShouldShowError() throws Exception {
         // Create the current user
         String currentUsername = randomUsername();
@@ -170,7 +169,8 @@ public class UserSettingsControllerTest {
         Long userId = currentUser.getId();
 
         mockMvc.perform(post("/settings/users/{userId}/delete", userId)
-                        .with(csrf()))
+                        .with(csrf())
+                        .with(user(currentUsername)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/settings :: users-content"))
                 .andExpect(model().attributeExists("errorMessage"))
