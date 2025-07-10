@@ -8,8 +8,6 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 
-import java.sql.PreparedStatement;
-import java.sql.Statement;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,7 +25,6 @@ public class UserSettingsJdbcService {
         List<Long> connectedAccounts = getConnectedUserAccounts(userId);
         
         return new UserSettings(
-                rs.getLong("id"),
                 userId,
                 rs.getBoolean("prefer_colored_map"),
                 rs.getString("selected_language"),
@@ -50,34 +47,27 @@ public class UserSettingsJdbcService {
     }
     
     public UserSettings save(UserSettings userSettings) {
-        if (userSettings.getId() == null) {
+        if (userSettings.getVersion() == null) {
             // Insert new settings
             KeyHolder keyHolder = new GeneratedKeyHolder();
-            jdbcTemplate.update(connection -> {
-                PreparedStatement ps = connection.prepareStatement(
-                        "INSERT INTO user_settings (user_id, prefer_colored_map, selected_language) VALUES (?, ?, ?)",
-                        Statement.RETURN_GENERATED_KEYS
-                );
-                ps.setLong(1, userSettings.getUserId());
-                ps.setBoolean(2, userSettings.isPreferColoredMap());
-                ps.setString(3, userSettings.getSelectedLanguage());
-                return ps;
-            }, keyHolder);
-            
-            Long id = keyHolder.getKey().longValue();
-            
+            this.jdbcTemplate.update("INSERT INTO user_settings (user_id, prefer_colored_map, selected_language, version) VALUES (?, ?, ?, 1)",
+                    userSettings.getUserId(),
+                    userSettings.isPreferColoredMap(),
+                    userSettings.getSelectedLanguage());
+
+
             // Update user connections
             updateUserConnections(userSettings.getUserId(), userSettings.getConnectedUserAccounts());
-            
-            return new UserSettings(id, userSettings.getUserId(), userSettings.isPreferColoredMap(), 
+
+            return new UserSettings(userSettings.getUserId(), userSettings.isPreferColoredMap(),
                     userSettings.getSelectedLanguage(), userSettings.getConnectedUserAccounts(), 1L);
         } else {
             // Update existing settings
             jdbcTemplate.update(
-                    "UPDATE user_settings SET prefer_colored_map = ?, selected_language = ?, version = version + 1 WHERE id = ?",
+                    "UPDATE user_settings SET prefer_colored_map = ?, selected_language = ?, version = version + 1 WHERE user_id = ?",
                     userSettings.isPreferColoredMap(),
                     userSettings.getSelectedLanguage(),
-                    userSettings.getId()
+                    userSettings.getUserId()
             );
             
             // Update user connections
@@ -97,26 +87,22 @@ public class UserSettingsJdbcService {
     
     private List<Long> getConnectedUserAccounts(Long userId) {
         return jdbcTemplate.queryForList(
-                "SELECT to_user FROM user_connections WHERE from_user = ? " +
-                "UNION " +
-                "SELECT from_user FROM user_connections WHERE to_user = ?",
+                "SELECT to_user FROM connected_users WHERE from_user = ?",
                 Long.class,
-                userId, userId
-        );
+                userId);
     }
     
     private void updateUserConnections(Long userId, List<Long> connectedUserAccounts) {
         // First, remove all existing connections for this user
         jdbcTemplate.update(
-                "DELETE FROM user_connections WHERE from_user = ? OR to_user = ?",
+                "DELETE FROM connected_users WHERE from_user = ? OR to_user = ?",
                 userId, userId
         );
         
         // Then, add the new connections
         for (Long connectedUserId : connectedUserAccounts) {
             jdbcTemplate.update(
-                    "INSERT INTO user_connections (from_user, to_user) VALUES (?, ?) " +
-                    "ON CONFLICT (from_user, to_user) DO NOTHING",
+                    "INSERT INTO connected_users (from_user, to_user) VALUES (?, ?)",
                     userId, connectedUserId
             );
         }

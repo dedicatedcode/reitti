@@ -1,14 +1,11 @@
 package com.dedicatedcode.reitti.repository;
 
+import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.model.UserSettings;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureTestDatabase;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,10 +13,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@ActiveProfiles("test")
-@Transactional
+@IntegrationTest
 public class UserSettingsJdbcServiceTest {
 
     @Autowired
@@ -66,7 +60,6 @@ public class UserSettingsJdbcServiceTest {
         
         UserSettings savedSettings = userSettingsJdbcService.save(newSettings);
         
-        assertThat(savedSettings.getId()).isNotNull();
         assertThat(savedSettings.getUserId()).isEqualTo(testUserId1);
         assertThat(savedSettings.isPreferColoredMap()).isTrue();
         assertThat(savedSettings.getSelectedLanguage()).isEqualTo("fi");
@@ -82,8 +75,7 @@ public class UserSettingsJdbcServiceTest {
         
         // Update settings
         UserSettings updatedSettings = new UserSettings(
-                savedSettings.getId(), 
-                testUserId1, 
+                testUserId1,
                 true, 
                 "de", 
                 List.of(testUserId2, testUserId3), 
@@ -92,7 +84,6 @@ public class UserSettingsJdbcServiceTest {
         
         UserSettings result = userSettingsJdbcService.save(updatedSettings);
         
-        assertThat(result.getId()).isEqualTo(savedSettings.getId());
         assertThat(result.getUserId()).isEqualTo(testUserId1);
         assertThat(result.isPreferColoredMap()).isTrue();
         assertThat(result.getSelectedLanguage()).isEqualTo("de");
@@ -119,7 +110,6 @@ public class UserSettingsJdbcServiceTest {
     void getOrCreateDefaultSettings_WhenUserSettingsDoNotExist_ShouldCreateDefault() {
         UserSettings result = userSettingsJdbcService.getOrCreateDefaultSettings(testUserId1);
         
-        assertThat(result.getId()).isNotNull();
         assertThat(result.getUserId()).isEqualTo(testUserId1);
         assertThat(result.isPreferColoredMap()).isFalse();
         assertThat(result.getSelectedLanguage()).isEqualTo("en");
@@ -129,7 +119,6 @@ public class UserSettingsJdbcServiceTest {
         // Verify it was actually saved to database
         Optional<UserSettings> fromDb = userSettingsJdbcService.findByUserId(testUserId1);
         assertThat(fromDb).isPresent();
-        assertThat(fromDb.get().getId()).isEqualTo(result.getId());
     }
 
     @Test
@@ -140,7 +129,6 @@ public class UserSettingsJdbcServiceTest {
         
         UserSettings result = userSettingsJdbcService.getOrCreateDefaultSettings(testUserId1);
         
-        assertThat(result.getId()).isEqualTo(saved.getId());
         assertThat(result.isPreferColoredMap()).isTrue();
         assertThat(result.getSelectedLanguage()).isEqualTo("fi");
         assertThat(result.getConnectedUserAccounts()).containsExactly(testUserId2);
@@ -157,7 +145,7 @@ public class UserSettingsJdbcServiceTest {
         
         // Verify connections exist
         List<Long> connections = jdbcTemplate.queryForList(
-                "SELECT to_user FROM user_connections WHERE from_user = ?",
+                "SELECT to_user FROM connected_users WHERE from_user = ?",
                 Long.class,
                 testUserId1
         );
@@ -174,20 +162,11 @@ public class UserSettingsJdbcServiceTest {
 
     @Test
     void userConnections_ShouldBeLoadedCorrectly() {
-        // Create bidirectional connections manually
-        jdbcTemplate.update(
-                "INSERT INTO user_connections (from_user, to_user) VALUES (?, ?)",
-                testUserId1, testUserId2
-        );
-        jdbcTemplate.update(
-                "INSERT INTO user_connections (from_user, to_user) VALUES (?, ?)",
-                testUserId3, testUserId1
-        );
-        
         // Create settings (this will load connections)
-        UserSettings settings = new UserSettings(testUserId1, false, "en", List.of());
+        UserSettings settings = new UserSettings(testUserId1, false, "en", List.of(testUserId2, testUserId3));
         UserSettings saved = userSettingsJdbcService.save(settings);
-        
+        assertThat(saved.getConnectedUserAccounts()).containsExactlyInAnyOrder(testUserId2, testUserId3);
+
         // Find the settings to verify connections are loaded
         Optional<UserSettings> result = userSettingsJdbcService.findByUserId(testUserId1);
         
@@ -203,7 +182,7 @@ public class UserSettingsJdbcServiceTest {
         
         // Verify initial connection
         List<Long> initialConnections = jdbcTemplate.queryForList(
-                "SELECT to_user FROM user_connections WHERE from_user = ?",
+                "SELECT to_user FROM connected_users WHERE from_user = ?",
                 Long.class,
                 testUserId1
         );
@@ -211,7 +190,6 @@ public class UserSettingsJdbcServiceTest {
         
         // Update with different connections
         UserSettings updatedSettings = new UserSettings(
-                saved.getId(),
                 testUserId1,
                 false,
                 "en",
@@ -222,7 +200,7 @@ public class UserSettingsJdbcServiceTest {
         
         // Verify connections were replaced
         List<Long> updatedConnections = jdbcTemplate.queryForList(
-                "SELECT to_user FROM user_connections WHERE from_user = ?",
+                "SELECT to_user FROM connected_users WHERE from_user = ?",
                 Long.class,
                 testUserId1
         );
@@ -230,7 +208,7 @@ public class UserSettingsJdbcServiceTest {
         
         // Verify old connection is gone
         List<Long> allConnections = jdbcTemplate.queryForList(
-                "SELECT to_user FROM user_connections WHERE from_user = ? AND to_user = ?",
+                "SELECT to_user FROM connected_users WHERE from_user = ? AND to_user = ?",
                 Long.class,
                 testUserId1, testUserId2
         );
@@ -245,7 +223,6 @@ public class UserSettingsJdbcServiceTest {
         
         // Update with empty connections
         UserSettings updatedSettings = new UserSettings(
-                saved.getId(),
                 testUserId1,
                 false,
                 "en",
@@ -256,7 +233,7 @@ public class UserSettingsJdbcServiceTest {
         
         // Verify all connections are removed
         List<Long> connections = jdbcTemplate.queryForList(
-                "SELECT to_user FROM user_connections WHERE from_user = ?",
+                "SELECT to_user FROM connected_users WHERE from_user = ?",
                 Long.class,
                 testUserId1
         );
@@ -267,7 +244,6 @@ public class UserSettingsJdbcServiceTest {
     void defaultSettings_ShouldHaveCorrectValues() {
         UserSettings defaultSettings = UserSettings.defaultSettings(testUserId1);
         
-        assertThat(defaultSettings.getId()).isNull();
         assertThat(defaultSettings.getUserId()).isEqualTo(testUserId1);
         assertThat(defaultSettings.isPreferColoredMap()).isFalse();
         assertThat(defaultSettings.getSelectedLanguage()).isEqualTo("en");

@@ -5,34 +5,27 @@ import java.util.Objects;
 
 public class UserSettings {
     
-    private final Long id;
     private final Long userId;
     private final boolean preferColoredMap;
     private final String selectedLanguage;
     private final List<Long> connectedUserAccounts;
     private final Long version;
-    
-    public UserSettings(Long id, Long userId, boolean preferColoredMap, String selectedLanguage, List<Long> connectedUserAccounts, Long version) {
-        this.id = id;
+
+    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, List<Long> connectedUserAccounts, Long version) {
         this.userId = userId;
         this.preferColoredMap = preferColoredMap;
         this.selectedLanguage = selectedLanguage;
         this.connectedUserAccounts = connectedUserAccounts;
         this.version = version;
     }
-    
     public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, List<Long> connectedUserAccounts) {
-        this(null, userId, preferColoredMap, selectedLanguage, connectedUserAccounts, null);
+        this(userId, preferColoredMap, selectedLanguage, connectedUserAccounts, null);
     }
-    
+
+
     public static UserSettings defaultSettings(Long userId) {
-        return new UserSettings(userId, false, "en", List.of());
+        return new UserSettings(userId, false, "en", List.of(), null);
     }
-    
-    public Long getId() {
-        return id;
-    }
-    
     public Long getUserId() {
         return userId;
     }
@@ -59,7 +52,6 @@ public class UserSettings {
         if (o == null || getClass() != o.getClass()) return false;
         UserSettings that = (UserSettings) o;
         return preferColoredMap == that.preferColoredMap &&
-                Objects.equals(id, that.id) &&
                 Objects.equals(userId, that.userId) &&
                 Objects.equals(selectedLanguage, that.selectedLanguage) &&
                 Objects.equals(connectedUserAccounts, that.connectedUserAccounts) &&
@@ -68,14 +60,13 @@ public class UserSettings {
     
     @Override
     public int hashCode() {
-        return Objects.hash(id, userId, preferColoredMap, selectedLanguage, connectedUserAccounts, version);
+        return Objects.hash(userId, preferColoredMap, selectedLanguage, connectedUserAccounts, version);
     }
     
     @Override
     public String toString() {
         return "UserSettings{" +
-                "id=" + id +
-                ", userId=" + userId +
+                "userId=" + userId +
                 ", preferColoredMap=" + preferColoredMap +
                 ", selectedLanguage='" + selectedLanguage + '\'' +
                 ", connectedUserAccounts=" + connectedUserAccounts +

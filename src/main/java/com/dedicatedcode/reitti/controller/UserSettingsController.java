@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.UserSettings;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import org.springframework.context.MessageSource;
@@ -81,8 +82,7 @@ public class UserSettingsController {
                 
                 // Get the created user and create default settings with selected language
                 User createdUser = userJdbcService.findByUsername(username).orElseThrow();
-                com.dedicatedcode.reitti.model.UserSettings userSettings = 
-                    new com.dedicatedcode.reitti.model.UserSettings(createdUser.getId(), false, selectedLanguage, List.of());
+                UserSettings userSettings = new UserSettings(createdUser.getId(), false, selectedLanguage, List.of());
                 userSettingsJdbcService.save(userSettings);
                 
                 model.addAttribute("successMessage", getMessage("message.success.user.created"));
@@ -119,12 +119,10 @@ public class UserSettingsController {
             userJdbcService.updateUser(userId, username, displayName, password);
             
             // Update user settings with selected language
-            com.dedicatedcode.reitti.model.UserSettings existingSettings = userSettingsJdbcService.findByUserId(userId)
-                .orElse(com.dedicatedcode.reitti.model.UserSettings.defaultSettings(userId));
+            UserSettings existingSettings = userSettingsJdbcService.findByUserId(userId)
+                .orElse(UserSettings.defaultSettings(userId));
             
-            com.dedicatedcode.reitti.model.UserSettings updatedSettings = new com.dedicatedcode.reitti.model.UserSettings(
-                existingSettings.getId(), userId, existingSettings.isPreferColoredMap(), 
-                selectedLanguage, existingSettings.getConnectedUserAccounts(), existingSettings.getVersion());
+            UserSettings updatedSettings = new UserSettings(userId, existingSettings.isPreferColoredMap(), selectedLanguage, existingSettings.getConnectedUserAccounts(), existingSettings.getVersion());
             userSettingsJdbcService.save(updatedSettings);
             
             model.addAttribute("successMessage", getMessage("message.success.user.updated"));
@@ -159,8 +157,8 @@ public class UserSettingsController {
             model.addAttribute("displayName", displayName);
             
             // Load user settings to get selected language
-            com.dedicatedcode.reitti.model.UserSettings userSettings = userSettingsJdbcService.findByUserId(userId)
-                .orElse(com.dedicatedcode.reitti.model.UserSettings.defaultSettings(userId));
+            UserSettings userSettings = userSettingsJdbcService.findByUserId(userId)
+                .orElse(UserSettings.defaultSettings(userId));
             model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
         } else {
             // Default language for new users
