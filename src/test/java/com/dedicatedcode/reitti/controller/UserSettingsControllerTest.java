@@ -12,9 +12,11 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -39,6 +41,10 @@ public class UserSettingsControllerTest {
                 .build();
     }
 
+    private String randomUsername() {
+        return "user_" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+    }
+
     @Test
     @WithMockUser(username = "testuser")
     void getUsersContent_ShouldReturnUsersFragment() throws Exception {
@@ -53,7 +59,7 @@ public class UserSettingsControllerTest {
     @Test
     @WithMockUser(username = "testuser")
     void createUser_ShouldCreateNewUser() throws Exception {
-        String newUsername = "newuser";
+        String newUsername = randomUsername();
         String newDisplayName = "New User";
         String newPassword = "password123";
 
@@ -96,7 +102,7 @@ public class UserSettingsControllerTest {
     @WithMockUser(username = "testuser")
     void updateUser_ShouldUpdateExistingUser() throws Exception {
         // Create a user first
-        String originalUsername = "updateuser";
+        String originalUsername = randomUsername();
         String originalDisplayName = "Update User";
         String originalPassword = "password123";
         userJdbcService.createUser(originalUsername, originalDisplayName, originalPassword);
@@ -104,7 +110,7 @@ public class UserSettingsControllerTest {
         User createdUser = userJdbcService.findByUsername(originalUsername).orElseThrow();
         Long userId = createdUser.getId();
 
-        String updatedUsername = "updateduser";
+        String updatedUsername = randomUsername();
         String updatedDisplayName = "Updated User";
         String updatedPassword = "newpassword123";
 
@@ -129,7 +135,7 @@ public class UserSettingsControllerTest {
     @WithMockUser(username = "testuser")
     void deleteUser_ShouldDeleteUser() throws Exception {
         // Create a user first
-        String usernameToDelete = "deleteuser";
+        String usernameToDelete = randomUsername();
         String displayName = "Delete User";
         String password = "password123";
         userJdbcService.createUser(usernameToDelete, displayName, password);
@@ -155,7 +161,7 @@ public class UserSettingsControllerTest {
     @WithMockUser(username = "testuser")
     void deleteUser_SelfDeletion_ShouldShowError() throws Exception {
         // Create the current user
-        String currentUsername = "testuser";
+        String currentUsername = randomUsername();
         String displayName = "Test User";
         String password = "password123";
         userJdbcService.createUser(currentUsername, displayName, password);
@@ -204,10 +210,9 @@ public class UserSettingsControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testuser")
     void updateUser_CurrentUser_ShouldSetReloginFlag() throws Exception {
         // Create the current user
-        String currentUsername = "testuser";
+        String currentUsername = randomUsername();
         String displayName = "Test User";
         String password = "password123";
         userJdbcService.createUser(currentUsername, displayName, password);
@@ -215,14 +220,15 @@ public class UserSettingsControllerTest {
         User currentUser = userJdbcService.findByUsername(currentUsername).orElseThrow();
         Long userId = currentUser.getId();
 
-        String newUsername = "newtestuser";
+        String newUsername = randomUsername();
 
         mockMvc.perform(post("/settings/users/update")
                         .param("userId", userId.toString())
                         .param("username", newUsername)
                         .param("displayName", displayName)
                         .param("password", password)
-                        .with(csrf()))
+                        .with(csrf())
+                        .with(user(currentUsername)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/settings :: users-content"))
                 .andExpect(model().attributeExists("successMessage"))
