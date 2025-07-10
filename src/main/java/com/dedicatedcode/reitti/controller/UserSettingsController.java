@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.core.Authentication;
@@ -18,10 +19,12 @@ import java.util.List;
 public class UserSettingsController {
 
     private final UserJdbcService userJdbcService;
+    private final UserSettingsJdbcService userSettingsJdbcService;
     private final MessageSource messageSource;
 
-    public UserSettingsController(UserJdbcService userJdbcService, MessageSource messageSource) {
+    public UserSettingsController(UserJdbcService userJdbcService, UserSettingsJdbcService userSettingsJdbcService, MessageSource messageSource) {
         this.userJdbcService = userJdbcService;
+        this.userSettingsJdbcService = userSettingsJdbcService;
         this.messageSource = messageSource;
     }
 
@@ -69,11 +72,19 @@ public class UserSettingsController {
     public String createUser(@RequestParam String username,
                              @RequestParam String displayName,
                              @RequestParam String password,
+                             @RequestParam String selectedLanguage,
                              Authentication authentication,
                              Model model) {
         try {
             if (StringUtils.hasText(username) && StringUtils.hasText(displayName) && StringUtils.hasText(password)) {
                 userJdbcService.createUser(username, displayName, password);
+                
+                // Get the created user and create default settings with selected language
+                User createdUser = userJdbcService.findByUsername(username).orElseThrow();
+                com.dedicatedcode.reitti.model.UserSettings userSettings = 
+                    new com.dedicatedcode.reitti.model.UserSettings(createdUser.getId(), false, selectedLanguage, List.of());
+                userSettingsJdbcService.save(userSettings);
+                
                 model.addAttribute("successMessage", getMessage("message.success.user.created"));
             } else {
                 model.addAttribute("errorMessage", getMessage("message.error.user.creation", "All fields must be filled"));
@@ -96,15 +107,26 @@ public class UserSettingsController {
                              @RequestParam String username,
                              @RequestParam String displayName,
                              @RequestParam(required = false) String password,
+                             @RequestParam String selectedLanguage,
                              Authentication authentication,
                              Model model) {
         String currentUsername = authentication.getName();
         User currentUser = userJdbcService.findById(userId)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + userId));
-        boolean isCurrentUser = currentUser.getId().equals(userId);
+        boolean isCurrentUser = currentUser.getUsername().equals(currentUsername);
 
         try {
             userJdbcService.updateUser(userId, username, displayName, password);
+            
+            // Update user settings with selected language
+            com.dedicatedcode.reitti.model.UserSettings existingSettings = userSettingsJdbcService.findByUserId(userId)
+                .orElse(com.dedicatedcode.reitti.model.UserSettings.defaultSettings(userId));
+            
+            com.dedicatedcode.reitti.model.UserSettings updatedSettings = new com.dedicatedcode.reitti.model.UserSettings(
+                existingSettings.getId(), userId, existingSettings.isPreferColoredMap(), 
+                selectedLanguage, existingSettings.getConnectedUserAccounts(), existingSettings.getVersion());
+            userSettingsJdbcService.save(updatedSettings);
+            
             model.addAttribute("successMessage", getMessage("message.success.user.updated"));
 
             // If the current user was updated, update the authentication
@@ -135,6 +157,14 @@ public class UserSettingsController {
             model.addAttribute("userId", userId);
             model.addAttribute("username", username);
             model.addAttribute("displayName", displayName);
+            
+            // Load user settings to get selected language
+            com.dedicatedcode.reitti.model.UserSettings userSettings = userSettingsJdbcService.findByUserId(userId)
+                .orElse(com.dedicatedcode.reitti.model.UserSettings.defaultSettings(userId));
+            model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
+        } else {
+            // Default language for new users
+            model.addAttribute("selectedLanguage", "en");
         }
         return "fragments/user-management :: user-form";
     }

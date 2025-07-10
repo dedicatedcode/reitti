@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.controller;
 import com.dedicatedcode.reitti.dto.UserSettings;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -15,9 +16,11 @@ import java.util.Optional;
 public class GlobalControllerAdvice {
     
     private final UserJdbcService userJdbcService;
+    private final UserSettingsJdbcService userSettingsJdbcService;
     
-    public GlobalControllerAdvice(UserJdbcService userJdbcService) {
+    public GlobalControllerAdvice(UserJdbcService userJdbcService, UserSettingsJdbcService userSettingsJdbcService) {
         this.userJdbcService = userJdbcService;
+        this.userSettingsJdbcService = userSettingsJdbcService;
     }
     
     @ModelAttribute("currentUserSettings")
@@ -34,9 +37,9 @@ public class GlobalControllerAdvice {
         Optional<User> userOptional = userJdbcService.findByUsername(username);
         
         if (userOptional.isPresent()) {
-            // TODO: Load actual user preferences from database
-            // For now, return default settings
-            return new UserSettings(false, "en", List.of());
+            User user = userOptional.get();
+            com.dedicatedcode.reitti.model.UserSettings dbSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
+            return new UserSettings(dbSettings.isPreferColoredMap(), dbSettings.getSelectedLanguage(), dbSettings.getConnectedUserAccounts());
         }
         
         // Fallback for authenticated users not found in database
