@@ -82,36 +82,31 @@
         </div>
         <div class="form-group">
             <label th:text="#{users.language.label}">Preferred Language</label>
-            <input type="hidden" id="selectedLanguage" name="selectedLanguage" th:value="${selectedLanguage ?: 'en'}">
             <div class="language-selection">
                 <div class="language-buttons">
-                    <button type="button" class="btn language-btn"
-                            th:classappend="${selectedLanguage == 'en' || selectedLanguage == null} ? 'active' : ''"
-                            onclick="selectLanguage('en', this)">
+                    <label class="btn language-btn" th:classappend="${selectedLanguage == 'en' || selectedLanguage == null} ? 'active' : ''">
+                        <input type="radio" name="preferred_language" value="en" th:checked="${selectedLanguage == 'en' || selectedLanguage == null}" style="display: none;">
                         <span class="language-flag">🇺🇸</span>
                         <span th:text="#{language.english}" class="language-name">English</span>
-                    </button>
+                    </label>
 
-                    <button type="button" class="btn language-btn"
-                            th:classappend="${selectedLanguage == 'fi'} ? 'active' : ''"
-                            onclick="selectLanguage('fi', this)">
+                    <label class="btn language-btn" th:classappend="${selectedLanguage == 'fi'} ? 'active' : ''">
+                        <input type="radio" name="preferred_language" value="fi" th:checked="${selectedLanguage == 'fi'}" style="display: none;">
                         <span class="language-flag">🇫🇮</span>
                         <span th:text="#{language.finnish}" class="language-name">Suomi</span>
-                    </button>
+                    </label>
 
-                    <button type="button" class="btn language-btn"
-                            th:classappend="${selectedLanguage == 'de'} ? 'active' : ''"
-                            onclick="selectLanguage('de', this)">
+                    <label class="btn language-btn" th:classappend="${selectedLanguage == 'de'} ? 'active' : ''">
+                        <input type="radio" name="preferred_language" value="de" th:checked="${selectedLanguage == 'de'}" style="display: none;">
                         <span class="language-flag">🇩🇪</span>
                         <span th:text="#{language.german}" class="language-name">Deutsch</span>
-                    </button>
+                    </label>
 
-                    <button type="button" class="btn language-btn"
-                            th:classappend="${selectedLanguage == 'fr'} ? 'active' : ''"
-                            onclick="selectLanguage('fr', this)">
+                    <label class="btn language-btn" th:classappend="${selectedLanguage == 'fr'} ? 'active' : ''">
+                        <input type="radio" name="preferred_language" value="fr" th:checked="${selectedLanguage == 'fr'}" style="display: none;">
                         <span class="language-flag">🇫🇷</span>
                         <span th:text="#{language.french}" class="language-name">Français</span>
-                    </button>
+                    </label>
                 </div>
             </div>
         </div>
@@ -124,17 +119,17 @@
 </div>
 
 <script>
-function selectLanguage(lang, button) {
-    // Update hidden input
-    document.getElementById('selectedLanguage').value = lang;
-    
-    // Remove active class from all language buttons
-    const languageButtons = document.querySelectorAll('.language-btn');
-    languageButtons.forEach(btn => btn.classList.remove('active'));
-    
-    // Add active class to clicked button
-    button.classList.add('active');
-}
+// Update active class when radio button changes
+document.addEventListener('change', function(e) {
+    if (e.target.name === 'preferred_language') {
+        // Remove active class from all language buttons
+        const languageButtons = document.querySelectorAll('.language-btn');
+        languageButtons.forEach(btn => btn.classList.remove('active'));
+        
+        // Add active class to the parent label of the selected radio button
+        e.target.closest('.language-btn').classList.add('active');
+    }
+});
 </script>
 
 </body>
