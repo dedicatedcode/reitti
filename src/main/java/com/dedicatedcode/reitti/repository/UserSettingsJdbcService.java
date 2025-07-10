@@ -1,9 +1,6 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.UserSettings;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -20,23 +17,19 @@ import java.util.Optional;
 public class UserSettingsJdbcService {
     
     private final JdbcTemplate jdbcTemplate;
-    private final ObjectMapper objectMapper;
-    
-    public UserSettingsJdbcService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
+
+    public UserSettingsJdbcService(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
-        this.objectMapper = objectMapper;
     }
-    
-    private final RowMapper<UserSettings> userSettingsRowMapper = (rs, rowNum) -> {
-        return new UserSettings(
-                rs.getLong("id"),
-                rs.getLong("user_id"),
-                rs.getBoolean("prefer_colored_map"),
-                rs.getString("selected_language"),
-                List.of(), // Connected accounts are stored in a separate table
-                rs.getLong("version")
-        );
-    };
+
+    private final RowMapper<UserSettings> userSettingsRowMapper = (rs, rowNum) -> new UserSettings(
+            rs.getLong("id"),
+            rs.getLong("user_id"),
+            rs.getBoolean("prefer_colored_map"),
+            rs.getString("selected_language"),
+            List.of(), // Connected accounts are stored in a separate table
+            rs.getLong("version")
+    );
     
     public Optional<UserSettings> findByUserId(Long userId) {
         try {
