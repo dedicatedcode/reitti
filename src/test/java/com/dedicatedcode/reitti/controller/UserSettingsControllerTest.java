@@ -20,7 +20,6 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @IntegrationTest
@@ -51,7 +50,7 @@ public class UserSettingsControllerTest {
     void getUsersContent_ShouldReturnUsersFragment() throws Exception {
         mockMvc.perform(get("/settings/users-content"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/settings :: users-content"))
+                .andExpect(view().name("fragments/user-management :: users-content"))
                 .andExpect(model().attributeExists("users"))
                 .andExpect(model().attributeExists("currentUsername"))
                 .andExpect(model().attribute("currentUsername", "testuser"));
@@ -74,7 +73,7 @@ public class UserSettingsControllerTest {
                         .param("password", newPassword)
                         .with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/settings :: users-content"))
+                .andExpect(view().name("fragments/user-management :: users-content"))
                 .andExpect(model().attributeExists("successMessage"))
                 .andExpect(model().attributeExists("users"))
                 .andExpect(model().attributeExists("currentUsername"));
@@ -95,7 +94,7 @@ public class UserSettingsControllerTest {
                         .param("password", "")
                         .with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/settings :: users-content"))
+                .andExpect(view().name("fragments/user-management :: users-content"))
                 .andExpect(model().attributeExists("errorMessage"));
     }
 
@@ -122,7 +121,7 @@ public class UserSettingsControllerTest {
                         .param("password", updatedPassword)
                         .with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/settings :: users-content"))
+                .andExpect(view().name("fragments/user-management :: users-content"))
                 .andExpect(model().attributeExists("successMessage"))
                 .andExpect(model().attributeExists("users"));
 
@@ -150,7 +149,7 @@ public class UserSettingsControllerTest {
         mockMvc.perform(post("/settings/users/{userId}/delete", userId)
                         .with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/settings :: users-content"))
+                .andExpect(view().name("fragments/user-management :: users-content"))
                 .andExpect(model().attributeExists("successMessage"))
                 .andExpect(model().attributeExists("users"));
 
@@ -173,7 +172,7 @@ public class UserSettingsControllerTest {
                         .with(csrf())
                         .with(user(currentUsername)))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/settings :: users-content"))
+                .andExpect(view().name("fragments/user-management :: users-content"))
                 .andExpect(model().attributeExists("errorMessage"))
                 .andExpect(model().attributeExists("users"));
 
@@ -186,7 +185,7 @@ public class UserSettingsControllerTest {
     void getUserForm_WithoutUserId_ShouldReturnEmptyForm() throws Exception {
         mockMvc.perform(get("/settings/user-form"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/settings :: user-form"))
+                .andExpect(view().name("fragments/user-management :: user-form"))
                 .andExpect(model().attributeDoesNotExist("userId"))
                 .andExpect(model().attributeDoesNotExist("username"))
                 .andExpect(model().attributeDoesNotExist("displayName"));
@@ -204,7 +203,7 @@ public class UserSettingsControllerTest {
                         .param("username", username)
                         .param("displayName", displayName))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/settings :: user-form"))
+                .andExpect(view().name("fragments/user-management :: user-form"))
                 .andExpect(model().attribute("userId", userId))
                 .andExpect(model().attribute("username", username))
                 .andExpect(model().attribute("displayName", displayName));
@@ -231,7 +230,7 @@ public class UserSettingsControllerTest {
                         .with(csrf())
                         .with(user(currentUsername)))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/settings :: users-content"))
+                .andExpect(view().name("fragments/user-management :: users-content"))
                 .andExpect(model().attributeExists("successMessage"))
                 .andExpect(model().attribute("requireRelogin", true))
                 .andExpect(model().attribute("newUsername", newUsername));
