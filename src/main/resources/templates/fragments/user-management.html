@@ -81,7 +81,7 @@
             <small th:if="${userId != null}" th:text="#{users.password.keep.current}">Leave empty to keep current password</small>
         </div>
         <div class="form-group">
-            <label th:text="#{users.language.label}">Preferred Language</label>
+            <label th:text="#{language.title}">Preferred Language</label>
             <div class="language-selection">
                 <div class="language-buttons">
                     <label class="btn language-btn" th:classappend="${selectedLanguage == 'en' || selectedLanguage == null} ? 'active' : ''">
