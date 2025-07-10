@@ -80,6 +80,15 @@
             <input type="password" id="password" name="password" th:required="${userId == null}" th:placeholder="#{users.password.placeholder}" autocomplete="new-password">
             <small th:if="${userId != null}" th:text="#{users.password.keep.current}">Leave empty to keep current password</small>
         </div>
+        <div class="form-group">
+            <label for="selectedLanguage" th:text="#{users.language.label}">Preferred Language</label>
+            <select id="selectedLanguage" name="selectedLanguage" required>
+                <option value="en" th:selected="${selectedLanguage == 'en'}" th:text="#{language.english}">English</option>
+                <option value="fi" th:selected="${selectedLanguage == 'fi'}" th:text="#{language.finnish}">Suomi</option>
+                <option value="de" th:selected="${selectedLanguage == 'de'}" th:text="#{language.german}">Deutsch</option>
+                <option value="fr" th:selected="${selectedLanguage == 'fr'}" th:text="#{language.french}">Français</option>
+            </select>
+        </div>
         <div style="display: flex; gap: 10px;">
             <button type="submit" class="btn" th:text="${userId != null ? #messages.msg('form.update') : #messages.msg('form.create')}">Create User</button>
             <button type="button" class="btn" th:if="${userId != null}" 

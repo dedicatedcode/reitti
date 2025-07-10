@@ -28,24 +28,12 @@ public class UserSettingsJdbcService {
     }
     
     private final RowMapper<UserSettings> userSettingsRowMapper = (rs, rowNum) -> {
-        List<Long> connectedAccounts;
-        try {
-            String connectedAccountsJson = rs.getString("connected_user_accounts");
-            if (connectedAccountsJson != null && !connectedAccountsJson.isEmpty()) {
-                connectedAccounts = objectMapper.readValue(connectedAccountsJson, new TypeReference<List<Long>>() {});
-            } else {
-                connectedAccounts = List.of();
-            }
-        } catch (JsonProcessingException e) {
-            connectedAccounts = List.of();
-        }
-        
         return new UserSettings(
                 rs.getLong("id"),
                 rs.getLong("user_id"),
                 rs.getBoolean("prefer_colored_map"),
                 rs.getString("selected_language"),
-                connectedAccounts,
+                List.of(), // Connected accounts are stored in a separate table
                 rs.getLong("version")
         );
     };
@@ -64,38 +52,29 @@ public class UserSettingsJdbcService {
     }
     
     public UserSettings save(UserSettings userSettings) {
-        String connectedAccountsJson;
-        try {
-            connectedAccountsJson = objectMapper.writeValueAsString(userSettings.getConnectedUserAccounts());
-        } catch (JsonProcessingException e) {
-            connectedAccountsJson = "[]";
-        }
-        
         if (userSettings.getId() == null) {
             // Insert new settings
             KeyHolder keyHolder = new GeneratedKeyHolder();
             jdbcTemplate.update(connection -> {
                 PreparedStatement ps = connection.prepareStatement(
-                        "INSERT INTO user_settings (user_id, prefer_colored_map, selected_language, connected_user_accounts) VALUES (?, ?, ?, ?)",
+                        "INSERT INTO user_settings (user_id, prefer_colored_map, selected_language) VALUES (?, ?, ?)",
                         Statement.RETURN_GENERATED_KEYS
                 );
                 ps.setLong(1, userSettings.getUserId());
                 ps.setBoolean(2, userSettings.isPreferColoredMap());
                 ps.setString(3, userSettings.getSelectedLanguage());
-                ps.setString(4, connectedAccountsJson);
                 return ps;
             }, keyHolder);
             
             Long id = keyHolder.getKey().longValue();
             return new UserSettings(id, userSettings.getUserId(), userSettings.isPreferColoredMap(), 
-                    userSettings.getSelectedLanguage(), userSettings.getConnectedUserAccounts(), 1L);
+                    userSettings.getSelectedLanguage(), List.of(), 1L);
         } else {
             // Update existing settings
             jdbcTemplate.update(
-                    "UPDATE user_settings SET prefer_colored_map = ?, selected_language = ?, connected_user_accounts = ?, version = version + 1 WHERE id = ?",
+                    "UPDATE user_settings SET prefer_colored_map = ?, selected_language = ?, version = version + 1 WHERE id = ?",
                     userSettings.isPreferColoredMap(),
                     userSettings.getSelectedLanguage(),
-                    connectedAccountsJson,
                     userSettings.getId()
             );
             
