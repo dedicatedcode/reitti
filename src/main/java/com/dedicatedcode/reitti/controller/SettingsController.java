@@ -8,7 +8,6 @@ import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.*;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -23,7 +22,6 @@ import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.servlet.LocaleResolver;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -51,7 +49,6 @@ public class SettingsController {
     private final int maxErrors;
     private final boolean dataManagementEnabled;
     private final MessageSource messageSource;
-    private final LocaleResolver localeResolver;
     private final Properties gitProperties = new Properties();
     private final ProcessingPipelineTrigger processingPipelineTrigger;
 
@@ -72,7 +69,6 @@ public class SettingsController {
                               @Value("${reitti.geocoding.max-errors}") int maxErrors,
                               @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                               MessageSource messageSource,
-                              LocaleResolver localeResolver,
                               ProcessingPipelineTrigger processingPipelineTrigger) {
         this.apiTokenService = apiTokenService;
         this.userJdbcService = userJdbcService;
@@ -90,7 +86,6 @@ public class SettingsController {
         this.maxErrors = maxErrors;
         this.dataManagementEnabled = dataManagementEnabled;
         this.messageSource = messageSource;
-        this.localeResolver = localeResolver;
         this.processingPipelineTrigger = processingPipelineTrigger;
         loadGitProperties();
     }
@@ -271,22 +266,6 @@ public class SettingsController {
 
     @GetMapping("/language-content")
     public String getLanguageContent() {
-        return "fragments/settings :: language-content";
-    }
-
-    @PostMapping("/language")
-    public String changeLanguage(@RequestParam String lang, 
-                                HttpServletRequest request, 
-                                HttpServletResponse response, 
-                                Model model) {
-        try {
-            Locale locale = Locale.forLanguageTag(lang);
-            localeResolver.setLocale(request, response, locale);
-            model.addAttribute("successMessage", getMessage("message.success.language.changed"));
-        } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("message.error.language.change", e.getMessage()));
-        }
-        
         return "fragments/settings :: language-content";
     }
 

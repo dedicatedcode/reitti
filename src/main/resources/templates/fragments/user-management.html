@@ -84,25 +84,25 @@
             <label th:text="#{language.title}">Preferred Language</label>
             <div class="language-selection">
                 <div class="language-buttons">
-                    <label class="btn language-btn" th:classappend="${selectedLanguage == 'en' || selectedLanguage == null} ? 'active' : ''">
+                    <label class="btn language-btn">
                         <input type="radio" name="preferred_language" value="en" th:checked="${selectedLanguage == 'en' || selectedLanguage == null}" style="display: none;">
                         <span class="language-flag">🇺🇸</span>
                         <span th:text="#{language.english}" class="language-name">English</span>
                     </label>
 
-                    <label class="btn language-btn" th:classappend="${selectedLanguage == 'fi'} ? 'active' : ''">
+                    <label class="btn language-btn">
                         <input type="radio" name="preferred_language" value="fi" th:checked="${selectedLanguage == 'fi'}" style="display: none;">
                         <span class="language-flag">🇫🇮</span>
                         <span th:text="#{language.finnish}" class="language-name">Suomi</span>
                     </label>
 
-                    <label class="btn language-btn" th:classappend="${selectedLanguage == 'de'} ? 'active' : ''">
+                    <label class="btn language-btn">
                         <input type="radio" name="preferred_language" value="de" th:checked="${selectedLanguage == 'de'}" style="display: none;">
                         <span class="language-flag">🇩🇪</span>
                         <span th:text="#{language.german}" class="language-name">Deutsch</span>
                     </label>
 
-                    <label class="btn language-btn" th:classappend="${selectedLanguage == 'fr'} ? 'active' : ''">
+                    <label class="btn language-btn">
                         <input type="radio" name="preferred_language" value="fr" th:checked="${selectedLanguage == 'fr'}" style="display: none;">
                         <span class="language-flag">🇫🇷</span>
                         <span th:text="#{language.french}" class="language-name">Français</span>

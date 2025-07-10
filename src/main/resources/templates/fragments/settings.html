@@ -536,60 +536,6 @@
     </div>
 </div>
 
-<!-- Language Selection Content Fragment -->
-<div th:fragment="language-content">
-    <h2 th:text="#{language.title}">Language Settings</h2>
-    
-    <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
-        <span th:text="${successMessage}">Language changed successfully</span>
-    </div>
-    
-    <div class="settings-card">
-        <h4 th:text="#{language.select}">Select Your Language</h4>
-        <p th:text="#{language.description}">Choose your preferred language for the application interface. You may need to reload the page for all changes to take effect.</p>
-
-        <div class="language-selection">
-            <div class="language-buttons">
-                <button class="btn language-btn"
-                        th:classappend="${#locale.language == 'en'} ? 'active' : ''"
-                        th:attr="hx-post=@{/settings/language(lang=en)}"
-                        hx-target="#language-settings"
-                        hx-swap="innerHTML">
-                    <span class="language-flag">🇺🇸</span>
-                    <span th:text="#{language.english}" class="language-name">English</span>
-                </button>
-
-                <button class="btn language-btn"
-                        th:classappend="${#locale.language == 'fi'} ? 'active' : ''"
-                        th:attr="hx-post=@{/settings/language(lang=fi)}"
-                        hx-target="#language-settings"
-                        hx-swap="innerHTML">
-                    <span class="language-flag">🇫🇮</span>
-                    <span th:text="#{language.finnish}" class="language-name">Suomi</span>
-                </button>
-
-                <button class="btn language-btn"
-                        th:classappend="${#locale.language == 'de'} ? 'active' : ''"
-                        th:attr="hx-post=@{/settings/language(lang=de)}"
-                        hx-target="#language-settings"
-                        hx-swap="innerHTML">
-                    <span class="language-flag">🇩🇪</span>
-                    <span th:text="#{language.german}" class="language-name">Deutsch</span>
-                </button>
-
-                <button class="btn language-btn"
-                        th:classappend="${#locale.language == 'fr'} ? 'active' : ''"
-                        th:attr="hx-post=@{/settings/language(lang=fr)}"
-                        hx-target="#language-settings"
-                        hx-swap="innerHTML">
-                    <span class="language-flag">🇫🇷</span>
-                    <span  th:text="#{language.french}" class="language-name">Français</span>
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Geocode Services Content Fragment -->
 <div th:fragment="geocode-services-content">
     <h2 th:text="#{geocoding.title}">Geocoding Services</h2>
