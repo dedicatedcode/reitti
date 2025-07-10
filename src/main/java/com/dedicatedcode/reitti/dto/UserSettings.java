@@ -1,43 +1,30 @@
 package com.dedicatedcode.reitti.dto;
 
+import java.util.List;
 import java.util.Objects;
 
 public class UserSettings {
     
-    private final String username;
-    private final String displayName;
-    private final Long userId;
-    private final boolean isAuthenticated;
+    private final boolean preferColoredMap;
+    private final String selectedLanguage;
+    private final List<Long> connectedUserAccounts;
     
-    public UserSettings(String username, String displayName, Long userId, boolean isAuthenticated) {
-        this.username = username;
-        this.displayName = displayName;
-        this.userId = userId;
-        this.isAuthenticated = isAuthenticated;
+    public UserSettings(boolean preferColoredMap, String selectedLanguage, List<Long> connectedUserAccounts) {
+        this.preferColoredMap = preferColoredMap;
+        this.selectedLanguage = selectedLanguage;
+        this.connectedUserAccounts = connectedUserAccounts;
     }
     
-    public static UserSettings anonymous() {
-        return new UserSettings(null, null, null, false);
+    public boolean isPreferColoredMap() {
+        return preferColoredMap;
     }
     
-    public static UserSettings authenticated(String username, String displayName, Long userId) {
-        return new UserSettings(username, displayName, userId, true);
+    public String getSelectedLanguage() {
+        return selectedLanguage;
     }
     
-    public String getUsername() {
-        return username;
-    }
-    
-    public String getDisplayName() {
-        return displayName;
-    }
-    
-    public Long getUserId() {
-        return userId;
-    }
-    
-    public boolean isAuthenticated() {
-        return isAuthenticated;
+    public List<Long> getConnectedUserAccounts() {
+        return connectedUserAccounts;
     }
     
     @Override
@@ -45,24 +32,22 @@ public class UserSettings {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         UserSettings that = (UserSettings) o;
-        return isAuthenticated == that.isAuthenticated &&
-                Objects.equals(username, that.username) &&
-                Objects.equals(displayName, that.displayName) &&
-                Objects.equals(userId, that.userId);
+        return preferColoredMap == that.preferColoredMap &&
+                Objects.equals(selectedLanguage, that.selectedLanguage) &&
+                Objects.equals(connectedUserAccounts, that.connectedUserAccounts);
     }
     
     @Override
     public int hashCode() {
-        return Objects.hash(username, displayName, userId, isAuthenticated);
+        return Objects.hash(preferColoredMap, selectedLanguage, connectedUserAccounts);
     }
     
     @Override
     public String toString() {
         return "UserSettings{" +
-                "username='" + username + '\'' +
-                ", displayName='" + displayName + '\'' +
-                ", userId=" + userId +
-                ", isAuthenticated=" + isAuthenticated +
+                "preferColoredMap=" + preferColoredMap +
+                ", selectedLanguage='" + selectedLanguage + '\'' +
+                ", connectedUserAccounts=" + connectedUserAccounts +
                 '}';
     }
 }

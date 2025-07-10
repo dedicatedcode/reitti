@@ -8,6 +8,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
+import java.util.List;
 import java.util.Optional;
 
 @ControllerAdvice
@@ -25,18 +26,20 @@ public class GlobalControllerAdvice {
         
         if (authentication == null || !authentication.isAuthenticated() || 
             "anonymousUser".equals(authentication.getPrincipal())) {
-            return UserSettings.anonymous();
+            // Return default settings for anonymous users
+            return new UserSettings(false, "en", List.of());
         }
         
         String username = authentication.getName();
         Optional<User> userOptional = userJdbcService.findByUsername(username);
         
         if (userOptional.isPresent()) {
-            User user = userOptional.get();
-            return UserSettings.authenticated(user.getUsername(), user.getDisplayName(), user.getId());
+            // TODO: Load actual user preferences from database
+            // For now, return default settings
+            return new UserSettings(false, "en", List.of());
         }
         
-        // Fallback if user not found in database but authenticated
-        return UserSettings.authenticated(username, username, null);
+        // Fallback for authenticated users not found in database
+        return new UserSettings(false, "en", List.of());
     }
 }
