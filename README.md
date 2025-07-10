@@ -171,28 +171,28 @@ The included `docker-compose.yml` provides a complete setup with:
 
 ### Environment Variables
 
-| Variable            | Description                        | Default  |
-|---------------------|------------------------------------|----------|
-| `POSTGIS_HOST`      | PostgreSQL database host           | postgis  |
-| `POSTGIS_PORT`      | PostgreSQL database port           | 5432     |
-| `POSTGIS_DB`        | PostgreSQL database name           | reittidb |
-| `POSTGIS_USER`      | Database username                  | reitti   |
-| `POSTGIS_PASSWORD`  | Database password                  | reitti   |
-| `RABBITMQ_HOST`     | RabbitMQ host                      | rabbitmq |
-| `RABBITMQ_PORT`     | RabbitMQ port                      | 5672     |
-| `RABBITMQ_USER`     | RabbitMQ username                  | reitti   |
-| `RABBITMQ_PASSWORD` | RabbitMQ password                  | reitti   |
-| `REDIS_HOST`        | Redis host                         | redis    |
-| `REDIS_PORT`        | Redis port                         | 6379     |
-| `REDIS_USERNAME`    | Redis username (optional)          |          |
-| `REDIS_PASSWORD`    | Redis password (optional)          |          |
-| `PHOTON_BASE_URL`   | Base URL for Photon geocoding service |          |
-| `PROCESSING_WAIT_TIME` | How many seconds to wait after the last data input before starting to process all unprocessed data | 15 |
-| `DANGEROUS_LIFE`    | Enables data management features that can reset/delete all database data (⚠️ USE WITH CAUTION) | false |
-| `SERVER_PORT`       | Application server port            | 8080     |
-| `APP_UID`           | User ID to run the application as  | 1000     |
-| `APP_GID`           | Group ID to run the application as | 1000     |
-| `JAVA_OPTS`         | JVM options                        |          |
+| Variable            | Description                                                                                                                                                                     | Default  |
+|---------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
+| `POSTGIS_HOST`      | PostgreSQL database host                                                                                                                                                        | postgis  |
+| `POSTGIS_PORT`      | PostgreSQL database port                                                                                                                                                        | 5432     |
+| `POSTGIS_DB`        | PostgreSQL database name                                                                                                                                                        | reittidb |
+| `POSTGIS_USER`      | Database username                                                                                                                                                               | reitti   |
+| `POSTGIS_PASSWORD`  | Database password                                                                                                                                                               | reitti   |
+| `RABBITMQ_HOST`     | RabbitMQ host                                                                                                                                                                   | rabbitmq |
+| `RABBITMQ_PORT`     | RabbitMQ port                                                                                                                                                                   | 5672     |
+| `RABBITMQ_USER`     | RabbitMQ username                                                                                                                                                               | reitti   |
+| `RABBITMQ_PASSWORD` | RabbitMQ password                                                                                                                                                               | reitti   |
+| `REDIS_HOST`        | Redis host                                                                                                                                                                      | redis    |
+| `REDIS_PORT`        | Redis port                                                                                                                                                                      | 6379     |
+| `REDIS_USERNAME`    | Redis username (optional)                                                                                                                                                       |          |
+| `REDIS_PASSWORD`    | Redis password (optional)                                                                                                                                                       |          |
+| `PHOTON_BASE_URL`   | Base URL for Photon geocoding service                                                                                                                                           |          |
+| `PROCESSING_WAIT_TIME` | How many seconds to wait after the last data input before starting to process all unprocessed data. (⚠️ This needs to be lower than your integrated app reports data in Reitti) | 15 |
+| `DANGEROUS_LIFE`    | Enables data management features that can reset/delete all database data (⚠️ USE WITH CAUTION)                                                                                  | false |
+| `SERVER_PORT`       | Application server port                                                                                                                                                         | 8080     |
+| `APP_UID`           | User ID to run the application as                                                                                                                                               | 1000     |
+| `APP_GID`           | Group ID to run the application as                                                                                                                                              | 1000     |
+| `JAVA_OPTS`         | JVM options                                                                                                                                                                     |          |
 
 ### Tags
 
