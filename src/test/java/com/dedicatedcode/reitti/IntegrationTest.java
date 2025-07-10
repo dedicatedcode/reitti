@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti;
 
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.annotation.DirtiesContext;
@@ -14,6 +15,7 @@ import java.lang.annotation.RetentionPolicy;
 @ActiveProfiles("test")
 @Import({TestContainerConfiguration.class, TestConfiguration.class})
 @Retention(RetentionPolicy.RUNTIME)
-@DirtiesContext
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@AutoConfigureMockMvc
 public @interface IntegrationTest {
 }

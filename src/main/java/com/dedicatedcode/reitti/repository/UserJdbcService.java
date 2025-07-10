@@ -33,13 +33,15 @@ public class UserJdbcService {
         return findAll();
     }
 
+    @CacheEvict(value = "users", allEntries = true)
     public void deleteUser(Long userId) {
         deleteById(userId);
     }
-    
+
+    @CacheEvict(value = "users", allEntries = true)
     public User createUser(String username, String displayName, String password) {
         User user = new User(null, username, passwordEncoder.encode(password), displayName, null);
-        String sql = "INSERT INTO users (username, password, display_name) VALUES (?, ?, ?) RETURNING id";
+        String sql = "INSERT INTO users (username, password, display_name, version) VALUES (?, ?, ?, 1) RETURNING id";
         Long id = jdbcTemplate.queryForObject(sql, Long.class, user.getUsername(), user.getPassword(), user.getDisplayName());
         return new User(id, user.getUsername(), user.getPassword(), user.getDisplayName(), 1L);
     }

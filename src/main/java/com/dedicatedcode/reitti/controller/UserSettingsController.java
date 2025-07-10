@@ -8,6 +8,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -58,7 +59,7 @@ public class UserSettingsController {
         // Get updated user list and add to model
         List<User> users = userJdbcService.getAllUsers();
         model.addAttribute("users", users);
-        model.addAttribute("currentUsername", currentUsername);
+        model.addAttribute("currentUsername", authentication.getName());
 
         // Return the users-content fragment
         return "fragments/settings :: users-content";
@@ -70,11 +71,13 @@ public class UserSettingsController {
                              @RequestParam String password,
                              Authentication authentication,
                              Model model) {
-        String currentUsername = authentication.getName();
-
         try {
-            userJdbcService.createUser(username, displayName, password);
-            model.addAttribute("successMessage", getMessage("message.success.user.created"));
+            if (StringUtils.hasText(username) && StringUtils.hasText(displayName) && StringUtils.hasText(password)) {
+                userJdbcService.createUser(username, displayName, password);
+                model.addAttribute("successMessage", getMessage("message.success.user.created"));
+            } else {
+                model.addAttribute("errorMessage", getMessage("message.error.user.creation", "All fields must be filled"));
+            }
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("message.error.user.creation", e.getMessage()));
         }
@@ -82,7 +85,7 @@ public class UserSettingsController {
         // Get updated user list and add to model
         List<User> users = userJdbcService.getAllUsers();
         model.addAttribute("users", users);
-        model.addAttribute("currentUsername", currentUsername);
+        model.addAttribute("currentUsername", authentication.getName());
 
         // Return the users-content fragment
         return "fragments/settings :: users-content";
