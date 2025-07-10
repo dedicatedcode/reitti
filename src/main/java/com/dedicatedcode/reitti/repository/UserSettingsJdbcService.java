@@ -65,8 +65,12 @@ public class UserSettingsJdbcService {
             }, keyHolder);
             
             Long id = keyHolder.getKey().longValue();
+            
+            // Update user connections
+            updateUserConnections(userSettings.getUserId(), userSettings.getConnectedUserAccounts());
+            
             return new UserSettings(id, userSettings.getUserId(), userSettings.isPreferColoredMap(), 
-                    userSettings.getSelectedLanguage(), List.of(), 1L);
+                    userSettings.getSelectedLanguage(), userSettings.getConnectedUserAccounts(), 1L);
         } else {
             // Update existing settings
             jdbcTemplate.update(
@@ -75,6 +79,9 @@ public class UserSettingsJdbcService {
                     userSettings.getSelectedLanguage(),
                     userSettings.getId()
             );
+            
+            // Update user connections
+            updateUserConnections(userSettings.getUserId(), userSettings.getConnectedUserAccounts());
             
             return findByUserId(userSettings.getUserId()).orElse(userSettings);
         }
@@ -98,18 +105,20 @@ public class UserSettingsJdbcService {
         );
     }
     
-    public void addUserConnection(Long fromUserId, Long toUserId) {
+    private void updateUserConnections(Long userId, List<Long> connectedUserAccounts) {
+        // First, remove all existing connections for this user
         jdbcTemplate.update(
-                "INSERT INTO user_connections (from_user, to_user) VALUES (?, ?) " +
-                "ON CONFLICT (from_user, to_user) DO NOTHING",
-                fromUserId, toUserId
+                "DELETE FROM user_connections WHERE from_user = ? OR to_user = ?",
+                userId, userId
         );
-    }
-    
-    public void removeUserConnection(Long fromUserId, Long toUserId) {
-        jdbcTemplate.update(
-                "DELETE FROM user_connections WHERE from_user = ? AND to_user = ?",
-                fromUserId, toUserId
-        );
+        
+        // Then, add the new connections
+        for (Long connectedUserId : connectedUserAccounts) {
+            jdbcTemplate.update(
+                    "INSERT INTO user_connections (from_user, to_user) VALUES (?, ?) " +
+                    "ON CONFLICT (from_user, to_user) DO NOTHING",
+                    userId, connectedUserId
+            );
+        }
     }
 }
