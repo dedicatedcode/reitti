@@ -35,7 +35,7 @@ public class UserSettingsController {
         List<User> users = userJdbcService.getAllUsers();
         model.addAttribute("users", users);
         model.addAttribute("currentUsername", currentUsername);
-        return "fragments/settings :: users-content";
+        return "fragments/user-management :: users-content";
     }
 
     @PostMapping("/users/{userId}/delete")
@@ -62,7 +62,7 @@ public class UserSettingsController {
         model.addAttribute("currentUsername", authentication.getName());
 
         // Return the users-content fragment
-        return "fragments/settings :: users-content";
+        return "fragments/user-management :: users-content";
     }
 
     @PostMapping("/users")
@@ -88,7 +88,7 @@ public class UserSettingsController {
         model.addAttribute("currentUsername", authentication.getName());
 
         // Return the users-content fragment
-        return "fragments/settings :: users-content";
+        return "fragments/user-management :: users-content";
     }
 
     @PostMapping("/users/update")
@@ -123,7 +123,7 @@ public class UserSettingsController {
         model.addAttribute("currentUsername", isCurrentUser ? username : currentUsername);
 
         // Return the users-content fragment
-        return "fragments/settings :: users-content";
+        return "fragments/user-management :: users-content";
     }
 
     @GetMapping("/user-form")
@@ -136,6 +136,6 @@ public class UserSettingsController {
             model.addAttribute("username", username);
             model.addAttribute("displayName", displayName);
         }
-        return "fragments/settings :: user-form";
+        return "fragments/user-management :: user-form";
     }
 }
