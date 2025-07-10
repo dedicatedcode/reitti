@@ -568,6 +568,19 @@ button:hover {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
+.language-btn:has(input[type="radio"]:checked) {
+    background-color: var(--color-highlight);
+    color: var(--color-background-dark);
+    border-color: var(--color-highlight);
+    font-weight: bold;
+    box-shadow: 0 4px 12px rgba(245, 222, 179, 0.4);
+}
+
+.language-btn:has(input[type="radio"]:checked):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(245, 222, 179, 0.5);
+}
+
 .language-btn.active {
     background-color: var(--color-highlight);
     color: var(--color-background-dark);
@@ -590,6 +603,10 @@ button:hover {
 .language-name {
     font-size: 1.1rem;
     font-weight: 500;
+}
+
+.language-btn:has(input[type="radio"]:checked) .language-name {
+    font-weight: bold;
 }
 
 .language-btn.active .language-name {

@@ -118,19 +118,6 @@
     </form>
 </div>
 
-<script>
-// Update active class when radio button changes
-document.addEventListener('change', function(e) {
-    if (e.target.name === 'preferred_language') {
-        // Remove active class from all language buttons
-        const languageButtons = document.querySelectorAll('.language-btn');
-        languageButtons.forEach(btn => btn.classList.remove('active'));
-        
-        // Add active class to the parent label of the selected radio button
-        e.target.closest('.language-btn').classList.add('active');
-    }
-});
-</script>
 
 </body>
 </html>
