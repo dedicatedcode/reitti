@@ -81,13 +81,39 @@
             <small th:if="${userId != null}" th:text="#{users.password.keep.current}">Leave empty to keep current password</small>
         </div>
         <div class="form-group">
-            <label for="selectedLanguage" th:text="#{users.language.label}">Preferred Language</label>
-            <select id="selectedLanguage" name="selectedLanguage" required>
-                <option value="en" th:selected="${selectedLanguage == 'en'}" th:text="#{language.english}">English</option>
-                <option value="fi" th:selected="${selectedLanguage == 'fi'}" th:text="#{language.finnish}">Suomi</option>
-                <option value="de" th:selected="${selectedLanguage == 'de'}" th:text="#{language.german}">Deutsch</option>
-                <option value="fr" th:selected="${selectedLanguage == 'fr'}" th:text="#{language.french}">Français</option>
-            </select>
+            <label th:text="#{users.language.label}">Preferred Language</label>
+            <input type="hidden" id="selectedLanguage" name="selectedLanguage" th:value="${selectedLanguage ?: 'en'}">
+            <div class="language-selection">
+                <div class="language-buttons">
+                    <button type="button" class="btn language-btn"
+                            th:classappend="${selectedLanguage == 'en' || selectedLanguage == null} ? 'active' : ''"
+                            onclick="selectLanguage('en', this)">
+                        <span class="language-flag">🇺🇸</span>
+                        <span th:text="#{language.english}" class="language-name">English</span>
+                    </button>
+
+                    <button type="button" class="btn language-btn"
+                            th:classappend="${selectedLanguage == 'fi'} ? 'active' : ''"
+                            onclick="selectLanguage('fi', this)">
+                        <span class="language-flag">🇫🇮</span>
+                        <span th:text="#{language.finnish}" class="language-name">Suomi</span>
+                    </button>
+
+                    <button type="button" class="btn language-btn"
+                            th:classappend="${selectedLanguage == 'de'} ? 'active' : ''"
+                            onclick="selectLanguage('de', this)">
+                        <span class="language-flag">🇩🇪</span>
+                        <span th:text="#{language.german}" class="language-name">Deutsch</span>
+                    </button>
+
+                    <button type="button" class="btn language-btn"
+                            th:classappend="${selectedLanguage == 'fr'} ? 'active' : ''"
+                            onclick="selectLanguage('fr', this)">
+                        <span class="language-flag">🇫🇷</span>
+                        <span th:text="#{language.french}" class="language-name">Français</span>
+                    </button>
+                </div>
+            </div>
         </div>
         <div style="display: flex; gap: 10px;">
             <button type="submit" class="btn" th:text="${userId != null ? #messages.msg('form.update') : #messages.msg('form.create')}">Create User</button>
@@ -96,6 +122,20 @@
         </div>
     </form>
 </div>
+
+<script>
+function selectLanguage(lang, button) {
+    // Update hidden input
+    document.getElementById('selectedLanguage').value = lang;
+    
+    // Remove active class from all language buttons
+    const languageButtons = document.querySelectorAll('.language-btn');
+    languageButtons.forEach(btn => btn.classList.remove('active'));
+    
+    // Add active class to clicked button
+    button.classList.add('active');
+}
+</script>
 
 </body>
 </html>
