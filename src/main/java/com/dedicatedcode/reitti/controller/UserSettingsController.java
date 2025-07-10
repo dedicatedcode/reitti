@@ -73,7 +73,7 @@ public class UserSettingsController {
     public String createUser(@RequestParam String username,
                              @RequestParam String displayName,
                              @RequestParam String password,
-                             @RequestParam String selectedLanguage,
+                             @RequestParam String preferred_language,
                              Authentication authentication,
                              Model model) {
         try {
@@ -82,7 +82,7 @@ public class UserSettingsController {
                 
                 // Get the created user and create default settings with selected language
                 User createdUser = userJdbcService.findByUsername(username).orElseThrow();
-                UserSettings userSettings = new UserSettings(createdUser.getId(), false, selectedLanguage, List.of());
+                UserSettings userSettings = new UserSettings(createdUser.getId(), false, preferred_language, List.of());
                 userSettingsJdbcService.save(userSettings);
                 
                 model.addAttribute("successMessage", getMessage("message.success.user.created"));
@@ -107,7 +107,7 @@ public class UserSettingsController {
                              @RequestParam String username,
                              @RequestParam String displayName,
                              @RequestParam(required = false) String password,
-                             @RequestParam String selectedLanguage,
+                             @RequestParam String preferred_language,
                              Authentication authentication,
                              Model model) {
         String currentUsername = authentication.getName();
@@ -122,7 +122,7 @@ public class UserSettingsController {
             UserSettings existingSettings = userSettingsJdbcService.findByUserId(userId)
                 .orElse(UserSettings.defaultSettings(userId));
             
-            UserSettings updatedSettings = new UserSettings(userId, existingSettings.isPreferColoredMap(), selectedLanguage, existingSettings.getConnectedUserAccounts(), existingSettings.getVersion());
+            UserSettings updatedSettings = new UserSettings(userId, existingSettings.isPreferColoredMap(), preferred_language, existingSettings.getConnectedUserAccounts(), existingSettings.getVersion());
             userSettingsJdbcService.save(updatedSettings);
             
             model.addAttribute("successMessage", getMessage("message.success.user.updated"));
