@@ -22,14 +22,19 @@ public class UserSettingsJdbcService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    private final RowMapper<UserSettings> userSettingsRowMapper = (rs, rowNum) -> new UserSettings(
-            rs.getLong("id"),
-            rs.getLong("user_id"),
-            rs.getBoolean("prefer_colored_map"),
-            rs.getString("selected_language"),
-            List.of(), // Connected accounts are stored in a separate table
-            rs.getLong("version")
-    );
+    private final RowMapper<UserSettings> userSettingsRowMapper = (rs, rowNum) -> {
+        Long userId = rs.getLong("user_id");
+        List<Long> connectedAccounts = getConnectedUserAccounts(userId);
+        
+        return new UserSettings(
+                rs.getLong("id"),
+                userId,
+                rs.getBoolean("prefer_colored_map"),
+                rs.getString("selected_language"),
+                connectedAccounts,
+                rs.getLong("version")
+        );
+    };
     
     public Optional<UserSettings> findByUserId(Long userId) {
         try {
@@ -81,5 +86,30 @@ public class UserSettingsJdbcService {
     
     public void deleteByUserId(Long userId) {
         jdbcTemplate.update("DELETE FROM user_settings WHERE user_id = ?", userId);
+    }
+    
+    private List<Long> getConnectedUserAccounts(Long userId) {
+        return jdbcTemplate.queryForList(
+                "SELECT to_user FROM user_connections WHERE from_user = ? " +
+                "UNION " +
+                "SELECT from_user FROM user_connections WHERE to_user = ?",
+                Long.class,
+                userId, userId
+        );
+    }
+    
+    public void addUserConnection(Long fromUserId, Long toUserId) {
+        jdbcTemplate.update(
+                "INSERT INTO user_connections (from_user, to_user) VALUES (?, ?) " +
+                "ON CONFLICT (from_user, to_user) DO NOTHING",
+                fromUserId, toUserId
+        );
+    }
+    
+    public void removeUserConnection(Long fromUserId, Long toUserId) {
+        jdbcTemplate.update(
+                "DELETE FROM user_connections WHERE from_user = ? AND to_user = ?",
+                fromUserId, toUserId
+        );
     }
 }
