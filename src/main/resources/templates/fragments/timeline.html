@@ -5,7 +5,7 @@
 </head>
 <body>
 
-<div th:fragment="timeline-content">
+<div th:fragment="timeline-content" th:data-raw-location-points-url="${rawLocationPointsUrl}">
     <div th:if="${entries == null or entries.isEmpty()}" class="timeline-entry" th:text="#{timeline.no.data}">
         No timeline data available for this date.
     </div>

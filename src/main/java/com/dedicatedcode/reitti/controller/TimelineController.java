@@ -77,7 +77,11 @@ public class TimelineController {
         // Convert to timeline entries
         List<TimelineEntry> entries = buildTimelineEntries(user, processedVisits, trips, userTimezone, selectedDate, userSettings.getUnitSystem());
         
+        // Add raw location points URL for the selected date
+        String rawLocationPointsUrl = String.format("/api/v1/raw-location-points?date=%s&timezone=%s", date, timezone);
+        
         model.addAttribute("entries", entries);
+        model.addAttribute("rawLocationPointsUrl", rawLocationPointsUrl);
         return "fragments/timeline :: timeline-content";
     }
     

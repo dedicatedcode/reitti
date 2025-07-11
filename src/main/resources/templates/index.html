@@ -147,18 +147,24 @@
             // Load photos for the selected date
             photoClient.updatePhotosForDate(date, getUserTimezone());
 
-            // Fetch raw location points for map display
-            fetch(`/api/v1/raw-location-points?date=${date}&timezone=${getUserTimezone()}`).then(response => {
-                if (!response.ok) {
-                    console.warn('Could not fetch raw location points');
-                    return { points: [] };
-                }
-                return response.json();
-            }).then(rawPointsData => {
-                updateMapWithRawPoints(rawPointsData);
-            }).catch(error => {
-                console.warn('Error fetching raw location points:', error);
-            });
+            // Get raw location points URL from timeline container
+            const timelineContainer = document.querySelector('.timeline-container');
+            const rawLocationPointsUrl = timelineContainer?.dataset.rawLocationPointsUrl;
+            
+            if (rawLocationPointsUrl) {
+                // Fetch raw location points for map display
+                fetch(rawLocationPointsUrl).then(response => {
+                    if (!response.ok) {
+                        console.warn('Could not fetch raw location points');
+                        return { points: [] };
+                    }
+                    return response.json();
+                }).then(rawPointsData => {
+                    updateMapWithRawPoints(rawPointsData);
+                }).catch(error => {
+                    console.warn('Error fetching raw location points:', error);
+                });
+            }
         }
 
         // Function to update map with raw location points
