@@ -79,7 +79,6 @@ public class TimelineController {
         
         // Add raw location points URL for the selected date
         String rawLocationPointsUrl = String.format("/api/v1/raw-location-points?date=%s&timezone=%s", date, timezone);
-        
         model.addAttribute("entries", entries);
         model.addAttribute("rawLocationPointsUrl", rawLocationPointsUrl);
         return "fragments/timeline :: timeline-content";
@@ -103,7 +102,6 @@ public class TimelineController {
                 entry.setEndTime(visit.getEndTime());
                 entry.setFormattedTimeRange(formatTimeRange(visit.getStartTime(), visit.getEndTime(), timezone, selectedDate));
                 entry.setFormattedDuration(formatDuration(visit.getStartTime(), visit.getEndTime()));
-                entry.setPhotosUrl(String.format("/api/v1/photos?userId=%d", user.getId()));
                 entries.add(entry);
             }
         }
@@ -137,7 +135,6 @@ public class TimelineController {
                 entry.setTransportMode(trip.getTransportModeInferred());
             }
             
-            entry.setPhotosUrl(String.format("/api/v1/photos?userId=%d", user.getId()));
             entries.add(entry);
         }
         
@@ -239,8 +236,7 @@ public class TimelineController {
         private Double distanceMeters;
         private String formattedDistance;
         private String transportMode;
-        private String photosUrl;
-        
+
         // Getters and setters
         public String getId() { return id; }
         public void setId(String id) { this.id = id; }
@@ -275,8 +271,6 @@ public class TimelineController {
         public String getPath() { return path; }
         public void setPath(String path) { this.path = path; }
         
-        public String getPhotosUrl() { return photosUrl; }
-        public void setPhotosUrl(String photosUrl) { this.photosUrl = photosUrl; }
     }
 
     @GetMapping("/places/edit-form/{id}")
