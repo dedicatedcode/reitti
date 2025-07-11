@@ -86,10 +86,11 @@
             <input type="file" id="avatar" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp">
             <small th:text="#{users.avatar.requirements}">Max 2MB. JPEG, PNG, GIF, or WebP format.</small>
             <div th:if="${userId != null && hasAvatar}" class="avatar-actions">
-                <label>
-                    <input type="checkbox" name="removeAvatar" value="true">
-                    <span th:text="#{users.avatar.delete}">Remove current avatar</span>
-                </label>
+                <button type="button" 
+                        class="btn btn-danger"
+                        onclick="removeCurrentAvatar()"
+                        th:text="#{users.avatar.delete}">Remove current avatar</button>
+                <input type="hidden" id="removeAvatarFlag" name="removeAvatar" value="false">
             </div>
         </div>
         <div class="form-group">
@@ -206,6 +207,34 @@
         </div>
     </div>
 </div>
+
+<script>
+function removeCurrentAvatar() {
+    // Hide the current avatar preview
+    const avatarPreview = document.querySelector('.current-avatar');
+    if (avatarPreview) {
+        avatarPreview.style.display = 'none';
+    }
+    
+    // Clear the file input
+    const fileInput = document.getElementById('avatar');
+    if (fileInput) {
+        fileInput.value = '';
+    }
+    
+    // Set the remove flag
+    const removeFlag = document.getElementById('removeAvatarFlag');
+    if (removeFlag) {
+        removeFlag.value = 'true';
+    }
+    
+    // Hide the remove button
+    const avatarActions = document.querySelector('.avatar-actions');
+    if (avatarActions) {
+        avatarActions.style.display = 'none';
+    }
+}
+</script>
 
 </body>
 </html>
