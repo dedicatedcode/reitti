@@ -22,6 +22,9 @@ public class SecurityConfig {
     @Autowired
     private UrlTokenAuthenticationFilter urlTokenAuthenticationFilter;
 
+    @Autowired
+    private CustomAuthenticationSuccessHandler customAuthenticationSuccessHandler;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -35,7 +38,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(form -> form
                         .loginPage("/login")
-                        .defaultSuccessUrl("/", true)
+                        .successHandler(customAuthenticationSuccessHandler)
                         .permitAll()
                 )
                 .rememberMe(rememberMe -> rememberMe
