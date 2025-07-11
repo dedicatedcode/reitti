@@ -129,19 +129,42 @@
 <div th:fragment="connected-accounts-section">
     <div class="form-group">
         <label th:text="#{users.connected.accounts.label}">Connected User Accounts</label>
-        <div class="connected-users-list">
-            <div th:each="user : ${availableUsers}" class="connected-user-item">
-                <label>
-                    <input type="checkbox" 
-                           name="connectedUserIds" 
-                           th:value="${user.id}"
-                           th:checked="${connectedUserIds.contains(user.id)}">
-                    <span th:text="${user.displayName + ' (' + user.username + ')'}">User Name</span>
-                </label>
+        <div id="connected-accounts-list">
+            <div th:each="account, iterStat : ${connectedAccounts}" class="connected-account-row">
+                <select name="connectedUserIds" th:attr="data-index=${iterStat.index}">
+                    <option value="" th:text="#{users.select.user}">Select a user...</option>
+                    <option th:each="user : ${availableUsers}" 
+                            th:value="${user.id}" 
+                            th:text="${user.displayName + ' (' + user.username + ')'}"
+                            th:selected="${user.id == account.userId()}"></option>
+                </select>
+                <input type="color" 
+                       name="connectedUserColors" 
+                       th:value="${account.color()}" 
+                       th:attr="data-index=${iterStat.index}" 
+                       title="Choose color">
+                <button type="button" 
+                        class="btn btn-danger"
+                        th:attr="hx-post=@{/settings/connected-accounts/remove(userId=${userId}, removeIndex=${iterStat.index})}"
+                        hx-include="closest form"
+                        hx-target="#connected-accounts-container"
+                        th:text="#{form.remove}">Remove</button>
+                <!-- Hidden inputs to preserve existing data -->
+                <input type="hidden" name="existingUserIds" th:value="${account.userId()}">
+                <input type="hidden" name="existingColors" th:value="${account.color()}">
             </div>
-            <div th:if="${availableUsers.isEmpty()}" class="no-users-message">
-                <span th:text="#{users.no.other.users}">No other users available to connect.</span>
+            <div th:if="${connectedAccounts.isEmpty()}" class="no-connected-accounts">
+                <span th:text="#{users.no.connected.accounts}">No connected accounts yet.</span>
             </div>
+        </div>
+        <button type="button" 
+                class="btn"
+                th:attr="hx-post=@{/settings/connected-accounts/add(userId=${userId})}"
+                hx-include="closest form"
+                hx-target="#connected-accounts-container"
+                th:text="#{users.add.connected.account}">Add Connected Account</button>
+        <div th:if="${availableUsers.isEmpty()}" class="no-users-message">
+            <small th:text="#{users.no.other.users}">No other users available to connect.</small>
         </div>
     </div>
 </div>
