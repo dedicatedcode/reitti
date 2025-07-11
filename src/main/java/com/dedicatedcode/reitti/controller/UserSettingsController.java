@@ -83,7 +83,6 @@ public class UserSettingsController {
                              @RequestParam String password,
                              @RequestParam String preferred_language,
                              @RequestParam(required = false) List<Long> connectedUserIds,
-                             @RequestParam(required = false) List<String> connectedUserColors,
                              Authentication authentication,
                              Model model) {
         try {
@@ -94,7 +93,7 @@ public class UserSettingsController {
                 User createdUser = userJdbcService.findByUsername(username).orElseThrow();
                 
                 // Build connected user accounts list
-                List<ConnectedUserAccount> connectedAccounts = buildConnectedUserAccounts(connectedUserIds, connectedUserColors);
+                List<ConnectedUserAccount> connectedAccounts = buildConnectedUserAccounts(connectedUserIds);
                 
                 UserSettings userSettings = new UserSettings(createdUser.getId(), false, preferred_language, connectedAccounts);
                 userSettingsJdbcService.save(userSettings);
@@ -123,7 +122,6 @@ public class UserSettingsController {
                              @RequestParam(required = false) String password,
                              @RequestParam String preferred_language,
                              @RequestParam(required = false) List<Long> connectedUserIds,
-                             @RequestParam(required = false) List<String> connectedUserColors,
                              Authentication authentication,
                              HttpServletRequest request,
                              HttpServletResponse response,
@@ -141,7 +139,7 @@ public class UserSettingsController {
                 .orElse(UserSettings.defaultSettings(userId));
             
             // Build connected user accounts list
-            List<ConnectedUserAccount> connectedAccounts = buildConnectedUserAccounts(connectedUserIds, connectedUserColors);
+            List<ConnectedUserAccount> connectedAccounts = buildConnectedUserAccounts(connectedUserIds);
             
             UserSettings updatedSettings = new UserSettings(userId, existingSettings.isPreferColoredMap(), preferred_language, connectedAccounts, existingSettings.getVersion());
             userSettingsJdbcService.save(updatedSettings);
@@ -183,34 +181,63 @@ public class UserSettingsController {
             model.addAttribute("username", username);
             model.addAttribute("displayName", displayName);
             
-            // Load user settings to get selected language and connected accounts
+            // Load user settings to get selected language
             UserSettings userSettings = userSettingsJdbcService.findByUserId(userId).orElse(UserSettings.defaultSettings(userId));
             model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
-            model.addAttribute("connectedUserAccounts", userSettings.getConnectedUserAccounts());
         } else {
             // Default values for new users
             model.addAttribute("selectedLanguage", "en");
-            model.addAttribute("connectedUserAccounts", List.of());
         }
-        
-        // Get all users for the connected accounts selection
-        List<User> allUsers = userJdbcService.getAllUsers();
-        model.addAttribute("availableUsers", allUsers);
         
         return "fragments/user-management :: user-form";
     }
 
-    private List<ConnectedUserAccount> buildConnectedUserAccounts(List<Long> userIds, List<String> colors) {
-        if (userIds == null || colors == null || userIds.size() != colors.size()) {
+    @GetMapping("/connected-accounts-section")
+    public String getConnectedAccountsSection(@RequestParam(required = false) Long userId, Model model) {
+        // Get all users for the connected accounts selection, excluding the current user being edited
+        List<User> allUsers = userJdbcService.getAllUsers();
+        if (userId != null) {
+            allUsers = allUsers.stream()
+                    .filter(user -> !user.getId().equals(userId))
+                    .toList();
+        }
+        model.addAttribute("availableUsers", allUsers);
+        
+        // Create a set of connected user IDs for easy lookup in the template
+        if (userId != null) {
+            UserSettings userSettings = userSettingsJdbcService.findByUserId(userId)
+                .orElse(UserSettings.defaultSettings(userId));
+            List<Long> connectedUserIds = userSettings.getConnectedUserAccounts().stream()
+                    .map(ConnectedUserAccount::userId)
+                    .toList();
+            model.addAttribute("connectedUserIds", connectedUserIds);
+        } else {
+            model.addAttribute("connectedUserIds", List.of());
+        }
+        
+        return "fragments/user-management :: connected-accounts-section";
+    }
+
+    private List<ConnectedUserAccount> buildConnectedUserAccounts(List<Long> userIds) {
+        if (userIds == null) {
             return List.of();
         }
         
         List<ConnectedUserAccount> accounts = new ArrayList<>();
-        for (int i = 0; i < userIds.size(); i++) {
-            if (userIds.get(i) != null && StringUtils.hasText(colors.get(i))) {
-                accounts.add(new ConnectedUserAccount(userIds.get(i), colors.get(i)));
+        for (Long userId : userIds) {
+            if (userId != null) {
+                // Generate a random color for each connected user
+                String color = generateRandomColor();
+                accounts.add(new ConnectedUserAccount(userId, color));
             }
         }
         return accounts;
+    }
+    
+    private String generateRandomColor() {
+        // Generate a random bright color
+        java.util.Random random = new java.util.Random();
+        int hue = random.nextInt(360);
+        return String.format("hsl(%d, 70%%, 50%%)", hue);
     }
 }
