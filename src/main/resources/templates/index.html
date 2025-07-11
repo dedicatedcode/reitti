@@ -49,14 +49,6 @@
 <script th:inline="javascript">
     // Locale object for JavaScript
     window.locale = {
-        loading: /*[[#{timeline.loading}]]*/ 'Loading...',
-        noData: /*[[#{timeline.no.data}]]*/ 'No timeline data available for this date.',
-        duration: /*[[#{timeline.duration}]]*/ 'Duration',
-        distance: /*[[#{timeline.distance}]]*/ 'Distance',
-        trip: /*[[#{timeline.trip}]]*/ 'Trip',
-        transportWalking: /*[[#{timeline.transport.walking}]]*/ 'by foot',
-        transportCycling: /*[[#{timeline.transport.cycling}]]*/ 'by bike',
-        transportDriving: /*[[#{timeline.transport.driving}]]*/ 'by car',
         today: /*[[#{datepicker.today}]]*/ 'Today',
         days: [
             /*[[#{datepicker.days.sun}]]*/ 'Sun',
@@ -88,12 +80,34 @@
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get('date') || new Date().toISOString().split('T')[0];
     }
-
     // Helper function for HTMX to get user timezone
     function getUserTimezone() {
         return Intl.DateTimeFormat().resolvedOptions().timeZone;
     }
 
+    function selectUser(userHeader) {
+        // Remove active class from all user headers
+        document.querySelectorAll('.user-header').forEach(header => {
+            header.classList.remove('active');
+        });
+
+        // Add active class to clicked user header
+        userHeader.classList.add('active');
+
+        // Get the user ID from the clicked header
+        const userId = userHeader.getAttribute('data-user-id');
+
+        // Hide all user timeline sections
+        document.querySelectorAll('.user-timeline-section').forEach(section => {
+            section.classList.remove('active');
+        });
+
+        // Show the corresponding user timeline section
+        const targetSection = document.querySelector(`.user-timeline-section[data-user-id="${userId}"]`);
+        if (targetSection) {
+            targetSection.classList.add('active');
+        }
+    }
     const fitToBoundsConfig = {
         paddingTopLeft: [100,0],
         paddingBottomRight: [100, 300],
@@ -417,29 +431,6 @@
         });
     });
 
-    function selectUser(userHeader) {
-        // Remove active class from all user headers
-        document.querySelectorAll('.user-header').forEach(header => {
-            header.classList.remove('active');
-        });
-
-        // Add active class to clicked user header
-        userHeader.classList.add('active');
-
-        // Get the user ID from the clicked header
-        const userId = userHeader.getAttribute('data-user-id');
-
-        // Hide all user timeline sections
-        document.querySelectorAll('.user-timeline-section').forEach(section => {
-            section.classList.remove('active');
-        });
-
-        // Show the corresponding user timeline section
-        const targetSection = document.querySelector(`.user-timeline-section[data-user-id="${userId}"]`);
-        if (targetSection) {
-            targetSection.classList.add('active');
-        }
-    }
 </script>
 </body>
 </html>
