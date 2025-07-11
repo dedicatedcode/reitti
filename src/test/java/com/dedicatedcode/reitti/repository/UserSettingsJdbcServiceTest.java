@@ -26,7 +26,6 @@ public class UserSettingsJdbcServiceTest {
     private Long testUserId1;
     private Long testUserId2;
     private Long testUserId3;
-    private ConnectedUserAccount testConnection1;
     private ConnectedUserAccount testConnection2;
     private ConnectedUserAccount testConnection3;
 
@@ -37,7 +36,6 @@ public class UserSettingsJdbcServiceTest {
         testUserId2 = createTestUser();
         testUserId3 = createTestUser();
 
-        testConnection1 = new ConnectedUserAccount(testUserId1, "#6ac7ff");
         testConnection2 = new ConnectedUserAccount(testUserId2, "#6ac7ff");
         testConnection3 = new ConnectedUserAccount(testUserId3, "#6ac7ff");
     }
@@ -134,7 +132,7 @@ public class UserSettingsJdbcServiceTest {
     void getOrCreateDefaultSettings_WhenUserSettingsExist_ShouldReturnExisting() {
         // Create existing settings
         UserSettings existingSettings = new UserSettings(testUserId1, true, "fi", List.of(testConnection2));
-        UserSettings saved = userSettingsJdbcService.save(existingSettings);
+        userSettingsJdbcService.save(existingSettings);
         
         UserSettings result = userSettingsJdbcService.getOrCreateDefaultSettings(testUserId1);
         
