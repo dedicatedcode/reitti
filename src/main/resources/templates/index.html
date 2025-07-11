@@ -175,6 +175,7 @@
             // Add raw location points if available
             if (rawPointsData && rawPointsData.points && rawPointsData.points.length > 0) {
                 const rawPointsCoords = rawPointsData.points.map(point => [point.latitude, point.longitude]);
+                bounds.extend(rawPointsCoords)
                 rawPointsPath.setLatLngs(rawPointsCoords);
                 rawPointsPath.addTo(map);
             }
