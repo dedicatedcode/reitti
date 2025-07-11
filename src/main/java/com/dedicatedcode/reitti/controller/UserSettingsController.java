@@ -180,7 +180,6 @@ public class UserSettingsController {
             model.addAttribute("userId", userId);
             model.addAttribute("username", username);
             model.addAttribute("displayName", displayName);
-            
             // Load user settings to get selected language
             UserSettings userSettings = userSettingsJdbcService.findByUserId(userId).orElse(UserSettings.defaultSettings(userId));
             model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());

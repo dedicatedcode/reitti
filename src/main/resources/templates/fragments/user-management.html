@@ -111,7 +111,8 @@
             </div>
         </div>
         <div id="connected-accounts-container" 
-             hx-get="/settings/connected-accounts-section" 
+             hx-get="/settings/connected-accounts-section"
+             hx-target="#connected-accounts-container"
              th:hx-vals="${userId != null ? '{&quot;userId&quot;: ' + userId + '}' : '{}'}"
              hx-trigger="load">
             <div class="htmx-indicator">Loading connected accounts...</div>
