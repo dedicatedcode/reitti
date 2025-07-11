@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller;
 
+import com.dedicatedcode.reitti.dto.ConnectedUserAccount;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.model.UserSettings;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
@@ -16,6 +17,7 @@ import org.springframework.web.servlet.LocaleResolver;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -80,6 +82,8 @@ public class UserSettingsController {
                              @RequestParam String displayName,
                              @RequestParam String password,
                              @RequestParam String preferred_language,
+                             @RequestParam(required = false) List<Long> connectedUserIds,
+                             @RequestParam(required = false) List<String> connectedUserColors,
                              Authentication authentication,
                              Model model) {
         try {
@@ -88,7 +92,11 @@ public class UserSettingsController {
                 
                 // Get the created user and create default settings with selected language
                 User createdUser = userJdbcService.findByUsername(username).orElseThrow();
-                UserSettings userSettings = new UserSettings(createdUser.getId(), false, preferred_language, List.of());
+                
+                // Build connected user accounts list
+                List<ConnectedUserAccount> connectedAccounts = buildConnectedUserAccounts(connectedUserIds, connectedUserColors);
+                
+                UserSettings userSettings = new UserSettings(createdUser.getId(), false, preferred_language, connectedAccounts);
                 userSettingsJdbcService.save(userSettings);
                 
                 model.addAttribute("successMessage", getMessage("message.success.user.created"));
@@ -114,6 +122,8 @@ public class UserSettingsController {
                              @RequestParam String displayName,
                              @RequestParam(required = false) String password,
                              @RequestParam String preferred_language,
+                             @RequestParam(required = false) List<Long> connectedUserIds,
+                             @RequestParam(required = false) List<String> connectedUserColors,
                              Authentication authentication,
                              HttpServletRequest request,
                              HttpServletResponse response,
@@ -126,11 +136,14 @@ public class UserSettingsController {
         try {
             userJdbcService.updateUser(userId, username, displayName, password);
             
-            // Update user settings with selected language
+            // Update user settings with selected language and connected accounts
             UserSettings existingSettings = userSettingsJdbcService.findByUserId(userId)
                 .orElse(UserSettings.defaultSettings(userId));
             
-            UserSettings updatedSettings = new UserSettings(userId, existingSettings.isPreferColoredMap(), preferred_language, existingSettings.getConnectedUserAccounts(), existingSettings.getVersion());
+            // Build connected user accounts list
+            List<ConnectedUserAccount> connectedAccounts = buildConnectedUserAccounts(connectedUserIds, connectedUserColors);
+            
+            UserSettings updatedSettings = new UserSettings(userId, existingSettings.isPreferColoredMap(), preferred_language, connectedAccounts, existingSettings.getVersion());
             userSettingsJdbcService.save(updatedSettings);
             
             // If the current user was updated, update the locale
@@ -170,14 +183,35 @@ public class UserSettingsController {
             model.addAttribute("username", username);
             model.addAttribute("displayName", displayName);
             
-            // Load user settings to get selected language
+            // Load user settings to get selected language and connected accounts
             UserSettings userSettings = userSettingsJdbcService.findByUserId(userId)
                 .orElse(UserSettings.defaultSettings(userId));
             model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
+            model.addAttribute("connectedUserAccounts", userSettings.getConnectedUserAccounts());
         } else {
-            // Default language for new users
+            // Default values for new users
             model.addAttribute("selectedLanguage", "en");
+            model.addAttribute("connectedUserAccounts", List.of());
         }
+        
+        // Get all users for the connected accounts selection
+        List<User> allUsers = userJdbcService.getAllUsers();
+        model.addAttribute("availableUsers", allUsers);
+        
         return "fragments/user-management :: user-form";
+    }
+
+    private List<ConnectedUserAccount> buildConnectedUserAccounts(List<Long> userIds, List<String> colors) {
+        if (userIds == null || colors == null || userIds.size() != colors.size()) {
+            return List.of();
+        }
+        
+        List<ConnectedUserAccount> accounts = new ArrayList<>();
+        for (int i = 0; i < userIds.size(); i++) {
+            if (userIds.get(i) != null && StringUtils.hasText(colors.get(i))) {
+                accounts.add(new ConnectedUserAccount(userIds.get(i), colors.get(i)));
+            }
+        }
+        return accounts;
     }
 }

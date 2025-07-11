@@ -110,6 +110,24 @@
                 </div>
             </div>
         </div>
+        <div class="form-group">
+            <label th:text="#{users.connected.accounts.label}">Connected User Accounts</label>
+            <div id="connected-accounts-container">
+                <div th:each="account, iterStat : ${connectedUserAccounts}" class="connected-account-row">
+                    <select name="connectedUserIds" th:attr="data-index=${iterStat.index}">
+                        <option value="" th:text="#{users.select.user}">Select a user...</option>
+                        <option th:each="user : ${availableUsers}" 
+                                th:value="${user.id}" 
+                                th:text="${user.displayName + ' (' + user.username + ')'}"
+                                th:selected="${user.id == account.userId()}"></option>
+                    </select>
+                    <input type="color" name="connectedUserColors" th:value="${account.color()}" 
+                           th:attr="data-index=${iterStat.index}" title="Choose color">
+                    <button type="button" class="btn btn-danger remove-account" th:text="#{form.remove}">Remove</button>
+                </div>
+            </div>
+            <button type="button" id="add-connected-account" class="btn" th:text="#{users.add.connected.account}">Add Connected Account</button>
+        </div>
         <div style="display: flex; gap: 10px;">
             <button type="submit" class="btn" th:text="${userId != null ? #messages.msg('form.update') : #messages.msg('form.create')}">Create User</button>
             <button type="button" class="btn" th:if="${userId != null}" 
@@ -118,6 +136,48 @@
     </form>
 </div>
 
+
+<script th:fragment="connected-accounts-script">
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('connected-accounts-container');
+    const addButton = document.getElementById('add-connected-account');
+    
+    if (addButton) {
+        addButton.addEventListener('click', function() {
+            const newRow = createAccountRow();
+            container.appendChild(newRow);
+        });
+    }
+    
+    if (container) {
+        container.addEventListener('click', function(e) {
+            if (e.target.classList.contains('remove-account')) {
+                e.target.closest('.connected-account-row').remove();
+            }
+        });
+    }
+    
+    function createAccountRow() {
+        const row = document.createElement('div');
+        row.className = 'connected-account-row';
+        
+        const availableUsers = /*[[${availableUsers}]]*/ [];
+        let optionsHtml = '<option value="">Select a user...</option>';
+        availableUsers.forEach(user => {
+            optionsHtml += `<option value="${user.id}">${user.displayName} (${user.username})</option>`;
+        });
+        
+        row.innerHTML = `
+            <select name="connectedUserIds">
+                ${optionsHtml}
+            </select>
+            <input type="color" name="connectedUserColors" value="#000000" title="Choose color">
+            <button type="button" class="btn btn-danger remove-account">Remove</button>
+        `;
+        return row;
+    }
+});
+</script>
 
 </body>
 </html>
