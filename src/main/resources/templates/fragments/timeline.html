@@ -30,6 +30,7 @@
          class="user-timeline-section"
          th:classappend="${iterStat.first} ? 'active' : ''"
          th:data-user-id="${userData.userId}"
+         th:data-base-color="${userData.baseColor}"
          th:data-raw-location-points-url="${userData.rawLocationPointsUrl}">
         <div th:if="${userData.entries == null or userData.entries.isEmpty()}" class="no-entries" th:text="#{timeline.no.data}">
             No timeline data available for this user.

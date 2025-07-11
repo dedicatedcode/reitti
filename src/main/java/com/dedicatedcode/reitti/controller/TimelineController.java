@@ -5,6 +5,8 @@ import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
@@ -20,11 +22,13 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 @Controller
 @RequestMapping("/timeline")
 public class TimelineController {
 
+    private static final Logger log = LoggerFactory.getLogger(TimelineController.class);
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final SignificantPlaceJdbcService placeService;
     private final UserJdbcService userJdbcService;
@@ -82,20 +86,21 @@ public class TimelineController {
         List<TimelineEntry> currentUserEntries = buildTimelineEntries(user, processedVisits, trips, userTimezone, selectedDate, userSettings.getUnitSystem());
         String currentUserAvatarUrl = String.format("/avatars/%d", user.getId());
         String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", user.getId(), date, timezone);
-        allUsersData.add(new UserTimelineData(user.getId(), user.getUsername(), currentUserAvatarUrl, currentUserEntries, currentUserRawLocationPointsUrl));
+        allUsersData.add(new UserTimelineData(user.getId(), user.getUsername(), currentUserAvatarUrl, null, currentUserEntries, currentUserRawLocationPointsUrl));
         
         // Add connected users data, sorted by username
         List<ConnectedUserAccount> connectedAccounts = userSettings.getConnectedUserAccounts();
-        List<User> connectedUsers = new ArrayList<>();
-        
-        for (ConnectedUserAccount account : connectedAccounts) {
-            userJdbcService.findById(account.userId()).ifPresent(connectedUsers::add);
-        }
-        
+
         // Sort connected users by username
-        connectedUsers.sort(Comparator.comparing(User::getUsername));
+        connectedAccounts.sort(Comparator.comparing(ConnectedUserAccount::userId));
         
-        for (User connectedUser : connectedUsers) {
+        for (ConnectedUserAccount connectedUserAccount : connectedAccounts) {
+            Optional<User> connectedUserOpt = this.userJdbcService.findById(connectedUserAccount.userId());
+            if (connectedUserOpt.isEmpty()) {
+                log.warn("Could not find user with id {}", connectedUserAccount.userId());
+                continue;
+            }
+            User connectedUser = connectedUserOpt.get();
             // Get connected user's timeline data for the same date
             List<ProcessedVisit> connectedVisits = processedVisitJdbcService.findByUserAndTimeOverlap(
                     connectedUser, startOfDay, endOfDay);
@@ -110,7 +115,7 @@ public class TimelineController {
             String connectedUserAvatarUrl = String.format("/avatars/%d", connectedUser.getId());
             String connectedUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", connectedUser.getId(), date, timezone);
             
-            allUsersData.add(new UserTimelineData(connectedUser.getId(), connectedUser.getDisplayName(), connectedUserAvatarUrl, connectedUserEntries, connectedUserRawLocationPointsUrl));
+            allUsersData.add(new UserTimelineData(connectedUser.getId(), connectedUser.getDisplayName(), connectedUserAvatarUrl, connectedUserAccount.color(), connectedUserEntries, connectedUserRawLocationPointsUrl));
         }
         
         // Create timeline data record
@@ -264,6 +269,7 @@ public class TimelineController {
         long userId,
         String displayName,
         String userAvatarUrl,
+        String baseColor,
         List<TimelineEntry> entries,
         String rawLocationPointsUrl
     ) {}
