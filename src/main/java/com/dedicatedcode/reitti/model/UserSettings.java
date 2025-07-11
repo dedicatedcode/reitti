@@ -11,21 +11,23 @@ public class UserSettings {
     private final boolean preferColoredMap;
     private final String selectedLanguage;
     private final List<ConnectedUserAccount> connectedUserAccounts;
+    private final UnitSystem unitSystem;
     private final Long version;
 
-    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, List<ConnectedUserAccount> connectedUserAccounts, Long version) {
+    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, List<ConnectedUserAccount> connectedUserAccounts, UnitSystem unitSystem, Long version) {
         this.userId = userId;
         this.preferColoredMap = preferColoredMap;
         this.selectedLanguage = selectedLanguage;
         this.connectedUserAccounts = connectedUserAccounts;
+        this.unitSystem = unitSystem;
         this.version = version;
     }
-    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, List<ConnectedUserAccount> connectedUserAccounts) {
-        this(userId, preferColoredMap, selectedLanguage, connectedUserAccounts, null);
+    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, List<ConnectedUserAccount> connectedUserAccounts, UnitSystem unitSystem) {
+        this(userId, preferColoredMap, selectedLanguage, connectedUserAccounts, unitSystem, null);
     }
 
     public static UserSettings defaultSettings(Long userId) {
-        return new UserSettings(userId, false, "en", List.of(), null);
+        return new UserSettings(userId, false, "en", List.of(), UnitSystem.METRIC);
     }
     public Long getUserId() {
         return userId;
@@ -46,7 +48,11 @@ public class UserSettings {
     public Long getVersion() {
         return version;
     }
-    
+
+    public UnitSystem getUnitSystem() {
+        return unitSystem;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

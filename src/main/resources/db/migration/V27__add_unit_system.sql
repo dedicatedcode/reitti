@@ -1,0 +1,1 @@
+ALTER TABLE user_settings ADD COLUMN unit_system VARCHAR(100) NOT NULL DEFAULT 'METRIC';

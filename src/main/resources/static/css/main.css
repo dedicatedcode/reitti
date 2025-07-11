@@ -1249,3 +1249,7 @@ button:disabled {
     border-top: var(--size) solid black;
     top: 55%;
 }
+
+.unit-description {
+    padding-left: 8px;
+}

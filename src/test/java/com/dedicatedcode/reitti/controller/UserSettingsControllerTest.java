@@ -356,7 +356,7 @@ public class UserSettingsControllerTest {
         mockMvc.perform(get("/settings/user-form"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: user-form"))
-                .andExpected(model().attributeExists("unitSystems"))
+                .andExpect(model().attributeExists("unitSystems"))
                 .andExpect(model().attribute("selectedLanguage", "en"))
                 .andExpect(model().attribute("selectedUnitSystem", "METRIC"));
     }

@@ -94,10 +94,8 @@ public class UserSettingsController {
             if (StringUtils.hasText(username) && StringUtils.hasText(displayName) && StringUtils.hasText(password)) {
                 userJdbcService.createUser(username, displayName, password);
                 
-                // Get the created user and create default settings with selected language
                 User createdUser = userJdbcService.findByUsername(username).orElseThrow();
                 
-                // Build connected user accounts list
                 List<ConnectedUserAccount> connectedAccounts = buildConnectedUserAccounts(connectedUserIds, connectedUserColors);
                 
                 UnitSystem unitSystem = UnitSystem.valueOf(unit_system);
@@ -288,13 +286,16 @@ public class UserSettingsController {
         if (userIds == null) {
             return new ArrayList<>();
         }
-        
+
+        if (userIds.size() != colors.size()) {
+            return new ArrayList<>();
+        }
         List<ConnectedUserAccount> accounts = new ArrayList<>();
         Set<Long> seenUserIds = new java.util.HashSet<>();
         
         for (int i = 0; i < userIds.size(); i++) {
             Long userId = userIds.get(i);
-            String color = (colors != null && i < colors.size()) ? colors.get(i) : generateRandomColor();
+            String color = colors.get(i);
             
             if (userId != null && !seenUserIds.contains(userId)) {
                 accounts.add(new ConnectedUserAccount(userId, color));

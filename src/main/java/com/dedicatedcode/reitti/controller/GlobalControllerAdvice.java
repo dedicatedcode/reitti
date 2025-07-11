@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.dto.UserSettings;
+import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
@@ -30,7 +31,7 @@ public class GlobalControllerAdvice {
         if (authentication == null || !authentication.isAuthenticated() || 
             "anonymousUser".equals(authentication.getPrincipal())) {
             // Return default settings for anonymous users
-            return new UserSettings(false, "en", List.of());
+            return new UserSettings(false, "en", List.of(), UnitSystem.METRIC);
         }
         
         String username = authentication.getName();
@@ -39,10 +40,10 @@ public class GlobalControllerAdvice {
         if (userOptional.isPresent()) {
             User user = userOptional.get();
             com.dedicatedcode.reitti.model.UserSettings dbSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
-            return new UserSettings(dbSettings.isPreferColoredMap(), dbSettings.getSelectedLanguage(), dbSettings.getConnectedUserAccounts());
+            return new UserSettings(dbSettings.isPreferColoredMap(), dbSettings.getSelectedLanguage(), dbSettings.getConnectedUserAccounts(), dbSettings.getUnitSystem());
         }
         
         // Fallback for authenticated users not found in database
-        return new UserSettings(false, "en", List.of());
+        return new UserSettings(false, "en", List.of(),  UnitSystem.METRIC);
     }
 }

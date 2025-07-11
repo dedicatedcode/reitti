@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.dto.ConnectedUserAccount;
+import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.UserSettings;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -28,6 +29,7 @@ public class UserSettingsJdbcService {
                 rs.getBoolean("prefer_colored_map"),
                 rs.getString("selected_language"),
                 connectedAccounts,
+                UnitSystem.valueOf(rs.getString("unit_system")),
                 rs.getLong("version")
         );
     };
@@ -48,22 +50,24 @@ public class UserSettingsJdbcService {
     public UserSettings save(UserSettings userSettings) {
         if (userSettings.getVersion() == null) {
             // Insert new settings
-            this.jdbcTemplate.update("INSERT INTO user_settings (user_id, prefer_colored_map, selected_language, version) VALUES (?, ?, ?, 1)",
+            this.jdbcTemplate.update("INSERT INTO user_settings (user_id, prefer_colored_map, selected_language, unit_system, version) VALUES (?, ?, ?, ?, 1)",
                     userSettings.getUserId(),
                     userSettings.isPreferColoredMap(),
-                    userSettings.getSelectedLanguage());
+                    userSettings.getSelectedLanguage(),
+                    userSettings.getUnitSystem().name());
 
             // Update user connections
             updateUserConnections(userSettings.getUserId(), userSettings.getConnectedUserAccounts());
 
             return new UserSettings(userSettings.getUserId(), userSettings.isPreferColoredMap(),
-                    userSettings.getSelectedLanguage(), userSettings.getConnectedUserAccounts(), 1L);
+                    userSettings.getSelectedLanguage(), userSettings.getConnectedUserAccounts(), userSettings.getUnitSystem(), 1L);
         } else {
             // Update existing settings
             jdbcTemplate.update(
-                    "UPDATE user_settings SET prefer_colored_map = ?, selected_language = ?, version = version + 1 WHERE user_id = ?",
+                    "UPDATE user_settings SET prefer_colored_map = ?, selected_language = ?, unit_system = ?, version = version + 1 WHERE user_id = ?",
                     userSettings.isPreferColoredMap(),
                     userSettings.getSelectedLanguage(),
+                    userSettings.getUnitSystem().name(),
                     userSettings.getUserId()
             );
             

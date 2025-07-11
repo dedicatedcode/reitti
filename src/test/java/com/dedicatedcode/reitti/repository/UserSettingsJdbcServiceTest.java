@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.dto.ConnectedUserAccount;
+import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.UserSettings;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -63,7 +64,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void save_WhenCreatingNewUserSettings_ShouldInsertAndReturnWithId() {
         UserSettings newSettings = new UserSettings(testUserId1, true, "fi", List.of(
-                testConnection2, testConnection3));
+                testConnection2, testConnection3), UnitSystem.METRIC);
         
         UserSettings savedSettings = userSettingsJdbcService.save(newSettings);
         
@@ -77,7 +78,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void save_WhenUpdatingExistingUserSettings_ShouldUpdateAndIncrementVersion() {
         // Create initial settings
-        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testConnection2, testConnection3));
+        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testConnection2, testConnection3), UnitSystem.METRIC);
         UserSettings savedSettings = userSettingsJdbcService.save(initialSettings);
         
         // Update settings
@@ -86,6 +87,7 @@ public class UserSettingsJdbcServiceTest {
                 true, 
                 "de",
                 List.of(testConnection2, testConnection3),
+                UnitSystem.IMPERIAL,
                 savedSettings.getVersion()
         );
         
@@ -101,7 +103,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void findByUserId_WhenUserSettingsExist_ShouldReturnSettings() {
         // Create settings
-        UserSettings newSettings = new UserSettings(testUserId1, true, "fr", List.of(testConnection2));
+        UserSettings newSettings = new UserSettings(testUserId1, true, "fr", List.of(testConnection2), UnitSystem.METRIC);
         userSettingsJdbcService.save(newSettings);
         
         Optional<UserSettings> result = userSettingsJdbcService.findByUserId(testUserId1);
@@ -131,7 +133,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void getOrCreateDefaultSettings_WhenUserSettingsExist_ShouldReturnExisting() {
         // Create existing settings
-        UserSettings existingSettings = new UserSettings(testUserId1, true, "fi", List.of(testConnection2));
+        UserSettings existingSettings = new UserSettings(testUserId1, true, "fi", List.of(testConnection2), UnitSystem.METRIC);
         userSettingsJdbcService.save(existingSettings);
         
         UserSettings result = userSettingsJdbcService.getOrCreateDefaultSettings(testUserId1);
@@ -144,7 +146,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void deleteByUserId_ShouldRemoveUserSettingsAndConnections() {
         // Create settings with connections
-        UserSettings settings = new UserSettings(testUserId1, true, "de", List.of(testConnection2, testConnection3));
+        UserSettings settings = new UserSettings(testUserId1, true, "de", List.of(testConnection2, testConnection3), UnitSystem.METRIC);
         userSettingsJdbcService.save(settings);
         
         // Verify settings exist
@@ -170,7 +172,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void userConnections_ShouldBeLoadedCorrectly() {
         // Create settings (this will load connections)
-        UserSettings settings = new UserSettings(testUserId1, false, "en", List.of(testConnection2, testConnection3));
+        UserSettings settings = new UserSettings(testUserId1, false, "en", List.of(testConnection2, testConnection3), UnitSystem.METRIC);
         UserSettings saved = userSettingsJdbcService.save(settings);
         assertThat(saved.getConnectedUserAccounts()).containsExactlyInAnyOrder(testConnection2, testConnection3);
 
@@ -184,7 +186,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void save_ShouldReplaceAllUserConnections() {
         // Create initial connections
-        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testConnection2));
+        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testConnection2), UnitSystem.METRIC);
         UserSettings saved = userSettingsJdbcService.save(initialSettings);
         
         // Verify initial connection
@@ -201,6 +203,7 @@ public class UserSettingsJdbcServiceTest {
                 false,
                 "en",
                 List.of(testConnection3),
+                UnitSystem.METRIC,
                 saved.getVersion()
         );
         userSettingsJdbcService.save(updatedSettings);
@@ -225,7 +228,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void save_WithEmptyConnections_ShouldRemoveAllConnections() {
         // Create initial connections
-        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testConnection2, testConnection3));
+        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testConnection2, testConnection3), UnitSystem.METRIC);
         UserSettings saved = userSettingsJdbcService.save(initialSettings);
         
         // Update with empty connections
@@ -234,6 +237,7 @@ public class UserSettingsJdbcServiceTest {
                 false,
                 "en",
                 List.of(),
+                UnitSystem.METRIC,
                 saved.getVersion()
         );
         userSettingsJdbcService.save(updatedSettings);
