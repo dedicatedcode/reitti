@@ -204,9 +204,10 @@
             if (event.detail.target.classList.contains('timeline-container')) {
                 // Timeline content has been updated, update map markers
 
-                //start showing the path and markers after booth methods are done AI!
-                loadTimelineData(getSelectedDate())
-                updateMapFromTimeline();
+                // Load timeline data and update map markers after both methods are done
+                Promise.resolve(loadTimelineData(getSelectedDate())).then(() => {
+                    updateMapFromTimeline();
+                });
                 // Initialize scroll indicator after timeline is updated
                 if (window.timelineScrollIndicator) {
                     window.timelineScrollIndicator.cleanup();
