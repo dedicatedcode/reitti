@@ -24,7 +24,7 @@ public class GlobalControllerAdvice {
         this.userSettingsJdbcService = userSettingsJdbcService;
     }
     
-    @ModelAttribute("currentUserSettings")
+    @ModelAttribute("userSettings")
     public UserSettings getCurrentUserSettings() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         
