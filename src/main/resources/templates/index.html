@@ -151,6 +151,7 @@
             const timelineContainer = document.querySelector('.timeline-container > div');
             const rawLocationPointsUrl = timelineContainer?.dataset.rawLocationPointsUrl;
 
+            //this method should only return after all points are added to the map AI!
             if (rawLocationPointsUrl) {
                 // Fetch raw location points for map display
                 fetch(rawLocationPointsUrl).then(response => {
