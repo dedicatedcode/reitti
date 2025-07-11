@@ -1,0 +1,1 @@
+ALTER TABLE connected_users ADD COLUMN color VARCHAR(100) NOT NULL DEFAULT '#6ac7ff';

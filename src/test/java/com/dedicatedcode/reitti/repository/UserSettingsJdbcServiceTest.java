@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.IntegrationTest;
+import com.dedicatedcode.reitti.dto.ConnectedUserAccount;
 import com.dedicatedcode.reitti.model.UserSettings;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,9 @@ public class UserSettingsJdbcServiceTest {
     private Long testUserId1;
     private Long testUserId2;
     private Long testUserId3;
+    private ConnectedUserAccount testConnection1;
+    private ConnectedUserAccount testConnection2;
+    private ConnectedUserAccount testConnection3;
 
     @BeforeEach
     void setUp() {
@@ -32,6 +36,10 @@ public class UserSettingsJdbcServiceTest {
         testUserId1 = createTestUser();
         testUserId2 = createTestUser();
         testUserId3 = createTestUser();
+
+        testConnection1 = new ConnectedUserAccount(testUserId1, "#6ac7ff");
+        testConnection2 = new ConnectedUserAccount(testUserId2, "#6ac7ff");
+        testConnection3 = new ConnectedUserAccount(testUserId3, "#6ac7ff");
     }
 
     private Long createTestUser() {
@@ -56,29 +64,30 @@ public class UserSettingsJdbcServiceTest {
 
     @Test
     void save_WhenCreatingNewUserSettings_ShouldInsertAndReturnWithId() {
-        UserSettings newSettings = new UserSettings(testUserId1, true, "fi", List.of(testUserId2, testUserId3));
+        UserSettings newSettings = new UserSettings(testUserId1, true, "fi", List.of(
+                testConnection2, testConnection3));
         
         UserSettings savedSettings = userSettingsJdbcService.save(newSettings);
         
         assertThat(savedSettings.getUserId()).isEqualTo(testUserId1);
         assertThat(savedSettings.isPreferColoredMap()).isTrue();
         assertThat(savedSettings.getSelectedLanguage()).isEqualTo("fi");
-        assertThat(savedSettings.getConnectedUserAccounts()).containsExactlyInAnyOrder(testUserId2, testUserId3);
+        assertThat(savedSettings.getConnectedUserAccounts()).containsExactlyInAnyOrder(testConnection2, testConnection3);
         assertThat(savedSettings.getVersion()).isEqualTo(1L);
     }
 
     @Test
     void save_WhenUpdatingExistingUserSettings_ShouldUpdateAndIncrementVersion() {
         // Create initial settings
-        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testUserId2));
+        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testConnection2, testConnection3));
         UserSettings savedSettings = userSettingsJdbcService.save(initialSettings);
         
         // Update settings
         UserSettings updatedSettings = new UserSettings(
                 testUserId1,
                 true, 
-                "de", 
-                List.of(testUserId2, testUserId3), 
+                "de",
+                List.of(testConnection2, testConnection3),
                 savedSettings.getVersion()
         );
         
@@ -87,14 +96,14 @@ public class UserSettingsJdbcServiceTest {
         assertThat(result.getUserId()).isEqualTo(testUserId1);
         assertThat(result.isPreferColoredMap()).isTrue();
         assertThat(result.getSelectedLanguage()).isEqualTo("de");
-        assertThat(result.getConnectedUserAccounts()).containsExactlyInAnyOrder(testUserId2, testUserId3);
+        assertThat(result.getConnectedUserAccounts()).containsExactlyInAnyOrder(testConnection2, testConnection3);
         assertThat(result.getVersion()).isEqualTo(2L);
     }
 
     @Test
     void findByUserId_WhenUserSettingsExist_ShouldReturnSettings() {
         // Create settings
-        UserSettings newSettings = new UserSettings(testUserId1, true, "fr", List.of(testUserId2));
+        UserSettings newSettings = new UserSettings(testUserId1, true, "fr", List.of(testConnection2));
         userSettingsJdbcService.save(newSettings);
         
         Optional<UserSettings> result = userSettingsJdbcService.findByUserId(testUserId1);
@@ -103,7 +112,7 @@ public class UserSettingsJdbcServiceTest {
         assertThat(result.get().getUserId()).isEqualTo(testUserId1);
         assertThat(result.get().isPreferColoredMap()).isTrue();
         assertThat(result.get().getSelectedLanguage()).isEqualTo("fr");
-        assertThat(result.get().getConnectedUserAccounts()).containsExactly(testUserId2);
+        assertThat(result.get().getConnectedUserAccounts()).containsExactly(testConnection2);
     }
 
     @Test
@@ -124,20 +133,20 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void getOrCreateDefaultSettings_WhenUserSettingsExist_ShouldReturnExisting() {
         // Create existing settings
-        UserSettings existingSettings = new UserSettings(testUserId1, true, "fi", List.of(testUserId2));
+        UserSettings existingSettings = new UserSettings(testUserId1, true, "fi", List.of(testConnection2));
         UserSettings saved = userSettingsJdbcService.save(existingSettings);
         
         UserSettings result = userSettingsJdbcService.getOrCreateDefaultSettings(testUserId1);
         
         assertThat(result.isPreferColoredMap()).isTrue();
         assertThat(result.getSelectedLanguage()).isEqualTo("fi");
-        assertThat(result.getConnectedUserAccounts()).containsExactly(testUserId2);
+        assertThat(result.getConnectedUserAccounts()).containsExactly(testConnection2);
     }
 
     @Test
     void deleteByUserId_ShouldRemoveUserSettingsAndConnections() {
         // Create settings with connections
-        UserSettings settings = new UserSettings(testUserId1, true, "de", List.of(testUserId2, testUserId3));
+        UserSettings settings = new UserSettings(testUserId1, true, "de", List.of(testConnection2, testConnection3));
         userSettingsJdbcService.save(settings);
         
         // Verify settings exist
@@ -163,21 +172,21 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void userConnections_ShouldBeLoadedCorrectly() {
         // Create settings (this will load connections)
-        UserSettings settings = new UserSettings(testUserId1, false, "en", List.of(testUserId2, testUserId3));
+        UserSettings settings = new UserSettings(testUserId1, false, "en", List.of(testConnection2, testConnection3));
         UserSettings saved = userSettingsJdbcService.save(settings);
-        assertThat(saved.getConnectedUserAccounts()).containsExactlyInAnyOrder(testUserId2, testUserId3);
+        assertThat(saved.getConnectedUserAccounts()).containsExactlyInAnyOrder(testConnection2, testConnection3);
 
         // Find the settings to verify connections are loaded
         Optional<UserSettings> result = userSettingsJdbcService.findByUserId(testUserId1);
         
         assertThat(result).isPresent();
-        assertThat(result.get().getConnectedUserAccounts()).containsExactlyInAnyOrder(testUserId2, testUserId3);
+        assertThat(result.get().getConnectedUserAccounts()).containsExactlyInAnyOrder(testConnection2, testConnection3);
     }
 
     @Test
     void save_ShouldReplaceAllUserConnections() {
         // Create initial connections
-        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testUserId2));
+        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testConnection2));
         UserSettings saved = userSettingsJdbcService.save(initialSettings);
         
         // Verify initial connection
@@ -193,7 +202,7 @@ public class UserSettingsJdbcServiceTest {
                 testUserId1,
                 false,
                 "en",
-                List.of(testUserId3),
+                List.of(testConnection3),
                 saved.getVersion()
         );
         userSettingsJdbcService.save(updatedSettings);
@@ -218,7 +227,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void save_WithEmptyConnections_ShouldRemoveAllConnections() {
         // Create initial connections
-        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testUserId2, testUserId3));
+        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testConnection2, testConnection3));
         UserSettings saved = userSettingsJdbcService.save(initialSettings);
         
         // Update with empty connections

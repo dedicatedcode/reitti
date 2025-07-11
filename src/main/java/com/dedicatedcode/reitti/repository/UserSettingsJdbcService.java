@@ -5,8 +5,6 @@ import com.dedicatedcode.reitti.model.UserSettings;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -50,12 +48,10 @@ public class UserSettingsJdbcService {
     public UserSettings save(UserSettings userSettings) {
         if (userSettings.getVersion() == null) {
             // Insert new settings
-            KeyHolder keyHolder = new GeneratedKeyHolder();
             this.jdbcTemplate.update("INSERT INTO user_settings (user_id, prefer_colored_map, selected_language, version) VALUES (?, ?, ?, 1)",
                     userSettings.getUserId(),
                     userSettings.isPreferColoredMap(),
                     userSettings.getSelectedLanguage());
-
 
             // Update user connections
             updateUserConnections(userSettings.getUserId(), userSettings.getConnectedUserAccounts());

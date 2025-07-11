@@ -1,5 +1,7 @@
 package com.dedicatedcode.reitti.model;
 
+import com.dedicatedcode.reitti.dto.ConnectedUserAccount;
+
 import java.util.List;
 import java.util.Objects;
 
@@ -8,20 +10,19 @@ public class UserSettings {
     private final Long userId;
     private final boolean preferColoredMap;
     private final String selectedLanguage;
-    private final List<Long> connectedUserAccounts;
+    private final List<ConnectedUserAccount> connectedUserAccounts;
     private final Long version;
 
-    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, List<Long> connectedUserAccounts, Long version) {
+    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, List<ConnectedUserAccount> connectedUserAccounts, Long version) {
         this.userId = userId;
         this.preferColoredMap = preferColoredMap;
         this.selectedLanguage = selectedLanguage;
         this.connectedUserAccounts = connectedUserAccounts;
         this.version = version;
     }
-    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, List<Long> connectedUserAccounts) {
+    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, List<ConnectedUserAccount> connectedUserAccounts) {
         this(userId, preferColoredMap, selectedLanguage, connectedUserAccounts, null);
     }
-
 
     public static UserSettings defaultSettings(Long userId) {
         return new UserSettings(userId, false, "en", List.of(), null);
@@ -38,7 +39,7 @@ public class UserSettings {
         return selectedLanguage;
     }
     
-    public List<Long> getConnectedUserAccounts() {
+    public List<ConnectedUserAccount> getConnectedUserAccounts() {
         return connectedUserAccounts;
     }
     
