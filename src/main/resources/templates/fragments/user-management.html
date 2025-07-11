@@ -62,7 +62,8 @@
 <!-- User Form Fragment -->
 <div th:fragment="user-form">
     <form hx-target="#user-management" hx-swap="innerHTML" class="user-form" autocomplete="off" 
-          th:attr="hx-post=${userId != null ? '/settings/users/update' : '/settings/users'}">
+          th:attr="hx-post=${userId != null ? '/settings/users/update' : '/settings/users'}"
+          enctype="multipart/form-data">
         <input type="hidden" name="userId" th:value="${userId}">
         <h3 th:text="${userId != null ? #messages.msg('users.update.title') : #messages.msg('users.add.title')}">Add New User</h3>
         <div class="form-group">
@@ -77,15 +78,18 @@
         </div>
         <div class="form-group">
             <label for="avatar" th:text="#{users.avatar.label}">Profile Picture</label>
+            <div th:if="${userId != null && hasAvatar}" class="current-avatar">
+                <img th:src="@{/avatars/{userId}(userId=${userId})}" 
+                     alt="Current avatar" 
+                     class="avatar-preview">
+            </div>
             <input type="file" id="avatar" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp">
             <small th:text="#{users.avatar.requirements}">Max 2MB. JPEG, PNG, GIF, or WebP format.</small>
             <div th:if="${userId != null && hasAvatar}" class="avatar-actions">
-                <button type="button" 
-                        class="btn btn-danger"
-                        th:attr="hx-delete=@{/settings/users/{id}/avatar(id=${userId})}"
-                        hx-target="#user-management"
-                        hx-swap="innerHTML"
-                        th:text="#{users.avatar.delete}">Remove Avatar</button>
+                <label>
+                    <input type="checkbox" name="removeAvatar" value="true">
+                    <span th:text="#{users.avatar.delete}">Remove current avatar</span>
+                </label>
             </div>
         </div>
         <div class="form-group">
