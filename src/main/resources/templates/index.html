@@ -152,7 +152,6 @@
 
             if (rawLocationPointsUrl) {
                 // Fetch raw location points for map display
-                //wait until this fetch is done AI1
                 fetch(rawLocationPointsUrl).then(response => {
                     if (!response.ok) {
                         console.warn('Could not fetch raw location points');
