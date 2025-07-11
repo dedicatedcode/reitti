@@ -82,9 +82,6 @@
             /*[[#{datepicker.months.dec}]]*/ 'Dec'
         ]
     };
-    
-    // Set locale for HumanizeDuration
-    const currentLocale = /*[[${#locale.language}]]*/ 'en';
 
     // Helper function for HTMX to get current selected date
     function getSelectedDate() {
@@ -105,8 +102,6 @@
 
 
     document.addEventListener('DOMContentLoaded', function () {
-
-
         // Check if date is in URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         let initialDate;

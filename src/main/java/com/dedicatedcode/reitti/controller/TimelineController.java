@@ -181,7 +181,7 @@ public class TimelineController {
         if (hours > 0) {
             return hours + "h " + minutes + "m";
         } else {
-            return minutes + "m";
+            return minutes + "min";
         }
     }
     
