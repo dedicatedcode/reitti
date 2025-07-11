@@ -88,6 +88,32 @@
     </div>
 
     <script>
+
+        function removeCurrentAvatar() {
+            // Hide the current avatar preview
+            const avatarPreview = document.querySelector('.current-avatar');
+            if (avatarPreview) {
+                avatarPreview.style.display = 'none';
+            }
+
+            // Clear the file input
+            const fileInput = document.getElementById('avatar');
+            if (fileInput) {
+                fileInput.value = '';
+            }
+
+            // Set the remove flag
+            const removeFlag = document.getElementById('removeAvatarFlag');
+            if (removeFlag) {
+                removeFlag.value = 'true';
+            }
+
+            // Hide the remove button
+            const avatarActions = document.querySelector('.avatar-actions');
+            if (avatarActions) {
+                avatarActions.style.display = 'none';
+            }
+        }
         function initPlaceMaps() {
             document.querySelectorAll('.place-map:not(.leaflet-container)').forEach(mapElement => {
                 const lat = parseFloat(mapElement.dataset.lat);

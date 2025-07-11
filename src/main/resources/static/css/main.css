@@ -1253,3 +1253,57 @@ button:disabled {
 .unit-description {
     padding-left: 8px;
 }
+
+/* Add to your existing CSS file */
+.avatar-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.current-avatar {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.avatar-preview {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #ddd;
+}
+
+.avatar-upload {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.avatar-input {
+    display: none;
+}
+
+.avatar-upload-btn {
+    cursor: pointer;
+    text-align: center;
+}
+
+.avatar-delete-btn {
+    align-self: flex-start;
+}
+
+.avatar-input-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.avatar-input-row input[type="file"] {
+    flex: 1;
+}
+
+.avatar-remove-btn {
+    flex-shrink: 0;
+}

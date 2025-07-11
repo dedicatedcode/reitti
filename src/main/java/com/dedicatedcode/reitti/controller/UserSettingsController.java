@@ -125,7 +125,6 @@ public class UserSettingsController {
             model.addAttribute("errorMessage", getMessage("message.error.user.creation", e.getMessage()));
         }
 
-        // Get updated user list and add to model
         List<User> users = userJdbcService.getAllUsers();
         model.addAttribute("users", users);
         model.addAttribute("currentUsername", authentication.getName());
@@ -417,24 +416,17 @@ public class UserSettingsController {
                 }
                 
                 byte[] imageData = avatar.getBytes();
-                
-                // Save avatar to database (upsert)
+
+                jdbcTemplate.update("DELETE FROM user_avatars WHERE user_id = ?", userId);
                 jdbcTemplate.update(
-                    "INSERT INTO user_avatars (user_id, filename, content_type, file_size, image_data) " +
-                    "VALUES (?, ?, ?, ?, ?) " +
-                    "ON CONFLICT (user_id) DO UPDATE SET " +
-                    "filename = EXCLUDED.filename, " +
-                    "content_type = EXCLUDED.content_type, " +
-                    "file_size = EXCLUDED.file_size, " +
-                    "image_data = EXCLUDED.image_data, " +
-                    "updated_at = CURRENT_TIMESTAMP",
-                    userId,
-                    avatar.getOriginalFilename(),
-                    contentType,
-                    avatar.getSize(),
-                    imageData
+                        "INSERT INTO user_avatars (user_id, mime_type, binary_data) " +
+                                "VALUES (?, ?, ?) ",
+                        userId,
+                        contentType,
+                        imageData
                 );
-                
+
+
             } catch (IOException e) {
                 model.addAttribute("avatarError", "Error processing avatar file: " + e.getMessage());
             }

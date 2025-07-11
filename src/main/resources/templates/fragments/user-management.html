@@ -35,19 +35,17 @@
                 <td th:text="${user.username}" th:attr="data-username=${user.username}"></td>
                 <td th:text="${user.displayName}" th:attr="data-display-name=${user.displayName}"></td>
                 <td>
-                    <span th:if="${user.username == currentUsername}"
-                          th:text="#{users.current.user}">(Current User)</span>
+                    <button class="btn"
+                            th:attr="hx-get=@{/settings/user-form(userId=${user.id}, username=${user.username}, displayName=${user.displayName})}"
+                            hx-target="#user-form-container"
+                            th:text="#{form.update}">Edit
+                    </button>
                     <button th:if="${user.username != currentUsername}"
                             class="btn btn-danger"
                             th:attr="hx-post=@{/settings/users/{id}/delete(id=${user.id})}, hx-confirm=#{users.delete.confirm}"
                             hx-target="#user-management"
                             hx-swap="innerHTML"
                             th:text="#{form.delete}">Delete
-                    </button>
-                    <button class="btn"
-                            th:attr="hx-get=@{/settings/user-form(userId=${user.id}, username=${user.username}, displayName=${user.displayName})}"
-                            hx-target="#user-form-container"
-                            th:text="#{form.update}">Edit
                     </button>
                 </td>
             </tr>

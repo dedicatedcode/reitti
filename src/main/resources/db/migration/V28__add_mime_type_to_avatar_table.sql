@@ -1,0 +1,1 @@
+ALTER TABLE user_avatars ADD COLUMN mime_type VARCHAR(255) NOT NULL;
