@@ -77,6 +77,7 @@ public class UserSettingsControllerTest {
                         .param("displayName", newDisplayName)
                         .param("password", newPassword)
                         .param("preferred_language", "en")
+                        .param("unit_system", "METRIC")
                         .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: users-content"))
@@ -99,6 +100,7 @@ public class UserSettingsControllerTest {
                         .param("displayName", "")
                         .param("password", "")
                         .param("preferred_language", "en")
+                        .param("unit_system", "METRIC")
                         .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: users-content"))
@@ -127,6 +129,7 @@ public class UserSettingsControllerTest {
                         .param("displayName", updatedDisplayName)
                         .param("password", updatedPassword)
                         .param("preferred_language", "en")
+                        .param("unit_system", "METRIC")
                         .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: users-content"))
@@ -215,8 +218,8 @@ public class UserSettingsControllerTest {
                 .andExpect(model().attribute("userId", userId))
                 .andExpect(model().attribute("username", username))
                 .andExpect(model().attribute("displayName", displayName))
-                .andExpect(model().attributeExists("availableUsers"))
-                .andExpect(model().attributeExists("connectedUserAccounts"));
+                .andExpect(model().attributeExists("unitSystems"))
+                .andExpect(model().attributeExists("selectedUnitSystem"));
     }
 
     @Test
@@ -238,6 +241,7 @@ public class UserSettingsControllerTest {
                         .param("displayName", displayName)
                         .param("password", password)
                         .param("preferred_language", "en")
+                        .param("unit_system", "METRIC")
                         .with(csrf())
                         .with(user(currentUsername)))
                 .andExpect(status().isOk())
@@ -268,6 +272,7 @@ public class UserSettingsControllerTest {
                         .param("displayName", newDisplayName)
                         .param("password", newPassword)
                         .param("preferred_language", "en")
+                        .param("unit_system", "METRIC")
                         .param("connectedUserIds", connectedUser.getId().toString())
                         .param("connectedUserColors", "#FF0000")
                         .with(csrf()))
@@ -301,6 +306,7 @@ public class UserSettingsControllerTest {
                         .param("username", originalUsername)
                         .param("displayName", "Updated User")
                         .param("preferred_language", "en")
+                        .param("unit_system", "METRIC")
                         .param("connectedUserIds", connectedUser.getId().toString())
                         .param("connectedUserColors", "#00FF00")
                         .with(csrf()))
@@ -329,6 +335,7 @@ public class UserSettingsControllerTest {
                         .param("displayName", newDisplayName)
                         .param("password", newPassword)
                         .param("preferred_language", "en")
+                        .param("unit_system", "METRIC")
                         .param("connectedUserIds", "1", "2")
                         .param("connectedUserColors", "#FF0000")
                         .with(csrf()))
@@ -349,8 +356,8 @@ public class UserSettingsControllerTest {
         mockMvc.perform(get("/settings/user-form"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: user-form"))
-                .andExpect(model().attributeExists("availableUsers"))
-                .andExpect(model().attribute("connectedUserAccounts", java.util.List.of()))
-                .andExpect(model().attribute("selectedLanguage", "en"));
+                .andExpected(model().attributeExists("unitSystems"))
+                .andExpect(model().attribute("selectedLanguage", "en"))
+                .andExpect(model().attribute("selectedUnitSystem", "METRIC"));
     }
 }
