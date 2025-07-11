@@ -13,15 +13,24 @@
         loading ...
     </div>
 
+    <div class="user-timeline-selection">
+        <span th:each="userData : ${timelineData.users}" class="user-header">
+                <img th:src="${userData.userAvatarUrl}"
+                     th:alt="${userData.username + ' avatar'}"
+                     class="user-avatar"
+                     onerror="this.style.display='none'">
+                <span th:text="${userData.username}" class="username">Username</span>
+        </span>
+    </div>
     <div th:each="userData : ${timelineData.users}" class="user-timeline-section"
          th:data-raw-location-points-url="${userData.rawLocationPointsUrl}">
-        <div class="user-header">
-            <img th:src="${userData.userAvatarUrl}" 
-                 th:alt="${userData.username + ' avatar'}" 
-                 class="user-avatar"
-                 onerror="this.style.display='none'">
-            <h3 th:text="${userData.username}" class="username">Username</h3>
-        </div>
+        <!--        <div class="user-header">-->
+        <!--            <img th:src="${userData.userAvatarUrl}" -->
+        <!--                 th:alt="${userData.username + ' avatar'}" -->
+        <!--                 class="user-avatar"-->
+        <!--                 onerror="this.style.display='none'">-->
+        <!--            <h3 th:text="${userData.username}" class="username">Username</h3>-->
+        <!--        </div>-->
         
         <div th:if="${userData.entries == null or userData.entries.isEmpty()}" class="no-entries" th:text="#{timeline.no.data}">
             No timeline data available for this user.
