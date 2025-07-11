@@ -1195,7 +1195,7 @@ button:disabled {
     align-items: center;
 }
 
-.connected-account-row select {
+.connected-account-row .select {
     flex: 1;
 }
 
@@ -1209,4 +1209,43 @@ button:disabled {
 
 .no-connected-accounts {
     margin-bottom: 8px;
+}
+
+.select {
+    min-width: 350px;
+    position: relative;
+}
+
+.select select {
+    appearance: none;
+    width: 100%;
+    padding: 6px 6em 6px 1em;
+    background-color: #fff;
+    border: 1px solid #caced1;
+    border-radius: 0.25rem;
+    color: #000;
+    cursor: pointer;
+}
+
+.select::before,
+.select::after {
+    --size: 0.3rem;
+    content: "";
+    position: absolute;
+    right: 1rem;
+    pointer-events: none;
+}
+
+.select::before {
+    border-left: var(--size) solid transparent;
+    border-right: var(--size) solid transparent;
+    border-bottom: var(--size) solid black;
+    top: 40%;
+}
+
+.select::after {
+    border-left: var(--size) solid transparent;
+    border-right: var(--size) solid transparent;
+    border-top: var(--size) solid black;
+    top: 55%;
 }

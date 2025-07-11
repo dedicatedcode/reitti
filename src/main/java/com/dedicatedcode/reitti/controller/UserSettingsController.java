@@ -20,6 +20,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/settings")
@@ -278,7 +280,7 @@ public class UserSettingsController {
         }
         
         List<ConnectedUserAccount> accounts = new ArrayList<>();
-        java.util.Set<Long> seenUserIds = new java.util.HashSet<>();
+        Set<Long> seenUserIds = new java.util.HashSet<>();
         
         for (int i = 0; i < userIds.size(); i++) {
             Long userId = userIds.get(i);

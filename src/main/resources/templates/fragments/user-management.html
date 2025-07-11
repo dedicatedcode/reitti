@@ -131,6 +131,7 @@
         <label th:text="#{users.connected.accounts.label}">Connected User Accounts</label>
         <div id="connected-accounts-list">
             <div th:each="account, iterStat : ${connectedAccounts}" class="connected-account-row">
+                <div class="select">
                 <select name="connectedUserIds" th:attr="data-index=${iterStat.index}">
                     <option value="" th:text="#{users.select.user}">Select a user...</option>
                     <option th:each="user : ${availableUsers}" 
@@ -138,6 +139,7 @@
                             th:text="${user.displayName + ' (' + user.username + ')'}"
                             th:selected="${user.id == account.userId()}"></option>
                 </select>
+                </div>
                 <input type="color" 
                        name="connectedUserColors" 
                        th:value="${account.color()}" 

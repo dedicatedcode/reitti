@@ -35,7 +35,13 @@ public class UserJdbcService {
 
     @CacheEvict(value = "users", allEntries = true)
     public void deleteUser(Long userId) {
-        deleteById(userId);
+        this.jdbcTemplate.update("DELETE FROM connected_users WHERE from_user = ? OR to_user = ?", userId, userId);
+        this.jdbcTemplate.update("DELETE FROM user_settings WHERE user_id = ?", userId);
+        String sql = "DELETE FROM users WHERE id = ?";
+        int rowsAffected = jdbcTemplate.update(sql, userId);
+        if (rowsAffected == 0) {
+            throw new EmptyResultDataAccessException("No user found with id: " + userId, 1);
+        }
     }
 
     @CacheEvict(value = "users", allEntries = true)
@@ -104,14 +110,6 @@ public class UserJdbcService {
         return jdbcTemplate.query(sql, this::mapRowToUser);
     }
 
-    public void deleteById(Long id) {
-        String sql = "DELETE FROM users WHERE id = ?";
-        int rowsAffected = jdbcTemplate.update(sql, id);
-        if (rowsAffected == 0) {
-            throw new EmptyResultDataAccessException("No user found with id: " + id, 1);
-        }
-    }
-    
     private User mapRowToUser(ResultSet rs, int rowNum) throws SQLException {
         return new User(
             rs.getLong("id"),
