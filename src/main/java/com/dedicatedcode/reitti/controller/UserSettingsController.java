@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.dto.ConnectedUserAccount;
+import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.model.UserSettings;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
@@ -84,6 +85,7 @@ public class UserSettingsController {
                              @RequestParam String displayName,
                              @RequestParam String password,
                              @RequestParam String preferred_language,
+                             @RequestParam(defaultValue = "METRIC") String unit_system,
                              @RequestParam(required = false) List<Long> connectedUserIds,
                              @RequestParam(required = false) List<String> connectedUserColors,
                              Authentication authentication,
@@ -98,7 +100,8 @@ public class UserSettingsController {
                 // Build connected user accounts list
                 List<ConnectedUserAccount> connectedAccounts = buildConnectedUserAccounts(connectedUserIds, connectedUserColors);
                 
-                UserSettings userSettings = new UserSettings(createdUser.getId(), false, preferred_language, connectedAccounts);
+                UnitSystem unitSystem = UnitSystem.valueOf(unit_system);
+                UserSettings userSettings = new UserSettings(createdUser.getId(), false, preferred_language, connectedAccounts, unitSystem);
                 userSettingsJdbcService.save(userSettings);
                 
                 model.addAttribute("successMessage", getMessage("message.success.user.created"));
@@ -124,6 +127,7 @@ public class UserSettingsController {
                              @RequestParam String displayName,
                              @RequestParam(required = false) String password,
                              @RequestParam String preferred_language,
+                             @RequestParam(defaultValue = "METRIC") String unit_system,
                              @RequestParam(required = false) List<Long> connectedUserIds,
                              @RequestParam(required = false) List<String> connectedUserColors,
                              Authentication authentication,
@@ -145,7 +149,8 @@ public class UserSettingsController {
             // Build connected user accounts list
             List<ConnectedUserAccount> connectedAccounts = buildConnectedUserAccounts(connectedUserIds, connectedUserColors);
             
-            UserSettings updatedSettings = new UserSettings(userId, existingSettings.isPreferColoredMap(), preferred_language, connectedAccounts, existingSettings.getVersion());
+            UnitSystem unitSystem = UnitSystem.valueOf(unit_system);
+            UserSettings updatedSettings = new UserSettings(userId, existingSettings.isPreferColoredMap(), preferred_language, connectedAccounts, unitSystem, existingSettings.getVersion());
             userSettingsJdbcService.save(updatedSettings);
             
             // If the current user was updated, update the locale
@@ -184,13 +189,18 @@ public class UserSettingsController {
             model.addAttribute("userId", userId);
             model.addAttribute("username", username);
             model.addAttribute("displayName", displayName);
-            // Load user settings to get selected language
+            // Load user settings to get selected language and unit system
             UserSettings userSettings = userSettingsJdbcService.findByUserId(userId).orElse(UserSettings.defaultSettings(userId));
             model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
+            model.addAttribute("selectedUnitSystem", userSettings.getUnitSystem().name());
         } else {
             // Default values for new users
             model.addAttribute("selectedLanguage", "en");
+            model.addAttribute("selectedUnitSystem", "METRIC");
         }
+        
+        // Add available unit systems to model
+        model.addAttribute("unitSystems", UnitSystem.values());
         
         return "fragments/user-management :: user-form";
     }

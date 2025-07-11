@@ -110,6 +110,24 @@
                 </div>
             </div>
         </div>
+        <div class="form-group">
+            <label th:text="#{units.title}">Unit System</label>
+            <div class="unit-selection">
+                <div class="unit-buttons">
+                    <label class="btn unit-btn">
+                        <input type="radio" name="unit_system" value="METRIC" th:checked="${selectedUnitSystem == 'METRIC' || selectedUnitSystem == null}" style="display: none;">
+                        <span th:text="#{units.metric}" class="unit-name">Metric</span>
+                        <small th:text="#{units.metric.description}" class="unit-description">km, m, °C</small>
+                    </label>
+
+                    <label class="btn unit-btn">
+                        <input type="radio" name="unit_system" value="IMPERIAL" th:checked="${selectedUnitSystem == 'IMPERIAL'}" style="display: none;">
+                        <span th:text="#{units.imperial}" class="unit-name">Imperial</span>
+                        <small th:text="#{units.imperial.description}" class="unit-description">mi, ft, °F</small>
+                    </label>
+                </div>
+            </div>
+        </div>
         <div id="connected-accounts-container" 
              hx-get="/settings/connected-accounts-section"
              hx-target="#connected-accounts-container"
