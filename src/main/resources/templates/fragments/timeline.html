@@ -6,22 +6,34 @@
 <body>
 
 <div th:fragment="timeline-content" 
-     th:data-raw-location-points-url="${timelineData.rawLocationPointsUrl}"
-     th:data-username="${timelineData.username}"
-     th:data-user-avatar-url="${timelineData.userAvatarUrl}">
-    <div th:if="${timelineData.entries == null or timelineData.entries.isEmpty()}" class="timeline-entry" th:text="#{timeline.no.data}">
+     th:data-raw-location-points-url="${timelineData.rawLocationPointsUrl}">
+    <div th:if="${timelineData.users == null or timelineData.users.isEmpty()}" class="timeline-entry" th:text="#{timeline.no.data}">
         No timeline data available for this date.
     </div>
     <div id="loading-indicator" class="htmx-indicator" th:text="#{timeline.loading}">
         loading ...
     </div>
 
-    <div th:each="entry : ${timelineData.entries}" 
-         th:class="|timeline-entry ${entry.type.name().toLowerCase()}|"
-         th:data-id="${entry.id}"
-         th:data-lat="${entry.place?.latitudeCentroid}"
-         th:data-lng="${entry.place?.longitudeCentroid}"
-         th:data-path="${entry.path}">
+    <div th:each="userData : ${timelineData.users}" class="user-timeline-section">
+        <div class="user-header">
+            <img th:src="${userData.userAvatarUrl}" 
+                 th:alt="${userData.username + ' avatar'}" 
+                 class="user-avatar"
+                 onerror="this.style.display='none'">
+            <h3 th:text="${userData.username}" class="username">Username</h3>
+        </div>
+        
+        <div th:if="${userData.entries == null or userData.entries.isEmpty()}" class="no-entries" th:text="#{timeline.no.data}">
+            No timeline data available for this user.
+        </div>
+        
+        <div th:each="entry : ${userData.entries}" 
+             th:class="|timeline-entry ${entry.type.name().toLowerCase()}|"
+             th:data-id="${entry.id}"
+             th:data-lat="${entry.place?.latitudeCentroid}"
+             th:data-lng="${entry.place?.longitudeCentroid}"
+             th:data-path="${entry.path}"
+             th:data-username="${userData.username}">
         
         <!-- Entry Description -->
         <div class="entry-description">

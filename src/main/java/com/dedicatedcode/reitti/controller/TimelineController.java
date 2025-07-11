@@ -70,23 +70,50 @@ public class TimelineController {
         List<Trip> trips = tripJdbcService.findByUserAndTimeOverlap(
                 user, startOfDay, endOfDay);
         
-        // Get user settings for unit system
+        // Get user settings for unit system and connected accounts
         UserSettings userSettings = userSettingsJdbcService.findByUserId(user.getId())
                 .orElse(UserSettings.defaultSettings(user.getId()));
         
-        // Convert to timeline entries
-        List<TimelineEntry> entries = buildTimelineEntries(user, processedVisits, trips, userTimezone, selectedDate, userSettings.getUnitSystem());
+        // Build timeline data for current user and connected users
+        List<UserTimelineData> allUsersData = new ArrayList<>();
+        
+        // Add current user data first
+        List<TimelineEntry> currentUserEntries = buildTimelineEntries(user, processedVisits, trips, userTimezone, selectedDate, userSettings.getUnitSystem());
+        String currentUserAvatarUrl = String.format("/avatars/%d", user.getId());
+        allUsersData.add(new UserTimelineData(user.getUsername(), currentUserAvatarUrl, currentUserEntries));
+        
+        // Add connected users data, sorted by username
+        List<ConnectedUserAccount> connectedAccounts = userSettings.getConnectedUserAccounts();
+        List<User> connectedUsers = new ArrayList<>();
+        
+        for (ConnectedUserAccount account : connectedAccounts) {
+            userJdbcService.findById(account.userId()).ifPresent(connectedUsers::add);
+        }
+        
+        // Sort connected users by username
+        connectedUsers.sort(Comparator.comparing(User::getUsername));
+        
+        for (User connectedUser : connectedUsers) {
+            // Get connected user's timeline data for the same date
+            List<ProcessedVisit> connectedVisits = processedVisitJdbcService.findByUserAndTimeOverlap(
+                    connectedUser, startOfDay, endOfDay);
+            List<Trip> connectedTrips = tripJdbcService.findByUserAndTimeOverlap(
+                    connectedUser, startOfDay, endOfDay);
+            
+            // Get connected user's unit system
+            UserSettings connectedUserSettings = userSettingsJdbcService.findByUserId(connectedUser.getId())
+                    .orElse(UserSettings.defaultSettings(connectedUser.getId()));
+            
+            List<TimelineEntry> connectedUserEntries = buildTimelineEntries(connectedUser, connectedVisits, connectedTrips, userTimezone, selectedDate, connectedUserSettings.getUnitSystem());
+            String connectedUserAvatarUrl = String.format("/avatars/%d", connectedUser.getId());
+            
+            allUsersData.add(new UserTimelineData(connectedUser.getUsername(), connectedUserAvatarUrl, connectedUserEntries));
+        }
         
         // Create timeline data record
         String rawLocationPointsUrl = String.format("/api/v1/raw-location-points?date=%s&timezone=%s", date, timezone);
-        String userAvatarUrl = String.format("/avatars/%d", user.getId());
         
-        TimelineData timelineData = new TimelineData(
-            entries,
-            rawLocationPointsUrl,
-            user.getUsername(),
-            userAvatarUrl
-        );
+        TimelineData timelineData = new TimelineData(allUsersData, rawLocationPointsUrl);
         
         model.addAttribute("timelineData", timelineData);
         return "fragments/timeline :: timeline-content";
@@ -229,10 +256,14 @@ public class TimelineController {
     }
     
     public record TimelineData(
-        List<TimelineEntry> entries,
-        String rawLocationPointsUrl,
+        List<UserTimelineData> users,
+        String rawLocationPointsUrl
+    ) {}
+    
+    public record UserTimelineData(
         String username,
-        String userAvatarUrl
+        String userAvatarUrl,
+        List<TimelineEntry> entries
     ) {}
     /**
      * Inner class to represent timeline entries for the template
