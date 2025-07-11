@@ -129,6 +129,7 @@
 <div th:fragment="connected-accounts-section">
     <div class="form-group">
         <label th:text="#{users.connected.accounts.label}">Connected User Accounts</label>
+        <p class="form-description" th:text="#{users.connected.accounts.description}">Connect with other users to view their location data alongside yours on the map. Each connected user will be displayed with their own color for easy identification.</p>
         <div id="connected-accounts-list">
             <div th:each="account, iterStat : ${connectedAccounts}" class="connected-account-row">
                 <div class="select">
