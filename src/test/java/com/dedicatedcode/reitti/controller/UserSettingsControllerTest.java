@@ -214,7 +214,9 @@ public class UserSettingsControllerTest {
                 .andExpect(view().name("fragments/user-management :: user-form"))
                 .andExpect(model().attribute("userId", userId))
                 .andExpect(model().attribute("username", username))
-                .andExpect(model().attribute("displayName", displayName));
+                .andExpect(model().attribute("displayName", displayName))
+                .andExpect(model().attributeExists("availableUsers"))
+                .andExpect(model().attributeExists("connectedUserAccounts"));
     }
 
     @Test
