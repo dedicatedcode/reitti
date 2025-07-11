@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.repository;
 
+import com.dedicatedcode.reitti.dto.ConnectedUserAccount;
 import com.dedicatedcode.reitti.model.UserSettings;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -22,7 +23,7 @@ public class UserSettingsJdbcService {
 
     private final RowMapper<UserSettings> userSettingsRowMapper = (rs, rowNum) -> {
         Long userId = rs.getLong("user_id");
-        List<Long> connectedAccounts = getConnectedUserAccounts(userId);
+        List<ConnectedUserAccount> connectedAccounts = getConnectedUserAccounts(userId);
         
         return new UserSettings(
                 userId,
@@ -85,25 +86,25 @@ public class UserSettingsJdbcService {
         jdbcTemplate.update("DELETE FROM user_settings WHERE user_id = ?", userId);
     }
     
-    private List<Long> getConnectedUserAccounts(Long userId) {
-        return jdbcTemplate.queryForList(
-                "SELECT to_user FROM connected_users WHERE from_user = ?",
-                Long.class,
+    private List<ConnectedUserAccount> getConnectedUserAccounts(Long userId) {
+        return jdbcTemplate.query(
+                "SELECT to_user, color FROM connected_users WHERE from_user = ?",
+                (rs, rowNum) -> new ConnectedUserAccount(rs.getLong("to_user"), rs.getString("color")),
                 userId);
     }
     
-    private void updateUserConnections(Long userId, List<Long> connectedUserAccounts) {
+    private void updateUserConnections(Long userId, List<ConnectedUserAccount> connectedUserAccounts) {
         // First, remove all existing connections for this user
         jdbcTemplate.update(
-                "DELETE FROM connected_users WHERE from_user = ? OR to_user = ?",
-                userId, userId
+                "DELETE FROM connected_users WHERE from_user = ?",
+                userId
         );
         
         // Then, add the new connections
-        for (Long connectedUserId : connectedUserAccounts) {
+        for (ConnectedUserAccount connectedAccount : connectedUserAccounts) {
             jdbcTemplate.update(
-                    "INSERT INTO connected_users (from_user, to_user) VALUES (?, ?)",
-                    userId, connectedUserId
+                    "INSERT INTO connected_users (from_user, to_user, color) VALUES (?, ?, ?)",
+                    userId, connectedAccount.userId(), connectedAccount.color()
             );
         }
     }

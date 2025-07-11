@@ -7,9 +7,9 @@ public class UserSettings {
     
     private final boolean preferColoredMap;
     private final String selectedLanguage;
-    private final List<Long> connectedUserAccounts;
+    private final List<ConnectedUserAccount> connectedUserAccounts;
     
-    public UserSettings(boolean preferColoredMap, String selectedLanguage, List<Long> connectedUserAccounts) {
+    public UserSettings(boolean preferColoredMap, String selectedLanguage, List<ConnectedUserAccount> connectedUserAccounts) {
         this.preferColoredMap = preferColoredMap;
         this.selectedLanguage = selectedLanguage;
         this.connectedUserAccounts = connectedUserAccounts;
@@ -23,7 +23,7 @@ public class UserSettings {
         return selectedLanguage;
     }
     
-    public List<Long> getConnectedUserAccounts() {
+    public List<ConnectedUserAccount> getConnectedUserAccounts() {
         return connectedUserAccounts;
     }
     
