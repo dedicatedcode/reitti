@@ -146,14 +146,13 @@
         function loadTimelineData(date) {
             // Load photos for the selected date
             photoClient.updatePhotosForDate(date, getUserTimezone());
-
             // Get raw location points URL from timeline container
             const timelineContainer = document.querySelector('.timeline-container > div');
             const rawLocationPointsUrl = timelineContainer?.dataset.rawLocationPointsUrl;
 
-            //this method should only return after all points are added to the map AI!
             if (rawLocationPointsUrl) {
                 // Fetch raw location points for map display
+                //wait until this fetch is done AI1
                 fetch(rawLocationPointsUrl).then(response => {
                     if (!response.ok) {
                         console.warn('Could not fetch raw location points');
@@ -162,6 +161,7 @@
                     return response.json();
                 }).then(rawPointsData => {
                     updateMapWithRawPoints(rawPointsData);
+                    map.fitBounds(bounds, fitToBoundsConfig)
                 }).catch(error => {
                     console.warn('Error fetching raw location points:', error);
                 });
@@ -178,7 +178,6 @@
                 const rawPointsCoords = rawPointsData.points.map(point => [point.latitude, point.longitude]);
                 rawPointsPath.setLatLngs(rawPointsCoords);
                 rawPointsPath.addTo(map);
-                map.fitBounds(rawPointsCoords, fitToBoundsConfig)
             }
         }
 
@@ -204,11 +203,9 @@
         document.body.addEventListener('htmx:afterSwap', function(event) {
             if (event.detail.target.classList.contains('timeline-container')) {
                 // Timeline content has been updated, update map markers
-
-                // Load timeline data and update map markers after both methods are done
-                Promise.resolve(loadTimelineData(getSelectedDate())).then(() => {
-                    updateMapFromTimeline();
-                });
+                bounds = L.latLngBounds()
+                loadTimelineData(getSelectedDate())
+                updateMapFromTimeline();
                 // Initialize scroll indicator after timeline is updated
                 if (window.timelineScrollIndicator) {
                     window.timelineScrollIndicator.cleanup();
@@ -217,7 +214,7 @@
                 window.timelineScrollIndicator.init();
             }
         });
-
+        let bounds = L.latLngBounds();
         // Function to update map markers from timeline entries
         function updateMapFromTimeline() {
             // Clear existing markers and paths (except tile layer)
@@ -227,7 +224,7 @@
                 }
             });
 
-            const bounds = L.latLngBounds();
+
             window.originalBounds = L.latLngBounds();
             let hasValidCoords = false;
 
@@ -318,13 +315,10 @@
                     permanent: false
                 });
 
+                bounds.extend([lat, lng])
+
                 circle.bindTooltip(tooltip);
             });
-
-            // Fit map to bounds if we have valid coordinates
-            if (hasValidCoords) {
-                map.fitBounds(bounds, fitToBoundsConfig);
-            }
         }
 
         // Helper function to parse duration text (simple implementation)
@@ -380,7 +374,7 @@
                 if (!isNaN(lat) && !isNaN(lng)) {
                     newBounds.extend([lat, lng]);
                 }
-                    
+
                 if (newBounds.isValid()) {
                     map.flyToBounds(newBounds, fitToBoundsConfig);
                 }
