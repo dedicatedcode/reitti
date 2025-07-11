@@ -13,10 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -46,9 +43,6 @@ public class LocationDataApiController {
     public ResponseEntity<?> getRawLocationPoints(@PathVariable Long userId,
                                                   @RequestParam("date") String dateStr,
                                                   @RequestParam(required = false, defaultValue = "UTC") String timezone) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        
         try {
             LocalDate date = LocalDate.parse(dateStr);
             ZoneId userTimezone = ZoneId.of(timezone);

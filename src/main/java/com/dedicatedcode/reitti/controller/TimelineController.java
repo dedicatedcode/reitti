@@ -82,7 +82,7 @@ public class TimelineController {
         List<TimelineEntry> currentUserEntries = buildTimelineEntries(user, processedVisits, trips, userTimezone, selectedDate, userSettings.getUnitSystem());
         String currentUserAvatarUrl = String.format("/avatars/%d", user.getId());
         String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", user.getId(), date, timezone);
-        allUsersData.add(new UserTimelineData(user.getUsername(), currentUserAvatarUrl, currentUserEntries, currentUserRawLocationPointsUrl));
+        allUsersData.add(new UserTimelineData(user.getId(), user.getUsername(), currentUserAvatarUrl, currentUserEntries, currentUserRawLocationPointsUrl));
         
         // Add connected users data, sorted by username
         List<ConnectedUserAccount> connectedAccounts = userSettings.getConnectedUserAccounts();
@@ -110,7 +110,7 @@ public class TimelineController {
             String connectedUserAvatarUrl = String.format("/avatars/%d", connectedUser.getId());
             String connectedUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", connectedUser.getId(), date, timezone);
             
-            allUsersData.add(new UserTimelineData(connectedUser.getUsername(), connectedUserAvatarUrl, connectedUserEntries, connectedUserRawLocationPointsUrl));
+            allUsersData.add(new UserTimelineData(connectedUser.getId(), connectedUser.getDisplayName(), connectedUserAvatarUrl, connectedUserEntries, connectedUserRawLocationPointsUrl));
         }
         
         // Create timeline data record
@@ -261,7 +261,8 @@ public class TimelineController {
     ) {}
     
     public record UserTimelineData(
-        String username,
+        long userId,
+        String displayName,
         String userAvatarUrl,
         List<TimelineEntry> entries,
         String rawLocationPointsUrl

@@ -1,13 +1,10 @@
 package com.dedicatedcode.reitti.event;
 
-import com.dedicatedcode.reitti.dto.LocationDataRequest;
-import com.dedicatedcode.reitti.model.RawLocationPoint;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.List;
 import java.util.Objects;
 
 public class LocationProcessEvent implements Serializable {

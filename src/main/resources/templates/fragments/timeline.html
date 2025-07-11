@@ -16,22 +16,14 @@
     <div class="user-timeline-selection">
         <div th:each="userData : ${timelineData.users}" class="user-header">
                 <img th:src="${userData.userAvatarUrl}"
-                     th:alt="${userData.username + ' avatar'}"
+                     th:alt="${userData.displayName + ' avatar'}"
                      class="user-avatar"
                      onerror="this.style.display='none'">
-                <div th:text="${userData.username}" class="username">Username</div>
+                <div th:text="${userData.displayName}" class="username">Username</div>
         </div>
     </div>
     <div th:each="userData : ${timelineData.users}" class="user-timeline-section"
          th:data-raw-location-points-url="${userData.rawLocationPointsUrl}">
-        <!--        <div class="user-header">-->
-        <!--            <img th:src="${userData.userAvatarUrl}" -->
-        <!--                 th:alt="${userData.username + ' avatar'}" -->
-        <!--                 class="user-avatar"-->
-        <!--                 onerror="this.style.display='none'">-->
-        <!--            <h3 th:text="${userData.username}" class="username">Username</h3>-->
-        <!--        </div>-->
-        
         <div th:if="${userData.entries == null or userData.entries.isEmpty()}" class="no-entries" th:text="#{timeline.no.data}">
             No timeline data available for this user.
         </div>
@@ -42,7 +34,7 @@
              th:data-lat="${entry.place?.latitudeCentroid}"
              th:data-lng="${entry.place?.longitudeCentroid}"
              th:data-path="${entry.path}"
-             th:data-username="${userData.username}">
+             th:data-username="${userData.userId}">
         
         <!-- Entry Description -->
         <div class="entry-description">

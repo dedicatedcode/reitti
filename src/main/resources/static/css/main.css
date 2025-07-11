@@ -1307,3 +1307,32 @@ button:disabled {
 .avatar-remove-btn {
     flex-shrink: 0;
 }
+
+.user-timeline-section {
+    display: none;
+}
+
+.user-timeline-section.active {
+    display: initial;
+}
+
+.user-timeline-selection .user-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 2px solid white;
+    object-fit: cover;
+}
+
+.user-header {
+    color: white;
+    font-family: "Fraunces", serif;
+    font-weight: 100;
+    display: inline-block;
+    text-align: center;
+}
+
+
+.user-timeline-section.active .user-avatar {
+    border: 2px solid wheat;
+}
