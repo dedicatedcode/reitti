@@ -219,8 +219,8 @@ public class UserSettingsController {
 
     @PostMapping("/connected-accounts/add")
     public String addConnectedAccount(@RequestParam(required = false) Long userId,
-                                      @RequestParam(required = false) List<Long> existingUserIds,
-                                      @RequestParam(required = false) List<String> existingColors,
+                                      @RequestParam(required = false) List<Long> connectedUserIds,
+                                      @RequestParam(required = false) List<String> connectedUserColors,
                                       Model model) {
         // Get all users for the connected accounts selection, excluding the current user being edited
         List<User> allUsers = userJdbcService.getAllUsers();
@@ -231,8 +231,8 @@ public class UserSettingsController {
         }
         model.addAttribute("availableUsers", allUsers);
         
-        // Build current connected accounts from existing data
-        List<ConnectedUserAccount> connectedAccounts = new ArrayList<>(buildConnectedUserAccounts(existingUserIds, existingColors));
+        // Build current connected accounts from existing form data
+        List<ConnectedUserAccount> connectedAccounts = new ArrayList<>(buildConnectedUserAccounts(connectedUserIds, connectedUserColors));
         
         // Add a new empty account
         connectedAccounts.add(new ConnectedUserAccount(null, "#000000"));
@@ -246,8 +246,8 @@ public class UserSettingsController {
     @PostMapping("/connected-accounts/remove")
     public String removeConnectedAccount(@RequestParam(required = false) Long userId,
                                          @RequestParam int removeIndex,
-                                         @RequestParam(required = false) List<Long> existingUserIds,
-                                         @RequestParam(required = false) List<String> existingColors,
+                                         @RequestParam(required = false) List<Long> connectedUserIds,
+                                         @RequestParam(required = false) List<String> connectedUserColors,
                                          Model model) {
         // Get all users for the connected accounts selection, excluding the current user being edited
         List<User> allUsers = userJdbcService.getAllUsers();
@@ -258,8 +258,8 @@ public class UserSettingsController {
         }
         model.addAttribute("availableUsers", allUsers);
         
-        // Build current connected accounts from existing data
-        List<ConnectedUserAccount> connectedAccounts = new ArrayList<>(buildConnectedUserAccounts(existingUserIds, existingColors));
+        // Build current connected accounts from existing form data
+        List<ConnectedUserAccount> connectedAccounts = new ArrayList<>(buildConnectedUserAccounts(connectedUserIds, connectedUserColors));
         
         // Remove the account at the specified index
         if (removeIndex >= 0 && removeIndex < connectedAccounts.size()) {
