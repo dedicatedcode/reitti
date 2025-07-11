@@ -235,7 +235,7 @@ public class UserSettingsController {
         List<ConnectedUserAccount> connectedAccounts = new ArrayList<>(buildConnectedUserAccounts(connectedUserIds, connectedUserColors));
         
         // Add a new empty account
-        connectedAccounts.add(new ConnectedUserAccount(null, "#000000"));
+        connectedAccounts.add(new ConnectedUserAccount(null, generateRandomColor()));
         
         model.addAttribute("connectedAccounts", connectedAccounts);
         model.addAttribute("userId", userId);
