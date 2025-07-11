@@ -160,6 +160,7 @@
                     return response.json();
                 }).then(rawPointsData => {
                     updateMapWithRawPoints(rawPointsData);
+                    window.originalBounds = bounds;
                     map.fitBounds(bounds, fitToBoundsConfig)
                 }).catch(error => {
                     console.warn('Error fetching raw location points:', error);
@@ -266,7 +267,6 @@
                     group.visits.push({ id: entryElement.dataset.id });
                     
                     bounds.extend([lat, lng]);
-                    window.originalBounds.extend([lat, lng]);
                     hasValidCoords = true;
                 }
             });
