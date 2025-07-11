@@ -184,8 +184,7 @@ public class UserSettingsController {
             model.addAttribute("displayName", displayName);
             
             // Load user settings to get selected language and connected accounts
-            UserSettings userSettings = userSettingsJdbcService.findByUserId(userId)
-                .orElse(UserSettings.defaultSettings(userId));
+            UserSettings userSettings = userSettingsJdbcService.findByUserId(userId).orElse(UserSettings.defaultSettings(userId));
             model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
             model.addAttribute("connectedUserAccounts", userSettings.getConnectedUserAccounts());
         } else {
