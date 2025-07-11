@@ -278,12 +278,15 @@ public class UserSettingsController {
         }
         
         List<ConnectedUserAccount> accounts = new ArrayList<>();
+        java.util.Set<Long> seenUserIds = new java.util.HashSet<>();
+        
         for (int i = 0; i < userIds.size(); i++) {
             Long userId = userIds.get(i);
             String color = (colors != null && i < colors.size()) ? colors.get(i) : generateRandomColor();
             
-            if (userId != null) {
+            if (userId != null && !seenUserIds.contains(userId)) {
                 accounts.add(new ConnectedUserAccount(userId, color));
+                seenUserIds.add(userId);
             }
         }
         return accounts;
