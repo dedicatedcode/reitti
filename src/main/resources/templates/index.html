@@ -148,9 +148,9 @@
             photoClient.updatePhotosForDate(date, getUserTimezone());
 
             // Get raw location points URL from timeline container
-            const timelineContainer = document.querySelector('.timeline-container');
+            const timelineContainer = document.querySelector('.timeline-container > div');
             const rawLocationPointsUrl = timelineContainer?.dataset.rawLocationPointsUrl;
-            
+
             if (rawLocationPointsUrl) {
                 // Fetch raw location points for map display
                 fetch(rawLocationPointsUrl).then(response => {
@@ -203,8 +203,10 @@
         document.body.addEventListener('htmx:afterSwap', function(event) {
             if (event.detail.target.classList.contains('timeline-container')) {
                 // Timeline content has been updated, update map markers
-                updateMapFromTimeline();
+
+                //start showing the path and markers after booth methods are done AI!
                 loadTimelineData(getSelectedDate())
+                updateMapFromTimeline();
                 // Initialize scroll indicator after timeline is updated
                 if (window.timelineScrollIndicator) {
                     window.timelineScrollIndicator.cleanup();
