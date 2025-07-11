@@ -43,9 +43,9 @@
                 <span th:text="${entry.formattedDuration}">1h 30m</span>
             </span>
             <span th:if="${entry.type.name() == 'TRIP'}">
-                <span th:if="${entry.distanceMeters != null}">
+                <span th:if="${entry.formattedDistance != null}">
                     <span th:text="#{timeline.distance}">Distance</span>: 
-                    <span th:text="${#numbers.formatDecimal(entry.distanceMeters / 1000, 1, 1)} + ' km'">5.2 km</span>
+                    <span th:text="${entry.formattedDistance}">5.2 km</span>
                 </span>
                 <span th:if="${entry.transportMode != null}">
                     <span th:switch="${entry.transportMode}">

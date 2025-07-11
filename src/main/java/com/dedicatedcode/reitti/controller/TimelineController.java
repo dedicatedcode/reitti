@@ -29,6 +29,7 @@ public class TimelineController {
     private final UserJdbcService userJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final TripJdbcService tripJdbcService;
+    private final UserSettingsJdbcService userSettingsJdbcService;
     private final ObjectMapper objectMapper;
 
     @Autowired
@@ -37,12 +38,14 @@ public class TimelineController {
                               UserJdbcService userJdbcService,
                               ProcessedVisitJdbcService processedVisitJdbcService,
                               TripJdbcService tripJdbcService,
+                              UserSettingsJdbcService userSettingsJdbcService,
                               ObjectMapper objectMapper) {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.placeService = placeService;
         this.userJdbcService = userJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.tripJdbcService = tripJdbcService;
+        this.userSettingsJdbcService = userSettingsJdbcService;
         this.objectMapper = objectMapper;
     }
 
@@ -67,8 +70,12 @@ public class TimelineController {
         List<Trip> trips = tripJdbcService.findByUserAndTimeOverlap(
                 user, startOfDay, endOfDay);
         
+        // Get user settings for unit system
+        UserSettings userSettings = userSettingsJdbcService.findByUserId(user.getId())
+                .orElse(UserSettings.defaultSettings(user.getId()));
+        
         // Convert to timeline entries
-        List<TimelineEntry> entries = buildTimelineEntries(user, processedVisits, trips, userTimezone, selectedDate);
+        List<TimelineEntry> entries = buildTimelineEntries(user, processedVisits, trips, userTimezone, selectedDate, userSettings.getUnitSystem());
         
         model.addAttribute("entries", entries);
         return "fragments/timeline :: timeline-content";
@@ -77,7 +84,7 @@ public class TimelineController {
     /**
      * Build timeline entries from processed visits and trips
      */
-    private List<TimelineEntry> buildTimelineEntries(User user, List<ProcessedVisit> processedVisits, List<Trip> trips, ZoneId timezone, LocalDate selectedDate) throws JsonProcessingException {
+    private List<TimelineEntry> buildTimelineEntries(User user, List<ProcessedVisit> processedVisits, List<Trip> trips, ZoneId timezone, LocalDate selectedDate, UnitSystem unitSystem) throws JsonProcessingException {
         List<TimelineEntry> entries = new ArrayList<>();
         
         // Add processed visits to timeline
@@ -115,8 +122,10 @@ public class TimelineController {
             entry.setPath(objectMapper.writeValueAsString(pathPoints));
             if (trip.getTravelledDistanceMeters() != null) {
                 entry.setDistanceMeters(trip.getTravelledDistanceMeters());
+                entry.setFormattedDistance(formatDistance(trip.getTravelledDistanceMeters(), unitSystem));
             } else if (trip.getEstimatedDistanceMeters() != null) {
                 entry.setDistanceMeters(trip.getEstimatedDistanceMeters());
+                entry.setFormattedDistance(formatDistance(trip.getEstimatedDistanceMeters(), unitSystem));
             }
             
             if (trip.getTransportModeInferred() != null) {
@@ -194,6 +203,7 @@ public class TimelineController {
         private String formattedTimeRange;
         private String formattedDuration;
         private Double distanceMeters;
+        private String formattedDistance;
         private String transportMode;
         
         // Getters and setters
@@ -220,6 +230,9 @@ public class TimelineController {
         
         public Double getDistanceMeters() { return distanceMeters; }
         public void setDistanceMeters(Double distanceMeters) { this.distanceMeters = distanceMeters; }
+        
+        public String getFormattedDistance() { return formattedDistance; }
+        public void setFormattedDistance(String formattedDistance) { this.formattedDistance = formattedDistance; }
         
         public String getTransportMode() { return transportMode; }
         public void setTransportMode(String transportMode) { this.transportMode = transportMode; }
