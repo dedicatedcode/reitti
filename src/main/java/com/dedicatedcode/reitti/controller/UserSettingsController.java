@@ -12,8 +12,12 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.LocaleResolver;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
+import java.util.Locale;
 
 @Controller
 @RequestMapping("/settings")
@@ -22,11 +26,13 @@ public class UserSettingsController {
     private final UserJdbcService userJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final MessageSource messageSource;
+    private final LocaleResolver localeResolver;
 
-    public UserSettingsController(UserJdbcService userJdbcService, UserSettingsJdbcService userSettingsJdbcService, MessageSource messageSource) {
+    public UserSettingsController(UserJdbcService userJdbcService, UserSettingsJdbcService userSettingsJdbcService, MessageSource messageSource, LocaleResolver localeResolver) {
         this.userJdbcService = userJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.messageSource = messageSource;
+        this.localeResolver = localeResolver;
     }
 
     private String getMessage(String key, Object... args) {
@@ -109,6 +115,8 @@ public class UserSettingsController {
                              @RequestParam(required = false) String password,
                              @RequestParam String preferred_language,
                              Authentication authentication,
+                             HttpServletRequest request,
+                             HttpServletResponse response,
                              Model model) {
         String currentUsername = authentication.getName();
         User currentUser = userJdbcService.findById(userId)
@@ -124,6 +132,12 @@ public class UserSettingsController {
             
             UserSettings updatedSettings = new UserSettings(userId, existingSettings.isPreferColoredMap(), preferred_language, existingSettings.getConnectedUserAccounts(), existingSettings.getVersion());
             userSettingsJdbcService.save(updatedSettings);
+            
+            // If the current user was updated, update the locale
+            if (isCurrentUser) {
+                Locale newLocale = Locale.forLanguageTag(preferred_language);
+                localeResolver.setLocale(request, response, newLocale);
+            }
             
             model.addAttribute("successMessage", getMessage("message.success.user.updated"));
 
