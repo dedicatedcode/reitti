@@ -76,6 +76,19 @@
                    th:value="${displayName}">
         </div>
         <div class="form-group">
+            <label for="avatar" th:text="#{users.avatar.label}">Profile Picture</label>
+            <input type="file" id="avatar" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp">
+            <small th:text="#{users.avatar.requirements}">Max 2MB. JPEG, PNG, GIF, or WebP format.</small>
+            <div th:if="${userId != null && hasAvatar}" class="avatar-actions">
+                <button type="button" 
+                        class="btn btn-danger"
+                        th:attr="hx-delete=@{/settings/users/{id}/avatar(id=${userId})}"
+                        hx-target="#user-management"
+                        hx-swap="innerHTML"
+                        th:text="#{users.avatar.delete}">Remove Avatar</button>
+            </div>
+        </div>
+        <div class="form-group">
             <label for="password" th:text="#{users.password.label}">Password</label>
             <input type="password" id="password" name="password" th:required="${userId == null}" th:placeholder="#{users.password.placeholder}" autocomplete="new-password">
             <small th:if="${userId != null}" th:text="#{users.password.keep.current}">Leave empty to keep current password</small>
