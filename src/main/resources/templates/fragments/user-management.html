@@ -153,7 +153,7 @@
                 <input type="hidden" name="existingUserIds" th:value="${account.userId()}">
                 <input type="hidden" name="existingColors" th:value="${account.color()}">
             </div>
-            <div th:if="${connectedAccounts.isEmpty()}" class="no-connected-accounts">
+            <div th:if="${connectedAccounts != null && connectedAccounts.isEmpty()}" class="no-connected-accounts">
                 <span th:text="#{users.no.connected.accounts}">No connected accounts yet.</span>
             </div>
         </div>

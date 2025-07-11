@@ -1185,3 +1185,28 @@ button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
 }
+
+
+
+.connected-account-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+.connected-account-row select {
+    flex: 1;
+}
+
+.connected-account-row input[type="color"] {
+    width: 50px;
+    height: 35px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.no-connected-accounts {
+    margin-bottom: 8px;
+}
