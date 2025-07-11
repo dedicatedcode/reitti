@@ -5,8 +5,7 @@
 </head>
 <body>
 
-<div th:fragment="timeline-content" 
-     th:data-raw-location-points-url="${timelineData.rawLocationPointsUrl}">
+<div th:fragment="timeline-content">
     <div th:if="${timelineData.users == null or timelineData.users.isEmpty()}" class="timeline-entry" th:text="#{timeline.no.data}">
         No timeline data available for this date.
     </div>
@@ -14,7 +13,8 @@
         loading ...
     </div>
 
-    <div th:each="userData : ${timelineData.users}" class="user-timeline-section">
+    <div th:each="userData : ${timelineData.users}" class="user-timeline-section"
+         th:data-raw-location-points-url="${userData.rawLocationPointsUrl}">
         <div class="user-header">
             <img th:src="${userData.userAvatarUrl}" 
                  th:alt="${userData.username + ' avatar'}" 

@@ -81,7 +81,8 @@ public class TimelineController {
         // Add current user data first
         List<TimelineEntry> currentUserEntries = buildTimelineEntries(user, processedVisits, trips, userTimezone, selectedDate, userSettings.getUnitSystem());
         String currentUserAvatarUrl = String.format("/avatars/%d", user.getId());
-        allUsersData.add(new UserTimelineData(user.getUsername(), currentUserAvatarUrl, currentUserEntries));
+        String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", user.getId(), date, timezone);
+        allUsersData.add(new UserTimelineData(user.getUsername(), currentUserAvatarUrl, currentUserEntries, currentUserRawLocationPointsUrl));
         
         // Add connected users data, sorted by username
         List<ConnectedUserAccount> connectedAccounts = userSettings.getConnectedUserAccounts();
@@ -107,14 +108,13 @@ public class TimelineController {
             
             List<TimelineEntry> connectedUserEntries = buildTimelineEntries(connectedUser, connectedVisits, connectedTrips, userTimezone, selectedDate, connectedUserSettings.getUnitSystem());
             String connectedUserAvatarUrl = String.format("/avatars/%d", connectedUser.getId());
+            String connectedUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", connectedUser.getId(), date, timezone);
             
-            allUsersData.add(new UserTimelineData(connectedUser.getUsername(), connectedUserAvatarUrl, connectedUserEntries));
+            allUsersData.add(new UserTimelineData(connectedUser.getUsername(), connectedUserAvatarUrl, connectedUserEntries, connectedUserRawLocationPointsUrl));
         }
         
         // Create timeline data record
-        String rawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", user.getId(), date, timezone);
-        
-        TimelineData timelineData = new TimelineData(allUsersData, rawLocationPointsUrl);
+        TimelineData timelineData = new TimelineData(allUsersData);
         
         model.addAttribute("timelineData", timelineData);
         return "fragments/timeline :: timeline-content";
@@ -257,14 +257,14 @@ public class TimelineController {
     }
     
     public record TimelineData(
-        List<UserTimelineData> users,
-        String rawLocationPointsUrl
+        List<UserTimelineData> users
     ) {}
     
     public record UserTimelineData(
         String username,
         String userAvatarUrl,
-        List<TimelineEntry> entries
+        List<TimelineEntry> entries,
+        String rawLocationPointsUrl
     ) {}
     /**
      * Inner class to represent timeline entries for the template
