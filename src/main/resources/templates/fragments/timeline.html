@@ -5,15 +5,18 @@
 </head>
 <body>
 
-<div th:fragment="timeline-content" th:data-raw-location-points-url="${rawLocationPointsUrl}">
-    <div th:if="${entries == null or entries.isEmpty()}" class="timeline-entry" th:text="#{timeline.no.data}">
+<div th:fragment="timeline-content" 
+     th:data-raw-location-points-url="${timelineData.rawLocationPointsUrl}"
+     th:data-username="${timelineData.username}"
+     th:data-user-avatar-url="${timelineData.userAvatarUrl}">
+    <div th:if="${timelineData.entries == null or timelineData.entries.isEmpty()}" class="timeline-entry" th:text="#{timeline.no.data}">
         No timeline data available for this date.
     </div>
     <div id="loading-indicator" class="htmx-indicator" th:text="#{timeline.loading}">
         loading ...
     </div>
 
-    <div th:each="entry : ${entries}" 
+    <div th:each="entry : ${timelineData.entries}" 
          th:class="|timeline-entry ${entry.type.name().toLowerCase()}|"
          th:data-id="${entry.id}"
          th:data-lat="${entry.place?.latitudeCentroid}"

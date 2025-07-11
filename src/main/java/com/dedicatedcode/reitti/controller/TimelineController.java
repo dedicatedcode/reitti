@@ -77,10 +77,18 @@ public class TimelineController {
         // Convert to timeline entries
         List<TimelineEntry> entries = buildTimelineEntries(user, processedVisits, trips, userTimezone, selectedDate, userSettings.getUnitSystem());
         
-        // Add raw location points URL for the selected date
+        // Create timeline data record
         String rawLocationPointsUrl = String.format("/api/v1/raw-location-points?date=%s&timezone=%s", date, timezone);
-        model.addAttribute("entries", entries);
-        model.addAttribute("rawLocationPointsUrl", rawLocationPointsUrl);
+        String userAvatarUrl = String.format("/avatars/%d", user.getId());
+        
+        TimelineData timelineData = new TimelineData(
+            entries,
+            rawLocationPointsUrl,
+            user.getUsername(),
+            userAvatarUrl
+        );
+        
+        model.addAttribute("timelineData", timelineData);
         return "fragments/timeline :: timeline-content";
     }
     
@@ -219,6 +227,13 @@ public class TimelineController {
 
     public record PointInfo(Double latitude, Double longitude, Instant timestamp, Double accuracy) {
     }
+    
+    public record TimelineData(
+        List<TimelineEntry> entries,
+        String rawLocationPointsUrl,
+        String username,
+        String userAvatarUrl
+    ) {}
     /**
      * Inner class to represent timeline entries for the template
      */
