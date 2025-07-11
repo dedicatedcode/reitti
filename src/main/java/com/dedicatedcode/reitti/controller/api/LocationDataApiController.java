@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.model.RawLocationPoint;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,14 +33,18 @@ public class LocationDataApiController {
     private static final Logger logger = LoggerFactory.getLogger(LocationDataApiController.class);
     
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final UserJdbcService userJdbcService;
     
     @Autowired
-    public LocationDataApiController(RawLocationPointJdbcService rawLocationPointJdbcService) {
+    public LocationDataApiController(RawLocationPointJdbcService rawLocationPointJdbcService,
+                                   UserJdbcService userJdbcService) {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.userJdbcService = userJdbcService;
     }
 
-    @GetMapping("/raw-location-points")
-    public ResponseEntity<?> getRawLocationPoints(@RequestParam("date") String dateStr,
+    @GetMapping("/raw-location-points/{userId}")
+    public ResponseEntity<?> getRawLocationPoints(@PathVariable Long userId,
+                                                  @RequestParam("date") String dateStr,
                                                   @RequestParam(required = false, defaultValue = "UTC") String timezone) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
@@ -52,8 +57,9 @@ public class LocationDataApiController {
             Instant startOfDay = date.atStartOfDay(userTimezone).toInstant();
             Instant endOfDay = date.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
 
-            // Get the user from the repository
-            User user = (User) userDetails;
+            // Get the user from the repository by userId
+            User user = userJdbcService.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
             
             // Get raw location points for the user and date range
             List<LocationDataRequest.LocationPoint> points = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, startOfDay, endOfDay).stream()

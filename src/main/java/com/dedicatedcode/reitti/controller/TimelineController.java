@@ -112,7 +112,7 @@ public class TimelineController {
         }
         
         // Create timeline data record
-        String rawLocationPointsUrl = String.format("/api/v1/raw-location-points?date=%s&timezone=%s", date, timezone);
+        String rawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", user.getId(), date, timezone);
         
         TimelineData timelineData = new TimelineData(allUsersData, rawLocationPointsUrl);
         
