@@ -14,13 +14,13 @@
     </div>
 
     <div class="user-timeline-selection">
-        <span th:each="userData : ${timelineData.users}" class="user-header">
+        <div th:each="userData : ${timelineData.users}" class="user-header">
                 <img th:src="${userData.userAvatarUrl}"
                      th:alt="${userData.username + ' avatar'}"
                      class="user-avatar"
                      onerror="this.style.display='none'">
-                <span th:text="${userData.username}" class="username">Username</span>
-        </span>
+                <div th:text="${userData.username}" class="username">Username</div>
+        </div>
     </div>
     <div th:each="userData : ${timelineData.users}" class="user-timeline-section"
          th:data-raw-location-points-url="${userData.rawLocationPointsUrl}">
