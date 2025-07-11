@@ -290,9 +290,18 @@ public class UserSettingsController {
     }
     
     private String generateRandomColor() {
-        // Generate a random bright color
+        // Generate a random bright color in hex RGB format
         java.util.Random random = new java.util.Random();
-        int hue = random.nextInt(360);
-        return String.format("hsl(%d, 70%%, 50%%)", hue);
+        
+        // Generate bright colors by ensuring high saturation and medium-high lightness
+        float hue = random.nextFloat(); // 0.0 to 1.0
+        float saturation = 0.7f + random.nextFloat() * 0.3f; // 0.7 to 1.0
+        float brightness = 0.5f + random.nextFloat() * 0.4f; // 0.5 to 0.9
+        
+        // Convert HSB to RGB
+        int rgb = java.awt.Color.HSBtoRGB(hue, saturation, brightness);
+        
+        // Convert to hex string
+        return String.format("#%06X", rgb & 0xFFFFFF);
     }
 }
