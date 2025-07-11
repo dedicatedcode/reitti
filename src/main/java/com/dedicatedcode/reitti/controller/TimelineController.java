@@ -184,6 +184,34 @@ public class TimelineController {
             return minutes + "m";
         }
     }
+    
+    /**
+     * Format distance according to unit system
+     */
+    private String formatDistance(Double distanceMeters, UnitSystem unitSystem) {
+        if (distanceMeters == null) {
+            return "";
+        }
+        
+        switch (unitSystem) {
+            case METRIC:
+                if (distanceMeters >= 1000) {
+                    return String.format("%.1f km", distanceMeters / 1000.0);
+                } else {
+                    return String.format("%.0f m", distanceMeters);
+                }
+            case IMPERIAL:
+                double distanceFeet = distanceMeters * 3.28084;
+                if (distanceFeet >= 5280) {
+                    double distanceMiles = distanceFeet / 5280.0;
+                    return String.format("%.1f mi", distanceMiles);
+                } else {
+                    return String.format("%.0f ft", distanceFeet);
+                }
+            default:
+                return String.format("%.1f km", distanceMeters / 1000.0);
+        }
+    }
 
 
     public record PointInfo(Double latitude, Double longitude, Instant timestamp, Double accuracy) {
