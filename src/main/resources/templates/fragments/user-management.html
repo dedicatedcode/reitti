@@ -134,22 +134,31 @@
                     hx-get="/settings/user-form" hx-target="#user-form-container" th:text="#{form.cancel}">Cancel</button>
         </div>
     </form>
+    <script>
+        // Initialize connected accounts for this form
+        if (typeof initConnectedAccounts === 'function') {
+            initConnectedAccounts();
+        }
+    </script>
 </div>
 
 
-<script th:fragment="connected-accounts-script">
-document.addEventListener('DOMContentLoaded', function() {
+<script th:inline="javascript">
+// Initialize connected accounts functionality when the form loads
+function initConnectedAccounts() {
     const container = document.getElementById('connected-accounts-container');
     const addButton = document.getElementById('add-connected-account');
     
-    if (addButton) {
+    if (addButton && !addButton.hasAttribute('data-initialized')) {
+        addButton.setAttribute('data-initialized', 'true');
         addButton.addEventListener('click', function() {
             const newRow = createAccountRow();
             container.appendChild(newRow);
         });
     }
     
-    if (container) {
+    if (container && !container.hasAttribute('data-initialized')) {
+        container.setAttribute('data-initialized', 'true');
         container.addEventListener('click', function(e) {
             if (e.target.classList.contains('remove-account')) {
                 e.target.closest('.connected-account-row').remove();
@@ -162,19 +171,35 @@ document.addEventListener('DOMContentLoaded', function() {
         row.className = 'connected-account-row';
         
         const availableUsers = /*[[${availableUsers}]]*/ [];
-        let optionsHtml = '<option value="">Select a user...</option>';
-        availableUsers.forEach(user => {
-            optionsHtml += `<option value="${user.id}">${user.displayName} (${user.username})</option>`;
-        });
+        let optionsHtml = /*[[#{users.select.user}]]*/ 'Select a user...';
+        optionsHtml = `<option value="">${optionsHtml}</option>`;
+        
+        if (availableUsers && availableUsers.length > 0) {
+            availableUsers.forEach(user => {
+                optionsHtml += `<option value="${user.id}">${user.displayName} (${user.username})</option>`;
+            });
+        }
+        
+        const removeText = /*[[#{form.remove}]]*/ 'Remove';
         
         row.innerHTML = `
             <select name="connectedUserIds">
                 ${optionsHtml}
             </select>
             <input type="color" name="connectedUserColors" value="#000000" title="Choose color">
-            <button type="button" class="btn btn-danger remove-account">Remove</button>
+            <button type="button" class="btn btn-danger remove-account">${removeText}</button>
         `;
         return row;
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', initConnectedAccounts);
+
+// Initialize after HTMX swaps
+document.addEventListener('htmx:afterSwap', function(event) {
+    if (event.target.id === 'user-form-container') {
+        initConnectedAccounts();
     }
 });
 </script>
