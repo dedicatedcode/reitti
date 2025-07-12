@@ -13,7 +13,7 @@
         loading ...
     </div>
 
-    <div class="user-timeline-selection">
+    <div class="user-timeline-selection" th:if="${timelineData.users != null && timelineData.users.size() > 1}">
         <div th:each="userData, iterStat : ${timelineData.users}" 
              class="user-header"
              th:classappend="${iterStat.first} ? 'active' : ''"

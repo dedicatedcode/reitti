@@ -140,7 +140,6 @@
             window.history.pushState({}, '', url);
         }
 
-        debugger
         // Initialize the map
         const map = L.map('map', {zoomControl: false, attributionControl: false}).setView([60.1699, 24.9384], 12); // Helsinki coordinates as default
 
@@ -170,38 +169,52 @@
             // Load photos for the selected date
             photoClient.updatePhotosForDate(date, getUserTimezone());
             // Get raw location points URL from timeline container
-            const timelineContainer = document.querySelector('.timeline-container > div');
-            const rawLocationPointsUrl = timelineContainer?.dataset.rawLocationPointsUrl;
-
-            if (rawLocationPointsUrl) {
-                // Fetch raw location points for map display
-                fetch(rawLocationPointsUrl).then(response => {
-                    if (!response.ok) {
-                        console.warn('Could not fetch raw location points');
-                        return { points: [] };
-                    }
-                    return response.json();
-                }).then(rawPointsData => {
-                    updateMapWithRawPoints(rawPointsData);
-                    window.originalBounds = bounds;
-                    map.fitBounds(bounds, fitToBoundsConfig)
-                }).catch(error => {
-                    console.warn('Error fetching raw location points:', error);
-                });
+            const timelineContainer = document.querySelectorAll('.user-timeline-section');
+            for (const path of rawPointPaths) {
+                path.remove();
             }
+
+            for (const element of timelineContainer) {
+                const rawLocationPointsUrl = element?.dataset.rawLocationPointsUrl;
+                const color = element?.dataset.baseColor;
+                if (rawLocationPointsUrl) {
+                    // Fetch raw location points for map display
+                    fetch(rawLocationPointsUrl).then(response => {
+                        if (!response.ok) {
+                            console.warn('Could not fetch raw location points');
+                            return { points: [] };
+                        }
+                        return response.json();
+                    }).then(rawPointsData => {
+                        updateMapWithRawPoints(rawPointsData, color);
+                    }).then(() => {
+                        window.originalBounds = bounds;
+                        map.fitBounds(bounds, fitToBoundsConfig)
+                    }).catch(error => {
+                        console.warn('Error fetching raw location points:', error);
+                    });
+                }
+            }
+
+
         }
 
         // Function to update map with raw location points
-        function updateMapWithRawPoints(rawPointsData) {
-            // Remove existing raw points path
-            rawPointsPath.remove();
+        function updateMapWithRawPoints(rawPointsData, color) {
+            const rawPointsPath = L.polyline([], {
+                color: color == null ? '#f1ba63' : color,
+                weight: 6,
+                opacity: 0.9,
+                lineJoin: 'round',
+                lineCap: 'round'
+            });
 
-            // Add raw location points if available
             if (rawPointsData && rawPointsData.points && rawPointsData.points.length > 0) {
                 const rawPointsCoords = rawPointsData.points.map(point => [point.latitude, point.longitude]);
                 bounds.extend(rawPointsCoords)
                 rawPointsPath.setLatLngs(rawPointsCoords);
                 rawPointsPath.addTo(map);
+                rawPointPaths.push(rawPointsPath)
             }
         }
 
@@ -213,15 +226,7 @@
             lineCap: 'round'
         });
 
-        // Create a polyline for raw location points
-        const rawPointsPath = L.polyline([], {
-            color: '#f1ba63',  // Purple color for raw points
-            weight: 6,
-            opacity: 0.9,
-            lineJoin: 'round',
-            lineCap: 'round'
-        });
-
+        const rawPointPaths = [];
 
         // Add HTMX event handlers for timeline updates
         document.body.addEventListener('htmx:afterSwap', function(event) {
@@ -253,95 +258,102 @@
             let hasValidCoords = false;
 
             // Group places by coordinates to avoid duplicate markers
-            const placeGroups = new Map();
 
-            // Get all timeline entries from the DOM
-            const timelineEntries = document.querySelectorAll('.timeline-entry[data-lat][data-lng]');
-            
-            timelineEntries.forEach(entryElement => {
-                const lat = parseFloat(entryElement.dataset.lat);
-                const lng = parseFloat(entryElement.dataset.lng);
-                
-                if (!isNaN(lat) && !isNaN(lng) && entryElement.classList.contains('visit')) {
-                    const coordKey = `${lat.toFixed(6)},${lng.toFixed(6)}`;
-                    
-                    if (!placeGroups.has(coordKey)) {
-                        // Extract place name from the timeline entry
-                        const placeNameElement = entryElement.querySelector('.place-name');
-                        const placeName = placeNameElement ? placeNameElement.textContent : 'Unknown Place';
-                        
-                        placeGroups.set(coordKey, {
-                            lat: lat,
-                            lng: lng,
-                            totalDurationMs: 0,
-                            visits: [],
-                            place: { name: placeName, address: '' }
-                        });
+            let timelineUserSections = document.querySelectorAll('.user-timeline-section ');
+
+            for (const timelineUserSection of timelineUserSections) {
+                const color = timelineUserSection?.dataset.baseColor;
+                const timelineEntries = timelineUserSection.querySelectorAll('.timeline-entry[data-lat][data-lng]');
+
+                const placeGroups = new Map();
+
+                timelineEntries.forEach(entryElement => {
+                    const lat = parseFloat(entryElement.dataset.lat);
+                    const lng = parseFloat(entryElement.dataset.lng);
+
+                    if (!isNaN(lat) && !isNaN(lng) && entryElement.classList.contains('visit')) {
+                        const coordKey = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+
+                        if (!placeGroups.has(coordKey)) {
+                            // Extract place name from the timeline entry
+                            const placeNameElement = entryElement.querySelector('.place-name');
+                            const placeName = placeNameElement ? placeNameElement.textContent : 'Unknown Place';
+
+                            placeGroups.set(coordKey, {
+                                lat: lat,
+                                lng: lng,
+                                totalDurationMs: 0,
+                                visits: [],
+                                place: { name: placeName, address: '' }
+                            });
+                        }
+
+                        const group = placeGroups.get(coordKey);
+                        // Calculate duration from time range text
+                        const durationElement = entryElement.querySelector('.entry-duration');
+                        if (durationElement) {
+                            const durationText = durationElement.textContent;
+                            const durationMs = parseDurationText(durationText);
+                            group.totalDurationMs += durationMs;
+                        }
+                        group.visits.push({ id: entryElement.dataset.id });
+
+                        bounds.extend([lat, lng]);
+                        hasValidCoords = true;
                     }
-                    
-                    const group = placeGroups.get(coordKey);
-                    // Calculate duration from time range text
-                    const durationElement = entryElement.querySelector('.entry-duration');
-                    if (durationElement) {
-                        const durationText = durationElement.textContent;
-                        const durationMs = parseDurationText(durationText);
-                        group.totalDurationMs += durationMs;
-                    }
-                    group.visits.push({ id: entryElement.dataset.id });
-                    
-                    bounds.extend([lat, lng]);
-                    hasValidCoords = true;
-                }
-            });
 
-            // Draw markers for grouped places
-            placeGroups.forEach((group, coordKey) => {
-                const { lat, lng, totalDurationMs, visits, place } = group;
-                
-                // Calculate radius using logarithmic scale
-                const durationHours = totalDurationMs / (1000 * 60 * 60);
-                const baseRadius = 15;
-                const maxRadius = 100;
-                const minRadius = 15;
-                
-                const logScale = Math.log(1 + durationHours) / Math.log(1 + 24);
-                const radius = Math.min(maxRadius, Math.max(minRadius, baseRadius + (logScale * (maxRadius - baseRadius))));
 
-                // Create marker
-                L.circleMarker([lat, lng], {
-                    radius: 5,
-                    fillColor: '#ff6c00',
-                    color: '#fff',
-                    weight: 1,
-                    opacity: 1,
-                    fillOpacity: 0.8
-                }).addTo(map);
+                    // Draw markers for grouped places
+                    placeGroups.forEach((group) => {
+                        const { lat, lng, totalDurationMs, visits, place } = group;
 
-                // Create circle with calculated radius
-                const circle = L.circle([lat, lng], {
-                    color: '#dcae4a',
-                    fillColor: '#ff984f',
-                    fillOpacity: 0.1,
-                    radius: radius
-                }).addTo(map);
+                        // Calculate radius using logarithmic scale
+                        const durationHours = totalDurationMs / (1000 * 60 * 60);
+                        const baseRadius = 15;
+                        const maxRadius = 100;
+                        const minRadius = 15;
 
-                const totalDurationText = humanizeDuration(totalDurationMs, {units: ["h", "m"], round: true});
-                const visitCount = visits.length;
-                const visitText = visitCount === 1 ? 'visit' : 'visits';
-                
-                let tooltip = L.tooltip([lat, lng], {
-                    content: `<div style="font-size: 1.4rem; color: wheat">${place.name}</div>
+                        const logScale = Math.log(1 + durationHours) / Math.log(1 + 24);
+                        const radius = Math.min(maxRadius, Math.max(minRadius, baseRadius + (logScale * (maxRadius - baseRadius))));
+
+                        // Create marker
+                        L.circleMarker([lat, lng], {
+                            radius: 5,
+                            fillColor: color ? color : '#ff6c00',
+                            color: '#fff',
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        }).addTo(map);
+
+                        // Create circle with calculated radius
+                        const circle = L.circle([lat, lng], {
+                            color: color ? color : '#dcae4a',
+                            fillColor: '#ff984f',
+                            fillOpacity: 0.1,
+                            radius: radius
+                        }).addTo(map);
+
+                        const totalDurationText = humanizeDuration(totalDurationMs, {units: ["h", "m"], round: true});
+                        const visitCount = visits.length;
+                        const visitText = visitCount === 1 ? 'visit' : 'visits';
+
+                        let tooltip = L.tooltip([lat, lng], {
+                            content: `<div style="font-size: 1.4rem; color: wheat">${place.name}</div>
                              <div style="margin-top: 4px; font-weight: bold;">
                                  ${visitCount} ${visitText} - Total: ${totalDurationText}
                              </div>`,
-                    className: 'visit-popup', 
-                    permanent: false
+                            className: 'visit-popup',
+                            permanent: false
+                        });
+
+                        bounds.extend([lat, lng])
+
+                        circle.bindTooltip(tooltip);
+                    });
                 });
 
-                bounds.extend([lat, lng])
-
-                circle.bindTooltip(tooltip);
-            });
+            }
         }
 
         // Helper function to parse duration text (simple implementation)
