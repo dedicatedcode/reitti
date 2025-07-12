@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.controller;
 
-import com.dedicatedcode.reitti.dto.UserSettings;
+import com.dedicatedcode.reitti.dto.UserSettingsDTO;
 import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
@@ -25,13 +25,13 @@ public class GlobalControllerAdvice {
     }
     
     @ModelAttribute("userSettings")
-    public UserSettings getCurrentUserSettings() {
+    public UserSettingsDTO getCurrentUserSettings() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         
         if (authentication == null || !authentication.isAuthenticated() || 
             "anonymousUser".equals(authentication.getPrincipal())) {
             // Return default settings for anonymous users
-            return new UserSettings(false, "en", List.of(), UnitSystem.METRIC);
+            return new UserSettingsDTO(false, "en", List.of(), UnitSystem.METRIC);
         }
         
         String username = authentication.getName();
@@ -40,10 +40,10 @@ public class GlobalControllerAdvice {
         if (userOptional.isPresent()) {
             User user = userOptional.get();
             com.dedicatedcode.reitti.model.UserSettings dbSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
-            return new UserSettings(dbSettings.isPreferColoredMap(), dbSettings.getSelectedLanguage(), dbSettings.getConnectedUserAccounts(), dbSettings.getUnitSystem());
+            return new UserSettingsDTO(dbSettings.isPreferColoredMap(), dbSettings.getSelectedLanguage(), dbSettings.getConnectedUserAccounts(), dbSettings.getUnitSystem());
         }
         
         // Fallback for authenticated users not found in database
-        return new UserSettings(false, "en", List.of(),  UnitSystem.METRIC);
+        return new UserSettingsDTO(false, "en", List.of(),  UnitSystem.METRIC);
     }
 }
