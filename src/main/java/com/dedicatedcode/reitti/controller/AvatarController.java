@@ -24,6 +24,7 @@ public class AvatarController {
     @GetMapping("/{userId}")
     public ResponseEntity<byte[]> getAvatar(@PathVariable Long userId) {
         try {
+            //encapsulate this in an avatar service AI!
             Map<String, Object> result = jdbcTemplate.queryForMap(
                     "SELECT mime_type, binary_data FROM user_avatars WHERE user_id = ?",
                     userId
