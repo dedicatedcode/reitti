@@ -85,7 +85,7 @@
             
             <!-- Current avatar display -->
             <div th:if="${userId != null && hasAvatar}" class="current-avatar">
-                <img th:src="@{/avatars/{userId}(userId=${userId})}" 
+                <img th:src="@{/avatars/{userId}(userId=${userId}, ts=${#dates.createNow().time})}" 
                      alt="Current avatar" 
                      class="avatar">
             </div>
