@@ -86,7 +86,8 @@ public class TimelineController {
         List<TimelineEntry> currentUserEntries = buildTimelineEntries(user, processedVisits, trips, userTimezone, selectedDate, userSettings.getUnitSystem());
         String currentUserAvatarUrl = String.format("/avatars/%d", user.getId());
         String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", user.getId(), date, timezone);
-        allUsersData.add(new UserTimelineData(user.getId(), user.getUsername(), "", currentUserAvatarUrl, null, currentUserEntries, currentUserRawLocationPointsUrl));
+        String currentUserInitials = generateInitials(user.getDisplayName());
+        allUsersData.add(new UserTimelineData(user.getId(), user.getUsername(), currentUserInitials, currentUserAvatarUrl, null, currentUserEntries, currentUserRawLocationPointsUrl));
         
         // Add connected users data, sorted by username
         List<ConnectedUserAccount> connectedAccounts = userSettings.getConnectedUserAccounts();
@@ -114,8 +115,9 @@ public class TimelineController {
             List<TimelineEntry> connectedUserEntries = buildTimelineEntries(connectedUser, connectedVisits, connectedTrips, userTimezone, selectedDate, connectedUserSettings.getUnitSystem());
             String connectedUserAvatarUrl = String.format("/avatars/%d", connectedUser.getId());
             String connectedUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", connectedUser.getId(), date, timezone);
+            String connectedUserInitials = generateInitials(connectedUser.getDisplayName());
             
-            allUsersData.add(new UserTimelineData(connectedUser.getId(), connectedUser.getDisplayName(), connectedUserAvatarUrl, connectedUserAccount.color(), connectedUserEntries, connectedUserRawLocationPointsUrl));
+            allUsersData.add(new UserTimelineData(connectedUser.getId(), connectedUser.getDisplayName(), connectedUserInitials, connectedUserAvatarUrl, connectedUserAccount.color(), connectedUserEntries, connectedUserRawLocationPointsUrl));
         }
         
         // Create timeline data record
@@ -125,7 +127,35 @@ public class TimelineController {
         return "fragments/timeline :: timeline-content";
     }
 
-    //create a function which takes the either takes the starting char of the user displayname capitalize them and retunrs them concatenated, if the display name does not contain a whitespace doe the same for the first two letters,  if there is only one. retunr that AI!
+    /**
+     * Generate initials from a display name for avatar fallback
+     */
+    private String generateInitials(String displayName) {
+        if (displayName == null || displayName.trim().isEmpty()) {
+            return "";
+        }
+        
+        String trimmed = displayName.trim();
+        
+        // If display name contains whitespace, take first char of each word
+        if (trimmed.contains(" ")) {
+            StringBuilder initials = new StringBuilder();
+            String[] words = trimmed.split("\\s+");
+            for (String word : words) {
+                if (!word.isEmpty()) {
+                    initials.append(Character.toUpperCase(word.charAt(0)));
+                }
+            }
+            return initials.toString();
+        } else {
+            // No whitespace - take first two letters, or just one if that's all there is
+            if (trimmed.length() >= 2) {
+                return (Character.toUpperCase(trimmed.charAt(0)) + "" + Character.toUpperCase(trimmed.charAt(1)));
+            } else {
+                return Character.toUpperCase(trimmed.charAt(0)) + "";
+            }
+        }
+    }
     
     /**
      * Build timeline entries from processed visits and trips
