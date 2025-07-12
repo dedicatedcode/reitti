@@ -97,6 +97,7 @@ public class UserSettingsController {
                              @RequestParam String password,
                              @RequestParam String preferred_language,
                              @RequestParam(defaultValue = "METRIC") String unit_system,
+                             @RequestParam(defaultValue = "false") boolean preferColoredMap,
                              @RequestParam(required = false) List<Long> connectedUserIds,
                              @RequestParam(required = false) List<String> connectedUserColors,
                              @RequestParam(required = false) MultipartFile avatar,
@@ -111,7 +112,7 @@ public class UserSettingsController {
                 List<ConnectedUserAccount> connectedAccounts = buildConnectedUserAccounts(connectedUserIds, connectedUserColors);
                 
                 UnitSystem unitSystem = UnitSystem.valueOf(unit_system);
-                UserSettings userSettings = new UserSettings(createdUser.getId(), false, preferred_language, connectedAccounts, unitSystem);
+                UserSettings userSettings = new UserSettings(createdUser.getId(), preferColoredMap, preferred_language, connectedAccounts, unitSystem);
                 userSettingsJdbcService.save(userSettings);
                 
                 // Handle avatar upload
@@ -140,6 +141,7 @@ public class UserSettingsController {
                              @RequestParam(required = false) String password,
                              @RequestParam String preferred_language,
                              @RequestParam(defaultValue = "METRIC") String unit_system,
+                             @RequestParam(defaultValue = "false") boolean preferColoredMap,
                              @RequestParam(required = false) List<Long> connectedUserIds,
                              @RequestParam(required = false) List<String> connectedUserColors,
                              @RequestParam(required = false) MultipartFile avatar,
@@ -164,7 +166,7 @@ public class UserSettingsController {
             List<ConnectedUserAccount> connectedAccounts = buildConnectedUserAccounts(connectedUserIds, connectedUserColors);
             
             UnitSystem unitSystem = UnitSystem.valueOf(unit_system);
-            UserSettings updatedSettings = new UserSettings(userId, existingSettings.isPreferColoredMap(), preferred_language, connectedAccounts, unitSystem, existingSettings.getVersion());
+            UserSettings updatedSettings = new UserSettings(userId, preferColoredMap, preferred_language, connectedAccounts, unitSystem, existingSettings.getVersion());
             userSettingsJdbcService.save(updatedSettings);
             
             // Handle avatar operations
@@ -214,10 +216,12 @@ public class UserSettingsController {
             UserSettings userSettings = userSettingsJdbcService.findByUserId(userId).orElse(UserSettings.defaultSettings(userId));
             model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
             model.addAttribute("selectedUnitSystem", userSettings.getUnitSystem().name());
+            model.addAttribute("preferColoredMap", userSettings.isPreferColoredMap());
         } else {
             // Default values for new users
             model.addAttribute("selectedLanguage", "en");
             model.addAttribute("selectedUnitSystem", "METRIC");
+            model.addAttribute("preferColoredMap", false);
         }
         
         // Add available unit systems to model
