@@ -34,7 +34,8 @@
         </div>
     </div>
 </div>
-<script>
+<script th:inline="javascript">
+    window.userSettings = /*[[${userSettings}]]*/ {}
 
     function shouldTrigger(element) {
         return !element.classList.contains('active');
