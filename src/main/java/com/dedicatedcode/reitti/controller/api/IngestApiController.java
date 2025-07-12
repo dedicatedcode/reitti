@@ -1,18 +1,19 @@
 package com.dedicatedcode.reitti.controller.api;
 
-import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
-import com.dedicatedcode.reitti.event.LocationDataEvent;
+import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.service.importer.ImportBatchProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.Serializable;
@@ -29,11 +30,13 @@ public class IngestApiController {
             "message", "Successfully queued Owntracks location point for processing"
     );
 
-    private final RabbitTemplate rabbitTemplate;
-    
+    private final ImportBatchProcessor batchProcessor;
+    private final UserJdbcService userJdbcService;
+
     @Autowired
-    public IngestApiController(RabbitTemplate rabbitTemplate) {
-        this.rabbitTemplate = rabbitTemplate;
+    public IngestApiController(ImportBatchProcessor batchProcessor, UserJdbcService userJdbcService) {
+        this.userJdbcService = userJdbcService;
+        this.batchProcessor = batchProcessor;
     }
     
     @PostMapping("/owntracks")
@@ -48,7 +51,8 @@ public class IngestApiController {
         }
         
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails user = (UserDetails) authentication.getPrincipal();
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        User user = this.userJdbcService.findByUsername(userDetails.getUsername()).orElseThrow(() -> new UsernameNotFoundException(userDetails.getUsername()));
         
         try {
             // Convert an Owntracks format to our LocationPoint format
@@ -58,18 +62,8 @@ public class IngestApiController {
                 logger.warn("Ignoring location point [{}] because timestamp is null", locationPoint);
                 return ResponseEntity.ok(Map.of());
             }
-            // Create and publish event to RabbitMQ
-            LocationDataEvent event = new LocationDataEvent(
-                    user.getUsername(),
-                    Collections.singletonList(locationPoint)
-            );
-            
-            rabbitTemplate.convertAndSend(
-                RabbitMQConfig.EXCHANGE_NAME,
-                RabbitMQConfig.LOCATION_DATA_ROUTING_KEY,
-                event
-            );
-            
+
+            this.batchProcessor.sendToQueue(user, Collections.singletonList(locationPoint));
             logger.debug("Successfully received and queued Owntracks location point for user {}",
                     user.getUsername());
             
