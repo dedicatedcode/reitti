@@ -688,5 +688,32 @@
     </div>
 </div>
 
+<script>
+// Avatar selection JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    // Clear file input when default avatar is selected
+    document.addEventListener('change', function(e) {
+        if (e.target.name === 'defaultAvatar') {
+            const fileInput = document.getElementById('avatar');
+            if (fileInput) {
+                fileInput.value = '';
+            }
+        }
+    });
+
+    // Clear default avatar selection when file is selected
+    const avatarFileInput = document.getElementById('avatar');
+    if (avatarFileInput) {
+        avatarFileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                document.querySelectorAll('input[name="defaultAvatar"]').forEach(radio => {
+                    radio.checked = false;
+                });
+            }
+        });
+    }
+});
+</script>
+
 </body>
 </html>

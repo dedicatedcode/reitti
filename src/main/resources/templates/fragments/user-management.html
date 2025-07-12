@@ -76,20 +76,46 @@
         </div>
         <div class="form-group">
             <label for="avatar" th:text="#{users.avatar.label}">Profile Picture</label>
+            
+            <!-- Current avatar display -->
             <div th:if="${userId != null && hasAvatar}" class="current-avatar">
                 <img th:src="@{/avatars/{userId}(userId=${userId})}" 
                      alt="Current avatar" 
-                     class="avatar-preview">
+                     class="user-avatar">
             </div>
-            <div class="avatar-input-row">
-                <input type="file" id="avatar" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp">
-                <button type="button" 
-                        th:if="${userId != null && hasAvatar}"
-                        class="btn btn-danger avatar-remove-btn"
-                        onclick="removeCurrentAvatar()"
-                        th:text="#{users.avatar.delete}">Remove current avatar</button>
+            
+            <!-- Default avatars selection -->
+            <div class="default-avatars-section">
+                <h4 th:text="#{users.avatar.default.title}">Choose a default avatar:</h4>
+                <div class="default-avatars-grid">
+                    <label th:each="defaultAvatar : ${defaultAvatars}" class="default-avatar-option">
+                        <input type="radio" name="defaultAvatar" th:value="${defaultAvatar}" style="display: none;">
+                        <img th:src="@{/img/avatars/default/{avatar}(avatar=${defaultAvatar})}" 
+                             th:alt="${defaultAvatar}" 
+                             class="user-avatar">
+                    </label>
+                </div>
             </div>
-            <small th:text="#{users.avatar.requirements}">Max 2MB. JPEG, PNG, GIF, or WebP format.</small>
+            
+            <!-- OR separator -->
+            <div class="avatar-separator">
+                <span th:text="#{users.avatar.or}">OR</span>
+            </div>
+            
+            <!-- Custom file upload -->
+            <div class="custom-avatar-section">
+                <h4 th:text="#{users.avatar.custom.title}">Upload a custom image:</h4>
+                <div class="avatar-input-row">
+                    <input type="file" id="avatar" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp">
+                    <button type="button" 
+                            th:if="${userId != null && hasAvatar}"
+                            class="btn btn-danger avatar-remove-btn"
+                            onclick="removeCurrentAvatar()"
+                            th:text="#{users.avatar.delete}">Remove current avatar</button>
+                </div>
+                <small th:text="#{users.avatar.requirements}">Max 2MB. JPEG, PNG, GIF, or WebP format.</small>
+            </div>
+            
             <input type="hidden" id="removeAvatarFlag" name="removeAvatar" value="false">
         </div>
         <div class="form-group">
