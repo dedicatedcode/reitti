@@ -75,6 +75,23 @@
         // Find all statistics content containers that haven't been processed yet
         Chart.defaults.color = '#ffffff';
         Chart.defaults.font.family = 'Fraunces';
+        
+        // Helper function to convert km to miles if needed
+        function convertDistance(km) {
+            if (window.userSettings && window.userSettings.unitSystem === 'IMPERIAL') {
+                return km * 0.621371; // Convert km to miles
+            }
+            return km;
+        }
+        
+        // Helper function to get distance unit label
+        function getDistanceUnit() {
+            if (window.userSettings && window.userSettings.unitSystem === 'IMPERIAL') {
+                return 'miles';
+            }
+            return 'km';
+        }
+        
         const statisticsContainers = document.querySelectorAll('.statistics-content:not([data-charts-initialized])');
 
         statisticsContainers.forEach(container => {
@@ -134,7 +151,7 @@
                         data: {
                             labels: transportStats.map(stat => stat.transportMode),
                             datasets: [{
-                                data: transportStats.map(stat => stat.totalDistanceKm),
+                                data: transportStats.map(stat => convertDistance(stat.totalDistanceKm)),
                                 backgroundColor: transportStats.map(stat => transportColors[stat.transportMode] || '#999999')
                             }]
                         },
@@ -144,6 +161,13 @@
                             plugins: {
                                 legend: {
                                     position: 'bottom'
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return context.label + ': ' + context.parsed.toFixed(1) + ' ' + getDistanceUnit();
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -169,7 +193,7 @@
                                 return 0;
                             } else {
                                 let byTransportMode = item[0].find(i => i.transportMode === mode);
-                                return byTransportMode ? byTransportMode.totalDistanceKm : 0;
+                                return byTransportMode ? convertDistance(byTransportMode.totalDistanceKm) : 0;
                             }
                         }),
                         backgroundColor: transportColors[mode] || '#999999'
@@ -192,7 +216,7 @@
                                     stacked: true,
                                     title: {
                                         display: true,
-                                        text: 'km'
+                                        text: getDistanceUnit()
                                     }
                                 }
                             }
@@ -252,7 +276,7 @@
                         data: {
                             labels: transportStats.map(stat => stat.transportMode),
                             datasets: [{
-                                data: transportStats.map(stat => stat.totalDistanceKm),
+                                data: transportStats.map(stat => convertDistance(stat.totalDistanceKm)),
                                 backgroundColor: transportStats.map(stat => transportColors[stat.transportMode] || '#cd0808')
                             }]
                         },
@@ -262,6 +286,13 @@
                             plugins: {
                                 legend: {
                                     position: 'bottom'
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return context.label + ': ' + context.parsed.toFixed(1) + ' ' + getDistanceUnit();
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -287,7 +318,7 @@
                                 return 0;
                             } else {
                                 let byTransportMode = item[0].find(i => i.transportMode === mode);
-                                return byTransportMode ? byTransportMode.totalDistanceKm : 0;
+                                return byTransportMode ? convertDistance(byTransportMode.totalDistanceKm) : 0;
                             }
                         }),
                         backgroundColor: transportColors[mode] || '#f10808'
@@ -320,7 +351,7 @@
                                     stacked: true,
                                     title: {
                                         display: true,
-                                        text: 'km'
+                                        text: getDistanceUnit()
                                     }
                                 }
                             }
