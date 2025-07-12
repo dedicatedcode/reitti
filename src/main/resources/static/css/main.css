@@ -1234,7 +1234,7 @@ button:disabled {
     padding: 48px;
 }
 
-.user-timeline-selection .user-avatar {
+.user-timeline-selection .avatar {
     width: 64px;
     height: 64px;
     border-radius: 50%;
@@ -1259,7 +1259,116 @@ button:disabled {
 }
 
 
-.user-header.active .user-avatar {
+.user-header.active .avatar {
     border: 2px solid wheat;
     box-shadow: 0 8px 25px rgba(245, 222, 179, 0.3);
+}
+
+
+.default-avatars-section {
+    margin-bottom: 20px;
+}
+
+.default-avatars-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin: 15px 0;
+    padding: 20px;
+    max-width: 400px;
+}
+
+.default-avatar-option {
+    width: 64px;
+    height: 64px;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.default-avatar-option:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.default-avatar-option input:checked + .avatar {
+    border: 2px solid wheat;
+    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.3);
+}
+
+.avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 2px solid white;
+    object-fit: cover;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    display: inline-block;
+    position: relative;
+}
+
+.avatar::before {
+    display: none;
+}
+.avatar::after {
+    content: attr(alt);
+    font-size: 36px;
+    font-family: "Fraunces", serif;
+    font-weight: lighter;
+    color: white;
+    position: absolute;
+    top: 8px;
+    width: 64px;
+    height: 64px;
+}
+
+.avatar:not(:has(img))::after {
+    display: block;
+}
+
+.avatar img:not([src]) ~ .avatar::after {
+    content: attr(alt);
+    display: block;
+}
+
+.avatar img:not([src]),
+.avatar img:empty {
+    display: none;
+}
+
+.current-avatar .avatar {
+    width: 100px;
+    height: 100px;
+}
+
+.separator {
+    text-align: center;
+    padding: 20px 0;
+    position: relative;
+}
+
+.separator::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background-color: #ddd;
+    z-index: 1;
+}
+
+.separator span {
+    background-color: white;
+    padding: 0 15px;
+    color: #666;
+    position: relative;
+    z-index: 2;
+}
+
+.custom-avatar-section {
+    padding-top: 15px;
 }

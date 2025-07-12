@@ -75,13 +75,19 @@
                    th:value="${displayName}">
         </div>
         <div class="form-group">
-            <label for="avatar" th:text="#{users.avatar.label}">Profile Picture</label>
+            <label for="password" th:text="#{users.password.label}">Password</label>
+            <input type="password" id="password" name="password" th:required="${userId == null}" th:placeholder="#{users.password.placeholder}" autocomplete="new-password">
+            <small th:if="${userId != null}" th:text="#{users.password.keep.current}">Leave empty to keep current password</small>
+        </div>
+        <div class="separator"></div>
+        <div class="form-group">
+            <h3 th:text="#{users.avatar.label}">Profile Picture</h3>
             
             <!-- Current avatar display -->
             <div th:if="${userId != null && hasAvatar}" class="current-avatar">
                 <img th:src="@{/avatars/{userId}(userId=${userId})}" 
                      alt="Current avatar" 
-                     class="user-avatar">
+                     class="avatar">
             </div>
             
             <!-- Default avatars selection -->
@@ -92,13 +98,12 @@
                         <input type="radio" name="defaultAvatar" th:value="${defaultAvatar}" style="display: none;">
                         <img th:src="@{/img/avatars/default/{avatar}(avatar=${defaultAvatar})}" 
                              th:alt="${defaultAvatar}" 
-                             class="user-avatar">
+                             class="avatar">
                     </label>
                 </div>
             </div>
             
-            <!-- OR separator -->
-            <div class="avatar-separator">
+            <div class="separator">
                 <span th:text="#{users.avatar.or}">OR</span>
             </div>
             
@@ -118,13 +123,10 @@
             
             <input type="hidden" id="removeAvatarFlag" name="removeAvatar" value="false">
         </div>
+        <div class="separator"></div>
+
         <div class="form-group">
-            <label for="password" th:text="#{users.password.label}">Password</label>
-            <input type="password" id="password" name="password" th:required="${userId == null}" th:placeholder="#{users.password.placeholder}" autocomplete="new-password">
-            <small th:if="${userId != null}" th:text="#{users.password.keep.current}">Leave empty to keep current password</small>
-        </div>
-        <div class="form-group">
-            <label th:text="#{language.title}">Preferred Language</label>
+            <h3 th:text="#{language.title}">Preferred Language</h3>
             <div class="language-selection">
                 <div class="language-buttons">
                     <label class="btn language-btn">
@@ -153,8 +155,10 @@
                 </div>
             </div>
         </div>
+        <div class="separator"></div>
+
         <div class="form-group">
-            <label th:text="#{units.title}">Unit System</label>
+            <h3 th:text="#{units.title}">Unit System</h3>
             <div class="language-selection">
                 <div class="language-buttons">
                     <label class="btn language-btn">
@@ -171,6 +175,7 @@
                 </div>
             </div>
         </div>
+        <div class="separator"></div>
         <div class="form-group">
             <label class="checkbox-container">
                 <input type="checkbox" name="preferColoredMap" th:checked="${preferColoredMap}" class="checkbox-input">
@@ -179,13 +184,15 @@
             </label>
             <small th:text="#{map.colored.preference.description}" class="form-description">When enabled, the map will be displayed in full color. When disabled, the map will be shown in grayscale.</small>
         </div>
-        <div id="connected-accounts-container" 
+        <div class="separator"></div>
+        <div id="connected-accounts-container"
              hx-get="/settings/connected-accounts-section"
              hx-target="#connected-accounts-container"
              th:hx-vals="${userId != null ? '{&quot;userId&quot;: ' + userId + '}' : '{}'}"
              hx-trigger="load">
             <div class="htmx-indicator">Loading connected accounts...</div>
         </div>
+        <div class="separator"></div>
         <div style="display: flex; gap: 10px;">
             <button type="submit" class="btn" th:text="${userId != null ? #messages.msg('form.update') : #messages.msg('form.create')}">Create User</button>
             <button type="button" class="btn" th:if="${userId != null}" 
@@ -197,7 +204,7 @@
 <!-- Connected Accounts Section Fragment -->
 <div th:fragment="connected-accounts-section">
     <div class="form-group">
-        <label th:text="#{users.connected.accounts.label}">Connected User Accounts</label>
+        <h3 th:text="#{users.connected.accounts.label}">Connected User Accounts</h3>
         <p class="form-description" th:text="#{users.connected.accounts.description}">Connect with other users to view their location data alongside yours on the map. Each connected user will be displayed with their own color for easy identification.</p>
         <div id="connected-accounts-list">
             <div th:each="account, iterStat : ${connectedAccounts}" class="connected-account-row">

@@ -20,9 +20,8 @@
              th:data-user-id="${userData.userId}"
              onclick="selectUser(this)">
                 <img th:src="${userData.userAvatarUrl}"
-                     th:alt="${userData.displayName + ' avatar'}"
-                     class="user-avatar"
-                     onerror="this.style.display='none'">
+                     th:alt="${userData.avatarFallback}"
+                     class="avatar">
                 <div th:text="${userData.displayName}" class="username">Username</div>
         </div>
     </div>
