@@ -1,47 +1,40 @@
 package com.dedicatedcode.reitti.controller;
 
-import org.springframework.dao.EmptyResultDataAccessException;
+import com.dedicatedcode.reitti.service.AvatarService;
 import org.springframework.http.*;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Map;
+import java.util.Optional;
 
 @Controller
 @RequestMapping("/avatars")
 public class AvatarController {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final AvatarService avatarService;
 
-    public AvatarController(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    public AvatarController(AvatarService avatarService) {
+        this.avatarService = avatarService;
     }
 
     @GetMapping("/{userId}")
     public ResponseEntity<byte[]> getAvatar(@PathVariable Long userId) {
-        try {
-            //encapsulate this in an avatar service AI!
-            Map<String, Object> result = jdbcTemplate.queryForMap(
-                    "SELECT mime_type, binary_data FROM user_avatars WHERE user_id = ?",
-                    userId
-            );
-
-            String contentType = (String) result.get("mime_type");
-            byte[] imageData = (byte[]) result.get("binary_data");
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.parseMediaType(contentType));
-            headers.setContentLength(imageData.length);
-
-            return new ResponseEntity<>(imageData, headers, HttpStatus.OK);
-
-        } catch (EmptyResultDataAccessException e) {
+        Optional<AvatarService.AvatarData> avatarData = avatarService.getAvatarByUserId(userId);
+        
+        if (avatarData.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Avatar not found");
         }
+
+        AvatarService.AvatarData avatar = avatarData.get();
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType(avatar.mimeType()));
+        headers.setContentLength(avatar.imageData().length);
+
+        return new ResponseEntity<>(avatar.imageData(), headers, HttpStatus.OK);
     }
 
 }
