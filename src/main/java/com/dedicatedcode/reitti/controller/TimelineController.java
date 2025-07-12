@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.controller;
 import com.dedicatedcode.reitti.dto.ConnectedUserAccount;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.*;
+import com.dedicatedcode.reitti.service.AvatarService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -35,6 +36,7 @@ public class TimelineController {
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final TripJdbcService tripJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
+    private final AvatarService avatarService;
     private final ObjectMapper objectMapper;
 
     @Autowired
@@ -43,7 +45,7 @@ public class TimelineController {
                               UserJdbcService userJdbcService,
                               ProcessedVisitJdbcService processedVisitJdbcService,
                               TripJdbcService tripJdbcService,
-                              UserSettingsJdbcService userSettingsJdbcService,
+                              UserSettingsJdbcService userSettingsJdbcService, AvatarService avatarService,
                               ObjectMapper objectMapper) {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.placeService = placeService;
@@ -51,6 +53,7 @@ public class TimelineController {
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.tripJdbcService = tripJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
+        this.avatarService = avatarService;
         this.objectMapper = objectMapper;
     }
 
@@ -84,7 +87,8 @@ public class TimelineController {
         
         // Add current user data first
         List<TimelineEntry> currentUserEntries = buildTimelineEntries(user, processedVisits, trips, userTimezone, selectedDate, userSettings.getUnitSystem());
-        String currentUserAvatarUrl = String.format("/avatars/%d", user.getId());
+
+        String currentUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", user.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", user.getId()));
         String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", user.getId(), date, timezone);
         String currentUserInitials = generateInitials(user.getDisplayName());
         allUsersData.add(new UserTimelineData(user.getId(), user.getUsername(), currentUserInitials, currentUserAvatarUrl, null, currentUserEntries, currentUserRawLocationPointsUrl));
@@ -113,7 +117,8 @@ public class TimelineController {
                     .orElse(UserSettings.defaultSettings(connectedUser.getId()));
             
             List<TimelineEntry> connectedUserEntries = buildTimelineEntries(connectedUser, connectedVisits, connectedTrips, userTimezone, selectedDate, connectedUserSettings.getUnitSystem());
-            String connectedUserAvatarUrl = String.format("/avatars/%d", connectedUser.getId());
+
+            String connectedUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", connectedUser.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", connectedUser.getId()));
             String connectedUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", connectedUser.getId(), date, timezone);
             String connectedUserInitials = generateInitials(connectedUser.getDisplayName());
             

@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 @Controller
 @RequestMapping("/avatars")
@@ -33,6 +34,7 @@ public class AvatarController {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType(avatar.mimeType()));
         headers.setContentLength(avatar.imageData().length);
+        headers.setCacheControl(CacheControl.maxAge(30, TimeUnit.DAYS));
 
         return new ResponseEntity<>(avatar.imageData(), headers, HttpStatus.OK);
     }
