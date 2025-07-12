@@ -96,7 +96,7 @@
                 <div class="default-avatars-grid">
                     <label th:each="defaultAvatar : ${defaultAvatars}" class="default-avatar-option">
                         <input type="radio" name="defaultAvatar" th:value="${defaultAvatar}" style="display: none;">
-                        <img th:src="@{/img/avatars/default/{avatar}(avatar=${defaultAvatar})}" 
+                        <img th:src="@{/img/avatars/default/{avatar}(avatar=${defaultAvatar})}"
                              th:alt="${defaultAvatar}" 
                              class="avatar">
                     </label>
