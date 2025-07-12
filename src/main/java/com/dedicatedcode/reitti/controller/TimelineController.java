@@ -86,7 +86,7 @@ public class TimelineController {
         List<TimelineEntry> currentUserEntries = buildTimelineEntries(user, processedVisits, trips, userTimezone, selectedDate, userSettings.getUnitSystem());
         String currentUserAvatarUrl = String.format("/avatars/%d", user.getId());
         String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", user.getId(), date, timezone);
-        allUsersData.add(new UserTimelineData(user.getId(), user.getUsername(), currentUserAvatarUrl, null, currentUserEntries, currentUserRawLocationPointsUrl));
+        allUsersData.add(new UserTimelineData(user.getId(), user.getUsername(), "", currentUserAvatarUrl, null, currentUserEntries, currentUserRawLocationPointsUrl));
         
         // Add connected users data, sorted by username
         List<ConnectedUserAccount> connectedAccounts = userSettings.getConnectedUserAccounts();
@@ -124,6 +124,8 @@ public class TimelineController {
         model.addAttribute("timelineData", timelineData);
         return "fragments/timeline :: timeline-content";
     }
+
+    //create a function which takes the either takes the starting char of the user displayname capitalize them and retunrs them concatenated, if the display name does not contain a whitespace doe the same for the first two letters,  if there is only one. retunr that AI!
     
     /**
      * Build timeline entries from processed visits and trips
@@ -268,6 +270,7 @@ public class TimelineController {
     public record UserTimelineData(
         long userId,
         String displayName,
+        String avatarFallback,
         String userAvatarUrl,
         String baseColor,
         List<TimelineEntry> entries,
