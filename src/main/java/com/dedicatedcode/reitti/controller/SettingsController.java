@@ -264,11 +264,6 @@ public class SettingsController {
         return "fragments/settings :: queue-stats-content";
     }
 
-    @GetMapping("/language-content")
-    public String getLanguageContent() {
-        return "fragments/settings :: language-content";
-    }
-
     @GetMapping("/integrations-content")
     public String getIntegrationsContent(Authentication authentication, Model model, HttpServletRequest request,
                                         @RequestParam(required = false) String openSection) {
