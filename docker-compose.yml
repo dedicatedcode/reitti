@@ -19,8 +19,6 @@ services:
       POSTGRES_USER: reitti
       POSTGRES_PASSWORD: reitti
       POSTGRES_DB: reittidb
-    ports:
-      - "5432:5432"
     volumes:
       - postgis-data:/var/lib/postgresql/data
     healthcheck:
@@ -30,9 +28,6 @@ services:
       retries: 5
   rabbitmq:
     image: rabbitmq:3-management-alpine
-    ports:
-      - "5672:5672"   # AMQP protocol port
-      - "15672:15672" # Management UI port
     environment:
       RABBITMQ_DEFAULT_USER: reitti
       RABBITMQ_DEFAULT_PASS: reitti
@@ -45,8 +40,6 @@ services:
       retries: 5
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     volumes:
       - redis-data:/data
     healthcheck:
@@ -61,8 +54,6 @@ services:
       - COUNTRY_CODE=de #set your main country code here to save space or drop this line to fetch the whole index.
     volumes:
       - photon-data:/photon/photon_data
-    ports:
-      - "2322:2322"
 volumes:
   postgis-data:
   rabbitmq-data:
