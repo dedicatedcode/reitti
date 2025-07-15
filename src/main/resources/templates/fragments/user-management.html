@@ -19,6 +19,7 @@
     <div th:if="${requireRelogin}" class="alert alert-warning" style="display: block;">
         <span>Your username has changed to <strong th:text="${newUsername}"></strong>. You will need to log out and log in again with your new username.</span>
     </div>
+    <h2 th:text="#{users.title}">Significant Places</h2>
 
     <div class="settings-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -27,7 +28,7 @@
                     hx-get="/settings/user-form"
                     hx-target="#user-management"
                     hx-swap="innerHTML"
-                    th:text="#{users.add.new}">Add New User</button>
+                    th:text="#{users.add.title}">Add New User</button>
         </div>
         
         <div th:if="${users.isEmpty()}">
