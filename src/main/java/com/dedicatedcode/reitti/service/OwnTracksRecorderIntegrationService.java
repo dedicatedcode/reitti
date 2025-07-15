@@ -1,17 +1,15 @@
 package com.dedicatedcode.reitti.service;
 
-import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
-import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.model.OwnTracksRecorderIntegration;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.OwnTracksRecorderIntegrationJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.service.importer.ImportBatchProcessor;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -37,15 +35,15 @@ public class OwnTracksRecorderIntegrationService {
     
     private final OwnTracksRecorderIntegrationJdbcService jdbcService;
     private final UserJdbcService userJdbcService;
-    private final RabbitTemplate rabbitTemplate;
     private final RestTemplate restTemplate;
+    private final ImportBatchProcessor importBatchProcessor;
 
     public OwnTracksRecorderIntegrationService(OwnTracksRecorderIntegrationJdbcService jdbcService,
-                                             UserJdbcService userJdbcService,
-                                             RabbitTemplate rabbitTemplate) {
+                                               UserJdbcService userJdbcService,
+                                               ImportBatchProcessor importBatchProcessor) {
         this.jdbcService = jdbcService;
         this.userJdbcService = userJdbcService;
-        this.rabbitTemplate = rabbitTemplate;
+        this.importBatchProcessor = importBatchProcessor;
         this.restTemplate = new RestTemplate();
     }
 
@@ -92,14 +90,7 @@ public class OwnTracksRecorderIntegrationService {
                     }
                     
                     if (!validPoints.isEmpty()) {
-                        LocationDataEvent event = new LocationDataEvent(user.getUsername(), validPoints);
-                        
-                        rabbitTemplate.convertAndSend(
-                            RabbitMQConfig.EXCHANGE_NAME,
-                            RabbitMQConfig.LOCATION_DATA_ROUTING_KEY,
-                            event
-                        );
-                        
+                        importBatchProcessor.sendToQueue(user, validPoints);
                         totalLocationPoints += validPoints.size();
                         logger.info("Imported {} location points for user {}", validPoints.size(), user.getUsername());
                         
@@ -247,15 +238,7 @@ public class OwnTracksRecorderIntegrationService {
                         }
                         
                         if (!validPoints.isEmpty()) {
-                            // Send to queue like IngestApiController does
-                            LocationDataEvent event = new LocationDataEvent(user.getUsername(), validPoints);
-                            
-                            rabbitTemplate.convertAndSend(
-                                RabbitMQConfig.EXCHANGE_NAME,
-                                RabbitMQConfig.LOCATION_DATA_ROUTING_KEY,
-                                event
-                            );
-                            
+                            importBatchProcessor.sendToQueue(user, validPoints);
                             totalLocationPoints += validPoints.size();
                             logger.debug("Loaded {} location points for user {} from month {}", 
                                        validPoints.size(), user.getUsername(), month);
