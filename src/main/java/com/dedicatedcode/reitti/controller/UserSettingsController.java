@@ -69,7 +69,7 @@ public class UserSettingsController {
         List<User> users = userJdbcService.getAllUsers();
         model.addAttribute("users", users);
         model.addAttribute("currentUsername", currentUsername);
-        return "fragments/user-management :: users-content";
+        return "fragments/user-management :: users-list";
     }
 
     @PostMapping("/users/{userId}/delete")
@@ -95,8 +95,8 @@ public class UserSettingsController {
         model.addAttribute("users", users);
         model.addAttribute("currentUsername", authentication.getName());
 
-        // Return the users-content fragment
-        return "fragments/user-management :: users-content";
+        // Return the users-list fragment
+        return "fragments/user-management :: users-list";
     }
 
     @PostMapping("/users")
@@ -143,8 +143,8 @@ public class UserSettingsController {
         model.addAttribute("users", users);
         model.addAttribute("currentUsername", authentication.getName());
 
-        // Return the users-content fragment
-        return "fragments/user-management :: users-content";
+        // Return the users-list fragment
+        return "fragments/user-management :: users-list";
     }
 
     @PostMapping("/users/update")
@@ -215,8 +215,8 @@ public class UserSettingsController {
         model.addAttribute("users", users);
         model.addAttribute("currentUsername", isCurrentUser ? username : currentUsername);
 
-        // Return the users-content fragment
-        return "fragments/user-management :: users-content";
+        // Return the users-list fragment
+        return "fragments/user-management :: users-list";
     }
 
     @GetMapping("/user-form")
@@ -251,7 +251,7 @@ public class UserSettingsController {
         // Add default avatars to model
         model.addAttribute("defaultAvatars", DEFAULT_AVATARS);
         
-        return "fragments/user-management :: user-form";
+        return "fragments/user-management :: user-form-page";
     }
 
     @GetMapping("/connected-accounts-section")

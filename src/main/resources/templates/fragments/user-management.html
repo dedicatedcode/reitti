@@ -5,7 +5,11 @@
 <!-- Users Content Fragment -->
 <div th:fragment="users-content">
     <h2 th:text="#{users.title}">User Management</h2>
+    <div hx-get="/settings/users-content" hx-trigger="load" hx-target="this" hx-swap="innerHTML"></div>
+</div>
 
+<!-- Users List Fragment -->
+<div th:fragment="users-list">
     <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
         <span th:text="${successMessage}">User created successfully</span>
     </div>
@@ -17,7 +21,15 @@
     </div>
 
     <div class="settings-card">
-        <h3 th:text="#{users.existing}">Existing Users</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 th:text="#{users.existing}">Existing Users</h3>
+            <button class="btn"
+                    hx-get="/settings/user-form"
+                    hx-target="#user-management"
+                    hx-swap="innerHTML"
+                    th:text="#{users.add.new}">Add New User</button>
+        </div>
+        
         <div th:if="${users.isEmpty()}">
             <p th:text="#{users.no.users}">No users found.</p>
         </div>
@@ -37,7 +49,8 @@
                 <td>
                     <button class="btn"
                             th:attr="hx-get=@{/settings/user-form(userId=${user.id}, username=${user.username}, displayName=${user.displayName})}"
-                            hx-target="#user-form-container"
+                            hx-target="#user-management"
+                            hx-swap="innerHTML"
                             th:text="#{form.update}">Edit
                     </button>
                     <button th:if="${user.username != currentUsername}"
@@ -52,13 +65,10 @@
             </tbody>
         </table>
     </div>
-    <div id="user-form-container" class="settings-card">
-        <div hx-get="/settings/user-form" hx-trigger="load" hx-target="#user-form-container"></div>
-    </div>
 </div>
 
-<!-- User Form Fragment -->
-<div th:fragment="user-form">
+<!-- User Form Page Fragment -->
+<div th:fragment="user-form-page">
     <form hx-target="#user-management" hx-swap="innerHTML" class="user-form" autocomplete="off" 
           th:attr="hx-post=${userId != null ? '/settings/users/update' : '/settings/users'}"
           enctype="multipart/form-data">
@@ -195,8 +205,11 @@
         <div class="separator"></div>
         <div style="display: flex; gap: 10px;">
             <button type="submit" class="btn" th:text="${userId != null ? #messages.msg('form.update') : #messages.msg('form.create')}">Create User</button>
-            <button type="button" class="btn" th:if="${userId != null}" 
-                    hx-get="/settings/user-form" hx-target="#user-form-container" th:text="#{form.cancel}">Cancel</button>
+            <button type="button" class="btn"
+                    hx-get="/settings/users-content"
+                    hx-target="#user-management"
+                    hx-swap="innerHTML"
+                    th:text="#{form.cancel}">Cancel</button>
         </div>
     </form>
 </div>
