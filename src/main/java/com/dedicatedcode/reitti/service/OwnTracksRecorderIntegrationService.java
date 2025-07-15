@@ -25,6 +25,7 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -71,7 +72,7 @@ public class OwnTracksRecorderIntegrationService {
                 if (integration.getLastSuccessfulFetch() != null) {
                     fromTime = integration.getLastSuccessfulFetch();
                 } else {
-                    fromTime = Instant.now();
+                    fromTime = Instant.now().minus(5 , ChronoUnit.MINUTES);
                 }
                 
                 // Fetch location data from OwnTracks Recorder
@@ -100,7 +101,7 @@ public class OwnTracksRecorderIntegrationService {
                         );
                         
                         totalLocationPoints += validPoints.size();
-                        logger.debug("Imported {} location points for user {}", validPoints.size(), user.getUsername());
+                        logger.info("Imported {} location points for user {}", validPoints.size(), user.getUsername());
                         
                         // Find the latest timestamp from the received data
                         Instant latestTimestamp = validPoints.stream()
@@ -293,7 +294,7 @@ public class OwnTracksRecorderIntegrationService {
     }
 
     private List<OwntracksLocationRequest> fetchData(String apiUrl) {
-        logger.debug("Fetching location data from: {}", apiUrl);
+        logger.info("Fetching location data from: {}", apiUrl);
 
         ResponseEntity<OwntracksRecorderResponse> response = restTemplate.exchange(
                 apiUrl,
