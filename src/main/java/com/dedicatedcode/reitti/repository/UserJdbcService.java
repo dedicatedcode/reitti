@@ -47,10 +47,11 @@ public class UserJdbcService {
 
     @CacheEvict(value = "users", allEntries = true)
     public User createUser(String username, String displayName, String password) {
-        User user = new User(null, username, passwordEncoder.encode(password), displayName, null);
-        String sql = "INSERT INTO users (username, password, display_name, version) VALUES (?, ?, ?, 1) RETURNING id";
-        Long id = jdbcTemplate.queryForObject(sql, Long.class, user.getUsername(), user.getPassword(), user.getDisplayName());
-        return new User(id, user.getUsername(), user.getPassword(), user.getDisplayName(), 1L);
+        String encodedPassword = passwordEncoder.encode(password);
+        String role = "USER";
+        String sql = "INSERT INTO users (username, password, display_name, role, version) VALUES (?, ?, ?, ?, 1) RETURNING id";
+        Long id = jdbcTemplate.queryForObject(sql, Long.class, username, encodedPassword, displayName, role);
+        return new User(id, username, encodedPassword, displayName, role, 1L);
     }
 
     @Caching(evict = {
@@ -67,7 +68,7 @@ public class UserJdbcService {
             encodedPassword = passwordEncoder.encode(password);
         }
         
-        User updatedUser = new User(user.getId(), username, encodedPassword, displayName, user.getVersion());
+        User updatedUser = new User(user.getId(), username, encodedPassword, displayName, user.getRole(), user.getVersion());
         String sql = "UPDATE users SET username = ?, password = ?, display_name = ?, version = version + 1 WHERE id = ? AND version = ? RETURNING version";
 
         try {
@@ -84,7 +85,7 @@ public class UserJdbcService {
     @Transactional(readOnly = true)
     @Cacheable(cacheNames = "users")
     public Optional<User> findById(Long id) {
-        String sql = "SELECT id, username, password, display_name, version FROM users WHERE id = ?";
+        String sql = "SELECT id, username, password, display_name, role, version FROM users WHERE id = ?";
         try {
             User user = jdbcTemplate.queryForObject(sql, this::mapRowToUser, id);
             return Optional.ofNullable(user);
@@ -96,7 +97,7 @@ public class UserJdbcService {
     @Transactional(readOnly = true)
     @Cacheable("users")
     public Optional<User> findByUsername(String username) {
-        String sql = "SELECT id, username, password, display_name, version FROM users WHERE username = ?";
+        String sql = "SELECT id, username, password, display_name, role, version FROM users WHERE username = ?";
         try {
             User user = jdbcTemplate.queryForObject(sql, this::mapRowToUser, username);
             return Optional.ofNullable(user);
@@ -107,7 +108,7 @@ public class UserJdbcService {
     
     @Transactional(readOnly = true)
     public List<User> findAll() {
-        String sql = "SELECT id, username, password, display_name, version FROM users ORDER BY username";
+        String sql = "SELECT id, username, password, display_name, role, version FROM users ORDER BY username";
         return jdbcTemplate.query(sql, this::mapRowToUser);
     }
 
@@ -117,6 +118,7 @@ public class UserJdbcService {
             rs.getString("username"),
             rs.getString("password"),
             rs.getString("display_name"),
+            rs.getString("role"),
             rs.getLong("version")
         );
     }
