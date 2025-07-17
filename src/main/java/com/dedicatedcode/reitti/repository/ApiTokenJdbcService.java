@@ -27,7 +27,7 @@ public class ApiTokenJdbcService {
     public Optional<ApiToken> findByToken(String token) {
         String sql = """
             SELECT at.id, at.token, at.name, at.created_at, at.last_used_at,
-                   u.id as user_id, u.username, u.password, u.display_name, u.version as user_version
+                   u.id as user_id, u.username, u.password, u.display_name, u.role, u.version as user_version
             FROM api_tokens at
             JOIN users u ON at.user_id = u.id
             WHERE at.token = ?
@@ -44,7 +44,7 @@ public class ApiTokenJdbcService {
     public List<ApiToken> findByUser(User user) {
         String sql = """
             SELECT at.id, at.token, at.name, at.created_at, at.last_used_at,
-                   u.id as user_id, u.username, u.password, u.display_name, u.version as user_version
+                   u.id as user_id, u.username, u.password, u.display_name, u.role, u.version as user_version
             FROM api_tokens at
             JOIN users u ON at.user_id = u.id
             WHERE at.user_id = ?
@@ -57,7 +57,7 @@ public class ApiTokenJdbcService {
     public Optional<ApiToken> findById(Long id) {
         String sql = """
             SELECT at.id, at.token, at.name, at.created_at, at.last_used_at,
-                   u.id as user_id, u.username, u.password, u.display_name, u.version as user_version
+                   u.id as user_id, u.username, u.password, u.display_name, u.role, u.version as user_version
             FROM api_tokens at
             JOIN users u ON at.user_id = u.id
             WHERE at.id = ?
@@ -68,18 +68,6 @@ public class ApiTokenJdbcService {
         } catch (EmptyResultDataAccessException e) {
             return Optional.empty();
         }
-    }
-
-    @Transactional(readOnly = true)
-    public List<ApiToken> findAll() {
-        String sql = """
-            SELECT at.id, at.token, at.name, at.created_at, at.last_used_at,
-                   u.id as user_id, u.username, u.password, u.display_name, u.version as user_version
-            FROM api_tokens at
-            JOIN users u ON at.user_id = u.id
-            ORDER BY at.created_at DESC
-            """;
-        return jdbcTemplate.query(sql, this::mapRowToApiToken);
     }
 
     public ApiToken save(ApiToken apiToken) {
@@ -154,6 +142,7 @@ public class ApiTokenJdbcService {
             rs.getString("username"),
             rs.getString("password"),
             rs.getString("display_name"),
+            rs.getString("role"),
             rs.getLong("user_version")
         );
 

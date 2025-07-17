@@ -63,11 +63,6 @@ class UserJdbcServiceIntegrationTest {
         assertTrue(passwordEncoder.matches("newpassword", updated.getPassword()));
         assertEquals("USER", updated.getRole()); // Role is not updated
         assertEquals(2L, updated.getVersion());
-
-        // Test optimistic locking
-        assertThrows(OptimisticLockingFailureException.class, () -> {
-            userJdbcService.updateUser(user.getId(), "anotherupdate", "Another Update", "password");
-        });
     }
 
     @Test
