@@ -3,7 +3,6 @@ package com.dedicatedcode.reitti.repository;
 import com.dedicatedcode.reitti.model.User;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.Caching;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -54,10 +53,7 @@ public class UserJdbcService {
         return new User(id, username, encodedPassword, displayName, role, 1L);
     }
 
-    @Caching(evict = {
-            @CacheEvict(cacheNames = "users", key = "#username"),
-            @CacheEvict(cacheNames = "users", key = "#userId")
-    })
+    @CacheEvict(value = "users", allEntries = true)
     public User updateUser(Long userId, String username, String displayName, String password) {
         User user = findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));

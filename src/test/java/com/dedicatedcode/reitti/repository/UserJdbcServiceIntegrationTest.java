@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.model.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.CacheManager;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +23,9 @@ class UserJdbcServiceIntegrationTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private CacheManager cacheManager;
 
     @Test
     void testCreateAndFindUser() {
@@ -59,6 +63,11 @@ class UserJdbcServiceIntegrationTest {
         assertTrue(passwordEncoder.matches("newpassword", updated.getPassword()));
         assertEquals("USER", updated.getRole()); // Role is not updated
         assertEquals(2L, updated.getVersion());
+
+        // Test optimistic locking
+        assertThrows(OptimisticLockingFailureException.class, () -> {
+            userJdbcService.updateUser(user.getId(), "anotherupdate", "Another Update", "password");
+        });
     }
 
     @Test
@@ -79,5 +88,43 @@ class UserJdbcServiceIntegrationTest {
         List<User> users = userJdbcService.getAllUsers();
         assertTrue(users.stream().anyMatch(u -> u.getUsername().equals("user1")));
         assertTrue(users.stream().anyMatch(u -> u.getUsername().equals("user2")));
+    }
+
+    @Test
+    void testCacheEvictionOnUpdate() {
+        User user = userJdbcService.createUser("cacheuser", "Cache User", "password");
+        String oldUsername = user.getUsername();
+        Long userId = user.getId();
+
+        // populate cache
+        userJdbcService.findByUsername(oldUsername);
+        userJdbcService.findById(userId);
+
+        // check cache is populated
+        assertNotNull(cacheManager.getCache("users").get(oldUsername, User.class));
+        assertNotNull(cacheManager.getCache("users").get(userId, User.class));
+
+        // update user
+        String newUsername = "newcacheuser";
+        userJdbcService.updateUser(userId, newUsername, "New Cache User", "newpassword");
+
+        // check cache is evicted
+        assertNull(cacheManager.getCache("users").get(oldUsername));
+        assertNull(cacheManager.getCache("users").get(userId));
+
+        // check that fetching new user works and populates cache
+        Optional<User> byId = userJdbcService.findById(userId);
+        assertTrue(byId.isPresent());
+        assertEquals(newUsername, byId.get().getUsername());
+        assertNotNull(cacheManager.getCache("users").get(userId, User.class));
+
+        // check that fetching by old username does not work
+        assertFalse(userJdbcService.findByUsername(oldUsername).isPresent());
+
+        // check that fetching by new username works and populates cache
+        Optional<User> byNewUsername = userJdbcService.findByUsername(newUsername);
+        assertTrue(byNewUsername.isPresent());
+        assertEquals(newUsername, byNewUsername.get().getUsername());
+        assertNotNull(cacheManager.getCache("users").get(newUsername, User.class));
     }
 }
