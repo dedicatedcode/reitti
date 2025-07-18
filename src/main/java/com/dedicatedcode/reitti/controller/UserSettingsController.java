@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.dto.ConnectedUserAccount;
+import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.model.UserSettings;
@@ -12,7 +13,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,6 +26,9 @@ import org.springframework.web.servlet.LocaleResolver;
 import java.io.IOException;
 import java.util.*;
 
+import static com.dedicatedcode.reitti.model.Role.ADMIN;
+import static com.dedicatedcode.reitti.model.Role.USER;
+
 @Controller
 @RequestMapping("/settings")
 public class UserSettingsController {
@@ -35,7 +38,6 @@ public class UserSettingsController {
     private final MessageSource messageSource;
     private final LocaleResolver localeResolver;
     private final AvatarService avatarService;
-    private final JdbcTemplate jdbcTemplate;
     private final PasswordEncoder passwordEncoder;
 
     // Avatar constraints
@@ -52,14 +54,12 @@ public class UserSettingsController {
                                   MessageSource messageSource,
                                   LocaleResolver localeResolver,
                                   AvatarService avatarService,
-                                  JdbcTemplate jdbcTemplate,
                                   PasswordEncoder passwordEncoder) {
         this.userJdbcService = userJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.messageSource = messageSource;
         this.localeResolver = localeResolver;
         this.avatarService = avatarService;
-        this.jdbcTemplate = jdbcTemplate;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -72,9 +72,11 @@ public class UserSettingsController {
         String currentUsername = authentication.getName();
         User currentUser = userJdbcService.findByUsername(currentUsername)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUsername));
-        
-        // If user is not admin, redirect to their own user form
-        if (!"ADMIN".equals(currentUser.getRole())) {
+        return getUserContent(model, currentUser);
+    }
+
+    private String getUserContent(Model model, User currentUser) {
+        if (ADMIN != currentUser.getRole()) {
             model.addAttribute("userId", currentUser.getId());
             model.addAttribute("username", currentUser.getUsername());
             model.addAttribute("displayName", currentUser.getDisplayName());
@@ -83,26 +85,26 @@ public class UserSettingsController {
             model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
             model.addAttribute("selectedUnitSystem", userSettings.getUnitSystem().name());
             model.addAttribute("preferColoredMap", userSettings.isPreferColoredMap());
-            
+
             // Add available unit systems to model
             model.addAttribute("unitSystems", UnitSystem.values());
-            
+
             // Check if user has avatar
             boolean hasAvatar = this.avatarService.getInfo(currentUser.getId()).isPresent();
             model.addAttribute("hasAvatar", hasAvatar);
-            
+
             // Add default avatars to model
             model.addAttribute("defaultAvatars", DEFAULT_AVATARS);
-            
+
             // Add admin status to model
             model.addAttribute("isAdmin", false);
-            
+
             return "fragments/user-management :: user-form-page";
         }
-        
+
         List<User> users = userJdbcService.getAllUsers();
         model.addAttribute("users", users);
-        model.addAttribute("currentUsername", currentUsername);
+        model.addAttribute("currentUsername", currentUser.getUsername());
         model.addAttribute("isAdmin", true);
         return "fragments/user-management :: users-list";
     }
@@ -114,9 +116,9 @@ public class UserSettingsController {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUsername));
 
         // Only admins can delete users
-        if (!"ADMIN".equals(currentUser.getRole())) {
+        if (ADMIN != currentUser.getRole()) {
             model.addAttribute("errorMessage", getMessage("message.error.access.denied"));
-            return getUsersContent(authentication, model);
+            return getUserContent(model, currentUser);
         }
 
         // Prevent self-deletion
@@ -145,7 +147,7 @@ public class UserSettingsController {
     public String createUser(@RequestParam String username,
                              @RequestParam String displayName,
                              @RequestParam String password,
-                             @RequestParam(defaultValue = "USER") String role,
+                             @RequestParam(defaultValue = "USER") Role role,
                              @RequestParam String preferred_language,
                              @RequestParam(defaultValue = "METRIC") String unit_system,
                              @RequestParam(defaultValue = "false") boolean preferColoredMap,
@@ -161,16 +163,16 @@ public class UserSettingsController {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUsername));
 
         // Only admins can create users
-        if (!"ADMIN".equals(currentUser.getRole())) {
+        if (ADMIN != currentUser.getRole()) {
             model.addAttribute("errorMessage", getMessage("message.error.access.denied"));
-            return getUsersContent(authentication, model);
+            return getUserContent(model, currentUser);
         }
         try {
             if (StringUtils.hasText(username) && StringUtils.hasText(displayName) && StringUtils.hasText(password)) {
                 User createdUser = userJdbcService.createUser(username, displayName, password);
                 
                 // Update the user's role if different from default
-                if (!"USER".equals(role)) {
+                if (USER != role) {
                     createdUser = createdUser.withRole(role);
                     createdUser = userJdbcService.updateUser(createdUser);
                 }
@@ -210,7 +212,7 @@ public class UserSettingsController {
                              @RequestParam String username,
                              @RequestParam String displayName,
                              @RequestParam(required = false) String password,
-                             @RequestParam(defaultValue = "USER") String role,
+                             @RequestParam(defaultValue = "USER") Role role,
                              @RequestParam String preferred_language,
                              @RequestParam(defaultValue = "METRIC") String unit_system,
                              @RequestParam(defaultValue = "false") boolean preferColoredMap,
@@ -231,9 +233,9 @@ public class UserSettingsController {
         boolean isCurrentUser = userToUpdate.getUsername().equals(currentUsername);
 
         // Only admins can edit other users, users can only edit themselves
-        if (!isCurrentUser && !"ADMIN".equals(authenticatedUser.getRole())) {
+        if (!isCurrentUser && ADMIN != authenticatedUser.getRole()) {
             model.addAttribute("errorMessage", getMessage("message.error.access.denied"));
-            return getUsersContent(authentication, model);
+            return getUserContent(model, authenticatedUser);
         }
 
         try {
@@ -287,7 +289,7 @@ public class UserSettingsController {
         }
 
         // If admin, return to user list; if regular user, stay on their form
-        if ("ADMIN".equals(authenticatedUser.getRole())) {
+        if (ADMIN == authenticatedUser.getRole()) {
             List<User> users = userJdbcService.getAllUsers();
             model.addAttribute("users", users);
             model.addAttribute("currentUsername", isCurrentUser ? username : currentUsername);
@@ -295,7 +297,7 @@ public class UserSettingsController {
             return "fragments/user-management :: users-list";
         } else {
             // For regular users, return their updated form
-            return getUsersContent(authentication, model);
+            return getUserContent(model, userToUpdate);
         }
     }
 
@@ -312,14 +314,14 @@ public class UserSettingsController {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUsername));
 
         // Only admins can access user forms for other users or create new users
-        if (userId != null && !userId.equals(currentUser.getId()) && !"ADMIN".equals(currentUser.getRole())) {
+        if (userId != null && !userId.equals(currentUser.getId()) && ADMIN != currentUser.getRole()) {
             model.addAttribute("errorMessage", getMessage("message.error.access.denied"));
-            return getUsersContent(authentication, model);
+            return getUserContent(model, currentUser);
         }
         
-        if (userId == null && !"ADMIN".equals(currentUser.getRole())) {
+        if (userId == null && ADMIN != currentUser.getRole()) {
             model.addAttribute("errorMessage", getMessage("message.error.access.denied"));
-            return getUsersContent(authentication, model);
+            return getUserContent(model, currentUser);
         }
         if (userId != null) {
             model.addAttribute("userId", userId);
@@ -351,7 +353,7 @@ public class UserSettingsController {
         model.addAttribute("defaultAvatars", DEFAULT_AVATARS);
         
         // Add admin status to model
-        model.addAttribute("isAdmin", "ADMIN".equals(currentUser.getRole()));
+        model.addAttribute("isAdmin", ADMIN == currentUser.getRole());
         
         return "fragments/user-management :: user-form-page";
     }
