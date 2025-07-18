@@ -149,6 +149,7 @@
                 avatarActions.style.display = 'none';
             }
         }
+
         function initPlaceMaps() {
             document.querySelectorAll('.place-map:not(.leaflet-container)').forEach(mapElement => {
                 const lat = parseFloat(mapElement.dataset.lat);
@@ -215,6 +216,7 @@
                     spinner.style.display = 'flex';
                 });
             }
+            initPlaceMaps();
 
             // Function to enable all upload buttons and hide spinners
             function enableAllUploads() {

@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.dto.ConnectedUserAccount;
+import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.UserSettings;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,8 +45,8 @@ public class UserSettingsJdbcServiceTest {
     private Long createTestUser() {
         String username = "user_" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         jdbcTemplate.update(
-                "INSERT INTO users (username, password, display_name) VALUES (?, ?, ?)",
-                username, "password", "Test User"
+                "INSERT INTO users (username, password, display_name, role) VALUES (?, ?, ?, ?)",
+                username, "password", "Test User", Role.ADMIN.name()
         );
         return jdbcTemplate.queryForObject(
                 "SELECT id FROM users WHERE username = ?",

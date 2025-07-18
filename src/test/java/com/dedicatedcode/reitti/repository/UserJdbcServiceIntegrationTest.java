@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.IntegrationTest;
+import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +35,7 @@ class UserJdbcServiceIntegrationTest {
         assertEquals("testuser", created.getUsername());
         assertEquals("Test User", created.getDisplayName());
         assertTrue(passwordEncoder.matches("password", created.getPassword()));
-        assertEquals("USER", created.getRole());
+        assertEquals(Role.USER, created.getRole());
         assertEquals(1L, created.getVersion());
 
         Optional<User> foundOpt = userJdbcService.findById(created.getId());
@@ -44,7 +45,7 @@ class UserJdbcServiceIntegrationTest {
         assertEquals("testuser", found.getUsername());
         assertEquals("Test User", found.getDisplayName());
         assertEquals(created.getPassword(), found.getPassword());
-        assertEquals("USER", found.getRole());
+        assertEquals(Role.USER, found.getRole());
         assertEquals(1L, found.getVersion());
 
         Optional<User> foundByUsernameOpt = userJdbcService.findByUsername("testuser");
@@ -56,14 +57,14 @@ class UserJdbcServiceIntegrationTest {
     void testUpdateUser() {
         User user = userJdbcService.createUser("updateuser", "Update User", "password");
         String newEncodedPassword = passwordEncoder.encode("newpassword");
-        User userToUpdate = new User(user.getId(), "updateduser", newEncodedPassword, "Updated User", "ADMIN", user.getVersion());
+        User userToUpdate = new User(user.getId(), "updateduser", newEncodedPassword, "Updated User", Role.ADMIN, user.getVersion());
         User updated = userJdbcService.updateUser(userToUpdate);
 
         assertEquals(user.getId(), updated.getId());
         assertEquals("updateduser", updated.getUsername());
         assertEquals("Updated User", updated.getDisplayName());
         assertEquals(newEncodedPassword, updated.getPassword());
-        assertEquals("ADMIN", updated.getRole());
+        assertEquals(Role.ADMIN, updated.getRole());
         assertEquals(2L, updated.getVersion());
     }
 
@@ -104,7 +105,7 @@ class UserJdbcServiceIntegrationTest {
         // update user
         String newUsername = "newcacheuser";
         String newEncodedPassword = passwordEncoder.encode("newpassword");
-        User userToUpdate = new User(userId, newUsername, newEncodedPassword, "New Cache User", "USER", user.getVersion());
+        User userToUpdate = new User(userId, newUsername, newEncodedPassword, "New Cache User", Role.USER, user.getVersion());
         userJdbcService.updateUser(userToUpdate);
 
         // check cache is evicted

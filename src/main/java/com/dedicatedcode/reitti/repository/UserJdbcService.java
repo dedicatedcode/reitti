@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.repository;
 
+import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.User;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -47,17 +48,14 @@ public class UserJdbcService {
     @CacheEvict(value = "users", allEntries = true)
     public User createUser(String username, String displayName, String password) {
         String encodedPassword = passwordEncoder.encode(password);
-        String role = "USER";
+        Role role = Role.USER;
         String sql = "INSERT INTO users (username, password, display_name, role, version) VALUES (?, ?, ?, ?, 1) RETURNING id";
-        Long id = jdbcTemplate.queryForObject(sql, Long.class, username, encodedPassword, displayName, role);
+        Long id = jdbcTemplate.queryForObject(sql, Long.class, username, encodedPassword, displayName, role.name());
         return new User(id, username, encodedPassword, displayName, role, 1L);
     }
 
     @CacheEvict(value = "users", allEntries = true)
     public User updateUser(User userToUpdate) {
-        User existingUser = findById(userToUpdate.getId())
-                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userToUpdate.getId()));
-        
         String sql = "UPDATE users SET username = ?, password = ?, display_name = ?, role = ?, version = version + 1 WHERE id = ? AND version = ? RETURNING version";
 
         try {
@@ -65,7 +63,7 @@ public class UserJdbcService {
                 userToUpdate.getUsername(), 
                 userToUpdate.getPassword(), 
                 userToUpdate.getDisplayName(), 
-                userToUpdate.getRole(),
+                userToUpdate.getRole().name(),
                 userToUpdate.getId(), 
                 userToUpdate.getVersion());
 
@@ -112,7 +110,7 @@ public class UserJdbcService {
             rs.getString("username"),
             rs.getString("password"),
             rs.getString("display_name"),
-            rs.getString("role"),
+            Role.valueOf(rs.getString("role")),
             rs.getLong("version")
         );
     }

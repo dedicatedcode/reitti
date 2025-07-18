@@ -174,7 +174,7 @@ public class SettingsController {
                 getGeocodeServicesContent(model);
                 break;
             case "integrations":
-                getIntegrationsContent(authentication, model, null, null);
+                getIntegrationsContent(authentication, model, null);
                 break;
             case "manage-data":
                 if (dataManagementEnabled) {
@@ -348,8 +348,8 @@ public class SettingsController {
     }
 
     @GetMapping("/integrations-content")
-    public String getIntegrationsContent(Authentication authentication, Model model, HttpServletRequest request,
-                                        @RequestParam(required = false) String openSection) {
+    public String getIntegrationsContent(Authentication authentication, Model model,
+                                         @RequestParam(required = false) String openSection) {
         String username = authentication.getName();
         User currentUser = userJdbcService.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
@@ -362,22 +362,6 @@ public class SettingsController {
         } else {
             model.addAttribute("hasToken", false);
         }
-
-        // Build the server URL
-        String scheme = request.getScheme();
-        String serverName = request.getServerName();
-        int serverPort = request.getServerPort();
-
-        StringBuilder serverUrl = new StringBuilder();
-        serverUrl.append(scheme).append("://").append(serverName);
-
-        // Only add port if it's not the default port for the scheme
-        if ((scheme.equals("http") && serverPort != 80) ||
-                (scheme.equals("https") && serverPort != 443)) {
-            serverUrl.append(":").append(serverPort);
-        }
-
-        model.addAttribute("serverUrl", serverUrl.toString());
 
         Optional<OwnTracksRecorderIntegration> recorderIntegration = ownTracksRecorderIntegrationService.getIntegrationForUser(currentUser);
         if (recorderIntegration.isPresent()) {

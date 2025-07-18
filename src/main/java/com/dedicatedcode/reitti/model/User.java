@@ -13,18 +13,18 @@ public class User implements UserDetails {
     private final String username;
     private final String password;
     private final String displayName;
-    private final String role;
+    private final Role role;
     private final Long version;
 
     public User() {
-        this(null, null, null, null, "USER", null);
+        this(null, null, null, null, Role.USER, null);
     }
 
     public User(String username, String displayName) {
-        this(null, username, null, displayName, "USER", null);
+        this(null, username, null, displayName, Role.USER, null);
     }
 
-    public User(Long id, String username, String password, String displayName, String role, Long version) {
+    public User(Long id, String username, String password, String displayName, Role role, Long version) {
         this.id = id;
         this.username = username;
         this.password = password;
@@ -70,14 +70,14 @@ public class User implements UserDetails {
         if (this.role == null) {
             return List.of();
         }
-        return List.of(new SimpleGrantedAuthority("ROLE_" + this.role.toUpperCase()));
+        return List.of(new SimpleGrantedAuthority("ROLE_" + this.role.name()));
     }
 
     public String getPassword() {
         return password;
     }
 
-    public String getRole() {
+    public Role getRole() {
         return role;
     }
 
@@ -98,7 +98,7 @@ public class User implements UserDetails {
         return new User(this.id, this.username, this.password, this.displayName, this.role, version);
     }
 
-    public User withRole(String role) {
+    public User withRole(Role role) {
         return new User(this.id, this.username, this.password, this.displayName, role, this.version);
     }
 }

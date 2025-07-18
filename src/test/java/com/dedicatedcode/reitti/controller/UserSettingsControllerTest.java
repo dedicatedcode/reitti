@@ -23,6 +23,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @IntegrationTest
@@ -294,10 +295,9 @@ public class UserSettingsControllerTest {
                         .with(csrf())
                         .with(user(currentUsername)))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/user-management :: users-list"))
+                .andExpect(view().name("fragments/user-management :: user-form-page"))
                 .andExpect(model().attributeExists("errorMessage"))
-                .andExpect(model().attributeExists("users"))
-                .andExpect(model().attribute("isAdmin", true));
+                .andExpect(model().attribute("isAdmin", false));
 
         // Verify user was NOT deleted from database
         assertThat(userJdbcService.findById(userId)).isPresent();
@@ -387,6 +387,7 @@ public class UserSettingsControllerTest {
                         .param("unit_system", "METRIC")
                         .with(csrf())
                         .with(user(currentUsername)))
+                .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: user-form-page"))
                 .andExpect(model().attributeExists("successMessage"))

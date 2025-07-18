@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.repository;
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.OwnTracksRecorderIntegration;
+import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.User;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -203,6 +204,6 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
         String sql = "INSERT INTO users (username, password, display_name, role, version) VALUES (?, ?, ?, ?, ?) RETURNING id";
         Long userId = jdbcTemplate.queryForObject(sql, Long.class, username, password, displayName, role, 1L);
         
-        return new User(userId, username, password, displayName, "ADMIN", 1L);
+        return new User(userId, username, password, displayName, Role.ADMIN, 1L);
     }
 }

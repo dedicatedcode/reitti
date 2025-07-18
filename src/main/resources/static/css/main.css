@@ -961,6 +961,8 @@ input[type=file]::file-selector-button:hover {
 }
 
 .settings-page .settings-nav-item {
+    display: block;
+    text-decoration: none;
     padding: 15px 25px;
     cursor: pointer;
     border-left: 3px solid transparent;

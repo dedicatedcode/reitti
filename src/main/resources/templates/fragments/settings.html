@@ -100,7 +100,6 @@
                     </div>
                     <div class="place-info">
                         <div><strong th:text="#{places.address.label}">Address:</strong> <span th:text="${place.address() ?: #messages.msg('places.address.not.available')}"></span></div>
-<!--                        <div><strong th:text="#{places.category.label}">Category:</strong> <span th:text="${place.category() ?: #messages.msg('places.category.not.categorized')}"></span></div>-->
                         <div><strong th:text="#{places.coordinates.label}">Coordinates:</strong> <span th:text="${place.latitude() + ', ' + place.longitude()}"></span></div>
                     </div>
                     <div style="display: flex; gap: 10px; margin-top: 10px;">

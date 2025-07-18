@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.ApiToken;
+import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.User;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -142,7 +143,7 @@ public class ApiTokenJdbcService {
             rs.getString("username"),
             rs.getString("password"),
             rs.getString("display_name"),
-            rs.getString("role"),
+            Role.valueOf(rs.getString("role")),
             rs.getLong("user_version")
         );
 
