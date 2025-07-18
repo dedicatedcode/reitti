@@ -54,24 +54,22 @@ public class UserJdbcService {
     }
 
     @CacheEvict(value = "users", allEntries = true)
-    public User updateUser(Long userId, String username, String displayName, String password) {
-        User user = findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
+    public User updateUser(User userToUpdate) {
+        User existingUser = findById(userToUpdate.getId())
+                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userToUpdate.getId()));
         
-        String encodedPassword = user.getPassword();
-        // Only update password if provided
-        if (password != null && !password.trim().isEmpty()) {
-            encodedPassword = passwordEncoder.encode(password);
-        }
-        
-        User updatedUser = new User(user.getId(), username, encodedPassword, displayName, user.getRole(), user.getVersion());
-        String sql = "UPDATE users SET username = ?, password = ?, display_name = ?, version = version + 1 WHERE id = ? AND version = ? RETURNING version";
+        String sql = "UPDATE users SET username = ?, password = ?, display_name = ?, role = ?, version = version + 1 WHERE id = ? AND version = ? RETURNING version";
 
         try {
             Long newVersion = jdbcTemplate.queryForObject(sql, Long.class,
-                updatedUser.getUsername(), updatedUser.getPassword(), updatedUser.getDisplayName(), updatedUser.getId(), updatedUser.getVersion());
+                userToUpdate.getUsername(), 
+                userToUpdate.getPassword(), 
+                userToUpdate.getDisplayName(), 
+                userToUpdate.getRole(),
+                userToUpdate.getId(), 
+                userToUpdate.getVersion());
 
-            return updatedUser.withVersion(newVersion);
+            return userToUpdate.withVersion(newVersion);
         } catch (EmptyResultDataAccessException e) {
             throw new OptimisticLockingFailureException("User was modified by another transaction");
         }

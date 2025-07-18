@@ -55,13 +55,15 @@ class UserJdbcServiceIntegrationTest {
     @Test
     void testUpdateUser() {
         User user = userJdbcService.createUser("updateuser", "Update User", "password");
-        User updated = userJdbcService.updateUser(user.getId(), "updateduser", "Updated User", "newpassword");
+        String newEncodedPassword = passwordEncoder.encode("newpassword");
+        User userToUpdate = new User(user.getId(), "updateduser", newEncodedPassword, "Updated User", "ADMIN", user.getVersion());
+        User updated = userJdbcService.updateUser(userToUpdate);
 
         assertEquals(user.getId(), updated.getId());
         assertEquals("updateduser", updated.getUsername());
         assertEquals("Updated User", updated.getDisplayName());
-        assertTrue(passwordEncoder.matches("newpassword", updated.getPassword()));
-        assertEquals("USER", updated.getRole()); // Role is not updated
+        assertEquals(newEncodedPassword, updated.getPassword());
+        assertEquals("ADMIN", updated.getRole());
         assertEquals(2L, updated.getVersion());
     }
 
@@ -101,7 +103,9 @@ class UserJdbcServiceIntegrationTest {
 
         // update user
         String newUsername = "newcacheuser";
-        userJdbcService.updateUser(userId, newUsername, "New Cache User", "newpassword");
+        String newEncodedPassword = passwordEncoder.encode("newpassword");
+        User userToUpdate = new User(userId, newUsername, newEncodedPassword, "New Cache User", "USER", user.getVersion());
+        userJdbcService.updateUser(userToUpdate);
 
         // check cache is evicted
         assertNull(cacheManager.getCache("users").get(oldUsername));

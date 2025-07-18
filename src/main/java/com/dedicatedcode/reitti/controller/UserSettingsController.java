@@ -15,6 +15,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
@@ -35,6 +36,7 @@ public class UserSettingsController {
     private final LocaleResolver localeResolver;
     private final AvatarService avatarService;
     private final JdbcTemplate jdbcTemplate;
+    private final PasswordEncoder passwordEncoder;
 
     // Avatar constraints
     private static final long MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2MB
@@ -50,13 +52,15 @@ public class UserSettingsController {
                                   MessageSource messageSource,
                                   LocaleResolver localeResolver,
                                   AvatarService avatarService,
-                                  JdbcTemplate jdbcTemplate) {
+                                  JdbcTemplate jdbcTemplate,
+                                  PasswordEncoder passwordEncoder) {
         this.userJdbcService = userJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.messageSource = messageSource;
         this.localeResolver = localeResolver;
         this.avatarService = avatarService;
         this.jdbcTemplate = jdbcTemplate;
+        this.passwordEncoder = passwordEncoder;
     }
 
     private String getMessage(String key, Object... args) {
@@ -117,10 +121,11 @@ public class UserSettingsController {
             if (StringUtils.hasText(username) && StringUtils.hasText(displayName) && StringUtils.hasText(password)) {
                 User createdUser = userJdbcService.createUser(username, displayName, password);
                 
-                // Update the user's role
-                createdUser = createdUser.withRole(role);
-                userJdbcService.updateUser(createdUser.getId(), createdUser.getUsername(), createdUser.getDisplayName(), null);
-                createdUser = userJdbcService.findByUsername(username).orElseThrow();
+                // Update the user's role if different from default
+                if (!"USER".equals(role)) {
+                    createdUser = createdUser.withRole(role);
+                    createdUser = userJdbcService.updateUser(createdUser);
+                }
                 
                 List<ConnectedUserAccount> connectedAccounts = buildConnectedUserAccounts(connectedUserIds, connectedUserColors);
                 
@@ -175,12 +180,16 @@ public class UserSettingsController {
         boolean isCurrentUser = currentUser.getUsername().equals(currentUsername);
 
         try {
-            userJdbcService.updateUser(userId, username, displayName, password);
+            User existingUser = userJdbcService.findById(userId).orElseThrow();
             
-            // Update the user's role
-            User updatedUser = userJdbcService.findById(userId).orElseThrow();
-            updatedUser = updatedUser.withRole(role);
-            userJdbcService.updateUser(updatedUser.getId(), updatedUser.getUsername(), updatedUser.getDisplayName(), null);
+            String encodedPassword = existingUser.getPassword();
+            // Only update password if provided
+            if (password != null && !password.trim().isEmpty()) {
+                encodedPassword = passwordEncoder.encode(password);
+            }
+            
+            User updatedUser = new User(existingUser.getId(), username, encodedPassword, displayName, role, existingUser.getVersion());
+            userJdbcService.updateUser(updatedUser);
             
             // Update user settings with selected language and connected accounts
             UserSettings existingSettings = userSettingsJdbcService.findByUserId(userId)
