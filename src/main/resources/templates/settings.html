@@ -25,64 +25,99 @@
                     </button>
                 </form>
             </div>
-            <div class="settings-nav-item active" data-target="job-status" th:text="#{settings.job.status}">Job Status</div>
-            <div class="settings-nav-item" data-target="file-upload" th:text="#{settings.import.data}">Import Data</div>
-            <div class="settings-nav-item" data-target="api-tokens" th:text="#{settings.api.tokens}">API Tokens</div>
-            <div class="settings-nav-item" data-target="user-management" th:text="#{settings.user.management}">User Management</div>
-            <div class="settings-nav-item" data-target="places-management" th:text="#{settings.places}">Places</div>
-            <div class="settings-nav-item" data-target="geocode-services" th:text="#{settings.geocoding}">Geocoding</div>
-            <div class="settings-nav-item" data-target="manage-data" th:if="${dataManagementEnabled}" th:text="#{settings.manage.data}">Manage Data</div>
-            <div class="settings-nav-item" data-target="integrations" hx-get="/settings/integrations-content" hx-target="#integrations" th:text="#{settings.integrations}">Integrations</div>
-            <div class="settings-nav-item" data-target="about-section" th:text="#{settings.about}">About</div>
+            <a href="/settings?section=job-status" 
+               class="settings-nav-item" 
+               th:classappend="${activeSection == 'job-status'} ? 'active' : ''"
+               th:text="#{settings.job.status}">Job Status</a>
+            
+            <a href="/settings?section=file-upload" 
+               class="settings-nav-item"
+               th:classappend="${activeSection == 'file-upload'} ? 'active' : ''"
+               th:text="#{settings.import.data}">Import Data</a>
+            
+            <a href="/settings?section=api-tokens" 
+               class="settings-nav-item"
+               th:classappend="${activeSection == 'api-tokens'} ? 'active' : ''"
+               th:text="#{settings.api.tokens}">API Tokens</a>
+            
+            <a href="/settings?section=user-management" 
+               class="settings-nav-item"
+               th:classappend="${activeSection == 'user-management'} ? 'active' : ''"
+               th:text="#{settings.user.management}">User Management</a>
+            
+            <a href="/settings?section=places-management" 
+               class="settings-nav-item"
+               th:classappend="${activeSection == 'places-management'} ? 'active' : ''"
+               th:text="#{settings.places}">Places</a>
+            
+            <a href="/settings?section=geocode-services" 
+               class="settings-nav-item"
+               th:classappend="${activeSection == 'geocode-services'} ? 'active' : ''"
+               th:text="#{settings.geocoding}">Geocoding</a>
+            
+            <a href="/settings?section=manage-data" 
+               th:if="${dataManagementEnabled}"
+               class="settings-nav-item"
+               th:classappend="${activeSection == 'manage-data'} ? 'active' : ''"
+               th:text="#{settings.manage.data}">Manage Data</a>
+            
+            <a href="/settings?section=integrations" 
+               class="settings-nav-item"
+               th:classappend="${activeSection == 'integrations'} ? 'active' : ''"
+               th:text="#{settings.integrations}">Integrations</a>
+            
+            <a href="/settings?section=about-section" 
+               class="settings-nav-item"
+               th:classappend="${activeSection == 'about-section'} ? 'active' : ''"
+               th:text="#{settings.about}">About</a>
         </div>
 
         <!-- Settings content area -->
         <div class="settings-content-area">
             <!-- API Tokens Section -->
-            <div id="api-tokens" class="settings-section" hx-get="/settings/api-tokens-content"
-                 hx-trigger="revealed, every 30s">
-                <div class="htmx-indicator">Loading tokens...</div>
+            <div th:if="${activeSection == 'api-tokens'}" id="api-tokens" class="settings-section active">
+                <div th:replace="fragments/settings :: api-tokens-content"></div>
             </div>
 
             <!-- User Management Section -->
-            <div id="user-management" class="settings-section" hx-get="/settings/users-content" hx-trigger="revealed">
-                <div class="htmx-indicator">Loading users...</div>
+            <div th:if="${activeSection == 'user-management'}" id="user-management" class="settings-section active">
+                <div th:replace="fragments/user-management :: ${isAdmin ? 'users-list' : 'user-form-page'}"></div>
             </div>
 
             <!-- Places Management Section -->
-            <div id="places-management" class="settings-section">
-                <div class="htmx-indicator">Loading places...</div>
+            <div th:if="${activeSection == 'places-management'}" id="places-management" class="settings-section active">
+                <div th:replace="fragments/settings :: places-content"></div>
             </div>
 
             <!-- Geocoding Services Section -->
-            <div id="geocode-services" class="settings-section">
-                <div class="htmx-indicator">Loading geocoding services...</div>
+            <div th:if="${activeSection == 'geocode-services'}" id="geocode-services" class="settings-section active">
+                <div th:replace="fragments/settings :: geocode-services-content"></div>
             </div>
 
             <!-- Integrations Section -->
-            <div id="integrations" class="settings-section">
-                <div class="htmx-indicator">Loading integrations...</div>
+            <div th:if="${activeSection == 'integrations'}" id="integrations" class="settings-section active">
+                <div th:replace="fragments/settings :: integrations-content"></div>
             </div>
 
             <!-- Manage Data Section -->
-            <div th:if="${dataManagementEnabled}" id="manage-data" class="settings-section">
-                <div class="htmx-indicator">Loading data management...</div>
+            <div th:if="${dataManagementEnabled && activeSection == 'manage-data'}" id="manage-data" class="settings-section active">
+                <div th:replace="fragments/settings :: manage-data-content"></div>
             </div>
 
             <!-- Job Status Section -->
-            <div id="job-status" class="settings-section active" hx-get="/settings/queue-stats-content"
-                 hx-trigger="revealed, every 5s">
-                <div class="htmx-indicator">Loading queue stats...</div>
+            <div th:if="${activeSection == 'job-status'}" id="job-status" class="settings-section active">
+                <div th:replace="fragments/settings :: queue-stats-content"></div>
             </div>
 
             <!-- File Upload Section -->
-            <div id="file-upload" class="settings-section">
+            <div th:if="${activeSection == 'file-upload'}" id="file-upload" class="settings-section active"
+                 hx-get="/import/file-upload-content" hx-trigger="load once">
                 <div class="htmx-indicator">Loading file upload options...</div>
             </div>
 
             <!-- About Section -->
-            <div id="about-section" class="settings-section">
-                <div class="htmx-indicator">Loading about information...</div>
+            <div th:if="${activeSection == 'about-section'}" id="about-section" class="settings-section active">
+                <div th:replace="fragments/settings :: about-content"></div>
             </div>
         </div>
     </div>
@@ -163,75 +198,7 @@
             }
         });
 
-        document.addEventListener('DOMContentLoaded', function () {
-            // Tab navigation in settings with htmx
-            const navItems = document.querySelectorAll('.settings-nav-item');
-            const sections = document.querySelectorAll('.settings-section');
-
-            navItems.forEach(item => {
-                item.addEventListener('click', function () {
-                    const target = this.getAttribute('data-target');
-
-                    // Update active nav item
-                    navItems.forEach(nav => nav.classList.remove('active'));
-                    this.classList.add('active');
-
-                    // Show target section
-                    sections.forEach(section => {
-                        section.classList.remove('active');
-                        if (section.id === target) {
-                            section.classList.add('active');
-                            
-                            // If this is the places tab, load its content if not already loaded
-                            if (target === 'places-management' && !section.hasAttribute('hx-triggered')) {
-                                section.setAttribute('hx-get', '/settings/places-content?page=0');
-                                section.setAttribute('hx-trigger', 'load');
-                                section.setAttribute('hx-triggered', 'true');
-                                htmx.process(section);
-                            }
-                            
-                            // If this is the file upload tab, load its content if not already loaded
-                            if (target === 'file-upload' && !section.hasAttribute('hx-triggered')) {
-                                section.setAttribute('hx-get', '/import/file-upload-content');
-                                section.setAttribute('hx-trigger', 'load once');
-                                section.setAttribute('hx-triggered', 'true');
-                                htmx.process(section);
-                            }
-
-                            // If this is the geocoding tab, load its content if not already loaded
-                            if (target === 'geocode-services' && !section.hasAttribute('hx-triggered')) {
-                                section.setAttribute('hx-get', '/settings/geocode-services-content');
-                                section.setAttribute('hx-trigger', 'load once');
-                                section.setAttribute('hx-triggered', 'true');
-                                htmx.process(section);
-                            }
-
-                            // If this is the manage data tab, load its content if not already loaded
-                            if (target === 'manage-data' && !section.hasAttribute('hx-triggered')) {
-                                section.setAttribute('hx-get', '/settings/manage-data-content');
-                                section.setAttribute('hx-trigger', 'load once');
-                                section.setAttribute('hx-triggered', 'true');
-                                htmx.process(section);
-                            }
-                            // If this is the about tab, load its content if not already loaded
-                            if (target === 'about-section' && !section.hasAttribute('hx-triggered')) {
-                                section.setAttribute('hx-get', '/settings/about-content');
-                                section.setAttribute('hx-trigger', 'load once');
-                                section.setAttribute('hx-triggered', 'true');
-                                htmx.process(section);
-                            }
-                            // If this is the language data tab, load its content if not already loaded
-                            if (target === 'language-settings' && !section.hasAttribute('hx-triggered')) {
-                                section.setAttribute('hx-get', '/settings/language-content');
-                                section.setAttribute('hx-trigger', 'load once');
-                                section.setAttribute('hx-triggered', 'true');
-                                htmx.process(section);
-                            }
-                        }
-                    });
-                });
-            });
-        });
+        // Navigation is now handled server-side via URL parameters
 
         document.addEventListener('DOMContentLoaded', function() {
             // Function to disable all upload buttons and show spinners

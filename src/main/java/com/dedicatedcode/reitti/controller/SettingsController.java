@@ -7,6 +7,7 @@ import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.*;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
+import java.util.Arrays;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,9 +54,53 @@ public class SettingsController {
     private final ProcessingPipelineTrigger processingPipelineTrigger;
 
     private final UserJdbcService userJdbcService;
+    private final UserSettingsJdbcService userSettingsJdbcService;
+    private final AvatarService avatarService;
+
+    private String getUserManagementPage(Authentication authentication, Model model) {
+        String currentUsername = authentication.getName();
+        User currentUser = userJdbcService.findByUsername(currentUsername)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUsername));
+        
+        if (currentUser.getRole() != Role.ADMIN) {
+            // For non-admin users, show their own form
+            model.addAttribute("userId", currentUser.getId());
+            model.addAttribute("username", currentUser.getUsername());
+            model.addAttribute("displayName", currentUser.getDisplayName());
+            model.addAttribute("selectedRole", currentUser.getRole());
+            
+            UserSettings userSettings = userSettingsJdbcService.findByUserId(currentUser.getId())
+                .orElse(UserSettings.defaultSettings(currentUser.getId()));
+            model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
+            model.addAttribute("selectedUnitSystem", userSettings.getUnitSystem().name());
+            model.addAttribute("preferColoredMap", userSettings.isPreferColoredMap());
+            
+            model.addAttribute("unitSystems", UnitSystem.values());
+            model.addAttribute("isAdmin", false);
+            
+            // Check if user has avatar
+            boolean hasAvatar = this.avatarService.getInfo(currentUser.getId()).isPresent();
+            model.addAttribute("hasAvatar", hasAvatar);
+            
+            // Add default avatars to model
+            model.addAttribute("defaultAvatars", Arrays.asList(
+                "avatar_man.jpg", "avatar_woman.jpg", "avatar_boy.jpg", "avatar_girl.jpg"
+            ));
+        } else {
+            // For admin users, show user list
+            List<User> users = userJdbcService.getAllUsers();
+            model.addAttribute("users", users);
+            model.addAttribute("currentUsername", currentUsername);
+            model.addAttribute("isAdmin", true);
+        }
+        
+        return "settings";
+    }
 
     public SettingsController(ApiTokenService apiTokenService,
                               UserJdbcService userJdbcService,
+                              UserSettingsJdbcService userSettingsJdbcService,
+                              AvatarService avatarService,
                               QueueStatsService queueStatsService,
                               PlaceService placeService, SignificantPlaceJdbcService placeJdbcService,
                               GeocodeServiceJdbcService geocodeServiceJdbcService,
@@ -72,6 +117,8 @@ public class SettingsController {
                               ProcessingPipelineTrigger processingPipelineTrigger) {
         this.apiTokenService = apiTokenService;
         this.userJdbcService = userJdbcService;
+        this.userSettingsJdbcService = userSettingsJdbcService;
+        this.avatarService = avatarService;
         this.queueStatsService = queueStatsService;
         this.placeService = placeService;
         this.placeJdbcService = placeJdbcService;
@@ -108,8 +155,44 @@ public class SettingsController {
     }
 
     @GetMapping("")
-    public String settingsPage(Model model) {
+    public String settingsPage(@RequestParam(required = false, defaultValue = "job-status") String section, 
+                              Model model, Authentication authentication) {
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+        model.addAttribute("activeSection", section);
+        
+        // Load the content for the active section immediately
+        switch (section) {
+            case "api-tokens":
+                getApiTokensContent(authentication, model);
+                break;
+            case "user-management":
+                return getUserManagementPage(authentication, model);
+            case "places-management":
+                getPlacesContent(authentication, 0, model);
+                break;
+            case "geocode-services":
+                getGeocodeServicesContent(model);
+                break;
+            case "integrations":
+                getIntegrationsContent(authentication, model, null, null);
+                break;
+            case "manage-data":
+                if (dataManagementEnabled) {
+                    getManageDataContent(model);
+                }
+                break;
+            case "file-upload":
+                // File upload content will be loaded via HTMX as before
+                break;
+            case "about-section":
+                getAboutContent(model);
+                break;
+            case "job-status":
+            default:
+                getQueueStatsContent(model);
+                break;
+        }
+        
         return "settings";
     }
 

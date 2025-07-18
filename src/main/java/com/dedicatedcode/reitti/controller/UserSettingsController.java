@@ -75,6 +75,13 @@ public class UserSettingsController {
         return getUserContent(model, currentUser);
     }
 
+    @GetMapping("/user-management")
+    public String getUserManagementPage(Authentication authentication, Model model) {
+        model.addAttribute("activeSection", "user-management");
+        getUsersContent(authentication, model);
+        return "settings";
+    }
+
     private String getUserContent(Model model, User currentUser) {
         if (ADMIN != currentUser.getRole()) {
             model.addAttribute("userId", currentUser.getId());
