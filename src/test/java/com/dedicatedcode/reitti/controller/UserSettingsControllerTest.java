@@ -53,13 +53,34 @@ public class UserSettingsControllerTest {
 
     @Test
     @WithMockUser(username = "testuser")
-    void getUsersContent_ShouldReturnUsersFragment() throws Exception {
+    void getUsersContent_AsRegularUser_ShouldReturnUserForm() throws Exception {
+        // Create the test user as a regular user
+        userJdbcService.createUser("testuser", "Test User", "password");
+        
         mockMvc.perform(get("/settings/users-content"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/user-management :: users-content"))
+                .andExpect(view().name("fragments/user-management :: user-form-page"))
+                .andExpect(model().attributeExists("userId"))
+                .andExpect(model().attributeExists("username"))
+                .andExpect(model().attribute("username", "testuser"))
+                .andExpect(model().attribute("isAdmin", false));
+    }
+
+    @Test
+    @WithMockUser(username = "admin")
+    void getUsersContent_AsAdmin_ShouldReturnUsersList() throws Exception {
+        // Create the admin user
+        User adminUser = userJdbcService.createUser("admin", "Admin User", "password");
+        adminUser = adminUser.withRole(Role.ADMIN);
+        userJdbcService.updateUser(adminUser);
+        
+        mockMvc.perform(get("/settings/users-content"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("fragments/user-management :: users-list"))
                 .andExpect(model().attributeExists("users"))
                 .andExpect(model().attributeExists("currentUsername"))
-                .andExpect(model().attribute("currentUsername", "testuser"));
+                .andExpect(model().attribute("currentUsername", "admin"))
+                .andExpect(model().attribute("isAdmin", true));
     }
 
     @Test
@@ -275,14 +296,32 @@ public class UserSettingsControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testuser")
-    void getUserForm_WithoutUserId_ShouldReturnEmptyForm() throws Exception {
+    @WithMockUser(username = "admin")
+    void getUserForm_AsAdmin_WithoutUserId_ShouldReturnEmptyForm() throws Exception {
+        // Create the admin user
+        User adminUser = userJdbcService.createUser("admin", "Admin User", "password");
+        adminUser = adminUser.withRole(Role.ADMIN);
+        userJdbcService.updateUser(adminUser);
+        
         mockMvc.perform(get("/settings/user-form"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/user-management :: user-form"))
+                .andExpect(view().name("fragments/user-management :: user-form-page"))
                 .andExpect(model().attributeDoesNotExist("userId"))
                 .andExpect(model().attributeDoesNotExist("username"))
-                .andExpect(model().attributeDoesNotExist("displayName"));
+                .andExpect(model().attributeDoesNotExist("displayName"))
+                .andExpect(model().attribute("isAdmin", true));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void getUserForm_AsRegularUser_WithoutUserId_ShouldShowAccessDenied() throws Exception {
+        // Create the test user as a regular user
+        userJdbcService.createUser("testuser", "Test User", "password");
+        
+        mockMvc.perform(get("/settings/user-form"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("fragments/user-management :: user-form-page"))
+                .andExpect(model().attributeExists("errorMessage"));
     }
 
     @Test
