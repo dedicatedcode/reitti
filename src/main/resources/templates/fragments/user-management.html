@@ -40,6 +40,7 @@
             <tr>
                 <th th:text="#{users.table.username}">Username</th>
                 <th th:text="#{users.table.display.name}">Display Name</th>
+                <th th:text="#{users.table.role}">Role</th>
                 <th th:text="#{users.table.actions}">Actions</th>
             </tr>
             </thead>
@@ -47,9 +48,10 @@
             <tr th:each="user : ${users}" th:attr="data-user-id=${user.id}" class="user-row">
                 <td th:text="${user.username}" th:attr="data-username=${user.username}"></td>
                 <td th:text="${user.displayName}" th:attr="data-display-name=${user.displayName}"></td>
+                <td th:text="${user.role}" th:attr="data-role=${user.role}"></td>
                 <td>
                     <button class="btn"
-                            th:attr="hx-get=@{/settings/user-form(userId=${user.id}, username=${user.username}, displayName=${user.displayName})}"
+                            th:attr="hx-get=@{/settings/user-form(userId=${user.id}, username=${user.username}, displayName=${user.displayName}, role=${user.role})}"
                             hx-target="#user-management"
                             hx-swap="innerHTML"
                             th:text="#{form.update}">Edit
@@ -89,6 +91,15 @@
             <label for="password" th:text="#{users.password.label}">Password</label>
             <input type="password" id="password" name="password" th:required="${userId == null}" th:placeholder="#{users.password.placeholder}" autocomplete="new-password">
             <small th:if="${userId != null}" th:text="#{users.password.keep.current}">Leave empty to keep current password</small>
+        </div>
+        <div class="form-group">
+            <label for="role" th:text="#{users.role.label}">Role</label>
+            <div class="select">
+                <select id="role" name="role" required>
+                    <option value="USER" th:selected="${selectedRole == 'USER' || selectedRole == null}" th:text="#{users.role.user}">User</option>
+                    <option value="ADMIN" th:selected="${selectedRole == 'ADMIN'}" th:text="#{users.role.admin}">Admin</option>
+                </select>
+            </div>
         </div>
         <div class="separator"></div>
         <div class="form-group">

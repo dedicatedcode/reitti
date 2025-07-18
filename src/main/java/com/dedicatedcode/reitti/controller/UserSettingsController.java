@@ -103,6 +103,7 @@ public class UserSettingsController {
     public String createUser(@RequestParam String username,
                              @RequestParam String displayName,
                              @RequestParam String password,
+                             @RequestParam(defaultValue = "USER") String role,
                              @RequestParam String preferred_language,
                              @RequestParam(defaultValue = "METRIC") String unit_system,
                              @RequestParam(defaultValue = "false") boolean preferColoredMap,
@@ -114,9 +115,12 @@ public class UserSettingsController {
                              Model model) {
         try {
             if (StringUtils.hasText(username) && StringUtils.hasText(displayName) && StringUtils.hasText(password)) {
-                userJdbcService.createUser(username, displayName, password);
+                User createdUser = userJdbcService.createUser(username, displayName, password);
                 
-                User createdUser = userJdbcService.findByUsername(username).orElseThrow();
+                // Update the user's role
+                createdUser = createdUser.withRole(role);
+                userJdbcService.updateUser(createdUser.getId(), createdUser.getUsername(), createdUser.getDisplayName(), null);
+                createdUser = userJdbcService.findByUsername(username).orElseThrow();
                 
                 List<ConnectedUserAccount> connectedAccounts = buildConnectedUserAccounts(connectedUserIds, connectedUserColors);
                 
@@ -152,6 +156,7 @@ public class UserSettingsController {
                              @RequestParam String username,
                              @RequestParam String displayName,
                              @RequestParam(required = false) String password,
+                             @RequestParam(defaultValue = "USER") String role,
                              @RequestParam String preferred_language,
                              @RequestParam(defaultValue = "METRIC") String unit_system,
                              @RequestParam(defaultValue = "false") boolean preferColoredMap,
@@ -171,6 +176,11 @@ public class UserSettingsController {
 
         try {
             userJdbcService.updateUser(userId, username, displayName, password);
+            
+            // Update the user's role
+            User updatedUser = userJdbcService.findById(userId).orElseThrow();
+            updatedUser = updatedUser.withRole(role);
+            userJdbcService.updateUser(updatedUser.getId(), updatedUser.getUsername(), updatedUser.getDisplayName(), null);
             
             // Update user settings with selected language and connected accounts
             UserSettings existingSettings = userSettingsJdbcService.findByUserId(userId)
@@ -223,11 +233,13 @@ public class UserSettingsController {
     public String getUserForm(@RequestParam(required = false) Long userId,
                               @RequestParam(required = false) String username,
                               @RequestParam(required = false) String displayName,
+                              @RequestParam(required = false) String role,
                               Model model) {
         if (userId != null) {
             model.addAttribute("userId", userId);
             model.addAttribute("username", username);
             model.addAttribute("displayName", displayName);
+            model.addAttribute("selectedRole", role);
             UserSettings userSettings = userSettingsJdbcService.findByUserId(userId).orElse(UserSettings.defaultSettings(userId));
             model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
             model.addAttribute("selectedUnitSystem", userSettings.getUnitSystem().name());
@@ -237,6 +249,7 @@ public class UserSettingsController {
             model.addAttribute("selectedLanguage", "en");
             model.addAttribute("selectedUnitSystem", "METRIC");
             model.addAttribute("preferColoredMap", false);
+            model.addAttribute("selectedRole", "USER");
         }
         
         // Add available unit systems to model
