@@ -76,37 +76,37 @@
         <div class="settings-content-area">
             <!-- API Tokens Section -->
             <div th:if="${activeSection == 'api-tokens'}" id="api-tokens" class="settings-section active">
-                <div th:replace="fragments/settings :: api-tokens-content"></div>
+                <div th:replace="~{fragments/settings :: api-tokens-content}"></div>
             </div>
 
             <!-- User Management Section -->
             <div th:if="${activeSection == 'user-management'}" id="user-management" class="settings-section active">
-                <div th:replace="fragments/user-management :: ${isAdmin ? 'users-list' : 'user-form-page'}"></div>
+                <div th:replace="~{fragments/settings :: ${isAdmin ? 'users-list' : 'user-form-page'}}"></div>
             </div>
 
             <!-- Places Management Section -->
             <div th:if="${activeSection == 'places-management'}" id="places-management" class="settings-section active">
-                <div th:replace="fragments/settings :: places-content"></div>
+                <div th:replace="~{fragments/settings :: places-content}"></div>
             </div>
 
             <!-- Geocoding Services Section -->
             <div th:if="${activeSection == 'geocode-services'}" id="geocode-services" class="settings-section active">
-                <div th:replace="fragments/settings :: geocode-services-content"></div>
+                <div th:replace="~{fragments/settings :: geocode-services-content}"></div>
             </div>
 
             <!-- Integrations Section -->
             <div th:if="${activeSection == 'integrations'}" id="integrations" class="settings-section active">
-                <div th:replace="fragments/settings :: integrations-content"></div>
+                <div th:replace="~{fragments/settings :: integrations-content}"></div>
             </div>
 
             <!-- Manage Data Section -->
             <div th:if="${dataManagementEnabled && activeSection == 'manage-data'}" id="manage-data" class="settings-section active">
-                <div th:replace="fragments/settings :: manage-data-content"></div>
+                <div th:replace="~{fragments/settings :: manage-data-content}"></div>
             </div>
 
             <!-- Job Status Section -->
             <div th:if="${activeSection == 'job-status'}" id="job-status" class="settings-section active">
-                <div th:replace="fragments/settings :: queue-stats-content"></div>
+                <div th:replace="~{fragments/settings :: queue-stats-content}"></div>
             </div>
 
             <!-- File Upload Section -->
@@ -117,7 +117,7 @@
 
             <!-- About Section -->
             <div th:if="${activeSection == 'about-section'}" id="about-section" class="settings-section active">
-                <div th:replace="fragments/settings :: about-content"></div>
+                <div th:replace="~{fragments/settings :: about-content}"></div>
             </div>
         </div>
     </div>
