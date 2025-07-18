@@ -24,7 +24,7 @@
     <div class="settings-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h3 th:text="#{users.existing}">Existing Users</h3>
-            <button class="btn"
+            <button th:if="${isAdmin}" class="btn"
                     hx-get="/settings/user-form"
                     hx-target="#user-management"
                     hx-swap="innerHTML"
@@ -50,13 +50,13 @@
                 <td th:text="${user.displayName}" th:attr="data-display-name=${user.displayName}"></td>
                 <td th:text="${user.role}" th:attr="data-role=${user.role}"></td>
                 <td>
-                    <button class="btn"
+                    <button th:if="${isAdmin || user.username == currentUsername}" class="btn"
                             th:attr="hx-get=@{/settings/user-form(userId=${user.id}, username=${user.username}, displayName=${user.displayName}, role=${user.role})}"
                             hx-target="#user-management"
                             hx-swap="innerHTML"
                             th:text="#{form.update}">Edit
                     </button>
-                    <button th:if="${user.username != currentUsername}"
+                    <button th:if="${isAdmin && user.username != currentUsername}"
                             class="btn btn-danger"
                             th:attr="hx-post=@{/settings/users/{id}/delete(id=${user.id})}, hx-confirm=#{users.delete.confirm}"
                             hx-target="#user-management"
@@ -92,7 +92,7 @@
             <input type="password" id="password" name="password" th:required="${userId == null}" th:placeholder="#{users.password.placeholder}" autocomplete="new-password">
             <small th:if="${userId != null}" th:text="#{users.password.keep.current}">Leave empty to keep current password</small>
         </div>
-        <div class="form-group">
+        <div th:if="${isAdmin}" class="form-group">
             <label for="role" th:text="#{users.role.label}">Role</label>
             <div class="select">
                 <select id="role" name="role" required>
@@ -101,6 +101,7 @@
                 </select>
             </div>
         </div>
+        <input th:unless="${isAdmin}" type="hidden" name="role" th:value="${selectedRole ?: 'USER'}">
         <div class="separator"></div>
         <div class="form-group">
             <h3 th:text="#{users.avatar.label}">Profile Picture</h3>

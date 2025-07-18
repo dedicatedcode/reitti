@@ -70,9 +70,40 @@ public class UserSettingsController {
     @GetMapping("/users-content")
     public String getUsersContent(Authentication authentication, Model model) {
         String currentUsername = authentication.getName();
+        User currentUser = userJdbcService.findByUsername(currentUsername)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUsername));
+        
+        // If user is not admin, redirect to their own user form
+        if (!"ADMIN".equals(currentUser.getRole())) {
+            model.addAttribute("userId", currentUser.getId());
+            model.addAttribute("username", currentUser.getUsername());
+            model.addAttribute("displayName", currentUser.getDisplayName());
+            model.addAttribute("selectedRole", currentUser.getRole());
+            UserSettings userSettings = userSettingsJdbcService.findByUserId(currentUser.getId()).orElse(UserSettings.defaultSettings(currentUser.getId()));
+            model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
+            model.addAttribute("selectedUnitSystem", userSettings.getUnitSystem().name());
+            model.addAttribute("preferColoredMap", userSettings.isPreferColoredMap());
+            
+            // Add available unit systems to model
+            model.addAttribute("unitSystems", UnitSystem.values());
+            
+            // Check if user has avatar
+            boolean hasAvatar = this.avatarService.getInfo(currentUser.getId()).isPresent();
+            model.addAttribute("hasAvatar", hasAvatar);
+            
+            // Add default avatars to model
+            model.addAttribute("defaultAvatars", DEFAULT_AVATARS);
+            
+            // Add admin status to model
+            model.addAttribute("isAdmin", false);
+            
+            return "fragments/user-management :: user-form-page";
+        }
+        
         List<User> users = userJdbcService.getAllUsers();
         model.addAttribute("users", users);
         model.addAttribute("currentUsername", currentUsername);
+        model.addAttribute("isAdmin", true);
         return "fragments/user-management :: users-list";
     }
 
@@ -81,6 +112,12 @@ public class UserSettingsController {
         String currentUsername = authentication.getName();
         User currentUser = userJdbcService.findByUsername(currentUsername)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUsername));
+
+        // Only admins can delete users
+        if (!"ADMIN".equals(currentUser.getRole())) {
+            model.addAttribute("errorMessage", getMessage("message.error.access.denied"));
+            return getUsersContent(authentication, model);
+        }
 
         // Prevent self-deletion
         if (currentUser.getId().equals(userId)) {
@@ -98,6 +135,7 @@ public class UserSettingsController {
         List<User> users = userJdbcService.getAllUsers();
         model.addAttribute("users", users);
         model.addAttribute("currentUsername", authentication.getName());
+        model.addAttribute("isAdmin", true);
 
         // Return the users-list fragment
         return "fragments/user-management :: users-list";
@@ -117,6 +155,16 @@ public class UserSettingsController {
                              @RequestParam(required = false) String defaultAvatar,
                              Authentication authentication,
                              Model model) {
+        
+        String currentUsername = authentication.getName();
+        User currentUser = userJdbcService.findByUsername(currentUsername)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUsername));
+
+        // Only admins can create users
+        if (!"ADMIN".equals(currentUser.getRole())) {
+            model.addAttribute("errorMessage", getMessage("message.error.access.denied"));
+            return getUsersContent(authentication, model);
+        }
         try {
             if (StringUtils.hasText(username) && StringUtils.hasText(displayName) && StringUtils.hasText(password)) {
                 User createdUser = userJdbcService.createUser(username, displayName, password);
@@ -151,6 +199,7 @@ public class UserSettingsController {
         List<User> users = userJdbcService.getAllUsers();
         model.addAttribute("users", users);
         model.addAttribute("currentUsername", authentication.getName());
+        model.addAttribute("isAdmin", true);
 
         // Return the users-list fragment
         return "fragments/user-management :: users-list";
@@ -175,9 +224,17 @@ public class UserSettingsController {
                              HttpServletResponse response,
                              Model model) {
         String currentUsername = authentication.getName();
-        User currentUser = userJdbcService.findById(userId)
+        User authenticatedUser = userJdbcService.findByUsername(currentUsername)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUsername));
+        User userToUpdate = userJdbcService.findById(userId)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + userId));
-        boolean isCurrentUser = currentUser.getUsername().equals(currentUsername);
+        boolean isCurrentUser = userToUpdate.getUsername().equals(currentUsername);
+
+        // Only admins can edit other users, users can only edit themselves
+        if (!isCurrentUser && !"ADMIN".equals(authenticatedUser.getRole())) {
+            model.addAttribute("errorMessage", getMessage("message.error.access.denied"));
+            return getUsersContent(authentication, model);
+        }
 
         try {
             User existingUser = userJdbcService.findById(userId).orElseThrow();
@@ -229,13 +286,17 @@ public class UserSettingsController {
             model.addAttribute("errorMessage", getMessage("message.error.user.update", e.getMessage()));
         }
 
-        // Get updated user list and add to model
-        List<User> users = userJdbcService.getAllUsers();
-        model.addAttribute("users", users);
-        model.addAttribute("currentUsername", isCurrentUser ? username : currentUsername);
-
-        // Return the users-list fragment
-        return "fragments/user-management :: users-list";
+        // If admin, return to user list; if regular user, stay on their form
+        if ("ADMIN".equals(authenticatedUser.getRole())) {
+            List<User> users = userJdbcService.getAllUsers();
+            model.addAttribute("users", users);
+            model.addAttribute("currentUsername", isCurrentUser ? username : currentUsername);
+            model.addAttribute("isAdmin", true);
+            return "fragments/user-management :: users-list";
+        } else {
+            // For regular users, return their updated form
+            return getUsersContent(authentication, model);
+        }
     }
 
     @GetMapping("/user-form")
@@ -243,7 +304,23 @@ public class UserSettingsController {
                               @RequestParam(required = false) String username,
                               @RequestParam(required = false) String displayName,
                               @RequestParam(required = false) String role,
+                              Authentication authentication,
                               Model model) {
+        
+        String currentUsername = authentication.getName();
+        User currentUser = userJdbcService.findByUsername(currentUsername)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUsername));
+
+        // Only admins can access user forms for other users or create new users
+        if (userId != null && !userId.equals(currentUser.getId()) && !"ADMIN".equals(currentUser.getRole())) {
+            model.addAttribute("errorMessage", getMessage("message.error.access.denied"));
+            return getUsersContent(authentication, model);
+        }
+        
+        if (userId == null && !"ADMIN".equals(currentUser.getRole())) {
+            model.addAttribute("errorMessage", getMessage("message.error.access.denied"));
+            return getUsersContent(authentication, model);
+        }
         if (userId != null) {
             model.addAttribute("userId", userId);
             model.addAttribute("username", username);
@@ -272,6 +349,9 @@ public class UserSettingsController {
         
         // Add default avatars to model
         model.addAttribute("defaultAvatars", DEFAULT_AVATARS);
+        
+        // Add admin status to model
+        model.addAttribute("isAdmin", "ADMIN".equals(currentUser.getRole()));
         
         return "fragments/user-management :: user-form-page";
     }
