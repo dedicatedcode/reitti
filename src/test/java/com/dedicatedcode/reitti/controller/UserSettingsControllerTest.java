@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.IntegrationTest;
+import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.model.UserSettings;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
@@ -62,8 +63,13 @@ public class UserSettingsControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testuser")
-    void createUser_ShouldCreateNewUser() throws Exception {
+    @WithMockUser(username = "admin")
+    void createUser_AsAdmin_ShouldCreateNewUser() throws Exception {
+        // Create the admin user
+        User adminUser = userJdbcService.createUser("admin", "Admin User", "password");
+        adminUser = adminUser.withRole(Role.ADMIN);
+        userJdbcService.updateUser(adminUser);
+        
         String newUsername = randomUsername();
         String newDisplayName = "New User";
         String newPassword = "password123";
@@ -76,40 +82,82 @@ public class UserSettingsControllerTest {
                         .param("username", newUsername)
                         .param("displayName", newDisplayName)
                         .param("password", newPassword)
+                        .param("role", "USER")
                         .param("preferred_language", "en")
                         .param("unit_system", "METRIC")
                         .with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/user-management :: users-content"))
+                .andExpect(view().name("fragments/user-management :: users-list"))
                 .andExpect(model().attributeExists("successMessage"))
                 .andExpect(model().attributeExists("users"))
-                .andExpect(model().attributeExists("currentUsername"));
+                .andExpect(model().attributeExists("currentUsername"))
+                .andExpect(model().attribute("isAdmin", true));
 
         // Verify user was created in database
         Optional<User> userAfter = userJdbcService.findByUsername(newUsername);
         assertThat(userAfter).isPresent();
         assertThat(userAfter.get().getUsername()).isEqualTo(newUsername);
         assertThat(userAfter.get().getDisplayName()).isEqualTo(newDisplayName);
+        assertThat(userAfter.get().getRole()).isEqualTo(Role.USER);
     }
 
     @Test
     @WithMockUser(username = "testuser")
-    void createUser_WithInvalidData_ShouldShowError() throws Exception {
+    void createUser_AsRegularUser_ShouldShowAccessDenied() throws Exception {
+        // Create the test user as a regular user
+        userJdbcService.createUser("testuser", "Test User", "password");
+        
+        String newUsername = randomUsername();
+        String newDisplayName = "New User";
+        String newPassword = "password123";
+
         mockMvc.perform(post("/settings/users")
-                        .param("username", "")
-                        .param("displayName", "")
-                        .param("password", "")
+                        .param("username", newUsername)
+                        .param("displayName", newDisplayName)
+                        .param("password", newPassword)
+                        .param("role", "USER")
                         .param("preferred_language", "en")
                         .param("unit_system", "METRIC")
                         .with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/user-management :: users-content"))
+                .andExpect(view().name("fragments/user-management :: user-form-page"))
                 .andExpect(model().attributeExists("errorMessage"));
+
+        // Verify user was NOT created in database
+        Optional<User> userAfter = userJdbcService.findByUsername(newUsername);
+        assertThat(userAfter).isEmpty();
     }
 
     @Test
-    @WithMockUser(username = "testuser")
-    void updateUser_ShouldUpdateExistingUser() throws Exception {
+    @WithMockUser(username = "admin")
+    void createUser_WithInvalidData_ShouldShowError() throws Exception {
+        // Create the admin user
+        User adminUser = userJdbcService.createUser("admin", "Admin User", "password");
+        adminUser = adminUser.withRole(Role.ADMIN);
+        userJdbcService.updateUser(adminUser);
+        
+        mockMvc.perform(post("/settings/users")
+                        .param("username", "")
+                        .param("displayName", "")
+                        .param("password", "")
+                        .param("role", "USER")
+                        .param("preferred_language", "en")
+                        .param("unit_system", "METRIC")
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(view().name("fragments/user-management :: users-list"))
+                .andExpect(model().attributeExists("errorMessage"))
+                .andExpect(model().attribute("isAdmin", true));
+    }
+
+    @Test
+    @WithMockUser(username = "admin")
+    void updateUser_AsAdmin_ShouldUpdateExistingUser() throws Exception {
+        // Create the admin user
+        User adminUser = userJdbcService.createUser("admin", "Admin User", "password");
+        adminUser = adminUser.withRole(Role.ADMIN);
+        userJdbcService.updateUser(adminUser);
+        
         // Create a user first
         String originalUsername = randomUsername();
         String originalDisplayName = "Update User";
@@ -128,23 +176,31 @@ public class UserSettingsControllerTest {
                         .param("username", updatedUsername)
                         .param("displayName", updatedDisplayName)
                         .param("password", updatedPassword)
+                        .param("role", "ADMIN")
                         .param("preferred_language", "en")
                         .param("unit_system", "METRIC")
                         .with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/user-management :: users-content"))
+                .andExpect(view().name("fragments/user-management :: users-list"))
                 .andExpect(model().attributeExists("successMessage"))
-                .andExpect(model().attributeExists("users"));
+                .andExpect(model().attributeExists("users"))
+                .andExpect(model().attribute("isAdmin", true));
 
         // Verify user was updated in database
         User updatedUser = userJdbcService.findById(userId).orElseThrow();
         assertThat(updatedUser.getUsername()).isEqualTo(updatedUsername);
         assertThat(updatedUser.getDisplayName()).isEqualTo(updatedDisplayName);
+        assertThat(updatedUser.getRole()).isEqualTo(Role.ADMIN);
     }
 
     @Test
     @WithMockUser(username = "admin")
-    void deleteUser_ShouldDeleteUser() throws Exception {
+    void deleteUser_AsAdmin_ShouldDeleteUser() throws Exception {
+        // Create the admin user
+        User adminUser = userJdbcService.createUser("admin", "Admin User", "password");
+        adminUser = adminUser.withRole(Role.ADMIN);
+        userJdbcService.updateUser(adminUser);
+        
         // Create a user first
         String usernameToDelete = randomUsername();
         String displayName = "Delete User";
@@ -160,12 +216,38 @@ public class UserSettingsControllerTest {
         mockMvc.perform(post("/settings/users/{userId}/delete", userId)
                         .with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/user-management :: users-content"))
+                .andExpect(view().name("fragments/user-management :: users-list"))
                 .andExpect(model().attributeExists("successMessage"))
-                .andExpect(model().attributeExists("users"));
+                .andExpect(model().attributeExists("users"))
+                .andExpect(model().attribute("isAdmin", true));
 
         // Verify user was deleted from database
         assertThat(userJdbcService.findById(userId)).isEmpty();
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void deleteUser_AsRegularUser_ShouldShowAccessDenied() throws Exception {
+        // Create the test user as a regular user
+        userJdbcService.createUser("testuser", "Test User", "password");
+        
+        // Create another user to try to delete
+        String usernameToDelete = randomUsername();
+        String displayName = "Delete User";
+        String password = "password123";
+        userJdbcService.createUser(usernameToDelete, displayName, password);
+
+        User createdUser = userJdbcService.findByUsername(usernameToDelete).orElseThrow();
+        Long userId = createdUser.getId();
+
+        mockMvc.perform(post("/settings/users/{userId}/delete", userId)
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(view().name("fragments/user-management :: user-form-page"))
+                .andExpect(model().attributeExists("errorMessage"));
+
+        // Verify user was NOT deleted from database
+        assertThat(userJdbcService.findById(userId)).isPresent();
     }
 
     @Test
@@ -183,9 +265,10 @@ public class UserSettingsControllerTest {
                         .with(csrf())
                         .with(user(currentUsername)))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/user-management :: users-content"))
+                .andExpect(view().name("fragments/user-management :: users-list"))
                 .andExpect(model().attributeExists("errorMessage"))
-                .andExpect(model().attributeExists("users"));
+                .andExpect(model().attributeExists("users"))
+                .andExpect(model().attribute("isAdmin", true));
 
         // Verify user was NOT deleted from database
         assertThat(userJdbcService.findById(userId)).isPresent();
@@ -203,23 +286,32 @@ public class UserSettingsControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testuser")
-    void getUserForm_WithUserId_ShouldReturnPopulatedForm() throws Exception {
+    @WithMockUser(username = "admin")
+    void getUserForm_AsAdmin_WithUserId_ShouldReturnPopulatedForm() throws Exception {
+        // Create the admin user
+        User adminUser = userJdbcService.createUser("admin", "Admin User", "password");
+        adminUser = adminUser.withRole(Role.ADMIN);
+        userJdbcService.updateUser(adminUser);
+        
         Long userId = 1L;
         String username = "formuser";
         String displayName = "Form User";
+        String role = "USER";
 
         mockMvc.perform(get("/settings/user-form")
                         .param("userId", userId.toString())
                         .param("username", username)
-                        .param("displayName", displayName))
+                        .param("displayName", displayName)
+                        .param("role", role))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/user-management :: user-form"))
+                .andExpect(view().name("fragments/user-management :: user-form-page"))
                 .andExpect(model().attribute("userId", userId))
                 .andExpect(model().attribute("username", username))
                 .andExpect(model().attribute("displayName", displayName))
+                .andExpect(model().attribute("selectedRole", role))
                 .andExpect(model().attributeExists("unitSystems"))
-                .andExpect(model().attributeExists("selectedUnitSystem"));
+                .andExpect(model().attributeExists("selectedUnitSystem"))
+                .andExpect(model().attribute("isAdmin", true));
     }
 
     @Test
@@ -240,12 +332,13 @@ public class UserSettingsControllerTest {
                         .param("username", newUsername)
                         .param("displayName", displayName)
                         .param("password", password)
+                        .param("role", "USER")
                         .param("preferred_language", "en")
                         .param("unit_system", "METRIC")
                         .with(csrf())
                         .with(user(currentUsername)))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/user-management :: users-content"))
+                .andExpect(view().name("fragments/user-management :: user-form-page"))
                 .andExpect(model().attributeExists("successMessage"))
                 .andExpect(model().attribute("requireRelogin", true))
                 .andExpect(model().attribute("newUsername", newUsername));
@@ -256,8 +349,13 @@ public class UserSettingsControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testuser")
+    @WithMockUser(username = "admin")
     void createUser_WithConnectedAccounts_ShouldCreateUserWithConnectedAccounts() throws Exception {
+        // Create the admin user
+        User adminUser = userJdbcService.createUser("admin", "Admin User", "password");
+        adminUser = adminUser.withRole(Role.ADMIN);
+        userJdbcService.updateUser(adminUser);
+        
         // Create a user to connect to
         String connectedUsername = randomUsername();
         userJdbcService.createUser(connectedUsername, "Connected User", "password123");
@@ -271,14 +369,16 @@ public class UserSettingsControllerTest {
                         .param("username", newUsername)
                         .param("displayName", newDisplayName)
                         .param("password", newPassword)
+                        .param("role", "USER")
                         .param("preferred_language", "en")
                         .param("unit_system", "METRIC")
                         .param("connectedUserIds", connectedUser.getId().toString())
                         .param("connectedUserColors", "#FF0000")
                         .with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/user-management :: users-content"))
-                .andExpect(model().attributeExists("successMessage"));
+                .andExpect(view().name("fragments/user-management :: users-list"))
+                .andExpect(model().attributeExists("successMessage"))
+                .andExpect(model().attribute("isAdmin", true));
 
         // Verify user was created with connected accounts
         User createdUser = userJdbcService.findByUsername(newUsername).orElseThrow();
@@ -290,7 +390,6 @@ public class UserSettingsControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testuser")
     void updateUser_WithConnectedAccounts_ShouldUpdateConnectedAccounts() throws Exception {
         // Create users
         String originalUsername = randomUsername();
@@ -305,13 +404,15 @@ public class UserSettingsControllerTest {
                         .param("userId", originalUser.getId().toString())
                         .param("username", originalUsername)
                         .param("displayName", "Updated User")
+                        .param("role", "USER")
                         .param("preferred_language", "en")
                         .param("unit_system", "METRIC")
                         .param("connectedUserIds", connectedUser.getId().toString())
                         .param("connectedUserColors", "#00FF00")
-                        .with(csrf()))
+                        .with(csrf())
+                        .with(user(originalUsername)))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/user-management :: users-content"))
+                .andExpect(view().name("fragments/user-management :: user-form-page"))
                 .andExpect(model().attributeExists("successMessage"));
 
         // Verify connected accounts were updated
@@ -323,8 +424,13 @@ public class UserSettingsControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testuser")
+    @WithMockUser(username = "admin")
     void createUser_WithMismatchedConnectedAccountsData_ShouldIgnoreConnectedAccounts() throws Exception {
+        // Create the admin user
+        User adminUser = userJdbcService.createUser("admin", "Admin User", "password");
+        adminUser = adminUser.withRole(Role.ADMIN);
+        userJdbcService.updateUser(adminUser);
+        
         String newUsername = randomUsername();
         String newDisplayName = "New User";
         String newPassword = "password123";
@@ -334,14 +440,16 @@ public class UserSettingsControllerTest {
                         .param("username", newUsername)
                         .param("displayName", newDisplayName)
                         .param("password", newPassword)
+                        .param("role", "USER")
                         .param("preferred_language", "en")
                         .param("unit_system", "METRIC")
                         .param("connectedUserIds", "1", "2")
                         .param("connectedUserColors", "#FF0000")
                         .with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/user-management :: users-content"))
-                .andExpect(model().attributeExists("successMessage"));
+                .andExpect(view().name("fragments/user-management :: users-list"))
+                .andExpect(model().attributeExists("successMessage"))
+                .andExpect(model().attribute("isAdmin", true));
 
         // Verify user was created but with no connected accounts due to mismatched data
         User createdUser = userJdbcService.findByUsername(newUsername).orElseThrow();
@@ -351,13 +459,20 @@ public class UserSettingsControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testuser")
-    void getUserForm_WithoutUserId_ShouldIncludeAvailableUsers() throws Exception {
+    @WithMockUser(username = "admin")
+    void getUserForm_AsAdmin_WithoutUserId_ShouldIncludeAvailableUsers() throws Exception {
+        // Create the admin user
+        User adminUser = userJdbcService.createUser("admin", "Admin User", "password");
+        adminUser = adminUser.withRole(Role.ADMIN);
+        userJdbcService.updateUser(adminUser);
+        
         mockMvc.perform(get("/settings/user-form"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("fragments/user-management :: user-form"))
+                .andExpect(view().name("fragments/user-management :: user-form-page"))
                 .andExpect(model().attributeExists("unitSystems"))
                 .andExpect(model().attribute("selectedLanguage", "en"))
-                .andExpect(model().attribute("selectedUnitSystem", "METRIC"));
+                .andExpect(model().attribute("selectedUnitSystem", "METRIC"))
+                .andExpect(model().attribute("selectedRole", "USER"))
+                .andExpect(model().attribute("isAdmin", true));
     }
 }
