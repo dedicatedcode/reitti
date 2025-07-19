@@ -143,18 +143,21 @@
         // Initialize the map
         const map = L.map('map', {zoomControl: false, attributionControl: false}).setView([60.1699, 24.9384], 12); // Helsinki coordinates as default
 
+        const tilesUrl = window.userSettings.tiles.service;
+        const tilesAttribution = window.userSettings.tiles.attribution;
+
         if (window.userSettings.preferColoredMap) {
-            L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+            L.tileLayer(tilesUrl, {
                 maxZoom: 19,
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank">Humanitarian OpenStreetMap Team</a> hosted by <a href="https://openstreetmap.fr/" target="_blank">OpenStreetMap France</a>'
+                attribution:  tilesAttribution
             }).addTo(map);
         } else {
-            L.tileLayer.grayscale('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+            L.tileLayer.grayscale(tilesUrl, {
                 maxZoom: 19,
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank">Humanitarian OpenStreetMap Team</a> hosted by <a href="https://openstreetmap.fr/" target="_blank">OpenStreetMap France</a>'
+                attribution: tilesAttribution
             }).addTo(map);
         }
-        L.control.attribution({position: 'topright'}).addAttribution('&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank">Humanitarian OpenStreetMap Team</a> hosted by <a href="https://openstreetmap.fr/" target="_blank">OpenStreetMap France</a>')
+        L.control.attribution({position: 'topright'}).addAttribution(tilesAttribution)
             .addTo(map)
 
         // Initialize photo client
