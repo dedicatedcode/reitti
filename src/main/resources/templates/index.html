@@ -146,17 +146,11 @@
         const tilesUrl = window.userSettings.tiles.service;
         const tilesAttribution = window.userSettings.tiles.attribution;
 
-        if (window.userSettings.preferColoredMap) {
-            L.tileLayer(tilesUrl, {
-                maxZoom: 19,
-                attribution:  tilesAttribution
-            }).addTo(map);
-        } else {
-            L.tileLayer.grayscale(tilesUrl, {
-                maxZoom: 19,
-                attribution: tilesAttribution
-            }).addTo(map);
-        }
+        const tileLayer = window.userSettings.preferColoredMap ? L.tileLayer : L.tileLayer.greyscale;
+        tileLayer(tilesUrl, {
+            maxZoom: 19,
+            attribution:  tilesAttribution
+        }).addTo(map);
         L.control.attribution({position: 'topright'}).addAttribution(tilesAttribution)
             .addTo(map)
 

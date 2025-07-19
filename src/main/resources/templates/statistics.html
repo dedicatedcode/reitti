@@ -61,7 +61,11 @@
                 keyboard: false
             });
 
-            L.tileLayer.grayscale('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            const tilesUrl = window.userSettings.tiles.service;
+            const tilesAttribution = window.userSettings.tiles.attribution;
+
+            const tileLayer = window.userSettings.preferColoredMap ? L.tileLayer : L.tileLayer.greyscale;
+            tileLayer(tilesUrl, {
                 attribution: ''
             }).addTo(map);
 

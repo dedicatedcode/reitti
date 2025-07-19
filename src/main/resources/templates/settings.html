@@ -164,7 +164,8 @@
                 const tilesUrl = window.userSettings.tiles.service;
                 const tilesAttribution = window.userSettings.tiles.attribution;
 
-                L.tileLayer.grayscale(tilesUrl, {
+                const tileLayer = window.userSettings.preferColoredMap ? L.tileLayer : L.tileLayer.greyscale;
+                tileLayer(tilesUrl, {
                     maxZoom: 19,
                     attribution: tilesAttribution
                 }).addTo(placeMap);
