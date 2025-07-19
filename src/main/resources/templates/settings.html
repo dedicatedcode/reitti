@@ -81,7 +81,7 @@
 
             <!-- User Management Section -->
             <div th:if="${activeSection == 'user-management'}" id="user-management" class="settings-section active">
-                <div th:replace="~{fragments/settings :: ${isAdmin ? 'users-list' : 'user-form-page'}}"></div>
+                <div th:replace="~{fragments/user-management :: ${isAdmin ? 'users-list' : 'user-form-page'}}"></div>
             </div>
 
             <!-- Places Management Section -->
