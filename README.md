@@ -189,6 +189,8 @@ The included `docker-compose.yml` provides a complete setup with:
 | `PHOTON_BASE_URL`   | Base URL for Photon geocoding service                                                                                                                                           |          |
 | `PROCESSING_WAIT_TIME` | How many seconds to wait after the last data input before starting to process all unprocessed data. (⚠️ This needs to be lower than your integrated app reports data in Reitti) | 15 |
 | `DANGEROUS_LIFE`    | Enables data management features that can reset/delete all database data (⚠️ USE WITH CAUTION)                                                                                  | false |
+| `CUSTOM_TILES_SERVICE` | Custom tile service URL template (e.g., `https://tiles.example.com/{z}/{x}/{y}.png`)                                                                                        |          |
+| `CUSTOM_TILES_ATTRIBUTION` | Custom attribution text for the tile service                                                                                                                                |          |
 | `SERVER_PORT`       | Application server port                                                                                                                                                         | 8080     |
 | `APP_UID`           | User ID to run the application as                                                                                                                                               | 1000     |
 | `APP_GID`           | Group ID to run the application as                                                                                                                                              | 1000     |
