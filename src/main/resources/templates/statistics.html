@@ -62,9 +62,8 @@
             });
 
             const tilesUrl = window.userSettings.tiles.service;
-            const tilesAttribution = window.userSettings.tiles.attribution;
 
-            const tileLayer = window.userSettings.preferColoredMap ? L.tileLayer : L.tileLayer.greyscale;
+            const tileLayer = window.userSettings.preferColoredMap ? L.tileLayer : L.tileLayer.grayscale;
             tileLayer(tilesUrl, {
                 attribution: ''
             }).addTo(map);
