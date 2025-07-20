@@ -1,0 +1,2 @@
+ALTER TABLE user_settings ADD COLUMN home_lat DECIMAL NULL;
+ALTER TABLE user_settings ADD COLUMN home_lng DECIMAL NULL;

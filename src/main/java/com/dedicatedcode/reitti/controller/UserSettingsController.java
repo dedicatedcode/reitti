@@ -92,6 +92,8 @@ public class UserSettingsController {
             model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
             model.addAttribute("selectedUnitSystem", userSettings.getUnitSystem().name());
             model.addAttribute("preferColoredMap", userSettings.isPreferColoredMap());
+            model.addAttribute("homeLatitude", userSettings.getHomeLatitude());
+            model.addAttribute("homeLongitude", userSettings.getHomeLongitude());
 
             // Add available unit systems to model
             model.addAttribute("unitSystems", UnitSystem.values());
@@ -158,6 +160,8 @@ public class UserSettingsController {
                              @RequestParam String preferred_language,
                              @RequestParam(defaultValue = "METRIC") String unit_system,
                              @RequestParam(defaultValue = "false") boolean preferColoredMap,
+                             @RequestParam(required = false) Double homeLatitude,
+                             @RequestParam(required = false) Double homeLongitude,
                              @RequestParam(required = false) List<Long> connectedUserIds,
                              @RequestParam(required = false) List<String> connectedUserColors,
                              @RequestParam(required = false) MultipartFile avatar,
@@ -187,7 +191,7 @@ public class UserSettingsController {
                 List<ConnectedUserAccount> connectedAccounts = buildConnectedUserAccounts(connectedUserIds, connectedUserColors);
                 
                 UnitSystem unitSystem = UnitSystem.valueOf(unit_system);
-                UserSettings userSettings = new UserSettings(createdUser.getId(), preferColoredMap, preferred_language, connectedAccounts, unitSystem);
+                UserSettings userSettings = new UserSettings(createdUser.getId(), preferColoredMap, preferred_language, connectedAccounts, unitSystem, homeLatitude, homeLongitude);
                 userSettingsJdbcService.save(userSettings);
                 
                 // Handle avatar - prioritize custom upload over default
@@ -223,6 +227,8 @@ public class UserSettingsController {
                              @RequestParam String preferred_language,
                              @RequestParam(defaultValue = "METRIC") String unit_system,
                              @RequestParam(defaultValue = "false") boolean preferColoredMap,
+                             @RequestParam(required = false) Double homeLatitude,
+                             @RequestParam(required = false) Double homeLongitude,
                              @RequestParam(required = false) List<Long> connectedUserIds,
                              @RequestParam(required = false) List<String> connectedUserColors,
                              @RequestParam(required = false) MultipartFile avatar,
@@ -265,7 +271,7 @@ public class UserSettingsController {
             List<ConnectedUserAccount> connectedAccounts = buildConnectedUserAccounts(connectedUserIds, connectedUserColors);
             
             UnitSystem unitSystem = UnitSystem.valueOf(unit_system);
-            UserSettings updatedSettings = new UserSettings(userId, preferColoredMap, preferred_language, connectedAccounts, unitSystem, existingSettings.getVersion());
+            UserSettings updatedSettings = new UserSettings(userId, preferColoredMap, preferred_language, connectedAccounts, unitSystem, homeLatitude, homeLongitude, existingSettings.getVersion());
             userSettingsJdbcService.save(updatedSettings);
             
             // Handle avatar operations
@@ -339,12 +345,16 @@ public class UserSettingsController {
             model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
             model.addAttribute("selectedUnitSystem", userSettings.getUnitSystem().name());
             model.addAttribute("preferColoredMap", userSettings.isPreferColoredMap());
+            model.addAttribute("homeLatitude", userSettings.getHomeLatitude());
+            model.addAttribute("homeLongitude", userSettings.getHomeLongitude());
         } else {
             // Default values for new users
             model.addAttribute("selectedLanguage", "en");
             model.addAttribute("selectedUnitSystem", "METRIC");
             model.addAttribute("preferColoredMap", false);
             model.addAttribute("selectedRole", "USER");
+            model.addAttribute("homeLatitude", null);
+            model.addAttribute("homeLongitude", null);
         }
         
         // Add available unit systems to model

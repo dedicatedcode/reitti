@@ -65,7 +65,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void save_WhenCreatingNewUserSettings_ShouldInsertAndReturnWithId() {
         UserSettings newSettings = new UserSettings(testUserId1, true, "fi", List.of(
-                testConnection2, testConnection3), UnitSystem.METRIC);
+                testConnection2, testConnection3), UnitSystem.METRIC, 60.1699, 24.9384);
         
         UserSettings savedSettings = userSettingsJdbcService.save(newSettings);
         
@@ -73,13 +73,15 @@ public class UserSettingsJdbcServiceTest {
         assertThat(savedSettings.isPreferColoredMap()).isTrue();
         assertThat(savedSettings.getSelectedLanguage()).isEqualTo("fi");
         assertThat(savedSettings.getConnectedUserAccounts()).containsExactlyInAnyOrder(testConnection2, testConnection3);
+        assertThat(savedSettings.getHomeLatitude()).isEqualTo(60.1699);
+        assertThat(savedSettings.getHomeLongitude()).isEqualTo(24.9384);
         assertThat(savedSettings.getVersion()).isEqualTo(1L);
     }
 
     @Test
     void save_WhenUpdatingExistingUserSettings_ShouldUpdateAndIncrementVersion() {
         // Create initial settings
-        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testConnection2, testConnection3), UnitSystem.METRIC);
+        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testConnection2, testConnection3), UnitSystem.METRIC, null, null);
         UserSettings savedSettings = userSettingsJdbcService.save(initialSettings);
         
         // Update settings
@@ -89,6 +91,8 @@ public class UserSettingsJdbcServiceTest {
                 "de",
                 List.of(testConnection2, testConnection3),
                 UnitSystem.IMPERIAL,
+                52.5200,
+                13.4050,
                 savedSettings.getVersion()
         );
         
@@ -98,13 +102,16 @@ public class UserSettingsJdbcServiceTest {
         assertThat(result.isPreferColoredMap()).isTrue();
         assertThat(result.getSelectedLanguage()).isEqualTo("de");
         assertThat(result.getConnectedUserAccounts()).containsExactlyInAnyOrder(testConnection2, testConnection3);
+        assertThat(result.getUnitSystem()).isEqualTo(UnitSystem.IMPERIAL);
+        assertThat(result.getHomeLatitude()).isEqualTo(52.5200);
+        assertThat(result.getHomeLongitude()).isEqualTo(13.4050);
         assertThat(result.getVersion()).isEqualTo(2L);
     }
 
     @Test
     void findByUserId_WhenUserSettingsExist_ShouldReturnSettings() {
         // Create settings
-        UserSettings newSettings = new UserSettings(testUserId1, true, "fr", List.of(testConnection2), UnitSystem.METRIC);
+        UserSettings newSettings = new UserSettings(testUserId1, true, "fr", List.of(testConnection2), UnitSystem.METRIC, 48.8566, 2.3522);
         userSettingsJdbcService.save(newSettings);
         
         Optional<UserSettings> result = userSettingsJdbcService.findByUserId(testUserId1);
@@ -114,6 +121,8 @@ public class UserSettingsJdbcServiceTest {
         assertThat(result.get().isPreferColoredMap()).isTrue();
         assertThat(result.get().getSelectedLanguage()).isEqualTo("fr");
         assertThat(result.get().getConnectedUserAccounts()).containsExactly(testConnection2);
+        assertThat(result.get().getHomeLatitude()).isEqualTo(48.8566);
+        assertThat(result.get().getHomeLongitude()).isEqualTo(2.3522);
     }
 
     @Test
@@ -124,6 +133,9 @@ public class UserSettingsJdbcServiceTest {
         assertThat(result.isPreferColoredMap()).isFalse();
         assertThat(result.getSelectedLanguage()).isEqualTo("en");
         assertThat(result.getConnectedUserAccounts()).isEmpty();
+        assertThat(result.getUnitSystem()).isEqualTo(UnitSystem.METRIC);
+        assertThat(result.getHomeLatitude()).isNull();
+        assertThat(result.getHomeLongitude()).isNull();
         assertThat(result.getVersion()).isEqualTo(1L);
         
         // Verify it was actually saved to database
@@ -134,7 +146,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void getOrCreateDefaultSettings_WhenUserSettingsExist_ShouldReturnExisting() {
         // Create existing settings
-        UserSettings existingSettings = new UserSettings(testUserId1, true, "fi", List.of(testConnection2), UnitSystem.METRIC);
+        UserSettings existingSettings = new UserSettings(testUserId1, true, "fi", List.of(testConnection2), UnitSystem.METRIC, 60.1699, 24.9384);
         userSettingsJdbcService.save(existingSettings);
         
         UserSettings result = userSettingsJdbcService.getOrCreateDefaultSettings(testUserId1);
@@ -142,12 +154,14 @@ public class UserSettingsJdbcServiceTest {
         assertThat(result.isPreferColoredMap()).isTrue();
         assertThat(result.getSelectedLanguage()).isEqualTo("fi");
         assertThat(result.getConnectedUserAccounts()).containsExactly(testConnection2);
+        assertThat(result.getHomeLatitude()).isEqualTo(60.1699);
+        assertThat(result.getHomeLongitude()).isEqualTo(24.9384);
     }
 
     @Test
     void deleteByUserId_ShouldRemoveUserSettingsAndConnections() {
         // Create settings with connections
-        UserSettings settings = new UserSettings(testUserId1, true, "de", List.of(testConnection2, testConnection3), UnitSystem.METRIC);
+        UserSettings settings = new UserSettings(testUserId1, true, "de", List.of(testConnection2, testConnection3), UnitSystem.METRIC, 52.5200, 13.4050);
         userSettingsJdbcService.save(settings);
         
         // Verify settings exist
@@ -173,7 +187,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void userConnections_ShouldBeLoadedCorrectly() {
         // Create settings (this will load connections)
-        UserSettings settings = new UserSettings(testUserId1, false, "en", List.of(testConnection2, testConnection3), UnitSystem.METRIC);
+        UserSettings settings = new UserSettings(testUserId1, false, "en", List.of(testConnection2, testConnection3), UnitSystem.METRIC, null, null);
         UserSettings saved = userSettingsJdbcService.save(settings);
         assertThat(saved.getConnectedUserAccounts()).containsExactlyInAnyOrder(testConnection2, testConnection3);
 
@@ -187,7 +201,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void save_ShouldReplaceAllUserConnections() {
         // Create initial connections
-        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testConnection2), UnitSystem.METRIC);
+        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testConnection2), UnitSystem.METRIC, null, null);
         UserSettings saved = userSettingsJdbcService.save(initialSettings);
         
         // Verify initial connection
@@ -205,6 +219,8 @@ public class UserSettingsJdbcServiceTest {
                 "en",
                 List.of(testConnection3),
                 UnitSystem.METRIC,
+                null,
+                null,
                 saved.getVersion()
         );
         userSettingsJdbcService.save(updatedSettings);
@@ -229,7 +245,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void save_WithEmptyConnections_ShouldRemoveAllConnections() {
         // Create initial connections
-        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testConnection2, testConnection3), UnitSystem.METRIC);
+        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testConnection2, testConnection3), UnitSystem.METRIC, null, null);
         UserSettings saved = userSettingsJdbcService.save(initialSettings);
         
         // Update with empty connections
@@ -239,6 +255,8 @@ public class UserSettingsJdbcServiceTest {
                 "en",
                 List.of(),
                 UnitSystem.METRIC,
+                null,
+                null,
                 saved.getVersion()
         );
         userSettingsJdbcService.save(updatedSettings);
@@ -260,6 +278,9 @@ public class UserSettingsJdbcServiceTest {
         assertThat(defaultSettings.isPreferColoredMap()).isFalse();
         assertThat(defaultSettings.getSelectedLanguage()).isEqualTo("en");
         assertThat(defaultSettings.getConnectedUserAccounts()).isEmpty();
+        assertThat(defaultSettings.getUnitSystem()).isEqualTo(UnitSystem.METRIC);
+        assertThat(defaultSettings.getHomeLatitude()).isNull();
+        assertThat(defaultSettings.getHomeLongitude()).isNull();
         assertThat(defaultSettings.getVersion()).isNull();
     }
 }

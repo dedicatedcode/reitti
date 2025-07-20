@@ -30,6 +30,8 @@ public class UserSettingsJdbcService {
                 rs.getString("selected_language"),
                 connectedAccounts,
                 UnitSystem.valueOf(rs.getString("unit_system")),
+                rs.getDouble("home_lat"),
+                rs.getDouble("home_lng"),
                 rs.getLong("version")
         );
     };
@@ -50,24 +52,34 @@ public class UserSettingsJdbcService {
     public UserSettings save(UserSettings userSettings) {
         if (userSettings.getVersion() == null) {
             // Insert new settings
-            this.jdbcTemplate.update("INSERT INTO user_settings (user_id, prefer_colored_map, selected_language, unit_system, version) VALUES (?, ?, ?, ?, 1)",
+            this.jdbcTemplate.update("INSERT INTO user_settings (user_id, prefer_colored_map, selected_language, unit_system, home_lat, home_lng, version) VALUES (?, ?, ?, ?, ?, ?, 1)",
                     userSettings.getUserId(),
                     userSettings.isPreferColoredMap(),
                     userSettings.getSelectedLanguage(),
-                    userSettings.getUnitSystem().name());
+                    userSettings.getUnitSystem().name(),
+                    userSettings.getHomeLatitude(),
+                    userSettings.getHomeLongitude());
 
             // Update user connections
             updateUserConnections(userSettings.getUserId(), userSettings.getConnectedUserAccounts());
 
-            return new UserSettings(userSettings.getUserId(), userSettings.isPreferColoredMap(),
-                    userSettings.getSelectedLanguage(), userSettings.getConnectedUserAccounts(), userSettings.getUnitSystem(), 1L);
+            return new UserSettings(userSettings.getUserId(),
+                    userSettings.isPreferColoredMap(),
+                    userSettings.getSelectedLanguage(),
+                    userSettings.getConnectedUserAccounts(),
+                    userSettings.getUnitSystem(),
+                    userSettings.getHomeLatitude(),
+                    userSettings.getHomeLongitude(),
+                    1L);
         } else {
             // Update existing settings
             jdbcTemplate.update(
-                    "UPDATE user_settings SET prefer_colored_map = ?, selected_language = ?, unit_system = ?, version = version + 1 WHERE user_id = ?",
+                    "UPDATE user_settings SET prefer_colored_map = ?, selected_language = ?, unit_system = ?, home_lat = ?, home_lng = ?, version = version + 1 WHERE user_id = ?",
                     userSettings.isPreferColoredMap(),
                     userSettings.getSelectedLanguage(),
                     userSettings.getUnitSystem().name(),
+                    userSettings.getHomeLatitude(),
+                    userSettings.getHomeLongitude(),
                     userSettings.getUserId()
             );
             

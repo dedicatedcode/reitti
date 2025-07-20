@@ -20,6 +20,8 @@ public class GlobalControllerAdvice {
     private final UserJdbcService userJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final TilesCustomizationProvider tilesCustomizationProvider;
+    private final double homeLat = 60.1699;
+    private final double homeLng = 24.9384;
 
     public GlobalControllerAdvice(UserJdbcService userJdbcService, UserSettingsJdbcService userSettingsJdbcService, TilesCustomizationProvider tilesCustomizationProvider) {
         this.userJdbcService = userJdbcService;
@@ -34,7 +36,7 @@ public class GlobalControllerAdvice {
         if (authentication == null || !authentication.isAuthenticated() || 
             "anonymousUser".equals(authentication.getPrincipal())) {
             // Return default settings for anonymous users
-            return new UserSettingsDTO(false, "en", List.of(), UnitSystem.METRIC, tilesCustomizationProvider.getTilesConfiguration());
+            return new UserSettingsDTO(false, "en", List.of(), UnitSystem.METRIC, homeLat, homeLng, tilesCustomizationProvider.getTilesConfiguration());
         }
         
         String username = authentication.getName();
@@ -43,10 +45,16 @@ public class GlobalControllerAdvice {
         if (userOptional.isPresent()) {
             User user = userOptional.get();
             com.dedicatedcode.reitti.model.UserSettings dbSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
-            return new UserSettingsDTO(dbSettings.isPreferColoredMap(), dbSettings.getSelectedLanguage(), dbSettings.getConnectedUserAccounts(), dbSettings.getUnitSystem(), tilesCustomizationProvider.getTilesConfiguration());
+            return new UserSettingsDTO(dbSettings.isPreferColoredMap(),
+                    dbSettings.getSelectedLanguage(),
+                    dbSettings.getConnectedUserAccounts(),
+                    dbSettings.getUnitSystem(),
+                    dbSettings.getHomeLatitude(),
+                    dbSettings.getHomeLongitude(),
+                    tilesCustomizationProvider.getTilesConfiguration());
         }
         
         // Fallback for authenticated users not found in database
-        return new UserSettingsDTO(false, "en", List.of(), UnitSystem.METRIC, tilesCustomizationProvider.getTilesConfiguration());
+        return new UserSettingsDTO(false, "en", List.of(), UnitSystem.METRIC, homeLat, homeLng, tilesCustomizationProvider.getTilesConfiguration());
     }
 }

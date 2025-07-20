@@ -12,22 +12,26 @@ public class UserSettings {
     private final String selectedLanguage;
     private final List<ConnectedUserAccount> connectedUserAccounts;
     private final UnitSystem unitSystem;
+    private final Double homeLatitude;
+    private final Double homeLongitude;
     private final Long version;
 
-    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, List<ConnectedUserAccount> connectedUserAccounts, UnitSystem unitSystem, Long version) {
+    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, List<ConnectedUserAccount> connectedUserAccounts, UnitSystem unitSystem, Double homeLatitude, Double homeLongitude, Long version) {
         this.userId = userId;
         this.preferColoredMap = preferColoredMap;
         this.selectedLanguage = selectedLanguage;
         this.connectedUserAccounts = connectedUserAccounts;
         this.unitSystem = unitSystem;
+        this.homeLatitude = homeLatitude;
+        this.homeLongitude = homeLongitude;
         this.version = version;
     }
-    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, List<ConnectedUserAccount> connectedUserAccounts, UnitSystem unitSystem) {
-        this(userId, preferColoredMap, selectedLanguage, connectedUserAccounts, unitSystem, null);
+    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, List<ConnectedUserAccount> connectedUserAccounts, UnitSystem unitSystem, Double homeLatitude, Double homeLongitude) {
+        this(userId, preferColoredMap, selectedLanguage, connectedUserAccounts, unitSystem, homeLatitude, homeLongitude, null);
     }
 
     public static UserSettings defaultSettings(Long userId) {
-        return new UserSettings(userId, false, "en", List.of(), UnitSystem.METRIC);
+        return new UserSettings(userId, false, "en", List.of(), UnitSystem.METRIC, null, null);
     }
     public Long getUserId() {
         return userId;
@@ -53,6 +57,14 @@ public class UserSettings {
         return unitSystem;
     }
 
+    public Double getHomeLatitude() {
+        return homeLatitude;
+    }
+
+    public Double getHomeLongitude() {
+        return homeLongitude;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -62,12 +74,15 @@ public class UserSettings {
                 Objects.equals(userId, that.userId) &&
                 Objects.equals(selectedLanguage, that.selectedLanguage) &&
                 Objects.equals(connectedUserAccounts, that.connectedUserAccounts) &&
+                Objects.equals(unitSystem, that.unitSystem) &&
+                Objects.equals(homeLatitude, that.homeLatitude) &&
+                Objects.equals(homeLongitude, that.homeLongitude) &&
                 Objects.equals(version, that.version);
     }
     
     @Override
     public int hashCode() {
-        return Objects.hash(userId, preferColoredMap, selectedLanguage, connectedUserAccounts, version);
+        return Objects.hash(userId, preferColoredMap, selectedLanguage, connectedUserAccounts, unitSystem, homeLatitude, homeLongitude, version);
     }
     
     @Override
@@ -77,6 +92,9 @@ public class UserSettings {
                 ", preferColoredMap=" + preferColoredMap +
                 ", selectedLanguage='" + selectedLanguage + '\'' +
                 ", connectedUserAccounts=" + connectedUserAccounts +
+                ", unitSystem=" + unitSystem +
+                ", homeLatitude=" + homeLatitude +
+                ", homeLongitude=" + homeLongitude +
                 ", version=" + version +
                 '}';
     }
