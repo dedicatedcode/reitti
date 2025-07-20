@@ -112,7 +112,7 @@ public class UserSettingsJdbcService {
     private List<ConnectedUserAccount> getConnectedUserAccounts(Long userId) {
         return jdbcTemplate.query(
                 "SELECT to_user, color FROM connected_users WHERE from_user = ?",
-                (rs, rowNum) -> new ConnectedUserAccount(rs.getLong("to_user"), rs.getString("color")),
+                (rs, _) -> new ConnectedUserAccount(rs.getLong("to_user"), rs.getString("color")),
                 userId);
     }
     

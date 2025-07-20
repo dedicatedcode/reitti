@@ -9,8 +9,6 @@ import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.model.UserSettings;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -22,7 +20,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatException;
 
 @IntegrationTest
 public class UserSettingsJdbcServiceTest {
