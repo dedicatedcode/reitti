@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.model;
 
 import com.dedicatedcode.reitti.dto.ConnectedUserAccount;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
@@ -14,9 +15,10 @@ public class UserSettings {
     private final UnitSystem unitSystem;
     private final Double homeLatitude;
     private final Double homeLongitude;
+    private final Instant latestData;
     private final Long version;
 
-    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, List<ConnectedUserAccount> connectedUserAccounts, UnitSystem unitSystem, Double homeLatitude, Double homeLongitude, Long version) {
+    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, List<ConnectedUserAccount> connectedUserAccounts, UnitSystem unitSystem, Double homeLatitude, Double homeLongitude, Instant latestData, Long version) {
         this.userId = userId;
         this.preferColoredMap = preferColoredMap;
         this.selectedLanguage = selectedLanguage;
@@ -24,14 +26,15 @@ public class UserSettings {
         this.unitSystem = unitSystem;
         this.homeLatitude = homeLatitude;
         this.homeLongitude = homeLongitude;
+        this.latestData = latestData;
         this.version = version;
     }
-    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, List<ConnectedUserAccount> connectedUserAccounts, UnitSystem unitSystem, Double homeLatitude, Double homeLongitude) {
-        this(userId, preferColoredMap, selectedLanguage, connectedUserAccounts, unitSystem, homeLatitude, homeLongitude, null);
+    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, List<ConnectedUserAccount> connectedUserAccounts, UnitSystem unitSystem, Double homeLatitude, Double homeLongitude, Instant latestData) {
+        this(userId, preferColoredMap, selectedLanguage, connectedUserAccounts, unitSystem, homeLatitude, homeLongitude, latestData, null);
     }
 
     public static UserSettings defaultSettings(Long userId) {
-        return new UserSettings(userId, false, "en", List.of(), UnitSystem.METRIC, null, null);
+        return new UserSettings(userId, false, "en", List.of(), UnitSystem.METRIC, null, null, null, null);
     }
     public Long getUserId() {
         return userId;
@@ -65,6 +68,10 @@ public class UserSettings {
         return homeLongitude;
     }
 
+    public Instant getLatestData() {
+        return latestData;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -95,6 +102,7 @@ public class UserSettings {
                 ", unitSystem=" + unitSystem +
                 ", homeLatitude=" + homeLatitude +
                 ", homeLongitude=" + homeLongitude +
+                ", latestData=" + latestData +
                 ", version=" + version +
                 '}';
     }

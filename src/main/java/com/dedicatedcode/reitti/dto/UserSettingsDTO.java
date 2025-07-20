@@ -2,9 +2,12 @@ package com.dedicatedcode.reitti.dto;
 
 import com.dedicatedcode.reitti.model.UnitSystem;
 
+import java.time.Instant;
 import java.util.List;
 
-public record UserSettingsDTO(boolean preferColoredMap, String selectedLanguage,
+public record UserSettingsDTO(boolean preferColoredMap, 
+                              String selectedLanguage,
+                              Instant newestData,
                               List<ConnectedUserAccount> connectedUserAccounts, UnitSystem unitSystem, 
                               Double homeLatitude, Double homeLongitude, TilesCustomizationDTO tiles) {
 

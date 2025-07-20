@@ -191,7 +191,7 @@ public class UserSettingsController {
                 List<ConnectedUserAccount> connectedAccounts = buildConnectedUserAccounts(connectedUserIds, connectedUserColors);
                 
                 UnitSystem unitSystem = UnitSystem.valueOf(unit_system);
-                UserSettings userSettings = new UserSettings(createdUser.getId(), preferColoredMap, preferred_language, connectedAccounts, unitSystem, homeLatitude, homeLongitude);
+                UserSettings userSettings = new UserSettings(createdUser.getId(), preferColoredMap, preferred_language, connectedAccounts, unitSystem, homeLatitude, homeLongitude, null);
                 userSettingsJdbcService.save(userSettings);
                 
                 // Handle avatar - prioritize custom upload over default
@@ -271,7 +271,7 @@ public class UserSettingsController {
             List<ConnectedUserAccount> connectedAccounts = buildConnectedUserAccounts(connectedUserIds, connectedUserColors);
             
             UnitSystem unitSystem = UnitSystem.valueOf(unit_system);
-            UserSettings updatedSettings = new UserSettings(userId, preferColoredMap, preferred_language, connectedAccounts, unitSystem, homeLatitude, homeLongitude, existingSettings.getVersion());
+            UserSettings updatedSettings = new UserSettings(userId, preferColoredMap, preferred_language, connectedAccounts, unitSystem, homeLatitude, homeLongitude, existingSettings.getLatestData(), existingSettings.getVersion());
             userSettingsJdbcService.save(updatedSettings);
             
             // Handle avatar operations

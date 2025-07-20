@@ -2,32 +2,41 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.dto.ConnectedUserAccount;
+import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.UnitSystem;
+import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.model.UserSettings;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatException;
 
 @IntegrationTest
 public class UserSettingsJdbcServiceTest {
-
     @Autowired
     private UserSettingsJdbcService userSettingsJdbcService;
-
+    @Autowired
+    private UserJdbcService userJdbcService;
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
     private Long testUserId1;
     private Long testUserId2;
     private Long testUserId3;
+
     private ConnectedUserAccount testConnection2;
     private ConnectedUserAccount testConnection3;
 
@@ -65,7 +74,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void save_WhenCreatingNewUserSettings_ShouldInsertAndReturnWithId() {
         UserSettings newSettings = new UserSettings(testUserId1, true, "fi", List.of(
-                testConnection2, testConnection3), UnitSystem.METRIC, 60.1699, 24.9384);
+                testConnection2, testConnection3), UnitSystem.METRIC, 60.1699, 24.9384, Instant.now());
         
         UserSettings savedSettings = userSettingsJdbcService.save(newSettings);
         
@@ -81,7 +90,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void save_WhenUpdatingExistingUserSettings_ShouldUpdateAndIncrementVersion() {
         // Create initial settings
-        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testConnection2, testConnection3), UnitSystem.METRIC, null, null);
+        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testConnection2, testConnection3), UnitSystem.METRIC, null, null, Instant.now());
         UserSettings savedSettings = userSettingsJdbcService.save(initialSettings);
         
         // Update settings
@@ -93,6 +102,7 @@ public class UserSettingsJdbcServiceTest {
                 UnitSystem.IMPERIAL,
                 52.5200,
                 13.4050,
+                Instant.now(),
                 savedSettings.getVersion()
         );
         
@@ -111,7 +121,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void findByUserId_WhenUserSettingsExist_ShouldReturnSettings() {
         // Create settings
-        UserSettings newSettings = new UserSettings(testUserId1, true, "fr", List.of(testConnection2), UnitSystem.METRIC, 48.8566, 2.3522);
+        UserSettings newSettings = new UserSettings(testUserId1, true, "fr", List.of(testConnection2), UnitSystem.METRIC, 48.8566, 2.3522, Instant.now());
         userSettingsJdbcService.save(newSettings);
         
         Optional<UserSettings> result = userSettingsJdbcService.findByUserId(testUserId1);
@@ -146,7 +156,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void getOrCreateDefaultSettings_WhenUserSettingsExist_ShouldReturnExisting() {
         // Create existing settings
-        UserSettings existingSettings = new UserSettings(testUserId1, true, "fi", List.of(testConnection2), UnitSystem.METRIC, 60.1699, 24.9384);
+        UserSettings existingSettings = new UserSettings(testUserId1, true, "fi", List.of(testConnection2), UnitSystem.METRIC, 60.1699, 24.9384, Instant.now());
         userSettingsJdbcService.save(existingSettings);
         
         UserSettings result = userSettingsJdbcService.getOrCreateDefaultSettings(testUserId1);
@@ -161,7 +171,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void deleteByUserId_ShouldRemoveUserSettingsAndConnections() {
         // Create settings with connections
-        UserSettings settings = new UserSettings(testUserId1, true, "de", List.of(testConnection2, testConnection3), UnitSystem.METRIC, 52.5200, 13.4050);
+        UserSettings settings = new UserSettings(testUserId1, true, "de", List.of(testConnection2, testConnection3), UnitSystem.METRIC, 52.5200, 13.4050, Instant.now());
         userSettingsJdbcService.save(settings);
         
         // Verify settings exist
@@ -187,7 +197,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void userConnections_ShouldBeLoadedCorrectly() {
         // Create settings (this will load connections)
-        UserSettings settings = new UserSettings(testUserId1, false, "en", List.of(testConnection2, testConnection3), UnitSystem.METRIC, null, null);
+        UserSettings settings = new UserSettings(testUserId1, false, "en", List.of(testConnection2, testConnection3), UnitSystem.METRIC, null, null, Instant.now());
         UserSettings saved = userSettingsJdbcService.save(settings);
         assertThat(saved.getConnectedUserAccounts()).containsExactlyInAnyOrder(testConnection2, testConnection3);
 
@@ -201,7 +211,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void save_ShouldReplaceAllUserConnections() {
         // Create initial connections
-        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testConnection2), UnitSystem.METRIC, null, null);
+        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testConnection2), UnitSystem.METRIC, null, null, Instant.now());
         UserSettings saved = userSettingsJdbcService.save(initialSettings);
         
         // Verify initial connection
@@ -219,6 +229,7 @@ public class UserSettingsJdbcServiceTest {
                 "en",
                 List.of(testConnection3),
                 UnitSystem.METRIC,
+                null,
                 null,
                 null,
                 saved.getVersion()
@@ -245,7 +256,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void save_WithEmptyConnections_ShouldRemoveAllConnections() {
         // Create initial connections
-        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testConnection2, testConnection3), UnitSystem.METRIC, null, null);
+        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", List.of(testConnection2, testConnection3), UnitSystem.METRIC, null, null, Instant.now());
         UserSettings saved = userSettingsJdbcService.save(initialSettings);
         
         // Update with empty connections
@@ -257,6 +268,7 @@ public class UserSettingsJdbcServiceTest {
                 UnitSystem.METRIC,
                 null,
                 null,
+                Instant.now(),
                 saved.getVersion()
         );
         userSettingsJdbcService.save(updatedSettings);
@@ -273,7 +285,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void defaultSettings_ShouldHaveCorrectValues() {
         UserSettings defaultSettings = UserSettings.defaultSettings(testUserId1);
-        
+
         assertThat(defaultSettings.getUserId()).isEqualTo(testUserId1);
         assertThat(defaultSettings.isPreferColoredMap()).isFalse();
         assertThat(defaultSettings.getSelectedLanguage()).isEqualTo("en");
@@ -282,5 +294,42 @@ public class UserSettingsJdbcServiceTest {
         assertThat(defaultSettings.getHomeLatitude()).isNull();
         assertThat(defaultSettings.getHomeLongitude()).isNull();
         assertThat(defaultSettings.getVersion()).isNull();
+    }
+
+    @Test
+    void shouldUpdateNewestValue() {
+        User user = userJdbcService.findById(testUserId1).orElseThrow();
+        this.userSettingsJdbcService.save(UserSettings.defaultSettings(testUserId1));
+        this.userSettingsJdbcService.updateNewestData(user, List.of());
+
+        Instant latest = Instant.now();
+        this.userSettingsJdbcService.updateNewestData(user, List.of(
+                createLocationPoint(latest),
+                createLocationPoint(latest.minus(1, ChronoUnit.MINUTES)),
+                createLocationPoint(latest.minus(2, ChronoUnit.MINUTES))
+        ));
+
+        Optional<UserSettings> persisted = this.userSettingsJdbcService.findByUserId(user.getId());
+
+        assertThat(persisted).isPresent();
+        assertThat(persisted.get().getLatestData()).isEqualTo(latest.plusNanos(500).truncatedTo(ChronoUnit.MICROS));
+
+
+        this.userSettingsJdbcService.updateNewestData(user, List.of(
+                createLocationPoint(latest.minus(1, ChronoUnit.MINUTES)),
+                createLocationPoint(latest.minus(1, ChronoUnit.MINUTES)),
+                createLocationPoint(latest.minus(2, ChronoUnit.MINUTES))
+        ));
+
+        assertThat(this.userSettingsJdbcService.findByUserId(user.getId()).get().getLatestData()).isEqualTo(latest.plusNanos(500).truncatedTo(ChronoUnit.MICROS));
+    }
+
+    private LocationDataRequest.LocationPoint createLocationPoint(Instant timestamp) {
+        LocationDataRequest.LocationPoint locationPoint = new LocationDataRequest.LocationPoint();
+        locationPoint.setTimestamp(DateTimeFormatter.ISO_INSTANT.format(timestamp));
+        locationPoint.setLatitude(1.0);
+        locationPoint.setLongitude(2.0);
+        locationPoint.setAccuracyMeters(10.0);
+        return locationPoint;
     }
 }

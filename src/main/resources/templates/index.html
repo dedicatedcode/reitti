@@ -76,10 +76,16 @@
     };
 
     window.userSettings = /*[[${userSettings}]]*/ {}
-    // Helper function for HTMX to get current selected date
+
     function getSelectedDate() {
         const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get('date') || new Date().toISOString().split('T')[0];
+        if (urlParams.has('date')) {
+            return urlParams.get('date');
+        } else if (window.userSettings.newestData) {
+            return window.userSettings.newestData.split('T')[0];
+        } else {
+            return new Date().toISOString().split('T')[0];
+        }
     }
     // Helper function for HTMX to get user timezone
     function getUserTimezone() {
@@ -127,6 +133,10 @@
             if (!/^\d{4}-\d{2}-\d{2}$/.test(initialDate)) {
                 initialDate = null;
             }
+        }
+
+        if (!initialDate && window.userSettings.newestData) {
+            initialDate = window.userSettings.newestData.split('T')[0]
         }
 
         // Set date picker to URL date or today's date

@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,14 +21,17 @@ public class LocationDataIngestPipeline {
     private final GeoPointAnomalyFilter geoPointAnomalyFilter;
     private final UserJdbcService userJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final UserSettingsJdbcService userSettingsJdbcService;
 
     @Autowired
     public LocationDataIngestPipeline(GeoPointAnomalyFilter geoPointAnomalyFilter,
                                       UserJdbcService userJdbcService,
-                                      RawLocationPointJdbcService rawLocationPointJdbcService) {
+                                      RawLocationPointJdbcService rawLocationPointJdbcService,
+                                      UserSettingsJdbcService userSettingsJdbcService) {
         this.geoPointAnomalyFilter = geoPointAnomalyFilter;
         this.userJdbcService = userJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.userSettingsJdbcService = userSettingsJdbcService;
     }
 
     public void processLocationData(LocationDataEvent event) {
@@ -44,6 +48,7 @@ public class LocationDataIngestPipeline {
         List<LocationDataRequest.LocationPoint> points = event.getPoints();
         List<LocationDataRequest.LocationPoint> filtered = this.geoPointAnomalyFilter.filterAnomalies(points);
         rawLocationPointJdbcService.bulkInsert(user, filtered);
+        userSettingsJdbcService.updateNewestData(user, filtered);
         logger.info("Finished storing points [{}] for user [{}] in [{}]ms. Filtered out [{}] points.", filtered.size(), event.getUsername(), System.currentTimeMillis() - start, points.size() - filtered.size());
     }
 }
