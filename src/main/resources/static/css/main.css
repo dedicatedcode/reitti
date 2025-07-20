@@ -1374,3 +1374,49 @@ button:disabled {
 .custom-avatar-section {
     padding-top: 15px;
 }
+
+.home-location-inputs {
+    display: flex;
+    gap: 15px;
+    align-items: end;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.coordinate-input {
+    display: flex;
+    flex-direction: column;
+    min-width: 150px;
+}
+
+.coordinate-input label {
+    font-size: 14px;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.coordinate-input input {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.home-location-map {
+    height: 300px;
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+@media (max-width: 768px) {
+    .home-location-inputs {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .coordinate-input {
+        min-width: unset;
+    }
+}

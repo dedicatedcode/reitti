@@ -67,14 +67,15 @@ public class SettingsController {
             model.addAttribute("userId", currentUser.getId());
             model.addAttribute("username", currentUser.getUsername());
             model.addAttribute("displayName", currentUser.getDisplayName());
-            model.addAttribute("selectedRole", currentUser.getRole());
-            
+            model.addAttribute("selectedRole", currentUser.getRole());;
+
             UserSettings userSettings = userSettingsJdbcService.findByUserId(currentUser.getId())
                 .orElse(UserSettings.defaultSettings(currentUser.getId()));
             model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
             model.addAttribute("selectedUnitSystem", userSettings.getUnitSystem().name());
             model.addAttribute("preferColoredMap", userSettings.isPreferColoredMap());
-            
+            model.addAttribute("homeLatitude", userSettings.getHomeLatitude());
+            model.addAttribute("homeLongitude", userSettings.getHomeLongitude());
             model.addAttribute("unitSystems", UnitSystem.values());
             model.addAttribute("isAdmin", false);
             

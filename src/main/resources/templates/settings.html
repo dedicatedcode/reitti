@@ -39,8 +39,8 @@
                class="settings-nav-item"
                th:classappend="${activeSection == 'api-tokens'} ? 'active' : ''"
                th:text="#{settings.api.tokens}">API Tokens</a>
-            
-            <a href="/settings?section=user-management" 
+
+            <a href="/settings?section=user-management"
                class="settings-nav-item"
                th:classappend="${activeSection == 'user-management'} ? 'active' : ''"
                th:text="#{settings.user.management}">User Management</a>
@@ -191,16 +191,6 @@
                 event.detail.target.closest('#places-management')) {
                 initPlaceMaps();
             }
-
-            // Handle form resets after successful submission
-            if (event.detail.target.id === 'user-management' ||
-                event.detail.target.closest('#user-management')) {
-                // Find and reset any forms in the user management section
-                const forms = event.detail.target.querySelectorAll('form');
-                forms.forEach(form => {
-                    form.reset();
-                });
-            }
         });
 
         // Navigation is now handled server-side via URL parameters
@@ -221,7 +211,9 @@
                 });
             }
             initPlaceMaps();
-
+            if (document.querySelector('#homeLocationMap')) {
+                setTimeout(initializeHomeLocationMap, 100);
+            }
             // Function to enable all upload buttons and hide spinners
             function enableAllUploads() {
                 const uploadButtons = document.querySelectorAll('.upload-btn');
@@ -276,15 +268,17 @@
                 console.error('Leaflet is not loaded');
                 return;
             }
-            
+            const tilesUrl = window.userSettings.tiles.service;
+            const tilesAttribution = window.userSettings.tiles.attribution;
+            const tileLayer = window.userSettings.preferColoredMap ? L.tileLayer : L.tileLayer.grayscale;
+
             // Initialize map
-            homeLocationMap = L.map('homeLocationMap').setView([60.1699, 24.9384], 10); // Default to Helsinki
-            
+            homeLocationMap = L.map('homeLocationMap').setView([60.1699, 24.9384], 10)
             // Add tile layer
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
+            tileLayer(tilesUrl, {
+                attribution: tilesAttribution
             }).addTo(homeLocationMap);
-            
+
             // Get current home location from form inputs
             const latInput = document.getElementById('homeLatitude');
             const lngInput = document.getElementById('homeLongitude');
@@ -295,8 +289,17 @@
                 
                 if (!isNaN(lat) && !isNaN(lng)) {
                     homeLocationMap.setView([lat, lng], 13);
-                    homeLocationMarker = L.marker([lat, lng], {draggable: true}).addTo(homeLocationMap);
-                    
+                    // Create marker
+                    homeLocationMarker = L.circleMarker([lat, lng], {
+                        radius: 15,
+                        fillColor: '#ff6c00',
+                        color: '#fff',
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 0.8,
+                        draggable: true
+                    }).addTo(homeLocationMap);
+
                     homeLocationMarker.on('dragend', function(e) {
                         const position = e.target.getLatLng();
                         updateCoordinateInputs(position.lat, position.lng);
@@ -312,8 +315,16 @@
                 if (homeLocationMarker) {
                     homeLocationMap.removeLayer(homeLocationMarker);
                 }
-                
-                homeLocationMarker = L.marker([lat, lng], {draggable: true}).addTo(homeLocationMap);
+
+                homeLocationMarker = L.circleMarker([lat, lng], {
+                    radius: 15,
+                    fillColor: '#ff6c00',
+                    color: '#fff',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8,
+                    draggable: true
+                }).addTo(homeLocationMap);
                 updateCoordinateInputs(lat, lng);
                 
                 homeLocationMarker.on('dragend', function(e) {
@@ -347,8 +358,16 @@
                 if (homeLocationMarker) {
                     homeLocationMap.removeLayer(homeLocationMarker);
                 }
-                
-                homeLocationMarker = L.marker([lat, lng], {draggable: true}).addTo(homeLocationMap);
+
+                homeLocationMarker = L.circleMarker([lat, lng], {
+                    radius: 15,
+                    fillColor: '#ff6c00',
+                    color: '#fff',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8,
+                    draggable: true
+                }).addTo(homeLocationMap);
                 homeLocationMap.setView([lat, lng], 13);
                 
                 homeLocationMarker.on('dragend', function(e) {
@@ -382,52 +401,5 @@
         });
     </script>
 
-    <style>
-        .home-location-inputs {
-            display: flex;
-            gap: 15px;
-            align-items: end;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
-
-        .coordinate-input {
-            display: flex;
-            flex-direction: column;
-            min-width: 150px;
-        }
-
-        .coordinate-input label {
-            font-size: 14px;
-            margin-bottom: 5px;
-            color: #333;
-        }
-
-        .coordinate-input input {
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-
-        .home-location-map {
-            height: 300px;
-            width: 100%;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            margin-top: 10px;
-        }
-
-        @media (max-width: 768px) {
-            .home-location-inputs {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .coordinate-input {
-                min-width: unset;
-            }
-        }
-    </style>
 </body>
 </html>
