@@ -140,8 +140,9 @@
             window.history.pushState({}, '', url);
         }
 
+
         // Initialize the map
-        const map = L.map('map', {zoomControl: false, attributionControl: false}).setView([60.1699, 24.9384], 12); // Helsinki coordinates as default
+        const map = L.map('map', {zoomControl: false, attributionControl: false}).setView([window.userSettings.homeLatitude, window.userSettings.homeLongitude], 12);
 
         const tilesUrl = window.userSettings.tiles.service;
         const tilesAttribution = window.userSettings.tiles.attribution;
