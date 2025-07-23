@@ -28,7 +28,7 @@
         <span><img class="logo" th:src="@{/img/logo.png}" alt="reitti logo" title="reitti" src="/img/logo.png"></span>
         <a href="/statistics" class="nav-link" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
         <a href="/settings" class="nav-link" th:title="#{nav.settings.tooltip}"><i class="lni lni-gear-1"></i></a>
-        <button type="button" class="nav-link" onclick="toggleFullscreen()" title="Toggle Fullscreen"><i class="lni lni-fullscreen"></i></button>
+        <a type="button" class="nav-link" onclick="toggleFullscreen()" title="Toggle Fullscreen"><i class="lni lni-arrow-all-direction"></i></a>
         <form th:action="@{/logout}" method="post" >
             <button type="submit" class="nav-link" style="font-size: 1.4rem;" th:title="#{nav.logout.tooltip}"><i
                     class="lni lni-exit"></i>
