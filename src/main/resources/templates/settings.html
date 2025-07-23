@@ -19,6 +19,7 @@
                 <a th:href="@{/}"><img class="logo" th:src="@{/img/logo.png}" alt="reitti logo" title="reitti" src="/img/logo.png"></a>
                 <a href="/" class="nav-link" th:title="#{nav.timeline}"><i class="lni lni-route-1"></i></a>
                 <a href="/statistics" class="nav-link" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
+                <button type="button" class="nav-link" onclick="toggleFullscreen()" title="Toggle Fullscreen"><i class="lni lni-fullscreen"></i></button>
                 <form th:action="@{/logout}" method="post" >
                     <button type="submit" class="nav-link" style="font-size: 1.4rem;" th:title="#{nav.logout.tooltip}"><i
                             class="lni lni-exit"></i>
@@ -399,6 +400,17 @@
                 setTimeout(initializeHomeLocationMap, 100);
             }
         });
+
+        // Fullscreen functionality
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
     </script>
 
 </body>
