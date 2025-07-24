@@ -31,6 +31,7 @@
         <span><img class="logo" th:src="@{/img/logo.png}" alt="reitti logo" title="reitti" src="/img/logo.png"></span>
         <a href="/statistics" class="nav-link" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
         <a href="/settings" class="nav-link" th:title="#{nav.settings.tooltip}"><i class="lni lni-gear-1"></i></a>
+        <a type="button" class="nav-link" id="auto-update-btn" onclick="toggleAutoUpdate()" title="Auto Update"><i class="lni lni-play"></i></a>
         <a type="button" class="nav-link" onclick="toggleFullscreen()" title="Toggle Fullscreen"><i class="lni lni-arrow-all-direction"></i></a>
         <form th:action="@{/logout}" method="post" >
             <button type="submit" class="nav-link" style="font-size: 1.4rem;" th:title="#{nav.logout.tooltip}"><i
@@ -445,7 +446,7 @@
         }
 
         // Initialize horizontal date picker
-        new HorizontalDatePicker({
+        window.horizontalDatePicker = new HorizontalDatePicker({
             container: document.getElementById('horizontal-date-picker-container'),
             selectedDate: dateToUse,
             showNavButtons: false, // Show navigation buttons
@@ -468,6 +469,52 @@
             }
         });
     });
+
+    // Auto-update functionality
+    let autoUpdateMode = false;
+    let autoUpdateInterval = null;
+
+    function toggleAutoUpdate() {
+        const btn = document.getElementById('auto-update-btn');
+        const icon = btn.querySelector('i');
+        
+        if (!autoUpdateMode) {
+            // Enable auto-update mode
+            autoUpdateMode = true;
+            icon.className = 'lni lni-pause';
+            btn.title = 'Pause Auto Update';
+            
+            // Switch to today's date
+            const today = new Date().toISOString().split('T')[0];
+            updateUrlWithDate(today);
+            
+            // Update the date picker to today
+            if (window.horizontalDatePicker) {
+                window.horizontalDatePicker.selectDate(new Date());
+            }
+            
+            // Trigger timeline reload
+            document.body.dispatchEvent(new CustomEvent('dateChanged'));
+            
+            // Set up auto-refresh every 30 seconds
+            autoUpdateInterval = setInterval(() => {
+                if (autoUpdateMode) {
+                    document.body.dispatchEvent(new CustomEvent('dateChanged'));
+                }
+            }, 30000);
+            
+        } else {
+            // Disable auto-update mode
+            autoUpdateMode = false;
+            icon.className = 'lni lni-play';
+            btn.title = 'Auto Update';
+            
+            if (autoUpdateInterval) {
+                clearInterval(autoUpdateInterval);
+                autoUpdateInterval = null;
+            }
+        }
+    }
 
     // Fullscreen functionality
     function toggleFullscreen() {
