@@ -28,6 +28,9 @@ public class RabbitMQConfig {
     public static final String TRIGGER_PROCESSING_PIPELINE_QUEUE = "trigger-processing-queue";
     public static final String TRIGGER_PROCESSING_PIPELINE_ROUTING_KEY = "trigger.processing.start";
 
+    public static final String USER_EVENT_QUEUE = "user-event-queue";
+    public static final String USER_EVENT_ROUTING_KEY = "user.event.update";
+
     @Bean
     public TopicExchange exchange() {
         return new TopicExchange(EXCHANGE_NAME);
@@ -64,6 +67,11 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Queue userEventQueue() {
+        return new Queue(USER_EVENT_QUEUE, false);
+    }
+
+    @Bean
     public Binding locationDataBinding(Queue locationDataQueue, TopicExchange exchange) {
         return BindingBuilder.bind(locationDataQueue).to(exchange).with(LOCATION_DATA_ROUTING_KEY);
     }
@@ -91,6 +99,11 @@ public class RabbitMQConfig {
     @Bean
     public Binding triggerProcessingBinding(Queue triggerProcessingQueue, TopicExchange exchange) {
         return BindingBuilder.bind(triggerProcessingQueue).to(exchange).with(TRIGGER_PROCESSING_PIPELINE_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding userEventBinding(Queue userEventQueue, TopicExchange exchange) {
+        return BindingBuilder.bind(userEventQueue).to(exchange).with(USER_EVENT_ROUTING_KEY);
     }
 
     @Bean

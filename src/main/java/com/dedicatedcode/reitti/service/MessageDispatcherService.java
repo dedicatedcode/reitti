@@ -21,6 +21,7 @@ public class MessageDispatcherService {
     private final TripDetectionService tripDetectionService;
     private final ReverseGeocodingListener reverseGeocodingListener;
     private final ProcessingPipelineTrigger processingPipelineTrigger;
+    private final UserSseEmitterService userSseEmitterService;
 
     @Autowired
     public MessageDispatcherService(LocationDataIngestPipeline locationDataIngestPipeline,
@@ -28,13 +29,15 @@ public class MessageDispatcherService {
                                     VisitMergingService visitMergingService,
                                     TripDetectionService tripDetectionService,
                                     ReverseGeocodingListener reverseGeocodingListener,
-                                    ProcessingPipelineTrigger processingPipelineTrigger) {
+                                    ProcessingPipelineTrigger processingPipelineTrigger,
+                                    UserSseEmitterService userSseEmitterService) {
         this.locationDataIngestPipeline = locationDataIngestPipeline;
         this.visitDetectionService = visitDetectionService;
         this.visitMergingService = visitMergingService;
         this.tripDetectionService = tripDetectionService;
         this.reverseGeocodingListener = reverseGeocodingListener;
         this.processingPipelineTrigger = processingPipelineTrigger;
+        this.userSseEmitterService = userSseEmitterService;
     }
 
     @RabbitListener(queues = RabbitMQConfig.LOCATION_DATA_QUEUE, concurrency = "${reitti.events.concurrency}")
@@ -65,6 +68,12 @@ public class MessageDispatcherService {
     public void handleSignificantPlaceCreated(SignificantPlaceCreatedEvent event) {
         logger.debug("Dispatching SignificantPlaceCreatedEvent for place: {}", event.getPlaceId());
         reverseGeocodingListener.handleSignificantPlaceCreated(event);
+    }
+
+    @RabbitListener(queues = RabbitMQConfig.USER_EVENT_QUEUE)
+    public void handleUserNotificationEvent(SSEEvent event) {
+        logger.debug("Dispatching SSEEvent for user: {}", event.getUserId());
+        this.userSseEmitterService.sendEventToUser(event.getUserId(), event);
     }
 
     @RabbitListener(queues = RabbitMQConfig.TRIGGER_PROCESSING_PIPELINE_QUEUE, concurrency = "${reitti.events.concurrency}")

@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.service.importer;
+package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
@@ -54,13 +54,11 @@ public class ImportBatchProcessor {
     }
     
     private void scheduleProcessingTrigger(String username) {
-        // Cancel any existing trigger for this user
         ScheduledFuture<?> existingTrigger = pendingTriggers.get(username);
         if (existingTrigger != null && !existingTrigger.isDone()) {
             existingTrigger.cancel(false);
         }
         
-        // Schedule new trigger for 30 seconds from now
         ScheduledFuture<?> newTrigger = scheduler.schedule(() -> {
             try {
                 TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(username);

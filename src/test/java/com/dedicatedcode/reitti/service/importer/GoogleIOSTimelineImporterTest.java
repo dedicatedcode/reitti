@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.service.importer;
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.service.ImportBatchProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;

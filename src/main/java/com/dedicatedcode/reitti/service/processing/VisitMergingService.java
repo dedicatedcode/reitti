@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.event.VisitUpdatedEvent;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.*;
+import com.dedicatedcode.reitti.service.UserNotificationQueueService;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -36,6 +37,7 @@ public class VisitMergingService {
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final GeometryFactory geometryFactory;
     private final RabbitTemplate rabbitTemplate;
+    private final UserNotificationQueueService userNotificationQueueService;
     private final long mergeThresholdSeconds;
     private final long mergeThresholdMeters;
     private final int searchRangeExtensionInHours;
@@ -48,6 +50,7 @@ public class VisitMergingService {
                                SignificantPlaceJdbcService significantPlaceJdbcService,
                                RawLocationPointJdbcService rawLocationPointJdbcService,
                                GeometryFactory geometryFactory,
+                               UserNotificationQueueService userNotificationQueueService,
                                @Value("${reitti.visit.merge-max-stay-search-extension-days:2}") int maxStaySearchExtensionInDays,
                                @Value("${reitti.visit.merge-threshold-seconds:300}") long mergeThresholdSeconds,
                                @Value("${reitti.visit.merge-threshold-meters:100}") long mergeThresholdMeters) {
@@ -58,6 +61,7 @@ public class VisitMergingService {
         this.significantPlaceJdbcService = significantPlaceJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.geometryFactory = geometryFactory;
+        this.userNotificationQueueService = userNotificationQueueService;
         this.mergeThresholdSeconds = mergeThresholdSeconds;
         this.mergeThresholdMeters = mergeThresholdMeters;
         this.searchRangeExtensionInHours = maxStaySearchExtensionInDays * 24;
@@ -119,6 +123,7 @@ public class VisitMergingService {
 
         logger.debug("Processed [{}] visits into [{}] merged visits for user: [{}]",
                 allVisits.size(), processedVisits.size(), user.getUsername());
+        this.userNotificationQueueService.newVisits(user, processedVisits);
     }
 
 

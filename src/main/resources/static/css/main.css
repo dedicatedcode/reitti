@@ -352,6 +352,11 @@ nav {
 
 .htmx-request .htmx-indicator {
     display: inline;
+    height: initial;
+}
+
+.htmx-indicator {
+    display: none;
 }
 
 button {
@@ -1419,4 +1424,27 @@ button:disabled {
     .coordinate-input {
         min-width: unset;
     }
+}
+
+#message-container {
+    text-align: center;
+    position: fixed;
+    z-index: 200;
+    width: 100%;
+    pointer-events: none;
+}
+
+#sse-message {
+    display: none;
+    background-color: var(--color-background-dark);
+    border-radius: 8px;
+    padding: 15px;
+    border: 1px solid var(--color-highlight);
+    color: var(--color-text-white);
+    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.3);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+#sse-message.active {
+    display: inline-block;
 }

@@ -6,7 +6,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -22,7 +25,9 @@ public class QueueStatsService {
             RabbitMQConfig.STAY_DETECTION_QUEUE,
             RabbitMQConfig.MERGE_VISIT_QUEUE,
             RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE,
-            RabbitMQConfig.DETECT_TRIP_QUEUE);
+            RabbitMQConfig.DETECT_TRIP_QUEUE,
+            RabbitMQConfig.USER_EVENT_QUEUE
+            );
 
     private final Map<String, List<ProcessingRecord>> processingHistory = new ConcurrentHashMap<>();
     
@@ -124,8 +129,6 @@ public class QueueStatsService {
         
         List<ProcessingRecord> history = processingHistory.get(queueName);
         if (history.isEmpty()) {
-            // No processing history, base progress on queue size
-            // Smaller queues show higher progress
             if (currentMessageCount <= 5) return 80;
             if (currentMessageCount <= 20) return 60;
             if (currentMessageCount <= 100) return 40;

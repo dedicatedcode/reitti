@@ -19,6 +19,9 @@
     <script src="/js/TileLayer.Grayscale.js"></script>
 </head>
 <body>
+<div id="message-container">
+    <div id="sse-message"></div>
+</div>
 <div id="map"></div>
 
 
@@ -73,7 +76,10 @@
             /*[[#{datepicker.months.oct}]]*/ 'Oct',
             /*[[#{datepicker.months.nov}]]*/ 'Nov',
             /*[[#{datepicker.months.dec}]]*/ 'Dec'
-        ]
+        ],
+        sse: {
+            error: /*[[#{sse.error.connection-lost}]]*/ 'Connection to server lost! Will reconnect ...',
+        }
     };
 
     window.userSettings = /*[[${userSettings}]]*/ {}
@@ -473,6 +479,30 @@
             document.exitFullscreen();
         }
     }
+
+    const messagesDiv = document.getElementById('sse-message');
+    const eventSource = new EventSource('/events'); // Connect to your SSE endpoint
+
+    eventSource.onopen = function() {
+        console.log('SSE connection opened.');
+        messagesDiv.classList.remove('active')
+    };
+
+    // Listen for events with the name "message"
+    eventSource.addEventListener('message', function(event) {
+        console.log('Received message event:', event.data);
+    });
+
+
+    eventSource.onerror = function(error) {
+        console.error('EventSource failed:', error);
+        messagesDiv.innerHTML = `<p><strong>${window.locale.sse.error}</strong></p>`;
+        messagesDiv.classList.add('active')
+    };
+
+    eventSource.onmessage = function(event) {
+        console.log('Received generic event:', event.data);
+    };
 
 </script>
 </body>

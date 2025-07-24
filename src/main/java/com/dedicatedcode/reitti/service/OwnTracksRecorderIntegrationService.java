@@ -6,7 +6,6 @@ import com.dedicatedcode.reitti.model.OwnTracksRecorderIntegration;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.OwnTracksRecorderIntegrationJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
-import com.dedicatedcode.reitti.service.importer.ImportBatchProcessor;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
