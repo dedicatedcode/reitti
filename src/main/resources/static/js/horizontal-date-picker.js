@@ -130,7 +130,7 @@ class HorizontalDatePicker {
                 this._isManualSelection = true;
 
                 // Force selection of the clicked date
-                this.selectDate(dateItem, true);
+                this.selectDateItem(dateItem, true);
             
                 // Reset the manual selection flag after a delay
                 setTimeout(() => {
@@ -232,7 +232,7 @@ class HorizontalDatePicker {
                     this._isManualSelection = true;
 
                     // Force selection of the tapped date
-                    this.selectDate(dateItem, true);
+                    this.selectDateItem(dateItem, true);
                     
                     // Reset the manual selection flag after a delay
                     setTimeout(() => {
@@ -424,8 +424,8 @@ class HorizontalDatePicker {
         
         return dateItem;
     }
-    
-    selectDate(dateItem, isManualSelection = false) {
+
+    selectDateItem(dateItem, isManualSelection = false) {
         // Check if date is within min/max range, but only if they are set
         const dateToSelect = this.parseDate(dateItem.dataset.date);
         
@@ -862,7 +862,7 @@ class HorizontalDatePicker {
             
             for (const item of dateItems) {
                 if (item.dataset.date === formattedExactDate) {
-                    this.selectDate(item, true);
+                    this.selectDateItem(item, true);
                     break;
                 }
             }
@@ -930,7 +930,7 @@ class HorizontalDatePicker {
             
             for (const item of dateItems) {
                 if (item.dataset.date === formattedExactDate) {
-                    this.selectDate(item, true);
+                    this.selectDateItem(item, true);
                     break;
                 }
             }
@@ -1044,7 +1044,8 @@ class HorizontalDatePicker {
         if (this.options.showMonthRow) {
             this.highlightSelectedMonth();
         }
-        
+
+
         // Find and mark the selected date element
         setTimeout(() => {
             const dateItems = this.dateContainer.querySelectorAll('.date-item');
@@ -1060,9 +1061,20 @@ class HorizontalDatePicker {
                     break;
                 }
             }
-            
+
+            if (typeof this.options.onDateSelect === 'function') {
+                this.options.onDateSelect(today, formattedDate);
+            }
             // Center the selected date
             this.scrollToSelectedDate(false);
+            const event = new CustomEvent('dateSelected', {
+                detail: {
+                    date: newDate,
+                    formattedDate: formattedDate
+                }
+            });
+            this.element.dispatchEvent(event);
+
         }, 0);
     }
     
