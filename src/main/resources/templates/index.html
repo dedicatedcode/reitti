@@ -468,7 +468,6 @@
 
     // Auto-update functionality
     let autoUpdateMode = false;
-    let autoUpdateInterval = null;
 
     let eventSource = null;
     function toggleAutoUpdate() {
@@ -519,11 +518,6 @@
             }
             icon.className = 'lni lni-play';
             btn.title = 'Auto Update';
-            
-            if (autoUpdateInterval) {
-                clearInterval(autoUpdateInterval);
-                autoUpdateInterval = null;
-            }
         }
     }
 
