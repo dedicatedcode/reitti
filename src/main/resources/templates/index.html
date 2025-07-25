@@ -10,6 +10,26 @@
     <link rel="stylesheet" href="/css/lineicons.css">
     <link rel="stylesheet" href="/css/photo-client.css">
     <link rel="stylesheet" href="/css/inline-edit.css">
+    <style>
+        .pulsating-marker {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.5);
+                opacity: 0.7;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    </style>
     <script src="/js/HumanizeDuration.js"></script>
     <script src="/js/horizontal-date-picker.js"></script>
     <script src="/js/timeline-scroll-indicator.js"></script>
@@ -184,6 +204,8 @@
         function loadTimelineData(date) {
             // Load photos for the selected date
             photoClient.updatePhotosForDate(date, getUserTimezone());
+            // Remove pulsating markers when loading new data
+            removePulsatingMarkers();
             // Get raw location points URL from timeline container
             const timelineContainer = document.querySelectorAll('.user-timeline-section');
             for (const path of rawPointPaths) {
@@ -231,6 +253,12 @@
                 rawPointsPath.setLatLngs(rawPointsCoords);
                 rawPointsPath.addTo(map);
                 rawPointPaths.push(rawPointsPath)
+                
+                // Add pulsating marker for the latest point if in auto-update mode and today is selected
+                if (autoUpdateMode && isSelectedDateToday() && rawPointsData.points.length > 0) {
+                    const latestPoint = rawPointsData.points[rawPointsData.points.length - 1];
+                    addPulsatingMarker(latestPoint.latitude, latestPoint.longitude, color);
+                }
             }
         }
 
@@ -243,6 +271,7 @@
         });
 
         const rawPointPaths = [];
+        let pulsatingMarkers = [];
 
         // Add HTMX event handlers for timeline updates
         document.body.addEventListener('htmx:afterSwap', function(event) {
@@ -535,6 +564,9 @@
             eventSource = null;
         }
         
+        // Remove pulsating markers when auto-update is disabled
+        removePulsatingMarkers();
+        
         const btn = document.getElementById('auto-update-btn');
         const icon = btn.querySelector('i');
         icon.className = 'lni lni-play';
@@ -560,6 +592,46 @@
                 }
             }
         }, 30000); // 30 seconds
+    }
+
+    // Helper function to check if selected date is today
+    function isSelectedDateToday() {
+        const today = new Date().toISOString().split('T')[0];
+        const selectedDate = getSelectedDate();
+        return selectedDate === today;
+    }
+
+    // Function to add pulsating marker for latest data point
+    function addPulsatingMarker(lat, lng, color) {
+        // Create new pulsating marker
+        const pulsatingMarker = L.circleMarker([lat, lng], {
+            radius: 8,
+            fillColor: color || '#ff6c00',
+            color: '#fff',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.8,
+            className: 'pulsating-marker'
+        }).addTo(map);
+        
+        // Add tooltip
+        pulsatingMarker.bindTooltip('Latest location', {
+            permanent: false,
+            direction: 'top'
+        });
+        
+        // Store the marker for cleanup later
+        pulsatingMarkers.push(pulsatingMarker);
+    }
+
+    // Function to remove all pulsating markers
+    function removePulsatingMarkers() {
+        pulsatingMarkers.forEach(marker => {
+            if (marker) {
+                map.removeLayer(marker);
+            }
+        });
+        pulsatingMarkers = [];
     }
 
     // Fullscreen functionality
