@@ -506,7 +506,7 @@ class HorizontalDatePicker {
         // For manual selections, call the callback immediately
         if (isManualSelection) {
             if (typeof this.options.onDateSelect === 'function') {
-                this.options.onDateSelect(dateToSelect, dateItem.dataset.date);
+                this.options.onDateSelect(dateToSelect, dateItem.dataset.date, true);
             }
             
             // Dispatch custom event
@@ -890,7 +890,7 @@ class HorizontalDatePicker {
         // Call onDateSelect callback if provided
         const formattedDate = this.formatDate(exactSelectedDate);
         if (typeof this.options.onDateSelect === 'function') {
-            this.options.onDateSelect(exactSelectedDate, formattedDate);
+            this.options.onDateSelect(exactSelectedDate, formattedDate, false);
         }
         
         // Dispatch custom event
@@ -966,7 +966,7 @@ class HorizontalDatePicker {
         // Call onDateSelect callback if provided
         const formattedDate = this.formatDate(exactSelectedDate);
         if (typeof this.options.onDateSelect === 'function') {
-            this.options.onDateSelect(exactSelectedDate, formattedDate);
+            this.options.onDateSelect(exactSelectedDate, formattedDate, false);
         }
         
         // Dispatch custom event
@@ -1087,7 +1087,7 @@ class HorizontalDatePicker {
             }
 
             if (typeof this.options.onDateSelect === 'function') {
-                this.options.onDateSelect(today, formattedDate);
+                this.options.onDateSelect(today, formattedDate, false);
             }
             // Center the selected date
             this.scrollToSelectedDate(false);
@@ -1120,7 +1120,7 @@ class HorizontalDatePicker {
         // Call onDateSelect callback
         const formattedDate = this.formatDate(today);
         if (typeof this.options.onDateSelect === 'function') {
-            this.options.onDateSelect(today, formattedDate);
+            this.options.onDateSelect(today, formattedDate, true);
         }
         
         // Dispatch custom event

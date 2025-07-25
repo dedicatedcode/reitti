@@ -457,11 +457,14 @@
             allowFutureDates: false, // Disable selection of future dates
             showTodayButton: true, // Show the Today button
             // No min/max date for infinite scrolling
-            onDateSelect: (date, formattedDate) => {
+            onDateSelect: (date, formattedDate, isManualSelected) => {
                 // Update URL
                 updateUrlWithDate(formattedDate);
                 // Trigger HTMX reload of timeline
                 document.body.dispatchEvent(new CustomEvent('dateChanged'));
+                if (isManualSelected) {
+                    disableAutoUpdate();
+                }
             }
         });
     });
