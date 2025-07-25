@@ -675,31 +675,6 @@
             document.exitFullscreen();
         }
     }
-
-    const messagesDiv = document.getElementById('sse-message');
-    const eventSource = new EventSource('/events'); // Connect to your SSE endpoint
-
-    eventSource.onopen = function() {
-        console.log('SSE connection opened.');
-        messagesDiv.classList.remove('active')
-    };
-
-    // Listen for events with the name "message"
-    eventSource.addEventListener('message', function(event) {
-        console.log('Received message event:', event.data);
-    });
-
-
-    eventSource.onerror = function(error) {
-        console.error('EventSource failed:', error);
-        messagesDiv.innerHTML = `<p><strong>${window.locale.sse.error}</strong></p>`;
-        messagesDiv.classList.add('active')
-    };
-
-    eventSource.onmessage = function(event) {
-        console.log('Received generic event:', event.data);
-    };
-
 </script>
 </body>
 </html>
