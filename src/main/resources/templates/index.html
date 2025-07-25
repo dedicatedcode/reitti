@@ -526,6 +526,26 @@
 
             eventSource.onmessage = function(event) {
                 console.log('Received generic event:', event.data);
+                
+                // Parse the event data
+                try {
+                    const eventData = JSON.parse(event.data);
+                    
+                    // Check if the event has a date field and it matches today
+                    if (eventData.date) {
+                        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+                        const eventDate = eventData.date;
+                        
+                        // If event date matches today and we're in auto-update mode, reload timeline
+                        if (eventDate === today && autoUpdateMode) {
+                            console.log('Auto-update: Reloading timeline data due to SSE event for today');
+                            // Trigger HTMX reload of timeline
+                            document.body.dispatchEvent(new CustomEvent('dateChanged'));
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Could not parse SSE event data:', error);
+                }
             };
 
         } else {
