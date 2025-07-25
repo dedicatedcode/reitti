@@ -468,6 +468,7 @@
 
     // Auto-update functionality
     let autoUpdateMode = false;
+    let autoUpdateTimer = null;
 
     let eventSource = null;
     function toggleAutoUpdate() {
@@ -485,6 +486,8 @@
                 window.horizontalDatePicker.setDate(new Date());
             }
 
+            // Start the timer to check for date changes every 30 seconds
+            startAutoUpdateTimer();
 
             eventSource = new EventSource('/events'); // Connect to your SSE endpoint
 
@@ -511,14 +514,49 @@
 
         } else {
             // Disable auto-update mode
-            autoUpdateMode = false;
-            if (eventSource) {
-                eventSource.close();
-                eventSource = null;
-            }
-            icon.className = 'lni lni-play';
-            btn.title = 'Auto Update';
+            disableAutoUpdate();
         }
+    }
+
+    function disableAutoUpdate() {
+        autoUpdateMode = false;
+        
+        // Clear the timer
+        if (autoUpdateTimer) {
+            clearInterval(autoUpdateTimer);
+            autoUpdateTimer = null;
+        }
+        
+        if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+        }
+        
+        const btn = document.getElementById('auto-update-btn');
+        const icon = btn.querySelector('i');
+        icon.className = 'lni lni-play';
+        btn.title = 'Auto Update';
+    }
+
+    function startAutoUpdateTimer() {
+        // Check every 30 seconds if we need to switch to today's date
+        autoUpdateTimer = setInterval(() => {
+            if (!autoUpdateMode) {
+                return; // Exit if auto-update mode was disabled
+            }
+            
+            const today = new Date();
+            const todayString = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+            const currentSelectedDate = getSelectedDate();
+            
+            // If the selected date is not today, switch to today
+            if (currentSelectedDate !== todayString) {
+                console.log('Auto-update: Switching to today\'s date');
+                if (window.horizontalDatePicker) {
+                    window.horizontalDatePicker.setDate(today);
+                }
+            }
+        }, 30000); // 30 seconds
     }
 
     // Fullscreen functionality
