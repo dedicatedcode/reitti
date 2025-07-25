@@ -47,7 +47,7 @@ public class UserSseEmitterService implements SmartLifecycle {
             for (SseEmitter emitter : new CopyOnWriteArraySet<>(emitters)) {
                 try {
                     emitter.send(SseEmitter.event().data(eventData));
-                    log.info("Sent event to user: {}", userId);
+                    log.debug("Sent event to user: {}", userId);
                 } catch (IOException e) {
                     log.error("Error sending event to user {}: {}", userId, e.getMessage());
                     emitter.completeWithError(e);
@@ -55,7 +55,7 @@ public class UserSseEmitterService implements SmartLifecycle {
                 }
             }
         } else {
-            System.out.println("No active SSE emitters for user: " + userId);
+            log.debug("No active SSE emitters for user: {}", userId);
         }
     }
 
@@ -81,28 +81,13 @@ public class UserSseEmitterService implements SmartLifecycle {
         }
     }
 
-    public void sendEventToAllUsers(Object eventData) {
-        userEmitters.forEach((userId, emitters) -> {
-            for (SseEmitter emitter : new CopyOnWriteArraySet<>(emitters)) {
-                try {
-                    emitter.send(SseEmitter.event().data(eventData));
-                } catch (IOException e) {
-                    emitter.completeWithError(e);
-                    removeEmitter(userId, emitter);
-                }
-            }
-        });
-    }
-
     @Override
     public void start() {
-
     }
 
     @Override
     public void stop() {
         userEmitters.values().forEach(sseEmitters ->  sseEmitters.forEach(SseEmitter::complete));
-
     }
 
     @Override

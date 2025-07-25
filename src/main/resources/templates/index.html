@@ -655,9 +655,9 @@
         
         // Schedule reload after 5 seconds of idle time
         reloadTimeoutId = setTimeout(() => {
+            debugger
             if (autoUpdateMode && pendingEvents.length > 0) {
                 console.log(`Auto-update: Reloading timeline data after ${pendingEvents.length} accumulated events`);
-                // Trigger HTMX reload of timeline
                 document.body.dispatchEvent(new CustomEvent('dateChanged'));
                 // Clear pending events
                 pendingEvents = [];
@@ -675,8 +675,6 @@
             document.exitFullscreen();
         }
     }
-
-
 
 </script>
 </body>
