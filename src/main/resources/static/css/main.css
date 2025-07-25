@@ -1071,6 +1071,44 @@ button:disabled {
     color: white;
 }
 
+.pulsating-marker {
+    animation: pulse 1s infinite;
+    z-index: 2000;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.5);
+        opacity: 0.7;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.css-icon {
+
+}
+
+.gps_ring {
+    border: 3px solid #ff0000;
+    -webkit-border-radius: 30px;
+    height: 36px;
+    width: 36px;
+    -webkit-animation: pulsate 1.5s ease-out;
+    -webkit-animation-iteration-count: infinite;
+}
+
+@-webkit-keyframes pulsate {
+    0% {-webkit-transform: scale(0.1, 0.1); opacity: 0.0;}
+    50% {opacity: 1.0;}
+    100% {-webkit-transform: scale(1.2, 1.2); opacity: 0.0;}
+}
 .sr-only {
     display: none;
 }

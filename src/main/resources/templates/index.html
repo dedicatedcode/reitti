@@ -10,26 +10,6 @@
     <link rel="stylesheet" href="/css/lineicons.css">
     <link rel="stylesheet" href="/css/photo-client.css">
     <link rel="stylesheet" href="/css/inline-edit.css">
-    <style>
-        .pulsating-marker {
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% {
-                transform: scale(1);
-                opacity: 1;
-            }
-            50% {
-                transform: scale(1.5);
-                opacity: 0.7;
-            }
-            100% {
-                transform: scale(1);
-                opacity: 1;
-            }
-        }
-    </style>
     <script src="/js/HumanizeDuration.js"></script>
     <script src="/js/horizontal-date-picker.js"></script>
     <script src="/js/timeline-scroll-indicator.js"></script>
@@ -105,6 +85,9 @@
 
     window.userSettings = /*[[${userSettings}]]*/ {}
 
+    // Initialize the map
+    const map = L.map('map', {zoomControl: false, attributionControl: false}).setView([window.userSettings.homeLatitude, window.userSettings.homeLongitude], 12);
+
     function getSelectedDate() {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('date')) {
@@ -150,6 +133,8 @@
         zoomSnap: 0.1
     };
 
+    let pulsatingMarkers = [];
+
     document.addEventListener('DOMContentLoaded', function () {
         // Check if date is in URL parameters
         const urlParams = new URLSearchParams(window.location.search);
@@ -178,9 +163,6 @@
             window.history.pushState({}, '', url);
         }
 
-
-        // Initialize the map
-        const map = L.map('map', {zoomControl: false, attributionControl: false}).setView([window.userSettings.homeLatitude, window.userSettings.homeLongitude], 12);
 
         const tilesUrl = window.userSettings.tiles.service;
         const tilesAttribution = window.userSettings.tiles.attribution;
@@ -271,7 +253,6 @@
         });
 
         const rawPointPaths = [];
-        let pulsatingMarkers = [];
 
         // Add HTMX event handlers for timeline updates
         document.body.addEventListener('htmx:afterSwap', function(event) {
@@ -501,7 +482,6 @@
     // Auto-update functionality
     let autoUpdateMode = false;
     let autoUpdateTimer = null;
-
     let eventSource = null;
     function toggleAutoUpdate() {
         const btn = document.getElementById('auto-update-btn');
@@ -604,22 +584,21 @@
     // Function to add pulsating marker for latest data point
     function addPulsatingMarker(lat, lng, color) {
         // Create new pulsating marker
-        const pulsatingMarker = L.circleMarker([lat, lng], {
-            radius: 8,
-            fillColor: color || '#ff6c00',
-            color: '#fff',
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.8,
-            className: 'pulsating-marker'
-        }).addTo(map);
-        
+        const cssIcon = L.divIcon({
+            // Specify a class name we can refer to in CSS.
+            className: 'css-icon',
+            html: `<div style="border-color: ${color || '#606060'}" class="gps_ring"></div>`
+            ,iconSize: [22,22]
+        });
+
+        const pulsatingMarker = L.marker([lat, lng], {icon: cssIcon}).addTo(map);
+
         // Add tooltip
         pulsatingMarker.bindTooltip('Latest location', {
             permanent: false,
             direction: 'top'
         });
-        
+
         // Store the marker for cleanup later
         pulsatingMarkers.push(pulsatingMarker);
     }
