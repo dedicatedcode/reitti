@@ -91,6 +91,8 @@
     const messagesDiv = document.getElementById('sse-message');    let autoUpdateMode = false;
     let autoUpdateTimer = null;
     let eventSource = null;
+    let reloadTimeoutId = null;
+    let pendingEvents = [];
 
     // Initialize the map
     const map = L.map('map', {zoomControl: false, attributionControl: false}).setView([window.userSettings.homeLatitude, window.userSettings.homeLongitude], 12);
