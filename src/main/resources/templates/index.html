@@ -80,10 +80,17 @@
         ],
         sse: {
             error: /*[[#{sse.error.connection-lost}]]*/ 'Connection to server lost! Will reconnect ...',
+        },
+        autoupdate: {
+          latestLocation:  /*[[#{map.auto-update.latest-location}]]*/ 'Latest location',
         }
     };
 
     window.userSettings = /*[[${userSettings}]]*/ {}
+
+    const messagesDiv = document.getElementById('sse-message');    let autoUpdateMode = false;
+    let autoUpdateTimer = null;
+    let eventSource = null;
 
     // Initialize the map
     const map = L.map('map', {zoomControl: false, attributionControl: false}).setView([window.userSettings.homeLatitude, window.userSettings.homeLongitude], 12);
@@ -479,10 +486,7 @@
         });
     });
 
-    // Auto-update functionality
-    let autoUpdateMode = false;
-    let autoUpdateTimer = null;
-    let eventSource = null;
+
     function toggleAutoUpdate() {
         const btn = document.getElementById('auto-update-btn');
         const icon = btn.querySelector('i');
@@ -574,14 +578,12 @@
         }, 30000); // 30 seconds
     }
 
-    // Helper function to check if selected date is today
     function isSelectedDateToday() {
         const today = new Date().toISOString().split('T')[0];
         const selectedDate = getSelectedDate();
         return selectedDate === today;
     }
 
-    // Function to add pulsating marker for latest data point
     function addPulsatingMarker(lat, lng, color) {
         // Create new pulsating marker
         const cssIcon = L.divIcon({
@@ -594,7 +596,7 @@
         const pulsatingMarker = L.marker([lat, lng], {icon: cssIcon}).addTo(map);
 
         // Add tooltip
-        pulsatingMarker.bindTooltip('Latest location', {
+        pulsatingMarker.bindTooltip(window.locale.autoupdate.latestLocation, {
             permanent: false,
             direction: 'top'
         });
@@ -603,7 +605,6 @@
         pulsatingMarkers.push(pulsatingMarker);
     }
 
-    // Function to remove all pulsating markers
     function removePulsatingMarkers() {
         pulsatingMarkers.forEach(marker => {
             if (marker) {
@@ -613,7 +614,6 @@
         pulsatingMarkers = [];
     }
 
-    // Fullscreen functionality
     function toggleFullscreen() {
         if (!document.fullscreenElement) {
             document.documentElement.requestFullscreen().catch(err => {
@@ -624,7 +624,7 @@
         }
     }
 
-    const messagesDiv = document.getElementById('sse-message');
+
 
 </script>
 </body>
