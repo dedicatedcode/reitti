@@ -25,6 +25,8 @@ Reitti is a comprehensive personal location tracking and analysis application th
 - **Timeline View**: Interactive daily timeline showing visits and trips with duration and distance information
 - **Raw Location Tracking**: Visualize your complete movement path with detailed GPS tracks
 - **Multi-User-View**: Visualize all your family and friends on a single map
+- **Live-Mode**: Visualize incoming data automatically without having to reload the map 
+- **Fullscreen-Mode**: Display the map in fullscreen. Combined with the Live-Mode you got a nice kiosk-display
 
 ### Data Import & Integration
 - **Multiple Import Formats**: Support for GPX files, Google Takeout JSON, Google Timeline Exports and GeoJSON files
@@ -52,6 +54,7 @@ Reitti is a comprehensive personal location tracking and analysis application th
 - **Multi-language Support**: Available in English, Finnish, German, and French
 - **Unit System**: Display distances in the Imperial or Metric system
 - **Queue Monitoring**: Real-time job status and processing queue visibility
+- **Custom Tiles-Server**: Ability to use your own tiles-server
 
 ### Privacy & Self-hosting
 - **Complete Data Control**: Your location data never leaves your server
