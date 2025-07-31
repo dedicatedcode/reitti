@@ -19,7 +19,7 @@ Reitti is a comprehensive personal location tracking and analysis application th
 ![](.github/screenshots/statistics.png)
 
 ### Core Location Analysis
-- **Visit Detection**: Automatically identify places where you spend time with configurable algorithms
+- **Visit Detection**: Automatically identify places where you spend time
 - **Trip Analysis**: Track your movements between locations with transport mode detection (walking, cycling, driving)
 - **Significant Places**: Recognize and categorize frequently visited locations with custom naming
 - **Timeline View**: Interactive daily timeline showing visits and trips with duration and distance information
