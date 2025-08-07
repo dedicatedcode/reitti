@@ -7,12 +7,11 @@ import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 
-import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-public class User implements UserDetails, OidcUser, Serializable {
+public class User implements UserDetails, OidcUser {
 
     private final Long id;
     private final String username;
