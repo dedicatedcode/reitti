@@ -3,12 +3,15 @@ package com.dedicatedcode.reitti.config;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.Customizer;
+import org.springframework.security.oauth2.client.oidc.web.logout.OidcClientInitiatedLogoutSuccessHandler;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 
 @Configuration
 @EnableWebSecurity
@@ -25,6 +28,9 @@ public class SecurityConfig {
 
     @Autowired
     private CustomOidcUserService customOidcUserService;
+
+    @Autowired
+    private ClientRegistrationRepository clientRegistrationRepository;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -44,6 +50,7 @@ public class SecurityConfig {
                         .successHandler(customAuthenticationSuccessHandler)
                 )
                 .oauth2Client(Customizer.withDefaults())
+                .oidcLogout((logout) -> logout.backChannel(Customizer.withDefaults()))
                 .formLogin(form -> form
                         .loginPage("/login")
                         .successHandler(customAuthenticationSuccessHandler)
@@ -55,11 +62,20 @@ public class SecurityConfig {
                         .useSecureCookie(false)
                 )
                 .logout(logout -> logout
-                        .logoutSuccessUrl("/login?logout")
+                        .logoutSuccessHandler(oidcLogoutSuccessHandler())
                         .deleteCookies("JSESSIONID", "remember-me")
                         .permitAll()
                 );
 
         return http.build();
+    }
+
+    private LogoutSuccessHandler oidcLogoutSuccessHandler() {
+        OidcClientInitiatedLogoutSuccessHandler oidcLogoutSuccessHandler =
+                new OidcClientInitiatedLogoutSuccessHandler(this.clientRegistrationRepository);
+
+        oidcLogoutSuccessHandler.setPostLogoutRedirectUri("{baseUrl}/login?logout");
+
+        return oidcLogoutSuccessHandler;
     }
 }
