@@ -7,8 +7,6 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.oauth2.client.oidc.web.logout.OidcClientInitiatedLogoutSuccessHandler;
-import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
@@ -26,11 +24,8 @@ public class SecurityConfig {
     @Autowired
     private CustomAuthenticationSuccessHandler customAuthenticationSuccessHandler;
 
-    @Autowired
-    private CustomOidcUserService customOidcUserService;
-
-    @Autowired
-    private ClientRegistrationRepository clientRegistrationRepository;
+    @Autowired(required = false)
+    private LogoutSuccessHandler oidcLogoutSuccessHandler;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -44,13 +39,6 @@ public class SecurityConfig {
                 .addFilterBefore(bearerTokenAuthFilter, AuthorizationFilter.class)
                 .addFilterBefore(urlTokenAuthenticationFilter, TokenAuthenticationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)
-                .oauth2Login(oauth2 -> oauth2
-                        .loginPage("/login")
-                        .userInfoEndpoint(userInfo -> userInfo.oidcUserService(customOidcUserService))
-                        .successHandler(customAuthenticationSuccessHandler)
-                )
-                .oauth2Client(Customizer.withDefaults())
-                .oidcLogout((logout) -> logout.backChannel(Customizer.withDefaults()))
                 .formLogin(form -> form
                         .loginPage("/login")
                         .successHandler(customAuthenticationSuccessHandler)
@@ -61,21 +49,24 @@ public class SecurityConfig {
                         .rememberMeParameter("remember-me")
                         .useSecureCookie(false)
                 )
-                .logout(logout -> logout
-                        .logoutSuccessHandler(oidcLogoutSuccessHandler())
-                        .deleteCookies("JSESSIONID", "remember-me")
-                        .permitAll()
-                );
+                .logout(logout -> {
+                    if (oidcLogoutSuccessHandler != null) {
+                        logout.logoutSuccessHandler(oidcLogoutSuccessHandler);
+                    }
+                    logout.deleteCookies("JSESSIONID", "remember-me")
+                          .permitAll();
+                });
+
+        // Apply OAuth2 configuration if OIDC is enabled
+        if (oidcLogoutSuccessHandler != null) {
+            http.oauth2Login(oauth2 -> oauth2
+                    .loginPage("/login")
+                    .successHandler(customAuthenticationSuccessHandler)
+            )
+            .oauth2Client(Customizer.withDefaults())
+            .oidcLogout((logout) -> logout.backChannel(Customizer.withDefaults()));
+        }
 
         return http.build();
-    }
-
-    private LogoutSuccessHandler oidcLogoutSuccessHandler() {
-        OidcClientInitiatedLogoutSuccessHandler oidcLogoutSuccessHandler =
-                new OidcClientInitiatedLogoutSuccessHandler(this.clientRegistrationRepository);
-
-        oidcLogoutSuccessHandler.setPostLogoutRedirectUri("{baseUrl}/login?logout");
-
-        return oidcLogoutSuccessHandler;
     }
 }

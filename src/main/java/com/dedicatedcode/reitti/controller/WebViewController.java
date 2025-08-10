@@ -9,9 +9,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class WebViewController {
     private final boolean dataManagementEnabled;
+    private final boolean oidcEnabled;
 
-    public WebViewController(@Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
+    public WebViewController(@Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
+                             @Value("${reitti.security.oidc.enabled:false}") boolean oidcEnabled) {
         this.dataManagementEnabled = dataManagementEnabled;
+        this.oidcEnabled = oidcEnabled;
     }
 
     @GetMapping("/")
@@ -25,7 +28,8 @@ public class WebViewController {
     }
     
     @GetMapping("/login")
-    public String login() {
+    public String login(Model model) {
+        model.addAttribute("oidcEnabled", oidcEnabled);
         return "login";
     }
 
