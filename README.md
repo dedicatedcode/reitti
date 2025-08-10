@@ -1,4 +1,3 @@
-
 ![](.github/banner.png)
 
 
@@ -17,6 +16,10 @@ Reitti is a comprehensive personal location tracking and analysis application th
 ### Statistics View
 
 ![](.github/screenshots/statistics.png)
+
+### Login page
+
+![](.github/screenshots/login.png)
 
 ### Core Location Analysis
 - **Visit Detection**: Automatically identify places where you spend time
@@ -180,30 +183,35 @@ The included `docker-compose.yml` provides a complete setup with:
 
 ### Environment Variables
 
-| Variable            | Description                                                                                                                                                                     | Default  |
-|---------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
-| `POSTGIS_HOST`      | PostgreSQL database host                                                                                                                                                        | postgis  |
-| `POSTGIS_PORT`      | PostgreSQL database port                                                                                                                                                        | 5432     |
-| `POSTGIS_DB`        | PostgreSQL database name                                                                                                                                                        | reittidb |
-| `POSTGIS_USER`      | Database username                                                                                                                                                               | reitti   |
-| `POSTGIS_PASSWORD`  | Database password                                                                                                                                                               | reitti   |
-| `RABBITMQ_HOST`     | RabbitMQ host                                                                                                                                                                   | rabbitmq |
-| `RABBITMQ_PORT`     | RabbitMQ port                                                                                                                                                                   | 5672     |
-| `RABBITMQ_USER`     | RabbitMQ username                                                                                                                                                               | reitti   |
-| `RABBITMQ_PASSWORD` | RabbitMQ password                                                                                                                                                               | reitti   |
-| `REDIS_HOST`        | Redis host                                                                                                                                                                      | redis    |
-| `REDIS_PORT`        | Redis port                                                                                                                                                                      | 6379     |
-| `REDIS_USERNAME`    | Redis username (optional)                                                                                                                                                       |          |
-| `REDIS_PASSWORD`    | Redis password (optional)                                                                                                                                                       |          |
-| `PHOTON_BASE_URL`   | Base URL for Photon geocoding service                                                                                                                                           |          |
-| `PROCESSING_WAIT_TIME` | How many seconds to wait after the last data input before starting to process all unprocessed data. (⚠️ This needs to be lower than your integrated app reports data in Reitti) | 15 |
-| `DANGEROUS_LIFE`    | Enables data management features that can reset/delete all database data (⚠️ USE WITH CAUTION)                                                                                  | false |
-| `CUSTOM_TILES_SERVICE` | Custom tile service URL template (e.g., `https://tiles.example.com/{z}/{x}/{y}.png`)                                                                                        |          |
-| `CUSTOM_TILES_ATTRIBUTION` | Custom attribution text for the tile service                                                                                                                                |          |
-| `SERVER_PORT`       | Application server port                                                                                                                                                         | 8080     |
-| `APP_UID`           | User ID to run the application as                                                                                                                                               | 1000     |
-| `APP_GID`           | Group ID to run the application as                                                                                                                                              | 1000     |
-| `JAVA_OPTS`         | JVM options                                                                                                                                                                     |          |
+| Variable                 | Description                                                                                                                                                                     | Default  | Example                                   |
+|--------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|-------------------------------------------|
+| `POSTGIS_HOST`             | PostgreSQL database host                                                                                                                                                        | postgis  | postgis                                   |
+| `POSTGIS_PORT`             | PostgreSQL database port                                                                                                                                                        | 5432     | 5432                                      |
+| `POSTGIS_DB`               | PostgreSQL database name                                                                                                                                                        | reittidb | reittidb                                  |
+| `POSTGIS_USER`             | Database username                                                                                                                                                               | reitti   | reitti                                    |
+| `POSTGIS_PASSWORD`         | Database password                                                                                                                                                               | reitti   | reitti                                    |
+| `RABBITMQ_HOST`            | RabbitMQ host                                                                                                                                                                   | rabbitmq | rabbitmq                                  |
+| `RABBITMQ_PORT`            | RabbitMQ port                                                                                                                                                                   | 5672     | 5672                                      |
+| `RABBITMQ_USER`            | RabbitMQ username                                                                                                                                                               | reitti   | reitti                                    |
+| `RABBITMQ_PASSWORD`        | RabbitMQ password                                                                                                                                                               | reitti   | reitti                                    |
+| `REDIS_HOST`               | Redis host                                                                                                                                                                      | redis    | redis                                     |
+| `REDIS_PORT`               | Redis port                                                                                                                                                                      | 6379     | 6379                                      |
+| `REDIS_USERNAME`           | Redis username (optional)                                                                                                                                                       |          | username                                  |
+| `REDIS_PASSWORD`           | Redis password (optional)                                                                                                                                                       |          | password                                  |
+| `OIDC_ENABLED`             | Whether to enable OIDC sign-ins                                                                                                                                                 | false    | true                                      |
+| `OIDC_CLIENT_ID`           | Your OpenID Connect Client ID (from your provider)                                                                                                                              |          | google                                    |
+| `OIDC_CLIENT_SECRET`       | Your OpenID Connect Client secret (from your provider)                                                                                                                          |          | F0oxfg8b2rp5X97YPS92C2ERxof1oike          |
+| `OIDC_PROVIDER_URI`        | Your OpenID Connect Provider Discovery URI (don't include the /.well-known/openid-configuration part of the URI)                                                                |          | https://github.com/login/oauth            |
+| `OIDC_SCOPE`               | Your OpenID Connect scopes for your user (set to the values in the example if you're unsure)                                                                                    |          | openid,profile                            |
+| `PHOTON_BASE_URL`          | Base URL for Photon geocoding service                                                                                                                                           |          |                                           |
+| `PROCESSING_WAIT_TIME`     | How many seconds to wait after the last data input before starting to process all unprocessed data. (⚠️ This needs to be lower than your integrated app reports data in Reitti) | 15       | 15                                        |
+| `DANGEROUS_LIFE`           | Enables data management features that can reset/delete all database data (⚠️ USE WITH CAUTION)                                                                                  | false    | true                                      |
+| `CUSTOM_TILES_SERVICE`     | Custom tile service URL template                                                                                                                                                |          | https://tiles.example.com/{z}/{x}/{y}.png |
+| `CUSTOM_TILES_ATTRIBUTION` | Custom attribution text for the tile service                                                                                                                                    |          |                                           |
+| `SERVER_PORT`              | Application server port                                                                                                                                                         | 8080     | 8080                                      |
+| `APP_UID`                  | User ID to run the application as                                                                                                                                               | 1000     | 1000                                      |
+| `APP_GID`                  | Group ID to run the application as                                                                                                                                              | 1000     | 1000                                      |
+| `JAVA_OPTS`                | JVM options                                                                                                                                                                     |          |                                           |
 
 ### Tags
 
@@ -350,6 +358,31 @@ Use both Photon and external services for maximum reliability.
 - Configure multiple services for redundancy
 - Check rate limits and usage policies
 - Consider geographic coverage of different providers
+
+## Open ID Connect (OIDC)
+Reitti supports using a third party OIDC provider for sign-ins. It provides the following environment variables which are required for OIDC authentication.
+
+- `OIDC_ENABLED`
+- `OIDC_CLIENT_ID`
+- `OIDC_CLIENT_SECRET`
+- `OIDC_ISSUER_URI`
+- `OIDC_SCOPE` (should usually be set to "openid,profile")
+
+Setting `OIDC_ENABLED = true` enables OIDC, whereas the remaining need to be found from your OIDC provider, e.g. github. See the [Environment Variables](#environment-variables) section for examples.
+
+There are two URLs provided by reitti that you should give to your OIDC provider (see their documentation for further information on this), one of which is required.
+- (Required) Callback URL: https://<your-reitti-url>/login/oauth2/code/oauth (e.g. `https://reitti.internal/login/oauth2/code/oauth`)
+- (Optional) Logout callback URL: https://<your-reitti-url>/logout/connect/back-channel/oauth
+
+The logout callback URL will allow your OIDC provider to sign you out of Reitti when you sign out from your provider. If you don't set it, you will have to manually sign out of Reitti even if you sign out from your OIDC provider.
+
+### Login Requirements
+We don't support sign-ups via OIDC, so in order to sign in you will first have to create a user account in Reitti.
+This user **must** have a matching username to the username provided by your OIDC provider, commonly referred to as the `preferred_username`.
+
+E.g. If you have the username "myusername" with your OIDC provider, create a user in Reitti with the username "myusername". The "Display Name" can be set freely.
+
+**Note for Google accounts**: Google accounts use the email address as the `preferred_username`, so if you're using gmail you'd create an account with the username "myemail@gmail.com".
 
 ## Technologies
 

@@ -24,6 +24,7 @@ hs_err_pid*
 replay_pid*
 
 .aider*
-.aider*
 /target/
 /.idea/
+
+*secrets.properties

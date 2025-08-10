@@ -3,11 +3,15 @@ package com.dedicatedcode.reitti.model;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
-public class User implements UserDetails {
+public class User implements UserDetails, OidcUser {
 
     private final Long id;
     private final String username;
@@ -15,6 +19,10 @@ public class User implements UserDetails {
     private final String displayName;
     private final Role role;
     private final Long version;
+    private OidcIdToken token = null;
+    private OidcUserInfo userInfo = null;
+    private Map<String, Object> attributes = null;
+    private Map<String, Object> claims = null;
 
     public User() {
         this(null, null, null, null, Role.USER, null);
@@ -100,5 +108,37 @@ public class User implements UserDetails {
 
     public User withRole(Role role) {
         return new User(this.id, this.username, this.password, this.displayName, role, this.version);
+    }
+
+    public void setOidcUser(OidcUser oidcUser) {
+        token = oidcUser.getIdToken();
+        userInfo = oidcUser.getUserInfo();
+        attributes = oidcUser.getAttributes();
+        claims = oidcUser.getClaims();
+    }
+
+    @Override
+    public String getName() {
+        return username;
+    }
+
+    @Override
+    public Map<String, Object> getAttributes() {
+        return attributes;
+    }
+
+    @Override
+    public Map<String, Object> getClaims() {
+        return claims;
+    }
+
+    @Override
+    public OidcUserInfo getUserInfo() {
+        return userInfo;
+    }
+
+    @Override
+    public OidcIdToken getIdToken() {
+        return token;
     }
 }

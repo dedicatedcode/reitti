@@ -136,6 +136,13 @@
             
             <button type="submit" th:text="#{login.button}">Login</button>
         </form>
+        <div th:if="${oidcEnabled}">
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid var(--color-highlight);">
+
+            <a href="/oauth2/authorization/oauth" style="text-decoration: none;">
+              <button type="button">Log in with OAuth</button>
+            </a>
+        </div>
     </div>
 </body>
 </html>
