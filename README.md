@@ -202,6 +202,7 @@ The included `docker-compose.yml` provides a complete setup with:
 | `OIDC_CLIENT_ID`           | Your OpenID Connect Client ID (from your provider)                                                                                                                              |          | google                                    |
 | `OIDC_CLIENT_SECRET`       | Your OpenID Connect Client secret (from your provider)                                                                                                                          |          | F0oxfg8b2rp5X97YPS92C2ERxof1oike          |
 | `OIDC_PROVIDER_URI`        | Your OpenID Connect Provider Discovery URI (don't include the /.well-known/openid-configuration part of the URI)                                                                |          | https://github.com/login/oauth            |
+| `OIDC_SCOPE`               | Your OpenID Connect scopes for your user (set to the values in the example if you're unsure)                                                                                    |          | openid,profile                            |
 | `PHOTON_BASE_URL`          | Base URL for Photon geocoding service                                                                                                                                           |          |                                           |
 | `PROCESSING_WAIT_TIME`     | How many seconds to wait after the last data input before starting to process all unprocessed data. (⚠️ This needs to be lower than your integrated app reports data in Reitti) | 15       | 15                                        |
 | `DANGEROUS_LIFE`           | Enables data management features that can reset/delete all database data (⚠️ USE WITH CAUTION)                                                                                  | false    | true                                      |
@@ -359,16 +360,17 @@ Use both Photon and external services for maximum reliability.
 - Consider geographic coverage of different providers
 
 ## Open ID Connect (OIDC)
-Reitti supports using a third party OIDC provider for sign-ins. It provides four environment variables which are required for OIDC authentication.
+Reitti supports using a third party OIDC provider for sign-ins. It provides the following environment variables which are required for OIDC authentication.
 
 - `OIDC_ENABLED`
 - `OIDC_CLIENT_ID`
 - `OIDC_CLIENT_SECRET`
 - `OIDC_ISSUER_URI`
+- `OIDC_SCOPE` (should usually be set to "openid,profile")
 
-The first one needs to be set to `true`, whereas the remaining three should all be given to you by your OIDC provider. See the [Environment Variables](#environment-variables) section for examples.
+Setting `OIDC_ENABLED = true` enables OIDC, whereas the remaining need to be found from your OIDC provider, e.g. github. See the [Environment Variables](#environment-variables) section for examples.
 
-On the OIDC provider's side, there are two URLs provided by reitti that you should give to your OIDC provider, one of which is required.
+There are two URLs provided by reitti that you should give to your OIDC provider (see their documentation for further information on this), one of which is required.
 - (Required) Callback URL: https://<your-reitti-url>/login/oauth2/code/oauth (e.g. `https://reitti.internal/login/oauth2/code/oauth`)
 - (Optional) Logout callback URL: https://<your-reitti-url>/logout/connect/back-channel/oauth
 
