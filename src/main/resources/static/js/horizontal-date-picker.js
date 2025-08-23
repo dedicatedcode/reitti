@@ -729,7 +729,7 @@ class HorizontalDatePicker {
         return false;
     }
 
-    // Flash invalid selection and revert to last valid date
+    // Flash invalid selection and select today's date
     flashInvalidSelection(element) {
         if (!element) return;
         
@@ -740,12 +740,12 @@ class HorizontalDatePicker {
         element.style.backgroundColor = '#ff4444';
         element.style.transition = 'background-color 0.1s ease';
         
-        // Revert after 300ms
+        // Select today's date after 300ms
         setTimeout(() => {
             element.style.backgroundColor = originalBackground;
             
-            // Revert to last valid date
-            this.setDate(this.lastValidDate);
+            // Go to today's date
+            this.goToToday();
         }, 300);
     }
 
