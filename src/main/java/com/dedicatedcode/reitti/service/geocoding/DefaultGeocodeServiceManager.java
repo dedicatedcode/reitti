@@ -21,6 +21,7 @@ import java.util.Optional;
 @Service
 public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
 
+    //create a test for this class by mocking out the RestTemplate AI!
     private static final Logger logger = LoggerFactory.getLogger(DefaultGeocodeServiceManager.class);
 
     private final GeocodeServiceJdbcService geocodeServiceJdbcService;
