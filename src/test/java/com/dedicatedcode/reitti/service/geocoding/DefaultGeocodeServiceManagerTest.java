@@ -102,11 +102,47 @@ class DefaultGeocodeServiceManagerTest {
         // Then
         assertThat(result).isPresent();
         GeocodeResult geocodeResult = result.get();
-        assertThat(geocodeResult.name()).isEqualTo("Test Location");
+        assertThat(geocodeResult.label()).isEqualTo("Test Location");
         assertThat(geocodeResult.street()).isEqualTo("Test Street");
         assertThat(geocodeResult.city()).isEqualTo("Test City");
         assertThat(geocodeResult.district()).isEqualTo("Test District");
         
+        verify(geocodeServiceJdbcService).save(any(RemoteGeocodeService.class));
+    }
+
+
+    @Test
+    void shouldReturnCorrectGeoCodeResultFromRemoteService() {
+        // Given
+        double latitude = 53.863149;
+        double longitude = 10.700927;
+
+        RemoteGeocodeService service = new RemoteGeocodeService(
+                1L, "Test Service", "http://test.com?lat={lat}&lng={lng}",
+                true, 0, null, null, 1L
+        );
+
+        when(geocodeServiceJdbcService.findByEnabledTrueOrderByLastUsedAsc())
+                .thenReturn(List.of(service));
+
+        String mockResponse = """
+                {"place_id":309281591,"licence":"Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright","osm_type":"way","osm_id":555816145,"lat":"38.9763500","lon":"-94.5953511","class":"amenity","type":"fast_food","place_rank":30,"importance":7.305638208586279e-05,"addresstype":"amenity","name":"McDonald's","display_name":"McDonald's, 8326, Wornall Road, Waldo, Kansas City, Jackson County, Missouri, 64114, United States","address":{"amenity":"McDonald's","house_number":"8326","road":"Wornall Road","neighbourhood":"Waldo","city":"Kansas City","county":"Jackson County","state":"Missouri","ISO3166-2-lvl4":"US-MO","postcode":"64114","country":"United States","country_code":"us"},"boundingbox":["38.9762717","38.9764468","-94.5955208","-94.5951802"]}
+                """;
+
+        when(restTemplate.getForObject(anyString(), eq(String.class)))
+                .thenReturn(mockResponse);
+
+        // When
+        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(latitude, longitude);
+
+        // Then
+        assertThat(result).isPresent();
+        GeocodeResult geocodeResult = result.get();
+        assertThat(geocodeResult.label()).isEqualTo("McDonald's");
+        assertThat(geocodeResult.street()).isEqualTo("Wornall Road 8326");
+        assertThat(geocodeResult.city()).isEqualTo("Kansas City");
+        assertThat(geocodeResult.district()).isEqualTo("Waldo");
+
         verify(geocodeServiceJdbcService).save(any(RemoteGeocodeService.class));
     }
 
@@ -153,7 +189,7 @@ class DefaultGeocodeServiceManagerTest {
         // Then
         assertThat(result).isPresent();
         GeocodeResult geocodeResult = result.get();
-        assertThat(geocodeResult.name()).isEqualTo("Photon Location");
+        assertThat(geocodeResult.label()).isEqualTo("Photon Location");
         assertThat(geocodeResult.street()).isEqualTo("Photon Street");
         assertThat(geocodeResult.city()).isEqualTo("Photon City");
         assertThat(geocodeResult.district()).isEqualTo("Photon District");

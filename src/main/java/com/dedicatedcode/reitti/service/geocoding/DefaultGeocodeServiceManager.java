@@ -138,12 +138,42 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
                 district = address.path("city_district").asText("");
             }
 
-            if (label.isEmpty() && !street.isEmpty()) {
-                label = street;
+            Optional<GeocodeResult> result = createGeoCodeResult(label, street, city, district);
+            if (result.isPresent()) {
+                return result;
             }
-            if (StringUtils.hasText(label)) {
-                return Optional.of(new GeocodeResult(label, street, "", city,  "", district));
+        }
+
+        if (root.has("name") && root.has("address")) {
+            String label = root.get("name").asText();
+            String street = root.path("address").path("street").asText();
+            if (street.isBlank()) {
+                street = root.path("address").path("road").asText();
             }
+            if (root.path("address").path("house_number").isTextual()) {
+                street = street + " " + root.path("address").path("house_number").asText();
+            }
+            String city = root.path("address").path("city").asText();
+            String district =  root.path("address").path("district").asText();
+            if (district.isBlank()) {
+                district = root.path("address").path("neighbourhood").asText();
+            }
+            Optional<GeocodeResult> result = createGeoCodeResult(label, street, city, district);
+            if (result.isPresent()) {
+                return result;
+            }
+        }
+
+
+        return Optional.empty();
+    }
+
+    private static Optional<GeocodeResult> createGeoCodeResult(String label, String street, String city, String district) {
+        if (label.isEmpty() && !street.isEmpty()) {
+            label = street;
+        }
+        if (StringUtils.hasText(label)) {
+            return Optional.of(new GeocodeResult(label, street, "", city, "", district));
         }
         return Optional.empty();
     }
