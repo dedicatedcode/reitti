@@ -110,7 +110,6 @@ class DefaultGeocodeServiceManagerTest {
         verify(geocodeServiceJdbcService).save(any(RemoteGeocodeService.class));
     }
 
-
     @Test
     void shouldReturnCorrectGeoCodeResultFromRemoteService() {
         // Given
@@ -127,6 +126,88 @@ class DefaultGeocodeServiceManagerTest {
 
         String mockResponse = """
                 {"place_id":309281591,"licence":"Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright","osm_type":"way","osm_id":555816145,"lat":"38.9763500","lon":"-94.5953511","class":"amenity","type":"fast_food","place_rank":30,"importance":7.305638208586279e-05,"addresstype":"amenity","name":"McDonald's","display_name":"McDonald's, 8326, Wornall Road, Waldo, Kansas City, Jackson County, Missouri, 64114, United States","address":{"amenity":"McDonald's","house_number":"8326","road":"Wornall Road","neighbourhood":"Waldo","city":"Kansas City","county":"Jackson County","state":"Missouri","ISO3166-2-lvl4":"US-MO","postcode":"64114","country":"United States","country_code":"us"},"boundingbox":["38.9762717","38.9764468","-94.5955208","-94.5951802"]}
+                """;
+
+        when(restTemplate.getForObject(anyString(), eq(String.class)))
+                .thenReturn(mockResponse);
+
+        // When
+        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(latitude, longitude);
+
+        // Then
+        assertThat(result).isPresent();
+        GeocodeResult geocodeResult = result.get();
+        assertThat(geocodeResult.label()).isEqualTo("McDonald's");
+        assertThat(geocodeResult.street()).isEqualTo("Wornall Road 8326");
+        assertThat(geocodeResult.city()).isEqualTo("Kansas City");
+        assertThat(geocodeResult.district()).isEqualTo("Waldo");
+
+        verify(geocodeServiceJdbcService).save(any(RemoteGeocodeService.class));
+    }
+
+    @Test
+    void shouldReturnCorrectGeoCodeResultFromGeoCodeJsonRemoteService() {
+        // Given
+        double latitude = 53.863149;
+        double longitude = 10.700927;
+
+        RemoteGeocodeService service = new RemoteGeocodeService(
+                1L, "Test Service", "http://test.com?lat={lat}&lng={lng}",
+                true, 0, null, null, 1L
+        );
+
+        when(geocodeServiceJdbcService.findByEnabledTrueOrderByLastUsedAsc())
+                .thenReturn(List.of(service));
+
+        String mockResponse = """
+                {
+                                            "type": "FeatureCollection",
+                                            "geocoding": {
+                                              "version": "0.1.0",
+                                              "attribution": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+                                              "licence": "ODbL",
+                                              "query": ""
+                                            },
+                                            "features": [
+                                              {
+                                                "type": "Feature",
+                                                "properties": {
+                                                  "geocoding": {
+                                                    "place_id": 309600843,
+                                                    "osm_type": "way",
+                                                    "osm_id": 555816145,
+                                                    "osm_key": "amenity",
+                                                    "osm_value": "fast_food",
+                                                    "type": "house",
+                                                    "accuracy": 0,
+                                                    "label": "McDonald's, 8326, Wornall Road, Waldo, Kansas City, Jackson County, Missouri, 64114, United States",
+                                                    "name": "McDonald's",
+                                                    "housenumber": "8326",
+                                                    "postcode": "64114",
+                                                    "street": "Wornall Road",
+                                                    "locality": "Waldo",
+                                                    "city": "Kansas City",
+                                                    "county": "Jackson County",
+                                                    "state": "Missouri",
+                                                    "country": "United States",
+                                                    "country_code": "us",
+                                                    "admin": {
+                                                      "level8": "Kansas City",
+                                                      "level6": "Jackson County",
+                                                      "level4": "Missouri"
+                                                    }
+                                                  }
+                                                },
+                                                "geometry": {
+                                                  "type": "Point",
+                                                  "coordinates": [
+                                                    -94.59535111452982,
+                                                    38.97635
+                                                  ]
+                                                }
+                                              }
+                                            ]
+                                          }
                 """;
 
         when(restTemplate.getForObject(anyString(), eq(String.class)))

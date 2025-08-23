@@ -126,12 +126,35 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
 
             //try to find elements from address;
             JsonNode address = properties.path("address");
-            if (address.isMissingNode()) {
+            JsonNode geocoding = properties.path("geocoding");
+            if (geocoding.isObject()) {
+                label = geocoding.path("name").asText();
+                if (label.isBlank()) {
+                    label = geocoding.path("label").asText();
+                }
+                street = geocoding.path("street").asText();
+                if (street.isBlank()) {
+                    street = geocoding.path("road").asText();
+                }
+                if (geocoding.has("housenumber")) {
+                    street = street + " " + geocoding.path("housenumber").asText();
+                }
+                city = geocoding.path("city").asText();
+                district = geocoding.path("city_district").asText();
+                if (district.isBlank()) {
+                    district = geocoding.path("district").asText();
+                }
+                if (district.isBlank()) {
+                    district = geocoding.path("locality").asText();
+                }
+            } else if  (address.isMissingNode()) {
+                //try to find it directly under the root node
                 label = properties.path("formatted").asText("");
                 street = properties.path("street").asText("");
                 city = properties.path("city").asText("");
-                district = properties.path("district").asText("");
+                district = properties.path("city_district").asText("");
             } else {
+                //there is an address, find it there
                 label = properties.path("name").asText("");
                 street = address.path("road").asText("");
                 city = address.path("city").asText("");
@@ -163,8 +186,6 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
                 return result;
             }
         }
-
-
         return Optional.empty();
     }
 
