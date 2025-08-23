@@ -746,7 +746,7 @@ class HorizontalDatePicker {
             
             // Go to today's date
             this.goToToday();
-        }, 300);
+        }, 3000);
     }
 
     // Populate the month row
