@@ -1,0 +1,5 @@
+reitti.security.oidc.enabled=true
+spring.security.oauth2.client.registration.oauth.client-id=<client id from your provider>
+spring.security.oauth2.client.registration.oauth.client-secret=<client secret from your provider>
+spring.security.oauth2.client.provider.oauth.issuer-uri=<url of your provider>
+spring.security.oauth2.client.registration.oauth.scope=openid,profile

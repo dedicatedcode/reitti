@@ -28,3 +28,4 @@ replay_pid*
 /.idea/
 
 *secrets.properties
+*oidc.properties
