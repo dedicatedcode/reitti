@@ -21,6 +21,9 @@ class HorizontalDatePicker {
             ...options
         };
         
+        // Track the last valid date for reverting invalid selections
+        this.lastValidDate = new Date(this.options.selectedDate);
+        
         this.init();
     }
     
@@ -431,6 +434,9 @@ class HorizontalDatePicker {
         
         if ((this.options.minDate && dateToSelect < new Date(this.options.minDate)) || 
             (this.options.maxDate && dateToSelect > new Date(this.options.maxDate))) {
+            if (isManualSelection) {
+                this.flashInvalidSelection(dateItem);
+            }
             return; // Don't select dates outside the allowed range
         }
         
@@ -439,6 +445,9 @@ class HorizontalDatePicker {
             const today = new Date();
             today.setHours(23, 59, 59, 59);
             if (dateToSelect > today) {
+                if (isManualSelection) {
+                    this.flashInvalidSelection(dateItem);
+                }
                 return; // Don't select future dates if not allowed
             }
         }
@@ -494,6 +503,9 @@ class HorizontalDatePicker {
         }
         
         this.options.selectedDate = dateToSelect;
+        
+        // Update last valid date
+        this.lastValidDate = new Date(dateToSelect);
         
         // Update the month row to highlight the correct month
         if (this.options.showMonthRow) {
@@ -717,6 +729,42 @@ class HorizontalDatePicker {
         return false;
     }
 
+    // Flash invalid selection and select today's date
+    flashInvalidSelection(element) {
+        if (!element) return;
+        
+        // Store original background color
+        const originalBackground = element.style.backgroundColor || '';
+        
+        // Set up transition for smooth flashing
+        element.style.transition = 'background-color 0.15s ease';
+        
+        let flashCount = 0;
+        const maxFlashes = 6; // 3 complete flash cycles (red -> original -> red -> original -> red -> original)
+        
+        const flash = () => {
+            if (flashCount < maxFlashes) {
+                // Alternate between red and original color
+                element.style.backgroundColor = flashCount % 2 === 0 ? '#ff4444' : originalBackground;
+                flashCount++;
+                
+                // Continue flashing
+                setTimeout(flash, 150);
+            } else {
+                // Restore original background and go to today
+                element.style.backgroundColor = originalBackground;
+                
+                // Go to today's date after flashing is complete
+                setTimeout(() => {
+                    this.goToToday();
+                }, 100);
+            }
+        };
+        
+        // Start the flashing animation
+        flash();
+    }
+
     // Populate the month row
     populateMonthRow() {
         this.monthRowContainer.innerHTML = '';
@@ -832,6 +880,19 @@ class HorizontalDatePicker {
     
     // Select a month
     selectMonth(year, month) {
+        // Check if this month is unavailable
+        if (this.isMonthUnavailable(year, month)) {
+            // Find the month element and flash it
+            const monthItems = this.monthRowContainer.querySelectorAll('.month-item');
+            for (const item of monthItems) {
+                if (parseInt(item.dataset.year) === year && parseInt(item.dataset.month) === month) {
+                    this.flashInvalidSelection(item);
+                    break;
+                }
+            }
+            return;
+        }
+
         // If auto-update mode is active, disable it for manual month selection
         if (window.autoUpdateMode) {
             console.log('Manual month selection detected, disabling auto-update mode');
@@ -853,6 +914,14 @@ class HorizontalDatePicker {
             today.setHours(23, 59, 59, 59);
             
             if (newDate > today) {
+                // Find the month element and flash it
+                const monthItems = this.monthRowContainer.querySelectorAll('.month-item');
+                for (const item of monthItems) {
+                    if (parseInt(item.dataset.year) === year && parseInt(item.dataset.month) === month) {
+                        this.flashInvalidSelection(item);
+                        break;
+                    }
+                }
                 return; // Don't select future months if not allowed
             }
         }
@@ -865,6 +934,9 @@ class HorizontalDatePicker {
         
         // Store the exact date we want to select
         const exactSelectedDate = new Date(newDate);
+        
+        // Update last valid date
+        this.lastValidDate = new Date(exactSelectedDate);
         
         // Completely recreate the date picker with the new date as the center
         this.options.selectedDate = exactSelectedDate;
@@ -905,6 +977,19 @@ class HorizontalDatePicker {
     
     // Select a year
     selectYear(year) {
+        // Check if this year is unavailable
+        if (this.isYearUnavailable(year)) {
+            // Find the year element and flash it
+            const yearItems = this.monthRowContainer.querySelectorAll('.year-item');
+            for (const item of yearItems) {
+                if (parseInt(item.dataset.year) === year) {
+                    this.flashInvalidSelection(item);
+                    break;
+                }
+            }
+            return;
+        }
+
         // If auto-update mode is active, disable it for manual year selection
         if (window.autoUpdateMode) {
             console.log('Manual year selection detected, disabling auto-update mode');
@@ -926,6 +1011,14 @@ class HorizontalDatePicker {
             today.setHours(23, 59, 59, 59);
             
             if (newDate > today) {
+                // Find the year element and flash it
+                const yearItems = this.monthRowContainer.querySelectorAll('.year-item');
+                for (const item of yearItems) {
+                    if (parseInt(item.dataset.year) === year) {
+                        this.flashInvalidSelection(item);
+                        break;
+                    }
+                }
                 return; // Don't select future years if not allowed
             }
         }
@@ -941,6 +1034,9 @@ class HorizontalDatePicker {
         
         // Store the exact date we want to select
         const exactSelectedDate = new Date(newDate);
+        
+        // Update last valid date
+        this.lastValidDate = new Date(exactSelectedDate);
         
         // Completely recreate the date picker with the new date as the center
         this.options.selectedDate = exactSelectedDate;
@@ -1046,6 +1142,9 @@ class HorizontalDatePicker {
         }
         
         this.options.selectedDate = newDate;
+        
+        // Update last valid date
+        this.lastValidDate = new Date(newDate);
         
         // Adjust daysBeforeToday to center the selected date
         const today = new Date();
