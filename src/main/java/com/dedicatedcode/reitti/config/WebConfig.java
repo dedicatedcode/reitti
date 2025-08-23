@@ -11,6 +11,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.i18n.CookieLocaleResolver;
 import org.springframework.web.servlet.i18n.LocaleChangeInterceptor;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Locale;
 
 @Configuration
@@ -24,10 +26,9 @@ public class WebConfig implements WebMvcConfigurer {
     
     @Bean
     public LocaleResolver localeResolver() {
-        CookieLocaleResolver resolver = new CookieLocaleResolver();
+        CookieLocaleResolver resolver = new CookieLocaleResolver("reitti-language");
         resolver.setDefaultLocale(Locale.ENGLISH);
-        resolver.setCookieName("reitti-language");
-        resolver.setCookieMaxAge(365 * 24 * 60 * 60); // 1 year
+        resolver.setCookieMaxAge(Duration.of(1, ChronoUnit.YEARS));
         resolver.setCookiePath("/");
         return resolver;
     }
