@@ -28,7 +28,7 @@ public class WebConfig implements WebMvcConfigurer {
     public LocaleResolver localeResolver() {
         CookieLocaleResolver resolver = new CookieLocaleResolver("reitti-language");
         resolver.setDefaultLocale(Locale.ENGLISH);
-        resolver.setCookieMaxAge(Duration.of(1, ChronoUnit.YEARS));
+        resolver.setCookieMaxAge(Duration.of(365 * 24 * 60 * 60, ChronoUnit.SECONDS));
         resolver.setCookiePath("/");
         return resolver;
     }
