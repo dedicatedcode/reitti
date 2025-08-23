@@ -736,17 +736,33 @@ class HorizontalDatePicker {
         // Store original background color
         const originalBackground = element.style.backgroundColor || '';
         
-        // Flash red
-        element.style.backgroundColor = '#ff4444';
-        element.style.transition = 'background-color 0.1s ease';
+        // Set up transition for smooth flashing
+        element.style.transition = 'background-color 0.15s ease';
         
-        // Select today's date after 300ms
-        setTimeout(() => {
-            element.style.backgroundColor = originalBackground;
-            
-            // Go to today's date
-            this.goToToday();
-        }, 3000);
+        let flashCount = 0;
+        const maxFlashes = 6; // 3 complete flash cycles (red -> original -> red -> original -> red -> original)
+        
+        const flash = () => {
+            if (flashCount < maxFlashes) {
+                // Alternate between red and original color
+                element.style.backgroundColor = flashCount % 2 === 0 ? '#ff4444' : originalBackground;
+                flashCount++;
+                
+                // Continue flashing
+                setTimeout(flash, 150);
+            } else {
+                // Restore original background and go to today
+                element.style.backgroundColor = originalBackground;
+                
+                // Go to today's date after flashing is complete
+                setTimeout(() => {
+                    this.goToToday();
+                }, 100);
+            }
+        };
+        
+        // Start the flashing animation
+        flash();
     }
 
     // Populate the month row
