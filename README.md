@@ -94,7 +94,8 @@ The easiest way to get started is using Docker Compose:
 
 4. Login with admin:admin
 
-#add a note that until https://github.com/postgis/docker-postgis/issues/216 is fixed by the PostGis Team User wanting to run Reitti on ARM have to change the PostGis Image in the compose file from image: postgis/postgis:17-3.5-alpine to imresamu/postgis:17-3.5-alpine AI! 
+**Note for ARM64 users (Apple Silicon, etc.):** Until [postgis/docker-postgis#216](https://github.com/postgis/docker-postgis/issues/216) is fixed by the PostGIS team, users wanting to run Reitti on ARM64 platforms need to change the PostGIS image in the docker-compose file from `image: postgis/postgis:17-3.5-alpine` to `image: imresamu/postgis:17-3.5-alpine`.
+
 ### Development Setup
 
 For development or custom deployments:
