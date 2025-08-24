@@ -6,7 +6,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -72,7 +71,7 @@ public class ReittiIntegrationController {
     @ResponseBody
     public ResponseEntity<Map<String, Object>> testReittiConnection(
             @RequestParam String url,
-            @RequestParam String token) {
+            @RequestParam(name = "foreign_token") String token) {
         
         Map<String, Object> response = new HashMap<>();
         

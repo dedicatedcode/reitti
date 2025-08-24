@@ -7,10 +7,7 @@ import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.*;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
-import java.util.Arrays;
 import jakarta.servlet.http.HttpServletRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
@@ -20,12 +17,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -33,8 +27,6 @@ import java.util.stream.Collectors;
 @Controller
 @RequestMapping("/settings")
 public class SettingsController {
-    private static final Logger logger = LoggerFactory.getLogger(SettingsController.class);
-
     private final ApiTokenService apiTokenService;
     private final QueueStatsService queueStatsService;
     private final PlaceService placeService;
@@ -50,53 +42,12 @@ public class SettingsController {
     private final int maxErrors;
     private final boolean dataManagementEnabled;
     private final MessageSource messageSource;
-    private final Properties gitProperties = new Properties();
     private final ProcessingPipelineTrigger processingPipelineTrigger;
 
     private final UserJdbcService userJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final AvatarService avatarService;
-
-    private String getUserManagementPage(Authentication authentication, Model model) {
-        String currentUsername = authentication.getName();
-        User currentUser = userJdbcService.findByUsername(currentUsername)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUsername));
-        
-        if (currentUser.getRole() != Role.ADMIN) {
-            // For non-admin users, show their own form
-            model.addAttribute("userId", currentUser.getId());
-            model.addAttribute("username", currentUser.getUsername());
-            model.addAttribute("displayName", currentUser.getDisplayName());
-            model.addAttribute("selectedRole", currentUser.getRole());;
-
-            UserSettings userSettings = userSettingsJdbcService.findByUserId(currentUser.getId())
-                .orElse(UserSettings.defaultSettings(currentUser.getId()));
-            model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
-            model.addAttribute("selectedUnitSystem", userSettings.getUnitSystem().name());
-            model.addAttribute("preferColoredMap", userSettings.isPreferColoredMap());
-            model.addAttribute("homeLatitude", userSettings.getHomeLatitude());
-            model.addAttribute("homeLongitude", userSettings.getHomeLongitude());
-            model.addAttribute("unitSystems", UnitSystem.values());
-            model.addAttribute("isAdmin", false);
-            
-            // Check if user has avatar
-            boolean hasAvatar = this.avatarService.getInfo(currentUser.getId()).isPresent();
-            model.addAttribute("hasAvatar", hasAvatar);
-            
-            // Add default avatars to model
-            model.addAttribute("defaultAvatars", Arrays.asList(
-                "avatar_man.jpg", "avatar_woman.jpg", "avatar_boy.jpg", "avatar_girl.jpg"
-            ));
-        } else {
-            // For admin users, show user list
-            List<User> users = userJdbcService.getAllUsers();
-            model.addAttribute("users", users);
-            model.addAttribute("currentUsername", currentUsername);
-            model.addAttribute("isAdmin", true);
-        }
-        
-        return "settings";
-    }
+    private final VersionService versionService;
 
     public SettingsController(ApiTokenService apiTokenService,
                               UserJdbcService userJdbcService,
@@ -115,7 +66,8 @@ public class SettingsController {
                               @Value("${reitti.geocoding.max-errors}") int maxErrors,
                               @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                               MessageSource messageSource,
-                              ProcessingPipelineTrigger processingPipelineTrigger) {
+                              ProcessingPipelineTrigger processingPipelineTrigger,
+                              VersionService versionService) {
         this.apiTokenService = apiTokenService;
         this.userJdbcService = userJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
@@ -135,20 +87,7 @@ public class SettingsController {
         this.dataManagementEnabled = dataManagementEnabled;
         this.messageSource = messageSource;
         this.processingPipelineTrigger = processingPipelineTrigger;
-        loadGitProperties();
-    }
-
-    private void loadGitProperties() {
-        try (InputStream is = getClass().getClassLoader().getResourceAsStream("git.properties")) {
-            if (is != null) {
-                this.gitProperties.load(is);
-                logger.info("git.properties loaded successfully.");
-            } else {
-                logger.warn("git.properties not found on classpath. About section may not display Git information.");
-            }
-        } catch (IOException e) {
-            logger.error("Failed to load git.properties", e);
-        }
+        this.versionService = versionService;
     }
 
     private String getMessage(String key, Object... args) {
@@ -846,30 +785,51 @@ public class SettingsController {
 
     @GetMapping("/about-content")
     public String getAboutContent(Model model) {
-        String notAvailable = getMessage("about.not.available");
-        String property = gitProperties.getProperty("git.tags");
-        if (!StringUtils.hasText(property)) {
-            property = "development";
-        }
-        model.addAttribute("buildVersion", property);
-
-        String commitId = gitProperties.getProperty("git.commit.id.abbrev", notAvailable);
-        String commitTime = gitProperties.getProperty("git.commit.time");
-
-        StringBuilder commitDetails = new StringBuilder();
-        if (!commitId.equals(notAvailable)) {
-            commitDetails.append(commitId);
-            if (commitTime != null && !commitTime.isEmpty()) {
-                commitDetails.append(" (").append(commitTime);
-                commitDetails.append(")");
-            }
-        } else {
-            commitDetails.append(notAvailable);
-        }
-
-
-        model.addAttribute("gitCommitDetails", commitDetails.toString());
-        model.addAttribute("buildTime", gitProperties.getProperty("git.build.time", notAvailable));
+        model.addAttribute("buildVersion", this.versionService.getVersion());
+        model.addAttribute("gitCommitDetails", this.versionService.getCommitDetails());
+        model.addAttribute("buildTime", this.versionService.getBuildTime());
         return "fragments/settings :: about-content";
     }
+
+    private String getUserManagementPage(Authentication authentication, Model model) {
+        String currentUsername = authentication.getName();
+        User currentUser = userJdbcService.findByUsername(currentUsername)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUsername));
+
+        if (currentUser.getRole() != Role.ADMIN) {
+            // For non-admin users, show their own form
+            model.addAttribute("userId", currentUser.getId());
+            model.addAttribute("username", currentUser.getUsername());
+            model.addAttribute("displayName", currentUser.getDisplayName());
+            model.addAttribute("selectedRole", currentUser.getRole());;
+
+            UserSettings userSettings = userSettingsJdbcService.findByUserId(currentUser.getId())
+                    .orElse(UserSettings.defaultSettings(currentUser.getId()));
+            model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
+            model.addAttribute("selectedUnitSystem", userSettings.getUnitSystem().name());
+            model.addAttribute("preferColoredMap", userSettings.isPreferColoredMap());
+            model.addAttribute("homeLatitude", userSettings.getHomeLatitude());
+            model.addAttribute("homeLongitude", userSettings.getHomeLongitude());
+            model.addAttribute("unitSystems", UnitSystem.values());
+            model.addAttribute("isAdmin", false);
+
+            // Check if user has avatar
+            boolean hasAvatar = this.avatarService.getInfo(currentUser.getId()).isPresent();
+            model.addAttribute("hasAvatar", hasAvatar);
+
+            // Add default avatars to model
+            model.addAttribute("defaultAvatars", Arrays.asList(
+                    "avatar_man.jpg", "avatar_woman.jpg", "avatar_boy.jpg", "avatar_girl.jpg"
+            ));
+        } else {
+            // For admin users, show user list
+            List<User> users = userJdbcService.getAllUsers();
+            model.addAttribute("users", users);
+            model.addAttribute("currentUsername", currentUsername);
+            model.addAttribute("isAdmin", true);
+        }
+
+        return "settings";
+    }
+
 }
