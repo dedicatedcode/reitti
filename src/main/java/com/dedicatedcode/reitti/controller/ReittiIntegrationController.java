@@ -1,10 +1,14 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.model.ReittiIntegration;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -76,15 +80,39 @@ public class ReittiIntegrationController {
         Map<String, Object> response = new HashMap<>();
         
         try {
-            // TODO: Implement actual connection test when JDBC is available
-            // For now, simulate a successful connection test
-            if (url.startsWith("http") && !token.isEmpty()) {
-                response.put("success", true);
-                response.put("message", "Connection successful - Connected to Reitti instance");
-            } else {
+            if (!url.startsWith("http") || token.isEmpty()) {
                 response.put("success", false);
                 response.put("message", "Invalid URL or token format");
+                return ResponseEntity.ok(response);
             }
+            
+            // Prepare the request with X-API-TOKEN header
+            RestTemplate restTemplate = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("X-API-TOKEN", token);
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            
+            // Construct the info endpoint URL
+            String infoUrl = url.endsWith("/") ? url + "api/v1/reitti-integration/info" : url + "/api/v1/reitti-integration/info";
+            
+            // Make the request to the remote Reitti instance
+            ResponseEntity<Map> remoteResponse = restTemplate.exchange(
+                infoUrl,
+                HttpMethod.GET,
+                entity,
+                Map.class
+            );
+            
+            if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null) {
+                Map<String, Object> remoteData = remoteResponse.getBody();
+                response.put("success", true);
+                response.put("message", "Connection successful - Connected to Reitti instance");
+                response.put("remoteInfo", remoteData);
+            } else {
+                response.put("success", false);
+                response.put("message", "Connection failed: Invalid response from remote instance");
+            }
+            
         } catch (Exception e) {
             response.put("success", false);
             response.put("message", "Connection failed: " + e.getMessage());
