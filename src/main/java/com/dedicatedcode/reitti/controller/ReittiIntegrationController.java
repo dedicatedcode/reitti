@@ -80,22 +80,13 @@ public class ReittiIntegrationController {
         Map<String, Object> response = new HashMap<>();
         
         try {
-            if (!url.startsWith("http") || token.isEmpty()) {
-                response.put("success", false);
-                response.put("message", "Invalid URL or token format");
-                return ResponseEntity.ok(response);
-            }
-            
-            // Prepare the request with X-API-TOKEN header
             RestTemplate restTemplate = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-API-TOKEN", token);
             HttpEntity<String> entity = new HttpEntity<>(headers);
             
-            // Construct the info endpoint URL
             String infoUrl = url.endsWith("/") ? url + "api/v1/reitti-integration/info" : url + "/api/v1/reitti-integration/info";
             
-            // Make the request to the remote Reitti instance
             ResponseEntity<Map> remoteResponse = restTemplate.exchange(
                 infoUrl,
                 HttpMethod.GET,
