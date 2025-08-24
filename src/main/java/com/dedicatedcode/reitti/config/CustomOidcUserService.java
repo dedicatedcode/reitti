@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.config;
 
+import com.dedicatedcode.reitti.model.ExternalUser;
 import com.dedicatedcode.reitti.model.User;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
@@ -28,8 +29,7 @@ public class CustomOidcUserService extends OidcUserService {
         User user = userJdbcService.findByUsername(preferredUsername)
                 .orElseThrow(() -> new UsernameNotFoundException("No internal user found for username: " + preferredUsername));
 
-        user.setOidcUser(super.loadUser(userRequest));
-        return user;
+        return new ExternalUser(user, super.loadUser(userRequest));
     }
 }
 
