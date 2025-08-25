@@ -33,6 +33,7 @@ public class ReittiIntegrationController {
             @RequestParam String url,
             @RequestParam String token,
             @RequestParam(defaultValue = "false") boolean enabled,
+            @RequestParam(defaultValue = "#3498db") String color,
             Model model) {
         
         try {

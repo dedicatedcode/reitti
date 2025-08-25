@@ -13,8 +13,9 @@ public class ReittiIntegration {
     private final LocalDateTime lastUsed;
     private final Long version;
     private final String lastMessage;
+    private final String color;
 
-    public ReittiIntegration(Long id, String url, String token, boolean enabled, Status status, LocalDateTime createdAt, LocalDateTime updatedAt, LocalDateTime lastUsed, Long version, String lastMessage) {
+    public ReittiIntegration(Long id, String url, String token, boolean enabled, Status status, LocalDateTime createdAt, LocalDateTime updatedAt, LocalDateTime lastUsed, Long version, String lastMessage, String color) {
         this.id = id;
         this.url = url;
         this.token = token;
@@ -25,6 +26,7 @@ public class ReittiIntegration {
         this.lastUsed = lastUsed;
         this.version = version;
         this.lastMessage = lastMessage;
+        this.color = color;
     }
 
     public Long getId() {
@@ -65,6 +67,10 @@ public class ReittiIntegration {
 
     public String getLastMessage() {
         return lastMessage;
+    }
+
+    public String getColor() {
+        return color;
     }
 
     public enum Status {

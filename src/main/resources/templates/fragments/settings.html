@@ -719,6 +719,7 @@
                     <th th:text="#{integrations.reitti.table.url}">Instance URL</th>
                     <th th:text="#{integrations.reitti.table.status}">Status</th>
                     <th th:text="#{integrations.reitti.table.last.used}">Last Used</th>
+                    <th th:text="#{integrations.reitti.table.color}">Color</th>
                     <th th:text="#{integrations.reitti.table.actions}">Actions</th>
                 </tr>
                 </thead>
@@ -737,6 +738,12 @@
                         </span>
                     </td>
                     <td th:text="${integration.lastUsed != null ? #temporals.format(integration.lastUsed, 'yyyy-MM-dd HH:mm') : #messages.msg('integrations.reitti.never.used')}"></td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div th:style="'width: 20px; height: 20px; border-radius: 50%; background-color: ' + ${integration.color ?: '#3498db'} + '; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3);'"></div>
+                            <span th:text="${integration.color ?: '#3498db'}" style="font-family: monospace; font-size: 0.9em;"></span>
+                        </div>
+                    </td>
                     <td>
                         <button class="btn"
                                 th:attr="hx-post=@{/settings/reitti-integrations/{id}/toggle(id=${integration.id})}"
@@ -779,6 +786,18 @@
                            required
                            autocomplete="new-password"
                            th:placeholder="#{integrations.reitti.token.placeholder}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="reittiColor" th:text="#{integrations.reitti.color}">Color</label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="color" 
+                               id="reittiColor" 
+                               name="color" 
+                               value="#3498db"
+                               style="width: 50px; height: 40px; border: none; border-radius: 4px; cursor: pointer;">
+                        <span style="color: var(--color-text-white); font-size: 0.9em;" th:text="#{integrations.reitti.color.description}">Choose a color to identify this integration on the map</span>
+                    </div>
                 </div>
                 
                 <div class="form-group">
