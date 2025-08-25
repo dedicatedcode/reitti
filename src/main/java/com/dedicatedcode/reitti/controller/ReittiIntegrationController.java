@@ -46,10 +46,52 @@ public class ReittiIntegrationController {
             Model model) {
         
         try {
-            this.jdbcService.create(user, ReittiIntegration.create(url, token, enabled, color));
+            this.jdbcService.create(user, url, token, color, enabled);
             model.addAttribute("successMessage", "Reitti integration saved successfully");
         } catch (Exception e) {
             model.addAttribute("errorMessage", "Error saving configuration: " + e.getMessage());
+        }
+        
+        // Reload the content
+        return getSharedInstancesContent(user, model);
+    }
+
+    @PostMapping("/reitti-integrations/{id}/update")
+    public String updateReittiIntegration(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long id,
+            @RequestParam String url,
+            @RequestParam String token,
+            @RequestParam(defaultValue = "false") boolean enabled,
+            @RequestParam(defaultValue = "#3498db") String color,
+            Model model) {
+        
+        try {
+            this.jdbcService.findByIdAndUser(id, user).ifPresentOrElse(integration -> {
+                try {
+                    ReittiIntegration updatedIntegration = new ReittiIntegration(
+                        integration.getId(),
+                        url,
+                        token,
+                        enabled,
+                        enabled ? ReittiIntegration.Status.ENABLED : ReittiIntegration.Status.DISABLED,
+                        integration.getCreatedAt(),
+                        integration.getUpdatedAt(),
+                        integration.getLastUsed(),
+                        integration.getVersion(),
+                        integration.getLastMessage(),
+                        color
+                    );
+                    this.jdbcService.update(user, updatedIntegration);
+                    model.addAttribute("successMessage", "Reitti integration updated successfully");
+                } catch (OptimisticLockException e) {
+                    model.addAttribute("errorMessage", "Integration is out of date. Please reload the page and try again.");
+                } catch (Exception e) {
+                    model.addAttribute("errorMessage", "Error updating configuration: " + e.getMessage());
+                }
+            }, () -> model.addAttribute("errorMessage", "Integration not found!"));
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", "Error updating configuration: " + e.getMessage());
         }
         
         // Reload the content
