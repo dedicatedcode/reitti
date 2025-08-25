@@ -46,7 +46,7 @@ public class ReittiIntegrationController {
             Model model) {
         
         try {
-            this.jdbcService.create(user, url, token, color, enabled);
+            this.jdbcService.create(user, ReittiIntegration.create(url, token, enabled, color));
             model.addAttribute("successMessage", "Reitti integration saved successfully");
         } catch (Exception e) {
             model.addAttribute("errorMessage", "Error saving configuration: " + e.getMessage());

@@ -6,17 +6,17 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
-import org.springframework.stereotype.Repository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-@Repository
+@Service
+@Transactional
 public class ReittiIntegrationJdbcService {
 
     private final JdbcTemplate jdbcTemplate;
@@ -41,7 +41,7 @@ public class ReittiIntegrationJdbcService {
 
     public List<ReittiIntegration> findAllByUser(User user) {
         String sql = "SELECT id, url, token, color, enabled, created_at, updated_at, last_used, version, last_message " +
-                    "FROM reitti_integrations WHERE user_id = ? ORDER BY created_at DESC";
+                    "FROM reitti_integrations WHERE user_id = ? ORDER BY id DESC";
         return jdbcTemplate.query(sql, ROW_MAPPER, user.getId());
     }
 
@@ -52,7 +52,7 @@ public class ReittiIntegrationJdbcService {
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
-    public ReittiIntegration create(User user, String url, String token, String color, boolean enabled) {
+    public ReittiIntegration create(User user, ReittiIntegration integration) {
         String sql = "INSERT INTO reitti_integrations (user_id, url, token, color, enabled, created_at, version) " +
                     "VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id";
         
@@ -62,29 +62,17 @@ public class ReittiIntegrationJdbcService {
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(sql, new String[]{"id"});
             ps.setLong(1, user.getId());
-            ps.setString(2, url);
-            ps.setString(3, token);
-            ps.setString(4, color);
-            ps.setBoolean(5, enabled);
+            ps.setString(2, integration.getUrl());
+            ps.setString(3, integration.getToken());
+            ps.setString(4, integration.getColor());
+            ps.setBoolean(5, integration.isEnabled());
             ps.setTimestamp(6, Timestamp.valueOf(now));
             ps.setLong(7, 1L);
             return ps;
         }, keyHolder);
 
         Long id = keyHolder.getKey().longValue();
-        return new ReittiIntegration(
-            id,
-            url,
-            token,
-            enabled,
-            enabled ? ReittiIntegration.Status.ENABLED : ReittiIntegration.Status.DISABLED,
-            now,
-            null,
-            null,
-            1L,
-            null,
-            color
-        );
+        return this.findByIdAndUser(id, user).orElseThrow();
     }
 
     public Optional<ReittiIntegration> update(User user, ReittiIntegration integration) throws OptimisticLockException {
@@ -103,7 +91,6 @@ public class ReittiIntegrationJdbcService {
             integration.getVersion());
         
         if (results.isEmpty()) {
-            // Check if the record exists but version doesn't match
             Optional<ReittiIntegration> existing = findByIdAndUser(integration.getId(), user);
             if (existing.isPresent()) {
                 throw new OptimisticLockException("The integration has been modified by another process. Please refresh and try again.");
@@ -112,24 +99,6 @@ public class ReittiIntegrationJdbcService {
         }
         
         return Optional.of(results.get(0));
-    }
-
-    public boolean toggleEnabled(User user, ReittiIntegration integration) throws OptimisticLockException {
-        String sql = "UPDATE reitti_integrations SET enabled = NOT enabled, updated_at = ?, version = version + 1 " +
-                    "WHERE id = ? AND user_id = ? AND version = ?";
-        LocalDateTime now = LocalDateTime.now();
-        int rowsAffected = jdbcTemplate.update(sql, Timestamp.valueOf(now), integration.getId(), user.getId(), integration.getVersion());
-        
-        if (rowsAffected == 0) {
-            // Check if the record exists but version doesn't match
-            Optional<ReittiIntegration> existing = findByIdAndUser(integration.getId(), user);
-            if (existing.isPresent()) {
-                throw new OptimisticLockException("The integration has been modified by another process. Please refresh and try again.");
-            }
-            return false;
-        }
-        
-        return true;
     }
 
     public boolean updateLastUsed(User user, ReittiIntegration integration, LocalDateTime lastUsed, String lastMessage) throws OptimisticLockException {

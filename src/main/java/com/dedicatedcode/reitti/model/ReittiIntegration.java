@@ -29,6 +29,10 @@ public class ReittiIntegration {
         this.color = color;
     }
 
+    public static ReittiIntegration create(String url, String token, boolean enabled, String color) {
+        return new ReittiIntegration(-1L, url, token, enabled, enabled ? Status.ENABLED : Status.DISABLED, LocalDateTime.now(), null, null, 1L, null, color);
+    }
+
     public Long getId() {
         return id;
     }
@@ -71,6 +75,10 @@ public class ReittiIntegration {
 
     public String getColor() {
         return color;
+    }
+
+    public ReittiIntegration withEnabled(boolean enabled) {
+        return new ReittiIntegration(this.id, this.url, this.token, enabled, this.status, this.createdAt, this.updatedAt, this.lastUsed, this.version, this.lastMessage, this.color);
     }
 
     public enum Status {
