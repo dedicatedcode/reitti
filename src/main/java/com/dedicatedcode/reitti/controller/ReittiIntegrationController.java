@@ -46,7 +46,7 @@ public class ReittiIntegrationController {
             Model model) {
         
         try {
-            this.jdbcService.create(user, ReittiIntegration.create(url, token, enabled, color));
+            this.jdbcService.create(user, url, token, color, enabled);
             model.addAttribute("successMessage", "Reitti integration saved successfully");
         } catch (Exception e) {
             model.addAttribute("errorMessage", "Error saving configuration: " + e.getMessage());
@@ -104,12 +104,13 @@ public class ReittiIntegrationController {
         try {
             this.jdbcService.findByIdAndUser(id, user).ifPresentOrElse(integration -> {
                 try {
-                    this.jdbcService.update(user, integration.withEnabled(!integration.isEnabled()));
+                    this.jdbcService.toggleEnabled(user, integration);
                     model.addAttribute("successMessage", "Integration status updated successfully");
                 } catch (OptimisticLockException e) {
                     model.addAttribute("errorMessage", "Integration is out of date. Please reload the page and try again.");
+                } catch (Exception e) {
+                    model.addAttribute("errorMessage", "Error updating integration: " + e.getMessage());
                 }
-
             }, () -> model.addAttribute("errorMessage", "Integration not found!"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", "Error updating integration: " + e.getMessage());
