@@ -87,16 +87,24 @@ public class ReittiIntegrationJdbcService {
         );
     }
 
-    public Optional<ReittiIntegration> update(Long id, User user, String url, String token, String color, boolean enabled, Long version) throws OptimisticLockException {
+    public Optional<ReittiIntegration> update(User user, ReittiIntegration integration) throws OptimisticLockException {
         String sql = "UPDATE reitti_integrations SET url = ?, token = ?, color = ?, enabled = ?, updated_at = ?, version = version + 1 " +
                     "WHERE id = ? AND user_id = ? AND version = ? RETURNING id, url, token, color, enabled, created_at, updated_at, last_used, version, last_message";
         
         LocalDateTime now = LocalDateTime.now();
-        List<ReittiIntegration> results = jdbcTemplate.query(sql, ROW_MAPPER, url, token, color, enabled, Timestamp.valueOf(now), id, user.getId(), version);
+        List<ReittiIntegration> results = jdbcTemplate.query(sql, ROW_MAPPER, 
+            integration.getUrl(), 
+            integration.getToken(), 
+            integration.getColor(), 
+            integration.isEnabled(), 
+            Timestamp.valueOf(now), 
+            integration.getId(), 
+            user.getId(), 
+            integration.getVersion());
         
         if (results.isEmpty()) {
             // Check if the record exists but version doesn't match
-            Optional<ReittiIntegration> existing = findByIdAndUser(id, user);
+            Optional<ReittiIntegration> existing = findByIdAndUser(integration.getId(), user);
             if (existing.isPresent()) {
                 throw new OptimisticLockException("The integration has been modified by another process. Please refresh and try again.");
             }
@@ -106,15 +114,15 @@ public class ReittiIntegrationJdbcService {
         return Optional.of(results.get(0));
     }
 
-    public boolean toggleEnabled(Long id, User user, Long version) throws OptimisticLockException {
+    public boolean toggleEnabled(User user, ReittiIntegration integration) throws OptimisticLockException {
         String sql = "UPDATE reitti_integrations SET enabled = NOT enabled, updated_at = ?, version = version + 1 " +
                     "WHERE id = ? AND user_id = ? AND version = ?";
         LocalDateTime now = LocalDateTime.now();
-        int rowsAffected = jdbcTemplate.update(sql, Timestamp.valueOf(now), id, user.getId(), version);
+        int rowsAffected = jdbcTemplate.update(sql, Timestamp.valueOf(now), integration.getId(), user.getId(), integration.getVersion());
         
         if (rowsAffected == 0) {
             // Check if the record exists but version doesn't match
-            Optional<ReittiIntegration> existing = findByIdAndUser(id, user);
+            Optional<ReittiIntegration> existing = findByIdAndUser(integration.getId(), user);
             if (existing.isPresent()) {
                 throw new OptimisticLockException("The integration has been modified by another process. Please refresh and try again.");
             }
@@ -124,14 +132,14 @@ public class ReittiIntegrationJdbcService {
         return true;
     }
 
-    public boolean updateLastUsed(Long id, User user, LocalDateTime lastUsed, String lastMessage, Long version) throws OptimisticLockException {
+    public boolean updateLastUsed(User user, ReittiIntegration integration, LocalDateTime lastUsed, String lastMessage) throws OptimisticLockException {
         String sql = "UPDATE reitti_integrations SET last_used = ?, last_message = ?, version = version + 1 " +
                     "WHERE id = ? AND user_id = ? AND version = ?";
-        int rowsAffected = jdbcTemplate.update(sql, Timestamp.valueOf(lastUsed), lastMessage, id, user.getId(), version);
+        int rowsAffected = jdbcTemplate.update(sql, Timestamp.valueOf(lastUsed), lastMessage, integration.getId(), user.getId(), integration.getVersion());
         
         if (rowsAffected == 0) {
             // Check if the record exists but version doesn't match
-            Optional<ReittiIntegration> existing = findByIdAndUser(id, user);
+            Optional<ReittiIntegration> existing = findByIdAndUser(integration.getId(), user);
             if (existing.isPresent()) {
                 throw new OptimisticLockException("The integration has been modified by another process. Please refresh and try again.");
             }
@@ -141,13 +149,13 @@ public class ReittiIntegrationJdbcService {
         return true;
     }
 
-    public boolean delete(Long id, User user, Long version) throws OptimisticLockException {
+    public boolean delete(User user, ReittiIntegration integration) throws OptimisticLockException {
         String sql = "DELETE FROM reitti_integrations WHERE id = ? AND user_id = ? AND version = ?";
-        int rowsAffected = jdbcTemplate.update(sql, id, user.getId(), version);
+        int rowsAffected = jdbcTemplate.update(sql, integration.getId(), user.getId(), integration.getVersion());
         
         if (rowsAffected == 0) {
             // Check if the record exists but version doesn't match
-            Optional<ReittiIntegration> existing = findByIdAndUser(id, user);
+            Optional<ReittiIntegration> existing = findByIdAndUser(integration.getId(), user);
             if (existing.isPresent()) {
                 throw new OptimisticLockException("The integration has been modified by another process. Please refresh and try again.");
             }
