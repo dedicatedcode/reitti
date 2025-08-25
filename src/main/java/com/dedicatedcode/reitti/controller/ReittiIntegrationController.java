@@ -14,6 +14,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -78,9 +79,9 @@ public class ReittiIntegrationController {
                         enabled ? ReittiIntegration.Status.ENABLED : ReittiIntegration.Status.DISABLED,
                         integration.getCreatedAt(),
                         integration.getUpdatedAt(),
-                        integration.getLastUsed(),
+                        integration.getLastUsed().orElse(null),
                         version,
-                        integration.getLastMessage(),
+                        integration.getLastMessage().orElse(null),
                         color
                     );
                     this.jdbcService.update(user, updatedIntegration);
@@ -160,6 +161,7 @@ public class ReittiIntegrationController {
                     
                     if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null) {
                         model.addAttribute("remoteInfo", remoteResponse.getBody());
+                        this.jdbcService.update(user,  integration.withLastUsed(LocalDateTime.now()));
                     } else {
                         model.addAttribute("errorMessage", "Failed to fetch information from remote instance");
                     }

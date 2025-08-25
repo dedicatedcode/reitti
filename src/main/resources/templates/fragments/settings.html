@@ -737,7 +737,7 @@
                             <i class="lni lni-xmark"></i> <span th:text="#{integrations.reitti.status.failed}">Failed</span>
                         </span>
                     </td>
-                    <td th:text="${integration.lastUsed != null ? #temporals.format(integration.lastUsed, 'yyyy-MM-dd HH:mm') : #messages.msg('integrations.reitti.never.used')}"></td>
+                    <td th:text="${integration.lastUsed.isPresent() ? #temporals.format(integration.lastUsed.get(), 'yyyy-MM-dd HH:mm') : #messages.msg('integrations.reitti.never.used')}"></td>
                     <td>
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <div th:style="'width: 20px; height: 20px; border-radius: 50%; background-color: ' + ${integration.color ?: '#3498db'} + '; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3);'"></div>
@@ -772,6 +772,10 @@
                 </tr>
                 </tbody>
             </table>
+            <!-- Info Display Area -->
+            <div id="reitti-info-display" style="margin-top: 20px;">
+                <!-- Remote instance info will be displayed here -->
+            </div>
         </div>
         
         <div class="settings-card">
@@ -840,11 +844,6 @@
             </form>
             
             <div id="reitti-connection-test-result" style="margin-top: 10px;"></div>
-        </div>
-        
-        <!-- Info Display Area -->
-        <div id="reitti-info-display" style="margin-top: 20px;">
-            <!-- Remote instance info will be displayed here -->
         </div>
     </div>
 </div>

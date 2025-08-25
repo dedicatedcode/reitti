@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.model;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 public class ReittiIntegration {
     private final Long id;
@@ -61,16 +62,16 @@ public class ReittiIntegration {
         return updatedAt;
     }
 
-    public LocalDateTime getLastUsed() {
-        return lastUsed;
+    public Optional<LocalDateTime> getLastUsed() {
+        return Optional.ofNullable(lastUsed);
     }
 
     public Long getVersion() {
         return version;
     }
 
-    public String getLastMessage() {
-        return lastMessage;
+    public Optional<String> getLastMessage() {
+        return Optional.ofNullable(lastMessage);
     }
 
     public String getColor() {
@@ -79,6 +80,10 @@ public class ReittiIntegration {
 
     public ReittiIntegration withEnabled(boolean enabled) {
         return new ReittiIntegration(this.id, this.url, this.token, enabled, this.status, this.createdAt, this.updatedAt, this.lastUsed, this.version, this.lastMessage, this.color);
+    }
+
+    public ReittiIntegration withLastUsed(LocalDateTime lastUsed) {
+        return new ReittiIntegration(this.id, this.url, this.token, this.enabled, this.status, this.createdAt, this.updatedAt, lastUsed, this.version, this.lastMessage, this.color);
     }
 
     public enum Status {

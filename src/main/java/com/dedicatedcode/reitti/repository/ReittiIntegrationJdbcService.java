@@ -76,7 +76,7 @@ public class ReittiIntegrationJdbcService {
     }
 
     public Optional<ReittiIntegration> update(User user, ReittiIntegration integration) throws OptimisticLockException {
-        String sql = "UPDATE reitti_integrations SET url = ?, token = ?, color = ?, enabled = ?, updated_at = ?, version = version + 1 " +
+        String sql = "UPDATE reitti_integrations SET url = ?, token = ?, color = ?, enabled = ?, updated_at = ?, last_used = ?, last_message = ?, version = version + 1 " +
                     "WHERE id = ? AND user_id = ? AND version = ? RETURNING id, url, token, color, enabled, created_at, updated_at, last_used, version, last_message";
         
         LocalDateTime now = LocalDateTime.now();
@@ -86,7 +86,9 @@ public class ReittiIntegrationJdbcService {
             integration.getColor(), 
             integration.isEnabled(), 
             Timestamp.valueOf(now), 
-            integration.getId(), 
+            integration.getLastUsed().map(Timestamp::valueOf).orElse(null),
+            integration.getLastMessage().orElse(null),
+            integration.getId(),
             user.getId(), 
             integration.getVersion());
         
