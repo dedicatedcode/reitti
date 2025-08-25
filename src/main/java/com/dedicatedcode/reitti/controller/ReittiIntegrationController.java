@@ -40,13 +40,13 @@ public class ReittiIntegrationController {
     public String createReittiIntegration(
             @AuthenticationPrincipal User user,
             @RequestParam String url,
-            @RequestParam String token,
+            @RequestParam(name = "remote_token") String token,
             @RequestParam(defaultValue = "false") boolean enabled,
             @RequestParam(defaultValue = "#3498db") String color,
             Model model) {
         
         try {
-            this.jdbcService.create(user, url, token, color, enabled);
+            this.jdbcService.create(user, ReittiIntegration.create(url, token, enabled, color));
             model.addAttribute("successMessage", "Reitti integration saved successfully");
         } catch (Exception e) {
             model.addAttribute("errorMessage", "Error saving configuration: " + e.getMessage());
@@ -61,7 +61,7 @@ public class ReittiIntegrationController {
             @AuthenticationPrincipal User user,
             @PathVariable Long id,
             @RequestParam String url,
-            @RequestParam String token,
+            @RequestParam(name = "remote_token") String token,
             @RequestParam(defaultValue = "false") boolean enabled,
             @RequestParam(defaultValue = "#3498db") String color,
             @RequestParam Long version,

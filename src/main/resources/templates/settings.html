@@ -248,7 +248,7 @@
             // Handle progress events
             document.body.addEventListener('htmx:xhr:progress', function(evt) {
                 const form = evt.target;
-                if (form.id) {
+                if (form.id && typeof form.id === 'string' ) {
                     const progressId = form.id.replace('-upload-form', '').replace('-', '-');
                     const progressElement = document.getElementById('progress-' + progressId);
                     if (progressElement) {
