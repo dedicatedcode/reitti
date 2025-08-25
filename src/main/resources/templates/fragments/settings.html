@@ -746,6 +746,12 @@
                     </td>
                     <td>
                         <button class="btn"
+                                th:attr="hx-get=@{/settings/reitti-integrations/{id}/info(id=${integration.id})}"
+                                hx-target="#reitti-info-display"
+                                hx-swap="innerHTML"
+                                th:text="#{integrations.reitti.info}">Info
+                        </button>
+                        <button class="btn"
                                 th:attr="onclick='editReittiIntegration(' + ${integration.id} + ', \'' + ${integration.url} + '\', \'' + ${integration.token} + '\', \'' + ${integration.color} + '\', ' + ${integration.enabled} + ', ' + ${integration.version} + ')'"
                                 th:text="#{form.edit}">Edit
                         </button>
@@ -834,8 +840,58 @@
             </form>
             
             <div id="reitti-connection-test-result" style="margin-top: 10px;"></div>
+        </div>
+        
+        <!-- Info Display Area -->
+        <div id="reitti-info-display" style="margin-top: 20px;">
+            <!-- Remote instance info will be displayed here -->
+        </div>
+    </div>
+</div>
+
+<!-- Reitti Info Content Fragment -->
+<div th:fragment="reitti-info-content">
+    <div class="settings-card" style="border-left: 4px solid var(--color-accent);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h4 style="margin: 0; color: var(--color-accent);" th:text="#{integrations.reitti.info.title}">Remote Instance Information</h4>
+            <button class="btn btn-secondary" 
+                    hx-get="/settings/shared-instances-content" 
+                    hx-target="#shared-instances-section" 
+                    hx-swap="innerHTML"
+                    th:text="#{form.close}">Close</button>
+        </div>
+        
+        <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+            <span th:text="${errorMessage}">Error fetching information</span>
+        </div>
+        
+        <div th:if="${remoteInfo}" style="color: var(--color-text-white);">
+            <div th:if="${remoteInfo.server}" style="margin-bottom: 20px;">
+                <h5 style="margin: 0 0 10px 0; color: var(--color-accent);">🖥️ Server Information</h5>
+                <div style="background-color: rgba(255,255,255,0.1); padding: 15px; border-radius: 4px;">
+                    <div><strong>Name:</strong> <span th:text="${remoteInfo.server.name ?: 'N/A'}">N/A</span></div>
+                    <div><strong>Version:</strong> <span th:text="${remoteInfo.server.version ?: 'N/A'}">N/A</span></div>
+                    <div><strong>System Time:</strong> <span th:text="${remoteInfo.server.systemTime ?: 'N/A'}">N/A</span></div>
+                </div>
+            </div>
             
-            <script>
+            <div th:if="${remoteInfo.user}" style="margin-bottom: 20px;">
+                <h5 style="margin: 0 0 10px 0; color: var(--color-accent);">👤 User Information</h5>
+                <div style="background-color: rgba(255,255,255,0.1); padding: 15px; border-radius: 4px;">
+                    <div><strong>Username:</strong> <span th:text="${remoteInfo.user.username ?: 'N/A'}">N/A</span></div>
+                    <div><strong>Display Name:</strong> <span th:text="${remoteInfo.user.displayName ?: 'N/A'}">N/A</span></div>
+                    <div><strong>User ID:</strong> <span th:text="${remoteInfo.user.id ?: 'N/A'}">N/A</span></div>
+                </div>
+            </div>
+            
+            <div style="padding: 10px; background-color: rgba(0,255,0,0.1); border-radius: 4px; border-left: 4px solid #00ff00;">
+                <strong>✅ Connection successful!</strong> You can access this user's location data.
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
                 function editReittiIntegration(id, url, token, color, enabled, version) {
                     // Update form title
                     document.getElementById('form-title').textContent = 'Edit Reitti Integration';

@@ -137,6 +137,44 @@ public class ReittiIntegrationController {
         return getSharedInstancesContent(user, model);
     }
 
+    @GetMapping("/reitti-integrations/{id}/info")
+    public String getReittiIntegrationInfo(@AuthenticationPrincipal User user, @PathVariable Long id, Model model) {
+        try {
+            this.jdbcService.findByIdAndUser(id, user).ifPresentOrElse(integration -> {
+                try {
+                    RestTemplate restTemplate = new RestTemplate();
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.set("X-API-TOKEN", integration.getToken());
+                    HttpEntity<String> entity = new HttpEntity<>(headers);
+                    
+                    String infoUrl = integration.getUrl().endsWith("/") ? 
+                        integration.getUrl() + "api/v1/reitti-integration/info" : 
+                        integration.getUrl() + "/api/v1/reitti-integration/info";
+                    
+                    ResponseEntity<Map> remoteResponse = restTemplate.exchange(
+                        infoUrl,
+                        HttpMethod.GET,
+                        entity,
+                        Map.class
+                    );
+                    
+                    if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null) {
+                        model.addAttribute("remoteInfo", remoteResponse.getBody());
+                    } else {
+                        model.addAttribute("errorMessage", "Failed to fetch information from remote instance");
+                    }
+                    
+                } catch (Exception e) {
+                    model.addAttribute("errorMessage", "Connection failed: " + e.getMessage());
+                }
+            }, () -> model.addAttribute("errorMessage", "Integration not found"));
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", "Error fetching integration info: " + e.getMessage());
+        }
+        
+        return "fragments/settings :: reitti-info-content";
+    }
+
     @PostMapping("/reitti-integrations/test")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> testReittiConnection(
