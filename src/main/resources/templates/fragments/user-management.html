@@ -245,14 +245,6 @@
             <div id="homeLocationMap" class="home-location-map"></div>
         </div>
         <div class="separator"></div>
-        <div id="connected-accounts-container"
-             hx-get="/settings/connected-accounts-section"
-             hx-target="#connected-accounts-container"
-             th:hx-vals="${userId != null ? '{&quot;userId&quot;: ' + userId + '}' : '{}'}"
-             hx-trigger="load">
-            <div class="htmx-indicator">Loading connected accounts...</div>
-        </div>
-        <div class="separator"></div>
         <div style="display: flex; gap: 10px;">
             <button type="submit" class="btn" th:text="${userId != null ? #messages.msg('form.update') : #messages.msg('form.create')}">Create User</button>
             <button type="button" class="btn"
@@ -263,55 +255,5 @@
         </div>
     </form>
 </div>
-
-<!-- Connected Accounts Section Fragment -->
-<div th:fragment="connected-accounts-section">
-    <div class="form-group">
-        <h3 th:text="#{users.connected.accounts.label}">Connected User Accounts</h3>
-        <p class="form-description" th:text="#{users.connected.accounts.description}">Connect with other users to view their location data alongside yours on the map. Each connected user will be displayed with their own color for easy identification.</p>
-        <div id="connected-accounts-list">
-            <div th:each="account, iterStat : ${connectedAccounts}" class="connected-account-row">
-                <div class="select">
-                <select name="connectedUserIds" th:attr="data-index=${iterStat.index}">
-                    <option value="" th:text="#{users.select.user}">Select a user...</option>
-                    <option th:each="user : ${availableUsers}" 
-                            th:value="${user.id}" 
-                            th:text="${user.displayName + ' (' + user.username + ')'}"
-                            th:selected="${user.id == account.userId()}"></option>
-                </select>
-                </div>
-                <input type="color" 
-                       name="connectedUserColors" 
-                       th:value="${account.color()}" 
-                       th:attr="data-index=${iterStat.index}" 
-                       title="Choose color">
-                <button type="button" 
-                        class="btn btn-danger"
-                        th:attr="hx-post=@{/settings/connected-accounts/remove(userId=${userId}, removeIndex=${iterStat.index})}"
-                        hx-include="closest form"
-                        hx-target="#connected-accounts-container"
-                        th:text="#{form.remove}">Remove</button>
-                <!-- Hidden inputs to preserve existing data -->
-                <input type="hidden" name="existingUserIds" th:value="${account.userId()}">
-                <input type="hidden" name="existingColors" th:value="${account.color()}">
-            </div>
-            <div th:if="${connectedAccounts != null && connectedAccounts.isEmpty()}" class="no-connected-accounts">
-                <span th:text="#{users.no.connected.accounts}">No connected accounts yet.</span>
-            </div>
-        </div>
-        <button type="button" 
-                class="btn"
-                th:attr="hx-post=@{/settings/connected-accounts/add(userId=${userId})}"
-                hx-include="closest form"
-                hx-target="#connected-accounts-container"
-                th:text="#{users.add.connected.account}">Add Connected Account</button>
-        <div th:if="${availableUsers.isEmpty()}" class="no-users-message">
-            <small th:text="#{users.no.other.users}">No other users available to connect.</small>
-        </div>
-    </div>
-</div>
-
-
-
 </body>
 </html>

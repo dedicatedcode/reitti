@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.controller;
 
-import com.dedicatedcode.reitti.dto.ConnectedUserAccount;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.User;
@@ -24,7 +23,9 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.LocaleResolver;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
 
 import static com.dedicatedcode.reitti.model.Role.ADMIN;
 import static com.dedicatedcode.reitti.model.Role.USER;
@@ -162,8 +163,6 @@ public class UserSettingsController {
                              @RequestParam(defaultValue = "false") boolean preferColoredMap,
                              @RequestParam(required = false) Double homeLatitude,
                              @RequestParam(required = false) Double homeLongitude,
-                             @RequestParam(required = false) List<Long> connectedUserIds,
-                             @RequestParam(required = false) List<String> connectedUserColors,
                              @RequestParam(required = false) MultipartFile avatar,
                              @RequestParam(required = false) String defaultAvatar,
                              Authentication authentication,
@@ -188,10 +187,8 @@ public class UserSettingsController {
                     createdUser = userJdbcService.updateUser(createdUser);
                 }
                 
-                List<ConnectedUserAccount> connectedAccounts = buildConnectedUserAccounts(connectedUserIds, connectedUserColors);
-                
                 UnitSystem unitSystem = UnitSystem.valueOf(unit_system);
-                UserSettings userSettings = new UserSettings(createdUser.getId(), preferColoredMap, preferred_language, connectedAccounts, unitSystem, homeLatitude, homeLongitude, null);
+                UserSettings userSettings = new UserSettings(createdUser.getId(), preferColoredMap, preferred_language, unitSystem, homeLatitude, homeLongitude, null);
                 userSettingsJdbcService.save(userSettings);
                 
                 // Handle avatar - prioritize custom upload over default
@@ -229,8 +226,6 @@ public class UserSettingsController {
                              @RequestParam(defaultValue = "false") boolean preferColoredMap,
                              @RequestParam(required = false) Double homeLatitude,
                              @RequestParam(required = false) Double homeLongitude,
-                             @RequestParam(required = false) List<Long> connectedUserIds,
-                             @RequestParam(required = false) List<String> connectedUserColors,
                              @RequestParam(required = false) MultipartFile avatar,
                              @RequestParam(required = false) String defaultAvatar,
                              @RequestParam(required = false) String removeAvatar,
@@ -263,15 +258,11 @@ public class UserSettingsController {
             User updatedUser = new User(existingUser.getId(), username, encodedPassword, displayName, role, existingUser.getVersion());
             userJdbcService.updateUser(updatedUser);
             
-            // Update user settings with selected language and connected accounts
             UserSettings existingSettings = userSettingsJdbcService.findByUserId(userId)
                 .orElse(UserSettings.defaultSettings(userId));
             
-            // Build connected user accounts list
-            List<ConnectedUserAccount> connectedAccounts = buildConnectedUserAccounts(connectedUserIds, connectedUserColors);
-            
             UnitSystem unitSystem = UnitSystem.valueOf(unit_system);
-            UserSettings updatedSettings = new UserSettings(userId, preferColoredMap, preferred_language, connectedAccounts, unitSystem, homeLatitude, homeLongitude, existingSettings.getLatestData(), existingSettings.getVersion());
+            UserSettings updatedSettings = new UserSettings(userId, preferColoredMap, preferred_language, unitSystem, homeLatitude, homeLongitude, existingSettings.getLatestData(), existingSettings.getVersion());
             userSettingsJdbcService.save(updatedSettings);
             
             // Handle avatar operations
@@ -375,108 +366,6 @@ public class UserSettingsController {
         return "fragments/user-management :: user-form-page";
     }
 
-    @GetMapping("/connected-accounts-section")
-    public String getConnectedAccountsSection(@RequestParam(required = false) Long userId, Model model) {
-        // Get all users for the connected accounts selection, excluding the current user being edited
-        List<User> allUsers = userJdbcService.getAllUsers();
-        if (userId != null) {
-            allUsers = allUsers.stream()
-                    .filter(user -> !user.getId().equals(userId))
-                    .toList();
-        }
-        model.addAttribute("availableUsers", allUsers);
-        
-        // Get existing connected accounts for editing
-        List<ConnectedUserAccount> connectedAccounts = List.of();
-        if (userId != null) {
-            UserSettings userSettings = userSettingsJdbcService.findByUserId(userId)
-                .orElse(UserSettings.defaultSettings(userId));
-            connectedAccounts = userSettings.getConnectedUserAccounts();
-        }
-        model.addAttribute("connectedAccounts", connectedAccounts);
-        model.addAttribute("userId", userId);
-        
-        return "fragments/user-management :: connected-accounts-section";
-    }
-
-    @PostMapping("/connected-accounts/add")
-    public String addConnectedAccount(@RequestParam(required = false) Long userId,
-                                      @RequestParam(required = false) List<Long> connectedUserIds,
-                                      @RequestParam(required = false) List<String> connectedUserColors,
-                                      Model model) {
-        // Get all users for the connected accounts selection, excluding the current user being edited
-        List<User> allUsers = userJdbcService.getAllUsers();
-        if (userId != null) {
-            allUsers = allUsers.stream()
-                    .filter(user -> !user.getId().equals(userId))
-                    .toList();
-        }
-        model.addAttribute("availableUsers", allUsers);
-        
-        // Build current connected accounts from existing form data
-        List<ConnectedUserAccount> connectedAccounts = new ArrayList<>(buildConnectedUserAccounts(connectedUserIds, connectedUserColors));
-        
-        // Add a new empty account
-        connectedAccounts.add(new ConnectedUserAccount(null, generateRandomColor()));
-        
-        model.addAttribute("connectedAccounts", connectedAccounts);
-        model.addAttribute("userId", userId);
-        
-        return "fragments/user-management :: connected-accounts-section";
-    }
-
-    @PostMapping("/connected-accounts/remove")
-    public String removeConnectedAccount(@RequestParam(required = false) Long userId,
-                                         @RequestParam int removeIndex,
-                                         @RequestParam(required = false) List<Long> connectedUserIds,
-                                         @RequestParam(required = false) List<String> connectedUserColors,
-                                         Model model) {
-        // Get all users for the connected accounts selection, excluding the current user being edited
-        List<User> allUsers = userJdbcService.getAllUsers();
-        if (userId != null) {
-            allUsers = allUsers.stream()
-                    .filter(user -> !user.getId().equals(userId))
-                    .toList();
-        }
-        model.addAttribute("availableUsers", allUsers);
-        
-        // Build current connected accounts from existing form data
-        List<ConnectedUserAccount> connectedAccounts = new ArrayList<>(buildConnectedUserAccounts(connectedUserIds, connectedUserColors));
-        
-        // Remove the account at the specified index
-        if (removeIndex >= 0 && removeIndex < connectedAccounts.size()) {
-            connectedAccounts.remove(removeIndex);
-        }
-        
-        model.addAttribute("connectedAccounts", connectedAccounts);
-        model.addAttribute("userId", userId);
-        
-        return "fragments/user-management :: connected-accounts-section";
-    }
-
-    private List<ConnectedUserAccount> buildConnectedUserAccounts(List<Long> userIds, List<String> colors) {
-        if (userIds == null) {
-            return new ArrayList<>();
-        }
-
-        if (userIds.size() != colors.size()) {
-            return new ArrayList<>();
-        }
-        List<ConnectedUserAccount> accounts = new ArrayList<>();
-        Set<Long> seenUserIds = new java.util.HashSet<>();
-        
-        for (int i = 0; i < userIds.size(); i++) {
-            Long userId = userIds.get(i);
-            String color = colors.get(i);
-            
-            if (userId != null && !seenUserIds.contains(userId)) {
-                accounts.add(new ConnectedUserAccount(userId, color));
-                seenUserIds.add(userId);
-            }
-        }
-        return accounts;
-    }
-    
     private String generateRandomColor() {
         // Generate a random bright color in hex RGB format
         java.util.Random random = new java.util.Random();

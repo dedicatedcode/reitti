@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.repository;
 
-import com.dedicatedcode.reitti.dto.ConnectedUserAccount;
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.User;
@@ -28,14 +27,11 @@ public class UserSettingsJdbcService {
 
     private final RowMapper<UserSettings> userSettingsRowMapper = (rs, _) -> {
         Long userId = rs.getLong("user_id");
-        List<ConnectedUserAccount> connectedAccounts = getConnectedUserAccounts(userId);
-
         Timestamp newestData = rs.getTimestamp("latest_data");
         return new UserSettings(
                 userId,
                 rs.getBoolean("prefer_colored_map"),
                 rs.getString("selected_language"),
-                connectedAccounts,
                 UnitSystem.valueOf(rs.getString("unit_system")),
                 rs.getDouble("home_lat"),
                 rs.getDouble("home_lng"),
@@ -69,13 +65,9 @@ public class UserSettingsJdbcService {
                     userSettings.getHomeLongitude(),
                     userSettings.getLatestData() != null ? Timestamp.from(userSettings.getLatestData()) : null);
 
-            // Update user connections
-            updateUserConnections(userSettings.getUserId(), userSettings.getConnectedUserAccounts());
-
             return new UserSettings(userSettings.getUserId(),
                     userSettings.isPreferColoredMap(),
                     userSettings.getSelectedLanguage(),
-                    userSettings.getConnectedUserAccounts(),
                     userSettings.getUnitSystem(),
                     userSettings.getHomeLatitude(),
                     userSettings.getHomeLongitude(),
@@ -94,9 +86,6 @@ public class UserSettingsJdbcService {
                     userSettings.getUserId()
             );
             
-            // Update user connections
-            updateUserConnections(userSettings.getUserId(), userSettings.getConnectedUserAccounts());
-            
             return findByUserId(userSettings.getUserId()).orElse(userSettings);
         }
     }
@@ -109,29 +98,6 @@ public class UserSettingsJdbcService {
         jdbcTemplate.update("DELETE FROM user_settings WHERE user_id = ?", userId);
     }
     
-    private List<ConnectedUserAccount> getConnectedUserAccounts(Long userId) {
-        return jdbcTemplate.query(
-                "SELECT to_user, color FROM connected_users WHERE from_user = ?",
-                (rs, _) -> new ConnectedUserAccount(rs.getLong("to_user"), rs.getString("color")),
-                userId);
-    }
-    
-    private void updateUserConnections(Long userId, List<ConnectedUserAccount> connectedUserAccounts) {
-        // First, remove all existing connections for this user
-        jdbcTemplate.update(
-                "DELETE FROM connected_users WHERE from_user = ?",
-                userId
-        );
-        
-        // Then, add the new connections
-        for (ConnectedUserAccount connectedAccount : connectedUserAccounts) {
-            jdbcTemplate.update(
-                    "INSERT INTO connected_users (from_user, to_user, color) VALUES (?, ?, ?)",
-                    userId, connectedAccount.userId(), connectedAccount.color()
-            );
-        }
-    }
-
     public void updateNewestData(User user, List<LocationDataRequest.LocationPoint> filtered) {
         filtered.stream().map(LocationDataRequest.LocationPoint::getTimestamp).max(Comparator.naturalOrder()).ifPresent(timestamp -> {
             Instant instant = ZonedDateTime.parse(timestamp).toInstant();

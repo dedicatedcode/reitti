@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.controller;
 
-import com.dedicatedcode.reitti.dto.ConnectedUserAccount;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.AvatarService;
@@ -23,7 +22,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 
 @Controller
 @RequestMapping("/timeline")
@@ -92,38 +90,40 @@ public class TimelineController {
         String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", user.getId(), date, timezone);
         String currentUserInitials = generateInitials(user.getDisplayName());
         allUsersData.add(new UserTimelineData(user.getId(), user.getUsername(), currentUserInitials, currentUserAvatarUrl, null, currentUserEntries, currentUserRawLocationPointsUrl));
-        
+
+
+        //todo replace with new logic
         // Add connected users data, sorted by username
-        List<ConnectedUserAccount> connectedAccounts = userSettings.getConnectedUserAccounts();
+//        List<ConnectedUserAccount> connectedAccounts = userSettings.getConnectedUserAccounts();
 
         // Sort connected users by username
-        connectedAccounts.sort(Comparator.comparing(ConnectedUserAccount::userId));
+//        connectedAccounts.sort(Comparator.comparing(ConnectedUserAccount::userId));
         
-        for (ConnectedUserAccount connectedUserAccount : connectedAccounts) {
-            Optional<User> connectedUserOpt = this.userJdbcService.findById(connectedUserAccount.userId());
-            if (connectedUserOpt.isEmpty()) {
-                log.warn("Could not find user with id {}", connectedUserAccount.userId());
-                continue;
-            }
-            User connectedUser = connectedUserOpt.get();
-            // Get connected user's timeline data for the same date
-            List<ProcessedVisit> connectedVisits = processedVisitJdbcService.findByUserAndTimeOverlap(
-                    connectedUser, startOfDay, endOfDay);
-            List<Trip> connectedTrips = tripJdbcService.findByUserAndTimeOverlap(
-                    connectedUser, startOfDay, endOfDay);
-            
-            // Get connected user's unit system
-            UserSettings connectedUserSettings = userSettingsJdbcService.findByUserId(connectedUser.getId())
-                    .orElse(UserSettings.defaultSettings(connectedUser.getId()));
-            
-            List<TimelineEntry> connectedUserEntries = buildTimelineEntries(connectedUser, connectedVisits, connectedTrips, userTimezone, selectedDate, connectedUserSettings.getUnitSystem());
-
-            String connectedUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", connectedUser.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", connectedUser.getId()));
-            String connectedUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", connectedUser.getId(), date, timezone);
-            String connectedUserInitials = generateInitials(connectedUser.getDisplayName());
-            
-            allUsersData.add(new UserTimelineData(connectedUser.getId(), connectedUser.getDisplayName(), connectedUserInitials, connectedUserAvatarUrl, connectedUserAccount.color(), connectedUserEntries, connectedUserRawLocationPointsUrl));
-        }
+//        for (ConnectedUserAccount connectedUserAccount : connectedAccounts) {
+//            Optional<User> connectedUserOpt = this.userJdbcService.findById(connectedUserAccount.userId());
+//            if (connectedUserOpt.isEmpty()) {
+//                log.warn("Could not find user with id {}", connectedUserAccount.userId());
+//                continue;
+//            }
+//            User connectedUser = connectedUserOpt.get();
+//            // Get connected user's timeline data for the same date
+//            List<ProcessedVisit> connectedVisits = processedVisitJdbcService.findByUserAndTimeOverlap(
+//                    connectedUser, startOfDay, endOfDay);
+//            List<Trip> connectedTrips = tripJdbcService.findByUserAndTimeOverlap(
+//                    connectedUser, startOfDay, endOfDay);
+//
+//            // Get connected user's unit system
+//            UserSettings connectedUserSettings = userSettingsJdbcService.findByUserId(connectedUser.getId())
+//                    .orElse(UserSettings.defaultSettings(connectedUser.getId()));
+//
+//            List<TimelineEntry> connectedUserEntries = buildTimelineEntries(connectedUser, connectedVisits, connectedTrips, userTimezone, selectedDate, connectedUserSettings.getUnitSystem());
+//
+//            String connectedUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", connectedUser.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", connectedUser.getId()));
+//            String connectedUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", connectedUser.getId(), date, timezone);
+//            String connectedUserInitials = generateInitials(connectedUser.getDisplayName());
+//
+//            allUsersData.add(new UserTimelineData(connectedUser.getId(), connectedUser.getDisplayName(), connectedUserInitials, connectedUserAvatarUrl, connectedUserAccount.color(), connectedUserEntries, connectedUserRawLocationPointsUrl));
+//        }
         
         // Create timeline data record
         TimelineData timelineData = new TimelineData(allUsersData);

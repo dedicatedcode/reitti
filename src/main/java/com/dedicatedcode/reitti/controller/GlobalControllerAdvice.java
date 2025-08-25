@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 
 @ControllerAdvice
@@ -39,7 +38,7 @@ public class GlobalControllerAdvice {
         if (authentication == null || !authentication.isAuthenticated() ||
             "anonymousUser".equals(authentication.getPrincipal())) {
             // Return default settings for anonymous users
-            return new UserSettingsDTO(false, "en", Instant.now(), List.of(), UnitSystem.METRIC, DEFAULT_HOME_LATITUDE, DEFAULT_HOME_LONGITUDE, tilesCustomizationProvider.getTilesConfiguration());
+            return new UserSettingsDTO(false, "en", Instant.now(), UnitSystem.METRIC, DEFAULT_HOME_LATITUDE, DEFAULT_HOME_LONGITUDE, tilesCustomizationProvider.getTilesConfiguration());
         }
         
         String username = authentication.getName();
@@ -51,7 +50,6 @@ public class GlobalControllerAdvice {
             return new UserSettingsDTO(dbSettings.isPreferColoredMap(),
                     dbSettings.getSelectedLanguage(),
                     dbSettings.getLatestData(),
-                    dbSettings.getConnectedUserAccounts(),
                     dbSettings.getUnitSystem(),
                     dbSettings.getHomeLatitude(),
                     dbSettings.getHomeLongitude(),
@@ -59,6 +57,6 @@ public class GlobalControllerAdvice {
         }
         
         // Fallback for authenticated users not found in database
-        return new UserSettingsDTO(false, "en", Instant.now(), List.of(), UnitSystem.METRIC, DEFAULT_HOME_LATITUDE, DEFAULT_HOME_LONGITUDE, tilesCustomizationProvider.getTilesConfiguration());
+        return new UserSettingsDTO(false, "en", Instant.now(), UnitSystem.METRIC, DEFAULT_HOME_LATITUDE, DEFAULT_HOME_LONGITUDE, tilesCustomizationProvider.getTilesConfiguration());
     }
 }

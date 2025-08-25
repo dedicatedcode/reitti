@@ -3,13 +3,10 @@ package com.dedicatedcode.reitti.controller;
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.User;
-import com.dedicatedcode.reitti.model.UserSettings;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
-import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
@@ -34,9 +31,6 @@ public class UserSettingsControllerTest {
 
     @Autowired
     private UserJdbcService userJdbcService;
-
-    @Autowired
-    private UserSettingsJdbcService userSettingsJdbcService;
 
     private MockMvc mockMvc;
 
@@ -397,118 +391,6 @@ public class UserSettingsControllerTest {
         // Verify user was updated in database
         User updatedUser = userJdbcService.findById(userId).orElseThrow();
         assertThat(updatedUser.getUsername()).isEqualTo(newUsername);
-    }
-
-    @Test
-    void createUser_WithConnectedAccounts_ShouldCreateUserWithConnectedAccounts() throws Exception {
-        // Create the admin user
-        String adminUsername = randomUsername();
-        User adminUser = userJdbcService.createUser(adminUsername, "Admin User", "password");
-        adminUser = adminUser.withRole(Role.ADMIN);
-        userJdbcService.updateUser(adminUser);
-        
-        // Create a user to connect to
-        String connectedUsername = randomUsername();
-        userJdbcService.createUser(connectedUsername, "Connected User", "password123");
-        User connectedUser = userJdbcService.findByUsername(connectedUsername).orElseThrow();
-
-        String newUsername = randomUsername();
-        String newDisplayName = "New User";
-        String newPassword = "password123";
-
-        mockMvc.perform(post("/settings/users")
-                        .param("username", newUsername)
-                        .param("displayName", newDisplayName)
-                        .param("password", newPassword)
-                        .param("role", "USER")
-                        .param("preferred_language", "en")
-                        .param("unit_system", "METRIC")
-                        .param("connectedUserIds", connectedUser.getId().toString())
-                        .param("connectedUserColors", "#FF0000")
-                        .with(csrf())
-                        .with(user(adminUsername)))
-                .andExpect(status().isOk())
-                .andExpect(view().name("fragments/user-management :: users-list"))
-                .andExpect(model().attributeExists("successMessage"))
-                .andExpect(model().attribute("isAdmin", true));
-
-        // Verify user was created with connected accounts
-        User createdUser = userJdbcService.findByUsername(newUsername).orElseThrow();
-        Optional<UserSettings> userSettings = userSettingsJdbcService.findByUserId(createdUser.getId());
-        assertThat(userSettings).isPresent();
-        assertThat(userSettings.get().getConnectedUserAccounts()).hasSize(1);
-        assertThat(userSettings.get().getConnectedUserAccounts().get(0).userId()).isEqualTo(connectedUser.getId());
-        assertThat(userSettings.get().getConnectedUserAccounts().get(0).color()).isEqualTo("#FF0000");
-    }
-
-    @Test
-    void updateUser_WithConnectedAccounts_ShouldUpdateConnectedAccounts() throws Exception {
-        // Create users
-        String originalUsername = randomUsername();
-        userJdbcService.createUser(originalUsername, "Original User", "password123");
-        User originalUser = userJdbcService.findByUsername(originalUsername).orElseThrow();
-
-        String connectedUsername = randomUsername();
-        userJdbcService.createUser(connectedUsername, "Connected User", "password123");
-        User connectedUser = userJdbcService.findByUsername(connectedUsername).orElseThrow();
-
-        mockMvc.perform(post("/settings/users/update")
-                        .param("userId", originalUser.getId().toString())
-                        .param("username", originalUsername)
-                        .param("displayName", "Updated User")
-                        .param("role", "USER")
-                        .param("preferred_language", "en")
-                        .param("unit_system", "METRIC")
-                        .param("connectedUserIds", connectedUser.getId().toString())
-                        .param("connectedUserColors", "#00FF00")
-                        .with(csrf())
-                        .with(user(originalUsername)))
-                .andExpect(status().isOk())
-                .andExpect(view().name("fragments/user-management :: user-form-page"))
-                .andExpect(model().attributeExists("successMessage"));
-
-        // Verify connected accounts were updated
-        Optional<UserSettings> userSettings = userSettingsJdbcService.findByUserId(originalUser.getId());
-        assertThat(userSettings).isPresent();
-        assertThat(userSettings.get().getConnectedUserAccounts()).hasSize(1);
-        assertThat(userSettings.get().getConnectedUserAccounts().get(0).userId()).isEqualTo(connectedUser.getId());
-        assertThat(userSettings.get().getConnectedUserAccounts().get(0).color()).isEqualTo("#00FF00");
-    }
-
-    @Test
-    void createUser_WithMismatchedConnectedAccountsData_ShouldIgnoreConnectedAccounts() throws Exception {
-        // Create the admin user
-        String adminUsername = randomUsername();
-        User adminUser = userJdbcService.createUser(adminUsername, "Admin User", "password");
-        adminUser = adminUser.withRole(Role.ADMIN);
-        userJdbcService.updateUser(adminUser);
-        
-        String newUsername = randomUsername();
-        String newDisplayName = "New User";
-        String newPassword = "password123";
-
-        // Mismatched arrays - 2 user IDs but 1 color
-        mockMvc.perform(post("/settings/users")
-                        .param("username", newUsername)
-                        .param("displayName", newDisplayName)
-                        .param("password", newPassword)
-                        .param("role", "USER")
-                        .param("preferred_language", "en")
-                        .param("unit_system", "METRIC")
-                        .param("connectedUserIds", "1", "2")
-                        .param("connectedUserColors", "#FF0000")
-                        .with(csrf())
-                        .with(user(adminUsername)))
-                .andExpect(status().isOk())
-                .andExpect(view().name("fragments/user-management :: users-list"))
-                .andExpect(model().attributeExists("successMessage"))
-                .andExpect(model().attribute("isAdmin", true));
-
-        // Verify user was created but with no connected accounts due to mismatched data
-        User createdUser = userJdbcService.findByUsername(newUsername).orElseThrow();
-        Optional<UserSettings> userSettings = userSettingsJdbcService.findByUserId(createdUser.getId());
-        assertThat(userSettings).isPresent();
-        assertThat(userSettings.get().getConnectedUserAccounts()).isEmpty();
     }
 
     @Test
