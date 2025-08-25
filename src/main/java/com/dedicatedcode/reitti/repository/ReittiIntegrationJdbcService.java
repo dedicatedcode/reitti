@@ -25,24 +25,19 @@ public class ReittiIntegrationJdbcService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    private static final RowMapper<ReittiIntegration> ROW_MAPPER = new RowMapper<ReittiIntegration>() {
-        @Override
-        public ReittiIntegration mapRow(ResultSet rs, int rowNum) throws SQLException {
-            return new ReittiIntegration(
-                rs.getLong("id"),
-                rs.getString("url"),
-                rs.getString("token"),
-                rs.getBoolean("enabled"),
-                ReittiIntegration.Status.valueOf(rs.getBoolean("enabled") ? "ENABLED" : "DISABLED"),
-                rs.getTimestamp("created_at").toLocalDateTime(),
-                rs.getTimestamp("updated_at") != null ? rs.getTimestamp("updated_at").toLocalDateTime() : null,
-                rs.getTimestamp("last_used") != null ? rs.getTimestamp("last_used").toLocalDateTime() : null,
-                rs.getLong("version"),
-                rs.getString("last_message"),
-                rs.getString("color")
-            );
-        }
-    };
+    private static final RowMapper<ReittiIntegration> ROW_MAPPER = (rs, _) -> new ReittiIntegration(
+        rs.getLong("id"),
+        rs.getString("url"),
+        rs.getString("token"),
+        rs.getBoolean("enabled"),
+        ReittiIntegration.Status.valueOf(rs.getBoolean("enabled") ? "ENABLED" : "DISABLED"),
+        rs.getTimestamp("created_at").toLocalDateTime(),
+        rs.getTimestamp("updated_at") != null ? rs.getTimestamp("updated_at").toLocalDateTime() : null,
+        rs.getTimestamp("last_used") != null ? rs.getTimestamp("last_used").toLocalDateTime() : null,
+        rs.getLong("version"),
+        rs.getString("last_message"),
+        rs.getString("color")
+    );
 
     public List<ReittiIntegration> findAllByUser(User user) {
         String sql = "SELECT id, url, token, color, enabled, created_at, updated_at, last_used, version, last_message " +
@@ -99,14 +94,6 @@ public class ReittiIntegrationJdbcService {
         LocalDateTime now = LocalDateTime.now();
         List<ReittiIntegration> results = jdbcTemplate.query(sql, ROW_MAPPER, url, token, color, enabled, Timestamp.valueOf(now), id, user.getId());
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
-    }
-
-    public boolean toggleEnabled(Long id, User user) {
-        String sql = "UPDATE reitti_integrations SET enabled = NOT enabled, updated_at = ?, version = version + 1 " +
-                    "WHERE id = ? AND user_id = ?";
-        LocalDateTime now = LocalDateTime.now();
-        int rowsAffected = jdbcTemplate.update(sql, Timestamp.valueOf(now), id, user.getId());
-        return rowsAffected > 0;
     }
 
     public boolean updateLastUsed(Long id, User user, LocalDateTime lastUsed, String lastMessage) {
