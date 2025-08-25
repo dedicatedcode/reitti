@@ -1,16 +1,19 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.model.ReittiIntegration;
+import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.repository.OptimisticLockException;
+import com.dedicatedcode.reitti.repository.ReittiIntegrationJdbcService;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,11 +21,16 @@ import java.util.Map;
 @Controller
 @RequestMapping("/settings")
 public class ReittiIntegrationController {
+    private final ReittiIntegrationJdbcService jdbcService;
+
+    public ReittiIntegrationController(ReittiIntegrationJdbcService jdbcService) {
+        this.jdbcService = jdbcService;
+    }
 
     @GetMapping("/shared-instances-content")
-    public String getSharedInstancesContent(Model model) {
+    public String getSharedInstancesContent(@AuthenticationPrincipal User user, Model model) {
         // TODO: Replace with actual service call when JDBC is implemented
-        List<ReittiIntegration> integrations = getMockIntegrations();
+        List<ReittiIntegration> integrations = jdbcService.findAllByUser(user);
         
         model.addAttribute("reittiIntegrations", integrations);
         return "fragments/settings :: shared-instances-content";
@@ -30,6 +38,7 @@ public class ReittiIntegrationController {
 
     @PostMapping("/reitti-integrations")
     public String createReittiIntegration(
+            @AuthenticationPrincipal User user,
             @RequestParam String url,
             @RequestParam String token,
             @RequestParam(defaultValue = "false") boolean enabled,
@@ -37,39 +46,51 @@ public class ReittiIntegrationController {
             Model model) {
         
         try {
-            // TODO: Implement actual creation logic when JDBC is available
-            // For now, just show success message
+            this.jdbcService.create(user, ReittiIntegration.create(url, token, enabled, color));
             model.addAttribute("successMessage", "Reitti integration saved successfully");
         } catch (Exception e) {
             model.addAttribute("errorMessage", "Error saving configuration: " + e.getMessage());
         }
         
         // Reload the content
-        return getSharedInstancesContent(model);
+        return getSharedInstancesContent(user, model);
     }
 
     @PostMapping("/reitti-integrations/{id}/toggle")
-    public String toggleReittiIntegration(@PathVariable Long id, Model model) {
+    public String toggleReittiIntegration(@AuthenticationPrincipal User user, @PathVariable Long id, Model model) {
         try {
-            // TODO: Implement actual toggle logic when JDBC is available
-            model.addAttribute("successMessage", "Integration status updated successfully");
+            this.jdbcService.findByIdAndUser(id, user).ifPresentOrElse(integration -> {
+                try {
+                    this.jdbcService.update(user, integration.withEnabled(!integration.isEnabled()));
+                    model.addAttribute("successMessage", "Integration status updated successfully");
+                } catch (OptimisticLockException e) {
+                    model.addAttribute("errorMessage", "Integration is out of date. Please reload the page and try again.");
+                }
+
+            }, () -> model.addAttribute("errorMessage", "Integration not found!"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", "Error updating integration: " + e.getMessage());
         }
-        
-        return getSharedInstancesContent(model);
+
+        return getSharedInstancesContent(user, model);
     }
 
     @PostMapping("/reitti-integrations/{id}/delete")
-    public String deleteReittiIntegration(@PathVariable Long id, Model model) {
+    public String deleteReittiIntegration(@AuthenticationPrincipal User user, @PathVariable Long id, Model model) {
         try {
-            // TODO: Implement actual deletion logic when JDBC is available
+            this.jdbcService.findByIdAndUser(id, user).ifPresent(integration -> {
+                try {
+                    this.jdbcService.delete(user, integration);
+                } catch (OptimisticLockException e) {
+                    model.addAttribute("errorMessage", "Integration is out of date. Please reload the page and try again.");
+                }
+            });
             model.addAttribute("successMessage", "Reitti integration deleted successfully");
         } catch (Exception e) {
             model.addAttribute("errorMessage", "Error deleting configuration: " + e.getMessage());
         }
-        
-        return getSharedInstancesContent(model);
+
+        return getSharedInstancesContent(user, model);
     }
 
     @PostMapping("/reitti-integrations/test")
@@ -111,11 +132,5 @@ public class ReittiIntegrationController {
         }
         
         return ResponseEntity.ok(response);
-    }
-
-    // TODO: Remove this mock method when JDBC implementation is ready
-    private List<ReittiIntegration> getMockIntegrations() {
-        // Return empty list for now - will be replaced with actual data from database
-        return new ArrayList<>();
     }
 }
