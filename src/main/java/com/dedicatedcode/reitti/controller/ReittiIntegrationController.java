@@ -64,6 +64,7 @@ public class ReittiIntegrationController {
             @RequestParam String token,
             @RequestParam(defaultValue = "false") boolean enabled,
             @RequestParam(defaultValue = "#3498db") String color,
+            @RequestParam Long version,
             Model model) {
         
         try {
@@ -78,7 +79,7 @@ public class ReittiIntegrationController {
                         integration.getCreatedAt(),
                         integration.getUpdatedAt(),
                         integration.getLastUsed(),
-                        integration.getVersion(),
+                        version,
                         integration.getLastMessage(),
                         color
                     );

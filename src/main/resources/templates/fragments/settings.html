@@ -746,6 +746,10 @@
                     </td>
                     <td>
                         <button class="btn"
+                                th:attr="onclick='editReittiIntegration(' + ${integration.id} + ', \'' + ${integration.url} + '\', \'' + ${integration.token} + '\', \'' + ${integration.color} + '\', ' + ${integration.enabled} + ', ' + ${integration.version} + ')'"
+                                th:text="#{form.edit}">Edit
+                        </button>
+                        <button class="btn"
                                 th:attr="hx-post=@{/settings/reitti-integrations/{id}/toggle(id=${integration.id})}"
                                 hx-target="#shared-instances-section"
                                 hx-swap="innerHTML"
@@ -765,8 +769,11 @@
         </div>
         
         <div class="settings-card">
-            <form hx-post="/settings/reitti-integrations" hx-target="#shared-instances-section" hx-swap="innerHTML" class="reitti-integration-form" style="margin-top: 20px;" autocomplete="off">
-                <h4 th:text="#{integrations.reitti.add.title}">Add New Reitti Integration</h4>
+            <form id="reitti-integration-form" hx-post="/settings/reitti-integrations" hx-target="#shared-instances-section" hx-swap="innerHTML" class="reitti-integration-form" style="margin-top: 20px;" autocomplete="off">
+                <h4 id="form-title" th:text="#{integrations.reitti.add.title}">Add New Reitti Integration</h4>
+                
+                <input type="hidden" id="integrationId" name="id" value="">
+                <input type="hidden" id="integrationVersion" name="version" value="">
                 
                 <div class="form-group">
                     <label for="reittiUrl" th:text="#{integrations.reitti.url}">Instance URL</label>
@@ -803,6 +810,7 @@
                 <div class="form-group">
                     <label>
                         <input type="checkbox" 
+                               id="reittiEnabled"
                                name="enabled" 
                                value="true"
                                checked>
@@ -811,17 +819,74 @@
                 </div>
                 
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
-                    <button type="submit" class="btn" th:text="#{integrations.reitti.save}">Save Configuration</button>
+                    <button type="submit" id="submit-btn" class="btn" th:text="#{integrations.reitti.save}">Save Configuration</button>
                     <button type="button" 
                             class="btn" 
                             id="test-reitti-connection-btn"
                             th:text="#{integrations.reitti.test.connection}">Test Connection</button>
+                    <button type="button" 
+                            class="btn btn-secondary" 
+                            id="cancel-edit-btn"
+                            style="display: none;"
+                            onclick="cancelEdit()"
+                            th:text="#{form.cancel}">Cancel</button>
                 </div>
             </form>
             
             <div id="reitti-connection-test-result" style="margin-top: 10px;"></div>
             
             <script>
+                function editReittiIntegration(id, url, token, color, enabled, version) {
+                    // Update form title
+                    document.getElementById('form-title').textContent = 'Edit Reitti Integration';
+                    
+                    // Set form action to update
+                    const form = document.getElementById('reitti-integration-form');
+                    form.setAttribute('hx-post', '/settings/reitti-integrations/' + id + '/update');
+                    
+                    // Fill form fields
+                    document.getElementById('integrationId').value = id;
+                    document.getElementById('integrationVersion').value = version;
+                    document.getElementById('reittiUrl').value = url;
+                    document.getElementById('reittiToken').value = token;
+                    document.getElementById('reittiColor').value = color;
+                    document.getElementById('reittiEnabled').checked = enabled;
+                    
+                    // Update button text and show cancel button
+                    document.getElementById('submit-btn').textContent = 'Update Configuration';
+                    document.getElementById('cancel-edit-btn').style.display = 'inline-block';
+                    
+                    // Clear any previous test results
+                    document.getElementById('reitti-connection-test-result').innerHTML = '';
+                    
+                    // Scroll to form
+                    form.scrollIntoView({ behavior: 'smooth' });
+                }
+                
+                function cancelEdit() {
+                    // Reset form title
+                    document.getElementById('form-title').textContent = 'Add New Reitti Integration';
+                    
+                    // Reset form action to create
+                    const form = document.getElementById('reitti-integration-form');
+                    form.setAttribute('hx-post', '/settings/reitti-integrations');
+                    
+                    // Clear form fields
+                    document.getElementById('integrationId').value = '';
+                    document.getElementById('integrationVersion').value = '';
+                    document.getElementById('reittiUrl').value = '';
+                    document.getElementById('reittiToken').value = '';
+                    document.getElementById('reittiColor').value = '#3498db';
+                    document.getElementById('reittiEnabled').checked = true;
+                    
+                    // Reset button text and hide cancel button
+                    document.getElementById('submit-btn').textContent = 'Save Configuration';
+                    document.getElementById('cancel-edit-btn').style.display = 'none';
+                    
+                    // Clear any previous test results
+                    document.getElementById('reitti-connection-test-result').innerHTML = '';
+                }
+                
                 document.getElementById('test-reitti-connection-btn').addEventListener('click', function() {
                     const url = document.getElementById('reittiUrl').value;
                     const token = document.getElementById('reittiToken').value;
