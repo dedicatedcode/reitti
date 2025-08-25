@@ -844,6 +844,9 @@
                     const form = document.getElementById('reitti-integration-form');
                     form.setAttribute('hx-post', '/settings/reitti-integrations/' + id + '/update');
                     
+                    // Tell HTMX to process the form again after changing attributes
+                    htmx.process(form);
+                    
                     // Fill form fields
                     document.getElementById('integrationId').value = id;
                     document.getElementById('integrationVersion').value = version;
@@ -870,6 +873,9 @@
                     // Reset form action to create
                     const form = document.getElementById('reitti-integration-form');
                     form.setAttribute('hx-post', '/settings/reitti-integrations');
+                    
+                    // Tell HTMX to process the form again after changing attributes
+                    htmx.process(form);
                     
                     // Clear form fields
                     document.getElementById('integrationId').value = '';
