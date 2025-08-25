@@ -229,18 +229,18 @@
                 });
             }
 
-            // Listen for HTMX request start events on all upload forms
+            // Listen for HTMX request start events on actual file upload forms only
             document.body.addEventListener('htmx:beforeRequest', function(evt) {
                 const form = evt.target;
-                if (form.id && form.id.includes('upload-form')) {
+                if (form.id && form.id.includes('upload-form') && !form.id.includes('integration')) {
                     disableAllUploads();
                 }
             });
 
-            // Listen for HTMX request completion events
+            // Listen for HTMX request completion events on actual file upload forms only
             document.body.addEventListener('htmx:afterRequest', function(evt) {
                 const form = evt.target;
-                if (form.id && form.id.includes('upload-form')) {
+                if (form.id && form.id.includes('upload-form') && !form.id.includes('integration')) {
                     enableAllUploads();
                 }
             });
