@@ -24,6 +24,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -58,7 +59,34 @@ public class ReittiIntegrationService {
                         Optional<RemoteUser> persisted = this.jdbcService.findByIntegration(integration);
                         if (persisted.isEmpty() || !persisted.get().getRemoteVersion().equals(info.userInfo().version())) {
                             log.debug("Storing new RemoteUser for [{}]", integration);
-                            //add a http client which fetches the binary avatars from the intgeration url + /avatars/{userId}. Make sure to extract also the mimeType, we need this later. AI!
+                            
+                            // Fetch avatar binary data and MIME type
+                            try {
+                                String avatarUrl = integration.getUrl().endsWith("/") ?
+                                    integration.getUrl() + "avatars/" + info.userInfo().id() :
+                                    integration.getUrl() + "/avatars/" + info.userInfo().id();
+                                
+                                HttpClient httpClient = HttpClient.newHttpClient();
+                                HttpRequest avatarRequest = HttpRequest.newBuilder()
+                                    .uri(new URI(avatarUrl))
+                                    .header("X-API-TOKEN", integration.getToken())
+                                    .GET()
+                                    .build();
+                                
+                                HttpResponse<byte[]> avatarResponse = httpClient.send(avatarRequest, HttpResponse.BodyHandlers.ofByteArray());
+                                
+                                if (avatarResponse.statusCode() == 200) {
+                                    byte[] avatarData = avatarResponse.body();
+                                    String mimeType = avatarResponse.headers().firstValue("Content-Type").orElse("image/jpeg");
+                                    
+                                    // Store avatar data using avatar service
+                                    this.avatarService.store(info.userInfo().id(), avatarData, mimeType);
+                                    log.debug("Stored avatar for remote user [{}] with MIME type [{}]", info.userInfo().id(), mimeType);
+                                }
+                            } catch (Exception e) {
+                                log.warn("Failed to fetch avatar for remote user [{}]", info.userInfo().id(), e);
+                            }
+                            
                             this.jdbcService.store(integration, new RemoteUser(info.userInfo().id(), info.userInfo().displayName(), info.userInfo().username(), info.userInfo().version()));
                         }
 
