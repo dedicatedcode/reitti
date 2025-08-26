@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service.integration;
 
 import com.dedicatedcode.reitti.dto.ReittiRemoteInfo;
+import com.dedicatedcode.reitti.dto.TimelineEntry;
 import com.dedicatedcode.reitti.dto.UserTimelineData;
 import com.dedicatedcode.reitti.model.ReittiIntegration;
 import com.dedicatedcode.reitti.model.RemoteUser;
@@ -12,6 +13,7 @@ import com.dedicatedcode.reitti.service.RequestFailedException;
 import com.dedicatedcode.reitti.service.RequestTemporaryFailedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -19,14 +21,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Collections;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -47,8 +48,8 @@ public class ReittiIntegrationService {
         this.avatarService = avatarService;
     }
 
-    public List<UserTimelineData> getTimelineData(User user) {
-        this.jdbcService
+    public List<UserTimelineData> getTimelineData(User user, LocalDate selectedDate, ZoneId userTimezone) {
+        return this.jdbcService
                 .findAllByUser(user)
                 .stream().filter(integration -> integration.isEnabled() && VALID_INTEGRATION_STATUS.contains(integration.getStatus()))
                 .map(integration -> {
@@ -56,42 +57,8 @@ public class ReittiIntegrationService {
                     log.debug("Fetching user timeline data for [{}]", integration);
                     try {
                         ReittiRemoteInfo info = getInfo(integration);
-                        Optional<RemoteUser> persisted = this.jdbcService.findByIntegration(integration);
-                        if (persisted.isEmpty() || !persisted.get().getRemoteVersion().equals(info.userInfo().version())) {
-                            log.debug("Storing new RemoteUser for [{}]", integration);
-                            
-                            // Fetch avatar binary data and MIME type
-                            try {
-                                String avatarUrl = integration.getUrl().endsWith("/") ?
-                                    integration.getUrl() + "avatars/" + info.userInfo().id() :
-                                    integration.getUrl() + "/avatars/" + info.userInfo().id();
-                                
-                                HttpClient httpClient = HttpClient.newHttpClient();
-                                HttpRequest avatarRequest = HttpRequest.newBuilder()
-                                    .uri(new URI(avatarUrl))
-                                    .header("X-API-TOKEN", integration.getToken())
-                                    .GET()
-                                    .build();
-                                
-                                HttpResponse<byte[]> avatarResponse = httpClient.send(avatarRequest, HttpResponse.BodyHandlers.ofByteArray());
-                                
-                                if (avatarResponse.statusCode() == 200) {
-                                    byte[] avatarData = avatarResponse.body();
-                                    String mimeType = avatarResponse.headers().firstValue("Content-Type").orElse("image/jpeg");
-                                    
-                                    // Store avatar data using avatar service
-                                    this.avatarService.store(info.userInfo().id(), avatarData, mimeType);
-                                    log.debug("Stored avatar for remote user [{}] with MIME type [{}]", info.userInfo().id(), mimeType);
-                                }
-                            } catch (Exception e) {
-                                log.warn("Failed to fetch avatar for remote user [{}]", info.userInfo().id(), e);
-                            }
-                            
-                            this.jdbcService.store(integration, new RemoteUser(info.userInfo().id(), info.userInfo().displayName(), info.userInfo().username(), info.userInfo().version()));
-                        }
-
-                        new UserTimelineData("remote:" + integration.getId(), userCache.getDisplayName(), avatarFallback, avatarUrl, integration.getColor(), entries, rawLocationPointsUrl);
-
+                        Optional<RemoteUser> remoteUser = handleRemoteUser(integration, info);
+                        List<TimelineEntry> timelineEntries = loadTimeLineEntries(integration, selectedDate, userTimezone);
 
                     } catch (RequestFailedException e) {
                         log.error("couldn't fetch user info for [{}]", integration, e);
@@ -99,16 +66,70 @@ public class ReittiIntegrationService {
                     } catch (RequestTemporaryFailedException e) {
                         log.warn("couldn't temporarily fetch user info for [{}]", integration, e);
                         update(integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    } catch (URISyntaxException e) {
-                        throw new RuntimeException(e);
                     }
-                    return null;
-                });
-        return Collections.emptyList();
+                    return (UserTimelineData) null;
+                }).toList();
+    }
+
+    private List<TimelineEntry> loadTimeLineEntries(ReittiIntegration integration, LocalDate selectedDate, ZoneId userTimezone) {
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-API-TOKEN", integration.getToken());
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        String timelineUrl = integration.getUrl().endsWith("/") ?
+                integration.getUrl() + "api/v1/reitti-integration/timeline" :
+                integration.getUrl() + "/api/v1/reitti-integration/timeline";
+
+        ParameterizedTypeReference<List<TimelineEntry>> typeRef = new ParameterizedTypeReference<>() {};
+        ResponseEntity<List<TimelineEntry>> remoteResponse = restTemplate.exchange(
+                timelineUrl,
+                HttpMethod.GET,
+                entity,
+                typeRef
+                //add selected date and timeZone as request parameters AI! 
+        );
+
+        this.restTemplate.exchange(integration.getUrl(), HttpMethod.GET, new HttpEntity<>(new HttpHeaders()), String.class).getBody();
+        return null;
+    }
+
+    private Optional<RemoteUser> handleRemoteUser(ReittiIntegration integration, ReittiRemoteInfo info) {
+        Optional<RemoteUser> persisted = this.jdbcService.findByIntegration(integration);
+        if (persisted.isEmpty() || !persisted.get().getRemoteVersion().equals(info.userInfo().version())) {
+            log.debug("Storing new RemoteUser for [{}]", integration);
+
+            try {
+                String avatarUrl = integration.getUrl().endsWith("/") ?
+                        integration.getUrl() + "avatars/" + info.userInfo().id() :
+                        integration.getUrl() + "/avatars/" + info.userInfo().id();
+
+                try (HttpClient httpClient = HttpClient.newHttpClient()) {
+                    HttpRequest avatarRequest = HttpRequest.newBuilder()
+                            .uri(new URI(avatarUrl))
+                            .header("X-API-TOKEN", integration.getToken())
+                            .GET()
+                            .build();
+                    HttpResponse<byte[]> avatarResponse = httpClient.send(avatarRequest, HttpResponse.BodyHandlers.ofByteArray());
+
+                    RemoteUser remoteUser = new RemoteUser(info.userInfo().id(), info.userInfo().displayName(), info.userInfo().username(), info.userInfo().version());
+                    if (avatarResponse.statusCode() == 200) {
+                        byte[] avatarData = avatarResponse.body();
+                        String mimeType = avatarResponse.headers().firstValue("Content-Type").orElse("image/jpeg");
+
+                        log.debug("Stored avatar for remote user [{}] with MIME type [{}]", info.userInfo().id(), mimeType);
+                        this.jdbcService.store(integration, remoteUser, avatarData, mimeType);
+                    } else {
+                        this.jdbcService.store(integration, remoteUser, null, null);
+                    }
+
+                    persisted = Optional.of(remoteUser);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to fetch avatar for remote user [{}]", info.userInfo().id(), e);
+            }
+        }
+        return persisted;
     }
 
     public ReittiRemoteInfo getInfo(ReittiIntegration integration) throws RequestFailedException, RequestTemporaryFailedException {
@@ -127,7 +148,6 @@ public class ReittiIntegrationService {
     }
 
     public ReittiRemoteInfo getInfo(String url, String token) throws RequestFailedException, RequestTemporaryFailedException {
-        RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-API-TOKEN", token);
         HttpEntity<String> entity = new HttpEntity<>(headers);
