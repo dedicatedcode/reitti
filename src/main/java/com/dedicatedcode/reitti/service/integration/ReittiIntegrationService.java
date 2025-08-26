@@ -20,6 +20,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -77,9 +78,14 @@ public class ReittiIntegrationService {
         headers.set("X-API-TOKEN", integration.getToken());
         HttpEntity<String> entity = new HttpEntity<>(headers);
 
-        String timelineUrl = integration.getUrl().endsWith("/") ?
+        String baseTimelineUrl = integration.getUrl().endsWith("/") ?
                 integration.getUrl() + "api/v1/reitti-integration/timeline" :
                 integration.getUrl() + "/api/v1/reitti-integration/timeline";
+
+        String timelineUrl = UriComponentsBuilder.fromHttpUrl(baseTimelineUrl)
+                .queryParam("date", selectedDate.toString())
+                .queryParam("timezone", userTimezone.getId())
+                .toUriString();
 
         ParameterizedTypeReference<List<TimelineEntry>> typeRef = new ParameterizedTypeReference<>() {};
         ResponseEntity<List<TimelineEntry>> remoteResponse = restTemplate.exchange(
@@ -87,7 +93,6 @@ public class ReittiIntegrationService {
                 HttpMethod.GET,
                 entity,
                 typeRef
-                //add selected date and timeZone as request parameters AI! 
         );
 
         this.restTemplate.exchange(integration.getUrl(), HttpMethod.GET, new HttpEntity<>(new HttpHeaders()), String.class).getBody();
