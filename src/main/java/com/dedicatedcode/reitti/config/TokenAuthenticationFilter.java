@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.config;
 
+import com.dedicatedcode.reitti.model.ApiTokenUsage;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.service.ApiTokenService;
 import jakarta.servlet.FilterChain;
@@ -48,6 +49,8 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
                         null,
                         authenticatedUser.getAuthorities()
                     );
+                //extract the path and remote ip of the request. Make sure to also support if the request comes through a reverse proxy AI!
+//                this.apiTokenService.addUsage(authHeader, request.get)
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             } else {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
