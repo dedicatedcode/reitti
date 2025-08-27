@@ -14,13 +14,9 @@ import com.dedicatedcode.reitti.service.RequestTemporaryFailedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -57,10 +53,16 @@ public class ReittiIntegrationService {
 
                     log.debug("Fetching user timeline data for [{}]", integration);
                     try {
-                        ReittiRemoteInfo info = getInfo(integration);
-                        Optional<RemoteUser> remoteUser = handleRemoteUser(integration, info);
+                        RemoteUser remoteUser = handleRemoteUser(integration);
                         List<TimelineEntry> timelineEntries = loadTimeLineEntries(integration, selectedDate, userTimezone);
-
+                        update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
+                        return new UserTimelineData("remote:" + integration.getId(),
+                                remoteUser.getDisplayName(),
+                                this.avatarService.generateInitials(remoteUser.getDisplayName()),
+                                "/reitti-integration/avatar/" + integration.getId(),
+                                integration.getColor(),
+                                timelineEntries,
+                                String.format("/reitti-integration/raw-location-points/%d?date=%s&timezone=%s", integration.getId(), selectedDate, userTimezone));
                     } catch (RequestFailedException e) {
                         log.error("couldn't fetch user info for [{}]", integration, e);
                         update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
@@ -68,88 +70,12 @@ public class ReittiIntegrationService {
                         log.warn("couldn't temporarily fetch user info for [{}]", integration, e);
                         update(integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
                     }
-                    return (UserTimelineData) null;
+                    return null;
                 }).toList();
     }
 
-    private List<TimelineEntry> loadTimeLineEntries(ReittiIntegration integration, LocalDate selectedDate, ZoneId userTimezone) {
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("X-API-TOKEN", integration.getToken());
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-
-        String baseTimelineUrl = integration.getUrl().endsWith("/") ?
-                integration.getUrl() + "api/v1/reitti-integration/timeline" :
-                integration.getUrl() + "/api/v1/reitti-integration/timeline";
-
-        String timelineUrl = UriComponentsBuilder.fromHttpUrl(baseTimelineUrl)
-                .queryParam("date", selectedDate.toString())
-                .queryParam("timezone", userTimezone.getId())
-                .toUriString();
-
-        ParameterizedTypeReference<List<TimelineEntry>> typeRef = new ParameterizedTypeReference<>() {};
-        ResponseEntity<List<TimelineEntry>> remoteResponse = restTemplate.exchange(
-                timelineUrl,
-                HttpMethod.GET,
-                entity,
-                typeRef
-        );
-
-        this.restTemplate.exchange(integration.getUrl(), HttpMethod.GET, new HttpEntity<>(new HttpHeaders()), String.class).getBody();
-        return null;
-    }
-
-    private Optional<RemoteUser> handleRemoteUser(ReittiIntegration integration, ReittiRemoteInfo info) {
-        Optional<RemoteUser> persisted = this.jdbcService.findByIntegration(integration);
-        if (persisted.isEmpty() || !persisted.get().getRemoteVersion().equals(info.userInfo().version())) {
-            log.debug("Storing new RemoteUser for [{}]", integration);
-
-            try {
-                String avatarUrl = integration.getUrl().endsWith("/") ?
-                        integration.getUrl() + "avatars/" + info.userInfo().id() :
-                        integration.getUrl() + "/avatars/" + info.userInfo().id();
-
-                try (HttpClient httpClient = HttpClient.newHttpClient()) {
-                    HttpRequest avatarRequest = HttpRequest.newBuilder()
-                            .uri(new URI(avatarUrl))
-                            .header("X-API-TOKEN", integration.getToken())
-                            .GET()
-                            .build();
-                    HttpResponse<byte[]> avatarResponse = httpClient.send(avatarRequest, HttpResponse.BodyHandlers.ofByteArray());
-
-                    RemoteUser remoteUser = new RemoteUser(info.userInfo().id(), info.userInfo().displayName(), info.userInfo().username(), info.userInfo().version());
-                    if (avatarResponse.statusCode() == 200) {
-                        byte[] avatarData = avatarResponse.body();
-                        String mimeType = avatarResponse.headers().firstValue("Content-Type").orElse("image/jpeg");
-
-                        log.debug("Stored avatar for remote user [{}] with MIME type [{}]", info.userInfo().id(), mimeType);
-                        this.jdbcService.store(integration, remoteUser, avatarData, mimeType);
-                    } else {
-                        this.jdbcService.store(integration, remoteUser, null, null);
-                    }
-
-                    persisted = Optional.of(remoteUser);
-                }
-            } catch (Exception e) {
-                log.warn("Failed to fetch avatar for remote user [{}]", info.userInfo().id(), e);
-            }
-        }
-        return persisted;
-    }
-
     public ReittiRemoteInfo getInfo(ReittiIntegration integration) throws RequestFailedException, RequestTemporaryFailedException {
-        ReittiRemoteInfo info;
-        try {
-            info = getInfo(integration.getUrl(), integration.getToken());
-            update(integration.withLastUsed(LocalDateTime.now()).withStatus(ReittiIntegration.Status.ACTIVE));
-        } catch (RequestFailedException e) {
-            update(integration.withLastUsed(LocalDateTime.now()).withStatus(ReittiIntegration.Status.FAILED).withEnabled(false));
-            throw e;
-        } catch (RequestTemporaryFailedException e) {
-            update(integration.withLastUsed(LocalDateTime.now()).withStatus(ReittiIntegration.Status.RECOVERABLE));
-            throw e;
-        }
-        return info;
+        return getInfo(integration.getUrl(), integration.getToken());
     }
 
     public ReittiRemoteInfo getInfo(String url, String token) throws RequestFailedException, RequestTemporaryFailedException {
@@ -179,77 +105,102 @@ public class ReittiIntegrationService {
         }
     }
 
-    private void update(ReittiIntegration integration) {
+
+    public void getRawLocationData(User user, Long integrationId, String dateStr, String timezone) {
+        return this.jdbcService
+                .findByIdAndUser(integrationId,user)
+                .stream().filter(integration -> integration.isEnabled() && VALID_INTEGRATION_STATUS.contains(integration.getStatus()))
+                .map(integration -> {
+
+                    log.debug("Fetching raw location data for [{}]", integration);
+                    try {
+                        //add a rest call to to raw-location-data endpoint found in LocationDataApiController AI!
+                    } catch (RequestFailedException e) {
+                        log.error("couldn't fetch user info for [{}]", integration, e);
+                        update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
+                    } catch (RequestTemporaryFailedException e) {
+                        log.warn("couldn't temporarily fetch user info for [{}]", integration, e);
+                        update(integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
+                    }
+                    return null;
+                }).toList();
+
+    }
+    private ReittiIntegration update(ReittiIntegration integration) {
         try {
-            this.jdbcService.update(integration);
+            return this.jdbcService.update(integration).orElseThrow();
         } catch (OptimisticLockException e) {
-            log.error("Optimistic lock has been detected for [{}]", integration);
+            log.error("Optimistic lock has been detected for [{}]", integration, e);
+        }
+        return integration;
+    }
+
+    private List<TimelineEntry> loadTimeLineEntries(ReittiIntegration integration, LocalDate selectedDate, ZoneId userTimezone) throws RequestFailedException, RequestTemporaryFailedException {
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-API-TOKEN", integration.getToken());
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        String timelineUrl = integration.getUrl().endsWith("/") ?
+                integration.getUrl() + "api/v1/reitti-integration/timeline?date={date}&timezone={timezone}" :
+                integration.getUrl() + "/api/v1/reitti-integration/timeline?date={date}&timezone={timezone}";
+
+
+        ParameterizedTypeReference<List<TimelineEntry>> typeRef = new ParameterizedTypeReference<>() {};
+        ResponseEntity<List<TimelineEntry>> remoteResponse = restTemplate.exchange(
+                timelineUrl,
+                HttpMethod.GET,
+                entity,
+                typeRef,
+                selectedDate,
+                userTimezone.getId()
+        );
+
+        if (remoteResponse.getStatusCode().is2xxSuccessful()) {
+            return remoteResponse.getBody();
+        } else if (remoteResponse.getStatusCode().is4xxClientError()) {
+            throw new RequestFailedException(timelineUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
+        } else {
+            throw new RequestTemporaryFailedException(timelineUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
         }
     }
 
+    private RemoteUser handleRemoteUser(ReittiIntegration integration) throws RequestFailedException, RequestTemporaryFailedException {
+        ReittiRemoteInfo info = getInfo(integration);
+        Optional<RemoteUser> persisted = this.jdbcService.findByIntegration(integration);
+        if (persisted.isEmpty() || !persisted.get().getRemoteVersion().equals(info.userInfo().version())) {
+            log.debug("Storing new RemoteUser for [{}]", integration);
 
-//todo replace with new logic
-// Add connected users data, sorted by username
-//        List<ConnectedUserAccount> connectedAccounts = userSettings.getConnectedUserAccounts();
+            String avatarUrl = integration.getUrl().endsWith("/") ?
+                    integration.getUrl() + "avatars/" + info.userInfo().id() :
+                    integration.getUrl() + "/avatars/" + info.userInfo().id();
 
-// Sort connected users by username
-//        connectedAccounts.sort(Comparator.comparing(ConnectedUserAccount::userId));
+            try (HttpClient httpClient = HttpClient.newHttpClient()) {
+                HttpRequest avatarRequest = HttpRequest.newBuilder()
+                        .uri(new URI(avatarUrl))
+                        .header("X-API-TOKEN", integration.getToken())
+                        .GET()
+                        .build();
+                HttpResponse<byte[]> avatarResponse = httpClient.send(avatarRequest, HttpResponse.BodyHandlers.ofByteArray());
 
-//        for (ConnectedUserAccount connectedUserAccount : connectedAccounts) {
-//            Optional<User> connectedUserOpt = this.userJdbcService.findById(connectedUserAccount.userId());
-//            if (connectedUserOpt.isEmpty()) {
-//                log.warn("Could not find user with id {}", connectedUserAccount.userId());
-//                continue;
-//            }
-//            User connectedUser = connectedUserOpt.get();
-//            // Get connected user's timeline data for the same date
-//            List<ProcessedVisit> connectedVisits = processedVisitJdbcService.findByUserAndTimeOverlap(
-//                    connectedUser, startOfDay, endOfDay);
-//            List<Trip> connectedTrips = tripJdbcService.findByUserAndTimeOverlap(
-//                    connectedUser, startOfDay, endOfDay);
-//
-//            // Get connected user's unit system
-//            UserSettings connectedUserSettings = userSettingsJdbcService.findByUserId(connectedUser.getId())
-//                    .orElse(UserSettings.defaultSettings(connectedUser.getId()));
-//
-//            List<TimelineEntry> connectedUserEntries = buildTimelineEntries(connectedUser, connectedVisits, connectedTrips, userTimezone, selectedDate, connectedUserSettings.getUnitSystem());
-//
-//            String connectedUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", connectedUser.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", connectedUser.getId()));
-//            String connectedUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", connectedUser.getId(), date, timezone);
-//            String connectedUserInitials = generateInitials(connectedUser.getDisplayName());
-//
-//            allUsersData.add(new UserTimelineData(connectedUser.getId(), connectedUser.getDisplayName(), connectedUserInitials, connectedUserAvatarUrl, connectedUserAccount.color(), connectedUserEntries, connectedUserRawLocationPointsUrl));
-//        }
+                RemoteUser remoteUser = new RemoteUser(info.userInfo().id(), info.userInfo().displayName(), info.userInfo().username(), info.userInfo().version());
+                if (avatarResponse.statusCode() == 200) {
+                    byte[] avatarData = avatarResponse.body();
+                    String mimeType = avatarResponse.headers().firstValue("Content-Type").orElse("image/jpeg");
 
-    private static final class UserCache {
+                    log.debug("Stored avatar for remote user [{}] with MIME type [{}]", info.userInfo().id(), mimeType);
+                    this.jdbcService.store(integration, remoteUser, avatarData, mimeType);
+                } else {
+                    throw new RequestFailedException(avatarUrl, HttpStatusCode.valueOf(avatarResponse.statusCode()), avatarResponse.body());
+                }
 
-        private final Long id;
-        private final Long version;
-        private final String displayName;
-        private final String userName;
-
-        public UserCache(ReittiRemoteInfo.RemoteUserInfo remoteUserInfo) {
-            this.id = remoteUserInfo.id();
-            this.displayName = remoteUserInfo.displayName();
-            this.userName = remoteUserInfo.username();
-            this.version = remoteUserInfo.version();
+                persisted = Optional.of(remoteUser);
+            } catch (Exception e) {
+                log.warn("Failed to fetch avatar for remote user [{}]", info.userInfo().id(), e);
+                throw new RequestFailedException(avatarUrl, HttpStatusCode.valueOf(500), "");
+            }
         }
-
-        public Long getId() {
-            return id;
-        }
-
-        public Long getVersion() {
-            return version;
-        }
-
-        public String getDisplayName() {
-            return displayName;
-        }
-
-        public String getUserName() {
-            return userName;
-        }
+        return persisted.get();
     }
 
 }
