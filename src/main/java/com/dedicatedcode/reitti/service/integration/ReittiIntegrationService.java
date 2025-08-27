@@ -20,7 +20,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
-import java.net.ConnectException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -159,8 +158,8 @@ public class ReittiIntegrationService {
     private ReittiIntegration update(ReittiIntegration integration) {
         try {
             return this.jdbcService.update(integration).orElseThrow();
-        } catch (OptimisticLockException e) {
-            log.error("Optimistic lock has been detected for [{}]", integration, e);
+        } catch (OptimisticLockException ignored) {
+            log.debug("Optimistic lock has been detected for [{}]", integration);
         }
         return integration;
     }

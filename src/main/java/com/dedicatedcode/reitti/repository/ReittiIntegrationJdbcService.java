@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.repository;
 
-import com.dedicatedcode.reitti.dto.ReittiRemoteInfo;
 import com.dedicatedcode.reitti.model.ReittiIntegration;
 import com.dedicatedcode.reitti.model.RemoteUser;
 import com.dedicatedcode.reitti.model.User;
@@ -9,7 +8,6 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.PreparedStatement;
 import java.sql.Timestamp;
@@ -19,7 +17,6 @@ import java.util.Objects;
 import java.util.Optional;
 
 @Service
-@Transactional
 public class ReittiIntegrationJdbcService {
 
     private final JdbcTemplate jdbcTemplate;
