@@ -144,7 +144,7 @@ public class SettingsController {
         User currentUser = userJdbcService.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
         model.addAttribute("tokens", apiTokenService.getTokensForUser(currentUser));
-        return "fragments/settings :: api-tokens-content";
+        return "fragments/api-tokens :: api-tokens-content";
     }
 
 
@@ -196,7 +196,7 @@ public class SettingsController {
         model.addAttribute("tokens", tokens);
 
         // Return the api-tokens-content fragment
-        return "fragments/settings :: api-tokens-content";
+        return "fragments/api-tokens :: api-tokens-content";
     }
 
     @PostMapping("/tokens/{tokenId}/delete")
@@ -217,7 +217,7 @@ public class SettingsController {
         model.addAttribute("tokens", tokens);
 
         // Return the api-tokens-content fragment
-        return "fragments/settings :: api-tokens-content";
+        return "fragments/api-tokens :: api-tokens-content";
     }
 
 
