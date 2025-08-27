@@ -144,6 +144,8 @@ public class SettingsController {
         User currentUser = userJdbcService.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
         model.addAttribute("tokens", apiTokenService.getTokensForUser(currentUser));
+        model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(currentUser, 10));
+        model.addAttribute("maxUsagesToShow", 10);
         return "fragments/api-tokens :: api-tokens-content";
     }
 
@@ -194,6 +196,8 @@ public class SettingsController {
         // Get updated token list and add to model
         List<ApiToken> tokens = apiTokenService.getTokensForUser(user);
         model.addAttribute("tokens", tokens);
+        model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(user, 10));
+        model.addAttribute("maxUsagesToShow", 10);
 
         // Return the api-tokens-content fragment
         return "fragments/api-tokens :: api-tokens-content";
@@ -215,6 +219,8 @@ public class SettingsController {
         // Get updated token list and add to model
         List<ApiToken> tokens = apiTokenService.getTokensForUser(user);
         model.addAttribute("tokens", tokens);
+        model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(user, 10));
+        model.addAttribute("maxUsagesToShow", 10);
 
         // Return the api-tokens-content fragment
         return "fragments/api-tokens :: api-tokens-content";
