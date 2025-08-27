@@ -31,7 +31,7 @@ public class ReittiIntegration {
     }
 
     public static ReittiIntegration create(String url, String token, boolean enabled, String color) {
-        return new ReittiIntegration(-1L, url, token, enabled, enabled ? Status.ENABLED : Status.DISABLED, LocalDateTime.now(), null, null, 1L, null, color);
+        return new ReittiIntegration(-1L, url, token, enabled, enabled ? Status.ACTIVE : Status.RECOVERABLE, LocalDateTime.now(), null, null, 1L, null, color);
     }
 
     public Long getId() {
@@ -86,7 +86,28 @@ public class ReittiIntegration {
         return new ReittiIntegration(this.id, this.url, this.token, this.enabled, this.status, this.createdAt, this.updatedAt, lastUsed, this.version, this.lastMessage, this.color);
     }
 
+    public ReittiIntegration withStatus(Status status) {
+        return new ReittiIntegration(this.id, this.url, this.token, this.enabled, status, this.createdAt, this.updatedAt, this.lastUsed, this.version, this.lastMessage, this.color);
+    }
+
     public enum Status {
-        ENABLED, DISABLED, FAILED
+        ACTIVE, RECOVERABLE, DISABLED, FAILED
+    }
+
+    @Override
+    public String toString() {
+        return "ReittiIntegration{" +
+                "id=" + id +
+                ", url='" + url + '\'' +
+                ", token='" + token + '\'' +
+                ", enabled=" + enabled +
+                ", status=" + status +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                ", lastUsed=" + lastUsed +
+                ", version=" + version +
+                ", lastMessage='" + lastMessage + '\'' +
+                ", color='" + color + '\'' +
+                '}';
     }
 }

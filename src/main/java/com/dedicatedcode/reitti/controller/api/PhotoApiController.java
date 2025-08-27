@@ -3,7 +3,7 @@ package com.dedicatedcode.reitti.controller.api;
 import com.dedicatedcode.reitti.dto.PhotoResponse;
 import com.dedicatedcode.reitti.model.ImmichIntegration;
 import com.dedicatedcode.reitti.model.User;
-import com.dedicatedcode.reitti.service.ImmichIntegrationService;
+import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

@@ -1,0 +1,1 @@
+ALTER TABLE reitti_integrations ADD COLUMN status VARCHAR(255) NOT NULL DEFAULT 'ACTIVE';

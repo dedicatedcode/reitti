@@ -1,220 +1,53 @@
 package com.dedicatedcode.reitti.controller;
 
-import com.dedicatedcode.reitti.model.ReittiIntegration;
 import com.dedicatedcode.reitti.model.User;
-import com.dedicatedcode.reitti.repository.OptimisticLockException;
-import com.dedicatedcode.reitti.repository.ReittiIntegrationJdbcService;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
+import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
+import org.springframework.http.*;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Controller
-@RequestMapping("/settings")
+@RequestMapping("/reitti-integration")
 public class ReittiIntegrationController {
-    private final ReittiIntegrationJdbcService jdbcService;
+    private final JdbcTemplate jdbcTemplate;
+    private final ReittiIntegrationService reittiIntegrationService;
 
-    public ReittiIntegrationController(ReittiIntegrationJdbcService jdbcService) {
-        this.jdbcService = jdbcService;
+    public ReittiIntegrationController(JdbcTemplate jdbcTemplate, ReittiIntegrationService reittiIntegrationService) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.reittiIntegrationService = reittiIntegrationService;
     }
 
-    @GetMapping("/shared-instances-content")
-    public String getSharedInstancesContent(@AuthenticationPrincipal User user, Model model) {
-        // TODO: Replace with actual service call when JDBC is implemented
-        List<ReittiIntegration> integrations = jdbcService.findAllByUser(user);
-        
-        model.addAttribute("reittiIntegrations", integrations);
-        return "fragments/settings :: shared-instances-content";
+    @GetMapping("/avatar/{integrationId}")
+    public ResponseEntity<byte[]> getAvatar(@PathVariable Long integrationId) {
+
+        Map<String, Object> result = jdbcTemplate.queryForMap(
+                "SELECT mime_type, binary_data FROM remote_user_info WHERE integration_id = ?",
+                integrationId
+        );
+
+        String contentType = (String) result.get("mime_type");
+        byte[] imageData = (byte[]) result.get("binary_data");
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType(contentType));
+        headers.setContentLength(imageData.length);
+        headers.setCacheControl(CacheControl.maxAge(30, TimeUnit.DAYS));
+
+        return new ResponseEntity<>(imageData, headers, HttpStatus.OK);
     }
 
-    @PostMapping("/reitti-integrations")
-    public String createReittiIntegration(
-            @AuthenticationPrincipal User user,
-            @RequestParam String url,
-            @RequestParam(name = "remote_token") String token,
-            @RequestParam(defaultValue = "false") boolean enabled,
-            @RequestParam(defaultValue = "#3498db") String color,
-            Model model) {
-        
-        try {
-            this.jdbcService.create(user, ReittiIntegration.create(url, token, enabled, color));
-            model.addAttribute("successMessage", "Reitti integration saved successfully");
-        } catch (Exception e) {
-            model.addAttribute("errorMessage", "Error saving configuration: " + e.getMessage());
-        }
-        
-        // Reload the content
-        return getSharedInstancesContent(user, model);
-    }
 
-    @PostMapping("/reitti-integrations/{id}/update")
-    public String updateReittiIntegration(
-            @AuthenticationPrincipal User user,
-            @PathVariable Long id,
-            @RequestParam String url,
-            @RequestParam(name = "remote_token") String token,
-            @RequestParam(defaultValue = "false") boolean enabled,
-            @RequestParam(defaultValue = "#3498db") String color,
-            @RequestParam Long version,
-            Model model) {
-        
-        try {
-            this.jdbcService.findByIdAndUser(id, user).ifPresentOrElse(integration -> {
-                try {
-                    ReittiIntegration updatedIntegration = new ReittiIntegration(
-                        integration.getId(),
-                        url,
-                        token,
-                        enabled,
-                        enabled ? ReittiIntegration.Status.ENABLED : ReittiIntegration.Status.DISABLED,
-                        integration.getCreatedAt(),
-                        integration.getUpdatedAt(),
-                        integration.getLastUsed().orElse(null),
-                        version,
-                        integration.getLastMessage().orElse(null),
-                        color
-                    );
-                    this.jdbcService.update(user, updatedIntegration);
-                    model.addAttribute("successMessage", "Reitti integration updated successfully");
-                } catch (OptimisticLockException e) {
-                    model.addAttribute("errorMessage", "Integration is out of date. Please reload the page and try again.");
-                } catch (Exception e) {
-                    model.addAttribute("errorMessage", "Error updating configuration: " + e.getMessage());
-                }
-            }, () -> model.addAttribute("errorMessage", "Integration not found!"));
-        } catch (Exception e) {
-            model.addAttribute("errorMessage", "Error updating configuration: " + e.getMessage());
-        }
-        
-        // Reload the content
-        return getSharedInstancesContent(user, model);
-    }
-
-    @PostMapping("/reitti-integrations/{id}/toggle")
-    public String toggleReittiIntegration(@AuthenticationPrincipal User user, @PathVariable Long id, Model model) {
-        try {
-            this.jdbcService.findByIdAndUser(id, user).ifPresentOrElse(integration -> {
-                try {
-                    this.jdbcService.update(user, integration.withEnabled(!integration.isEnabled()));
-                    model.addAttribute("successMessage", "Integration status updated successfully");
-                } catch (OptimisticLockException e) {
-                    model.addAttribute("errorMessage", "Integration is out of date. Please reload the page and try again.");
-                } catch (Exception e) {
-                    model.addAttribute("errorMessage", "Error updating integration: " + e.getMessage());
-                }
-            }, () -> model.addAttribute("errorMessage", "Integration not found!"));
-        } catch (Exception e) {
-            model.addAttribute("errorMessage", "Error updating integration: " + e.getMessage());
-        }
-
-        return getSharedInstancesContent(user, model);
-    }
-
-    @PostMapping("/reitti-integrations/{id}/delete")
-    public String deleteReittiIntegration(@AuthenticationPrincipal User user, @PathVariable Long id, Model model) {
-        try {
-            this.jdbcService.findByIdAndUser(id, user).ifPresent(integration -> {
-                try {
-                    this.jdbcService.delete(user, integration);
-                } catch (OptimisticLockException e) {
-                    model.addAttribute("errorMessage", "Integration is out of date. Please reload the page and try again.");
-                }
-            });
-            model.addAttribute("successMessage", "Reitti integration deleted successfully");
-        } catch (Exception e) {
-            model.addAttribute("errorMessage", "Error deleting configuration: " + e.getMessage());
-        }
-
-        return getSharedInstancesContent(user, model);
-    }
-
-    @GetMapping("/reitti-integrations/{id}/info")
-    public String getReittiIntegrationInfo(@AuthenticationPrincipal User user, @PathVariable Long id, Model model) {
-        try {
-            this.jdbcService.findByIdAndUser(id, user).ifPresentOrElse(integration -> {
-                try {
-                    RestTemplate restTemplate = new RestTemplate();
-                    HttpHeaders headers = new HttpHeaders();
-                    headers.set("X-API-TOKEN", integration.getToken());
-                    HttpEntity<String> entity = new HttpEntity<>(headers);
-                    
-                    String infoUrl = integration.getUrl().endsWith("/") ? 
-                        integration.getUrl() + "api/v1/reitti-integration/info" : 
-                        integration.getUrl() + "/api/v1/reitti-integration/info";
-                    
-                    ResponseEntity<Map> remoteResponse = restTemplate.exchange(
-                        infoUrl,
-                        HttpMethod.GET,
-                        entity,
-                        Map.class
-                    );
-                    
-                    if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null) {
-                        model.addAttribute("remoteInfo", remoteResponse.getBody());
-                        this.jdbcService.update(user,  integration.withLastUsed(LocalDateTime.now()));
-                    } else {
-                        model.addAttribute("errorMessage", "Failed to fetch information from remote instance");
-                    }
-                    
-                } catch (Exception e) {
-                    model.addAttribute("errorMessage", "Connection failed: " + e.getMessage());
-                }
-            }, () -> model.addAttribute("errorMessage", "Integration not found"));
-        } catch (Exception e) {
-            model.addAttribute("errorMessage", "Error fetching integration info: " + e.getMessage());
-        }
-        
-        return "fragments/settings :: reitti-info-content";
-    }
-
-    @PostMapping("/reitti-integrations/test")
+    @GetMapping(value = "/raw-location-points/{integrationId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> testReittiConnection(
-            @RequestParam String url,
-            @RequestParam(name = "foreign_token") String token) {
-        
-        Map<String, Object> response = new HashMap<>();
-        
-        try {
-            RestTemplate restTemplate = new RestTemplate();
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("X-API-TOKEN", token);
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-            
-            String infoUrl = url.endsWith("/") ? url + "api/v1/reitti-integration/info" : url + "/api/v1/reitti-integration/info";
-            
-            ResponseEntity<Map> remoteResponse = restTemplate.exchange(
-                infoUrl,
-                HttpMethod.GET,
-                entity,
-                Map.class
-            );
-            
-            if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null) {
-                Map<String, Object> remoteData = remoteResponse.getBody();
-                response.put("success", true);
-                response.put("message", "Connection successful - Connected to Reitti instance");
-                response.put("remoteInfo", remoteData);
-            } else {
-                response.put("success", false);
-                response.put("message", "Connection failed: Invalid response from remote instance");
-            }
-            
-        } catch (Exception e) {
-            response.put("success", false);
-            response.put("message", "Connection failed: " + e.getMessage());
-        }
-        
-        return ResponseEntity.ok(response);
+    public ResponseEntity<?> getRawLocationPoints(@AuthenticationPrincipal User user,
+                                                  @PathVariable Long integrationId,
+                                                  @RequestParam("date") String dateStr,
+                                                  @RequestParam(required = false, defaultValue = "UTC") String timezone) {
+        return ResponseEntity.ok(Map.of("points", reittiIntegrationService.getRawLocationData(user, integrationId, dateStr, timezone)));
     }
 }

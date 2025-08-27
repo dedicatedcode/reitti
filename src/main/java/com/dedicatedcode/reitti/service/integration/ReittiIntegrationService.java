@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.service.integration;
 
+import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.dto.ReittiRemoteInfo;
 import com.dedicatedcode.reitti.dto.TimelineEntry;
 import com.dedicatedcode.reitti.dto.UserTimelineData;
@@ -25,8 +26,7 @@ import java.net.http.HttpResponse;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class ReittiIntegrationService {
@@ -105,8 +105,7 @@ public class ReittiIntegrationService {
         }
     }
 
-
-    public void getRawLocationData(User user, Long integrationId, String dateStr, String timezone) {
+    public List<LocationDataRequest.LocationPoint> getRawLocationData(User user, Long integrationId, String dateStr, String timezone) {
         return this.jdbcService
                 .findByIdAndUser(integrationId,user)
                 .stream().filter(integration -> integration.isEnabled() && VALID_INTEGRATION_STATUS.contains(integration.getStatus()))
@@ -119,21 +118,20 @@ public class ReittiIntegrationService {
                         HttpEntity<String> entity = new HttpEntity<>(headers);
 
                         String rawLocationDataUrl = integration.getUrl().endsWith("/") ?
-                                integration.getUrl() + "api/v1/raw-location-data?date={date}&timezone={timezone}" :
-                                integration.getUrl() + "/api/v1/raw-location-data?date={date}&timezone={timezone}";
-
-                        ResponseEntity<String> remoteResponse = restTemplate.exchange(
+                                integration.getUrl() + "api/v1/raw-location-points?date={date}&timezone={timezone}" :
+                                integration.getUrl() + "/api/v1/raw-location-points?date={date}&timezone={timezone}";
+                        ResponseEntity<Map> remoteResponse = restTemplate.exchange(
                                 rawLocationDataUrl,
                                 HttpMethod.GET,
                                 entity,
-                                String.class,
+                                Map.class,
                                 dateStr,
                                 timezone
                         );
 
-                        if (remoteResponse.getStatusCode().is2xxSuccessful()) {
+                        if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null && remoteResponse.getBody().containsKey("points")) {
                             update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
-                            return remoteResponse.getBody();
+                            return (List<LocationDataRequest.LocationPoint>) remoteResponse.getBody().get("points");
                         } else if (remoteResponse.getStatusCode().is4xxClientError()) {
                             throw new RequestFailedException(rawLocationDataUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
                         } else {
@@ -147,7 +145,9 @@ public class ReittiIntegrationService {
                         update(integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
                     }
                     return null;
-                }).toList();
+                })
+                .filter(Objects::nonNull)
+                .findFirst().orElse(Collections.emptyList());
 
     }
     private ReittiIntegration update(ReittiIntegration integration) {

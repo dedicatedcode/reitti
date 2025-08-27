@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.service;
+package com.dedicatedcode.reitti.service.integration;
 
 import com.dedicatedcode.reitti.dto.ImmichAsset;
 import com.dedicatedcode.reitti.dto.ImmichSearchRequest;

@@ -6,6 +6,8 @@ import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.*;
+import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
+import com.dedicatedcode.reitti.service.integration.OwnTracksRecorderIntegrationService;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;

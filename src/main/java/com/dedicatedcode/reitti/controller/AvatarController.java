@@ -38,5 +38,4 @@ public class AvatarController {
 
         return new ResponseEntity<>(avatar.imageData(), headers, HttpStatus.OK);
     }
-
 }

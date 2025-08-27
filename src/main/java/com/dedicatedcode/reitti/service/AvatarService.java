@@ -68,7 +68,32 @@ public class AvatarService {
         this.jdbcTemplate.update("DELETE FROM user_avatars WHERE user_id = ?", userId);
     }
 
+    public String generateInitials(String displayName) {
+        if (displayName == null || displayName.trim().isEmpty()) {
+            return "";
+        }
 
+        String trimmed = displayName.trim();
+
+        // If display name contains whitespace, take first char of each word
+        if (trimmed.contains(" ")) {
+            StringBuilder initials = new StringBuilder();
+            String[] words = trimmed.split("\\s+");
+            for (String word : words) {
+                if (!word.isEmpty()) {
+                    initials.append(Character.toUpperCase(word.charAt(0)));
+                }
+            }
+            return initials.toString();
+        } else {
+            // No whitespace - take first two letters, or just one if that's all there is
+            if (trimmed.length() >= 2) {
+                return (Character.toUpperCase(trimmed.charAt(0)) + "" + Character.toUpperCase(trimmed.charAt(1)));
+            } else {
+                return Character.toUpperCase(trimmed.charAt(0)) + "";
+            }
+        }
+    }
     public record AvatarData(String mimeType, byte[] imageData, long updatedAt) {}
 
     public record AvatarInfo(long updatedAt) {}

@@ -717,6 +717,7 @@
                 <thead>
                 <tr>
                     <th th:text="#{integrations.reitti.table.url}">Instance URL</th>
+                    <th th:text="#{integrations.reitti.table.enabled}">Enabled</th>
                     <th th:text="#{integrations.reitti.table.status}">Status</th>
                     <th th:text="#{integrations.reitti.table.last.used}">Last Used</th>
                     <th th:text="#{integrations.reitti.table.color}">Color</th>
@@ -727,14 +728,16 @@
                 <tr th:each="integration : ${reittiIntegrations}">
                     <td th:text="${integration.url}"></td>
                     <td>
-                        <span th:if="${integration.enabled && integration.status.name() == 'ENABLED'}">
+                        <span th:if="${integration.enabled}">
                             <i class="lni lni-check"></i> <span th:text="#{integrations.reitti.status.enabled}">Enabled</span>
                         </span>
-                        <span th:if="${!integration.enabled || integration.status.name() == 'DISABLED'}" style="color: orange;">
+                        <span th:if="${!integration.enabled}" style="color: orange;">
                             <i class="lni lni-xmark"></i> <span th:text="#{integrations.reitti.status.disabled}">Disabled</span>
                         </span>
-                        <span th:if="${integration.status.name() == 'FAILED'}" style="color: red;">
-                            <i class="lni lni-xmark"></i> <span th:text="#{integrations.reitti.status.failed}">Failed</span>
+                    </td>
+                    <td>
+                        <span>
+                            <span th:text="#{'integrations.reitti.status.' + ${integration.status} + '.name'}">ACTIVE</span>
                         </span>
                     </td>
                     <td th:text="${integration.lastUsed.isPresent() ? #temporals.format(integration.lastUsed.get(), 'yyyy-MM-dd HH:mm') : #messages.msg('integrations.reitti.never.used')}"></td>
@@ -846,11 +849,107 @@
             <div id="reitti-connection-test-result" style="margin-top: 10px;"></div>
         </div>
     </div>
+
+    <script>
+        function editReittiIntegration(id, url, token, color, enabled, version) {
+            // Update form title
+            document.getElementById('form-title').textContent = 'Edit Reitti Integration';
+
+            // Set form action to update
+            const form = document.getElementById('reitti-integration-form');
+            form.setAttribute('hx-post', '/settings/reitti-integrations/' + id + '/update');
+
+            // Tell HTMX to process the form again after changing attributes
+            htmx.process(form);
+
+            // Fill form fields
+            document.getElementById('integrationId').value = id;
+            document.getElementById('integrationVersion').value = version;
+            document.getElementById('reittiUrl').value = url;
+            document.getElementById('reittiToken').value = token;
+            document.getElementById('reittiColor').value = color;
+            document.getElementById('reittiEnabled').checked = enabled;
+
+            // Update button text and show cancel button
+            document.getElementById('submit-btn').textContent = 'Update Configuration';
+            document.getElementById('cancel-edit-btn').style.display = 'inline-block';
+
+            // Clear any previous test results
+            document.getElementById('reitti-connection-test-result').innerHTML = '';
+
+            // Scroll to form
+            form.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function cancelEdit() {
+            // Reset form title
+            document.getElementById('form-title').textContent = 'Add New Reitti Integration';
+
+            // Reset form action to create
+            const form = document.getElementById('reitti-integration-form');
+            form.setAttribute('hx-post', '/settings/reitti-integrations');
+
+            // Tell HTMX to process the form again after changing attributes
+            htmx.process(form);
+
+            // Clear form fields
+            document.getElementById('integrationId').value = '';
+            document.getElementById('integrationVersion').value = '';
+            document.getElementById('reittiUrl').value = '';
+            document.getElementById('reittiToken').value = '';
+            document.getElementById('reittiColor').value = '#3498db';
+            document.getElementById('reittiEnabled').checked = true;
+
+            // Reset button text and hide cancel button
+            document.getElementById('submit-btn').textContent = 'Save Configuration';
+            document.getElementById('cancel-edit-btn').style.display = 'none';
+
+            // Clear any previous test results
+            document.getElementById('reitti-connection-test-result').innerHTML = '';
+        }
+
+        document.getElementById('test-reitti-connection-btn').addEventListener('click', function() {
+            const url = document.getElementById('reittiUrl').value;
+            const token = document.getElementById('reittiToken').value;
+            const resultDiv = document.getElementById('reitti-connection-test-result');
+
+            if (!url || !token) {
+                resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">Please fill in both Instance URL and API Token</div>';
+                return;
+            }
+
+            // Show loading state
+            resultDiv.innerHTML = '<div style="color: var(--color-text-white);">Testing connection...</div>';
+
+            // Make AJAX request to test connection
+            fetch('/settings/reitti-integrations/test', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    url: url,
+                    foreign_token: token
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        resultDiv.innerHTML = '<div class="alert alert-success" style="display: block;">' + data.message + '</div>';
+                    } else {
+                        resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + data.message + '</div>';
+                    }
+                })
+                .catch(error => {
+                    resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">Connection test failed: ' + error.message + '</div>';
+                });
+        });
+    </script>
 </div>
 
 <!-- Reitti Info Content Fragment -->
 <div th:fragment="reitti-info-content">
-    <div class="settings-card" style="border-left: 4px solid var(--color-accent);">
+    <div class="settings-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h4 style="margin: 0; color: var(--color-accent);" th:text="#{integrations.reitti.info.title}">Remote Instance Information</h4>
             <button class="btn btn-secondary" 
@@ -865,126 +964,28 @@
         </div>
         
         <div th:if="${remoteInfo}" style="color: var(--color-text-white);">
-            <div th:if="${remoteInfo.server}" style="margin-bottom: 20px;">
+            <div th:if="${remoteInfo.serverInfo()}" style="margin-bottom: 20px;">
                 <h5 style="margin: 0 0 10px 0; color: var(--color-accent);">🖥️ Server Information</h5>
                 <div style="background-color: rgba(255,255,255,0.1); padding: 15px; border-radius: 4px;">
-                    <div><strong>Name:</strong> <span th:text="${remoteInfo.server.name ?: 'N/A'}">N/A</span></div>
-                    <div><strong>Version:</strong> <span th:text="${remoteInfo.server.version ?: 'N/A'}">N/A</span></div>
-                    <div><strong>System Time:</strong> <span th:text="${remoteInfo.server.systemTime ?: 'N/A'}">N/A</span></div>
+                    <div><strong>Name:</strong> <span th:text="${remoteInfo.serverInfo().name() ?: 'N/A'}">N/A</span></div>
+                    <div><strong>Version:</strong> <span th:text="${remoteInfo.serverInfo().version() ?: 'N/A'}">N/A</span></div>
+                    <div><strong>System Time:</strong> <span th:text="${remoteInfo.serverInfo().systemTime() ?: 'N/A'}">N/A</span></div>
                 </div>
             </div>
             
-            <div th:if="${remoteInfo.user}" style="margin-bottom: 20px;">
+            <div th:if="${remoteInfo.userInfo()}" style="margin-bottom: 20px;">
                 <h5 style="margin: 0 0 10px 0; color: var(--color-accent);">👤 User Information</h5>
                 <div style="background-color: rgba(255,255,255,0.1); padding: 15px; border-radius: 4px;">
-                    <div><strong>Username:</strong> <span th:text="${remoteInfo.user.username ?: 'N/A'}">N/A</span></div>
-                    <div><strong>Display Name:</strong> <span th:text="${remoteInfo.user.displayName ?: 'N/A'}">N/A</span></div>
-                    <div><strong>User ID:</strong> <span th:text="${remoteInfo.user.id ?: 'N/A'}">N/A</span></div>
+                    <div><strong>Username:</strong> <span th:text="${remoteInfo.userInfo().username() ?: 'N/A'}">N/A</span></div>
+                    <div><strong>Display Name:</strong> <span th:text="${remoteInfo.userInfo().displayName() ?: 'N/A'}">N/A</span></div>
+                    <div><strong>User ID:</strong> <span th:text="${remoteInfo.userInfo().id() ?: 'N/A'}">N/A</span></div>
+                    <div><strong>Version:</strong> <span th:text="${remoteInfo.userInfo().version() ?: 'N/A'}">N/A</span></div>
                 </div>
             </div>
             
             <div style="padding: 10px; background-color: rgba(0,255,0,0.1); border-radius: 4px; border-left: 4px solid #00ff00;">
                 <strong>✅ Connection successful!</strong> You can access this user's location data.
             </div>
-        </div>
-    </div>
-</div>
-
-<script>
-                function editReittiIntegration(id, url, token, color, enabled, version) {
-                    // Update form title
-                    document.getElementById('form-title').textContent = 'Edit Reitti Integration';
-                    
-                    // Set form action to update
-                    const form = document.getElementById('reitti-integration-form');
-                    form.setAttribute('hx-post', '/settings/reitti-integrations/' + id + '/update');
-                    
-                    // Tell HTMX to process the form again after changing attributes
-                    htmx.process(form);
-                    
-                    // Fill form fields
-                    document.getElementById('integrationId').value = id;
-                    document.getElementById('integrationVersion').value = version;
-                    document.getElementById('reittiUrl').value = url;
-                    document.getElementById('reittiToken').value = token;
-                    document.getElementById('reittiColor').value = color;
-                    document.getElementById('reittiEnabled').checked = enabled;
-                    
-                    // Update button text and show cancel button
-                    document.getElementById('submit-btn').textContent = 'Update Configuration';
-                    document.getElementById('cancel-edit-btn').style.display = 'inline-block';
-                    
-                    // Clear any previous test results
-                    document.getElementById('reitti-connection-test-result').innerHTML = '';
-                    
-                    // Scroll to form
-                    form.scrollIntoView({ behavior: 'smooth' });
-                }
-                
-                function cancelEdit() {
-                    // Reset form title
-                    document.getElementById('form-title').textContent = 'Add New Reitti Integration';
-                    
-                    // Reset form action to create
-                    const form = document.getElementById('reitti-integration-form');
-                    form.setAttribute('hx-post', '/settings/reitti-integrations');
-                    
-                    // Tell HTMX to process the form again after changing attributes
-                    htmx.process(form);
-                    
-                    // Clear form fields
-                    document.getElementById('integrationId').value = '';
-                    document.getElementById('integrationVersion').value = '';
-                    document.getElementById('reittiUrl').value = '';
-                    document.getElementById('reittiToken').value = '';
-                    document.getElementById('reittiColor').value = '#3498db';
-                    document.getElementById('reittiEnabled').checked = true;
-                    
-                    // Reset button text and hide cancel button
-                    document.getElementById('submit-btn').textContent = 'Save Configuration';
-                    document.getElementById('cancel-edit-btn').style.display = 'none';
-                    
-                    // Clear any previous test results
-                    document.getElementById('reitti-connection-test-result').innerHTML = '';
-                }
-                
-                document.getElementById('test-reitti-connection-btn').addEventListener('click', function() {
-                    const url = document.getElementById('reittiUrl').value;
-                    const token = document.getElementById('reittiToken').value;
-                    const resultDiv = document.getElementById('reitti-connection-test-result');
-                    
-                    if (!url || !token) {
-                        resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">Please fill in both Instance URL and API Token</div>';
-                        return;
-                    }
-                    
-                    // Show loading state
-                    resultDiv.innerHTML = '<div style="color: var(--color-text-white);">Testing connection...</div>';
-                    
-                    // Make AJAX request to test connection
-                    fetch('/settings/reitti-integrations/test', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: new URLSearchParams({
-                            url: url,
-                            foreign_token: token
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            resultDiv.innerHTML = '<div class="alert alert-success" style="display: block;">' + data.message + '</div>';
-                        } else {
-                            resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + data.message + '</div>';
-                        }
-                    })
-                    .catch(error => {
-                        resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">Connection test failed: ' + error.message + '</div>';
-                    });
-                });
-            </script>
         </div>
     </div>
 </div>
