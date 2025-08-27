@@ -25,6 +25,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Controller
 @RequestMapping("/timeline")
@@ -79,7 +80,7 @@ public class TimelineController {
 
         allUsersData.addAll(this.reittiIntegrationService.getTimelineData(user, selectedDate, userTimezone));
         // Create timeline data record
-        TimelineData timelineData = new TimelineData(allUsersData);
+        TimelineData timelineData = new TimelineData(allUsersData.stream().filter(Objects::nonNull).toList());
         
         model.addAttribute("timelineData", timelineData);
         return "fragments/timeline :: timeline-content";

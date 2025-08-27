@@ -14,7 +14,7 @@
     </div>
 
     <div class="user-timeline-selection" th:if="${timelineData.users != null && timelineData.users.size() > 1}">
-        <div th:each="userData, iterStat : ${timelineData.users}" 
+        <div th:if="${userData}" th:each="userData, iterStat : ${timelineData.users}"
              class="user-header"
              th:classappend="${iterStat.first} ? 'active' : ''"
              th:data-user-id="${userData.userId}"
@@ -25,17 +25,17 @@
                 <div th:text="${userData.displayName}" class="username">Username</div>
         </div>
     </div>
-    <div th:each="userData, iterStat : ${timelineData.users}" 
+    <div th:if="${userData}" th:each="userData, iterStat : ${timelineData.users}"
          class="user-timeline-section"
          th:classappend="${iterStat.first} ? 'active' : ''"
-         th:data-user-id="${userData.userId}"
-         th:data-base-color="${userData.baseColor}"
-         th:data-raw-location-points-url="${userData.rawLocationPointsUrl}">
-        <div th:if="${userData.entries == null or userData.entries.isEmpty()}" class="no-entries" th:text="#{timeline.no.data}">
+         th:data-user-id="${userData?.userId}"
+         th:data-base-color="${userData?.baseColor}"
+         th:data-raw-location-points-url="${userData?.rawLocationPointsUrl}">
+        <div th:if="${userData?.entries == null or userData.entries.isEmpty()}" class="no-entries" th:text="#{timeline.no.data}">
             No timeline data available for this user.
         </div>
         
-        <div th:each="entry : ${userData.entries}" 
+        <div th:each="entry : ${userData?.entries}"
              th:class="|timeline-entry ${entry.type.name().toLowerCase()}|"
              th:data-id="${entry.id}"
              th:data-lat="${entry.place?.latitudeCentroid}"

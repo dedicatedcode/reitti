@@ -17,8 +17,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.ConnectException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -87,21 +89,25 @@ public class ReittiIntegrationService {
                 url + "api/v1/reitti-integration/info" :
                 url + "/api/v1/reitti-integration/info";
 
-        ResponseEntity<ReittiRemoteInfo> remoteResponse = restTemplate.exchange(
-                infoUrl,
-                HttpMethod.GET,
-                entity,
-                ReittiRemoteInfo.class
-        );
+        try {
+            ResponseEntity<ReittiRemoteInfo> remoteResponse = restTemplate.exchange(
+                    infoUrl,
+                    HttpMethod.GET,
+                    entity,
+                    ReittiRemoteInfo.class
+            );
 
-        if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null) {
-            return remoteResponse.getBody();
-        } else {
-            if (remoteResponse.getStatusCode().is4xxClientError()) {
-                throw new RequestFailedException(infoUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
+            if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null) {
+                return remoteResponse.getBody();
             } else {
-                throw new RequestTemporaryFailedException(infoUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
+                if (remoteResponse.getStatusCode().is4xxClientError()) {
+                    throw new RequestFailedException(infoUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
+                } else {
+                    throw new RequestTemporaryFailedException(infoUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
+                }
             }
+        } catch (RestClientException ex) {
+            throw new RequestFailedException(infoUrl, HttpStatusCode.valueOf(500), "Connection refused");
         }
     }
 
