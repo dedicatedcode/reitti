@@ -114,7 +114,31 @@ public class ReittiIntegrationService {
 
                     log.debug("Fetching raw location data for [{}]", integration);
                     try {
-                        //add a rest call to to raw-location-data endpoint found in LocationDataApiController AI!
+                        HttpHeaders headers = new HttpHeaders();
+                        headers.set("X-API-TOKEN", integration.getToken());
+                        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+                        String rawLocationDataUrl = integration.getUrl().endsWith("/") ?
+                                integration.getUrl() + "api/v1/raw-location-data?date={date}&timezone={timezone}" :
+                                integration.getUrl() + "/api/v1/raw-location-data?date={date}&timezone={timezone}";
+
+                        ResponseEntity<String> remoteResponse = restTemplate.exchange(
+                                rawLocationDataUrl,
+                                HttpMethod.GET,
+                                entity,
+                                String.class,
+                                dateStr,
+                                timezone
+                        );
+
+                        if (remoteResponse.getStatusCode().is2xxSuccessful()) {
+                            update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
+                            return remoteResponse.getBody();
+                        } else if (remoteResponse.getStatusCode().is4xxClientError()) {
+                            throw new RequestFailedException(rawLocationDataUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
+                        } else {
+                            throw new RequestTemporaryFailedException(rawLocationDataUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
+                        }
                     } catch (RequestFailedException e) {
                         log.error("couldn't fetch user info for [{}]", integration, e);
                         update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
