@@ -49,8 +49,12 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
                         null,
                         authenticatedUser.getAuthorities()
                     );
-                //extract the path and remote ip of the request. Make sure to also support if the request comes through a reverse proxy AI!
-//                this.apiTokenService.addUsage(authHeader, request.get)
+                
+                // Extract the path and remote IP of the request, supporting reverse proxy
+                String requestPath = request.getRequestURI();
+                String remoteIp = getClientIpAddress(request);
+                
+                this.apiTokenService.addUsage(authHeader, requestPath, remoteIp);
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             } else {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -59,5 +63,41 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+    
+    private String getClientIpAddress(HttpServletRequest request) {
+        // Check for X-Forwarded-For header (common in reverse proxy setups)
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty() && !"unknown".equalsIgnoreCase(xForwardedFor)) {
+            // X-Forwarded-For can contain multiple IPs, take the first one
+            return xForwardedFor.split(",")[0].trim();
+        }
+        
+        // Check for X-Real-IP header (used by nginx)
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty() && !"unknown".equalsIgnoreCase(xRealIp)) {
+            return xRealIp;
+        }
+        
+        // Check for X-Forwarded header
+        String xForwarded = request.getHeader("X-Forwarded");
+        if (xForwarded != null && !xForwarded.isEmpty() && !"unknown".equalsIgnoreCase(xForwarded)) {
+            return xForwarded;
+        }
+        
+        // Check for Forwarded-For header
+        String forwardedFor = request.getHeader("Forwarded-For");
+        if (forwardedFor != null && !forwardedFor.isEmpty() && !"unknown".equalsIgnoreCase(forwardedFor)) {
+            return forwardedFor;
+        }
+        
+        // Check for Forwarded header
+        String forwarded = request.getHeader("Forwarded");
+        if (forwarded != null && !forwarded.isEmpty() && !"unknown".equalsIgnoreCase(forwarded)) {
+            return forwarded;
+        }
+        
+        // Fall back to remote address
+        return request.getRemoteAddr();
     }
 }
