@@ -48,6 +48,18 @@
         </table>
     </div>
 
+    <div class="settings-card">
+        <form hx-post="/settings/tokens" hx-target="#api-tokens" hx-swap="innerHTML" class="token-form"
+              style="margin-bottom: 20px;">
+            <div class="form-group">
+                <label for="tokenName" th:text="#{tokens.name.label}">Token Name</label>
+                <input type="text" id="tokenName" name="name" required th:placeholder="#{tokens.name.placeholder}">
+            </div>
+            <button type="submit" class="btn" th:text="#{form.create}">Create New Token</button>
+        </form>
+    </div>
+
+
     <div class="settings-card" th:if="${recentUsages != null && !recentUsages.isEmpty()}">
         <h3 th:text="#{tokens.recent.usages.title}">Recent Token Usages</h3>
         <p th:text="#{tokens.recent.usages.description(${maxUsagesToShow})}">Showing the last 10 token usages</p>
@@ -62,25 +74,15 @@
             </thead>
             <tbody>
             <tr th:each="usage : ${recentUsages}">
-                <td th:text="${usage.tokenName}"></td>
-                <td th:text="${#temporals.format(usage.timestamp, 'yyyy-MM-dd HH:mm:ss')}"></td>
-                <td th:text="${usage.endpoint}"></td>
-                <td th:text="${usage.ipAddress}"></td>
+                <td th:text="${usage.name()}"></td>
+                <td th:text="${#temporals.format(usage.at(), 'yyyy-MM-dd HH:mm:ss')}"></td>
+                <td th:text="${usage.endpoint()}"></td>
+                <td th:text="${usage.ip()}"></td>
             </tr>
             </tbody>
         </table>
     </div>
 
-    <div class="settings-card">
-        <form hx-post="/settings/tokens" hx-target="#api-tokens" hx-swap="innerHTML" class="token-form"
-              style="margin-bottom: 20px;">
-            <div class="form-group">
-                <label for="tokenName" th:text="#{tokens.name.label}">Token Name</label>
-                <input type="text" id="tokenName" name="name" required th:placeholder="#{tokens.name.placeholder}">
-            </div>
-            <button type="submit" class="btn" th:text="#{form.create}">Create New Token</button>
-        </form>
-    </div>
 </div>
 
 </body>

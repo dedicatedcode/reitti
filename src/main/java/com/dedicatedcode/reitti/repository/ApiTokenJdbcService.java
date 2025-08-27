@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.ApiToken;
+import com.dedicatedcode.reitti.model.ApiTokenUsage;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.User;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -155,5 +156,17 @@ public class ApiTokenJdbcService {
             rs.getTimestamp("created_at").toInstant(),
             rs.getTimestamp("last_used_at") != null ? rs.getTimestamp("last_used_at").toInstant() : null
         );
+    }
+
+    private ApiTokenUsage mapRowToApiUsage(ResultSet rs, int rowNum) throws SQLException {
+        return new ApiTokenUsage(rs.getString("token"),
+                rs.getString("name"),
+                rs.getTimestamp("at").toLocalDateTime(),
+                rs.getString("endpoint"),
+                rs.getString("ip"));
+    }
+
+    public List<ApiTokenUsage> getUsages(User user, int maxRows) {
+        return this.jdbcTemplate.query("SELECT t.token, t.name, au.at, au.endpoint, au.ip FROM api_tokens t RIGHT JOIN api_token_usages au on t.id = au.token_id WHERE t.user_id = ? ORDER BY au.at LIMIT ?", this::mapRowToApiUsage, user.getId(), maxRows);
     }
 }

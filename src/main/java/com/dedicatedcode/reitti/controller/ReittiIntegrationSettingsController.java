@@ -32,9 +32,7 @@ public class ReittiIntegrationSettingsController {
 
     @GetMapping("/shared-instances-content")
     public String getSharedInstancesContent(@AuthenticationPrincipal User user, Model model) {
-        // TODO: Replace with actual service call when JDBC is implemented
         List<ReittiIntegration> integrations = jdbcService.findAllByUser(user);
-        
         model.addAttribute("reittiIntegrations", integrations);
         return "fragments/settings :: shared-instances-content";
     }
