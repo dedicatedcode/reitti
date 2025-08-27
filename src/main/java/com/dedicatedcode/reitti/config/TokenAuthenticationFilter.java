@@ -54,7 +54,7 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
                 String requestPath = request.getRequestURI();
                 String remoteIp = getClientIpAddress(request);
                 
-                this.apiTokenService.addUsage(authHeader, requestPath, remoteIp);
+                this.apiTokenService.trackUsage(authHeader, requestPath, remoteIp);
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             } else {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

@@ -169,4 +169,9 @@ public class ApiTokenJdbcService {
     public List<ApiTokenUsage> getUsages(User user, int maxRows) {
         return this.jdbcTemplate.query("SELECT t.token, t.name, au.at, au.endpoint, au.ip FROM api_tokens t RIGHT JOIN api_token_usages au on t.id = au.token_id WHERE t.user_id = ? ORDER BY au.at LIMIT ?", this::mapRowToApiUsage, user.getId(), maxRows);
     }
+
+    public void trackUsage(String token, String requestPath, String remoteIp) {
+        this.jdbcTemplate.update("INSERT INTO api_token_usages(token_id, at, endpoint, ip) SELECT id, now(), ?, ? FROM api_tokens WHERE token = ?",
+                requestPath, remoteIp, token);
+    }
 }
