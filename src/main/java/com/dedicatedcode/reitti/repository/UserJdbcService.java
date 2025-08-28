@@ -36,7 +36,6 @@ public class UserJdbcService {
     @CacheEvict(value = "users", allEntries = true)
     public void deleteUser(Long userId) {
         this.jdbcTemplate.update("DELETE FROM user_avatars WHERE user_id = ?", userId);
-        this.jdbcTemplate.update("DELETE FROM connected_users WHERE from_user = ? OR to_user = ?", userId, userId);
         this.jdbcTemplate.update("DELETE FROM user_settings WHERE user_id = ?", userId);
         String sql = "DELETE FROM users WHERE id = ?";
         int rowsAffected = jdbcTemplate.update(sql, userId);

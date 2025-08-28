@@ -104,8 +104,4 @@ public class UserSettingsJdbcService {
             this.jdbcTemplate.update("UPDATE user_settings SET latest_data = GREATEST(latest_data, ?) WHERE user_id = ?", Timestamp.from(instant), user.getId());
         });
     }
-
-    public List<Long> findParentUserIds(User user) {
-        return this.jdbcTemplate.queryForList("SELECT from_user FROM connected_users WHERE to_user = ?", Long.class, user.getId());
-    }
 }
