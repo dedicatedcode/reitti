@@ -17,6 +17,7 @@
     <script src="/js/htmx.min.js"></script>
     <script src="/js/leaflet.js"></script>
     <script src="/js/TileLayer.Grayscale.js"></script>
+    <script src="/js/leaflet.geodesic.2.7.2.js"></script>
 </head>
 <body>
 <div id="message-container">
@@ -230,12 +231,13 @@
 
         // Function to update map with raw location points
         function updateMapWithRawPoints(rawPointsData, color) {
-            const rawPointsPath = L.polyline([], {
+            const rawPointsPath = L.geodesic([], {
                 color: color == null ? '#f1ba63' : color,
                 weight: 6,
                 opacity: 0.9,
                 lineJoin: 'round',
-                lineCap: 'round'
+                lineCap: 'round',
+                steps: 2
             });
 
             if (rawPointsData && rawPointsData.points && rawPointsData.points.length > 0) {
@@ -253,12 +255,14 @@
             }
         }
 
-        const selectedPath = L.polyline([], {
+        const selectedPath = L.geodesic([], {
             color: '#ff984f',
             weight: 6,
             opacity: 1,
             lineJoin: 'round',
-            lineCap: 'round'
+            lineCap: 'round',
+            steps: 2
+
         });
 
         const rawPointPaths = [];
