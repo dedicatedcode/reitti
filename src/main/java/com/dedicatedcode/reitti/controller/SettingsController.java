@@ -10,12 +10,14 @@ import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
 import com.dedicatedcode.reitti.service.integration.OwnTracksRecorderIntegrationService;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -97,26 +99,28 @@ public class SettingsController {
     }
 
     @GetMapping("")
-    public String settingsPage(@RequestParam(required = false, defaultValue = "job-status") String section, 
-                              Model model, Authentication authentication) {
+    public String settingsPage(@AuthenticationPrincipal User user,
+                               @RequestParam(required = false, defaultValue = "job-status") String section,
+                               HttpServletRequest request,
+                               Model model) {
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
         model.addAttribute("activeSection", section);
         
         // Load the content for the active section immediately
         switch (section) {
             case "api-tokens":
-                getApiTokensContent(authentication, model);
+                getApiTokensContent(user, model);
                 break;
             case "user-management":
-                return getUserManagementPage(authentication, model);
+                return getUserManagementPage(user, model);
             case "places-management":
-                getPlacesContent(authentication, 0, model);
+                getPlacesContent(user, 0, model);
                 break;
             case "geocode-services":
                 getGeocodeServicesContent(model);
                 break;
             case "integrations":
-                getIntegrationsContent(authentication, model, null);
+                getIntegrationsContent(user, request, model, null);
                 break;
             case "manage-data":
                 if (dataManagementEnabled) {
@@ -139,25 +143,19 @@ public class SettingsController {
     }
 
     @GetMapping("/api-tokens-content")
-    public String getApiTokensContent(Authentication authentication, Model model) {
-        String username = authentication.getName();
-        User currentUser = userJdbcService.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-        model.addAttribute("tokens", apiTokenService.getTokensForUser(currentUser));
-        model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(currentUser, 10));
+    public String getApiTokensContent(@AuthenticationPrincipal User user, Model model) {
+        model.addAttribute("tokens", apiTokenService.getTokensForUser(user));
+        model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(user, 10));
         model.addAttribute("maxUsagesToShow", 10);
         return "fragments/api-tokens :: api-tokens-content";
     }
 
 
     @GetMapping("/places-content")
-    public String getPlacesContent(Authentication authentication,
+    public String getPlacesContent(@AuthenticationPrincipal User user,
                                    @RequestParam(defaultValue = "0") int page,
                                    Model model) {
-        String username = authentication.getName();
-        User currentUser = userJdbcService.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-        Page<SignificantPlace> placesPage = placeService.getPlacesForUser(currentUser, PageRequest.of(page, 20));
+        Page<SignificantPlace> placesPage = placeService.getPlacesForUser(user, PageRequest.of(page, 20));
 
         // Convert to PlaceInfo objects
         List<PlaceInfo> places = placesPage.getContent().stream()
@@ -287,8 +285,6 @@ public class SettingsController {
         return response;
     }
 
-
-
     @GetMapping("/queue-stats-content")
     public String getQueueStatsContent(Model model) {
         model.addAttribute("queueStats", queueStatsService.getQueueStats());
@@ -296,11 +292,10 @@ public class SettingsController {
     }
 
     @GetMapping("/integrations-content")
-    public String getIntegrationsContent(Authentication authentication, Model model,
+    public String getIntegrationsContent(@AuthenticationPrincipal User currentUser,
+                                         HttpServletRequest request,
+                                         Model model,
                                          @RequestParam(required = false) String openSection) {
-        String username = authentication.getName();
-        User currentUser = userJdbcService.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
         List<ApiToken> tokens = apiTokenService.getTokensForUser(currentUser);
 
         // Add the first token if available
@@ -319,8 +314,22 @@ public class SettingsController {
             model.addAttribute("hasRecorderIntegration", false);
         }
 
-        // Add the open section parameter
+        // Build the server URL
+        String scheme = request.getScheme();
+        String serverName = request.getServerName();
+        int serverPort = request.getServerPort();
+
+        StringBuilder serverUrl = new StringBuilder();
+        serverUrl.append(scheme).append("://").append(serverName);
+
+        // Only add port if it's not the default port for the scheme
+        if ((scheme.equals("http") && serverPort != 80) ||
+                (scheme.equals("https") && serverPort != 443)) {
+            serverUrl.append(":").append(serverPort);
+        }
+
         model.addAttribute("openSection", openSection);
+        model.addAttribute("serverUrl", serverUrl.toString());
 
         return "fragments/settings :: integrations-content";
     }
@@ -799,20 +808,17 @@ public class SettingsController {
         return "fragments/settings :: about-content";
     }
 
-    private String getUserManagementPage(Authentication authentication, Model model) {
-        String currentUsername = authentication.getName();
-        User currentUser = userJdbcService.findByUsername(currentUsername)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUsername));
-
-        if (currentUser.getRole() != Role.ADMIN) {
+    private String getUserManagementPage(@AuthenticationPrincipal User user, Model model) {
+        if (user.getRole() != Role.ADMIN) {
             // For non-admin users, show their own form
-            model.addAttribute("userId", currentUser.getId());
-            model.addAttribute("username", currentUser.getUsername());
-            model.addAttribute("displayName", currentUser.getDisplayName());
-            model.addAttribute("selectedRole", currentUser.getRole());;
+            model.addAttribute("userId", user.getId());
+            model.addAttribute("username", user.getUsername());
+            model.addAttribute("displayName", user.getDisplayName());
+            model.addAttribute("selectedRole", user.getRole());
+            ;
 
-            UserSettings userSettings = userSettingsJdbcService.findByUserId(currentUser.getId())
-                    .orElse(UserSettings.defaultSettings(currentUser.getId()));
+            UserSettings userSettings = userSettingsJdbcService.findByUserId(user.getId())
+                    .orElse(UserSettings.defaultSettings(user.getId()));
             model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
             model.addAttribute("selectedUnitSystem", userSettings.getUnitSystem().name());
             model.addAttribute("preferColoredMap", userSettings.isPreferColoredMap());
@@ -822,7 +828,7 @@ public class SettingsController {
             model.addAttribute("isAdmin", false);
 
             // Check if user has avatar
-            boolean hasAvatar = this.avatarService.getInfo(currentUser.getId()).isPresent();
+            boolean hasAvatar = this.avatarService.getInfo(user.getId()).isPresent();
             model.addAttribute("hasAvatar", hasAvatar);
 
             // Add default avatars to model
@@ -833,7 +839,7 @@ public class SettingsController {
             // For admin users, show user list
             List<User> users = userJdbcService.getAllUsers();
             model.addAttribute("users", users);
-            model.addAttribute("currentUsername", currentUsername);
+            model.addAttribute("currentUsername", user.getUsername());
             model.addAttribute("isAdmin", true);
         }
 
