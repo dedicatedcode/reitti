@@ -88,7 +88,7 @@ The easiest way to get started is using Docker Compose:
    or manually downloading it [here](https://raw.githubusercontent.com/dedicatedcode/reitti/refs/heads/main/docker-compose.yml)
 2. Adjust the compose file to your needs
    
-   Pay special attention tho the Photon language code. This should match your main location.
+   Pay special attention to the Photon `COUNTRY_CODE`. This should match your main location.
    
 4. Start all services (PostgreSQL, RabbitMQ, Redis and Reitti)
    ```bash
