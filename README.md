@@ -79,20 +79,25 @@ Reitti is a comprehensive personal location tracking and analysis application th
 
 The easiest way to get started is using Docker Compose:
 
-1. Clone the repository
+1. Get the docker compose file
    ```bash
-   git clone https://github.com/dedicatedcode/reitti.git
+   mkdir reitti
    cd reitti
+   wget https://raw.githubusercontent.com/dedicatedcode/reitti/refs/heads/main/docker-compose.yml
    ```
-
-2. Start all services (PostgreSQL, RabbitMQ, Redis and Reitti)
+   or manually downloading it [here](https://raw.githubusercontent.com/dedicatedcode/reitti/refs/heads/main/docker-compose.yml)
+2. Adjust the compose file to your needs
+   
+   Pay special attention tho the Photon language code. This should match your main location.
+   
+4. Start all services (PostgreSQL, RabbitMQ, Redis and Reitti)
    ```bash
    docker-compose up -d
    ```
 
-3. Access the application at `http://localhost:8080`
+5. Access the application at `http://localhost:8080`
 
-4. Login with admin:admin
+6. Login with admin:admin
 
 **Note for ARM64 users (Apple Silicon, etc.):** Until [postgis/docker-postgis#216](https://github.com/postgis/docker-postgis/issues/216) is fixed by the PostGIS team, users wanting to run Reitti on ARM64 platforms need to change the PostGIS image in the docker-compose file from `image: postgis/postgis:17-3.5-alpine` to `image: imresamu/postgis:17-3.5-alpine`.
 
