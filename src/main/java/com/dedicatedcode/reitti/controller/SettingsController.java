@@ -10,7 +10,6 @@ import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
 import com.dedicatedcode.reitti.service.integration.OwnTracksRecorderIntegrationService;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
@@ -409,8 +408,7 @@ public class SettingsController {
                                                   @RequestParam String deviceId,
                                                   @RequestParam(defaultValue = "false") boolean enabled,
                                                   Authentication authentication,
-                                                  Model model,
-                                                  HttpServletRequest request) {
+                                                  Model model) {
         String currentUsername = authentication.getName();
         User currentUser = userJdbcService.findByUsername(currentUsername)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUsername));
@@ -424,22 +422,7 @@ public class SettingsController {
         } else {
             model.addAttribute("hasToken", false);
         }
-        
-        // Build the server URL
-        String scheme = request.getScheme();
-        String serverName = request.getServerName();
-        int serverPort = request.getServerPort();
 
-        StringBuilder serverUrl = new StringBuilder();
-        serverUrl.append(scheme).append("://").append(serverName);
-
-        if ((scheme.equals("http") && serverPort != 80) ||
-                (scheme.equals("https") && serverPort != 443)) {
-            serverUrl.append(":").append(serverPort);
-        }
-
-        model.addAttribute("serverUrl", serverUrl.toString());
-        
         try {
             OwnTracksRecorderIntegration integration = ownTracksRecorderIntegrationService.saveIntegration(
                 currentUser, baseUrl, username, deviceId, enabled);
