@@ -9,17 +9,15 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Optional;
 
 @Component
-public class UrlTokenAuthenticationFilter extends OncePerRequestFilter {
-    private final ApiTokenService apiTokenService;
+public class UrlTokenAuthenticationFilter extends BaseTokenAuthenticationFilter {
 
     public UrlTokenAuthenticationFilter(ApiTokenService apiTokenService) {
-        this.apiTokenService = apiTokenService;
+        super(apiTokenService);
     }
 
     @Override
@@ -38,6 +36,7 @@ public class UrlTokenAuthenticationFilter extends OncePerRequestFilter {
                         null,
                         authenticatedUser.getAuthorities()
                     );
+                trackApiTokenUsage(request, token);
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             } else {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
