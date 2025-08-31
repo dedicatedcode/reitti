@@ -187,7 +187,7 @@
             });
         }
 
-        document.body.addEventListener('htmx:afterSwap', function (event) {
+        document.body.addEventListener('htmx:afterSettle', function (event) {
             if (event.detail.target.id === 'places-management' ||
                 event.detail.target.closest('#places-management')) {
                 initPlaceMaps();
