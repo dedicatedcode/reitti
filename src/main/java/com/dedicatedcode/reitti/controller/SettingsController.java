@@ -9,6 +9,7 @@ import com.dedicatedcode.reitti.service.*;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
 import com.dedicatedcode.reitti.service.integration.OwnTracksRecorderIntegrationService;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
+import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +36,7 @@ public class SettingsController {
     private final PlaceService placeService;
     private final SignificantPlaceJdbcService placeJdbcService;
     private final GeocodeServiceJdbcService geocodeServiceJdbcService;
+    private final GeocodingResponseJdbcService geocodingResponseJdbcService;
     private final ImmichIntegrationService immichIntegrationService;
     private final OwnTracksRecorderIntegrationService ownTracksRecorderIntegrationService;
     private final VisitJdbcService visitJdbcService;
@@ -59,6 +61,7 @@ public class SettingsController {
                               QueueStatsService queueStatsService,
                               PlaceService placeService, SignificantPlaceJdbcService placeJdbcService,
                               GeocodeServiceJdbcService geocodeServiceJdbcService,
+                              GeocodingResponseJdbcService geocodingResponseJdbcService,
                               ImmichIntegrationService immichIntegrationService,
                               OwnTracksRecorderIntegrationService ownTracksRecorderIntegrationService,
                               VisitJdbcService visitJdbcService,
@@ -79,6 +82,7 @@ public class SettingsController {
         this.placeService = placeService;
         this.placeJdbcService = placeJdbcService;
         this.geocodeServiceJdbcService = geocodeServiceJdbcService;
+        this.geocodingResponseJdbcService = geocodingResponseJdbcService;
         this.immichIntegrationService = immichIntegrationService;
         this.ownTracksRecorderIntegrationService = ownTracksRecorderIntegrationService;
         this.visitJdbcService = visitJdbcService;
@@ -299,6 +303,48 @@ public class SettingsController {
         }
         
         return getPlacesContent(user, page, model);
+    }
+
+    @GetMapping("/places/{placeId}/geocoding-response")
+    public String getGeocodingResponse(@PathVariable Long placeId,
+                                       @RequestParam(defaultValue = "0") int page,
+                                       Authentication authentication,
+                                       Model model) {
+
+        User user = (User) authentication.getPrincipal();
+        if (!this.placeJdbcService.exists(user, placeId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+
+        try {
+            SignificantPlace place = placeJdbcService.findById(placeId).orElseThrow();
+            
+            // Convert to PlaceInfo for the template
+            PlaceInfo placeInfo = new PlaceInfo(
+                place.getId(),
+                place.getName(),
+                place.getAddress(),
+                place.getType(),
+                place.getLatitudeCentroid(),
+                place.getLongitudeCentroid()
+            );
+            
+            // Get the latest geocoding response for this place
+            Optional<GeocodingResponse> geocodingResponse = geocodingResponseJdbcService.findLatestByPlaceId(placeId);
+            
+            model.addAttribute("place", placeInfo);
+            model.addAttribute("currentPage", page);
+            
+            if (geocodingResponse.isPresent()) {
+                model.addAttribute("geocodingResponse", geocodingResponse.get());
+            }
+            
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", getMessage("message.error.place.update", e.getMessage()));
+            return getPlacesContent(user, page, model);
+        }
+        
+        return "fragments/settings :: geocoding-response-content";
     }
 
     @GetMapping("/queue-stats-content")

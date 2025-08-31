@@ -70,6 +70,12 @@
                                 hx-target="#places-management"
                                 hx-swap="innerHTML"
                                 th:text="#{places.geocode.button}">Geocode</button>
+                        <button type="button" 
+                                class="btn btn-secondary"
+                                th:attr="hx-get=@{/settings/places/{id}/geocoding-response(id=${place.id()}, page=${currentPage})}"
+                                hx-target="#places-management"
+                                hx-swap="innerHTML"
+                                th:text="#{places.geocoding.response.button}">View Geocoding</button>
                     </div>
                 </form>
             </div>
@@ -948,6 +954,56 @@
                 <strong>✅ Connection successful!</strong> You can access this user's location data.
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Geocoding Response Content Fragment -->
+<div th:fragment="geocoding-response-content">
+    <h2 th:text="#{places.geocoding.response.title(${place.name()})}">Geocoding Response for Place</h2>
+
+    <div style="margin-bottom: 20px;">
+        <button class="btn" 
+                th:attr="hx-get=@{/settings/places-content(page=${currentPage})}"
+                hx-target="#places-management"
+                hx-swap="innerHTML"
+                th:text="#{places.geocoding.response.back}">Back to Places</button>
+    </div>
+
+    <div class="settings-card">
+        <h3 th:text="${place.name()}">Place Name</h3>
+        <p><strong th:text="#{places.address.label}">Address:</strong> <span th:text="${place.address() ?: #messages.msg('places.address.not.available')}">Address</span></p>
+        <p><strong th:text="#{places.coordinates.label}">Coordinates:</strong> <span th:text="${place.latitude() + ', ' + place.longitude()}">Coordinates</span></p>
+    </div>
+
+    <div th:if="${geocodingResponse}" class="settings-card">
+        <h3>Geocoding Response</h3>
+        <table>
+            <tr>
+                <th th:text="#{places.geocoding.response.provider}">Provider</th>
+                <td th:text="${geocodingResponse.providerName}">Provider Name</td>
+            </tr>
+            <tr>
+                <th th:text="#{places.geocoding.response.status}">Status</th>
+                <td th:text="${geocodingResponse.status}">Status</td>
+            </tr>
+            <tr>
+                <th th:text="#{places.geocoding.response.fetched.at}">Fetched At</th>
+                <td th:text="${#temporals.format(geocodingResponse.fetchedAt, 'yyyy-MM-dd HH:mm:ss')}">Fetched At</td>
+            </tr>
+            <tr th:if="${geocodingResponse.errorDetails}">
+                <th th:text="#{places.geocoding.response.error.details}">Error Details</th>
+                <td th:text="${geocodingResponse.errorDetails}">Error Details</td>
+            </tr>
+        </table>
+        
+        <div style="margin-top: 20px;">
+            <h4 th:text="#{places.geocoding.response.raw.data}">Raw Data</h4>
+            <pre style="background-color: rgba(255,255,255,0.1); padding: 15px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; max-height: 400px; overflow-y: auto;" th:text="${geocodingResponse.rawData}">Raw JSON Data</pre>
+        </div>
+    </div>
+
+    <div th:unless="${geocodingResponse}" class="settings-card">
+        <p th:text="#{places.geocoding.response.no.data}">No geocoding response available for this place</p>
     </div>
 </div>
 
