@@ -173,6 +173,7 @@ public class SettingsController {
         model.addAttribute("totalPages", placesPage.getTotalPages());
         model.addAttribute("places", places);
         model.addAttribute("isEmpty", places.isEmpty());
+        model.addAttribute("placeTypes", SignificantPlace.PlaceType.values());
 
         return "fragments/settings :: places-content";
     }
@@ -228,6 +229,7 @@ public class SettingsController {
     @ResponseBody
     public Map<String, Object> updatePlace(@PathVariable Long placeId,
                                            @RequestParam String name,
+                                           @RequestParam(required = false) String type,
                                            Authentication authentication) {
 
         User user = (User) authentication.getPrincipal();
@@ -235,7 +237,20 @@ public class SettingsController {
         if (this.placeJdbcService.exists(user, placeId)) {
             try {
                 SignificantPlace significantPlace = placeJdbcService.findById(placeId).orElseThrow();
-                placeJdbcService.update(significantPlace.withName(name));
+                SignificantPlace updatedPlace = significantPlace.withName(name);
+
+                if (type != null && !type.isEmpty()) {
+                    try {
+                        SignificantPlace.PlaceType placeType = SignificantPlace.PlaceType.valueOf(type);
+                        updatedPlace = updatedPlace.withType(placeType);
+                    } catch (IllegalArgumentException e) {
+                        response.put("message", getMessage("message.error.place.update", "Invalid place type"));
+                        response.put("success", false);
+                        return response;
+                    }
+                }
+
+                placeJdbcService.update(updatedPlace);
 
                 response.put("message", getMessage("message.success.place.updated"));
                 response.put("success", true);
