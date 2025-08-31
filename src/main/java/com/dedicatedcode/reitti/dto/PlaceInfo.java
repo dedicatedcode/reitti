@@ -1,4 +1,6 @@
 package com.dedicatedcode.reitti.dto;
 
-public record PlaceInfo(Long id, String name, String address, String category, Double latitude, Double longitude) {
+import com.dedicatedcode.reitti.model.SignificantPlace;
+
+public record PlaceInfo(Long id, String name, String address, SignificantPlace.PlaceType category, Double latitude, Double longitude) {
 }

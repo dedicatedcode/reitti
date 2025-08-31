@@ -219,13 +219,7 @@ public class VisitMergingService {
     private SignificantPlace createSignificantPlace(User user, Visit visit) {
         Point point = geometryFactory.createPoint(new Coordinate(visit.getLongitude(), visit.getLatitude()));
 
-        SignificantPlace significantPlace = new SignificantPlace(
-                null, // name will be set later through reverse geocoding or user input
-                null, // address will be set later through reverse geocoding
-                visit.getLatitude(),
-                visit.getLongitude(),
-                point,
-                null);
+        SignificantPlace significantPlace = SignificantPlace.create(visit.getLatitude(), visit.getLongitude(), point);
         significantPlace = this.significantPlaceJdbcService.create(user, significantPlace);
         publishSignificantPlaceCreatedEvent(significantPlace);
         return significantPlace;

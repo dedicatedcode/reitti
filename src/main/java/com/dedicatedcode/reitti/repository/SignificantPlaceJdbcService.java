@@ -27,13 +27,13 @@ public class SignificantPlaceJdbcService {
                 rs.getLong("id"),
                 rs.getString("name"),
                 rs.getString("address"),
+                rs.getString("country_code"),
                 rs.getDouble("latitude_centroid"),
                 rs.getDouble("longitude_centroid"),
                 pointReaderWriter.read(rs.getString("geom")),
-                rs.getString("category"),
+                SignificantPlace.PlaceType.valueOf(rs.getString("type")),
                 rs.getBoolean("geocoded"),
-                rs.getLong("version")
-        );
+                rs.getLong("version"));
     }
 
     private final RowMapper<SignificantPlace> significantPlaceRowMapper;
@@ -42,7 +42,7 @@ public class SignificantPlaceJdbcService {
         String countSql = "SELECT COUNT(*) FROM significant_places WHERE user_id = ?";
         Integer total = jdbcTemplate.queryForObject(countSql, Integer.class, user.getId());
 
-        String sql = "SELECT sp.id, sp.address, sp.category, sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id, ST_AsText(sp.geom) as geom, sp.geocoded, sp.version" +
+        String sql = "SELECT sp.id, sp.address, sp.country_code, sp.type, sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id, ST_AsText(sp.geom) as geom, sp.geocoded, sp.version" +
                 " FROM significant_places sp " +
                 "WHERE sp.user_id = ? ORDER BY sp.id " +
                 "LIMIT ? OFFSET ? ";
@@ -53,7 +53,7 @@ public class SignificantPlaceJdbcService {
     }
 
     public List<SignificantPlace> findNearbyPlaces(Long userId, Point point, double distanceInMeters) {
-        String sql = "SELECT sp.id, sp.address, sp.category, sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id, ST_AsText(sp.geom) as geom, sp.geocoded, sp.version " +
+        String sql = "SELECT sp.id, sp.address, sp.country_code, sp.type, sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id, ST_AsText(sp.geom) as geom, sp.geocoded, sp.version " +
                 "FROM significant_places sp " +
                 "WHERE sp.user_id = ? " +
                 "AND ST_DWithin(sp.geom, ST_GeomFromText(?, '4326'), ?)";
@@ -76,11 +76,12 @@ public class SignificantPlaceJdbcService {
 
     @CacheEvict(cacheNames = "significant-places", key = "#place.id")
     public SignificantPlace update(SignificantPlace place) {
-        String sql = "UPDATE significant_places SET name = ?, address = ?, category = ?, latitude_centroid = ?, longitude_centroid = ?, geom = ST_GeomFromText(?, '4326'), geocoded = ? WHERE id = ?";
+        String sql = "UPDATE significant_places SET name = ?, address = ?, country_code = ?, type = ?, latitude_centroid = ?, longitude_centroid = ?, geom = ST_GeomFromText(?, '4326'), geocoded = ? WHERE id = ?";
         jdbcTemplate.update(sql,
                 place.getName(),
                 place.getAddress(),
-                place.getCategory(),
+                place.getCountryCode(),
+                place.getType().name(),
                 place.getLatitudeCentroid(),
                 place.getLongitudeCentroid(),
                 place.getGeom().toString(),
@@ -92,7 +93,7 @@ public class SignificantPlaceJdbcService {
 
     @Cacheable("significant-places")
     public Optional<SignificantPlace> findById(Long id) {
-        String sql = "SELECT sp.id, sp.address, sp.category, sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id, ST_AsText(sp.geom) as geom, sp.geocoded, sp.version " +
+        String sql = "SELECT sp.id, sp.address, sp.country_code, sp.type, sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id, ST_AsText(sp.geom) as geom, sp.geocoded, sp.version " +
                 "FROM significant_places sp " +
                 "WHERE sp.id = ?";
         List<SignificantPlace> results = jdbcTemplate.query(sql, significantPlaceRowMapper, id);
@@ -100,11 +101,11 @@ public class SignificantPlaceJdbcService {
     }
 
     public boolean exists(User user, Long id) {
-        return Boolean.TRUE.equals(this.jdbcTemplate.queryForObject("SELECT true FROM significant_places WHERE user_id = ? AND id = ?", Boolean.class, user.getId(), id));
+        return this.jdbcTemplate.queryForObject("SELECT count(*) FROM significant_places WHERE user_id = ? AND id = ?", Integer.class, user.getId(), id) > 0;
     }
 
     public List<SignificantPlace> findNonGeocodedByUser(User user) {
-        String sql = "SELECT sp.id, sp.address, sp.category, sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id, ST_AsText(sp.geom) as geom, sp.geocoded, sp.version " +
+        String sql = "SELECT sp.id, sp.address, sp.country_code, sp.type, sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id, ST_AsText(sp.geom) as geom, sp.geocoded, sp.version " +
                 "FROM significant_places sp " +
                 "WHERE sp.user_id = ? AND sp.geocoded = false " +
                 "ORDER BY sp.id";
@@ -112,7 +113,7 @@ public class SignificantPlaceJdbcService {
     }
 
     public List<SignificantPlace> findAllByUser(User user) {
-        String sql = "SELECT sp.id, sp.address, sp.category, sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id, ST_AsText(sp.geom) as geom, sp.geocoded, sp.version " +
+        String sql = "SELECT sp.id, sp.address, sp.country_code, sp.type, sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id, ST_AsText(sp.geom) as geom, sp.geocoded, sp.version " +
                 "FROM significant_places sp " +
                 "WHERE sp.user_id = ? " +
                 "ORDER BY sp.id";

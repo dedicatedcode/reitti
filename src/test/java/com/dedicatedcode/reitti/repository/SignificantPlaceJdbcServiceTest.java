@@ -1,10 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
-import com.dedicatedcode.reitti.model.Page;
-import com.dedicatedcode.reitti.model.PageRequest;
-import com.dedicatedcode.reitti.model.SignificantPlace;
-import com.dedicatedcode.reitti.model.User;
-import com.dedicatedcode.reitti.test.IntegrationTest;
+import com.dedicatedcode.reitti.IntegrationTest;
+import com.dedicatedcode.reitti.model.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
@@ -12,15 +9,14 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.jdbc.Sql;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @IntegrationTest
-@Sql(scripts = "/sql/cleanup.sql", executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD)
 class SignificantPlaceJdbcServiceTest {
 
     @Autowired
@@ -36,8 +32,8 @@ class SignificantPlaceJdbcServiceTest {
     @BeforeEach
     void setUp() {
         // Create test users
-        testUser = createTestUser("testuser", "Test User");
-        otherUser = createTestUser("otheruser", "Other User");
+        testUser = createTestUser("testuser_" + UUID.randomUUID(), "Test User");
+        otherUser = createTestUser("otheruser_" + UUID.randomUUID(), "Other User");
     }
 
     @Test
@@ -93,7 +89,7 @@ class SignificantPlaceJdbcServiceTest {
 
         // When
         List<SignificantPlace> nearbyPlaces = significantPlaceJdbcService.findNearbyPlaces(
-                testUser.getId(), centerPoint, 100.0);
+                testUser.getId(), centerPoint, 0.003);
 
         // Then
         assertThat(nearbyPlaces).hasSize(1);
@@ -254,7 +250,7 @@ class SignificantPlaceJdbcServiceTest {
                 Long.class,
                 username, "password", displayName, "USER"
         );
-        return new User(userId, username, "password", displayName, User.Role.USER, 0L);
+        return new User(userId, username, "password", displayName, Role.USER, 0L);
     }
 
     private SignificantPlace createTestPlace(String name, double latitude, double longitude) {

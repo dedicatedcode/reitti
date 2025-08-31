@@ -162,7 +162,7 @@ public class SettingsController {
                         place.getId(),
                         place.getName(),
                         place.getAddress(),
-                        place.getCategory(),
+                        place.getType(),
                         place.getLatitudeCentroid(),
                         place.getLongitudeCentroid()
                 ))
