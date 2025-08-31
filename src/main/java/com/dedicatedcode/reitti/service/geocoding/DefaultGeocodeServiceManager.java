@@ -119,14 +119,15 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
             return geocodeResult;
 
         } catch (Exception e) {
-            //add handling of additional errro states like RATE_LIMITED AI!
             logger.error("Failed to call geocoding service [{}]: [{}]", service.getName(), e.getMessage());
+            
+            GeocodingResponse.GeocodingStatus status = determineErrorStatus(e);
             geocodingResponseJdbcService.insert(new GeocodingResponse(
                     significantPlace.getId(),
                     null,
                     service.getName(),
                     Instant.now(),
-                    GeocodingResponse.GeocodingStatus.ERROR,
+                    status,
                     e.getMessage()
             ));
             throw new RuntimeException("Failed to call geocoding service: " + e.getMessage(), e);
@@ -240,6 +241,22 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
         if (service instanceof RemoteGeocodeService) {
             geocodeServiceJdbcService.save(((RemoteGeocodeService) service).withLastUsed(Instant.now()));
         }
+    }
+
+    private GeocodingResponse.GeocodingStatus determineErrorStatus(Exception e) {
+        String message = e.getMessage().toLowerCase();
+        
+        if (message.contains("rate limit") || message.contains("too many requests") || 
+            message.contains("429") || message.contains("quota exceeded")) {
+            return GeocodingResponse.GeocodingStatus.RATE_LIMITED;
+        }
+        
+        if (message.contains("invalid") || message.contains("bad request") || 
+            message.contains("400") || message.contains("malformed")) {
+            return GeocodingResponse.GeocodingStatus.INVALID_REQUEST;
+        }
+        
+        return GeocodingResponse.GeocodingStatus.ERROR;
     }
 
     private void recordError(GeocodeService service) {
