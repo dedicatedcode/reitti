@@ -91,12 +91,28 @@ label {
     font-weight: 500;
 }
 
-input[type="text"], input[type="password"], input[type="url"] {
+input[type="text"], input[type="password"], input[type="url"], select {
     width: 100%;
     padding: 8px;
     border: 1px solid #ddd;
     border-radius: 4px;
     box-sizing: border-box;
+    background-color: var(--color-background-dark-light);
+    color: var(--color-text-white);
+}
+
+select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e3e3e3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 16px;
+    padding-right: 32px;
+}
+
+select option {
+    background-color: var(--color-background-dark);
+    color: var(--color-text-white);
 }
 
 table {
@@ -1006,13 +1022,16 @@ input[type=file]::file-selector-button:hover {
     display: block;
 }
 
-.settings-page .settings-section input {
+.settings-page .settings-section input,
+.settings-page .settings-section select {
     color: var(--color-highlight);
     background: var(--color-background-dark-light);
 }
 
-.settings-page .settings-section input:focus {
+.settings-page .settings-section input:focus,
+.settings-page .settings-section select:focus {
     border: 2px solid var(--color-highlight);
+    outline: none;
 }
 
 .settings-page .settings-section code {
@@ -1173,35 +1192,21 @@ button:disabled {
 .select select {
     appearance: none;
     width: 100%;
-    padding: 6px 6em 6px 1em;
-    background-color: #fff;
-    border: 1px solid #caced1;
-    border-radius: 0.25rem;
-    color: #000;
+    padding: 8px 32px 8px 8px;
+    background-color: var(--color-background-dark-light);
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    color: var(--color-text-white);
     cursor: pointer;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e3e3e3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 16px;
 }
 
-.select::before,
-.select::after {
-    --size: 0.3rem;
-    content: "";
-    position: absolute;
-    right: 1rem;
-    pointer-events: none;
-}
-
-.select::before {
-    border-left: var(--size) solid transparent;
-    border-right: var(--size) solid transparent;
-    border-bottom: var(--size) solid black;
-    top: 40%;
-}
-
-.select::after {
-    border-left: var(--size) solid transparent;
-    border-right: var(--size) solid transparent;
-    border-top: var(--size) solid black;
-    top: 55%;
+.select select option {
+    background-color: var(--color-background-dark);
+    color: var(--color-text-white);
 }
 
 .unit-description {
