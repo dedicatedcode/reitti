@@ -153,7 +153,108 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
 
     private SignificantPlace.PlaceType determinePhotonType(String osmValue) {
         switch (osmValue) {
-            //insert decision logic to determine the type of the location. This is based on the type in OpenStreetMap. See the PlaceType enum for possible results. Fallback to OTHER if nothing can be matched. AI!
+            case "house":
+            case "residential":
+            case "apartments":
+            case "detached":
+            case "terrace":
+                return SignificantPlace.PlaceType.HOME;
+            
+            case "office":
+            case "commercial":
+            case "industrial":
+            case "warehouse":
+            case "retail":
+                return SignificantPlace.PlaceType.WORK;
+            
+            case "restaurant":
+            case "fast_food":
+            case "food_court":
+                return SignificantPlace.PlaceType.RESTAURANT;
+            
+            case "cafe":
+            case "bar":
+            case "pub":
+                return SignificantPlace.PlaceType.CAFE;
+            
+            case "shop":
+            case "supermarket":
+            case "mall":
+            case "marketplace":
+            case "department_store":
+            case "convenience":
+                return SignificantPlace.PlaceType.SUPERMARKET;
+            
+            case "hospital":
+            case "clinic":
+            case "doctors":
+            case "dentist":
+            case "veterinary":
+                return SignificantPlace.PlaceType.HOSPITAL;
+            
+            case "pharmacy":
+                return SignificantPlace.PlaceType.PHARMACY;
+            
+            case "school":
+            case "university":
+            case "college":
+            case "kindergarten":
+                return SignificantPlace.PlaceType.SCHOOL;
+            
+            case "library":
+                return SignificantPlace.PlaceType.LIBRARY;
+            
+            case "gym":
+            case "fitness_centre":
+            case "sports_centre":
+            case "swimming_pool":
+            case "stadium":
+                return SignificantPlace.PlaceType.GYM;
+            
+            case "cinema":
+            case "theatre":
+                return SignificantPlace.PlaceType.CINEMA;
+            
+            case "park":
+            case "garden":
+            case "nature_reserve":
+            case "beach":
+            case "playground":
+                return SignificantPlace.PlaceType.PARK;
+            
+            case "fuel":
+            case "charging_station":
+                return SignificantPlace.PlaceType.GAS_STATION;
+            
+            case "bank":
+            case "atm":
+            case "bureau_de_change":
+                return SignificantPlace.PlaceType.BANK;
+            
+            case "place_of_worship":
+            case "church":
+            case "mosque":
+            case "synagogue":
+            case "temple":
+                return SignificantPlace.PlaceType.CHURCH;
+            
+            case "bus_stop":
+            case "bus_station":
+            case "railway_station":
+            case "subway_entrance":
+            case "tram_stop":
+                return SignificantPlace.PlaceType.TRAIN_STATION;
+            
+            case "airport":
+                return SignificantPlace.PlaceType.AIRPORT;
+            
+            case "hotel":
+            case "motel":
+            case "guest_house":
+                return SignificantPlace.PlaceType.HOTEL;
+            
+            default:
+                return SignificantPlace.PlaceType.OTHER;
         }
     }
  
