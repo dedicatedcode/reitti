@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service.geocoding;
 
 import com.dedicatedcode.reitti.model.RemoteGeocodeService;
+import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,7 +54,7 @@ class DefaultGeocodeServiceManagerTest {
                 .thenReturn(Collections.emptyList());
 
         // When
-        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(53.863149, 10.700927);
+        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(SignificantPlace.create(53.863149, 10.700927, null));
 
         // Then
         assertThat(result).isEmpty();
@@ -94,7 +95,7 @@ class DefaultGeocodeServiceManagerTest {
                 .thenReturn(mockResponse);
 
         // When
-        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(latitude, longitude);
+        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(SignificantPlace.create(latitude, longitude, null));
 
         // Then
         assertThat(result).isPresent();
@@ -129,7 +130,7 @@ class DefaultGeocodeServiceManagerTest {
                 .thenReturn(mockResponse);
 
         // When
-        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(latitude, longitude);
+        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(SignificantPlace.create(latitude, longitude, null));
 
         // Then
         assertThat(result).isPresent();
@@ -211,7 +212,7 @@ class DefaultGeocodeServiceManagerTest {
                 .thenReturn(mockResponse);
 
         // When
-        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(latitude, longitude);
+        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(SignificantPlace.create(latitude, longitude, null));
 
         // Then
         assertThat(result).isPresent();
@@ -262,7 +263,7 @@ class DefaultGeocodeServiceManagerTest {
                 .thenReturn(photonResponse);
 
         // When
-        Optional<GeocodeResult> result = managerWithFixedService.reverseGeocode(latitude, longitude);
+        Optional<GeocodeResult> result = managerWithFixedService.reverseGeocode(SignificantPlace.create(latitude, longitude, null));
 
         // Then
         assertThat(result).isPresent();
@@ -293,7 +294,7 @@ class DefaultGeocodeServiceManagerTest {
                 .thenThrow(new RuntimeException("Service unavailable"));
 
         // When
-        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(latitude, longitude);
+        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(SignificantPlace.create(latitude, longitude, null));
 
         // Then
         assertThat(result).isEmpty();

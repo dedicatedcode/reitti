@@ -36,7 +36,7 @@ public class ReverseGeocodingListener {
         SignificantPlace place = placeOptional.get();
 
         try {
-            Optional<GeocodeResult> resultOpt = this.geocodeServiceManager.reverseGeocode(place.getLatitudeCentroid(), place.getLongitudeCentroid());
+            Optional<GeocodeResult> resultOpt = this.geocodeServiceManager.reverseGeocode(place);
 
             if (resultOpt.isPresent()) {
                 GeocodeResult result = resultOpt.get();
