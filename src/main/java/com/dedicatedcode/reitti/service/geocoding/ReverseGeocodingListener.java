@@ -45,6 +45,8 @@ public class ReverseGeocodingListener {
                 String houseNumber = result.houseNumber();
                 String postcode = result.postcode();
                 String city = result.city();
+                SignificantPlace.PlaceType placeType = result.placeType();
+                String countryCode = result.countryCode();
 
                 if (!label.isEmpty()) {
                     place = place.withName(label)
@@ -53,6 +55,7 @@ public class ReverseGeocodingListener {
                     place = place.withName(street)
                             .withAddress(String.format("%s %s, %s %s", street, houseNumber, postcode, city));
                 }
+                place = place.withType(placeType).withCountryCode(countryCode);
 
                 significantPlaceJdbcService.update(place.withGeocoded(true));
                 logger.info("Updated place ID: {} with geocoding data: {}", place.getId(), label);

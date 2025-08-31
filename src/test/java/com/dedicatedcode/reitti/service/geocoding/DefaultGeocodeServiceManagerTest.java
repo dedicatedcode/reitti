@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.service.geocoding;
 import com.dedicatedcode.reitti.model.RemoteGeocodeService;
 import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
+import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,9 @@ class DefaultGeocodeServiceManagerTest {
     private GeocodeServiceJdbcService geocodeServiceJdbcService;
 
     @Mock
+    private GeocodingResponseJdbcService geocodingResponseJdbcService;
+
+    @Mock
     private RestTemplate restTemplate;
 
     @Mock
@@ -40,6 +44,7 @@ class DefaultGeocodeServiceManagerTest {
         objectMapper = new ObjectMapper();
         geocodeServiceManager = new DefaultGeocodeServiceManager(
                 geocodeServiceJdbcService,
+                geocodingResponseJdbcService,
                 Collections.emptyList(),
                 restTemplate,
                 objectMapper,
@@ -233,6 +238,7 @@ class DefaultGeocodeServiceManagerTest {
         
         DefaultGeocodeServiceManager managerWithFixedService = new DefaultGeocodeServiceManager(
                 geocodeServiceJdbcService,
+                geocodingResponseJdbcService,
                 List.of(fixedGeocodeService),
                 restTemplate,
                 objectMapper,

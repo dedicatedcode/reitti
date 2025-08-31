@@ -1,4 +1,6 @@
 package com.dedicatedcode.reitti.service.geocoding;
 
-public record GeocodeResult(String label, String street, String houseNumber, String city, String postcode, String district) {
+import com.dedicatedcode.reitti.model.SignificantPlace;
+
+public record GeocodeResult(String label, String street, String houseNumber, String city, String postcode, String district, String countryCode, SignificantPlace.PlaceType placeType) {
 }

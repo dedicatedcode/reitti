@@ -144,118 +144,37 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
             String district = properties.path("district").asText();
             String housenumber = properties.path("housenumber").asText();
             String postcode = properties.path("postcode").asText();
-            String countryCode = properties.path("countryCode").asText().toLowerCase();
-            SignificantPlace.PlaceType type = determinePhotonType(properties.path("osm_value").asText());
+            String countryCode = properties.path("countrycode").asText().toLowerCase();
+            SignificantPlace.PlaceType type = determinPlaceType(properties.path("osm_value").asText());
             return Optional.of(new GeocodeResult(name, street, housenumber, city, postcode, district, countryCode, type));
         }
         return Optional.empty();
     }
 
-    private SignificantPlace.PlaceType determinePhotonType(String osmValue) {
-        switch (osmValue) {
-            case "house":
-            case "residential":
-            case "apartments":
-            case "detached":
-            case "terrace":
-                return SignificantPlace.PlaceType.HOME;
-            
-            case "office":
-            case "commercial":
-            case "industrial":
-            case "warehouse":
-            case "retail":
-                return SignificantPlace.PlaceType.WORK;
-            
-            case "restaurant":
-            case "fast_food":
-            case "food_court":
-                return SignificantPlace.PlaceType.RESTAURANT;
-            
-            case "cafe":
-            case "bar":
-            case "pub":
-                return SignificantPlace.PlaceType.CAFE;
-            
-            case "shop":
-            case "supermarket":
-            case "mall":
-            case "marketplace":
-            case "department_store":
-            case "convenience":
-                return SignificantPlace.PlaceType.SUPERMARKET;
-            
-            case "hospital":
-            case "clinic":
-            case "doctors":
-            case "dentist":
-            case "veterinary":
-                return SignificantPlace.PlaceType.HOSPITAL;
-            
-            case "pharmacy":
-                return SignificantPlace.PlaceType.PHARMACY;
-            
-            case "school":
-            case "university":
-            case "college":
-            case "kindergarten":
-                return SignificantPlace.PlaceType.SCHOOL;
-            
-            case "library":
-                return SignificantPlace.PlaceType.LIBRARY;
-            
-            case "gym":
-            case "fitness_centre":
-            case "sports_centre":
-            case "swimming_pool":
-            case "stadium":
-                return SignificantPlace.PlaceType.GYM;
-            
-            case "cinema":
-            case "theatre":
-                return SignificantPlace.PlaceType.CINEMA;
-            
-            case "park":
-            case "garden":
-            case "nature_reserve":
-            case "beach":
-            case "playground":
-                return SignificantPlace.PlaceType.PARK;
-            
-            case "fuel":
-            case "charging_station":
-                return SignificantPlace.PlaceType.GAS_STATION;
-            
-            case "bank":
-            case "atm":
-            case "bureau_de_change":
-                return SignificantPlace.PlaceType.BANK;
-            
-            case "place_of_worship":
-            case "church":
-            case "mosque":
-            case "synagogue":
-            case "temple":
-                return SignificantPlace.PlaceType.CHURCH;
-            
-            case "bus_stop":
-            case "bus_station":
-            case "railway_station":
-            case "subway_entrance":
-            case "tram_stop":
-                return SignificantPlace.PlaceType.TRAIN_STATION;
-            
-            case "airport":
-                return SignificantPlace.PlaceType.AIRPORT;
-            
-            case "hotel":
-            case "motel":
-            case "guest_house":
-                return SignificantPlace.PlaceType.HOTEL;
-            
-            default:
-                return SignificantPlace.PlaceType.OTHER;
-        }
+    private SignificantPlace.PlaceType determinPlaceType(String osmValue) {
+        return switch (osmValue) {
+            case "house", "residential", "apartments", "detached", "terrace" -> SignificantPlace.PlaceType.HOME;
+            case "office", "commercial", "industrial", "warehouse", "retail" -> SignificantPlace.PlaceType.WORK;
+            case "restaurant", "fast_food", "food_court" -> SignificantPlace.PlaceType.RESTAURANT;
+            case "cafe", "bar", "pub" -> SignificantPlace.PlaceType.CAFE;
+            case "shop", "supermarket", "mall", "marketplace", "department_store", "convenience" ->
+                    SignificantPlace.PlaceType.SHOP;
+            case "hospital", "clinic", "doctors", "dentist", "veterinary" -> SignificantPlace.PlaceType.HOSPITAL;
+            case "pharmacy" -> SignificantPlace.PlaceType.PHARMACY;
+            case "school", "university", "college", "kindergarten" -> SignificantPlace.PlaceType.SCHOOL;
+            case "library" -> SignificantPlace.PlaceType.LIBRARY;
+            case "gym", "fitness_centre", "sports_centre", "swimming_pool", "stadium" -> SignificantPlace.PlaceType.GYM;
+            case "cinema", "theatre" -> SignificantPlace.PlaceType.CINEMA;
+            case "park", "garden", "nature_reserve", "beach", "playground" -> SignificantPlace.PlaceType.PARK;
+            case "fuel", "charging_station" -> SignificantPlace.PlaceType.GAS_STATION;
+            case "bank", "atm", "bureau_de_change" -> SignificantPlace.PlaceType.BANK;
+            case "place_of_worship", "church", "mosque", "synagogue", "temple" -> SignificantPlace.PlaceType.CHURCH;
+            case "bus_stop", "bus_station", "railway_station", "subway_entrance", "tram_stop" ->
+                    SignificantPlace.PlaceType.TRAIN_STATION;
+            case "airport", "terminal" -> SignificantPlace.PlaceType.AIRPORT;
+            case "hotel", "motel", "guest_house" -> SignificantPlace.PlaceType.HOTEL;
+            default -> SignificantPlace.PlaceType.OTHER;
+        };
     }
  
     private Optional<GeocodeResult> extractGeoCodeResult(String response) throws JsonProcessingException {
@@ -269,6 +188,8 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
             String street;
             String city;
             String district;
+            String countryCode;
+            String osmTypeValue;
 
             //try to find elements from address;
             JsonNode address = properties.path("address");
@@ -293,21 +214,28 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
                 if (district.isBlank()) {
                     district = geocoding.path("locality").asText();
                 }
+                countryCode = geocoding.path("country_code").asText();
+                osmTypeValue = geocoding.path("osm_value").asText();
             } else if  (address.isMissingNode()) {
                 //try to find it directly under the root node
                 label = properties.path("formatted").asText("");
                 street = properties.path("street").asText("");
                 city = properties.path("city").asText("");
                 district = properties.path("city_district").asText("");
+                countryCode = properties.path("country_code").asText("");
+                osmTypeValue = properties.path("osm_value").asText();
+
             } else {
                 //there is an address, find it there
                 label = properties.path("name").asText("");
                 street = address.path("road").asText("");
                 city = address.path("city").asText("");
                 district = address.path("city_district").asText("");
+                countryCode = address.path("country_code").asText("");
+                osmTypeValue = address.path("osm_value").asText();
             }
 
-            Optional<GeocodeResult> result = createGeoCodeResult(label, street, city, district);
+            Optional<GeocodeResult> result = createGeoCodeResult(label, street, city, district, countryCode, osmTypeValue);
             if (result.isPresent()) {
                 return result;
             }
@@ -327,7 +255,8 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
             if (district.isBlank()) {
                 district = root.path("address").path("neighbourhood").asText();
             }
-            Optional<GeocodeResult> result = createGeoCodeResult(label, street, city, district);
+            String countryCode = root.path("address").path("country_code").asText();
+            Optional<GeocodeResult> result = createGeoCodeResult(label, street, city, district, countryCode, root.path("osm_value").asText());
             if (result.isPresent()) {
                 return result;
             }
@@ -335,12 +264,12 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
         return Optional.empty();
     }
 
-    private static Optional<GeocodeResult> createGeoCodeResult(String label, String street, String city, String district) {
+    private Optional<GeocodeResult> createGeoCodeResult(String label, String street, String city, String district, String countryCode, String placeTypeValue) {
         if (label.isEmpty() && !street.isEmpty()) {
             label = street;
         }
         if (StringUtils.hasText(label)) {
-            return Optional.of(new GeocodeResult(label, street, "", city, "", district));
+            return Optional.of(new GeocodeResult(label, street, "", city, "", district, countryCode, determinPlaceType(placeTypeValue)));
         }
         return Optional.empty();
     }

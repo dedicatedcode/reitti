@@ -156,7 +156,6 @@ public class SignificantPlace implements Serializable {
         HOTEL("lni-bed", "place.type.hotel"),
         BANK("lni-bank", "place.type.bank"),
         PHARMACY("lni-first-aid", "place.type.pharmacy"),
-        SUPERMARKET("lni-cart", "place.type.supermarket"),
         GYM("lni-dumbbell", "place.type.gym"),
         LIBRARY("lni-library", "place.type.library"),
         CHURCH("lni-church", "place.type.church"),
