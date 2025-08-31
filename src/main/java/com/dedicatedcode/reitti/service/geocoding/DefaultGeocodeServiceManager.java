@@ -94,38 +94,41 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
 
         logger.info("Geocoding with service [{}] using URL: [{}]", service.getName(), url);
 
-        GeocodingResponse geocodingResponse;
         try {
             String response = restTemplate.getForObject(url, String.class);
             Optional<GeocodeResult> geocodeResult = photon ? extractPhotonResult(response) : extractGeoCodeResult(response);
-            
-            // Create successful geocoding response
-            geocodingResponse = new GeocodingResponse(
-                significantPlace.getId(),
-                response,
-                service.getName(),
-                Instant.now(),
-                geocodeResult.isPresent() ? GeocodingResponse.GeocodingStatus.SUCCESS : GeocodingResponse.GeocodingStatus.ZERO_RESULTS,
-                null
-            );
-            
-            geocodingResponseJdbcService.insert(geocodingResponse);
+            if (geocodeResult.isPresent()) {
+                geocodingResponseJdbcService.insert(new GeocodingResponse(
+                        significantPlace.getId(),
+                        response,
+                        service.getName(),
+                        Instant.now(),
+                        GeocodingResponse.GeocodingStatus.SUCCESS,
+                        null
+                ));
+            } else {
+                geocodingResponseJdbcService.insert(new GeocodingResponse(
+                        significantPlace.getId(),
+                        response,
+                        service.getName(),
+                        Instant.now(),
+                        GeocodingResponse.GeocodingStatus.ZERO_RESULTS,
+                        null
+                ));
+            }
             return geocodeResult;
 
         } catch (Exception e) {
+            //add handling of additional errro states like RATE_LIMITED AI!
             logger.error("Failed to call geocoding service [{}]: [{}]", service.getName(), e.getMessage());
-            
-            // Create error geocoding response
-            geocodingResponse = new GeocodingResponse(
-                significantPlace.getId(),
-                null,
-                service.getName(),
-                Instant.now(),
-                GeocodingResponse.GeocodingStatus.ERROR,
-                e.getMessage()
-            );
-            
-            geocodingResponseJdbcService.insert(geocodingResponse);
+            geocodingResponseJdbcService.insert(new GeocodingResponse(
+                    significantPlace.getId(),
+                    null,
+                    service.getName(),
+                    Instant.now(),
+                    GeocodingResponse.GeocodingStatus.ERROR,
+                    e.getMessage()
+            ));
             throw new RuntimeException("Failed to call geocoding service: " + e.getMessage(), e);
         }
     }
