@@ -1022,12 +1022,6 @@ input[type=file]::file-selector-button:hover {
     display: block;
 }
 
-.settings-page .settings-section input,
-.settings-page .settings-section select {
-    color: var(--color-highlight);
-    background: var(--color-background-dark-light);
-}
-
 .settings-page .settings-section input:focus,
 .settings-page .settings-section select:focus {
     border: 2px solid var(--color-highlight);
