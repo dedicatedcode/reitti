@@ -7,7 +7,12 @@
 <div th:fragment="places-content">
     <h2 th:text="#{places.title}">Significant Places</h2>
 
-    <div id="place-message" class="alert" style="display: none;"></div>
+    <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+        <span th:text="${successMessage}">Success message</span>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+        <span th:text="${errorMessage}">Error message</span>
+    </div>
 
     <div class="pagination-controls">
         <span th:text="#{places.page.info(${currentPage + 1}, ${totalPages})}">Page 1 of 1</span>
@@ -34,8 +39,9 @@
             </div>
             <div class="place-details text-align-left">
                 <form th:id="'place-form-' + ${place.id()}"  autocomplete="off"
-                      th:attr="hx-post=@{/settings/places/{id}/update(id=${place.id()})}"
-                      hx-swap="none">
+                      th:attr="hx-post=@{/settings/places/{id}/update(id=${place.id()}, page=${currentPage})}"
+                      hx-target="#places-management"
+                      hx-swap="innerHTML">
                     <div class="form-group">
                         <label th:for="'name-' + ${place.id()}" th:text="#{places.name.label}">Name</label>
                         <input type="text" th:id="'name-' + ${place.id()}" name="name" th:value="${place.name()}" required>
@@ -61,8 +67,9 @@
                         <button type="submit" class="btn" th:text="#{form.update}">Update</button>
                         <button type="button" 
                                 class="btn btn-secondary"
-                                th:attr="hx-post=@{/settings/places/{id}/geocode(id=${place.id()})}, hx-confirm=#{places.geocode.confirm}"
-                                hx-swap="none"
+                                th:attr="hx-post=@{/settings/places/{id}/geocode(id=${place.id()}, page=${currentPage})}, hx-confirm=#{places.geocode.confirm}"
+                                hx-target="#places-management"
+                                hx-swap="innerHTML"
                                 th:text="#{places.geocode.button}">Geocode</button>
                     </div>
                 </form>

@@ -226,14 +226,14 @@ public class SettingsController {
 
 
     @PostMapping("/places/{placeId}/update")
-    @ResponseBody
-    public Map<String, Object> updatePlace(@PathVariable Long placeId,
-                                           @RequestParam String name,
-                                           @RequestParam(required = false) String type,
-                                           Authentication authentication) {
+    public String updatePlace(@PathVariable Long placeId,
+                              @RequestParam String name,
+                              @RequestParam(required = false) String type,
+                              @RequestParam(defaultValue = "0") int page,
+                              Authentication authentication,
+                              Model model) {
 
         User user = (User) authentication.getPrincipal();
-        Map<String, Object> response = new HashMap<>();
         if (this.placeJdbcService.exists(user, placeId)) {
             try {
                 SignificantPlace significantPlace = placeJdbcService.findById(placeId).orElseThrow();
@@ -244,33 +244,30 @@ public class SettingsController {
                         SignificantPlace.PlaceType placeType = SignificantPlace.PlaceType.valueOf(type);
                         updatedPlace = updatedPlace.withType(placeType);
                     } catch (IllegalArgumentException e) {
-                        response.put("message", getMessage("message.error.place.update", "Invalid place type"));
-                        response.put("success", false);
-                        return response;
+                        model.addAttribute("errorMessage", getMessage("message.error.place.update", "Invalid place type"));
+                        return getPlacesContent(user, page, model);
                     }
                 }
 
                 placeJdbcService.update(updatedPlace);
-
-                response.put("message", getMessage("message.success.place.updated"));
-                response.put("success", true);
+                model.addAttribute("successMessage", getMessage("message.success.place.updated"));
             } catch (Exception e) {
-                response.put("message", getMessage("message.error.place.update", e.getMessage()));
-                response.put("success", false);
+                model.addAttribute("errorMessage", getMessage("message.error.place.update", e.getMessage()));
             }
         } else {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
-        return response;
+        
+        return getPlacesContent(user, page, model);
     }
 
     @PostMapping("/places/{placeId}/geocode")
-    @ResponseBody
-    public Map<String, Object> geocodePlace(@PathVariable Long placeId,
-                                            Authentication authentication) {
+    public String geocodePlace(@PathVariable Long placeId,
+                               @RequestParam(defaultValue = "0") int page,
+                               Authentication authentication,
+                               Model model) {
 
         User user = (User) authentication.getPrincipal();
-        Map<String, Object> response = new HashMap<>();
         if (this.placeJdbcService.exists(user, placeId)) {
             try {
                 SignificantPlace significantPlace = placeJdbcService.findById(placeId).orElseThrow();
@@ -287,16 +284,15 @@ public class SettingsController {
                 );
                 rabbitTemplate.convertAndSend(RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE, event);
 
-                response.put("message", getMessage("places.geocode.success"));
-                response.put("success", true);
+                model.addAttribute("successMessage", getMessage("places.geocode.success"));
             } catch (Exception e) {
-                response.put("message", getMessage("places.geocode.error", e.getMessage()));
-                response.put("success", false);
+                model.addAttribute("errorMessage", getMessage("places.geocode.error", e.getMessage()));
             }
         } else {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
-        return response;
+        
+        return getPlacesContent(user, page, model);
     }
 
     @GetMapping("/queue-stats-content")
