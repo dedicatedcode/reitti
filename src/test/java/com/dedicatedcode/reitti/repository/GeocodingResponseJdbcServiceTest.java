@@ -2,7 +2,6 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.GeocodingResponse;
 import com.dedicatedcode.reitti.model.SignificantPlace;
-import com.dedicatedcode.reitti.model.PlaceType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,9 +25,9 @@ class GeocodingResponseJdbcServiceTest {
     void shouldInsertAndFindGeocodingResponse() {
         // Given
         SignificantPlace place = new SignificantPlace(
-            1L, "Test Place", "Test Address", "DE", 
-            53.863149, 10.700927, null, PlaceType.HOME, 
-            1L, null, null
+                1L, "Test Place", "Test Address", "de",
+                53.863149, 10.700927, null, SignificantPlace.PlaceType.HOME,
+                true, null
         );
         
         GeocodingResponse response = new GeocodingResponse(
@@ -58,9 +57,9 @@ class GeocodingResponseJdbcServiceTest {
     void shouldReturnEmptyListWhenNoResponseFound() {
         // Given
         SignificantPlace place = new SignificantPlace(
-            999L, "Non-existent Place", "Non-existent Address", "DE",
-            53.863149, 10.700927, null, PlaceType.HOME,
-            1L, null, null
+                999L, "Non-existent Place", "Non-existent Address", "de",
+                53.863149, 10.700927, null, SignificantPlace.PlaceType.HOME,
+                true, null
         );
 
         // When
@@ -74,9 +73,9 @@ class GeocodingResponseJdbcServiceTest {
     void shouldInsertResponseWithError() {
         // Given
         SignificantPlace place = new SignificantPlace(
-            2L, "Error Place", "Error Address", "DE",
-            53.863149, 10.700927, null, PlaceType.WORK,
-            1L, null, null
+                5L, "Error Place", "Error Address", "de",
+                53.863149, 10.700927, null, SignificantPlace.PlaceType.WORK,
+                true, null
         );
         
         GeocodingResponse response = new GeocodingResponse(

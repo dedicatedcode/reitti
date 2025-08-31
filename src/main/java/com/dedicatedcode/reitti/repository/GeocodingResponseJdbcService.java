@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.List;
 
 @Service
@@ -23,15 +24,15 @@ public class GeocodingResponseJdbcService {
     public void insert(GeocodingResponse geocodingResponse) {
         String sql = """
             INSERT INTO geocoding_response (significant_place_id, raw_data, provider_name, fetched_at, status, error_details)
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, to_json(?::json), ?, ?, ?, ?)
             """;
-        jdbcTemplate.update(sql, 
-            geocodingResponse.getSignificantPlaceId(),
-            geocodingResponse.getRawData(),
-            geocodingResponse.getProviderName(),
-            geocodingResponse.getFetchedAt(),
-            geocodingResponse.getStatus().name(),
-            geocodingResponse.getErrorDetails());
+        jdbcTemplate.update(sql,
+                geocodingResponse.getSignificantPlaceId(),
+                geocodingResponse.getRawData(),
+                geocodingResponse.getProviderName(),
+                Timestamp.from(geocodingResponse.getFetchedAt()),
+                geocodingResponse.getStatus().name(),
+                geocodingResponse.getErrorDetails());
     }
     
     @Transactional(readOnly = true)

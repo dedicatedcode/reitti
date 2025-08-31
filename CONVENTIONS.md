@@ -1,0 +1,5 @@
+- prefer htmx over javascript
+- prefer reusing existing styles instead of creating new ones
+- do not add inline styles except it is a one of a kind component
+- when creating tests for classes, prefer the @IntegrationTest instead of mocking
+- all rules presented here, are soft rules. We try to follow them but are also allowed to break them if needed

@@ -66,9 +66,24 @@ services:
       - "8083:8083"
     volumes:
       - ot-recorder-data:/store
+  nominatim:
+    image: mediagis/nominatim:5.1
+    environment:
+      PBF_URL: https://download.geofabrik.de/europe/germany/schleswig-holstein-latest.osm.pbf
+      REPLICATION_URL: https://download.geofabrik.de/europe/germany/schleswig-holstein-updates/
+      REVERSE_ONLY: true
+      IMPORT_WIKIPEDIA: true
+      IMPORT_US_POSTCODES: true
+      IMPORT_GB_POSTCODES: true
+      IMPORT_TIGER_ADDRESSES: false
+    ports:
+      - "2323:8080"
+    volumes:
+      - nominatim-data:/var/lib/postgresql/16/main
 volumes:
   postgis-data:
   redis-data:
   rabbitmq-data:
   photon-data:
   ot-recorder-data:
+  nominatim-data:
