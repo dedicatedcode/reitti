@@ -153,7 +153,6 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
 
     private SignificantPlace.PlaceType determinPlaceType(String osmValue) {
         return switch (osmValue) {
-            case "house", "residential", "apartments", "detached", "terrace" -> SignificantPlace.PlaceType.HOME;
             case "office", "commercial", "industrial", "warehouse", "retail" -> SignificantPlace.PlaceType.WORK;
             case "restaurant", "fast_food", "food_court" -> SignificantPlace.PlaceType.RESTAURANT;
             case "cafe", "bar", "pub" -> SignificantPlace.PlaceType.CAFE;
@@ -214,16 +213,22 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
                 if (district.isBlank()) {
                     district = geocoding.path("locality").asText();
                 }
-                countryCode = geocoding.path("country_code").asText();
+                countryCode = geocoding.path("country_code").asText().toLowerCase();
                 osmTypeValue = geocoding.path("osm_value").asText();
+                if (osmTypeValue.isBlank()) {
+                    osmTypeValue = geocoding.path("category").asText();
+                }
             } else if  (address.isMissingNode()) {
                 //try to find it directly under the root node
                 label = properties.path("formatted").asText("");
                 street = properties.path("street").asText("");
                 city = properties.path("city").asText("");
                 district = properties.path("city_district").asText("");
-                countryCode = properties.path("country_code").asText("");
-                osmTypeValue = properties.path("osm_value").asText();
+                countryCode = properties.path("country_code").asText("").toLowerCase();
+                osmTypeValue = geocoding.path("osm_value").asText();
+                if (osmTypeValue.isBlank()) {
+                    osmTypeValue = geocoding.path("category").asText();
+                }
 
             } else {
                 //there is an address, find it there
@@ -231,8 +236,11 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
                 street = address.path("road").asText("");
                 city = address.path("city").asText("");
                 district = address.path("city_district").asText("");
-                countryCode = address.path("country_code").asText("");
-                osmTypeValue = address.path("osm_value").asText();
+                countryCode = address.path("country_code").asText("").toLowerCase();
+                osmTypeValue = geocoding.path("osm_value").asText();
+                if (osmTypeValue.isBlank()) {
+                    osmTypeValue = geocoding.path("category").asText();
+                }
             }
 
             Optional<GeocodeResult> result = createGeoCodeResult(label, street, city, district, countryCode, osmTypeValue);
