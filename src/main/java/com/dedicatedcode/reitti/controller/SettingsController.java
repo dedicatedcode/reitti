@@ -228,6 +228,7 @@ public class SettingsController {
     @PostMapping("/places/{placeId}/update")
     public String updatePlace(@PathVariable Long placeId,
                               @RequestParam String name,
+                              @RequestParam(required = false) String address,
                               @RequestParam(required = false) String type,
                               @RequestParam(defaultValue = "0") int page,
                               Authentication authentication,
@@ -238,6 +239,11 @@ public class SettingsController {
             try {
                 SignificantPlace significantPlace = placeJdbcService.findById(placeId).orElseThrow();
                 SignificantPlace updatedPlace = significantPlace.withName(name);
+
+                // Update address if provided
+                if (address != null) {
+                    updatedPlace = updatedPlace.withAddress(address.trim().isEmpty() ? null : address.trim());
+                }
 
                 if (type != null && !type.isEmpty()) {
                     try {

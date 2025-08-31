@@ -47,6 +47,10 @@
                         <input type="text" th:id="'name-' + ${place.id()}" name="name" th:value="${place.name()}" required>
                     </div>
                     <div class="form-group">
+                        <label th:for="'address-' + ${place.id()}" th:text="#{places.address.label}">Address</label>
+                        <input type="text" th:id="'address-' + ${place.id()}" name="address" th:value="${place.address()}" th:placeholder="#{places.address.placeholder}">
+                    </div>
+                    <div class="form-group">
                         <label th:for="'type-' + ${place.id()}" th:text="#{places.category.label}">Category</label>
                         <select th:id="'type-' + ${place.id()}" name="type" class="form-select">
                             <option th:each="placeType : ${placeTypes}" 
@@ -56,12 +60,7 @@
                         </select>
                     </div>
                     <div class="place-info">
-                        <div><strong th:text="#{places.address.label}">Address:</strong> <span th:text="${place.address() ?: #messages.msg('places.address.not.available')}"></span></div>
                         <div><strong th:text="#{places.coordinates.label}">Coordinates:</strong> <span th:text="${place.latitude() + ', ' + place.longitude()}"></span></div>
-                        <div><strong th:text="#{places.category.label}">Category:</strong> 
-                            <i th:class="'lni ' + ${place.type().iconClass}" style="margin-right: 5px;"></i>
-                            <span th:text="#{${place.type().messageKey}}">Category</span>
-                        </div>
                     </div>
                     <div style="display: flex; gap: 10px; margin-top: 10px;">
                         <button type="submit" class="btn" th:text="#{form.update}">Update</button>
