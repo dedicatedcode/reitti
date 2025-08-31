@@ -153,7 +153,6 @@
 
         function initPlaceMaps() {
             document.querySelectorAll('.place-map:not(.leaflet-container)').forEach(mapElement => {
-                debugger
                 const lat = parseFloat(mapElement.dataset.lat);
                 const lng = parseFloat(mapElement.dataset.lng);
                 const placeMap = L.map(mapElement, {
