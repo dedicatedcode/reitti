@@ -120,7 +120,6 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
 
         } catch (Exception e) {
             logger.error("Failed to call geocoding service [{}]: [{}]", service.getName(), e.getMessage());
-            
             GeocodingResponse.GeocodingStatus status = determineErrorStatus(e);
             geocodingResponseJdbcService.insert(new GeocodingResponse(
                     significantPlace.getId(),
@@ -145,11 +144,19 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
             String district = properties.path("district").asText();
             String housenumber = properties.path("housenumber").asText();
             String postcode = properties.path("postcode").asText();
-
-            return Optional.of(new GeocodeResult(name, street, housenumber, city, postcode, district));
+            String countryCode = properties.path("countryCode").asText().toLowerCase();
+            SignificantPlace.PlaceType type = determinePhotonType(properties.path("osm_value").asText());
+            return Optional.of(new GeocodeResult(name, street, housenumber, city, postcode, district, countryCode, type));
         }
         return Optional.empty();
     }
+
+    private SignificantPlace.PlaceType determinePhotonType(String osmValue) {
+        switch (osmValue) {
+            //insert decision logic to determine the type of the location. This is based on the type in OpenStreetMap. See the PlaceType enum for possible results. Fallback to OTHER if nothing can be matched. AI!
+        }
+    }
+
     private Optional<GeocodeResult> extractGeoCodeResult(String response) throws JsonProcessingException {
         JsonNode root = objectMapper.readTree(response);
         JsonNode features = root.path("features");
