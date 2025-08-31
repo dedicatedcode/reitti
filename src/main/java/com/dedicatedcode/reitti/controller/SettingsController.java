@@ -329,15 +329,12 @@ public class SettingsController {
                 place.getLongitudeCentroid()
             );
             
-            // Get the latest geocoding response for this place
-            Optional<GeocodingResponse> geocodingResponse = geocodingResponseJdbcService.findLatestByPlaceId(placeId);
+            // Get all geocoding responses for this place
+            List<GeocodingResponse> geocodingResponses = geocodingResponseJdbcService.findAllByPlaceIdOrderByFetchedAtDesc(placeId);
             
             model.addAttribute("place", placeInfo);
             model.addAttribute("currentPage", page);
-            
-            if (geocodingResponse.isPresent()) {
-                model.addAttribute("geocodingResponse", geocodingResponse.get());
-            }
+            model.addAttribute("geocodingResponses", geocodingResponses);
             
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("message.error.place.update", e.getMessage()));
