@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service.geocoding;
 
 import com.dedicatedcode.reitti.model.RemoteGeocodeService;
+import com.dedicatedcode.reitti.model.SignificantPlace;
 import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -43,7 +44,10 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
 
     @Transactional
     @Override
-    public Optional<GeocodeResult> reverseGeocode(double latitude, double longitude) {
+    //change test test to use a dummy place AI!
+    public Optional<GeocodeResult> reverseGeocode(SignificantPlace significantPlace) {
+        double latitude = significantPlace.getLatitudeCentroid();
+        double longitude = significantPlace.getLongitudeCentroid();
         if (!fixedGeocodeServices.isEmpty()) {
             logger.debug("Fixed geocode-service available, will first try this.");
             Optional<GeocodeResult> geocodeResult = callGeocodeService(fixedGeocodeServices, latitude, longitude, true);
@@ -89,6 +93,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
         try {
 
             String response = restTemplate.getForObject(url, String.class);
+            //here create a GeocodingResponse and insert it
             return photon ? extractPhotonResult(response) : extractGeoCodeResult(response);
 
         } catch (Exception e) {
