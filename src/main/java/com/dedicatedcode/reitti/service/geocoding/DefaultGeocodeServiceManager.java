@@ -153,102 +153,10 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
 
     private SignificantPlace.PlaceType determinePhotonType(String osmValue) {
         switch (osmValue) {
-            case "house":
-            case "residential":
-            case "apartments":
-            case "detached":
-            case "terrace":
-                return SignificantPlace.PlaceType.HOME;
-            
-            case "office":
-            case "commercial":
-            case "industrial":
-            case "warehouse":
-            case "retail":
-                return SignificantPlace.PlaceType.WORK;
-            
-            case "restaurant":
-            case "cafe":
-            case "fast_food":
-            case "bar":
-            case "pub":
-            case "food_court":
-                return SignificantPlace.PlaceType.RESTAURANT;
-            
-            case "shop":
-            case "supermarket":
-            case "mall":
-            case "marketplace":
-            case "department_store":
-            case "convenience":
-                return SignificantPlace.PlaceType.SHOPPING;
-            
-            case "hospital":
-            case "clinic":
-            case "doctors":
-            case "dentist":
-            case "pharmacy":
-            case "veterinary":
-                return SignificantPlace.PlaceType.HEALTHCARE;
-            
-            case "school":
-            case "university":
-            case "college":
-            case "kindergarten":
-            case "library":
-                return SignificantPlace.PlaceType.EDUCATION;
-            
-            case "gym":
-            case "fitness_centre":
-            case "sports_centre":
-            case "swimming_pool":
-            case "stadium":
-                return SignificantPlace.PlaceType.FITNESS;
-            
-            case "cinema":
-            case "theatre":
-            case "museum":
-            case "gallery":
-            case "nightclub":
-            case "casino":
-                return SignificantPlace.PlaceType.ENTERTAINMENT;
-            
-            case "park":
-            case "garden":
-            case "nature_reserve":
-            case "beach":
-            case "playground":
-                return SignificantPlace.PlaceType.OUTDOOR;
-            
-            case "fuel":
-            case "charging_station":
-                return SignificantPlace.PlaceType.FUEL;
-            
-            case "bank":
-            case "atm":
-            case "bureau_de_change":
-                return SignificantPlace.PlaceType.FINANCE;
-            
-            case "place_of_worship":
-            case "church":
-            case "mosque":
-            case "synagogue":
-            case "temple":
-                return SignificantPlace.PlaceType.WORSHIP;
-            
-            case "bus_stop":
-            case "bus_station":
-            case "railway_station":
-            case "subway_entrance":
-            case "tram_stop":
-            case "airport":
-                return SignificantPlace.PlaceType.TRANSPORT;
-            
-            default:
-                return SignificantPlace.PlaceType.OTHER;
+            //insert decision logic to determine the type of the location. This is based on the type in OpenStreetMap. See the PlaceType enum for possible results. Fallback to OTHER if nothing can be matched. AI!
         }
     }
-
+ 
     private Optional<GeocodeResult> extractGeoCodeResult(String response) throws JsonProcessingException {
         JsonNode root = objectMapper.readTree(response);
         JsonNode features = root.path("features");
