@@ -44,7 +44,6 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
 
     @Transactional
     @Override
-    //change test test to use a dummy place AI!
     public Optional<GeocodeResult> reverseGeocode(SignificantPlace significantPlace) {
         double latitude = significantPlace.getLatitudeCentroid();
         double longitude = significantPlace.getLongitudeCentroid();
@@ -93,8 +92,9 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
         try {
 
             String response = restTemplate.getForObject(url, String.class);
-            //here create a GeocodingResponse and insert it
-            return photon ? extractPhotonResult(response) : extractGeoCodeResult(response);
+            Optional<GeocodeResult> geocodeResult = photon ? extractPhotonResult(response) : extractGeoCodeResult(response);
+            //add creating a geocode result and inserting it into the GeocodeServiceJdbcService, add also Error handling for rest request so we can create propert com.dedicatedcode.reitti.service.geocoding.GeocodeResult.Status AI!
+            return geocodeResult;
 
         } catch (Exception e) {
             throw new RuntimeException("Failed to call geocoding service: " + e.getMessage(), e);
