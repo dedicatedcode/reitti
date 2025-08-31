@@ -9,14 +9,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @Transactional
 public class GeocodingResponseJdbcService {
-    
+    //create a test for this class AI!
     private final JdbcTemplate jdbcTemplate;
     
     public GeocodingResponseJdbcService(JdbcTemplate jdbcTemplate) {
@@ -38,16 +36,15 @@ public class GeocodingResponseJdbcService {
     }
     
     @Transactional(readOnly = true)
-    public Optional<GeocodingResponse> findBySignificantPlace(SignificantPlace significantPlace) {
+    public List<GeocodingResponse> findBySignificantPlace(SignificantPlace significantPlace) {
         String sql = """
             SELECT id, significant_place_id, raw_data, provider_name, fetched_at, status, error_details
-            FROM geocoding_response 
-            WHERE significant_place_id = ? 
-            ORDER BY fetched_at DESC 
+            FROM geocoding_response
+            WHERE significant_place_id = ?
+            ORDER BY fetched_at DESC
             LIMIT 1
             """;
-        List<GeocodingResponse> results = jdbcTemplate.query(sql, new GeocodingResponseRowMapper(), significantPlace.getId());
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+        return jdbcTemplate.query(sql, new GeocodingResponseRowMapper(), significantPlace.getId());
     }
     
     private static class GeocodingResponseRowMapper implements RowMapper<GeocodingResponse> {
