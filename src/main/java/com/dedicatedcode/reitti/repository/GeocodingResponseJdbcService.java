@@ -14,7 +14,6 @@ import java.util.List;
 @Service
 @Transactional
 public class GeocodingResponseJdbcService {
-    //create a test for this class AI!
     private final JdbcTemplate jdbcTemplate;
     
     public GeocodingResponseJdbcService(JdbcTemplate jdbcTemplate) {
