@@ -44,15 +44,15 @@
                        hx-include="#startDate"
                        required>
             </div>
+            
+            <div style="margin-left: auto;">
+                <form action="/export/gpx" method="post" style="margin: 0;">
+                    <input type="hidden" name="startDate" th:value="${startDate}">
+                    <input type="hidden" name="endDate" th:value="${endDate}">
+                    <button type="submit" class="btn" th:text="#{export.gpx.button}">Export as GPX</button>
+                </form>
+            </div>
         </div>
-        
-        <form action="/export/gpx" 
-              method="post" 
-              style="margin-bottom: 20px;">
-            <input type="hidden" name="startDate" th:value="${startDate}">
-            <input type="hidden" name="endDate" th:value="${endDate}">
-            <button type="submit" class="btn" th:text="#{export.gpx.button}">Export as GPX</button>
-        </form>
     </div>
 
     <div class="settings-card">
