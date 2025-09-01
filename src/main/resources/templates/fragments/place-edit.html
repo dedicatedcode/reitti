@@ -17,6 +17,12 @@
                class="place-name-input"
                autofocus
                required>
+        <select name="type" class="place-type-select">
+            <option th:each="placeType : ${placeTypes}" 
+                    th:value="${placeType.name()}" 
+                    th:selected="${placeType == place.type}"
+                    th:text="#{${placeType.messageKey}}">Place Type</option>
+        </select>
         <button type="submit" class="save-btn" title="Save">
             <i class="lni lni-check-circle-1"></i>
         </button>
