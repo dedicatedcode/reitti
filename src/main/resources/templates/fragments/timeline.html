@@ -34,23 +34,23 @@
         <div th:if="${userData?.entries == null or userData.entries.isEmpty()}" class="no-entries" th:text="#{timeline.no.data}">
             No timeline data available for this user.
         </div>
-        
+
         <div th:each="entry : ${userData?.entries}"
              th:class="|timeline-entry ${entry.type.name().toLowerCase()}|"
+             th:classappend="${selectedPlaceId != null and entry.place?.id == selectedPlaceId} ? 'selected' : ''"
              th:data-id="${entry.id}"
              th:data-lat="${entry.place?.latitudeCentroid}"
              th:data-lng="${entry.place?.longitudeCentroid}"
              th:data-path="${entry.path}"
              th:data-user-id="${userData.userId}">
-        
+
         <!-- Entry Description -->
         <div class="entry-description">
             <!-- Visit with editable place name -->
             <div th:if="${entry.type.name() == 'VISIT'}" class="place-name-container">
                 <span class="place-name" th:text="${entry.place?.name ?: 'Unknown Place'}">Place Name</span>
-                <i class="lni lni-pencil-1 edit-icon" 
-                   th:hx-get="@{/timeline/places/edit-form/{id}(id=${entry.place?.id})}"
-                   hx-target="closest .place-name-container"
+                <i class="lni lni-pencil-1 edit-icon"
+                   th:hx-get="@{/timeline/places/edit-form/{id}(id=${entry.place?.id})}"                                                                                                                         hx-target="closest .place-name-container"
                    hx-swap="outerHTML"
                    th:if="${entry.place?.id != null}"></i>
             </div>
