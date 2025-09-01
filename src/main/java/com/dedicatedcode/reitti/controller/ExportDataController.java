@@ -18,6 +18,7 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -65,7 +66,7 @@ public class ExportDataController {
                 end.format(DateTimeFormatter.ISO_LOCAL_DATE));
             
             StreamingResponseBody stream = outputStream -> {
-                try (Writer writer = new OutputStreamWriter(outputStream, "UTF-8")) {
+                try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
                     generateGpxContentStreaming(user, start, end, writer);
                 } catch (Exception e) {
                     throw new RuntimeException("Error generating GPX file", e);
@@ -80,7 +81,7 @@ public class ExportDataController {
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                 .body(outputStream -> {
-                    try (Writer writer = new OutputStreamWriter(outputStream, "UTF-8")) {
+                    try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
                         writer.write("Error generating GPX file: " + e.getMessage());
                     } catch (IOException ioException) {
                         throw new RuntimeException(ioException);
