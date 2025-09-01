@@ -3,8 +3,6 @@ package com.dedicatedcode.reitti.controller;
 import com.dedicatedcode.reitti.model.RawLocationPoint;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
-import org.springframework.context.MessageSource;
-import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -22,18 +20,11 @@ import java.util.List;
 public class ExportDataController {
     
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
-    private final MessageSource messageSource;
-    
-    public ExportDataController(RawLocationPointJdbcService rawLocationPointJdbcService,
-                               MessageSource messageSource) {
+
+    public ExportDataController(RawLocationPointJdbcService rawLocationPointJdbcService) {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
-        this.messageSource = messageSource;
     }
-    
-    private String getMessage(String key, Object... args) {
-        return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
-    }
-    
+
     @GetMapping("/data-content")
     public String getExportDataContent(@AuthenticationPrincipal User user,
                                       @RequestParam(required = false) String startDate,
