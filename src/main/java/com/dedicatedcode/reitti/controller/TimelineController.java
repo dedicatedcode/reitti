@@ -92,6 +92,7 @@ public class TimelineController {
     public String getPlaceEditForm(@PathVariable Long id, Model model) {
         SignificantPlace place = placeService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         model.addAttribute("place", place);
+        model.addAttribute("placeTypes", SignificantPlace.PlaceType.values());
         return "fragments/place-edit :: edit-form";
     }
 
