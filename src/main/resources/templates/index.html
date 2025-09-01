@@ -10,6 +10,54 @@
     <link rel="stylesheet" href="/css/lineicons.css">
     <link rel="stylesheet" href="/css/photo-client.css">
     <link rel="stylesheet" href="/css/inline-edit.css">
+    <style>
+        /* Auto-update mode styles */
+        .auto-update-overlay {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .auto-update-overlay.visible {
+            opacity: 1;
+        }
+
+        .auto-update-overlay .date {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .auto-update-overlay .time {
+            font-size: 1.4rem;
+            color: #f1ba63;
+        }
+
+        /* Smooth transitions for timeline and date picker */
+        .timeline, #horizontal-date-picker-container {
+            transition: transform 0.5s ease, opacity 0.5s ease;
+        }
+
+        .timeline.hidden {
+            transform: translateX(-100%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #horizontal-date-picker-container.hidden {
+            transform: translateY(100%);
+            opacity: 0;
+            pointer-events: none;
+        }
+    </style>
     <script src="/js/HumanizeDuration.js"></script>
     <script src="/js/horizontal-date-picker.js"></script>
     <script src="/js/timeline-scroll-indicator.js"></script>
@@ -25,7 +73,11 @@
 </div>
 <div id="map"></div>
 
-
+<!-- Auto-update overlay -->
+<div id="auto-update-overlay" class="auto-update-overlay">
+    <div class="date" id="auto-update-date"></div>
+    <div class="time" id="auto-update-time"></div>
+</div>
 
 <div class="timeline">
     <div class="timeline-header">
@@ -91,6 +143,7 @@
 
     const messagesDiv = document.getElementById('sse-message');    let autoUpdateMode = false;
     let autoUpdateTimer = null;
+    let autoUpdateTimeInterval = null;
     let eventSource = null;
     let reloadTimeoutId = null;
     let pendingEvents = [];
@@ -503,6 +556,12 @@
             icon.className = 'lni lni-pause';
             btn.title = 'Pause Auto Update';
             
+            // Hide timeline and date picker smoothly
+            hideUIElements();
+            
+            // Show auto-update overlay
+            showAutoUpdateOverlay();
+            
             // Update the date picker to today
             if (window.horizontalDatePicker) {
                 window.horizontalDatePicker.setDate(new Date());
@@ -568,6 +627,12 @@
             autoUpdateTimer = null;
         }
         
+        // Clear time update interval
+        if (autoUpdateTimeInterval) {
+            clearInterval(autoUpdateTimeInterval);
+            autoUpdateTimeInterval = null;
+        }
+        
         // Clear any pending reload timeout
         if (reloadTimeoutId) {
             clearTimeout(reloadTimeoutId);
@@ -584,6 +649,12 @@
         
         // Remove pulsating markers when auto-update is disabled
         removePulsatingMarkers();
+        
+        // Hide auto-update overlay
+        hideAutoUpdateOverlay();
+        
+        // Show timeline and date picker again
+        showUIElements();
         
         const btn = document.getElementById('auto-update-btn');
         const icon = btn.querySelector('i');
@@ -668,6 +739,67 @@
             }
             reloadTimeoutId = null;
         }, 5000); // 5 seconds
+    }
+
+    function hideUIElements() {
+        const timeline = document.querySelector('.timeline');
+        const datePicker = document.getElementById('horizontal-date-picker-container');
+        
+        timeline.classList.add('hidden');
+        datePicker.classList.add('hidden');
+    }
+
+    function showUIElements() {
+        const timeline = document.querySelector('.timeline');
+        const datePicker = document.getElementById('horizontal-date-picker-container');
+        
+        timeline.classList.remove('hidden');
+        datePicker.classList.remove('hidden');
+    }
+
+    function showAutoUpdateOverlay() {
+        const overlay = document.getElementById('auto-update-overlay');
+        
+        // Update initial time
+        updateAutoUpdateTime();
+        
+        // Show overlay
+        overlay.classList.add('visible');
+        
+        // Start updating time every second
+        autoUpdateTimeInterval = setInterval(updateAutoUpdateTime, 1000);
+    }
+
+    function hideAutoUpdateOverlay() {
+        const overlay = document.getElementById('auto-update-overlay');
+        overlay.classList.remove('visible');
+    }
+
+    function updateAutoUpdateTime() {
+        const now = new Date();
+        const dateElement = document.getElementById('auto-update-date');
+        const timeElement = document.getElementById('auto-update-time');
+        
+        // Format date (e.g., "Monday, December 25, 2023")
+        const dateOptions = { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        };
+        const formattedDate = now.toLocaleDateString(undefined, dateOptions);
+        
+        // Format time (e.g., "14:30:25")
+        const timeOptions = { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            second: '2-digit',
+            hour12: false 
+        };
+        const formattedTime = now.toLocaleTimeString(undefined, timeOptions);
+        
+        dateElement.textContent = formattedDate;
+        timeElement.textContent = formattedTime;
     }
 
     function toggleFullscreen() {
