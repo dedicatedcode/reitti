@@ -345,6 +345,7 @@ nav {
     transition: color, padding 0.5s ease-in-out;
     font-weight: lighter;
     pointer-events: all;
+    cursor: pointer;
 }
 
 .timeline-entry.active {
