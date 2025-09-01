@@ -34,11 +34,18 @@
 
 .place-name-container.editing {
     border-radius: 3px;
-    font-size: 1.4rem;
+    font-size: 1.2rem;
     float: left;
     min-width: 700px;
 }
 
+.inline-edit-form {
+    padding-bottom: 8px;
+}
+
+.inline-edit-form .btn {
+    border: 1px solid;
+}
 
 .inline-edit-form .form-group {
     margin-bottom: 15px;
@@ -55,5 +62,9 @@
 
 .inline-edit-form .place-name-input {
     width: 100%;
+}
+
+.inline-edit-form select {
+    font-size: 1.2rem;
 }
 

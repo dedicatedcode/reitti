@@ -108,6 +108,7 @@ select {
     background-position: right 8px center;
     background-size: 16px;
     padding-right: 32px;
+    font-family: "Fraunces";
 }
 
 select option {
