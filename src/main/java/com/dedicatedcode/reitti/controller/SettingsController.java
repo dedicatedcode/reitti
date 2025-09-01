@@ -133,6 +133,9 @@ public class SettingsController {
             case "file-upload":
                 // File upload content will be loaded via HTMX as before
                 break;
+            case "export-data":
+                getExportDataContent(user, model);
+                break;
             case "about-section":
                 getAboutContent(model);
                 break;
@@ -849,6 +852,18 @@ public class SettingsController {
         model.addAttribute("gitCommitDetails", this.versionService.getCommitDetails());
         model.addAttribute("buildTime", this.versionService.getBuildTime());
         return "fragments/settings :: about-content";
+    }
+
+    private void getExportDataContent(@AuthenticationPrincipal User user, Model model) {
+        // Set default date range to today
+        java.time.LocalDate today = java.time.LocalDate.now();
+        model.addAttribute("startDate", today);
+        model.addAttribute("endDate", today);
+        
+        // Get raw location points for today by default
+        List<RawLocationPoint> rawLocationPoints = rawLocationPointJdbcService.findByUserAndDateRange(
+            user, today.atStartOfDay(), today.plusDays(1).atStartOfDay());
+        model.addAttribute("rawLocationPoints", rawLocationPoints);
     }
 
     private String getUserManagementPage(@AuthenticationPrincipal User user, Model model) {

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Export Data Content Fragment -->
+<div th:fragment="export-data-content">
+    <h2 th:text="#{export.title}">Export Data</h2>
+
+    <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+        <span th:text="${successMessage}">Success message</span>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+        <span th:text="${errorMessage}">Error message</span>
+    </div>
+
+    <div class="settings-card">
+        <h3 th:text="#{export.date.range}">Date Range</h3>
+        
+        <form hx-get="/export/data-content" 
+              hx-target="#export-data" 
+              hx-swap="innerHTML"
+              style="display: flex; gap: 15px; align-items: end; margin-bottom: 20px;">
+            
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="startDate" th:text="#{export.start.date}">Start Date</label>
+                <input type="date" 
+                       id="startDate" 
+                       name="startDate" 
+                       th:value="${startDate}"
+                       required>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="endDate" th:text="#{export.end.date}">End Date</label>
+                <input type="date" 
+                       id="endDate" 
+                       name="endDate" 
+                       th:value="${endDate}"
+                       required>
+            </div>
+            
+            <button type="submit" class="btn">Update</button>
+        </form>
+        
+        <form action="/export/gpx" 
+              method="post" 
+              style="margin-bottom: 20px;">
+            <input type="hidden" name="startDate" th:value="${startDate}">
+            <input type="hidden" name="endDate" th:value="${endDate}">
+            <button type="submit" class="btn" th:text="#{export.gpx.button}">Export as GPX</button>
+        </form>
+    </div>
+
+    <div class="settings-card">
+        <h3 th:text="#{export.raw.data.title}">Raw Location Data</h3>
+        
+        <div th:if="${rawLocationPoints.isEmpty()}">
+            <p th:text="#{export.raw.data.no.data}">No location data found for the selected date range</p>
+        </div>
+        
+        <div th:if="${!rawLocationPoints.isEmpty()}">
+            <p style="margin-bottom: 15px; color: var(--color-text-white);">
+                Found <strong th:text="${rawLocationPoints.size()}">0</strong> location points
+            </p>
+            
+            <div style="max-height: 400px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead style="position: sticky; top: 0; background-color: var(--color-background-dark); z-index: 1;">
+                        <tr>
+                            <th style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: left;" th:text="#{export.raw.data.table.timestamp}">Timestamp</th>
+                            <th style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: left;" th:text="#{export.raw.data.table.latitude}">Latitude</th>
+                            <th style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: left;" th:text="#{export.raw.data.table.longitude}">Longitude</th>
+                            <th style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: left;" th:text="#{export.raw.data.table.accuracy}">Accuracy (m)</th>
+                            <th style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: left;" th:text="#{export.raw.data.table.processed}">Processed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="point : ${rawLocationPoints}" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                            <td style="padding: 8px; font-family: monospace; font-size: 0.9em;" th:text="${#temporals.format(point.timestamp, 'yyyy-MM-dd HH:mm:ss')}">2024-01-01 12:00:00</td>
+                            <td style="padding: 8px; font-family: monospace; font-size: 0.9em;" th:text="${#numbers.formatDecimal(point.latitude, 1, 6)}">60.123456</td>
+                            <td style="padding: 8px; font-family: monospace; font-size: 0.9em;" th:text="${#numbers.formatDecimal(point.longitude, 1, 6)}">24.123456</td>
+                            <td style="padding: 8px; font-family: monospace; font-size: 0.9em;" th:text="${point.accuracyMeters != null ? #numbers.formatDecimal(point.accuracyMeters, 1, 1) : 'N/A'}">10.0</td>
+                            <td style="padding: 8px;">
+                                <span th:if="${point.processed}" style="color: #28a745;">✓</span>
+                                <span th:unless="${point.processed}" style="color: #ffc107;">○</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
