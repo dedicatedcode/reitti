@@ -16,17 +16,18 @@
     <div class="settings-card">
         <h3 th:text="#{export.date.range}">Date Range</h3>
         
-        <form hx-get="/export/data-content" 
-              hx-target="#export-data" 
-              hx-swap="innerHTML"
-              style="display: flex; gap: 15px; align-items: end; margin-bottom: 20px;">
-            
+        <div style="display: flex; gap: 15px; align-items: end; margin-bottom: 20px;">
             <div class="form-group" style="margin-bottom: 0;">
                 <label for="startDate" th:text="#{export.start.date}">Start Date</label>
                 <input type="date" 
                        id="startDate" 
                        name="startDate" 
                        th:value="${startDate}"
+                       hx-get="/export/data-content" 
+                       hx-target="#export-data" 
+                       hx-swap="innerHTML"
+                       hx-trigger="change"
+                       hx-include="#endDate"
                        required>
             </div>
             
@@ -36,11 +37,14 @@
                        id="endDate" 
                        name="endDate" 
                        th:value="${endDate}"
+                       hx-get="/export/data-content" 
+                       hx-target="#export-data" 
+                       hx-swap="innerHTML"
+                       hx-trigger="change"
+                       hx-include="#startDate"
                        required>
             </div>
-            
-            <button type="submit" class="btn">Update</button>
-        </form>
+        </div>
         
         <form action="/export/gpx" 
               method="post" 

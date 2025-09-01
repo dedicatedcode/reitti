@@ -91,7 +91,7 @@ label {
     font-weight: 500;
 }
 
-input[type="text"], input[type="password"], input[type="url"], select {
+input[type="text"], input[type="password"], input[type="url"], input[type="date"], select {
     width: 100%;
     padding: 8px;
     border: 1px solid #ddd;
