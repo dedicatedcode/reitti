@@ -10,7 +10,17 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import java.io.StringWriter;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -74,33 +84,76 @@ public class ExportDataController {
     }
     
     private String generateGpxContent(List<RawLocationPoint> points, LocalDate startDate, LocalDate endDate) {
-        StringBuilder gpx = new StringBuilder();
-        
-        gpx.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-        gpx.append("<gpx version=\"1.1\" creator=\"Reitti\" xmlns=\"http://www.topografix.com/GPX/1/1\">\n");
-        gpx.append("  <metadata>\n");
-        gpx.append("    <name>Location Data Export</name>\n");
-        gpx.append("    <desc>Exported location data from ").append(startDate).append(" to ").append(endDate).append("</desc>\n");
-        gpx.append("  </metadata>\n");
-        gpx.append("  <trk>\n");
-        gpx.append("    <name>Location Track</name>\n");
-        gpx.append("    <trkseg>\n");
-        
-        for (RawLocationPoint point : points) {
-            gpx.append("      <trkpt lat=\"").append(point.getLatitude()).append("\" lon=\"").append(point.getLongitude()).append("\">\n");
-            gpx.append("        <time>").append(point.getTimestamp().toString()).append("</time>\n");
-            if (point.getAccuracyMeters() != null) {
-                gpx.append("        <extensions>\n");
-                gpx.append("          <accuracy>").append(point.getAccuracyMeters()).append("</accuracy>\n");
-                gpx.append("        </extensions>\n");
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document document = builder.newDocument();
+            
+            // Create root GPX element
+            Element gpx = document.createElement("gpx");
+            gpx.setAttribute("version", "1.1");
+            gpx.setAttribute("creator", "Reitti");
+            gpx.setAttribute("xmlns", "http://www.topografix.com/GPX/1/1");
+            document.appendChild(gpx);
+            
+            // Create metadata
+            Element metadata = document.createElement("metadata");
+            gpx.appendChild(metadata);
+            
+            Element name = document.createElement("name");
+            name.setTextContent("Location Data Export");
+            metadata.appendChild(name);
+            
+            Element desc = document.createElement("desc");
+            desc.setTextContent("Exported location data from " + startDate + " to " + endDate);
+            metadata.appendChild(desc);
+            
+            // Create track
+            Element trk = document.createElement("trk");
+            gpx.appendChild(trk);
+            
+            Element trkName = document.createElement("name");
+            trkName.setTextContent("Location Track");
+            trk.appendChild(trkName);
+            
+            Element trkseg = document.createElement("trkseg");
+            trk.appendChild(trkseg);
+            
+            // Add track points
+            for (RawLocationPoint point : points) {
+                Element trkpt = document.createElement("trkpt");
+                trkpt.setAttribute("lat", String.valueOf(point.getLatitude()));
+                trkpt.setAttribute("lon", String.valueOf(point.getLongitude()));
+                trkseg.appendChild(trkpt);
+                
+                Element time = document.createElement("time");
+                time.setTextContent(point.getTimestamp().toString());
+                trkpt.appendChild(time);
+                
+                if (point.getAccuracyMeters() != null) {
+                    Element extensions = document.createElement("extensions");
+                    trkpt.appendChild(extensions);
+                    
+                    Element accuracy = document.createElement("accuracy");
+                    accuracy.setTextContent(String.valueOf(point.getAccuracyMeters()));
+                    extensions.appendChild(accuracy);
+                }
             }
-            gpx.append("      </trkpt>\n");
+            
+            // Transform to string
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+            transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+            
+            StringWriter writer = new StringWriter();
+            transformer.transform(new DOMSource(document), new StreamResult(writer));
+            
+            return writer.toString();
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Error generating GPX content", e);
         }
-        
-        gpx.append("    </trkseg>\n");
-        gpx.append("  </trk>\n");
-        gpx.append("</gpx>");
-        
-        return gpx.toString();
     }
 }
