@@ -8,9 +8,11 @@
 <!-- Edit form fragment -->
 <span th:fragment="edit-form" class="place-name-container editing">
     <form th:hx-put="@{/timeline/places/{id}(id=${place.id})}"
-          hx-target="closest .place-name-container"
-          hx-swap="outerHTML"
+          th:hx-target="${date != null} ? '#timeline-content' : 'closest .place-name-container'"
+          th:hx-swap="${date != null} ? 'innerHTML' : 'outerHTML'"
           class="inline-edit-form">
+        <input type="hidden" name="date" th:value="${date}" th:if="${date != null}">
+        <input type="hidden" name="timezone" th:value="${timezone}" th:if="${timezone != null}">
         <div class="form-group">
             <label for="place-name" th:text="#{places.name.label}">Name</label>
             <input type="text"
