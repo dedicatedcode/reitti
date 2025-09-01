@@ -11,16 +11,17 @@
           hx-target="closest .place-name-container"
           hx-swap="outerHTML"
           class="inline-edit-form">
-        <div>
+        <div class="form-group">
+            <label for="place-name" th:text="#{places.name.label}">Name</label>
             <input type="text"
+                   id="place-name"
                    name="name"
                    th:value="${place.name}"
                    class="place-name-input"
                    autofocus
                    required>
-
         </div>
-        <div>
+        <div class="form-group">
             <label for="category" th:text="#{places.category.label}">Category</label>
             <select id="category" name="type" class="form-select">
                 <option th:each="placeType : ${placeTypes}"
@@ -28,19 +29,16 @@
                         th:selected="${placeType == place.type}"
                         th:text="#{${placeType.messageKey}}">Place Type</option>
             </select>
-
         </div>
-        <button type="submit" class="save-btn" title="Save">
-            <i class="lni lni-check-circle-1"></i>
-        </button>
-        <button type="button" 
-                class="cancel-btn"
-                th:hx-get="@{/timeline/places/view/{id}(id=${place.id})}"
-                hx-target="closest .place-name-container"
-                hx-swap="outerHTML"
-                title="Cancel">
-            <i class="lni lni-xmark-circle"></i>
-        </button>
+        <div class="form-buttons">
+            <button type="submit" class="btn" th:text="#{form.save}">Save</button>
+            <button type="button" 
+                    class="btn"
+                    th:hx-get="@{/timeline/places/view/{id}(id=${place.id})}"
+                    hx-target="closest .place-name-container"
+                    hx-swap="outerHTML"
+                    th:text="#{form.cancel}">Cancel</button>
+        </div>
     </form>
 </span>
 
