@@ -67,24 +67,24 @@
                 Found <strong th:text="${rawLocationPoints.size()}">0</strong> location points
             </p>
             
-            <div style="max-height: 400px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead style="position: sticky; top: 0; background-color: var(--color-background-dark); z-index: 1;">
+            <div class="export-data-table-container">
+                <table>
+                    <thead style="">
                         <tr>
-                            <th style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: left;" th:text="#{export.raw.data.table.timestamp}">Timestamp</th>
-                            <th style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: left;" th:text="#{export.raw.data.table.latitude}">Latitude</th>
-                            <th style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: left;" th:text="#{export.raw.data.table.longitude}">Longitude</th>
-                            <th style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: left;" th:text="#{export.raw.data.table.accuracy}">Accuracy (m)</th>
-                            <th style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: left;" th:text="#{export.raw.data.table.processed}">Processed</th>
+                            <th th:text="#{export.raw.data.table.timestamp}">Timestamp</th>
+                            <th th:text="#{export.raw.data.table.latitude}">Latitude</th>
+                            <th th:text="#{export.raw.data.table.longitude}">Longitude</th>
+                            <th th:text="#{export.raw.data.table.accuracy}">Accuracy (m)</th>
+                            <th th:text="#{export.raw.data.table.processed}">Processed</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr th:each="point : ${rawLocationPoints}" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
-                            <td style="padding: 8px; font-family: monospace; font-size: 0.9em;" th:text="${#temporals.format(point.timestamp, 'yyyy-MM-dd HH:mm:ss')}">2024-01-01 12:00:00</td>
-                            <td style="padding: 8px; font-family: monospace; font-size: 0.9em;" th:text="${#numbers.formatDecimal(point.latitude, 1, 6)}">60.123456</td>
-                            <td style="padding: 8px; font-family: monospace; font-size: 0.9em;" th:text="${#numbers.formatDecimal(point.longitude, 1, 6)}">24.123456</td>
-                            <td style="padding: 8px; font-family: monospace; font-size: 0.9em;" th:text="${point.accuracyMeters != null ? #numbers.formatDecimal(point.accuracyMeters, 1, 1) : 'N/A'}">10.0</td>
-                            <td style="padding: 8px;">
+                            <td th:text="${#temporals.format(point.timestamp, 'yyyy-MM-dd HH:mm:ss')}">2024-01-01 12:00:00</td>
+                            <td th:text="${#numbers.formatDecimal(point.latitude, 1, 6)}">60.123456</td>
+                            <td th:text="${#numbers.formatDecimal(point.longitude, 1, 6)}">24.123456</td>
+                            <td th:text="${point.accuracyMeters != null ? #numbers.formatDecimal(point.accuracyMeters, 1, 1) : 'N/A'}">10.0</td>
+                            <td>
                                 <span th:if="${point.processed}" style="color: #28a745;">✓</span>
                                 <span th:unless="${point.processed}" style="color: #ffc107;">○</span>
                             </td>
