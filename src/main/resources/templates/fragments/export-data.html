@@ -28,6 +28,7 @@
                        hx-swap="innerHTML"
                        hx-trigger="change"
                        hx-include="#endDate"
+                       hx-indicator="#loading-indicator"
                        required>
             </div>
             
@@ -42,6 +43,7 @@
                        hx-swap="innerHTML"
                        hx-trigger="change"
                        hx-include="#startDate"
+                       hx-indicator="#loading-indicator"
                        required>
             </div>
             
@@ -58,43 +60,66 @@
     <div class="settings-card">
         <h3 th:text="#{export.raw.data.title}">Raw Location Data</h3>
         
-        <div th:if="${rawLocationPoints.isEmpty()}">
-            <p th:text="#{export.raw.data.no.data}">No location data found for the selected date range</p>
+        <!-- Loading indicator -->
+        <div id="loading-indicator" style="display: none; text-align: center; padding: 40px;">
+            <div style="display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: var(--color-accent); animation: spin 1s ease-in-out infinite;"></div>
+            <p style="margin-top: 15px; color: var(--color-text-white);">Loading location data...</p>
         </div>
         
-        <div th:if="${!rawLocationPoints.isEmpty()}">
-            <p style="margin-bottom: 15px; color: var(--color-text-white);">
-                Found <strong th:text="${rawLocationPoints.size()}">0</strong> location points
-            </p>
+        <div id="data-content">
+            <div th:if="${rawLocationPoints.isEmpty()}">
+                <p th:text="#{export.raw.data.no.data}">No location data found for the selected date range</p>
+            </div>
             
-            <div class="export-data-table-container">
-                <table>
-                    <thead style="">
-                        <tr>
-                            <th th:text="#{export.raw.data.table.timestamp}">Timestamp</th>
-                            <th th:text="#{export.raw.data.table.latitude}">Latitude</th>
-                            <th th:text="#{export.raw.data.table.longitude}">Longitude</th>
-                            <th th:text="#{export.raw.data.table.accuracy}">Accuracy (m)</th>
-                            <th th:text="#{export.raw.data.table.processed}">Processed</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr th:each="point : ${rawLocationPoints}" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
-                            <td th:text="${#temporals.format(point.timestamp, 'yyyy-MM-dd HH:mm:ss')}">2024-01-01 12:00:00</td>
-                            <td th:text="${#numbers.formatDecimal(point.latitude, 1, 6)}">60.123456</td>
-                            <td th:text="${#numbers.formatDecimal(point.longitude, 1, 6)}">24.123456</td>
-                            <td th:text="${point.accuracyMeters != null ? #numbers.formatDecimal(point.accuracyMeters, 1, 1) : 'N/A'}">10.0</td>
-                            <td>
-                                <span th:if="${point.processed}" style="color: #28a745;">✓</span>
-                                <span th:unless="${point.processed}" style="color: #ffc107;">○</span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div th:if="${!rawLocationPoints.isEmpty()}">
+                <p style="margin-bottom: 15px; color: var(--color-text-white);">
+                    Found <strong th:text="${rawLocationPoints.size()}">0</strong> location points
+                </p>
+                
+                <div class="export-data-table-container">
+                    <table>
+                        <thead style="">
+                            <tr>
+                                <th th:text="#{export.raw.data.table.timestamp}">Timestamp</th>
+                                <th th:text="#{export.raw.data.table.latitude}">Latitude</th>
+                                <th th:text="#{export.raw.data.table.longitude}">Longitude</th>
+                                <th th:text="#{export.raw.data.table.accuracy}">Accuracy (m)</th>
+                                <th th:text="#{export.raw.data.table.processed}">Processed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="point : ${rawLocationPoints}" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                <td th:text="${#temporals.format(point.timestamp, 'yyyy-MM-dd HH:mm:ss')}">2024-01-01 12:00:00</td>
+                                <td th:text="${#numbers.formatDecimal(point.latitude, 1, 6)}">60.123456</td>
+                                <td th:text="${#numbers.formatDecimal(point.longitude, 1, 6)}">24.123456</td>
+                                <td th:text="${point.accuracyMeters != null ? #numbers.formatDecimal(point.accuracyMeters, 1, 1) : 'N/A'}">10.0</td>
+                                <td>
+                                    <span th:if="${point.processed}" style="color: #28a745;">✓</span>
+                                    <span th:unless="${point.processed}" style="color: #ffc107;">○</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.htmx-request #loading-indicator {
+    display: block !important;
+}
+
+.htmx-request #data-content {
+    opacity: 0.3;
+}
+</style>
 
 </body>
 </html>
