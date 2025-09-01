@@ -68,3 +68,26 @@
     font-size: 1.2rem;
 }
 
+@media (max-width: 800px) {
+    .place-name-container.editing {
+        border-radius: 3px;
+        font-size: 1rem;
+        float: left;
+        min-width: 0;
+    }
+
+    .inline-edit-form select {
+        font-size: 1rem;
+    }
+
+
+    .timeline-entry.active .place-name-container .edit-icon {
+        opacity: 1;
+    }
+
+    .edit-icon {
+        position: relative;
+    }
+}
+
+

@@ -883,26 +883,32 @@ input[type=file]::file-selector-button:hover {
 }
 
 @media (max-width: 800px) {
+    .timeline-entry {
+        padding: 1rem 2rem 0 1rem;
+    }
+
     .timeline-entry .entry-description {
-        font-size: 1.2rem;
+        font-size: 1rem;
         font-weight: normal;
     }
 
     .timeline-entry {
+        display: inline-block;
         font-size: 1rem;
         color: white;
     }
 
     .timeline-entry.active {
         color: wheat;
+        padding: 1rem 2rem 0 1.3rem;
     }
 
     .timeline-entry.active .entry-description {
-        font-size: 2rem;
+        font-size: 1.3rem;
     }
 
     .timeline {
-        width: 90%;
+        width: 100%;
     }
 
     .timeline-scroll-indicator {
@@ -920,6 +926,13 @@ input[type=file]::file-selector-button:hover {
     .scroll-thumb::before {
         width: 4px;
         height: 4px;
+    }
+
+    .place-name-container.editing {
+        border-radius: 3px;
+        font-size: 1rem;
+        float: left;
+        min-width: 0;
     }
 }
 
