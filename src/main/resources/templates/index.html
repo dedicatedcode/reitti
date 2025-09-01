@@ -807,22 +807,22 @@
         const dateElement = document.getElementById('auto-update-date');
         const timeElement = document.getElementById('auto-update-time');
         
-        // Format date (e.g., "Monday, December 25, 2023")
+        // Use browser locale for date formatting
         const dateOptions = { 
             weekday: 'long', 
             year: 'numeric', 
             month: 'long', 
             day: 'numeric' 
         };
-        const formattedDate = now.toLocaleDateString(undefined, dateOptions);
+        const formattedDate = now.toLocaleDateString(navigator.language, dateOptions);
         
-        // Format time (e.g., "14:30:25")
+        // Use browser locale for time formatting
         const timeOptions = { 
             hour: '2-digit', 
             minute: '2-digit',
             hour12: false
         };
-        const formattedTime = now.toLocaleTimeString(undefined, timeOptions);
+        const formattedTime = now.toLocaleTimeString(navigator.language, timeOptions);
         
         dateElement.textContent = formattedDate;
         timeElement.textContent = formattedTime;
