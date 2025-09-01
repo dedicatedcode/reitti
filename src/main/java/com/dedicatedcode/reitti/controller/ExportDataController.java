@@ -88,7 +88,8 @@ public class ExportDataController {
                 });
         }
     }
-    
+
+    // add a comment that writing this as string is needed for the streaming functionality AI!
     private void generateGpxContentStreaming(User user, LocalDate startDate, LocalDate endDate, Writer writer) throws IOException {
         // Write GPX header
         writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
