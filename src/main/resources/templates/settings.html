@@ -34,7 +34,12 @@
                class="settings-nav-item"
                th:classappend="${activeSection == 'file-upload'} ? 'active' : ''"
                th:text="#{settings.import.data}">Import Data</a>
-            
+
+            <a href="/settings?section=export-data"
+               class="settings-nav-item"
+               th:classappend="${activeSection == 'export-data'} ? 'active' : ''"
+               th:text="#{export.title}">Export Data</a>
+
             <a href="/settings?section=api-tokens" 
                class="settings-nav-item"
                th:classappend="${activeSection == 'api-tokens'} ? 'active' : ''"
@@ -65,12 +70,7 @@
                class="settings-nav-item"
                th:classappend="${activeSection == 'integrations'} ? 'active' : ''"
                th:text="#{settings.integrations}">Integrations</a>
-            
-            <a href="/settings?section=export-data" 
-               class="settings-nav-item"
-               th:classappend="${activeSection == 'export-data'} ? 'active' : ''"
-               th:text="#{export.title}">Export Data</a>
-            
+
             <a href="/settings?section=about-section" 
                class="settings-nav-item"
                th:classappend="${activeSection == 'about-section'} ? 'active' : ''"
