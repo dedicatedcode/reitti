@@ -50,7 +50,8 @@
             <div th:if="${entry.type.name() == 'VISIT'}" class="place-name-container">
                 <span class="place-name" th:text="${entry.place?.name ?: 'Unknown Place'}">Place Name</span>
                 <i class="lni lni-pencil-1 edit-icon"
-                   th:hx-get="@{/timeline/places/edit-form/{id}(id=${entry.place?.id})}"                                                                                                                         hx-target="closest .place-name-container"
+                   th:hx-get="@{/timeline/places/edit-form/{id}(id=${entry.place?.id}, date=${data}, timezone=${timezone})}"
+                   hx-target="closest .place-name-container"
                    hx-swap="outerHTML"
                    th:if="${entry.place?.id != null}"></i>
             </div>
