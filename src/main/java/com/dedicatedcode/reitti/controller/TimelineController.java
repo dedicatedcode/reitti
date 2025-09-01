@@ -56,6 +56,13 @@ public class TimelineController {
     public String getTimelineContent(@RequestParam String date,
                                      @RequestParam(required = false, defaultValue = "UTC") String timezone,
                                      Principal principal, Model model) {
+        return getTimelineContent(date, timezone, principal, model, null);
+    }
+
+    private String getTimelineContent(@RequestParam String date,
+                                      @RequestParam(required = false, defaultValue = "UTC") String timezone,
+                                      Principal principal, Model model,
+                                      Long selectedPlaceId) {
         LocalDate selectedDate = LocalDate.parse(date);
         ZoneId userTimezone = ZoneId.of(timezone);
         
@@ -83,27 +90,36 @@ public class TimelineController {
         TimelineData timelineData = new TimelineData(allUsersData.stream().filter(Objects::nonNull).toList());
         
         model.addAttribute("timelineData", timelineData);
+        model.addAttribute("selectedPlaceId", selectedPlaceId);
+        model.addAttribute("data", selectedDate);
+        model.addAttribute("timezone", timezone);
         return "fragments/timeline :: timeline-content";
     }
 
-
-
     @GetMapping("/places/edit-form/{id}")
-    public String getPlaceEditForm(@PathVariable Long id, Model model) {
+    public String getPlaceEditForm(@PathVariable Long id,
+                                   @RequestParam(required = false) String date,
+                                   @RequestParam(required = false) String timezone,
+                                   Model model) {
         SignificantPlace place = placeService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         model.addAttribute("place", place);
         model.addAttribute("placeTypes", SignificantPlace.PlaceType.values());
+        model.addAttribute("date", date);
+        model.addAttribute("timezone", timezone);
         return "fragments/place-edit :: edit-form";
     }
 
     @PutMapping("/places/{id}")
-    public String updatePlace(@PathVariable Long id, 
-                              @RequestParam String name, 
-                              @RequestParam(required = false) String type, 
+    public String updatePlace(@PathVariable Long id,
+                              @RequestParam String name,
+                              @RequestParam(required = false) String type,
+                              @RequestParam(required = false) String date,
+                              @RequestParam(required = false, defaultValue = "UTC") String timezone,
+                              Principal principal,
                               Model model) {
         SignificantPlace place = placeService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         SignificantPlace updatedPlace = place.withName(name);
-        
+
         if (type != null && !type.isEmpty()) {
             try {
                 SignificantPlace.PlaceType placeType = SignificantPlace.PlaceType.valueOf(type);
@@ -112,8 +128,16 @@ public class TimelineController {
                 // Invalid place type, ignore and just update name
             }
         }
-        
-        model.addAttribute("place", placeService.update(updatedPlace));
+
+        placeService.update(updatedPlace);
+
+        // If we have timeline context, reload the entire timeline with the edited place selected
+        if (date != null) {
+            return getTimelineContent(date, timezone, principal, model, id);
+        }
+
+        // Otherwise just return the updated place view
+        model.addAttribute("place", updatedPlace);
         return "fragments/place-edit :: view-mode";
     }
 
