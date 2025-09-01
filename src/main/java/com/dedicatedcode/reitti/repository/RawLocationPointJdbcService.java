@@ -54,6 +54,15 @@ public class RawLocationPointJdbcService {
                 user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
     }
 
+    public List<RawLocationPoint> findByUserAndDateRange(User user, java.time.LocalDateTime startTime, java.time.LocalDateTime endTime) {
+        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.activity_provided, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.version " +
+                "FROM raw_location_points rlp " +
+                "WHERE rlp.user_id = ? AND rlp.timestamp BETWEEN ? AND ? " +
+                "ORDER BY rlp.timestamp ASC";
+        return jdbcTemplate.query(sql, rawLocationPointRowMapper,
+                user.getId(), Timestamp.valueOf(startTime), Timestamp.valueOf(endTime));
+    }
+
     public List<RawLocationPoint> findByUserAndProcessedIsFalseOrderByTimestamp(User user) {
         String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.activity_provided, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.version " +
                 "FROM raw_location_points rlp " +
