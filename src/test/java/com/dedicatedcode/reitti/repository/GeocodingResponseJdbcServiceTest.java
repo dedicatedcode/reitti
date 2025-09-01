@@ -1,8 +1,12 @@
 package com.dedicatedcode.reitti.repository;
 
+import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.GeocodingResponse;
 import com.dedicatedcode.reitti.model.SignificantPlace;
 import org.junit.jupiter.api.Test;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -20,15 +24,23 @@ class GeocodingResponseJdbcServiceTest {
 
     @Autowired
     private GeocodingResponseJdbcService geocodingResponseJdbcService;
+    @Autowired
+    private SignificantPlaceJdbcService placeService;
+
+    @Autowired
+    private GeometryFactory geometryFactory;
+
+    @Autowired
+    private TestingService testingService;
 
     @Test
     void shouldInsertAndFindGeocodingResponse() {
         // Given
-        SignificantPlace place = new SignificantPlace(
-                1L, "Test Place", "Test Address", "de",
-                53.863149, 10.700927, null, SignificantPlace.PlaceType.HOME,
-                true, null
-        );
+
+        double latitudeCentroid = 53.863149;
+        double longitudeCentroid = 10.700927;
+        Point point = geometryFactory.createPoint(new Coordinate(longitudeCentroid, latitudeCentroid));
+        SignificantPlace place = placeService.create(testingService.admin(), SignificantPlace.create(latitudeCentroid, longitudeCentroid, point));
         
         GeocodingResponse response = new GeocodingResponse(
             place.getId(),
@@ -45,7 +57,7 @@ class GeocodingResponseJdbcServiceTest {
 
         // Then
         assertThat(found).hasSize(1);
-        GeocodingResponse foundResponse = found.get(0);
+        GeocodingResponse foundResponse = found.getFirst();
         assertThat(foundResponse.getSignificantPlaceId()).isEqualTo(place.getId());
         assertThat(foundResponse.getRawData()).isEqualTo("{\"results\": []}");
         assertThat(foundResponse.getProviderName()).isEqualTo("test-provider");
@@ -56,11 +68,11 @@ class GeocodingResponseJdbcServiceTest {
     @Test
     void shouldReturnEmptyListWhenNoResponseFound() {
         // Given
-        SignificantPlace place = new SignificantPlace(
-                999L, "Non-existent Place", "Non-existent Address", "de",
-                53.863149, 10.700927, null, SignificantPlace.PlaceType.HOME,
-                true, null
-        );
+
+        double latitudeCentroid = 53.863149;
+        double longitudeCentroid = 10.700927;
+        Point point = geometryFactory.createPoint(new Coordinate(longitudeCentroid, latitudeCentroid));
+        SignificantPlace place = placeService.create(testingService.admin(), SignificantPlace.create(latitudeCentroid, longitudeCentroid, point));
 
         // When
         List<GeocodingResponse> found = geocodingResponseJdbcService.findBySignificantPlace(place);
@@ -72,12 +84,12 @@ class GeocodingResponseJdbcServiceTest {
     @Test
     void shouldInsertResponseWithError() {
         // Given
-        SignificantPlace place = new SignificantPlace(
-                5L, "Error Place", "Error Address", "de",
-                53.863149, 10.700927, null, SignificantPlace.PlaceType.WORK,
-                true, null
-        );
-        
+
+        double latitudeCentroid = 53.863149;
+        double longitudeCentroid = 10.700927;
+        Point point = geometryFactory.createPoint(new Coordinate(longitudeCentroid, latitudeCentroid));
+        SignificantPlace place = placeService.create(testingService.admin(), SignificantPlace.create(latitudeCentroid, longitudeCentroid, point));
+
         GeocodingResponse response = new GeocodingResponse(
             place.getId(),
             null,
@@ -93,7 +105,7 @@ class GeocodingResponseJdbcServiceTest {
 
         // Then
         assertThat(found).hasSize(1);
-        GeocodingResponse foundResponse = found.get(0);
+        GeocodingResponse foundResponse = found.getFirst();
         assertThat(foundResponse.getStatus()).isEqualTo(GeocodingResponse.GeocodingStatus.ERROR);
         assertThat(foundResponse.getErrorDetails()).isEqualTo("Network timeout");
         assertThat(foundResponse.getRawData()).isNull();
