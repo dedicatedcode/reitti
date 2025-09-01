@@ -10,17 +10,12 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-import java.io.StringWriter;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -56,104 +51,85 @@ public class ExportDataController {
     }
     
     @PostMapping("/gpx")
-    public ResponseEntity<String> exportGpx(@AuthenticationPrincipal User user,
-                                           @RequestParam String startDate,
-                                           @RequestParam String endDate) {
+    public ResponseEntity<StreamingResponseBody> exportGpx(@AuthenticationPrincipal User user,
+                                                          @RequestParam String startDate,
+                                                          @RequestParam String endDate,
+                                                          HttpServletResponse response) {
         try {
             LocalDate start = LocalDate.parse(startDate);
             LocalDate end = LocalDate.parse(endDate);
-            
-            List<RawLocationPoint> rawLocationPoints = rawLocationPointJdbcService.findByUserAndDateRange(
-                user, start.atStartOfDay(), end.plusDays(1).atStartOfDay());
-            
-            String gpxContent = generateGpxContent(rawLocationPoints, start, end);
             
             String filename = String.format("location_data_%s_to_%s.gpx", 
                 start.format(DateTimeFormatter.ISO_LOCAL_DATE),
                 end.format(DateTimeFormatter.ISO_LOCAL_DATE));
             
+            StreamingResponseBody stream = outputStream -> {
+                try (Writer writer = new OutputStreamWriter(outputStream, "UTF-8")) {
+                    generateGpxContentStreaming(user, start, end, writer);
+                } catch (Exception e) {
+                    throw new RuntimeException("Error generating GPX file", e);
+                }
+            };
+            
             return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                 .contentType(MediaType.APPLICATION_XML)
-                .body(gpxContent);
+                .body(stream);
                 
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                .body("Error generating GPX file: " + e.getMessage());
+                .body(outputStream -> {
+                    try (Writer writer = new OutputStreamWriter(outputStream, "UTF-8")) {
+                        writer.write("Error generating GPX file: " + e.getMessage());
+                    } catch (IOException ioException) {
+                        throw new RuntimeException(ioException);
+                    }
+                });
         }
     }
     
-    private String generateGpxContent(List<RawLocationPoint> points, LocalDate startDate, LocalDate endDate) {
-        try {
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder builder = factory.newDocumentBuilder();
-            Document document = builder.newDocument();
+    private void generateGpxContentStreaming(User user, LocalDate startDate, LocalDate endDate, Writer writer) throws IOException {
+        // Write GPX header
+        writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+        writer.write("<gpx version=\"1.1\" creator=\"Reitti\" xmlns=\"http://www.topografix.com/GPX/1/1\">\n");
+        writer.write("  <metadata>\n");
+        writer.write("    <name>Location Data Export</name>\n");
+        writer.write("    <desc>Exported location data from " + startDate + " to " + endDate + "</desc>\n");
+        writer.write("  </metadata>\n");
+        writer.write("  <trk>\n");
+        writer.write("    <name>Location Track</name>\n");
+        writer.write("    <trkseg>\n");
+        
+        // Stream location points in batches to avoid loading all into memory
+        LocalDate currentDate = startDate;
+        
+        while (!currentDate.isAfter(endDate)) {
+            LocalDate nextDate = currentDate.plusDays(1);
             
-            // Create root GPX element
-            Element gpx = document.createElement("gpx");
-            gpx.setAttribute("version", "1.1");
-            gpx.setAttribute("creator", "Reitti");
-            gpx.setAttribute("xmlns", "http://www.topografix.com/GPX/1/1");
-            document.appendChild(gpx);
+            List<RawLocationPoint> points = rawLocationPointJdbcService.findByUserAndDateRange(
+                user, currentDate.atStartOfDay(), nextDate.atStartOfDay());
             
-            // Create metadata
-            Element metadata = document.createElement("metadata");
-            gpx.appendChild(metadata);
-            
-            Element name = document.createElement("name");
-            name.setTextContent("Location Data Export");
-            metadata.appendChild(name);
-            
-            Element desc = document.createElement("desc");
-            desc.setTextContent("Exported location data from " + startDate + " to " + endDate);
-            metadata.appendChild(desc);
-            
-            // Create track
-            Element trk = document.createElement("trk");
-            gpx.appendChild(trk);
-            
-            Element trkName = document.createElement("name");
-            trkName.setTextContent("Location Track");
-            trk.appendChild(trkName);
-            
-            Element trkseg = document.createElement("trkseg");
-            trk.appendChild(trkseg);
-            
-            // Add track points
             for (RawLocationPoint point : points) {
-                Element trkpt = document.createElement("trkpt");
-                trkpt.setAttribute("lat", String.valueOf(point.getLatitude()));
-                trkpt.setAttribute("lon", String.valueOf(point.getLongitude()));
-                trkseg.appendChild(trkpt);
-                
-                Element time = document.createElement("time");
-                time.setTextContent(point.getTimestamp().toString());
-                trkpt.appendChild(time);
+                writer.write("      <trkpt lat=\"" + point.getLatitude() + "\" lon=\"" + point.getLongitude() + "\">\n");
+                writer.write("        <time>" + point.getTimestamp().toString() + "</time>\n");
                 
                 if (point.getAccuracyMeters() != null) {
-                    Element extensions = document.createElement("extensions");
-                    trkpt.appendChild(extensions);
-                    
-                    Element accuracy = document.createElement("accuracy");
-                    accuracy.setTextContent(String.valueOf(point.getAccuracyMeters()));
-                    extensions.appendChild(accuracy);
+                    writer.write("        <extensions>\n");
+                    writer.write("          <accuracy>" + point.getAccuracyMeters() + "</accuracy>\n");
+                    writer.write("        </extensions>\n");
                 }
+                
+                writer.write("      </trkpt>\n");
             }
             
-            // Transform to string
-            TransformerFactory transformerFactory = TransformerFactory.newInstance();
-            Transformer transformer = transformerFactory.newTransformer();
-            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-            transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
-            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
-            
-            StringWriter writer = new StringWriter();
-            transformer.transform(new DOMSource(document), new StreamResult(writer));
-            
-            return writer.toString();
-            
-        } catch (Exception e) {
-            throw new RuntimeException("Error generating GPX content", e);
+            writer.flush(); // Flush periodically
+            currentDate = nextDate;
         }
+        
+        // Write GPX footer
+        writer.write("    </trkseg>\n");
+        writer.write("  </trk>\n");
+        writer.write("</gpx>");
+        writer.flush();
     }
 }
