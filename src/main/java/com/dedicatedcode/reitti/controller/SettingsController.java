@@ -330,7 +330,7 @@ public class SettingsController {
             );
             
             // Get all geocoding responses for this place
-            List<GeocodingResponse> geocodingResponses = geocodingResponseJdbcService.findAllByPlaceIdOrderByFetchedAtDesc(placeId);
+            List<GeocodingResponse> geocodingResponses = geocodingResponseJdbcService.findBySignificantPlace(place);
             
             model.addAttribute("place", placeInfo);
             model.addAttribute("currentPage", page);

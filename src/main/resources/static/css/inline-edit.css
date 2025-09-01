@@ -22,12 +22,6 @@
     opacity: 1;
 }
 
-.inline-edit-form {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-}
-
 .place-name-input {
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.3);
@@ -38,29 +32,28 @@
     font-family: inherit;
 }
 
-.save-btn, .cancel-btn {
-    background: none;
-    border: none;
-    color: inherit;
-    cursor: pointer;
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-size: 0.9em;
-}
-
-.save-btn:hover {
-    color: rgba(0, 255, 0, 0.2);
-    background: none;
-}
-
-.cancel-btn:hover {
-    color: rgba(255, 0, 0, 0.2);
-    background: none;
-}
-
 .place-name-container.editing {
     border-radius: 3px;
     font-size: 1.4rem;
     float: left;
     min-width: 700px;
 }
+
+
+.inline-edit-form .form-group {
+    margin-bottom: 15px;
+}
+
+.inline-edit-form .form-group:last-of-type {
+    margin-bottom: 20px;
+}
+
+.inline-edit-form .form-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.inline-edit-form .place-name-input {
+    width: 100%;
+}
+

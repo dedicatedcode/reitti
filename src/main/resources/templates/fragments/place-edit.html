@@ -31,7 +31,7 @@
             </select>
         </div>
         <div class="form-buttons">
-            <button type="submit" class="btn" th:text="#{form.save}">Save</button>
+            <button type="submit" class="btn" th:text="#{form.update}">Save</button>
             <button type="button" 
                     class="btn"
                     th:hx-get="@{/timeline/places/view/{id}(id=${place.id})}"

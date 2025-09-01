@@ -782,7 +782,7 @@
                                id="reittiColor" 
                                name="color" 
                                value="#3498db"
-                               style="width: 50px; height: 40px; border: none; border-radius: 4px; cursor: pointer;">
+                               style="width: 50px; height: 40px; border: none; border-radius: 4px; cursor: pointer; padding: 2px;">
                         <span style="color: var(--color-text-white); font-size: 0.9em;" th:text="#{integrations.reitti.color.description}">Choose a color to identify this integration on the map</span>
                     </div>
                 </div>
@@ -977,31 +977,30 @@
 
     <div th:if="${!geocodingResponses.isEmpty()}" class="settings-card">
         <h3>Geocoding Responses</h3>
-        <div th:each="response, iterStat : ${geocodingResponses}" style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.2);" th:style="${iterStat.last} ? 'margin-bottom: 30px;' : 'margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.2);'">
-            <h4 style="margin: 0 0 15px 0; color: var(--color-accent);">Response #<span th:text="${iterStat.count}">1</span></h4>
+        <div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.2);">
             <table>
+                <thead>
                 <tr>
                     <th th:text="#{places.geocoding.response.provider}">Provider</th>
-                    <td th:text="${response.providerName}">Provider Name</td>
-                </tr>
-                <tr>
                     <th th:text="#{places.geocoding.response.status}">Status</th>
-                    <td th:text="${response.status}">Status</td>
-                </tr>
-                <tr>
                     <th th:text="#{places.geocoding.response.fetched.at}">Fetched At</th>
-                    <td th:text="${#temporals.format(response.fetchedAt, 'yyyy-MM-dd HH:mm:ss')}">Fetched At</td>
-                </tr>
-                <tr th:if="${response.errorDetails}">
                     <th th:text="#{places.geocoding.response.error.details}">Error Details</th>
-                    <td th:text="${response.errorDetails}">Error Details</td>
+                    <th th:text="#{places.geocoding.response.raw.data}">Raw Data</th>
                 </tr>
+                </thead>
+                <tbody>
+                <tr th:each="response, iterStat : ${geocodingResponses}">
+                    <td th:text="${response.providerName}">Provider Name</td>
+                    <td th:text="${response.status}">Status</td>
+                    <td th:text="${#temporals.format(response.fetchedAt, 'yyyy-MM-dd HH:mm:ss')}">Fetched At</td>
+                    <td><span  th:if="${response.errorDetails}" th:text="${response.errorDetails}">Error Details</span></td>
+                    <td>
+                        <pre style="background-color: rgba(255,255,255,0.1); padding: 15px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; max-height: 300px; overflow-y: auto;"
+                             th:text="${response.rawData}"></pre>
+                    </td>
+                </tr>
+                </tbody>
             </table>
-            
-            <div style="margin-top: 15px;">
-                <h5 th:text="#{places.geocoding.response.raw.data}">Raw Data</h5>
-                <pre style="background-color: rgba(255,255,255,0.1); padding: 15px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; max-height: 300px; overflow-y: auto;" th:text="${response.rawData}">Raw JSON Data</pre>
-            </div>
         </div>
     </div>
 

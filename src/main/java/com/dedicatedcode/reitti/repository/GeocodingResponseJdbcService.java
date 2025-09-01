@@ -42,7 +42,6 @@ public class GeocodingResponseJdbcService {
             FROM geocoding_response
             WHERE significant_place_id = ?
             ORDER BY fetched_at DESC
-            LIMIT 1
             """;
         return jdbcTemplate.query(sql, new GeocodingResponseRowMapper(), significantPlace.getId());
     }

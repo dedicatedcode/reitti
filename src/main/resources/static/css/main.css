@@ -1308,32 +1308,6 @@ button:disabled {
     box-shadow: 0 8px 25px rgba(245, 222, 179, 0.3);
 }
 
-/* Place edit form styles */
-.place-name-container.editing {
-    background-color: var(--color-background-dark);
-    border: 1px solid var(--color-highlight);
-    border-radius: 8px;
-    padding: 15px;
-    margin: 10px 0;
-}
-
-.inline-edit-form .form-group {
-    margin-bottom: 15px;
-}
-
-.inline-edit-form .form-group:last-of-type {
-    margin-bottom: 20px;
-}
-
-.inline-edit-form .form-buttons {
-    display: flex;
-    gap: 10px;
-}
-
-.inline-edit-form .place-name-input {
-    width: 100%;
-}
-
 
 .default-avatars-section {
     margin-bottom: 20px;

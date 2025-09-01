@@ -58,7 +58,10 @@
             <!-- Trip description -->
             <span th:if="${entry.type.name() == 'TRIP'}" th:text="#{timeline.trip}">Trip</span>
         </div>
-        
+        <!-- Type -->
+        <div class="entry-time" th:if="${entry.type.name() == 'VISIT'}">
+            <span th:text="#{${entry.place.type.messageKey}}">Home</span>
+        </div>
         <!-- Duration and Distance -->
         <span class="entry-duration">
             <span th:if="${entry.type.name() == 'VISIT'}">
