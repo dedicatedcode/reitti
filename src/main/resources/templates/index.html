@@ -43,10 +43,9 @@
             color: #f1ba63;
         }
 
-        .auto-update-overlay .exit-button {
+        .auto-update-overlay .overlay-button {
             position: absolute;
             bottom: 10px;
-            right: 15px;
             background: rgba(255, 255, 255, 0.2);
             border: none;
             color: white;
@@ -61,8 +60,16 @@
             transition: background-color 0.2s ease;
         }
 
-        .auto-update-overlay .exit-button:hover {
+        .auto-update-overlay .overlay-button:hover {
             background: rgba(255, 255, 255, 0.3);
+        }
+
+        .auto-update-overlay .exit-button {
+            right: 15px;
+        }
+
+        .auto-update-overlay .fullscreen-button {
+            right: 55px;
         }
 
         /* Smooth transitions for timeline and date picker */
@@ -99,8 +106,11 @@
 
 <!-- Auto-update overlay -->
 <div id="auto-update-overlay" class="auto-update-overlay">
-    <button class="exit-button" onclick="disableAutoUpdate()" title="Exit Auto Update">
+    <button class="overlay-button exit-button" onclick="disableAutoUpdate()" title="Exit Auto Update">
         <i class="lni lni-pause"></i>
+    </button>
+    <button class="overlay-button fullscreen-button" onclick="toggleFullscreen()" title="Toggle Fullscreen">
+        <i class="lni lni-arrow-all-direction"></i>
     </button>
     <div class="date" id="auto-update-date"></div>
     <div class="time" id="auto-update-time"></div>
