@@ -393,12 +393,23 @@ E.g. If you have the username "myusername" with your OIDC provider, create a use
 
 ## Technologies
 
-- **Backend**: Spring Boot, Spring Data JPA, Spring Security
-- **Database**: PostgreSQL with spatial extensions
-- **Message Queue**: RabbitMQ for asynchronous processing
-- **Frontend**: Thymeleaf, JavaScript
-- **Testing**: JUnit 5, Testcontainers
-- **Containerization**: Docker
+
+## Backup & Data Persistence
+
+Reitti is designed to be mostly stateless, with all important data stored in the PostgreSQL database (with PostGIS extensions). To ensure you do not lose any critical data:
+
+- **Backup Requirement:** Only the PostGIS database needs to be backed up regularly. This database contains all user location data, analysis results, and other persistent information.
+- **Stateless Services:** All other components (RabbitMQ, Redis, Reitti application, etc.) are stateless and do not store any important data. These can be redeployed or restarted without risk of data loss.
+
+**Recommended Backup Strategy:**
+- Use standard PostgreSQL backup tools (such as `pg_dump` or physical volume snapshots) to back up your database.
+- Ensure backups are performed regularly and stored securely.
+- No backup is needed for RabbitMQ, Redis, or the Reitti application itself.
+
+**Restore:**
+- In case of disaster recovery, restoring the PostGIS database is sufficient to recover all user data and history.
+
+For more details, see the [Reitti backup documentation](https://www.dedicatedcode.com/projects/reitti/backup/).
 
 ## Contributing
 
