@@ -14,10 +14,10 @@
         /* Auto-update mode styles */
         .auto-update-overlay {
             position: fixed;
-            top: 20px;
+            bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.4);
             color: white;
             padding: 15px 30px;
             border-radius: 10px;
@@ -25,6 +25,8 @@
             z-index: 1000;
             opacity: 0;
             transition: opacity 0.3s ease;
+            font-family: "Fraunces", serif;
+            text-align: center;
         }
 
         .auto-update-overlay.visible {
@@ -37,13 +39,13 @@
         }
 
         .auto-update-overlay .time {
-            font-size: 1.4rem;
+            font-size: 3.4rem;
             color: #f1ba63;
         }
 
         .auto-update-overlay .exit-button {
             position: absolute;
-            top: 10px;
+            bottom: 10px;
             right: 15px;
             background: rgba(255, 255, 255, 0.2);
             border: none;
@@ -98,7 +100,7 @@
 <!-- Auto-update overlay -->
 <div id="auto-update-overlay" class="auto-update-overlay">
     <button class="exit-button" onclick="disableAutoUpdate()" title="Exit Auto Update">
-        <i class="lni lni-close"></i>
+        <i class="lni lni-pause"></i>
     </button>
     <div class="date" id="auto-update-date"></div>
     <div class="time" id="auto-update-time"></div>
@@ -817,9 +819,8 @@
         // Format time (e.g., "14:30:25")
         const timeOptions = { 
             hour: '2-digit', 
-            minute: '2-digit', 
-            second: '2-digit',
-            hour12: false 
+            minute: '2-digit',
+            hour12: false
         };
         const formattedTime = now.toLocaleTimeString(undefined, timeOptions);
         
