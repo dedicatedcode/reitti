@@ -5,7 +5,7 @@
 </head>
 <body>
 
-<div th:fragment="timeline-content">
+<div th:fragment="timeline-content" id="timeline-content">
     <div th:if="${timelineData.users == null or timelineData.users.isEmpty()}" class="timeline-entry" th:text="#{timeline.no.data}">
         No timeline data available for this date.
     </div>
