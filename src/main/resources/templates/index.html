@@ -41,6 +41,28 @@
             color: #f1ba63;
         }
 
+        .auto-update-overlay .exit-button {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: background-color 0.2s ease;
+        }
+
+        .auto-update-overlay .exit-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
         /* Smooth transitions for timeline and date picker */
         .timeline, #horizontal-date-picker-container {
             transition: transform 0.5s ease, opacity 0.5s ease;
@@ -75,6 +97,9 @@
 
 <!-- Auto-update overlay -->
 <div id="auto-update-overlay" class="auto-update-overlay">
+    <button class="exit-button" onclick="disableAutoUpdate()" title="Exit Auto Update">
+        <i class="lni lni-close"></i>
+    </button>
     <div class="date" id="auto-update-date"></div>
     <div class="time" id="auto-update-time"></div>
 </div>
