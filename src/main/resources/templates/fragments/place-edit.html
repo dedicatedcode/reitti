@@ -11,18 +11,25 @@
           hx-target="closest .place-name-container"
           hx-swap="outerHTML"
           class="inline-edit-form">
-        <input type="text" 
-               name="name" 
-               th:value="${place.name}"
-               class="place-name-input"
-               autofocus
-               required>
-        <select name="type" class="place-type-select">
-            <option th:each="placeType : ${placeTypes}" 
-                    th:value="${placeType.name()}" 
-                    th:selected="${placeType == place.type}"
-                    th:text="#{${placeType.messageKey}}">Place Type</option>
-        </select>
+        <div>
+            <input type="text"
+                   name="name"
+                   th:value="${place.name}"
+                   class="place-name-input"
+                   autofocus
+                   required>
+
+        </div>
+        <div>
+            <label for="category" th:text="#{places.category.label}">Category</label>
+            <select id="category" name="type" class="form-select">
+                <option th:each="placeType : ${placeTypes}"
+                        th:value="${placeType.name()}"
+                        th:selected="${placeType == place.type}"
+                        th:text="#{${placeType.messageKey}}">Place Type</option>
+            </select>
+
+        </div>
         <button type="submit" class="save-btn" title="Save">
             <i class="lni lni-check-circle-1"></i>
         </button>
