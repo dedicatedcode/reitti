@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service.integration;
 
 import com.dedicatedcode.reitti.dto.SubscriptionResponse;
+import com.dedicatedcode.reitti.model.NotificationData;
 import com.dedicatedcode.reitti.model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,24 +44,25 @@ public class ReittiSubscriptionService {
         subscriptions.remove(subscriptionId);
     }
 
-    private void sendNotificationToCallback(ReittiSubscription subscription, Object notificationData) {
+    public void notifyAllSubscriptions(User user, NotificationData notificationData) {
+        subscriptions.values().stream()
+                .filter(subscription -> subscription.getUserId().equals(user.getId()))
+                .forEach(subscription -> sendNotificationToCallback(subscription, notificationData));
+    }
+
+    private void sendNotificationToCallback(ReittiSubscription subscription, NotificationData notificationData) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Object> request = new HttpEntity<>(notificationData, headers);
-            
+
+            //append the endpoint for notify here to the callbackUrl AI!
             restTemplate.postForEntity(subscription.getCallbackUrl(), request, String.class);
             log.debug("Notification sent successfully to subscription: {}", subscription.getSubscriptionId());
         } catch (Exception e) {
-            log.error("Failed to send notification to subscription: {}, callback URL: {}", 
-                     subscription.getSubscriptionId(), subscription.getCallbackUrl(), e);
+            log.error("Failed to send notification to subscription: {}, callback URL: {}",
+                    subscription.getSubscriptionId(), subscription.getCallbackUrl(), e);
             // Don't rethrow - we want to continue notifying other subscriptions
         }
-    }
-
-    public void notifyAllSubscriptions(User user, Object notificationData) {
-        subscriptions.values().stream()
-                .filter(subscription -> subscription.getUserId().equals(user.getId()))
-                .forEach(subscription -> sendNotificationToCallback(subscription, notificationData));
     }
 }
