@@ -218,8 +218,8 @@
             let bounds = L.latLngBounds();
 
             //after all fetch operations are done, we want to update the map with the bounds.
-            // window.originalBounds = bounds;
-            // map.fitBounds(bounds, fitToBoundsConfig) AI!
+            window.originalBounds = bounds;
+            map.fitBounds(bounds, fitToBoundsConfig);
             for (const element of timelineContainer) {
                 const rawLocationPointsUrl = element?.dataset.rawLocationPointsUrl;
                 const color = element?.dataset.baseColor;
