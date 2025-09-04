@@ -12,11 +12,13 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -68,5 +70,20 @@ public class ReittiIntegrationApiController {
         return ResponseEntity.ok(response);
     }
 
-    //add a notify method, this should receive the subscriptionId to determine which integration is affected. This endpoint will be called from ReittiSubscriptionService AI!
+    @PostMapping("/notify/{subscriptionId}")
+    public ResponseEntity<Void> notify(@PathVariable String subscriptionId,
+                                      @RequestBody Object notificationData) {
+        try {
+            // Verify subscription exists
+            if (subscriptionService.getSubscription(subscriptionId) == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            // Process the notification - this endpoint receives notifications from external systems
+            // The actual notification processing logic would go here
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 }
