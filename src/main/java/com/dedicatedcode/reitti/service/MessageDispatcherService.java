@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.*;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
 import com.dedicatedcode.reitti.service.processing.*;
 import org.slf4j.Logger;
@@ -22,6 +23,7 @@ public class MessageDispatcherService {
     private final ReverseGeocodingListener reverseGeocodingListener;
     private final ProcessingPipelineTrigger processingPipelineTrigger;
     private final UserSseEmitterService userSseEmitterService;
+    private final UserJdbcService  userJdbcService;
 
     @Autowired
     public MessageDispatcherService(LocationDataIngestPipeline locationDataIngestPipeline,
@@ -30,7 +32,8 @@ public class MessageDispatcherService {
                                     TripDetectionService tripDetectionService,
                                     ReverseGeocodingListener reverseGeocodingListener,
                                     ProcessingPipelineTrigger processingPipelineTrigger,
-                                    UserSseEmitterService userSseEmitterService) {
+                                    UserSseEmitterService userSseEmitterService,
+                                    UserJdbcService userJdbcService) {
         this.locationDataIngestPipeline = locationDataIngestPipeline;
         this.visitDetectionService = visitDetectionService;
         this.visitMergingService = visitMergingService;
@@ -38,6 +41,7 @@ public class MessageDispatcherService {
         this.reverseGeocodingListener = reverseGeocodingListener;
         this.processingPipelineTrigger = processingPipelineTrigger;
         this.userSseEmitterService = userSseEmitterService;
+        this.userJdbcService = userJdbcService;
     }
 
     @RabbitListener(queues = RabbitMQConfig.LOCATION_DATA_QUEUE, concurrency = "${reitti.events.concurrency}")
@@ -73,7 +77,7 @@ public class MessageDispatcherService {
     @RabbitListener(queues = RabbitMQConfig.USER_EVENT_QUEUE)
     public void handleUserNotificationEvent(SSEEvent event) {
         logger.debug("Dispatching SSEEvent for user: {}", event.getUserId());
-        this.userSseEmitterService.sendEventToUser(event.getUserId(), event);
+        this.userJdbcService.findById(event.getUserId()).ifPresentOrElse(user -> this.userSseEmitterService.sendEventToUser(user, event), () -> logger.warn("User not found for user: {}", event.getUserId()));
     }
 
     @RabbitListener(queues = RabbitMQConfig.TRIGGER_PROCESSING_PIPELINE_QUEUE, concurrency = "${reitti.events.concurrency}")

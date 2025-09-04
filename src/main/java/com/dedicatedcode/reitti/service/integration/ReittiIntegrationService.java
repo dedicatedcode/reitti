@@ -1,9 +1,6 @@
 package com.dedicatedcode.reitti.service.integration;
 
-import com.dedicatedcode.reitti.dto.LocationDataRequest;
-import com.dedicatedcode.reitti.dto.ReittiRemoteInfo;
-import com.dedicatedcode.reitti.dto.TimelineEntry;
-import com.dedicatedcode.reitti.dto.UserTimelineData;
+import com.dedicatedcode.reitti.dto.*;
 import com.dedicatedcode.reitti.model.ReittiIntegration;
 import com.dedicatedcode.reitti.model.RemoteUser;
 import com.dedicatedcode.reitti.model.User;
@@ -29,28 +26,26 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class ReittiIntegrationService {
     private static final Logger log = LoggerFactory.getLogger(ReittiIntegrationService.class);
     private static final List<ReittiIntegration.Status> VALID_INTEGRATION_STATUS = List.of(ReittiIntegration.Status.ACTIVE, ReittiIntegration.Status.RECOVERABLE);
 
-    @Value("${reitti.advertise-uri:}")
-    private String advertiseUri;
-
+    private final String advertiseUri;
     private final ReittiIntegrationJdbcService jdbcService;
     private final RestTemplate restTemplate;
     private final AvatarService avatarService;
-    private final ReittiSubscriptionService subscriptionService;
+    private final Map<Long, String> integrationSubscriptions = new ConcurrentHashMap<>();
 
-    public ReittiIntegrationService(ReittiIntegrationJdbcService jdbcService,
-                                    RestTemplate restTemplate, 
-                                    AvatarService avatarService,
-                                    ReittiSubscriptionService subscriptionService) {
+    public ReittiIntegrationService(@Value("${reitti.server.advertise-uri}") String advertiseUri, ReittiIntegrationJdbcService jdbcService,
+                                    RestTemplate restTemplate,
+                                    AvatarService avatarService) {
+        this.advertiseUri = advertiseUri;
         this.jdbcService = jdbcService;
         this.restTemplate = restTemplate;
         this.avatarService = avatarService;
-        this.subscriptionService = subscriptionService;
     }
 
     public List<UserTimelineData> getTimelineData(User user, LocalDate selectedDate, ZoneId userTimezone) {
@@ -63,7 +58,7 @@ public class ReittiIntegrationService {
                     try {
                         RemoteUser remoteUser = handleRemoteUser(integration);
                         List<TimelineEntry> timelineEntries = loadTimeLineEntries(integration, selectedDate, userTimezone);
-                        update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
+                        integration = update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
                         return new UserTimelineData("remote:" + integration.getId(),
                                 remoteUser.getDisplayName(),
                                 this.avatarService.generateInitials(remoteUser.getDisplayName()),
@@ -162,6 +157,7 @@ public class ReittiIntegrationService {
                 .findFirst().orElse(Collections.emptyList());
 
     }
+
     private ReittiIntegration update(ReittiIntegration integration) {
         try {
             return this.jdbcService.update(integration).orElseThrow();
@@ -241,15 +237,24 @@ public class ReittiIntegrationService {
 
     public void registerSubscriptionsForUser(User user) {
         log.info("Registering subscriptions for user: [{}]", user.getId());
+
+        if (advertiseUri == null || advertiseUri.isEmpty()) {
+            log.warn("Advertise URI is null or empty, remote updates are disabled. Consider setting 'reitti.server.advertise-uri'");
+            return;
+        }
         
         List<ReittiIntegration> activeIntegrations = getActiveIntegrationsForUser(user);
         
         for (ReittiIntegration integration : activeIntegrations) {
             try {
-                registerSubscriptionOnIntegration(integration, user);
+                registerSubscriptionOnIntegration(integration);
                 log.debug("Successfully registered subscription for integration: [{}]", integration.getId());
-            } catch (Exception e) {
-                log.warn("Failed to register subscription for integration: [{}]", integration.getId(), e);
+            } catch (Exception | RequestFailedException e) {
+                log.error("couldn't fetch user info for [{}]", integration, e);
+                update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
+            } catch (RequestTemporaryFailedException e) {
+                log.warn("couldn't temporarily fetch user info for [{}]", integration, e);
+                update(integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
             }
         }
     }
@@ -262,7 +267,7 @@ public class ReittiIntegrationService {
                 .toList();
     }
 
-    private void registerSubscriptionOnIntegration(ReittiIntegration integration, User user) throws RequestFailedException, RequestTemporaryFailedException {
+    private void registerSubscriptionOnIntegration(ReittiIntegration integration) throws RequestFailedException, RequestTemporaryFailedException {
         if (advertiseUri == null || advertiseUri.isEmpty()) {
             log.warn("No advertise URI configured, skipping subscription registration for integration: [{}]", integration.getId());
             return;
@@ -271,24 +276,28 @@ public class ReittiIntegrationService {
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-API-TOKEN", integration.getToken());
         headers.setContentType(MediaType.APPLICATION_JSON);
-        
-        Map<String, String> subscriptionRequest = Map.of("callbackUrl", advertiseUri);
-        HttpEntity<Map<String, String>> entity = new HttpEntity<>(subscriptionRequest, headers);
+
+        SubscriptionRequest subscriptionRequest = new SubscriptionRequest();
+        subscriptionRequest.setCallbackUrl(advertiseUri);
+        HttpEntity<SubscriptionRequest> entity = new HttpEntity<>(subscriptionRequest, headers);
         
         String subscribeUrl = integration.getUrl().endsWith("/") ?
                 integration.getUrl() + "api/v1/reitti-integration/subscribe" :
                 integration.getUrl() + "/api/v1/reitti-integration/subscribe";
         
         try {
-            ResponseEntity<Map> response = restTemplate.exchange(
+            ResponseEntity<SubscriptionResponse> response = restTemplate.exchange(
                     subscribeUrl,
                     HttpMethod.POST,
                     entity,
-                    Map.class
+                    SubscriptionResponse.class
             );
             
-            if (response.getStatusCode().is2xxSuccessful()) {
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 log.debug("Successfully subscribed to integration: [{}]", integration.getId());
+                synchronized (integrationSubscriptions) {
+                    this.integrationSubscriptions.put(integration.getId(), response.getBody().getSubscriptionId());
+                }
             } else if (response.getStatusCode().is4xxClientError()) {
                 throw new RequestFailedException(subscribeUrl, response.getStatusCode(), response.getBody());
             } else {
@@ -296,6 +305,57 @@ public class ReittiIntegrationService {
             }
         } catch (RestClientException ex) {
             throw new RequestFailedException(subscribeUrl, HttpStatusCode.valueOf(500), "Connection refused");
+        }
+    }
+
+    public void unsubscribeFromIntegrations(User user) {
+        log.info("Unsubscribing from integrations for user: [{}]", user.getId());
+
+        List<ReittiIntegration> activeIntegrations = getActiveIntegrationsForUser(user);
+
+        for (ReittiIntegration integration : activeIntegrations) {
+            String subscriptionId = integrationSubscriptions.get(integration.getId());
+            if (subscriptionId != null) {
+                try {
+                    unsubscribeFromIntegration(integration, subscriptionId);
+                    integrationSubscriptions.remove(integration.getId());
+                    log.debug("Successfully unsubscribed from integration: [{}]", integration.getId());
+                } catch (Exception | RequestFailedException e) {
+                    log.warn("Failed to unsubscribe from integration: [{}]", integration.getId(), e);
+                    update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
+                } catch (RequestTemporaryFailedException e) {
+                    update(integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
+                }
+            }
+        }
+    }
+
+    private void unsubscribeFromIntegration(ReittiIntegration integration, String subscriptionId) throws RequestFailedException, RequestTemporaryFailedException {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-API-TOKEN", integration.getToken());
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        String unsubscribeUrl = integration.getUrl().endsWith("/") ?
+                integration.getUrl() + "api/v1/reitti-integration/subscribe/" + subscriptionId :
+                integration.getUrl() + "/api/v1/reitti-integration/subscribe/" + subscriptionId;
+
+        try {
+            ResponseEntity<Void> response = restTemplate.exchange(
+                    unsubscribeUrl,
+                    HttpMethod.DELETE,
+                    entity,
+                    Void.class
+            );
+
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                if (response.getStatusCode().is4xxClientError()) {
+                    throw new RequestFailedException(unsubscribeUrl, response.getStatusCode(), null);
+                } else {
+                    throw new RequestTemporaryFailedException(unsubscribeUrl, response.getStatusCode(), null);
+                }
+            }
+        } catch (RestClientException ex) {
+            throw new RequestFailedException(unsubscribeUrl, HttpStatusCode.valueOf(500), "Connection refused");
         }
     }
 

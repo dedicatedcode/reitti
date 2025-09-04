@@ -25,12 +25,9 @@ public class SseController {
 
     @GetMapping(path = "/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter handleSseForUser(@AuthenticationPrincipal User user) {
-        SseEmitter emitter = emitterService.addEmitter(user.getId());
-        log.info("New SSE connection from user: [{}]", user.getId());
-        
-        // Register subscriptions on all ReittiIntegrations for this user
+        SseEmitter emitter = emitterService.addEmitter(user);
         reittiIntegrationService.registerSubscriptionsForUser(user);
-        
+        log.info("New SSE connection from user: [{}]", user.getId());
         return emitter;
     }
 }

@@ -7,7 +7,6 @@ import com.dedicatedcode.reitti.event.SSEType;
 import com.dedicatedcode.reitti.model.ProcessedVisit;
 import com.dedicatedcode.reitti.model.Trip;
 import com.dedicatedcode.reitti.model.User;
-import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -25,12 +24,9 @@ import java.util.stream.Collectors;
 @Service
 public class UserNotificationQueueService {
     private static final Logger log = LoggerFactory.getLogger(UserNotificationQueueService.class);
-    private final UserSettingsJdbcService userSettingsJdbcService;
     private final RabbitTemplate rabbitTemplate;
 
-    public UserNotificationQueueService(UserSettingsJdbcService userSettingsJdbcService,
-                                        RabbitTemplate rabbitTemplate) {
-        this.userSettingsJdbcService = userSettingsJdbcService;
+    public UserNotificationQueueService(RabbitTemplate rabbitTemplate) {
         this.rabbitTemplate = rabbitTemplate;
     }
 

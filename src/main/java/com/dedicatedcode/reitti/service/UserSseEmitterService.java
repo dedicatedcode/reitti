@@ -1,6 +1,8 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.event.SSEEvent;
+import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
@@ -16,68 +18,63 @@ import java.util.concurrent.CopyOnWriteArraySet;
 @Service
 public class UserSseEmitterService implements SmartLifecycle {
     private static final Logger log = LoggerFactory.getLogger(UserSseEmitterService.class);
-    private final Map<Long, Set<SseEmitter>> userEmitters = new ConcurrentHashMap<>();
+    private final ReittiIntegrationService reittiIntegrationService;
+    private final Map<User, Set<SseEmitter>> userEmitters = new ConcurrentHashMap<>();
 
-    public SseEmitter addEmitter(Long userId) {
+    public UserSseEmitterService(ReittiIntegrationService reittiIntegrationService) {
+        this.reittiIntegrationService = reittiIntegrationService;
+    }
+
+    public SseEmitter addEmitter(User user) {
         SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
-        userEmitters.computeIfAbsent(userId, k -> new CopyOnWriteArraySet<>()).add(emitter);
+        userEmitters.computeIfAbsent(user, _ -> new CopyOnWriteArraySet<>()).add(emitter);
         emitter.onCompletion(() -> {
-            log.info("SSE connection completed for user: [{}]", userId);
-            removeEmitter(userId, emitter);
+            log.info("SSE connection completed for user: [{}]", user);
+            removeEmitter(user, emitter);
         });
 
         emitter.onTimeout(() -> {
-            log.info("SSE connection timed out for user: [{}]", userId);
-            emitter.complete(); // Complete the emitter on timeout
-            removeEmitter(userId, emitter);
+            log.info("SSE connection timed out for user: [{}]", user);
+            emitter.complete();
+            removeEmitter(user, emitter);
         });
 
         emitter.onError(throwable -> {
-            log.error("SSE connection error for user [{}]: {}", userId, throwable.getMessage());
-            removeEmitter(userId, emitter);
+            log.error("SSE connection error for user [{}]: {}", user, throwable.getMessage());
+            removeEmitter(user, emitter);
         });
-        log.info("Emitter added for user: {}. Total emitters for user: {}", userId, userEmitters.get(userId).size());
+        log.info("Emitter added for user: {}. Total emitters for user: {}", user, userEmitters.get(user).size());
         return emitter;
     }
 
 
-    public void sendEventToUser(Long userId, SSEEvent eventData) {
-        Set<SseEmitter> emitters = userEmitters.get(userId);
+    public void sendEventToUser(User user, SSEEvent eventData) {
+        Set<SseEmitter> emitters = userEmitters.get(user);
         if (emitters != null) {
             for (SseEmitter emitter : new CopyOnWriteArraySet<>(emitters)) {
                 try {
                     emitter.send(SseEmitter.event().data(eventData));
-                    log.debug("Sent event to user: {}", userId);
+                    log.debug("Sent event to user: {}", user);
                 } catch (IOException e) {
-                    log.error("Error sending event to user {}: {}", userId, e.getMessage());
+                    log.error("Error sending event to user {}: {}", user, e.getMessage());
                     emitter.completeWithError(e);
-                    removeEmitter(userId, emitter);
+                    removeEmitter(user, emitter);
                 }
             }
         } else {
-            log.debug("No active SSE emitters for user: {}", userId);
+            log.debug("No active SSE emitters for user: {}", user);
         }
     }
 
-    private void removeEmitter(Long userId, SseEmitter emitter) {
-        Set<SseEmitter> emitters = userEmitters.get(userId);
+    private void removeEmitter(User user, SseEmitter emitter) {
+        Set<SseEmitter> emitters = userEmitters.get(user);
         if (emitters != null) {
             emitters.remove(emitter);
             if (emitters.isEmpty()) {
-                userEmitters.remove(userId);
-            }
-            log.info("Emitter removed for user: {}. Remaining emitters for user: {}", userId, userEmitters.containsKey(userId) ? userEmitters.get(userId).size() : 0);
-        }
-    }
-
-    public void removeEmitter(Long userId) {
-        Set<SseEmitter> emitters = userEmitters.get(userId);
-        if (emitters != null) {
-            for (SseEmitter emitter : emitters) {
-                removeEmitter(userId, emitter);
-            }
-            userEmitters.remove(userId);
-            log.info("Removed all emitters for user: {}. Remaining emitters for user: {}", userId, userEmitters.containsKey(userId) ? userEmitters.get(userId).size() : 0);
+                    userEmitters.remove(user);
+                    reittiIntegrationService.unsubscribeFromIntegrations(user);
+                }
+            log.info("Emitter removed for user: {}. Remaining emitters for user: {}", user, userEmitters.containsKey(user) ? userEmitters.get(user).size() : 0);
         }
     }
 
