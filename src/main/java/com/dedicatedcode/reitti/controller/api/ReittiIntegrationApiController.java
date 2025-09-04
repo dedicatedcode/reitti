@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.dto.SubscriptionResponse;
 import com.dedicatedcode.reitti.dto.TimelineEntry;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.service.TimelineService;
+import com.dedicatedcode.reitti.service.UserNotificationService;
 import com.dedicatedcode.reitti.service.VersionService;
 import com.dedicatedcode.reitti.service.integration.ReittiSubscriptionService;
 import jakarta.validation.Valid;
@@ -32,13 +33,16 @@ public class ReittiIntegrationApiController {
     private final VersionService versionService;
     private final TimelineService timelineService;
     private final ReittiSubscriptionService subscriptionService;
+    private final UserNotificationService userNotificationService;
 
     public ReittiIntegrationApiController(VersionService versionService,
                                           TimelineService timelineService,
-                                          ReittiSubscriptionService subscriptionService) {
+                                          ReittiSubscriptionService subscriptionService,
+                                          UserNotificationService userNotificationService) {
         this.versionService = versionService;
         this.timelineService = timelineService;
         this.subscriptionService = subscriptionService;
+        this.userNotificationService = userNotificationService;
     }
 
     @GetMapping("/info")
@@ -78,7 +82,9 @@ public class ReittiIntegrationApiController {
             if (subscriptionService.getSubscription(subscriptionId) == null) {
                 return ResponseEntity.notFound().build();
             }
-            
+
+
+            this.userNotificationService.
             // Process the notification - this endpoint receives notifications from external systems
             // The actual notification processing logic would go here
             return ResponseEntity.ok().build();

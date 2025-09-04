@@ -6,7 +6,7 @@ import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
-import com.dedicatedcode.reitti.service.UserNotificationQueueService;
+import com.dedicatedcode.reitti.service.UserNotificationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -28,19 +28,19 @@ public class TripDetectionService {
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final TripJdbcService tripJdbcService;
     private final UserJdbcService userJdbcService;
-    private final UserNotificationQueueService userNotificationQueueService;
+    private final UserNotificationService userNotificationService;
     private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
 
     public TripDetectionService(ProcessedVisitJdbcService processedVisitJdbcService,
                                 RawLocationPointJdbcService rawLocationPointJdbcService,
                                 TripJdbcService tripJdbcService,
                                 UserJdbcService userJdbcService,
-                                UserNotificationQueueService userNotificationQueueService) {
+                                UserNotificationService userNotificationService) {
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.tripJdbcService = tripJdbcService;
         this.userJdbcService = userJdbcService;
-        this.userNotificationQueueService = userNotificationQueueService;
+        this.userNotificationService = userNotificationService;
     }
 
     public void visitCreated(ProcessedVisitCreatedEvent event) {
@@ -78,7 +78,7 @@ public class TripDetectionService {
                 }
 
                 tripJdbcService.bulkInsert(user, trips);
-                userNotificationQueueService.newTrips(user, trips);
+                userNotificationService.newTrips(user, trips);
             });
         } finally {
             userLock.unlock();

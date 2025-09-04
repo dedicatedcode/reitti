@@ -56,7 +56,9 @@ public class ReittiSubscriptionService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Object> request = new HttpEntity<>(notificationData, headers);
 
-            String notifyUrl = subscription.getCallbackUrl() + "/api/v1/reitti-integration/notify/" + subscription.getSubscriptionId();
+            String notifyUrl = subscription.getCallbackUrl().endsWith("/") ?
+                    subscription.getCallbackUrl() + "api/v1/reitti-integration/notify/" + subscription.getSubscriptionId() :
+                    subscription.getCallbackUrl() + "/api/v1/reitti-integration/notify/" + subscription.getSubscriptionId();
             restTemplate.postForEntity(notifyUrl, request, String.class);
             log.debug("Notification sent successfully to subscription: {}", subscription.getSubscriptionId());
         } catch (Exception e) {

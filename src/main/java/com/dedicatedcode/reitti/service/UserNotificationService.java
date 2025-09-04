@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.event.SSEEvent;
 import com.dedicatedcode.reitti.event.SSEType;
+import com.dedicatedcode.reitti.model.NotificationData;
 import com.dedicatedcode.reitti.model.ProcessedVisit;
 import com.dedicatedcode.reitti.model.Trip;
 import com.dedicatedcode.reitti.model.User;
@@ -67,33 +68,9 @@ public class UserNotificationService {
     private void notifyReittiSubscriptions(User user, SSEType eventType, Set<LocalDate> dates) {
         try {
             NotificationData notificationData = new NotificationData(eventType, user.getId(), dates);
-            reittiSubscriptionService.notifyAllSubscriptions(user.getId(), notificationData);
+            reittiSubscriptionService.notifyAllSubscriptions(user, notificationData);
         } catch (Exception e) {
             log.error("Failed to notify Reitti subscriptions for user: {}", user.getId(), e);
-        }
-    }
-
-    private static class NotificationData {
-        private final SSEType eventType;
-        private final Long userId;
-        private final Set<LocalDate> affectedDates;
-
-        public NotificationData(SSEType eventType, Long userId, Set<LocalDate> affectedDates) {
-            this.eventType = eventType;
-            this.userId = userId;
-            this.affectedDates = affectedDates;
-        }
-
-        public SSEType getEventType() {
-            return eventType;
-        }
-
-        public Long getUserId() {
-            return userId;
-        }
-
-        public Set<LocalDate> getAffectedDates() {
-            return affectedDates;
         }
     }
 
