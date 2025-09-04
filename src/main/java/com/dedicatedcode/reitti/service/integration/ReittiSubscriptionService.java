@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.service.integration;
 
 import com.dedicatedcode.reitti.dto.SubscriptionResponse;
-import com.dedicatedcode.reitti.model.ReittiSubscription;
 import com.dedicatedcode.reitti.model.User;
 import org.springframework.stereotype.Service;
 
