@@ -216,25 +216,44 @@
             }
 
             let bounds = L.latLngBounds();
+            const fetchPromises = [];
 
             for (const element of timelineContainer) {
                 const rawLocationPointsUrl = element?.dataset.rawLocationPointsUrl;
                 const color = element?.dataset.baseColor;
                 if (rawLocationPointsUrl) {
-                    // Fetch raw location points for map display
-                    fetch(rawLocationPointsUrl).then(response => {
+                    // Create fetch promise for raw location points
+                    const fetchPromise = fetch(rawLocationPointsUrl).then(response => {
                         if (!response.ok) {
                             console.warn('Could not fetch raw location points');
                             return { points: [] };
                         }
                         return response.json();
                     }).then(rawPointsData => {
-                        bounds.extend(updateMapWithRawPoints(rawPointsData, color));
+                        return updateMapWithRawPoints(rawPointsData, color);
                     }).catch(error => {
                         console.warn('Error fetching raw location points:', error);
+                        return L.latLngBounds(); // Return empty bounds on error
                     });
+                    
+                    fetchPromises.push(fetchPromise);
                 }
             }
+
+            // Wait for all fetch operations to complete, then update map bounds
+            Promise.all(fetchPromises).then(boundsArray => {
+                boundsArray.forEach(fetchBounds => {
+                    if (fetchBounds.isValid()) {
+                        bounds.extend(fetchBounds);
+                    }
+                });
+                
+                // Update map bounds after all fetch operations are complete
+                if (bounds.isValid()) {
+                    window.originalBounds = bounds;
+                    map.fitBounds(bounds, fitToBoundsConfig);
+                }
+            });
         }
 
         // Function to update map with raw location points
