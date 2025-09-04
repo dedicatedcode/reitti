@@ -43,35 +43,24 @@ public class ReittiSubscriptionService {
         subscriptions.remove(subscriptionId);
     }
 
-    public void sendNotification(String subscriptionId, Object notificationData) {
-        ReittiSubscription subscription = subscriptions.get(subscriptionId);
-        if (subscription == null) {
-            throw new IllegalArgumentException("Subscription not found: " + subscriptionId);
-        }
-
+    private void sendNotificationToCallback(ReittiSubscription subscription, Object notificationData) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Object> request = new HttpEntity<>(notificationData, headers);
             
             restTemplate.postForEntity(subscription.getCallbackUrl(), request, String.class);
-            log.debug("Notification sent successfully to subscription: {}", subscriptionId);
+            log.debug("Notification sent successfully to subscription: {}", subscription.getSubscriptionId());
         } catch (Exception e) {
             log.error("Failed to send notification to subscription: {}, callback URL: {}", 
-                     subscriptionId, subscription.getCallbackUrl(), e);
-            throw e;
+                     subscription.getSubscriptionId(), subscription.getCallbackUrl(), e);
+            // Don't rethrow - we want to continue notifying other subscriptions
         }
     }
 
     public void notifyAllSubscriptions(User user, Object notificationData) {
         subscriptions.values().stream()
                 .filter(subscription -> subscription.getUserId().equals(user.getId()))
-                .forEach(subscription -> {
-                    try {
-                        sendNotification(subscription.getSubscriptionId(), notificationData);
-                    } catch (Exception e) {
-                        log.error("Failed to notify subscription: {}", subscription.getSubscriptionId(), e);
-                    }
-                });
+                .forEach(subscription -> sendNotificationToCallback(subscription, notificationData));
     }
 }

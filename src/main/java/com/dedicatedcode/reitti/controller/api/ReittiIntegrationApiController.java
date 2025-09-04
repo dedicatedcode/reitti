@@ -17,8 +17,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.http.HttpStatus;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -68,18 +66,5 @@ public class ReittiIntegrationApiController {
                                                          @Valid @RequestBody SubscriptionRequest request) {
         SubscriptionResponse response = subscriptionService.createSubscription(user, request.getCallbackUrl());
         return ResponseEntity.ok(response);
-    }
-
-    @PostMapping("/notify/{subscriptionId}")
-    public ResponseEntity<Void> notify(@PathVariable String subscriptionId,
-                                      @RequestBody Object notificationData) {
-        try {
-            subscriptionService.sendNotification(subscriptionId, notificationData);
-            return ResponseEntity.ok().build();
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
     }
 }
