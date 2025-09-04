@@ -1,13 +1,19 @@
 package com.dedicatedcode.reitti.controller.api;
 
 import com.dedicatedcode.reitti.dto.ReittiRemoteInfo;
+import com.dedicatedcode.reitti.dto.SubscriptionRequest;
+import com.dedicatedcode.reitti.dto.SubscriptionResponse;
 import com.dedicatedcode.reitti.dto.TimelineEntry;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.service.TimelineService;
 import com.dedicatedcode.reitti.service.VersionService;
+import com.dedicatedcode.reitti.service.integration.ReittiSubscriptionService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,11 +29,14 @@ import java.util.List;
 public class ReittiIntegrationApiController {
     private final VersionService versionService;
     private final TimelineService timelineService;
+    private final ReittiSubscriptionService subscriptionService;
 
     public ReittiIntegrationApiController(VersionService versionService,
-                                          TimelineService timelineService) {
+                                          TimelineService timelineService,
+                                          ReittiSubscriptionService subscriptionService) {
         this.versionService = versionService;
         this.timelineService = timelineService;
+        this.subscriptionService = subscriptionService;
     }
 
     @GetMapping("/info")
@@ -50,5 +59,12 @@ public class ReittiIntegrationApiController {
         Instant endOfDay = selectedDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
 
         return this.timelineService.buildTimelineEntries(user, userTimezone, selectedDate, startOfDay, endOfDay);
+    }
+
+    @PostMapping("/subscribe")
+    public ResponseEntity<SubscriptionResponse> subscribe(@AuthenticationPrincipal User user,
+                                                         @Valid @RequestBody SubscriptionRequest request) {
+        SubscriptionResponse response = subscriptionService.createSubscription(user, request.getCallbackUrl());
+        return ResponseEntity.ok(response);
     }
 }
