@@ -63,9 +63,9 @@ public class ReittiSubscriptionService {
         }
     }
 
-    public void notifyAllSubscriptions(Long userId, Object notificationData) {
+    public void notifyAllSubscriptions(User user, Object notificationData) {
         subscriptions.values().stream()
-                .filter(subscription -> subscription.getUserId().equals(userId))
+                .filter(subscription -> subscription.getUserId().equals(user.getId()))
                 .forEach(subscription -> {
                     try {
                         sendNotification(subscription.getSubscriptionId(), notificationData);
