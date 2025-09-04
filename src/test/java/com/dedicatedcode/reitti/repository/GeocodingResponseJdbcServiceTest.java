@@ -40,7 +40,7 @@ class GeocodingResponseJdbcServiceTest {
         double latitudeCentroid = 53.863149;
         double longitudeCentroid = 10.700927;
         Point point = geometryFactory.createPoint(new Coordinate(longitudeCentroid, latitudeCentroid));
-        SignificantPlace place = placeService.create(testingService.admin(), SignificantPlace.create(latitudeCentroid, longitudeCentroid, point));
+        SignificantPlace place = placeService.create(testingService.admin(), SignificantPlace.create(latitudeCentroid, longitudeCentroid));
         
         GeocodingResponse response = new GeocodingResponse(
             place.getId(),
@@ -72,7 +72,7 @@ class GeocodingResponseJdbcServiceTest {
         double latitudeCentroid = 53.863149;
         double longitudeCentroid = 10.700927;
         Point point = geometryFactory.createPoint(new Coordinate(longitudeCentroid, latitudeCentroid));
-        SignificantPlace place = placeService.create(testingService.admin(), SignificantPlace.create(latitudeCentroid, longitudeCentroid, point));
+        SignificantPlace place = placeService.create(testingService.admin(), SignificantPlace.create(latitudeCentroid, longitudeCentroid));
 
         // When
         List<GeocodingResponse> found = geocodingResponseJdbcService.findBySignificantPlace(place);
@@ -88,7 +88,7 @@ class GeocodingResponseJdbcServiceTest {
         double latitudeCentroid = 53.863149;
         double longitudeCentroid = 10.700927;
         Point point = geometryFactory.createPoint(new Coordinate(longitudeCentroid, latitudeCentroid));
-        SignificantPlace place = placeService.create(testingService.admin(), SignificantPlace.create(latitudeCentroid, longitudeCentroid, point));
+        SignificantPlace place = placeService.create(testingService.admin(), SignificantPlace.create(latitudeCentroid, longitudeCentroid));
 
         GeocodingResponse response = new GeocodingResponse(
             place.getId(),

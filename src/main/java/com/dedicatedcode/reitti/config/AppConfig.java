@@ -16,7 +16,6 @@ public class AppConfig {
         return new GeometryFactory(new PrecisionModel(), 4326);
     }
 
-
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

@@ -1,7 +1,5 @@
 package com.dedicatedcode.reitti.model;
 
-import org.locationtech.jts.geom.Point;
-
 import java.io.Serializable;
 import java.util.Objects;
 
@@ -13,24 +11,26 @@ public class SignificantPlace implements Serializable {
     private final String countryCode;
     private final Double latitudeCentroid;
     private final Double longitudeCentroid;
-    private final Point geom;
     private final PlaceType type;
     private final boolean geocoded;
     private final Long version;
 
 
-    public static SignificantPlace create(Double latitude, Double longitude, Point point) {
-        return new SignificantPlace(null, null, latitude, longitude, point, PlaceType.OTHER, null);
+    public static SignificantPlace create(Double latitude, Double longitude) {
+        return new SignificantPlace(null, null, latitude, longitude, PlaceType.OTHER, null);
+    }
+
+    public SignificantPlace() {
+        this(null, null, null, null, null, null, null, false, null);
     }
 
     private SignificantPlace(String name,
                             String address,
                             Double latitudeCentroid,
                             Double longitudeCentroid,
-                            Point geom,
                             PlaceType type,
                             String countryCode) {
-        this(null, name, address, countryCode, latitudeCentroid, longitudeCentroid, geom, type, false, 1L);
+        this(null, name, address, countryCode, latitudeCentroid, longitudeCentroid, type, false, 1L);
     }
 
     public SignificantPlace(Long id,
@@ -39,7 +39,6 @@ public class SignificantPlace implements Serializable {
                             String countryCode,
                             Double latitudeCentroid,
                             Double longitudeCentroid,
-                            Point geom,
                             PlaceType type,
                             boolean geocoded,
                             Long version) {
@@ -49,7 +48,6 @@ public class SignificantPlace implements Serializable {
         this.countryCode = countryCode;
         this.latitudeCentroid = latitudeCentroid;
         this.longitudeCentroid = longitudeCentroid;
-        this.geom = geom;
         this.type = type;
         this.geocoded = geocoded;
         this.version = version;
@@ -84,11 +82,7 @@ public class SignificantPlace implements Serializable {
         return type;
     }
 
-    public Point getGeom() {
-        return geom;
-    }
-
-    public boolean isGeocoded() { 
+    public boolean isGeocoded() {
         return geocoded; 
     }
 
@@ -98,27 +92,27 @@ public class SignificantPlace implements Serializable {
     
     // Wither methods
     public SignificantPlace withGeocoded(boolean geocoded) {
-        return new SignificantPlace(this.id, this.name, this.address, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.geom, this.type, geocoded, this.version);
+        return new SignificantPlace(this.id, this.name, this.address, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, geocoded, this.version);
     }
 
     public SignificantPlace withName(String name) {
-        return new SignificantPlace(this.id, name, this.address, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.geom, this.type, this.geocoded, this.version);
+        return new SignificantPlace(this.id, name, this.address, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, this.geocoded, this.version);
     }
 
     public SignificantPlace withAddress(String address) {
-        return new SignificantPlace(this.id, this.name, address, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.geom, this.type, this.geocoded, this.version);
+        return new SignificantPlace(this.id, this.name, address, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, this.geocoded, this.version);
     }
 
     public SignificantPlace withCountryCode(String countryCode) {
-        return new SignificantPlace(this.id, this.name, this.address, countryCode, this.latitudeCentroid, this.longitudeCentroid, this.geom, this.type, this.geocoded, this.version);
+        return new SignificantPlace(this.id, this.name, this.address, countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, this.geocoded, this.version);
     }
 
     public SignificantPlace withType(PlaceType type) {
-        return new SignificantPlace(this.id, this.name, this.address, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.geom, type, this.geocoded, this.version);
+        return new SignificantPlace(this.id, this.name, this.address, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, type, this.geocoded, this.version);
     }
 
     public SignificantPlace withId(Long id) {
-        return new SignificantPlace(id, this.name, address, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.geom, this.type, this.geocoded, this.version);
+        return new SignificantPlace(id, this.name, address, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, this.geocoded, this.version);
     }
 
     @Override
@@ -138,7 +132,6 @@ public class SignificantPlace implements Serializable {
         return "SignificantPlace{" +
                 "id=" + id +
                 ", name='" + name + '\'' +
-                ", geom=" + geom +
                 '}';
     }
 

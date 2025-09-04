@@ -124,7 +124,6 @@ class SignificantPlaceJdbcServiceTest {
                 "DE",
                 53.863149,
                 10.700927,
-                created.getGeom(),
                 SignificantPlace.PlaceType.RESTAURANT,
                 true,
                 created.getVersion()
@@ -207,7 +206,6 @@ class SignificantPlaceJdbcServiceTest {
                 "DE",
                 created1.getLatitudeCentroid(),
                 created1.getLongitudeCentroid(),
-                created1.getGeom(),
                 SignificantPlace.PlaceType.HOME,
                 true, // geocoded = true
                 created1.getVersion()
@@ -254,7 +252,6 @@ class SignificantPlaceJdbcServiceTest {
     }
 
     private SignificantPlace createTestPlace(String name, double latitude, double longitude) {
-        Point point = geometryFactory.createPoint(new Coordinate(longitude, latitude));
         return new SignificantPlace(
                 null,
                 name,
@@ -262,7 +259,6 @@ class SignificantPlaceJdbcServiceTest {
                 null,
                 latitude,
                 longitude,
-                point,
                 SignificantPlace.PlaceType.OTHER,
                 false,
                 0L
@@ -270,7 +266,6 @@ class SignificantPlaceJdbcServiceTest {
     }
 
     private SignificantPlace createTestPlaceForUser(User user, String name, double latitude, double longitude) {
-        Point point = geometryFactory.createPoint(new Coordinate(longitude, latitude));
         return new SignificantPlace(
                 null,
                 name,
@@ -278,7 +273,6 @@ class SignificantPlaceJdbcServiceTest {
                 null,
                 latitude,
                 longitude,
-                point,
                 SignificantPlace.PlaceType.OTHER,
                 false,
                 0L

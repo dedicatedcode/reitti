@@ -20,9 +20,11 @@ import java.util.Optional;
 public class SignificantPlaceJdbcService {
 
     private final JdbcTemplate jdbcTemplate;
+    private final PointReaderWriter  pointReaderWriter;
 
     public SignificantPlaceJdbcService(JdbcTemplate jdbcTemplate, PointReaderWriter pointReaderWriter) {
         this.jdbcTemplate = jdbcTemplate;
+        this.pointReaderWriter = pointReaderWriter;
         this.significantPlaceRowMapper = (rs, _) -> new SignificantPlace(
                 rs.getLong("id"),
                 rs.getString("name"),
@@ -30,7 +32,6 @@ public class SignificantPlaceJdbcService {
                 rs.getString("country_code"),
                 rs.getDouble("latitude_centroid"),
                 rs.getDouble("longitude_centroid"),
-                pointReaderWriter.read(rs.getString("geom")),
                 SignificantPlace.PlaceType.valueOf(rs.getString("type")),
                 rs.getBoolean("geocoded"),
                 rs.getLong("version"));
@@ -69,7 +70,7 @@ public class SignificantPlaceJdbcService {
                 place.getName(),
                 place.getLatitudeCentroid(),
                 place.getLongitudeCentroid(),
-                place.getGeom().toString()
+                this.pointReaderWriter.write(place.getLongitudeCentroid(), place.getLatitudeCentroid())
         );
         return place.withId(id);
     }
@@ -84,7 +85,7 @@ public class SignificantPlaceJdbcService {
                 place.getType().name(),
                 place.getLatitudeCentroid(),
                 place.getLongitudeCentroid(),
-                place.getGeom().toString(),
+                this.pointReaderWriter.write(place.getLongitudeCentroid(), place.getLatitudeCentroid()),
                 place.isGeocoded(),
                 place.getId()
         );

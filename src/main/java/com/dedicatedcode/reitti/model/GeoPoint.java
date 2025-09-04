@@ -7,6 +7,10 @@ public record GeoPoint(double latitude, double longitude) {
         return new  GeoPoint(point.getY(), point.getX());
     }
 
+    public static GeoPoint from(double latitude, double longitude) {
+        return new GeoPoint(latitude, longitude);
+    }
+
     public boolean near(GeoPoint point) {
         return GeoUtils.distanceInMeters(this, point) < 100;
     }

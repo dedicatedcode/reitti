@@ -130,7 +130,7 @@ public class ProcessingPipelineTest {
     private static void assertVisit(ProcessedVisit processedVisit, String startTime, String endTime, GeoPoint location) {
         assertEquals(Instant.parse(startTime), processedVisit.getStartTime());
         assertEquals(Instant.parse(endTime), processedVisit.getEndTime());
-        GeoPoint currentLocation = GeoPoint.from(processedVisit.getPlace().getGeom());
+        GeoPoint currentLocation = new GeoPoint(processedVisit.getPlace().getLatitudeCentroid(), processedVisit.getPlace().getLongitudeCentroid());
         assertTrue(location.near(currentLocation), "Locations are not near to each other. \nExpected [" + currentLocation + "] to be in range \nto [" + location + "]");
     }
 
@@ -146,11 +146,11 @@ public class ProcessingPipelineTest {
         assertEquals(Instant.parse(startTime), trip.getStartTime());
         assertEquals(Instant.parse(endTime), trip.getEndTime());
         
-        GeoPoint actualStartLocation = GeoPoint.from(trip.getStartVisit().getPlace().getGeom());
+        GeoPoint actualStartLocation = GeoPoint.from(trip.getStartVisit().getPlace().getLatitudeCentroid(), trip.getStartVisit().getPlace().getLongitudeCentroid());
         assertTrue(startLocation.near(actualStartLocation), 
             "Start locations are not near to each other. \nExpected [" + actualStartLocation + "] to be in range \nto [" + startLocation + "]");
         
-        GeoPoint actualEndLocation = GeoPoint.from(trip.getEndVisit().getPlace().getGeom());
+        GeoPoint actualEndLocation = GeoPoint.from(trip.getEndVisit().getPlace().getLatitudeCentroid(), trip.getEndVisit().getPlace().getLongitudeCentroid());
         assertTrue(endLocation.near(actualEndLocation), 
             "End locations are not near to each other. \nExpected [" + actualEndLocation + "] to be in range \nto [" + endLocation + "]");
     }
