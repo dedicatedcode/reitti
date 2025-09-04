@@ -64,7 +64,7 @@ public class ReittiSubscriptionService {
         } catch (Exception e) {
             log.error("Failed to send notification to subscription: {}, callback URL: {}",
                     subscription.getSubscriptionId(), subscription.getCallbackUrl(), e);
-            // Don't rethrow - we want to continue notifying other subscriptions
+            this.subscriptions.remove(subscription.getSubscriptionId());
         }
     }
 }

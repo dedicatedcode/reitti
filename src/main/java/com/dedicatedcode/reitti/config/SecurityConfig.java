@@ -34,6 +34,7 @@ public class SecurityConfig {
                         .requestMatchers("/login").permitAll()
                         .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/api/v1/reitti-integration/notify/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(bearerTokenAuthFilter, AuthorizationFilter.class)

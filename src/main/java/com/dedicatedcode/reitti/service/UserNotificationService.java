@@ -59,7 +59,7 @@ public class UserNotificationService {
         notifyReittiSubscriptions(user, eventType, dates);
     }
 
-    private void sendToQueue(User user, Set<LocalDate> dates, SSEType eventType) {
+    public void sendToQueue(User user, Set<LocalDate> dates, SSEType eventType) {
         for (LocalDate date : dates) {
             this.rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.USER_EVENT_ROUTING_KEY, new SSEEvent(eventType, user.getId(), user.getId(), date));
         }
