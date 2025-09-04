@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.repository;
 
+import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.GeocodingResponse;
 import com.dedicatedcode.reitti.model.SignificantPlace;
@@ -17,7 +18,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
+@IntegrationTest
 @ActiveProfiles("test")
 @Transactional
 class GeocodingResponseJdbcServiceTest {
@@ -26,7 +27,6 @@ class GeocodingResponseJdbcServiceTest {
     private GeocodingResponseJdbcService geocodingResponseJdbcService;
     @Autowired
     private SignificantPlaceJdbcService placeService;
-
     @Autowired
     private GeometryFactory geometryFactory;
 
