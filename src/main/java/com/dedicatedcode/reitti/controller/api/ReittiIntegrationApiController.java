@@ -67,4 +67,6 @@ public class ReittiIntegrationApiController {
         SubscriptionResponse response = subscriptionService.createSubscription(user, request.getCallbackUrl());
         return ResponseEntity.ok(response);
     }
+
+    //add a notify method, this should receive the subscriptionId to determine which integration is affected. This endpoint will be called from ReittiSubscriptionService AI!
 }
