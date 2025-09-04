@@ -7,21 +7,16 @@ import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.io.entity.StringEntity;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.File;
 import java.time.Instant;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 public class GpxSender {
     
@@ -39,11 +34,12 @@ public class GpxSender {
     
     private static class OwntracksMessage {
         public String _type = "location";
+        public double acc;
         public double lat;
         public double lon;
         public long tst;
-        
-        public OwntracksMessage(double lat, double lon, long tst) {
+
+        public OwntracksMessage(double lat, double lon, long tst, double acc) {
             this.lat = lat;
             this.lon = lon;
             this.tst = tst;
@@ -140,9 +136,10 @@ public class GpxSender {
                 
                 // Create Owntracks message
                 OwntracksMessage message = new OwntracksMessage(
-                    point.latitude, 
-                    point.longitude, 
-                    adjustedTime.getEpochSecond()
+                        point.latitude,
+                        point.longitude,
+                        adjustedTime.getEpochSecond(),
+                        10.0
                 );
                 
                 // Send HTTP request
