@@ -688,7 +688,6 @@
         
         // Schedule reload after 5 seconds of idle time
         reloadTimeoutId = setTimeout(() => {
-            debugger
             if (autoUpdateMode && pendingEvents.length > 0) {
                 console.log(`Auto-update: Reloading timeline data after ${pendingEvents.length} accumulated events`);
                 document.body.dispatchEvent(new CustomEvent('dateChanged'));

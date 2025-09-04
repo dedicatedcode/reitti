@@ -10,6 +10,7 @@ import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.TimelineService;
 import com.dedicatedcode.reitti.service.UserNotificationService;
 import com.dedicatedcode.reitti.service.VersionService;
+import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
 import com.dedicatedcode.reitti.service.integration.ReittiSubscription;
 import com.dedicatedcode.reitti.service.integration.ReittiSubscriptionService;
 import jakarta.validation.Valid;
@@ -25,6 +26,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/reitti-integration")
@@ -33,17 +35,20 @@ public class ReittiIntegrationApiController {
     private final VersionService versionService;
     private final TimelineService timelineService;
     private final ReittiSubscriptionService subscriptionService;
+    private final ReittiIntegrationService integrationService;
     private final UserNotificationService userNotificationService;
     private final UserJdbcService userJdbcService;
 
     public ReittiIntegrationApiController(VersionService versionService,
                                           TimelineService timelineService,
                                           ReittiSubscriptionService subscriptionService,
+                                          ReittiIntegrationService integrationService,
                                           UserNotificationService userNotificationService,
                                           UserJdbcService userJdbcService) {
         this.versionService = versionService;
         this.timelineService = timelineService;
         this.subscriptionService = subscriptionService;
+        this.integrationService = integrationService;
         this.userNotificationService = userNotificationService;
         this.userJdbcService = userJdbcService;
     }
@@ -80,13 +85,14 @@ public class ReittiIntegrationApiController {
     public ResponseEntity<Void> notify(@PathVariable String subscriptionId,
                                       @RequestBody NotificationData notificationData) {
         try {
-            ReittiSubscription subscription = this.subscriptionService.getSubscription(subscriptionId);
-            if (subscription == null) {
+            Optional<Long> userId = this.integrationService.getUserIdForSubscription(subscriptionId);
+
+            if (userId.isEmpty()) {
                 log.warn("Subscription with id {} not found", subscriptionId);
                 return ResponseEntity.notFound().build();
             }
 
-            this.userJdbcService.findById(subscription.getUserId()).ifPresentOrElse(user -> {
+            this.userJdbcService.findById(userId.get()).ifPresentOrElse(user -> {
                 this.userNotificationService.sendToQueue(user, notificationData.getAffectedDates(), notificationData.getEventType());
             }, () -> log.warn("Unable to find user for [{}]", subscriptionId));
 

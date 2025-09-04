@@ -38,6 +38,7 @@ public class ReittiIntegrationService {
     private final RestTemplate restTemplate;
     private final AvatarService avatarService;
     private final Map<Long, String> integrationSubscriptions = new ConcurrentHashMap<>();
+    private final Map<String, Long> userForSubscriptions = new ConcurrentHashMap<>();
 
     public ReittiIntegrationService(@Value("${reitti.server.advertise-uri}") String advertiseUri, ReittiIntegrationJdbcService jdbcService,
                                     RestTemplate restTemplate,
@@ -247,7 +248,7 @@ public class ReittiIntegrationService {
         
         for (ReittiIntegration integration : activeIntegrations) {
             try {
-                registerSubscriptionOnIntegration(integration);
+                registerSubscriptionOnIntegration(integration, user);
                 log.debug("Successfully registered subscription for integration: [{}]", integration.getId());
             } catch (Exception | RequestFailedException e) {
                 log.error("couldn't fetch user info for [{}]", integration, e);
@@ -267,7 +268,7 @@ public class ReittiIntegrationService {
                 .toList();
     }
 
-    private void registerSubscriptionOnIntegration(ReittiIntegration integration) throws RequestFailedException, RequestTemporaryFailedException {
+    private void registerSubscriptionOnIntegration(ReittiIntegration integration, User user) throws RequestFailedException, RequestTemporaryFailedException {
         if (advertiseUri == null || advertiseUri.isEmpty()) {
             log.warn("No advertise URI configured, skipping subscription registration for integration: [{}]", integration.getId());
             return;
@@ -297,6 +298,7 @@ public class ReittiIntegrationService {
                 log.debug("Successfully subscribed to integration: [{}]", integration.getId());
                 synchronized (integrationSubscriptions) {
                     this.integrationSubscriptions.put(integration.getId(), response.getBody().getSubscriptionId());
+                    this.userForSubscriptions.put(response.getBody().getSubscriptionId(), user.getId());
                 }
             } else if (response.getStatusCode().is4xxClientError()) {
                 throw new RequestFailedException(subscribeUrl, response.getStatusCode(), response.getBody());
@@ -319,6 +321,7 @@ public class ReittiIntegrationService {
                 try {
                     unsubscribeFromIntegration(integration, subscriptionId);
                     integrationSubscriptions.remove(integration.getId());
+                    userForSubscriptions.remove(subscriptionId);
                     log.debug("Successfully unsubscribed from integration: [{}]", integration.getId());
                 } catch (Exception | RequestFailedException e) {
                     log.warn("Failed to unsubscribe from integration: [{}]", integration.getId(), e);
@@ -359,4 +362,7 @@ public class ReittiIntegrationService {
         }
     }
 
+    public Optional<Long> getUserIdForSubscription(String subscriptionId) {
+        return Optional.ofNullable(this.userForSubscriptions.get(subscriptionId));
+    }
 }

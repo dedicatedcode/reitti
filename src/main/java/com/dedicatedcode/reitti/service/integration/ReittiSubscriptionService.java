@@ -39,10 +39,6 @@ public class ReittiSubscriptionService {
     public ReittiSubscription getSubscription(String subscriptionId) {
         return subscriptions.get(subscriptionId);
     }
-    
-    public void removeSubscription(String subscriptionId) {
-        subscriptions.remove(subscriptionId);
-    }
 
     public void notifyAllSubscriptions(User user, NotificationData notificationData) {
         subscriptions.values().stream()
