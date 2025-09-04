@@ -215,6 +215,11 @@
                 path.remove();
             }
 
+            let bounds = L.latLngBounds();
+
+            //after all fetch operations are done, we want to update the map with the bounds.
+            // window.originalBounds = bounds;
+            // map.fitBounds(bounds, fitToBoundsConfig) AI!
             for (const element of timelineContainer) {
                 const rawLocationPointsUrl = element?.dataset.rawLocationPointsUrl;
                 const color = element?.dataset.baseColor;
@@ -227,10 +232,7 @@
                         }
                         return response.json();
                     }).then(rawPointsData => {
-                        updateMapWithRawPoints(rawPointsData, color);
-                    }).then(() => {
-                        window.originalBounds = bounds;
-                        map.fitBounds(bounds, fitToBoundsConfig)
+                        bounds.extend(updateMapWithRawPoints(rawPointsData, color));
                     }).catch(error => {
                         console.warn('Error fetching raw location points:', error);
                     });
@@ -242,6 +244,8 @@
 
         // Function to update map with raw location points
         function updateMapWithRawPoints(rawPointsData, color) {
+            const bounds = L.latLngBounds();
+
             const rawPointsPath = L.geodesic([], {
                 color: color == null ? '#f1ba63' : color,
                 weight: 6,
@@ -264,6 +268,8 @@
                     addPulsatingMarker(latestPoint.latitude, latestPoint.longitude, color);
                 }
             }
+
+            return bounds;
         }
 
         const selectedPath = L.geodesic([], {
@@ -282,7 +288,6 @@
         document.body.addEventListener('htmx:afterSwap', function(event) {
             if (event.detail.target.classList.contains('timeline-container')) {
                 // Timeline content has been updated, update map markers
-                bounds = L.latLngBounds()
                 loadTimelineData(getSelectedDate())
                 updateMapFromTimeline();
                 // Initialize scroll indicator after timeline is updated
@@ -293,9 +298,10 @@
                 window.timelineScrollIndicator.init();
             }
         });
-        let bounds = L.latLngBounds();
         // Function to update map markers from timeline entries
         function updateMapFromTimeline() {
+            const bounds = L.latLngBounds();
+
             // Clear existing markers and paths (except tile layer)
             map.eachLayer(layer => {
                 if (!layer._url) {
@@ -303,8 +309,6 @@
                 }
             });
 
-
-            window.originalBounds = L.latLngBounds();
             let hasValidCoords = false;
 
             // Group places by coordinates to avoid duplicate markers
@@ -404,6 +408,7 @@
                 });
 
             }
+            return bounds;
         }
 
         // Helper function to parse duration text (simple implementation)
