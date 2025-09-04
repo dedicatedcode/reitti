@@ -56,8 +56,8 @@ public class ReittiSubscriptionService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Object> request = new HttpEntity<>(notificationData, headers);
 
-            //append the endpoint for notify here to the callbackUrl AI!
-            restTemplate.postForEntity(subscription.getCallbackUrl(), request, String.class);
+            String notifyUrl = subscription.getCallbackUrl() + "/api/v1/reitti-integration/notify/" + subscription.getSubscriptionId();
+            restTemplate.postForEntity(notifyUrl, request, String.class);
             log.debug("Notification sent successfully to subscription: {}", subscription.getSubscriptionId());
         } catch (Exception e) {
             log.error("Failed to send notification to subscription: {}, callback URL: {}",
