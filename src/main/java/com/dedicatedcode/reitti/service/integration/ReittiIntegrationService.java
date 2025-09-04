@@ -14,6 +14,7 @@ import com.dedicatedcode.reitti.service.RequestFailedException;
 import com.dedicatedcode.reitti.service.RequestTemporaryFailedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -34,16 +35,22 @@ public class ReittiIntegrationService {
     private static final Logger log = LoggerFactory.getLogger(ReittiIntegrationService.class);
     private static final List<ReittiIntegration.Status> VALID_INTEGRATION_STATUS = List.of(ReittiIntegration.Status.ACTIVE, ReittiIntegration.Status.RECOVERABLE);
 
-    private final ReittiIntegrationJdbcService jdbcService;
+    @Value("${reitti.advertise-uri:}")
+    private String advertiseUri;
 
+    private final ReittiIntegrationJdbcService jdbcService;
     private final RestTemplate restTemplate;
     private final AvatarService avatarService;
+    private final ReittiSubscriptionService subscriptionService;
 
     public ReittiIntegrationService(ReittiIntegrationJdbcService jdbcService,
-                                    RestTemplate restTemplate, AvatarService avatarService) {
+                                    RestTemplate restTemplate, 
+                                    AvatarService avatarService,
+                                    ReittiSubscriptionService subscriptionService) {
         this.jdbcService = jdbcService;
         this.restTemplate = restTemplate;
         this.avatarService = avatarService;
+        this.subscriptionService = subscriptionService;
     }
 
     public List<UserTimelineData> getTimelineData(User user, LocalDate selectedDate, ZoneId userTimezone) {
@@ -230,6 +237,66 @@ public class ReittiIntegrationService {
             }
         }
         return persisted.get();
+    }
+
+    public void registerSubscriptionsForUser(User user) {
+        log.info("Registering subscriptions for user: [{}]", user.getId());
+        
+        List<ReittiIntegration> activeIntegrations = getActiveIntegrationsForUser(user);
+        
+        for (ReittiIntegration integration : activeIntegrations) {
+            try {
+                registerSubscriptionOnIntegration(integration, user);
+                log.debug("Successfully registered subscription for integration: [{}]", integration.getId());
+            } catch (Exception e) {
+                log.warn("Failed to register subscription for integration: [{}]", integration.getId(), e);
+            }
+        }
+    }
+
+    public List<ReittiIntegration> getActiveIntegrationsForUser(User user) {
+        return this.jdbcService
+                .findAllByUser(user)
+                .stream()
+                .filter(integration -> integration.isEnabled() && VALID_INTEGRATION_STATUS.contains(integration.getStatus()))
+                .toList();
+    }
+
+    private void registerSubscriptionOnIntegration(ReittiIntegration integration, User user) throws RequestFailedException, RequestTemporaryFailedException {
+        if (advertiseUri == null || advertiseUri.isEmpty()) {
+            log.warn("No advertise URI configured, skipping subscription registration for integration: [{}]", integration.getId());
+            return;
+        }
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-API-TOKEN", integration.getToken());
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        
+        Map<String, String> subscriptionRequest = Map.of("callbackUrl", advertiseUri);
+        HttpEntity<Map<String, String>> entity = new HttpEntity<>(subscriptionRequest, headers);
+        
+        String subscribeUrl = integration.getUrl().endsWith("/") ?
+                integration.getUrl() + "api/v1/reitti-integration/subscribe" :
+                integration.getUrl() + "/api/v1/reitti-integration/subscribe";
+        
+        try {
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    subscribeUrl,
+                    HttpMethod.POST,
+                    entity,
+                    Map.class
+            );
+            
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.debug("Successfully subscribed to integration: [{}]", integration.getId());
+            } else if (response.getStatusCode().is4xxClientError()) {
+                throw new RequestFailedException(subscribeUrl, response.getStatusCode(), response.getBody());
+            } else {
+                throw new RequestTemporaryFailedException(subscribeUrl, response.getStatusCode(), response.getBody());
+            }
+        } catch (RestClientException ex) {
+            throw new RequestFailedException(subscribeUrl, HttpStatusCode.valueOf(500), "Connection refused");
+        }
     }
 
 }
