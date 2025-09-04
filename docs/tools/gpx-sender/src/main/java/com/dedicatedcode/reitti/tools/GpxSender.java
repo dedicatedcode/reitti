@@ -47,16 +47,45 @@ public class GpxSender {
     }
 
     public static void main(String[] args) {
-        if (args.length < 3) {
-            System.err.println("Usage: java -jar gpx-sender.jar <gpx-file> <reitti-url> <api-token> [interval-seconds]");
-            System.err.println("Example: java -jar gpx-sender.jar track.gpx http://localhost:8080 your-api-token 15");
+        if (args.length < 1) {
+            System.err.println("Usage: java -jar gpx-sender.jar <gpx-file> --url <reitti-url> --token <api-token> [--interval <seconds>]");
+            System.err.println("Example: java -jar gpx-sender.jar track.gpx --url http://localhost:8080 --token your-api-token --interval 15");
             System.exit(1);
         }
 
         String gpxFile = args[0];
-        String reittiUrl = args[1];
-        String apiToken = args[2];
-        int intervalSeconds = args.length > 3 ? Integer.parseInt(args[3]) : 15;
+        String reittiUrl = null;
+        String apiToken = null;
+        int intervalSeconds = 15;
+
+        // Parse named parameters
+        for (int i = 1; i < args.length; i++) {
+            switch (args[i]) {
+                case "--url":
+                    if (i + 1 < args.length) {
+                        reittiUrl = args[++i];
+                    }
+                    break;
+                case "--token":
+                    if (i + 1 < args.length) {
+                        apiToken = args[++i];
+                    }
+                    break;
+                case "--interval":
+                    if (i + 1 < args.length) {
+                        intervalSeconds = Integer.parseInt(args[++i]);
+                    }
+                    break;
+                default:
+                    System.err.println("Unknown parameter: " + args[i]);
+                    System.exit(1);
+            }
+        }
+
+        if (reittiUrl == null || apiToken == null) {
+            System.err.println("Both --url and --token parameters are required");
+            System.exit(1);
+        }
 
         try {
             List<TrackPoint> trackPoints = parseGpxFile(gpxFile);
@@ -110,28 +139,27 @@ public class GpxSender {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         
-        // Calculate time adjustments - latest point gets current time
-        Instant now = Instant.now();
-        TrackPoint lastPoint = trackPoints.get(trackPoints.size() - 1);
+        // Start from current time and send points with their original intervals
+        Instant startTime = Instant.now();
         
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             
             for (int i = 0; i < trackPoints.size(); i++) {
                 TrackPoint point = trackPoints.get(i);
                 
-                // Calculate adjusted timestamp
+                // Calculate adjusted timestamp - start from now and preserve original intervals
                 Instant adjustedTime;
-                if (i == trackPoints.size() - 1) {
-                    // Last point gets current time
-                    adjustedTime = now;
-                } else if (point.timestamp != null && lastPoint.timestamp != null) {
-                    // Calculate time difference from last point and subtract from now
-                    long durationFromLast = lastPoint.timestamp.getEpochSecond() - point.timestamp.getEpochSecond();
-                    adjustedTime = now.minusSeconds(durationFromLast);
+                if (i == 0) {
+                    // First point gets current time
+                    adjustedTime = startTime;
+                } else if (i > 0 && trackPoints.get(i-1).timestamp != null && point.timestamp != null) {
+                    // Calculate time difference from previous point and add to previous adjusted time
+                    TrackPoint prevPoint = trackPoints.get(i-1);
+                    long durationFromPrev = point.timestamp.getEpochSecond() - prevPoint.timestamp.getEpochSecond();
+                    adjustedTime = startTime.plusSeconds((long) i * intervalSeconds);
                 } else {
-                    // Fallback: distribute points evenly over the past
-                    long secondsBack = (long) (trackPoints.size() - i - 1) * intervalSeconds;
-                    adjustedTime = now.minusSeconds(secondsBack);
+                    // Fallback: distribute points evenly from start time
+                    adjustedTime = startTime.plusSeconds((long) i * intervalSeconds);
                 }
                 
                 // Create Owntracks message
