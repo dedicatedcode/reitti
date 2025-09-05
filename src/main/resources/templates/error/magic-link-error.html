@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{magic.link.error.title}">Magic Link Error</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <div class="container">
+        <div class="error-card">
+            <h1 th:text="#{magic.link.error.title}">🔗 Magic Link Error</h1>
+            <p th:text="${error}">An error occurred with the magic link</p>
+            
+            <div class="error-actions">
+                <a href="/" class="btn" th:text="#{magic.link.error.home}">Go to Home</a>
+                <a href="/login" class="btn btn-secondary" th:text="#{magic.link.error.login}">Login with Account</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

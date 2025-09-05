@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,9 +24,11 @@ import java.util.Optional;
 public class MagicLinkJdbcService {
 
     private final JdbcTemplate jdbcTemplate;
+    private final PasswordEncoder passwordEncoder;
 
-    public MagicLinkJdbcService(JdbcTemplate jdbcTemplate) {
+    public MagicLinkJdbcService(JdbcTemplate jdbcTemplate, PasswordEncoder passwordEncoder) {
         this.jdbcTemplate = jdbcTemplate;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public MagicLinkToken create(User user, MagicLinkToken token) {
@@ -94,6 +97,53 @@ public class MagicLinkJdbcService {
 
         List<MagicLinkToken> results = jdbcTemplate.query(sql, new MagicLinkTokenRowMapper(), tokenHash);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<MagicLinkToken> findByRawToken(String rawToken) {
+        String sql = """
+            SELECT id, name, token_hash, access_level, expiry_date, created_at, last_used_at
+            FROM magic_link_tokens
+            WHERE expiry_date IS NULL OR expiry_date > ?
+            """;
+
+        List<MagicLinkToken> activeTokens = jdbcTemplate.query(sql, new MagicLinkTokenRowMapper(), Timestamp.from(Instant.now()));
+        
+        for (MagicLinkToken token : activeTokens) {
+            if (passwordEncoder.matches(rawToken, token.getTokenHash())) {
+                return Optional.of(token);
+            }
+        }
+        
+        return Optional.empty();
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<User> findUserByTokenId(long tokenId) {
+        String sql = """
+            SELECT u.id, u.username, u.password, u.display_name, u.role, u.version
+            FROM users u
+            JOIN magic_link_tokens mlt ON u.id = mlt.user_id
+            WHERE mlt.id = ?
+            """;
+
+        List<User> results = jdbcTemplate.query(sql, (rs, rowNum) -> {
+            return new User(
+                rs.getLong("id"),
+                rs.getString("username"),
+                rs.getString("password"),
+                rs.getString("display_name"),
+                User.Role.valueOf(rs.getString("role")),
+                rs.getLong("version")
+            );
+        }, tokenId);
+        
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
+    }
+
+    public void updateLastUsed(long tokenId) {
+        String sql = "UPDATE magic_link_tokens SET last_used_at = ? WHERE id = ?";
+        jdbcTemplate.update(sql, Timestamp.from(Instant.now()), tokenId);
     }
 
     @Transactional(readOnly = true)
