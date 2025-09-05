@@ -80,7 +80,7 @@ public class MagicLinkController {
 
             // Build the full magic link URL
             String baseUrl = getBaseUrl(request);
-            String magicLinkUrl = baseUrl + "/access?token=" + rawToken;
+            String magicLinkUrl = baseUrl + "/access?mt=" + rawToken;
 
             // Show the raw token once
             model.addAttribute("newTokenName", name);

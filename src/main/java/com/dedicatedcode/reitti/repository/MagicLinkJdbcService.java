@@ -119,25 +119,14 @@ public class MagicLinkJdbcService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<User> findUserByTokenId(long tokenId) {
+    public Optional<Long> findUserIdByToken(long tokenId) {
         String sql = """
-            SELECT u.id, u.username, u.password, u.display_name, u.role, u.version
-            FROM users u
-            JOIN magic_link_tokens mlt ON u.id = mlt.user_id
-            WHERE mlt.id = ?
+            SELECT user_id
+            FROM magic_link_tokens
+            WHERE id = ?
             """;
 
-        List<User> results = jdbcTemplate.query(sql, (rs, rowNum) -> {
-            return new User(
-                rs.getLong("id"),
-                rs.getString("username"),
-                rs.getString("password"),
-                rs.getString("display_name"),
-                User.Role.valueOf(rs.getString("role")),
-                rs.getLong("version")
-            );
-        }, tokenId);
-        
+        List<Long> results = jdbcTemplate.queryForList(sql, Long.class, tokenId);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
