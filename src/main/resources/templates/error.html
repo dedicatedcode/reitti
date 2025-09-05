@@ -146,9 +146,18 @@
         </div>
 
         <div class="error-actions">
-            <a href="/" class="btn" th:text="#{error.action.home}">
-                <i class="lni lni-home"></i> Go Home
-            </a>
+            <div th:if="${status == 403}">
+                <form action="/logout" method="post" style="display: inline;">
+                    <button type="submit" class="btn" th:text="#{nav.logout}">
+                        <i class="lni lni-exit"></i> Logout
+                    </button>
+                </form>
+            </div>
+            <div th:unless="${status == 403}">
+                <a href="/" class="btn" th:text="#{error.action.home}">
+                    <i class="lni lni-home"></i> Go Home
+                </a>
+            </div>
             <button onclick="history.back()" class="btn" th:text="#{error.action.back}">
                 <i class="lni lni-arrow-left"></i> Go Back
             </button>
