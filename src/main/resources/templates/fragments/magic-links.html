@@ -38,6 +38,7 @@
         <table>
             <thead>
             <tr>
+                <th th:text="#{magic.links.table.name}">Name</th>
                 <th th:text="#{magic.links.table.access.level}">Access Level</th>
                 <th th:text="#{magic.links.table.created}">Created</th>
                 <th th:text="#{magic.links.table.expiry}">Expires</th>
@@ -47,6 +48,7 @@
             </thead>
             <tbody>
             <tr th:each="token : ${tokens}">
+                <td th:text="${token.name}">Token Name</td>
                 <td>
                     <span th:text="#{${'magic.links.access.level.' + token.accessLevel.name().toLowerCase()}}">Access Level</span>
                 </td>
