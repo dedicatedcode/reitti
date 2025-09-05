@@ -1,10 +1,10 @@
 package com.dedicatedcode.reitti.controller;
 
-import com.dedicatedcode.reitti.config.AppConfig;
 import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.MagicLinkToken;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.MagicLinkJdbcService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -12,14 +12,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import jakarta.servlet.http.HttpServletRequest;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.List;
 
@@ -52,8 +49,7 @@ public class MagicLinkController {
                                   @RequestParam MagicLinkAccessLevel accessLevel,
                                   @RequestParam(required = false) String expiryDate,
                                   HttpServletRequest request,
-                                  Model model,
-                                  RedirectAttributes redirectAttributes) {
+                                  Model model) {
         try {
             // Generate a secure random token
             byte[] tokenBytes = new byte[32];
@@ -61,7 +57,7 @@ public class MagicLinkController {
             String rawToken = Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
 
             // Hash the token for storage
-            String tokenHash = hashToken(rawToken);
+            String tokenHash = passwordEncoder.encode(rawToken);
 
             // Calculate expiry date
             Instant expiryInstant = null;
@@ -110,8 +106,7 @@ public class MagicLinkController {
     @PostMapping("/{id}/delete")
     public String deleteMagicLink(@PathVariable long id,
                                   @AuthenticationPrincipal User user,
-                                  Model model,
-                                  RedirectAttributes redirectAttributes) {
+                                  Model model) {
         try {
             magicLinkJdbcService.delete(id);
             model.addAttribute("successMessage", getMessage("magic.links.deleted.success"));
@@ -124,10 +119,6 @@ public class MagicLinkController {
         model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
 
         return "fragments/magic-links :: magic-links-content";
-    }
-
-    private String hashToken(String token) {
-        return passwordEncoder.encode(token);
     }
 
     private String getBaseUrl(HttpServletRequest request) {
