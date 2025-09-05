@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.model;
+package com.dedicatedcode.reitti.model.geocoding;
 
 import com.dedicatedcode.reitti.service.geocoding.GeocodeService;
 

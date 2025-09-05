@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.event.SSEEvent;
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

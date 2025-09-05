@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.config;
 
-import com.dedicatedcode.reitti.model.User;
-import com.dedicatedcode.reitti.model.UserSettings;
+import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import jakarta.servlet.http.HttpServletRequest;

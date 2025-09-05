@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.dto;
 
-import com.dedicatedcode.reitti.controller.TimelineController;
-import com.dedicatedcode.reitti.model.SignificantPlace;
+import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 
 import java.time.Instant;
 

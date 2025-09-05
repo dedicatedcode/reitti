@@ -1,7 +1,8 @@
 package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.event.ProcessedVisitCreatedEvent;
-import com.dedicatedcode.reitti.model.*;
+import com.dedicatedcode.reitti.model.geo.*;
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;

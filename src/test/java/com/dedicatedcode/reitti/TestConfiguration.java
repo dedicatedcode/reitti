@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti;
 
-import com.dedicatedcode.reitti.model.SignificantPlace;
+import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeServiceManager;
 import org.springframework.context.annotation.Bean;

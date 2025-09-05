@@ -1,8 +1,8 @@
 package com.dedicatedcode.reitti.repository;
 
-import com.dedicatedcode.reitti.model.ReittiIntegration;
-import com.dedicatedcode.reitti.model.RemoteUser;
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.integration.ReittiIntegration;
+import com.dedicatedcode.reitti.model.security.RemoteUser;
+import com.dedicatedcode.reitti.model.security.User;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;

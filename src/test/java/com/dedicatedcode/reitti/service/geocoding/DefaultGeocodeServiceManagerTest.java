@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.service.geocoding;
 
-import com.dedicatedcode.reitti.model.RemoteGeocodeService;
-import com.dedicatedcode.reitti.model.SignificantPlace;
+import com.dedicatedcode.reitti.model.geocoding.RemoteGeocodeService;
+import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
 import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
 import com.fasterxml.jackson.databind.ObjectMapper;

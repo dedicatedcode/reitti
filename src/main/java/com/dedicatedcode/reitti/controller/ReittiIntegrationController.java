@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.controller;
 
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
 import org.springframework.http.*;
 import org.springframework.jdbc.core.JdbcTemplate;

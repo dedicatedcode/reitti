@@ -2,8 +2,8 @@ package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.UnitSystem;
-import com.dedicatedcode.reitti.model.User;
-import com.dedicatedcode.reitti.model.UserSettings;
+import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.AvatarService;

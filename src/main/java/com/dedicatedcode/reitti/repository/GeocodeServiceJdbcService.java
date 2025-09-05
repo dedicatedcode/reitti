@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.repository;
 
-import com.dedicatedcode.reitti.model.RemoteGeocodeService;
+import com.dedicatedcode.reitti.model.geocoding.RemoteGeocodeService;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;

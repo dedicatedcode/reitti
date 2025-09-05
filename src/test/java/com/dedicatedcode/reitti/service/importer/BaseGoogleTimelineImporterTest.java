@@ -2,8 +2,8 @@ package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
-import com.dedicatedcode.reitti.model.ProcessedVisit;
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import org.junit.jupiter.api.Test;

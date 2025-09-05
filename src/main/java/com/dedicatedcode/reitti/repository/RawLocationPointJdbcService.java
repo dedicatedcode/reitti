@@ -1,8 +1,8 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
-import com.dedicatedcode.reitti.model.RawLocationPoint;
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
+import com.dedicatedcode.reitti.model.security.User;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.springframework.jdbc.core.JdbcTemplate;

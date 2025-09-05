@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.TestUtils;
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
-import com.dedicatedcode.reitti.model.GeoUtils;
+import com.dedicatedcode.reitti.model.geo.GeoUtils;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

@@ -2,8 +2,8 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.Page;
 import com.dedicatedcode.reitti.model.PageRequest;
-import com.dedicatedcode.reitti.model.SignificantPlace;
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.geo.SignificantPlace;
+import com.dedicatedcode.reitti.model.security.User;
 import org.locationtech.jts.geom.Point;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;

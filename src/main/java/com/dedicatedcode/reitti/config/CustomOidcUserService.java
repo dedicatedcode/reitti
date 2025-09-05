@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.config;
 
-import com.dedicatedcode.reitti.model.ExternalUser;
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.security.ExternalUser;
+import com.dedicatedcode.reitti.model.security.User;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;

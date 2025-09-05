@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.model;
+package com.dedicatedcode.reitti.model.geo;
 
 import org.locationtech.jts.geom.Point;
 

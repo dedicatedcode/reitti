@@ -1,8 +1,8 @@
 package com.dedicatedcode.reitti.controller.api;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
-import com.dedicatedcode.reitti.model.RawLocationPoint;
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import org.slf4j.Logger;

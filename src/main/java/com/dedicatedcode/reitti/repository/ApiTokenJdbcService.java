@@ -1,9 +1,9 @@
 package com.dedicatedcode.reitti.repository;
 
-import com.dedicatedcode.reitti.model.ApiToken;
-import com.dedicatedcode.reitti.model.ApiTokenUsage;
+import com.dedicatedcode.reitti.model.security.ApiToken;
+import com.dedicatedcode.reitti.model.security.ApiTokenUsage;
 import com.dedicatedcode.reitti.model.Role;
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.security.User;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;

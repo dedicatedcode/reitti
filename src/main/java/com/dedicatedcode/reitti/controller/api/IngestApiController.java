@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.controller.api;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.ImportBatchProcessor;
 import org.slf4j.Logger;

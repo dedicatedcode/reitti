@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
-import com.dedicatedcode.reitti.model.GeocodingResponse;
-import com.dedicatedcode.reitti.model.SignificantPlace;
+import com.dedicatedcode.reitti.model.geocoding.GeocodingResponse;
+import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;

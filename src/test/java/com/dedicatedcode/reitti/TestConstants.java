@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti;
 
-import com.dedicatedcode.reitti.model.GeoPoint;
+import com.dedicatedcode.reitti.model.geo.GeoPoint;
 
 public class TestConstants {
     public static class Points {

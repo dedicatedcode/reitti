@@ -2,7 +2,8 @@ package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.dto.UserSettingsDTO;
 import com.dedicatedcode.reitti.model.UnitSystem;
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.TilesCustomizationProvider;
@@ -46,7 +47,7 @@ public class GlobalControllerAdvice {
         
         if (userOptional.isPresent()) {
             User user = userOptional.get();
-            com.dedicatedcode.reitti.model.UserSettings dbSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
+            UserSettings dbSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
             return new UserSettingsDTO(dbSettings.isPreferColoredMap(),
                     dbSettings.getSelectedLanguage(),
                     dbSettings.getLatestData(),

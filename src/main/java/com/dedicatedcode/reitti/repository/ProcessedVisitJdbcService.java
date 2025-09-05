@@ -1,8 +1,8 @@
 package com.dedicatedcode.reitti.repository;
 
-import com.dedicatedcode.reitti.model.ProcessedVisit;
-import com.dedicatedcode.reitti.model.SignificantPlace;
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
+import com.dedicatedcode.reitti.model.geo.SignificantPlace;
+import com.dedicatedcode.reitti.model.security.User;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;

@@ -2,8 +2,8 @@ package com.dedicatedcode.reitti.service.integration;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
-import com.dedicatedcode.reitti.model.OwnTracksRecorderIntegration;
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.integration.OwnTracksRecorderIntegration;
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.OwnTracksRecorderIntegrationJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.ImportBatchProcessor;

@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.controller;
 
-import com.dedicatedcode.reitti.model.RawLocationPoint;
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;

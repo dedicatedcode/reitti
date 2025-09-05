@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.config;
 
 import com.dedicatedcode.reitti.model.Role;
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ApiTokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

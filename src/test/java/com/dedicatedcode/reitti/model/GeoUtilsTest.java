@@ -1,6 +1,8 @@
 package com.dedicatedcode.reitti.model;
 
 import com.dedicatedcode.reitti.TestUtils;
+import com.dedicatedcode.reitti.model.geo.GeoUtils;
+import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

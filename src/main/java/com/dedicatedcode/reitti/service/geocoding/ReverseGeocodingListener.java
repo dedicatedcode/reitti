@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.service.geocoding;
 
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
-import com.dedicatedcode.reitti.model.SignificantPlace;
+import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

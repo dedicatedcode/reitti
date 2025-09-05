@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
-import com.dedicatedcode.reitti.model.RawLocationPoint;
+import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import de.siegmar.fastcsv.reader.CsvReader;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;

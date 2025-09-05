@@ -1,5 +1,6 @@
-package com.dedicatedcode.reitti.model;
+package com.dedicatedcode.reitti.model.security;
 
+import com.dedicatedcode.reitti.model.Role;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;

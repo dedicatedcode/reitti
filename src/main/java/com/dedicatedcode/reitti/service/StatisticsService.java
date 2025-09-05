@@ -1,10 +1,9 @@
 package com.dedicatedcode.reitti.service;
 
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
-import com.dedicatedcode.reitti.repository.VisitJdbcService;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;

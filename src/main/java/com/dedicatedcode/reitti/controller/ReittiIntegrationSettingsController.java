@@ -1,8 +1,8 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.dto.ReittiRemoteInfo;
-import com.dedicatedcode.reitti.model.ReittiIntegration;
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.integration.ReittiIntegration;
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.OptimisticLockException;
 import com.dedicatedcode.reitti.repository.ReittiIntegrationJdbcService;
 import com.dedicatedcode.reitti.service.RequestFailedException;

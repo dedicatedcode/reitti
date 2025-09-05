@@ -1,8 +1,7 @@
 package com.dedicatedcode.reitti.controller;
 
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.importer.*;
-import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;

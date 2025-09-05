@@ -1,4 +1,6 @@
-package com.dedicatedcode.reitti.model;
+package com.dedicatedcode.reitti.model.security;
+
+import com.dedicatedcode.reitti.model.UnitSystem;
 
 import java.time.Instant;
 import java.util.Objects;

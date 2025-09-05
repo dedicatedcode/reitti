@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
 import com.dedicatedcode.reitti.service.importer.GpxImporter;

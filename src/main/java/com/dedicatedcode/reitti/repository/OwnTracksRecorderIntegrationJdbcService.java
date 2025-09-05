@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
-import com.dedicatedcode.reitti.model.OwnTracksRecorderIntegration;
-import com.dedicatedcode.reitti.model.User;
+import com.dedicatedcode.reitti.model.integration.OwnTracksRecorderIntegration;
+import com.dedicatedcode.reitti.model.security.User;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
