@@ -37,7 +37,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/login", "/access", "/error").permitAll()
                         .requestMatchers("/settings/**").hasAnyRole(Role.ADMIN.name(), Role.USER.name())
-                        .requestMatchers("/css/**", "/js/**", "/images/**", "/img/**").permitAll()
+                        .requestMatchers("/css/**", "/js/**", "/images/**", "/img/**", "/error/magic-link/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/api/v1/reitti-integration/notify/**").permitAll()
                         .anyRequest().authenticated()

@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.config;
 
+import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.MagicLinkToken;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.MagicLinkJdbcService;
@@ -53,13 +54,11 @@ public class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
 
             MagicLinkToken linkToken = magicLinkToken.get();
 
-            // Check if token is expired
             if (linkToken.getExpiryDate() != null && linkToken.getExpiryDate().isBefore(Instant.now())) {
                 response.sendRedirect("/error/magic-link?error=expired");
                 return;
             }
 
-            // Find the user associated with this token
             Optional<User> user = magicLinkJdbcService.findUserIdByToken(linkToken.getId()).flatMap(userJdbcService::findById);
 
             if (user.isEmpty()) {
@@ -67,26 +66,23 @@ public class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
 
-            // Update last used timestamp
             magicLinkJdbcService.updateLastUsed(linkToken.getId());
 
-            // Create authentication with magic link role
             String specialRole = "ROLE_MAGIC_LINK_" + linkToken.getAccessLevel().name();
+            User principal = user.get().withRole(Role.USER);
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                    user.get(),
+                    principal,
                     null,
-                    Collections.singletonList(new SimpleGrantedAuthority(specialRole))
+                    principal.getAuthorities()
             );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            // Redirect to home page
-            response.sendRedirect("/");
-            return;
-
+//            response.sendRedirect("/");
         } catch (Exception e) {
             response.sendRedirect("/error/magic-link?error=processing");
-            return;
         }
+
+        filterChain.doFilter(request, response);
     }
 }
