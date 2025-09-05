@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Magic Links Content Fragment -->
+<div th:fragment="magic-links-content">
+    <h2 th:text="#{magic.links.title}">Magic Links</h2>
+
+    <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+        <span th:text="${successMessage}">Magic link created successfully</span>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+        <span th:text="${errorMessage}">Error message</span>
+    </div>
+
+    <!-- Show new token once after creation -->
+    <div th:if="${newToken}" class="settings-card" style="background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724;">
+        <h3 th:text="#{magic.links.new.token.title}">🔗 New Magic Link Created</h3>
+        <p th:text="#{magic.links.new.token.description}">Your magic link has been created successfully. Copy the link below and save it securely - it will not be shown again!</p>
+        <div style="margin: 15px 0;">
+            <label th:text="#{magic.links.new.token.name}">Link Name:</label>
+            <strong th:text="${newTokenName}">Token Name</strong>
+        </div>
+        <div style="margin: 15px 0;">
+            <label th:text="#{magic.links.new.token.url}">Magic Link URL:</label>
+            <div style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 10px; font-family: monospace; word-break: break-all; color: #212529;">
+                <span th:text="${magicLinkUrl}">magic-link-url</span>
+            </div>
+        </div>
+        <div style="margin: 15px 0;">
+            <label th:text="#{magic.links.new.token.value}">Token Only:</label>
+            <div style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 10px; font-family: monospace; word-break: break-all; color: #212529;">
+                <span th:text="${newToken}">token-value</span>
+            </div>
+        </div>
+        <p style="margin-top: 15px; font-weight: bold;" th:text="#{magic.links.new.token.warning}">⚠️ Save this link now - you won't be able to see it again!</p>
+    </div>
+
+    <div class="settings-card" th:if="${tokens.isEmpty()}">
+        <p th:text="#{magic.links.no.tokens}">No magic links found. Create one to get started.</p>
+    </div>
+
+    <div class="settings-card">
+        <table th:if="${!tokens.isEmpty()}">
+            <thead>
+            <tr>
+                <th th:text="#{magic.links.table.access.level}">Access Level</th>
+                <th th:text="#{magic.links.table.created}">Created</th>
+                <th th:text="#{magic.links.table.expiry}">Expires</th>
+                <th th:text="#{magic.links.table.last.used}">Last Used</th>
+                <th th:text="#{magic.links.table.actions}">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="token : ${tokens}">
+                <td>
+                    <span th:text="#{${'magic.links.access.level.' + ${token.accessLevel.name().toLowerCase()}}}">Access Level</span>
+                </td>
+                <td th:text="${#temporals.format(token.createdAt, 'yyyy-MM-dd HH:mm')}"></td>
+                <td th:text="${token.expiryDate != null ? #temporals.format(token.expiryDate, 'yyyy-MM-dd HH:mm') : #messages.msg('magic.links.never.expires')}"></td>
+                <td th:text="${token.lastUsed != null ? #temporals.format(token.lastUsed, 'yyyy-MM-dd HH:mm') : #messages.msg('magic.links.never.used')}"></td>
+                <td>
+                    <button class="btn btn-danger"
+                            th:attr="hx-post=@{/settings/magic-links/{id}/delete(id=${token.id})}, hx-confirm=#{magic.links.delete.confirm}"
+                            hx-target="#magic-links"
+                            hx-swap="innerHTML"
+                            th:text="#{form.delete}">Delete
+                    </button>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="settings-card">
+        <form hx-post="/settings/magic-links" hx-target="#magic-links" hx-swap="innerHTML" class="magic-link-form"
+              style="margin-bottom: 20px;">
+            <div class="form-group">
+                <label for="magicLinkName" th:text="#{magic.links.name.label}">Link Name</label>
+                <input type="text" id="magicLinkName" name="name" required th:placeholder="#{magic.links.name.placeholder}">
+            </div>
+            <div class="form-group">
+                <label for="accessLevel" th:text="#{magic.links.access.level.label}">Access Level</label>
+                <select id="accessLevel" name="accessLevel" class="form-select" required>
+                    <option th:each="level : ${accessLevels}" 
+                            th:value="${level.name()}" 
+                            th:text="#{${'magic.links.access.level.' + ${level.name().toLowerCase()}}}">Access Level</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="expiryDays" th:text="#{magic.links.expiry.days.label}">Expiry (Days)</label>
+                <input type="number" id="expiryDays" name="expiryDays" min="1" max="365" th:placeholder="#{magic.links.expiry.days.placeholder}">
+                <small th:text="#{magic.links.expiry.days.help}">Leave empty for no expiration</small>
+            </div>
+            <button type="submit" class="btn" th:text="#{form.create}">Create Magic Link</button>
+        </form>
+    </div>
+
+</div>
+
+</body>
+</html>
