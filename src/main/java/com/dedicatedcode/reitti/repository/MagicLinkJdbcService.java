@@ -61,7 +61,7 @@ public class MagicLinkJdbcService {
         int rowsAffected = jdbcTemplate.update(sql,
                 updatedToken.getTokenHash(),
                 updatedToken.getAccessLevel().name(),
-                Timestamp.from(updatedToken.getExpiryDate()),
+                updatedToken.getExpiryDate() != null ? Timestamp.from(updatedToken.getExpiryDate()) : null,
                 updatedToken.getLastUsed() != null ? Timestamp.from(updatedToken.getLastUsed()) : null,
                 updatedToken.getId());
 
