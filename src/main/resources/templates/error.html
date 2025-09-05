@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{error.page.title}">Error - Reitti</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/lineicons.css">
+    <style>
+        .error-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 2rem;
+        }
+
+        .error-content {
+            background: white;
+            border-radius: 12px;
+            padding: 3rem;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .error-header {
+            margin-bottom: 2rem;
+        }
+
+        .error-header .logo {
+            height: 60px;
+            margin-bottom: 1rem;
+        }
+
+        .error-header h1 {
+            color: #333;
+            font-size: 2rem;
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .error-code {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #e74c3c;
+            margin-bottom: 1rem;
+        }
+
+        .error-message {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 1rem;
+        }
+
+        .error-description {
+            color: #888;
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+
+        .error-debug {
+            margin: 2rem 0;
+            text-align: left;
+        }
+
+        .error-debug details {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 1rem;
+        }
+
+        .error-debug summary {
+            cursor: pointer;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 0.5rem;
+        }
+
+        .error-debug pre {
+            background: #f1f3f4;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            color: #333;
+            margin: 0.5rem 0 0 0;
+        }
+
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 768px) {
+            .error-container {
+                padding: 1rem;
+            }
+
+            .error-content {
+                padding: 2rem;
+            }
+
+            .error-code {
+                font-size: 3rem;
+            }
+
+            .error-actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="error-container">
+    <div class="error-content">
+        <div class="error-header">
+            <img class="logo" th:src="@{/img/logo.svg}" alt="reitti logo" title="reitti" src="/img/logo.svg">
+            <h1 th:text="#{error.title}">Oops! Something went wrong</h1>
+        </div>
+
+        <div class="error-details">
+            <div class="error-code">
+                <span th:text="${status}" th:if="${status}">500</span>
+                <span th:unless="${status}">Error</span>
+            </div>
+
+            <div class="error-message">
+                <p th:text="${error}" th:if="${error}">Internal Server Error</p>
+                <p th:unless="${error}" th:text="#{error.generic.message}">An unexpected error occurred. Please try
+                    again later.</p>
+            </div>
+
+            <div class="error-description" th:if="${message}">
+                <p th:text="${message}"></p>
+            </div>
+
+            <!-- Show additional details only in development -->
+            <div class="error-debug" th:if="${trace}">
+                <details>
+                    <summary th:text="#{error.technical.details}">Technical Details</summary>
+                    <pre th:text="${trace}"></pre>
+                </details>
+            </div>
+        </div>
+
+        <div class="error-actions">
+            <a href="/" class="btn btn-primary" th:text="#{error.action.home}">
+                <i class="lni lni-home"></i> Go Home
+            </a>
+            <button onclick="history.back()" class="btn btn-secondary" th:text="#{error.action.back}">
+                <i class="lni lni-arrow-left"></i> Go Back
+            </button>
+            <button onclick="location.reload()" class="btn btn-secondary" th:text="#{error.action.retry}">
+                <i class="lni lni-reload"></i> Try Again
+            </button>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
