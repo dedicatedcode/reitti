@@ -94,10 +94,6 @@ public class UserSettingsJdbcService {
         return findByUserId(userId).orElseGet(() -> save(UserSettings.defaultSettings(userId)));
     }
     
-    public void deleteByUserId(Long userId) {
-        jdbcTemplate.update("DELETE FROM user_settings WHERE user_id = ?", userId);
-    }
-    
     public void updateNewestData(User user, List<LocationDataRequest.LocationPoint> filtered) {
         filtered.stream().map(LocationDataRequest.LocationPoint::getTimestamp).max(Comparator.naturalOrder()).ifPresent(timestamp -> {
             Instant instant = ZonedDateTime.parse(timestamp).toInstant();
