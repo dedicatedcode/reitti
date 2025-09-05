@@ -23,6 +23,9 @@ public class SecurityConfig {
     private UrlTokenAuthenticationFilter urlTokenAuthenticationFilter;
 
     @Autowired
+    private MagicLinkAuthenticationFilter magicLinkAuthenticationFilter;
+
+    @Autowired
     private CustomAuthenticationSuccessHandler customAuthenticationSuccessHandler;
 
     @Autowired(required = false)
@@ -41,6 +44,7 @@ public class SecurityConfig {
                 )
                 .addFilterBefore(bearerTokenAuthFilter, AuthorizationFilter.class)
                 .addFilterBefore(urlTokenAuthenticationFilter, TokenAuthenticationFilter.class)
+                .addFilterBefore(magicLinkAuthenticationFilter, UrlTokenAuthenticationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(form -> form
                         .loginPage("/login")
