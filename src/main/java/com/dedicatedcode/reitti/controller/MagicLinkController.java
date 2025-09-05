@@ -17,6 +17,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.List;
@@ -46,7 +48,7 @@ public class MagicLinkController {
     public String createMagicLink(@AuthenticationPrincipal User user,
                                   @RequestParam String name,
                                   @RequestParam MagicLinkAccessLevel accessLevel,
-                                  @RequestParam(required = false) Integer expiryDays,
+                                  @RequestParam(required = false) String expiryDate,
                                   HttpServletRequest request,
                                   Model model,
                                   RedirectAttributes redirectAttributes) {
@@ -60,13 +62,22 @@ public class MagicLinkController {
             String tokenHash = hashToken(rawToken);
 
             // Calculate expiry date
-            Instant expiryDate = null;
-            if (expiryDays != null && expiryDays > 0) {
-                expiryDate = Instant.now().plus(expiryDays, ChronoUnit.DAYS);
+            Instant expiryInstant = null;
+            if (expiryDate != null && !expiryDate.trim().isEmpty()) {
+                try {
+                    LocalDate localDate = LocalDate.parse(expiryDate);
+                    expiryInstant = localDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
+                } catch (Exception e) {
+                    model.addAttribute("errorMessage", getMessage("magic.links.invalid.date"));
+                    List<MagicLinkToken> tokens = magicLinkJdbcService.findByUser(user);
+                    model.addAttribute("tokens", tokens);
+                    model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
+                    return "fragments/magic-links :: magic-links-content";
+                }
             }
 
             // Create token object
-            MagicLinkToken token = new MagicLinkToken(null, tokenHash, accessLevel, expiryDate, null, null, false);
+            MagicLinkToken token = new MagicLinkToken(null, tokenHash, accessLevel, expiryInstant, null, null, false);
             MagicLinkToken createdToken = magicLinkJdbcService.create(user, token);
 
             // Build the full magic link URL

@@ -88,9 +88,12 @@
                 </select>
             </div>
             <div class="form-group">
-                <label for="expiryDays" th:text="#{magic.links.expiry.days.label}">Expiry (Days)</label>
-                <input type="number" id="expiryDays" name="expiryDays" min="1" max="365" th:placeholder="#{magic.links.expiry.days.placeholder}">
-                <small th:text="#{magic.links.expiry.days.help}">Leave empty for no expiration</small>
+                <label for="expiryDate" th:text="#{magic.links.expiry.date.label}">Expiry Date</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="date" id="expiryDate" name="expiryDate" style="flex: 1;">
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('expiryDate').value=''" th:text="#{form.clear}">Clear</button>
+                </div>
+                <small th:text="#{magic.links.expiry.date.help}">Leave empty for permanent access (link never expires)</small>
             </div>
             <button type="submit" class="btn" th:text="#{form.create}">Create Magic Link</button>
         </form>
