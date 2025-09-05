@@ -28,7 +28,7 @@ public class MagicLinkJdbcService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public MagicLinkToken create(User user, String tokenHash, MagicLinkAccessLevel accessLevel, Instant expiryDate) {
+    public MagicLinkToken create(User user, MagicLinkToken token) {
         String sql = """
             INSERT INTO magic_link_tokens (user_id, token_hash, access_level, expiry_date, created_at)
             VALUES (?, ?, ?, ?, ?)
@@ -40,15 +40,15 @@ public class MagicLinkJdbcService {
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(sql, new String[]{"id"});
             ps.setLong(1, user.getId());
-            ps.setString(2, tokenHash);
-            ps.setString(3, accessLevel.name());
-            ps.setTimestamp(4, Timestamp.from(expiryDate));
+            ps.setString(2, token.getTokenHash());
+            ps.setString(3, token.getAccessLevel().name());
+            ps.setTimestamp(4, Timestamp.from(token.getExpiryDate()));
             ps.setTimestamp(5, Timestamp.from(now));
             return ps;
         }, keyHolder);
 
         long id = keyHolder.getKey().longValue();
-        return new MagicLinkToken(id, tokenHash, accessLevel, expiryDate, now, null, false);
+        return new MagicLinkToken(id, token.getTokenHash(), token.getAccessLevel(), token.getExpiryDate(), now, null, false);
     }
 
     public Optional<MagicLinkToken> update(long id, MagicLinkToken updatedToken) {
