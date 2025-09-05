@@ -43,7 +43,7 @@ class MagicLinkJdbcServiceTest {
         Instant expiryDate = Instant.now().plus(1, ChronoUnit.HOURS);
         
         MagicLinkToken tokenToCreate = new MagicLinkToken(
-            0L, // ID will be generated
+            null, // ID will be generated
             tokenHash,
             accessLevel,
             expiryDate,
@@ -178,7 +178,7 @@ class MagicLinkJdbcServiceTest {
 
     private MagicLinkToken createTestTokenWithAccessLevel(String tokenHash, MagicLinkAccessLevel accessLevel) {
         MagicLinkToken token = new MagicLinkToken(
-            0L,
+            null,
             tokenHash,
             accessLevel,
             Instant.now().plus(1, ChronoUnit.HOURS),

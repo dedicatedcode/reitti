@@ -51,9 +51,9 @@ public class MagicLinkJdbcService {
         return new MagicLinkToken(id, token.getTokenHash(), token.getAccessLevel(), token.getExpiryDate(), now, null, false);
     }
 
-    public Optional<MagicLinkToken> update(long id, MagicLinkToken updatedToken) {
+    public Optional<MagicLinkToken> update(MagicLinkToken updatedToken) {
         String sql = """
-            UPDATE magic_link_tokens 
+            UPDATE magic_link_tokens
             SET token_hash = ?, access_level = ?, expiry_date = ?, last_used_at = ?
             WHERE id = ?
             """;
@@ -63,21 +63,10 @@ public class MagicLinkJdbcService {
                 updatedToken.getAccessLevel().name(),
                 Timestamp.from(updatedToken.getExpiryDate()),
                 updatedToken.getLastUsed() != null ? Timestamp.from(updatedToken.getLastUsed()) : null,
-                id);
+                updatedToken.getId());
 
         if (rowsAffected > 0) {
-            return findById(id);
-        }
-        return Optional.empty();
-    }
-
-    public Optional<MagicLinkToken> updateLastUsed(long id, Instant lastUsed) {
-        String sql = "UPDATE magic_link_tokens SET last_used_at = ? WHERE id = ?";
-        
-        int rowsAffected = jdbcTemplate.update(sql, Timestamp.from(lastUsed), id);
-        
-        if (rowsAffected > 0) {
-            return findById(id);
+            return findById(updatedToken.getId());
         }
         return Optional.empty();
     }
@@ -86,31 +75,31 @@ public class MagicLinkJdbcService {
     public Optional<MagicLinkToken> findById(long id) {
         String sql = """
             SELECT id, token_hash, access_level, expiry_date, created_at, last_used_at
-            FROM magic_link_tokens 
+            FROM magic_link_tokens
             WHERE id = ?
             """;
 
         List<MagicLinkToken> results = jdbcTemplate.query(sql, new MagicLinkTokenRowMapper(), id);
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
     @Transactional(readOnly = true)
     public Optional<MagicLinkToken> findByTokenHash(String tokenHash) {
         String sql = """
             SELECT id, token_hash, access_level, expiry_date, created_at, last_used_at
-            FROM magic_link_tokens 
+            FROM magic_link_tokens
             WHERE token_hash = ?
             """;
 
         List<MagicLinkToken> results = jdbcTemplate.query(sql, new MagicLinkTokenRowMapper(), tokenHash);
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
     @Transactional(readOnly = true)
     public List<MagicLinkToken> findByUser(User user) {
         String sql = """
             SELECT id, token_hash, access_level, expiry_date, created_at, last_used_at
-            FROM magic_link_tokens 
+            FROM magic_link_tokens
             WHERE user_id = ?
             ORDER BY created_at DESC
             """;
@@ -118,34 +107,9 @@ public class MagicLinkJdbcService {
         return jdbcTemplate.query(sql, new MagicLinkTokenRowMapper(), user.getId());
     }
 
-    @Transactional(readOnly = true)
-    public List<MagicLinkToken> findExpiredTokens() {
-        String sql = """
-            SELECT id, token_hash, access_level, expiry_date, created_at, last_used_at
-            FROM magic_link_tokens 
-            WHERE expiry_date < ?
-            """;
-
-        return jdbcTemplate.query(sql, new MagicLinkTokenRowMapper(), Timestamp.from(Instant.now()));
-    }
-
     public void delete(long id) {
         String sql = "DELETE FROM magic_link_tokens WHERE id = ?";
         jdbcTemplate.update(sql, id);
-    }
-
-    public void deleteExpiredTokens() {
-        String sql = "DELETE FROM magic_link_tokens WHERE expiry_date < ?";
-        jdbcTemplate.update(sql, Timestamp.from(Instant.now()));
-    }
-
-    public void recordUsage(long tokenId, String endpoint, String ipAddress) {
-        String sql = """
-            INSERT INTO magic_link_tokens_usages (token_id, at, endpoint, ip)
-            VALUES (?, ?, ?, ?)
-            """;
-
-        jdbcTemplate.update(sql, tokenId, Timestamp.from(Instant.now()), endpoint, ipAddress);
     }
 
     private static class MagicLinkTokenRowMapper implements RowMapper<MagicLinkToken> {
