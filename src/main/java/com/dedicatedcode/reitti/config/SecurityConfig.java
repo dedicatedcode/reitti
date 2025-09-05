@@ -42,9 +42,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/reitti-integration/notify/**").permitAll()
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(magicLinkAuthenticationFilter, AuthorizationFilter.class)
                 .addFilterBefore(bearerTokenAuthFilter, AuthorizationFilter.class)
                 .addFilterBefore(urlTokenAuthenticationFilter, TokenAuthenticationFilter.class)
-                .addFilterBefore(magicLinkAuthenticationFilter, UrlTokenAuthenticationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(form -> form
                         .loginPage("/login")
