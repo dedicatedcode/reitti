@@ -123,6 +123,9 @@ public class SettingsController {
             case "api-tokens":
                 getApiTokensContent(user, model);
                 break;
+            case "sharing":
+                getSharingContent(user, model);
+                break;
             case "user-management":
                 return getUserManagementPage(user, model);
             case "places-management":
@@ -163,6 +166,18 @@ public class SettingsController {
         model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(user, 10));
         model.addAttribute("maxUsagesToShow", 10);
         return "fragments/api-tokens :: api-tokens-content";
+    }
+
+    @GetMapping("/sharing-content")
+    public String getSharingContent(@AuthenticationPrincipal User user, Model model) {
+        // This will be handled by the MagicLinkController via HTMX
+        return "redirect:/settings/magic-links";
+    }
+
+    private void getSharingContent(@AuthenticationPrincipal User user, Model model) {
+        // Load magic links content - this will be handled by MagicLinkController
+        // We just need to set up the initial state here
+        model.addAttribute("accessLevels", com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel.values());
     }
 
 

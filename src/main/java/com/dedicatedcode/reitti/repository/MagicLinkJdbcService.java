@@ -42,7 +42,7 @@ public class MagicLinkJdbcService {
             ps.setLong(1, user.getId());
             ps.setString(2, token.getTokenHash());
             ps.setString(3, token.getAccessLevel().name());
-            ps.setTimestamp(4, Timestamp.from(token.getExpiryDate()));
+            ps.setTimestamp(4, token.getExpiryDate() != null ? Timestamp.from(token.getExpiryDate()) : null);
             ps.setTimestamp(5, Timestamp.from(now));
             return ps;
         }, keyHolder);
@@ -118,7 +118,8 @@ public class MagicLinkJdbcService {
             long id = rs.getLong("id");
             String tokenHash = rs.getString("token_hash");
             MagicLinkAccessLevel accessLevel = MagicLinkAccessLevel.valueOf(rs.getString("access_level"));
-            Instant expiryDate = rs.getTimestamp("expiry_date").toInstant();
+            Timestamp expiryTimestamp = rs.getTimestamp("expiry_date");
+            Instant expiryDate = expiryTimestamp != null ? expiryTimestamp.toInstant() : null;
             Instant createdAt = rs.getTimestamp("created_at").toInstant();
             
             Timestamp lastUsedTimestamp = rs.getTimestamp("last_used_at");
