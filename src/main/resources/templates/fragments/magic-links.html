@@ -14,26 +14,20 @@
     </div>
 
     <!-- Show new token once after creation -->
-    <div th:if="${newToken}" class="settings-card" style="background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724;">
+    <div th:if="${newTokenName}" class="settings-card">
         <h3 th:text="#{magic.links.new.token.title}">🔗 New Magic Link Created</h3>
         <p th:text="#{magic.links.new.token.description}">Your magic link has been created successfully. Copy the link below and save it securely - it will not be shown again!</p>
-        <div style="margin: 15px 0;">
-            <label th:text="#{magic.links.new.token.name}">Link Name:</label>
+        <div>
+            <span th:text="#{magic.links.new.token.name}">Link Name:</span>
             <strong th:text="${newTokenName}">Token Name</strong>
         </div>
         <div style="margin: 15px 0;">
-            <label th:text="#{magic.links.new.token.url}">Magic Link URL:</label>
-            <div style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 10px; font-family: monospace; word-break: break-all; color: #212529;">
-                <span th:text="${magicLinkUrl}">magic-link-url</span>
-            </div>
+            <span th:text="#{magic.links.new.token.url}">Magic Link URL:</span>
+            <span>
+                <a th:href="${magicLinkUrl}" th:text="${magicLinkUrl}">magic-link-url</a>
+            </span>
         </div>
-        <div style="margin: 15px 0;">
-            <label th:text="#{magic.links.new.token.value}">Token Only:</label>
-            <div style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 10px; font-family: monospace; word-break: break-all; color: #212529;">
-                <span th:text="${newToken}">token-value</span>
-            </div>
-        </div>
-        <p style="margin-top: 15px; font-weight: bold;" th:text="#{magic.links.new.token.warning}">⚠️ Save this link now - you won't be able to see it again!</p>
+        <p th:text="#{magic.links.new.token.warning}">⚠️ Save this link now - you won't be able to see it again!</p>
     </div>
 
     <div class="settings-card" th:if="${tokens.isEmpty()}">
@@ -54,7 +48,7 @@
             <tbody>
             <tr th:each="token : ${tokens}">
                 <td>
-                    <span th:text="#{${'magic.links.access.level.' + ${token.accessLevel.name().toLowerCase()}}}">Access Level</span>
+                    <span th:text="#{${'magic.links.access.level.' + token.accessLevel.name().toLowerCase()}}">Access Level</span>
                 </td>
                 <td th:text="${#temporals.format(token.createdAt, 'yyyy-MM-dd HH:mm')}"></td>
                 <td th:text="${token.expiryDate != null ? #temporals.format(token.expiryDate, 'yyyy-MM-dd HH:mm') : #messages.msg('magic.links.never.expires')}"></td>
