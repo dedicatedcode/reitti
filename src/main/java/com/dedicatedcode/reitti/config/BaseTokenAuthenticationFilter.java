@@ -15,7 +15,6 @@ public abstract class BaseTokenAuthenticationFilter extends OncePerRequestFilter
         // Extract the path and remote IP of the request, supporting reverse proxy
         String requestPath = request.getRequestURI();
         String remoteIp = getClientIpAddress(request);
-
         this.apiTokenService.trackUsage(token, requestPath, remoteIp);
     }
 

@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.config;
 
+import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.User;
 import com.dedicatedcode.reitti.service.ApiTokenService;
 import jakarta.servlet.FilterChain;
@@ -35,8 +36,8 @@ public class TokenAuthenticationFilter extends BaseTokenAuthenticationFilter {
             Optional<User> user = apiTokenService.getUserByToken(authHeader);
 
             if (user.isPresent()) {
-                User authenticatedUser = user.get();
-                UsernamePasswordAuthenticationToken authenticationToken = 
+                User authenticatedUser = user.get().withRole(Role.API_ACCESS);
+                UsernamePasswordAuthenticationToken authenticationToken =
                     new UsernamePasswordAuthenticationToken(
                         authenticatedUser, 
                         null,

@@ -5,11 +5,7 @@ import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.GeocodingResponse;
 import com.dedicatedcode.reitti.model.SignificantPlace;
 import org.junit.jupiter.api.Test;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.Point;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,9 +24,6 @@ class GeocodingResponseJdbcServiceTest {
     @Autowired
     private SignificantPlaceJdbcService placeService;
     @Autowired
-    private GeometryFactory geometryFactory;
-
-    @Autowired
     private TestingService testingService;
 
     @Test
@@ -39,7 +32,6 @@ class GeocodingResponseJdbcServiceTest {
 
         double latitudeCentroid = 53.863149;
         double longitudeCentroid = 10.700927;
-        Point point = geometryFactory.createPoint(new Coordinate(longitudeCentroid, latitudeCentroid));
         SignificantPlace place = placeService.create(testingService.admin(), SignificantPlace.create(latitudeCentroid, longitudeCentroid));
         
         GeocodingResponse response = new GeocodingResponse(
@@ -71,7 +63,6 @@ class GeocodingResponseJdbcServiceTest {
 
         double latitudeCentroid = 53.863149;
         double longitudeCentroid = 10.700927;
-        Point point = geometryFactory.createPoint(new Coordinate(longitudeCentroid, latitudeCentroid));
         SignificantPlace place = placeService.create(testingService.admin(), SignificantPlace.create(latitudeCentroid, longitudeCentroid));
 
         // When
@@ -87,7 +78,6 @@ class GeocodingResponseJdbcServiceTest {
 
         double latitudeCentroid = 53.863149;
         double longitudeCentroid = 10.700927;
-        Point point = geometryFactory.createPoint(new Coordinate(longitudeCentroid, latitudeCentroid));
         SignificantPlace place = placeService.create(testingService.admin(), SignificantPlace.create(latitudeCentroid, longitudeCentroid));
 
         GeocodingResponse response = new GeocodingResponse(
