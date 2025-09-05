@@ -8,14 +8,13 @@ import com.dedicatedcode.reitti.repository.MagicLinkJdbcService;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import jakarta.servlet.http.HttpServletRequest;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -30,11 +29,13 @@ public class MagicLinkController {
 
     private final MagicLinkJdbcService magicLinkJdbcService;
     private final MessageSource messageSource;
+    private final PasswordEncoder passwordEncoder;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public MagicLinkController(MagicLinkJdbcService magicLinkJdbcService, MessageSource messageSource) {
+    public MagicLinkController(MagicLinkJdbcService magicLinkJdbcService, MessageSource messageSource, PasswordEncoder passwordEncoder) {
         this.magicLinkJdbcService = magicLinkJdbcService;
         this.messageSource = messageSource;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @GetMapping
@@ -126,14 +127,7 @@ public class MagicLinkController {
     }
 
     private String hashToken(String token) {
-        try {
-            //replace this method with the PasswordEncoder found in AppConfig AI!
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(token.getBytes());
-            return Base64.getEncoder().encodeToString(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("SHA-256 algorithm not available", e);
-        }
+        return passwordEncoder.encode(token);
     }
 
     private String getBaseUrl(HttpServletRequest request) {
