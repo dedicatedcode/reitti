@@ -77,7 +77,7 @@ public class MagicLinkController {
             }
 
             // Create token object
-            MagicLinkToken token = new MagicLinkToken(null, tokenHash, accessLevel, expiryInstant, null, null, false);
+            MagicLinkToken token = new MagicLinkToken(null, name, tokenHash, accessLevel, expiryInstant, null, null, false);
             MagicLinkToken createdToken = magicLinkJdbcService.create(user, token);
 
             // Build the full magic link URL
@@ -85,10 +85,8 @@ public class MagicLinkController {
             String magicLinkUrl = baseUrl + "/access?token=" + rawToken;
 
             // Show the raw token once
-            model.addAttribute("newToken", rawToken);
             model.addAttribute("newTokenName", name);
             model.addAttribute("magicLinkUrl", magicLinkUrl);
-            model.addAttribute("successMessage", getMessage("magic.links.created.success"));
 
             List<MagicLinkToken> tokens = magicLinkJdbcService.findByUser(user);
             model.addAttribute("tokens", tokens);

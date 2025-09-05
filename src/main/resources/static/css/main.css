@@ -883,6 +883,12 @@ input[type=file]::file-selector-button:hover {
     opacity: 1;
 }
 
+.settings-card a:visited,
+.settings-card a:active,
+.settings-card a:hover,
+.settings-card a {
+    color: var(--color-highlight);
+}
 @media (max-width: 800px) {
     .timeline-entry {
         padding: 1rem 2rem 0 1rem;

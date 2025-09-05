@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -39,11 +40,12 @@ class MagicLinkJdbcServiceTest {
     void shouldCreateMagicLinkToken() {
         // Given
         String tokenHash = "test-token-hash-123";
-        MagicLinkAccessLevel accessLevel = MagicLinkAccessLevel.READ_ONLY;
+        MagicLinkAccessLevel accessLevel = MagicLinkAccessLevel.FULL_ACCESS;
         Instant expiryDate = Instant.now().plus(1, ChronoUnit.HOURS);
         
         MagicLinkToken tokenToCreate = new MagicLinkToken(
-            null, // ID will be generated
+                null,
+                UUID.randomUUID().toString(),
             tokenHash,
             accessLevel,
             expiryDate,
@@ -107,8 +109,8 @@ class MagicLinkJdbcServiceTest {
     @Test
     void shouldFindTokensByUser() {
         // Given
-        MagicLinkToken token1 = createTestToken("user-token-1");
-        MagicLinkToken token2 = createTestToken("user-token-2");
+        createTestToken("user-token-1");
+        createTestToken("user-token-2");
 
         // When
         List<MagicLinkToken> userTokens = magicLinkJdbcService.findByUser(testUser);
@@ -127,8 +129,9 @@ class MagicLinkJdbcServiceTest {
         
         MagicLinkToken updatedToken = new MagicLinkToken(
             originalToken.getId(),
+                originalToken.getName(),
             originalToken.getTokenHash(),
-            MagicLinkAccessLevel.FULL_ACCESS, // Changed access level
+                MagicLinkAccessLevel.ONLY_LIVE, // Changed access level
             originalToken.getExpiryDate(),
             originalToken.getCreatedAt(),
             lastUsed, // Set last used
@@ -140,7 +143,7 @@ class MagicLinkJdbcServiceTest {
 
         // Then
         assertThat(result).isPresent();
-        assertThat(result.get().getAccessLevel()).isEqualTo(MagicLinkAccessLevel.FULL_ACCESS);
+        assertThat(result.get().getAccessLevel()).isEqualTo(MagicLinkAccessLevel.ONLY_LIVE);
         assertThat(result.get().getLastUsed()).isNotNull();
         assertThat(result.get().isUsed()).isTrue();
     }
@@ -162,23 +165,22 @@ class MagicLinkJdbcServiceTest {
     @Test
     void shouldHandleMultipleAccessLevels() {
         // Given & When
-        MagicLinkToken readOnlyToken = createTestTokenWithAccessLevel("readonly", MagicLinkAccessLevel.READ_ONLY);
-        MagicLinkToken fullAccessToken = createTestTokenWithAccessLevel("fullaccess", MagicLinkAccessLevel.FULL_ACCESS);
-        MagicLinkToken adminToken = createTestTokenWithAccessLevel("admin", MagicLinkAccessLevel.ADMIN);
+        MagicLinkToken readOnlyToken = createTestTokenWithAccessLevel("readonly", MagicLinkAccessLevel.FULL_ACCESS);
+        MagicLinkToken fullAccessToken = createTestTokenWithAccessLevel("fullaccess", MagicLinkAccessLevel.ONLY_LIVE);
 
         // Then
-        assertThat(readOnlyToken.getAccessLevel()).isEqualTo(MagicLinkAccessLevel.READ_ONLY);
-        assertThat(fullAccessToken.getAccessLevel()).isEqualTo(MagicLinkAccessLevel.FULL_ACCESS);
-        assertThat(adminToken.getAccessLevel()).isEqualTo(MagicLinkAccessLevel.ADMIN);
+        assertThat(readOnlyToken.getAccessLevel()).isEqualTo(MagicLinkAccessLevel.FULL_ACCESS);
+        assertThat(fullAccessToken.getAccessLevel()).isEqualTo(MagicLinkAccessLevel.ONLY_LIVE);
     }
 
     private MagicLinkToken createTestToken(String tokenHash) {
-        return createTestTokenWithAccessLevel(tokenHash, MagicLinkAccessLevel.READ_ONLY);
+        return createTestTokenWithAccessLevel(tokenHash, MagicLinkAccessLevel.FULL_ACCESS);
     }
 
     private MagicLinkToken createTestTokenWithAccessLevel(String tokenHash, MagicLinkAccessLevel accessLevel) {
         MagicLinkToken token = new MagicLinkToken(
             null,
+            UUID.randomUUID().toString(),
             tokenHash,
             accessLevel,
             Instant.now().plus(1, ChronoUnit.HOURS),

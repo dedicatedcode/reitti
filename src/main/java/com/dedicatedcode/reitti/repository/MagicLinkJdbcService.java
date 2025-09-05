@@ -30,8 +30,8 @@ public class MagicLinkJdbcService {
 
     public MagicLinkToken create(User user, MagicLinkToken token) {
         String sql = """
-            INSERT INTO magic_link_tokens (user_id, token_hash, access_level, expiry_date, created_at)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO magic_link_tokens (user_id, name, token_hash, access_level, expiry_date, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
             """;
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -40,15 +40,16 @@ public class MagicLinkJdbcService {
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(sql, new String[]{"id"});
             ps.setLong(1, user.getId());
-            ps.setString(2, token.getTokenHash());
-            ps.setString(3, token.getAccessLevel().name());
-            ps.setTimestamp(4, token.getExpiryDate() != null ? Timestamp.from(token.getExpiryDate()) : null);
-            ps.setTimestamp(5, Timestamp.from(now));
+            ps.setString(2, token.getName());
+            ps.setString(3, token.getTokenHash());
+            ps.setString(4, token.getAccessLevel().name());
+            ps.setTimestamp(5, token.getExpiryDate() != null ? Timestamp.from(token.getExpiryDate()) : null);
+            ps.setTimestamp(6, Timestamp.from(now));
             return ps;
         }, keyHolder);
 
         long id = keyHolder.getKey().longValue();
-        return new MagicLinkToken(id, token.getTokenHash(), token.getAccessLevel(), token.getExpiryDate(), now, null, false);
+        return new MagicLinkToken(id, token.getName(), token.getTokenHash(), token.getAccessLevel(), token.getExpiryDate(), now, null, false);
     }
 
     public Optional<MagicLinkToken> update(MagicLinkToken updatedToken) {
@@ -74,7 +75,7 @@ public class MagicLinkJdbcService {
     @Transactional(readOnly = true)
     public Optional<MagicLinkToken> findById(long id) {
         String sql = """
-            SELECT id, token_hash, access_level, expiry_date, created_at, last_used_at
+            SELECT id, name, token_hash, access_level, expiry_date, created_at, last_used_at
             FROM magic_link_tokens
             WHERE id = ?
             """;
@@ -86,7 +87,7 @@ public class MagicLinkJdbcService {
     @Transactional(readOnly = true)
     public Optional<MagicLinkToken> findByTokenHash(String tokenHash) {
         String sql = """
-            SELECT id, token_hash, access_level, expiry_date, created_at, last_used_at
+            SELECT id, name, token_hash, access_level, expiry_date, created_at, last_used_at
             FROM magic_link_tokens
             WHERE token_hash = ?
             """;
@@ -98,7 +99,7 @@ public class MagicLinkJdbcService {
     @Transactional(readOnly = true)
     public List<MagicLinkToken> findByUser(User user) {
         String sql = """
-            SELECT id, token_hash, access_level, expiry_date, created_at, last_used_at
+            SELECT id, name, token_hash, access_level, expiry_date, created_at, last_used_at
             FROM magic_link_tokens
             WHERE user_id = ?
             ORDER BY created_at DESC
@@ -116,6 +117,7 @@ public class MagicLinkJdbcService {
         @Override
         public MagicLinkToken mapRow(ResultSet rs, int rowNum) throws SQLException {
             long id = rs.getLong("id");
+            String name = rs.getString("name");
             String tokenHash = rs.getString("token_hash");
             MagicLinkAccessLevel accessLevel = MagicLinkAccessLevel.valueOf(rs.getString("access_level"));
             Timestamp expiryTimestamp = rs.getTimestamp("expiry_date");
@@ -127,7 +129,7 @@ public class MagicLinkJdbcService {
             
             boolean isUsed = lastUsed != null;
 
-            return new MagicLinkToken(id, tokenHash, accessLevel, expiryDate, createdAt, lastUsed, isUsed);
+            return new MagicLinkToken(id, name, tokenHash, accessLevel, expiryDate, createdAt, lastUsed, isUsed);
         }
     }
 }
