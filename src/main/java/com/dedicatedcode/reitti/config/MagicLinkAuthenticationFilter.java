@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -35,7 +36,6 @@ public class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        // Only process /access requests with mt parameter
         if (!"/access".equals(request.getRequestURI()) || request.getParameter("mt") == null) {
             filterChain.doFilter(request, response);
             return;
@@ -44,7 +44,6 @@ public class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
         String token = request.getParameter("mt");
 
         try {
-            // Find the token
             Optional<MagicLinkToken> magicLinkToken = magicLinkJdbcService.findByRawToken(token);
 
             if (magicLinkToken.isEmpty()) {
@@ -69,16 +68,17 @@ public class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
             magicLinkJdbcService.updateLastUsed(linkToken.getId());
 
             String specialRole = "ROLE_MAGIC_LINK_" + linkToken.getAccessLevel().name();
-            User principal = user.get().withRole(Role.USER);
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                    principal,
+                    user.get(),
                     null,
-                    principal.getAuthorities()
+                    Collections.singletonList(new SimpleGrantedAuthority(specialRole))
             );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
-
-//            response.sendRedirect("/");
+            request.getSession().setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
+                    SecurityContextHolder.getContext());
+            response.sendRedirect("/");
+            return;
         } catch (Exception e) {
             response.sendRedirect("/error/magic-link?error=processing");
         }
