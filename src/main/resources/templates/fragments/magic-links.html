@@ -40,8 +40,8 @@
         <p th:text="#{magic.links.no.tokens}">No magic links found. Create one to get started.</p>
     </div>
 
-    <div class="settings-card">
-        <table th:if="${!tokens.isEmpty()}">
+    <div class="settings-card" th:if="${!tokens.isEmpty()}">
+        <table>
             <thead>
             <tr>
                 <th th:text="#{magic.links.table.access.level}">Access Level</th>
@@ -84,7 +84,7 @@
                 <select id="accessLevel" name="accessLevel" class="form-select" required>
                     <option th:each="level : ${accessLevels}" 
                             th:value="${level.name()}" 
-                            th:text="#{${'magic.links.access.level.' + ${level.name().toLowerCase()}}}">Access Level</option>
+                            th:text="#{${'magic.links.access.level.' + level.name().toLowerCase()}}">Access Level</option>
                 </select>
             </div>
             <div class="form-group">
@@ -95,8 +95,6 @@
             <button type="submit" class="btn" th:text="#{form.create}">Create Magic Link</button>
         </form>
     </div>
-
 </div>
-
 </body>
 </html>
