@@ -12,34 +12,27 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--color-background-dark);
             padding: 2rem;
         }
 
         .error-content {
-            background: white;
+            background: var(--color-background-dark-light);
             border-radius: 12px;
             padding: 3rem;
             max-width: 600px;
             width: 100%;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
             text-align: center;
-        }
-
-        .error-header {
-            margin-bottom: 2rem;
-        }
-
-        .error-header .logo {
-            height: 60px;
-            margin-bottom: 1rem;
+            border: 1px solid var(--color-highlight);
         }
 
         .error-header h1 {
-            color: #333;
+            color: var(--color-text-white);
             font-size: 2rem;
-            margin: 0;
+            margin: 1rem 0 0 0;
             font-weight: 600;
+            font-family: "Fraunces", serif;
         }
 
         .error-code {
@@ -47,16 +40,18 @@
             font-weight: bold;
             color: #e74c3c;
             margin-bottom: 1rem;
+            font-family: "Fraunces", serif;
         }
 
         .error-message {
             font-size: 1.2rem;
-            color: #666;
+            color: var(--color-text-white);
             margin-bottom: 1rem;
         }
 
         .error-description {
-            color: #888;
+            color: var(--color-text-white);
+            opacity: 0.8;
             margin-bottom: 2rem;
             font-size: 0.95rem;
         }
@@ -66,30 +61,6 @@
             text-align: left;
         }
 
-        .error-debug details {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-            padding: 1rem;
-        }
-
-        .error-debug summary {
-            cursor: pointer;
-            font-weight: 600;
-            color: #495057;
-            margin-bottom: 0.5rem;
-        }
-
-        .error-debug pre {
-            background: #f1f3f4;
-            padding: 1rem;
-            border-radius: 4px;
-            overflow-x: auto;
-            font-size: 0.85rem;
-            color: #333;
-            margin: 0.5rem 0 0 0;
-        }
-
         .error-actions {
             display: flex;
             gap: 1rem;
@@ -97,36 +68,24 @@
             flex-wrap: wrap;
         }
 
-        .btn {
+        .error-actions .btn {
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
             padding: 0.75rem 1.5rem;
-            border: none;
+            border: 1px solid var(--color-highlight);
             border-radius: 6px;
             text-decoration: none;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s ease;
+            background-color: var(--color-background-dark);
+            color: var(--color-text-white);
         }
 
-        .btn-primary {
-            background: #007bff;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #0056b3;
-            transform: translateY(-1px);
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #545b62;
+        .error-actions .btn:hover {
+            background-color: var(--color-highlight);
+            color: var(--color-background-dark);
             transform: translateY(-1px);
         }
 
@@ -147,7 +106,7 @@
                 flex-direction: column;
             }
 
-            .btn {
+            .error-actions .btn {
                 width: 100%;
                 justify-content: center;
             }
@@ -188,13 +147,13 @@
         </div>
 
         <div class="error-actions">
-            <a href="/" class="btn btn-primary" th:text="#{error.action.home}">
+            <a href="/" class="btn" th:text="#{error.action.home}">
                 <i class="lni lni-home"></i> Go Home
             </a>
-            <button onclick="history.back()" class="btn btn-secondary" th:text="#{error.action.back}">
+            <button onclick="history.back()" class="btn" th:text="#{error.action.back}">
                 <i class="lni lni-arrow-left"></i> Go Back
             </button>
-            <button onclick="location.reload()" class="btn btn-secondary" th:text="#{error.action.retry}">
+            <button onclick="location.reload()" class="btn" th:text="#{error.action.retry}">
                 <i class="lni lni-reload"></i> Try Again
             </button>
         </div>
