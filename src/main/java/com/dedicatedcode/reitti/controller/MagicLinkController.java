@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller;
 
+import com.dedicatedcode.reitti.config.AppConfig;
 import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.MagicLinkToken;
 import com.dedicatedcode.reitti.model.security.User;
@@ -78,7 +79,7 @@ public class MagicLinkController {
 
             // Create token object
             MagicLinkToken token = new MagicLinkToken(null, name, tokenHash, accessLevel, expiryInstant, null, null, false);
-            MagicLinkToken createdToken = magicLinkJdbcService.create(user, token);
+            magicLinkJdbcService.create(user, token);
 
             // Build the full magic link URL
             String baseUrl = getBaseUrl(request);
@@ -126,6 +127,7 @@ public class MagicLinkController {
 
     private String hashToken(String token) {
         try {
+            //replace this method with the PasswordEncoder found in AppConfig AI!
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(token.getBytes());
             return Base64.getEncoder().encodeToString(hash);
