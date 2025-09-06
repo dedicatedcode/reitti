@@ -1,8 +1,9 @@
 package com.dedicatedcode.reitti.model.security;
 
+import java.io.Serializable;
 import java.time.Instant;
 
-public class MagicLinkToken {
+public class MagicLinkToken implements Serializable {
     private final Long id;
     private final String name; // Store a hash of the token, not the raw token
     private final String tokenHash; // Store a hash of the token, not the raw token

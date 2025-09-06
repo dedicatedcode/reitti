@@ -116,10 +116,6 @@
         </div>
 
         <div class="error-details">
-            <div class="error-code">
-                🔗
-            </div>
-
             <div class="error-message">
                 <p th:text="${error}" th:if="${error}">An error occurred with the magic link</p>
                 <p th:unless="${error}" th:text="#{magic.link.error.generic}">The magic link is invalid or has expired.</p>
@@ -131,15 +127,11 @@
         </div>
 
         <div class="error-actions">
-            <a href="/" class="btn" th:text="#{magic.link.error.home}">
-                <i class="lni lni-home"></i> Go to Home
-            </a>
             <a href="/login" class="btn" th:text="#{magic.link.error.login}">
                 <i class="lni lni-user"></i> Login with Account
             </a>
         </div>
     </div>
 </div>
-
 </body>
 </html>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -27,7 +27,7 @@
 
 <!-- Auto-update overlay -->
 <div id="auto-update-overlay" class="auto-update-overlay">
-    <button class="overlay-button exit-button" onclick="disableAutoUpdate()" title="Exit Auto Update">
+    <button sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER', 'ROLE_MAGIC_LINK_FULL_ACCESS')" class="overlay-button exit-button" onclick="disableAutoUpdate()" title="Exit Auto Update">
         <i class="lni lni-pause"></i>
     </button>
     <button class="overlay-button fullscreen-button" onclick="toggleFullscreen()" title="Toggle Fullscreen">
@@ -40,8 +40,8 @@
 <div class="timeline">
     <div class="timeline-header">
         <span><img class="logo" th:src="@{/img/logo.svg}" alt="reitti logo" title="reitti" src="/img/logo.svg"></span>
-        <a href="/statistics" class="nav-link" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
-        <a href="/settings" class="nav-link" th:title="#{nav.settings.tooltip}"><i class="lni lni-gear-1"></i></a>
+        <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/statistics" class="nav-link" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
+        <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/settings" class="nav-link" th:title="#{nav.settings.tooltip}"><i class="lni lni-gear-1"></i></a>
         <a type="button" class="nav-link" id="auto-update-btn" onclick="toggleAutoUpdate()" title="Auto Update"><i class="lni lni-play"></i></a>
         <a type="button" class="nav-link" onclick="toggleFullscreen()" title="Toggle Fullscreen"><i class="lni lni-arrow-all-direction"></i></a>
         <form th:action="@{/logout}" method="post" >
@@ -50,7 +50,7 @@
             </button>
         </form>
     </div>
-    <div class="timeline-container" 
+    <div class="timeline-container"
          hx-get="/timeline/content"
          hx-trigger="load, dateChanged from:body"
          hx-vals='js:{"date": getSelectedDate(), "timezone": getUserTimezone()}'
@@ -529,6 +529,9 @@
     });
 
 
+    if (window.userSettings.uiMode === "SHARED_LIVE_MODE_ONLY") {
+        toggleAutoUpdate();
+    }
     function toggleAutoUpdate() {
         const btn = document.getElementById('auto-update-btn');
         const icon = btn.querySelector('i');
@@ -559,12 +562,6 @@
                 console.log('SSE connection opened.');
                 messagesDiv.classList.remove('active')
             };
-
-            // Listen for events with the name "message"
-            eventSource.addEventListener('message', function(event) {
-                console.log('Received message event:', event.data);
-            });
-
 
             eventSource.onerror = function(error) {
                 console.error('EventSource failed:', error);

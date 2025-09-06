@@ -38,7 +38,7 @@ public class MagicLinkSessionValidationFilter extends OncePerRequestFilter {
                 
                 SecurityContextHolder.clearContext();
                 request.getSession().invalidate();
-                response.sendRedirect("/error/magic-link?error=session-expired");
+                response.sendRedirect("/error/magic-link?error=invalid");
                 return;
             }
         }

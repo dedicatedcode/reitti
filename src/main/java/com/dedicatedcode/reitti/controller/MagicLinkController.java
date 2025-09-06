@@ -13,12 +13,11 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.Base64;
 import java.util.List;
+import java.util.UUID;
 
 @Controller
 @RequestMapping("/settings/magic-links")
@@ -27,7 +26,6 @@ public class MagicLinkController {
     private final MagicLinkJdbcService magicLinkJdbcService;
     private final MessageSource messageSource;
     private final PasswordEncoder passwordEncoder;
-    private final SecureRandom secureRandom = new SecureRandom();
 
     public MagicLinkController(MagicLinkJdbcService magicLinkJdbcService, MessageSource messageSource, PasswordEncoder passwordEncoder) {
         this.magicLinkJdbcService = magicLinkJdbcService;
@@ -51,12 +49,7 @@ public class MagicLinkController {
                                   HttpServletRequest request,
                                   Model model) {
         try {
-            // Generate a secure random token
-            byte[] tokenBytes = new byte[32];
-            secureRandom.nextBytes(tokenBytes);
-            String rawToken = Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
-
-            // Hash the token for storage
+            String rawToken = UUID.randomUUID().toString();
             String tokenHash = passwordEncoder.encode(rawToken);
 
             // Calculate expiry date
