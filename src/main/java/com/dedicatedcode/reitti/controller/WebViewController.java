@@ -10,11 +10,18 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class WebViewController {
     private final boolean dataManagementEnabled;
     private final boolean oidcEnabled;
+    private final boolean localLoginEnabled;
 
     public WebViewController(@Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
-                             @Value("${reitti.security.oidc.enabled:false}") boolean oidcEnabled) {
+                             @Value("${reitti.security.oidc.enabled:false}") boolean oidcEnabled,
+                             @Value("${reitti.security.local-login.disable:false}") boolean localLoginDisabled) {
         this.dataManagementEnabled = dataManagementEnabled;
         this.oidcEnabled = oidcEnabled;
+        this.localLoginEnabled = !localLoginDisabled;
+
+        if (!oidcEnabled && localLoginDisabled) {
+            throw new IllegalConfigurationException("No login possible.", "enable and configured OIDC support", "Enable local-login via 'reitti.security.local-login.disable:false' or 'DISABLE_LOCAL_LOGIN=false'");
+        }
     }
 
     @GetMapping("/")
@@ -30,6 +37,7 @@ public class WebViewController {
     @GetMapping("/login")
     public String login(Model model) {
         model.addAttribute("oidcEnabled", oidcEnabled);
+        model.addAttribute("localLoginEnabled", localLoginEnabled);
         return "login";
     }
 
