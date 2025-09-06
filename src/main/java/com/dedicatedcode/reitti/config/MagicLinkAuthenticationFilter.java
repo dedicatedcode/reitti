@@ -7,11 +7,13 @@ import com.dedicatedcode.reitti.repository.MagicLinkJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -26,10 +28,12 @@ public class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
 
     private final MagicLinkJdbcService magicLinkJdbcService;
     private final UserJdbcService userJdbcService;
+    private final TokenBasedRememberMeServices rememberMeServices;
 
-    public MagicLinkAuthenticationFilter(MagicLinkJdbcService magicLinkJdbcService, UserJdbcService userJdbcService) {
+    public MagicLinkAuthenticationFilter(MagicLinkJdbcService magicLinkJdbcService, UserJdbcService userJdbcService, TokenBasedRememberMeServices rememberMeServices) {
         this.magicLinkJdbcService = magicLinkJdbcService;
         this.userJdbcService = userJdbcService;
+        this.rememberMeServices = rememberMeServices;
     }
 
     @Override
@@ -78,7 +82,9 @@ public class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
             request.getSession().setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
                     SecurityContextHolder.getContext());
 
-            //set the remember-me stuff for this authenticatio AI!
+            // Set remember-me cookie for persistent login
+            rememberMeServices.loginSuccess(request, response, authentication);
+
             response.sendRedirect("/");
             return;
         } catch (Exception e) {

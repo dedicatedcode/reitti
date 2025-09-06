@@ -8,9 +8,11 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+import org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices;
 
 @Configuration
 @EnableWebSecurity
@@ -30,6 +32,9 @@ public class SecurityConfig {
 
     @Autowired(required = false)
     private LogoutSuccessHandler oidcLogoutSuccessHandler;
+
+    @Autowired
+    private UserDetailsService userDetailsService;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -75,5 +80,14 @@ public class SecurityConfig {
         }
 
         return http.build();
+    }
+
+    @Bean
+    public TokenBasedRememberMeServices rememberMeServices() {
+        TokenBasedRememberMeServices rememberMeServices = new TokenBasedRememberMeServices("uniqueAndSecretKey", userDetailsService);
+        rememberMeServices.setTokenValiditySeconds(2592000); // 30 days
+        rememberMeServices.setCookieName("remember-me");
+        rememberMeServices.setUseSecureCookie(false);
+        return rememberMeServices;
     }
 }
