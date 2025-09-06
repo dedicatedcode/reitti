@@ -3,6 +3,8 @@ package com.dedicatedcode.reitti.repository;
 import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.MagicLinkToken;
 import com.dedicatedcode.reitti.model.security.User;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -31,6 +33,7 @@ public class MagicLinkJdbcService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    @CacheEvict(value = "magic-links", allEntries = true)
     public MagicLinkToken create(User user, MagicLinkToken token) {
         String sql = """
             INSERT INTO magic_link_tokens (user_id, name, token_hash, access_level, expiry_date, created_at)
@@ -55,6 +58,7 @@ public class MagicLinkJdbcService {
         return new MagicLinkToken(id, token.getName(), token.getTokenHash(), token.getAccessLevel(), token.getExpiryDate(), now, null, false);
     }
 
+    @CacheEvict(value = "magic-links", allEntries = true)
     public Optional<MagicLinkToken> update(MagicLinkToken updatedToken) {
         String sql = """
             UPDATE magic_link_tokens
@@ -76,6 +80,7 @@ public class MagicLinkJdbcService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "magic-links", key = "#id")
     public Optional<MagicLinkToken> findById(long id) {
         String sql = """
             SELECT id, name, token_hash, access_level, expiry_date, created_at, last_used_at
@@ -88,6 +93,7 @@ public class MagicLinkJdbcService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "magic-links", key = "'hash:' + #tokenHash")
     public Optional<MagicLinkToken> findByTokenHash(String tokenHash) {
         String sql = """
             SELECT id, name, token_hash, access_level, expiry_date, created_at, last_used_at
@@ -119,6 +125,7 @@ public class MagicLinkJdbcService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "magic-links", key = "'userId:' + #tokenId")
     public Optional<Long> findUserIdByToken(long tokenId) {
         String sql = """
             SELECT user_id
@@ -130,12 +137,14 @@ public class MagicLinkJdbcService {
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
+    @CacheEvict(value = "magic-links", allEntries = true)
     public void updateLastUsed(long tokenId) {
         String sql = "UPDATE magic_link_tokens SET last_used_at = ? WHERE id = ?";
         jdbcTemplate.update(sql, Timestamp.from(Instant.now()), tokenId);
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "magic-links", key = "'user:' + #user.id")
     public List<MagicLinkToken> findByUser(User user) {
         String sql = """
             SELECT id, name, token_hash, access_level, expiry_date, created_at, last_used_at
@@ -147,6 +156,7 @@ public class MagicLinkJdbcService {
         return jdbcTemplate.query(sql, new MagicLinkTokenRowMapper(), user.getId());
     }
 
+    @CacheEvict(value = "magic-links", allEntries = true)
     public void delete(long id) {
         String sql = "DELETE FROM magic_link_tokens WHERE id = ?";
         jdbcTemplate.update(sql, id);
