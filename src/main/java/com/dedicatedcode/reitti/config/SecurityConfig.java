@@ -26,6 +26,9 @@ public class SecurityConfig {
     private MagicLinkAuthenticationFilter magicLinkAuthenticationFilter;
 
     @Autowired
+    private MagicLinkSessionValidationFilter magicLinkSessionValidationFilter;
+
+    @Autowired
     private CustomAuthenticationSuccessHandler customAuthenticationSuccessHandler;
 
     @Autowired(required = false)
@@ -42,8 +45,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/reitti-integration/notify/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(magicLinkAuthenticationFilter, AuthorizationFilter.class)
-                .addFilterBefore(bearerTokenAuthFilter, AuthorizationFilter.class)
+                .addFilterBefore(magicLinkSessionValidationFilter, AuthorizationFilter.class)
+                .addFilterBefore(magicLinkAuthenticationFilter, MagicLinkSessionValidationFilter.class)
+                .addFilterBefore(bearerTokenAuthFilter, MagicLinkAuthenticationFilter.class)
                 .addFilterBefore(urlTokenAuthenticationFilter, TokenAuthenticationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(form -> form

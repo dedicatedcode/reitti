@@ -8,7 +8,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
@@ -67,10 +66,11 @@ public class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
             magicLinkJdbcService.updateLastUsed(linkToken.getId());
 
             String specialRole = "ROLE_MAGIC_LINK_" + linkToken.getAccessLevel().name();
-            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+            MagicLinkAuthenticationToken authentication = new MagicLinkAuthenticationToken(
                     user.get(),
                     null,
-                    Collections.singletonList(new SimpleGrantedAuthority(specialRole))
+                    Collections.singletonList(new SimpleGrantedAuthority(specialRole)),
+                    linkToken.getId()
             );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
