@@ -77,6 +77,8 @@ public class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(authentication);
             request.getSession().setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
                     SecurityContextHolder.getContext());
+
+            //set the remember-me stuff for this authenticatio AI!
             response.sendRedirect("/");
             return;
         } catch (Exception e) {
