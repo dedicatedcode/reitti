@@ -76,6 +76,12 @@ body {
     border: 1px solid #ffeeba;
 }
 
+.alert-info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
 .user-row.selected {
     background-color: var(--color-highlight);
     color: var(--color-background-dark);
