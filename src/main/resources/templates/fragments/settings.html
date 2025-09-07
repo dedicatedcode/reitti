@@ -125,18 +125,6 @@
             </summary>
             <div style="padding: 15px;">
                 <p th:text="#{integrations.data.ingestion.description}" style="margin-bottom: 20px; color: var(--color-text-white);">Configure mobile apps to automatically send location data to Reitti</p>
-                
-                <div style="background-color: rgba(52, 152, 219, 0.1); border: 1px solid rgba(52, 152, 219, 0.3); border-radius: 4px; padding: 15px; margin-bottom: 20px;">
-                    <strong>📖 Need Help?</strong><br>
-                    For detailed setup instructions, troubleshooting tips, and additional mobile app options, visit our comprehensive guide: 
-                    <a href="https://www.dedicatedcode.com/projects/reitti/mobile-integration/" 
-                       target="_blank" 
-                       rel="noopener noreferrer" 
-                       style="color: var(--color-accent); text-decoration: underline;">
-                        Mobile Integration Documentation
-                    </a>
-                </div>
-
                 <div class="integration-section" style="margin-bottom: 30px;">
                     <h3 th:text="#{integrations.gpslogger.title}">📱 GPSLogger Setup</h3>
                     <p th:text="#{integrations.gpslogger.description}">GPSLogger is a free Android app that can automatically log your location and send it to Reitti.</p>
@@ -187,6 +175,18 @@
                         </ol>
                     </div>
                 </div>
+
+                <div class="alert alert-info">
+                    <strong>Need Help?</strong><br>
+                    For detailed setup instructions and tips, visit our comprehensive guide:
+                    <a href="https://www.dedicatedcode.com/projects/reitti/mobile-integration/"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       style="color: var(--color-accent); text-decoration: underline;">
+                        Mobile Integration Documentation
+                    </a>
+                </div>
+
             </div>
         </details>
         <details th:attr="open=${openSection == 'external-data-stores' ? 'open' : null}">
