@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.mockito.Mock;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
@@ -283,36 +284,14 @@ public class CustomOidcUserServiceTest {
     }
 
     private OidcUserRequest createOidcUserRequestWithoutAvatar() {
-
-        //create a mock for the OidcUserRequest with the needed methods mocked to corrospond to  the needed methods in CustomOidcUserService AI!
-        ClientRegistration clientRegistration = ClientRegistration.withRegistrationId("test")
-            .clientId("test-client")
-            .clientSecret("test-secret")
-            .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-            .redirectUri("http://localhost/callback")
-            .authorizationUri("https://example.com/auth")
-            .tokenUri("https://example.com/token")
-            .userInfoUri("https://example.com/userinfo")
-            .jwkSetUri("https://example.com/jwks")
-            .issuerUri(ISSUER)
-            .build();
-
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("sub", SUBJECT);
-        claims.put("preferred_username", PREFERRED_USERNAME);
-        claims.put("name", DISPLAY_NAME);
-        claims.put("given_name", "Test");
-        claims.put("family_name", "User");
-        claims.put("profile", PROFILE_URL);
-        claims.put("iss", ISSUER);
-
-        OidcIdToken idToken = new OidcIdToken(
-            "token-value",
-            Instant.now(),
-            Instant.now().plusSeconds(3600),
-            claims
-        );
-
-        return new OidcUserRequest(clientRegistration, null, idToken);
+        OidcUserRequest mockRequest = mock(OidcUserRequest.class);
+        OidcIdToken mockIdToken = mock(OidcIdToken.class);
+        
+        when(mockRequest.getIdToken()).thenReturn(mockIdToken);
+        when(mockIdToken.getPreferredUsername()).thenReturn(PREFERRED_USERNAME);
+        when(mockIdToken.getIssuer()).thenReturn(URI.create(ISSUER));
+        when(mockIdToken.getSubject()).thenReturn(SUBJECT);
+        
+        return mockRequest;
     }
 }
