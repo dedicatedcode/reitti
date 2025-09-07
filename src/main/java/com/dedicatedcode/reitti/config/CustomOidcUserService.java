@@ -32,32 +32,20 @@ public class CustomOidcUserService extends OidcUserService {
 
     public CustomOidcUserService(UserJdbcService userJdbcService,
                                  AvatarService avatarService,
+                                 RestTemplate restTemplate,
                                  @Value("${reitti.security.oidc.registration.enabled}") boolean registrationEnabled,
                                  @Value("${reitti.security.local-login.disable:false}") boolean localLoginDisabled) {
         this.userJdbcService = userJdbcService;
         this.avatarService = avatarService;
-        this.registrationEnabled = registrationEnabled;
-        this.localLoginDisabled = localLoginDisabled;
-        this.restTemplate = new RestTemplate();
-    }
-
-    // Constructor for testing with injected RestTemplate
-    public CustomOidcUserService(UserJdbcService userJdbcService,
-                                 AvatarService avatarService,
-                                 RestTemplate restTemplate,
-                                 boolean registrationEnabled,
-                                 boolean localLoginDisabled) {
-        this.userJdbcService = userJdbcService;
-        this.avatarService = avatarService;
-        this.registrationEnabled = registrationEnabled;
-        this.localLoginDisabled = localLoginDisabled;
         this.restTemplate = restTemplate;
+        this.registrationEnabled = registrationEnabled;
+        this.localLoginDisabled = localLoginDisabled;
     }
 
     @Override
     @Transactional
     public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
-        OidcUser oidcUser = super.loadUser(userRequest);
+        OidcUser oidcUser = getDefaultUser(userRequest);
         String preferredUsername = userRequest.getIdToken().getPreferredUsername();
         String oidcUserId = userRequest.getIdToken().getIssuer().toString() + ":" + userRequest.getIdToken().getSubject();
 
@@ -67,7 +55,7 @@ public class CustomOidcUserService extends OidcUserService {
 
         Optional<User> existingUser;
 
-        Optional<User> byOidcUserId = this.userJdbcService.findByUsername(oidcUserId);
+        Optional<User> byOidcUserId = this.userJdbcService.findByExternalId(oidcUserId);
         if (byOidcUserId.isPresent()) {
             existingUser = byOidcUserId;
         } else {
@@ -75,7 +63,7 @@ public class CustomOidcUserService extends OidcUserService {
             Optional<User> byPreferredUserName = this.userJdbcService.findByUsername(preferredUsername);
             if (byPreferredUserName.isPresent()) {
                 log.info("found user by preferred username: [{}], will update username to [{}]", preferredUsername, oidcUserId);
-                existingUser = Optional.of(byPreferredUserName.get().withUsername(oidcUserId));
+                existingUser = Optional.of(byPreferredUserName.get().withUsername(preferredUsername).withExternalId(oidcUserId));
             } else {
                 log.info("No user found for [{}] or [{}]", oidcUserId, preferredUsername);
                 existingUser = Optional.empty();
@@ -84,15 +72,17 @@ public class CustomOidcUserService extends OidcUserService {
 
         if  (existingUser.isPresent()) {
             User user = existingUser.get();
-            if (localLoginDisabled && !user.getUsername().equals(oidcUserId)) {
+            if (localLoginDisabled && !user.getUsername().equals(preferredUsername)) {
                 log.info("Updating username for user with id [{}] from [{}] to [{}]", user.getId(), user.getUsername(), preferredUsername);
-                user = user.withUsername(oidcUserId);
+                user = user.withUsername(preferredUsername);
             }
             if (localLoginDisabled && !user.getPassword().isEmpty()) {
                 log.info("Reset password for user with id [{}]. Disabling local login.", user.getId());
                 user = user.withPassword("");
             }
-            user = user.withDisplayName(displayName).withProfileUrl(profileUrl);
+            user = user.withDisplayName(displayName)
+                    .withProfileUrl(profileUrl)
+                    .withExternalId(oidcUserId);
 
             User updatedUser = this.userJdbcService.updateUser(user);
             
@@ -103,7 +93,8 @@ public class CustomOidcUserService extends OidcUserService {
             return new ExternalUser(updatedUser, oidcUser);
         } else if (registrationEnabled) {
             User user = new User()
-                    .withUsername(oidcUserId)
+                    .withUsername(preferredUsername)
+                    .withExternalId(oidcUserId)
                     .withDisplayName(displayName)
                     .withProfileUrl(profileUrl)
                     .withPassword("");
@@ -118,6 +109,11 @@ public class CustomOidcUserService extends OidcUserService {
         } else {
             throw new UsernameNotFoundException("No internal user found for username: " + preferredUsername);
         }
+    }
+
+    // Made package local to allow mocking this out in testing. Do not touch!
+    OidcUser getDefaultUser(OidcUserRequest userRequest) {
+        return super.loadUser(userRequest);
     }
 
     private static String getDisplayName(OidcUser oidcUser, String preferredUsername) {

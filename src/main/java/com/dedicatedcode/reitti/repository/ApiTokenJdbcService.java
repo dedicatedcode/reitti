@@ -29,7 +29,7 @@ public class ApiTokenJdbcService {
     public Optional<ApiToken> findByToken(String token) {
         String sql = """
             SELECT at.id, at.token, at.name, at.created_at, at.last_used_at,
-                   u.id as user_id, u.username, u.password, u.display_name, u.role, u.version as user_version
+                   u.id as user_id, u.username, u.password, u.display_name, u.profile_url, u.external_id, u.role, u.version as user_version
             FROM api_tokens at
             JOIN users u ON at.user_id = u.id
             WHERE at.token = ?
@@ -46,7 +46,7 @@ public class ApiTokenJdbcService {
     public List<ApiToken> findByUser(User user) {
         String sql = """
             SELECT at.id, at.token, at.name, at.created_at, at.last_used_at,
-                   u.id as user_id, u.username, u.password, u.display_name, u.role, u.version as user_version
+                   u.id as user_id, u.username, u.password, u.display_name, u.profile_url, u.external_id, u.role, u.version as user_version
             FROM api_tokens at
             JOIN users u ON at.user_id = u.id
             WHERE at.user_id = ?
@@ -59,7 +59,7 @@ public class ApiTokenJdbcService {
     public Optional<ApiToken> findById(Long id) {
         String sql = """
             SELECT at.id, at.token, at.name, at.created_at, at.last_used_at,
-                   u.id as user_id, u.username, u.password, u.display_name, u.role, u.version as user_version
+                   u.id as user_id, u.username, u.password, u.display_name, u.profile_url, u.external_id, u.role, u.version as user_version
             FROM api_tokens at
             JOIN users u ON at.user_id = u.id
             WHERE at.id = ?
@@ -144,6 +144,8 @@ public class ApiTokenJdbcService {
             rs.getString("username"),
             rs.getString("password"),
             rs.getString("display_name"),
+            rs.getString("profile_url"),
+            rs.getString("external_id"),
             Role.valueOf(rs.getString("role")),
             rs.getLong("user_version")
         );

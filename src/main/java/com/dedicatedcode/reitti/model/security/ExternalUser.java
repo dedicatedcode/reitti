@@ -14,7 +14,7 @@ public class ExternalUser extends User implements OidcUser {
     private final Map<String, Object> claims;
 
     public ExternalUser(User user, OidcUser oidcUser) {
-        super(user.getId(), user.getUsername(), user.getPassword(), user.getDisplayName(), user.getRole(), user.getVersion());
+        super(user.getId(), user.getUsername(), user.getPassword(), user.getDisplayName(), user.getProfileUrl(), user.getExternalId(), user.getRole(), user.getVersion());
         this.token = oidcUser.getIdToken();
         this.userInfo = oidcUser.getUserInfo();
         this.attributes = oidcUser.getAttributes();

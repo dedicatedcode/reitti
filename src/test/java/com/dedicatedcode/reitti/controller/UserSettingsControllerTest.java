@@ -191,7 +191,8 @@ public class UserSettingsControllerTest {
         String originalUsername = randomUsername();
         String originalDisplayName = "Update User";
         String originalPassword = "password123";
-        userJdbcService.createUser(originalUsername, originalDisplayName, originalPassword);
+
+        userJdbcService.createUser(new User(originalUsername, originalDisplayName).withPassword(originalPassword));
 
         User createdUser = userJdbcService.findByUsername(originalUsername).orElseThrow();
         Long userId = createdUser.getId();

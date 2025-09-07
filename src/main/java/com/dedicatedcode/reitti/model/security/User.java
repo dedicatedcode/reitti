@@ -15,22 +15,26 @@ public class User implements UserDetails {
     private final String username;
     private final String password;
     private final String displayName;
+    private final String profileUrl;
+    private final String externalId;
     private final Role role;
     private final Long version;
 
     public User() {
-        this(null, null, null, null, Role.USER, null);
+        this(null, null, null, null, null, null, Role.USER, null);
     }
 
     public User(String username, String displayName) {
-        this(null, username, null, displayName, Role.USER, null);
+        this(null, username, null, displayName, null, null, Role.USER, null);
     }
 
-    public User(Long id, String username, String password, String displayName, Role role, Long version) {
+    public User(Long id, String username, String password, String displayName, String profileUrl, String externalId, Role role, Long version) {
         this.id = id;
         this.username = username;
         this.password = password;
         this.displayName = displayName;
+        this.profileUrl = profileUrl;
+        this.externalId = externalId;
         this.role = role;
         this.version = version;
     }
@@ -41,26 +45,6 @@ public class User implements UserDetails {
 
     public String getUsername() {
         return username;
-    }
-
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return true;
     }
 
     public String getDisplayName() {
@@ -83,27 +67,47 @@ public class User implements UserDetails {
         return role;
     }
 
+    public String getProfileUrl() {
+        return this.profileUrl;
+    }
+
+    public String getExternalId() {
+        return externalId;
+    }
+
     public Long getVersion() {
         return version;
     }
 
     // Wither methods
     public User withPassword(String password) {
-        return new User(this.id, this.username, password, this.displayName, this.role, this.version);
+        return new User(this.id, this.username, password, this.displayName, this.profileUrl, this.externalId, this.role, this.version);
     }
 
     public User withDisplayName(String displayName) {
-        return new User(this.id, this.username, this.password, displayName, this.role, this.version);
+        return new User(this.id, this.username, this.password, displayName, this.profileUrl, this.externalId, this.role, this.version);
     }
 
     public User withVersion(Long version) {
-        return new User(this.id, this.username, this.password, this.displayName, this.role, version);
+        return new User(this.id, this.username, this.password, this.displayName, this.profileUrl, this.externalId, this.role, version);
     }
 
     public User withRole(Role role) {
-        return new User(this.id, this.username, this.password, this.displayName, role, this.version);
+        return new User(this.id, this.username, this.password, this.displayName, this.profileUrl, this.externalId, role, this.version);
     }
 
+    public User withUsername(String username) {
+        return new User(this.id, username, this.password, this.displayName, this.profileUrl, this.externalId, this.role, this.version);
+    }
+
+    public User withProfileUrl(String profileUrl) {
+        return new User(this.id, this.username, this.password, this.displayName, profileUrl, this.externalId, this.role, this.version);
+    }
+
+    public User withExternalId(String externalId) {
+        return new User(this.id, this.username, this.password, this.displayName, this.profileUrl, externalId, this.role, this.version);
+
+    }
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
@@ -115,4 +119,5 @@ public class User implements UserDetails {
     public int hashCode() {
         return Objects.hashCode(id);
     }
+
 }

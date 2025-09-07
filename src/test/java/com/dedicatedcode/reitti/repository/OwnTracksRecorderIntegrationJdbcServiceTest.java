@@ -204,6 +204,6 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
         String sql = "INSERT INTO users (username, password, display_name, role, version) VALUES (?, ?, ?, ?, ?) RETURNING id";
         Long userId = jdbcTemplate.queryForObject(sql, Long.class, username, password, displayName, role, 1L);
         
-        return new User(userId, username, password, displayName, Role.ADMIN, 1L);
+        return new User(userId, username, password, displayName, null, null, Role.ADMIN, 1L);
     }
 }

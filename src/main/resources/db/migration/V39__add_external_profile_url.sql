@@ -1,0 +1,3 @@
+ALTER TABLE users
+    ADD COLUMN profile_url VARCHAR(1024) NULL,
+    ADD COLUMN external_id VARCHAR(1024) NULL;

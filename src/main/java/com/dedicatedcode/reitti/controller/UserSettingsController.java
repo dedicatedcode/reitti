@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Locale;
 
 import static com.dedicatedcode.reitti.model.Role.ADMIN;
-import static com.dedicatedcode.reitti.model.Role.USER;
 
 @Controller
 @RequestMapping("/settings")
@@ -179,14 +178,10 @@ public class UserSettingsController {
         }
         try {
             if (StringUtils.hasText(username) && StringUtils.hasText(displayName) && StringUtils.hasText(password)) {
-                User createdUser = userJdbcService.createUser(username, displayName, password);
-                
-                // Update the user's role if different from default
-                if (USER != role) {
-                    createdUser = createdUser.withRole(role);
-                    createdUser = userJdbcService.updateUser(createdUser);
-                }
-                
+                User createdUser = userJdbcService.createUser(new User(username, displayName)
+                        .withPassword(passwordEncoder.encode(password))
+                        .withRole(role));
+
                 UnitSystem unitSystem = UnitSystem.valueOf(unit_system);
                 UserSettings userSettings = new UserSettings(createdUser.getId(), preferColoredMap, preferred_language, unitSystem, homeLatitude, homeLongitude, null);
                 userSettingsJdbcService.save(userSettings);
@@ -254,8 +249,8 @@ public class UserSettingsController {
             if (password != null && !password.trim().isEmpty()) {
                 encodedPassword = passwordEncoder.encode(password);
             }
-            
-            User updatedUser = new User(existingUser.getId(), username, encodedPassword, displayName, role, existingUser.getVersion());
+
+            User updatedUser = new User(existingUser.getId(), username, encodedPassword, displayName, existingUser.getProfileUrl(), existingUser.getExternalId(), role, existingUser.getVersion());
             userJdbcService.updateUser(updatedUser);
             
             UserSettings existingSettings = userSettingsJdbcService.findByUserId(userId)

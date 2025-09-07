@@ -250,7 +250,7 @@ class SignificantPlaceJdbcServiceTest {
                 Long.class,
                 username, "password", displayName, "USER"
         );
-        return new User(userId, username, "password", displayName, Role.USER, 0L);
+        return new User(userId, username, "password", displayName, null, null, Role.USER, 0L);
     }
 
     private SignificantPlace createTestPlace(String name, double latitude, double longitude) {

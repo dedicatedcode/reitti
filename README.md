@@ -427,7 +427,6 @@ Your OIDC provider must provide these claims for successful authentication:
 
 ## Technologies
 
-
 ## Backup & Data Persistence
 
 Reitti is designed to be mostly stateless, with all important data stored in the PostgreSQL database (with PostGIS extensions). To ensure you do not lose any critical data:
