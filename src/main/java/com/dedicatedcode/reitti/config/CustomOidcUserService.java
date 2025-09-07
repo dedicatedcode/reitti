@@ -73,7 +73,6 @@ public class CustomOidcUserService extends OidcUserService {
             user = user.withDisplayName(displayName).withProfileUrl(profileUrl);
 
             return new ExternalUser(this.userJdbcService.updateUser(user), oidcUser);
-            //update workflow
         } else if (registrationEnabled) {
             User user = new User()
                     .withUsername(oidcUserId)
@@ -82,42 +81,10 @@ public class CustomOidcUserService extends OidcUserService {
                     .withPassword("");
 
             user = this.userJdbcService.createUser(user);
-            return new ExternalUser(this.userJdbcService.updateUser(user), oidcUser);
-            //new user workflow
+            return new ExternalUser(user, oidcUser);
         } else {
             throw new UsernameNotFoundException("No internal user found for username: " + preferredUsername);
         }
-
-
-
-        Optional<User> existingUser = userJdbcService.findByUsername(preferredUsername);
-
-        User user;
-        if (existingUser.isPresent()) {
-            // Update user from OIDC provider
-            User currentUser = existingUser.get();
-            if (!displayName.equals(currentUser.getDisplayName())) {
-                User updatedUser = new User(
-                    currentUser.getId(),
-                    currentUser.getUsername(),
-                    currentUser.getPassword(),
-                    displayName,
-                        XXX, currentUser.getRole(),
-                    currentUser.getVersion()
-                );
-                user = userJdbcService.updateUser(updatedUser);
-            } else {
-                user = currentUser;
-            }
-        } else if (registrationEnabled) {
-            user = userJdbcService.createUser(preferredUsername, displayName, "");
-        } else {
-            user = null;
-        }
-
-        if (user == null) {
-        }
-        return new ExternalUser(user, oidcUser);
     }
 
     private static String getDisplayName(OidcUser oidcUser, String preferredUsername) {
