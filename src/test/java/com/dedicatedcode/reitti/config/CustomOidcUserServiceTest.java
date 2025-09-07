@@ -51,7 +51,7 @@ public class CustomOidcUserServiceTest {
     private static final String ISSUER = "https://localhost";
     private static final String SUBJECT = "12345";
     private static final String PREFERRED_USERNAME = "testuser";
-    private static final String OIDC_USER_ID = ISSUER + ":" + SUBJECT;
+    private static final String EXTERNAL_ID = ISSUER + ":" + SUBJECT;
     private static final String DISPLAY_NAME = "Test User";
     private static final String AVATAR_URL = "https://localhost/avatar.jpg";
     private static final String PROFILE_URL = "https://localhost/profile";
@@ -60,7 +60,7 @@ public class CustomOidcUserServiceTest {
     void setUp() {
 
         // Clear any existing test data
-        userJdbcService.findByUsername(OIDC_USER_ID).ifPresent(user -> 
+        userJdbcService.findByExternalId(EXTERNAL_ID).ifPresent(user -> 
             userJdbcService.deleteUser(user.getId()));
         userJdbcService.findByUsername(PREFERRED_USERNAME).ifPresent(user -> 
             userJdbcService.deleteUser(user.getId()));
@@ -84,16 +84,17 @@ public class CustomOidcUserServiceTest {
 
         // Then
         assertThat(result).isNotNull();
-        assertThat(result.getUsername()).isEqualTo(OIDC_USER_ID);
+        assertThat(result.getUsername()).isEqualTo(PREFERRED_USERNAME);
         assertThat(result.getDisplayName()).isEqualTo(DISPLAY_NAME);
         assertThat(result.getPassword()).isEmpty(); // Should be empty for OIDC users
         
         // Verify user was created in the database
-        Optional<User> savedUser = userJdbcService.findByUsername(OIDC_USER_ID);
+        Optional<User> savedUser = userJdbcService.findByUsername(PREFERRED_USERNAME);
         assertThat(savedUser).isPresent();
         assertThat(savedUser.get().getDisplayName()).isEqualTo(DISPLAY_NAME);
         assertThat(savedUser.get().getPassword()).isEmpty();
         assertThat(savedUser.get().getProfileUrl()).isEqualTo(PROFILE_URL);
+        assertThat(savedUser.get().getExternalId()).isEqualTo(EXTERNAL_ID);
         
         // Verify avatar was downloaded and saved
         verify(restTemplate).getForObject(eq(URI.create(AVATAR_URL)), eq(byte[].class));
@@ -122,7 +123,8 @@ public class CustomOidcUserServiceTest {
         
         // Create existing user with password
         userJdbcService.createUser(new User()
-            .withUsername(OIDC_USER_ID)
+            .withUsername(PREFERRED_USERNAME)
+            .withExternalId(EXTERNAL_ID)
             .withDisplayName("Old Display Name")
             .withPassword("old-password")
             .withRole(Role.USER));
@@ -137,16 +139,17 @@ public class CustomOidcUserServiceTest {
 
         // Then
         assertThat(result).isNotNull();
-        assertThat(result.getUsername()).isEqualTo(OIDC_USER_ID);
+        assertThat(result.getUsername()).isEqualTo(PREFERRED_USERNAME);
         assertThat(result.getDisplayName()).isEqualTo(DISPLAY_NAME);
         assertThat(result.getPassword()).isEmpty(); // Password should be cleared when local login disabled
         
         // Verify user was updated in the database
-        Optional<User> updatedUser = userJdbcService.findByUsername(OIDC_USER_ID);
+        Optional<User> updatedUser = userJdbcService.findByUsername(PREFERRED_USERNAME);
         assertThat(updatedUser).isPresent();
         assertThat(updatedUser.get().getDisplayName()).isEqualTo(DISPLAY_NAME);
         assertThat(updatedUser.get().getPassword()).isEmpty(); // Password should be cleared
         assertThat(updatedUser.get().getProfileUrl()).isEqualTo(PROFILE_URL);
+        assertThat(updatedUser.get().getExternalId()).isEqualTo(EXTERNAL_ID);
     }
 
     @Test
@@ -171,19 +174,16 @@ public class CustomOidcUserServiceTest {
 
         // Then
         assertThat(result).isNotNull();
-        assertThat(result.getUsername()).isEqualTo(OIDC_USER_ID); // Username should be updated to OIDC ID
+        assertThat(result.getUsername()).isEqualTo(PREFERRED_USERNAME);
         assertThat(result.getDisplayName()).isEqualTo(DISPLAY_NAME);
         assertThat(result.getPassword()).isEmpty(); // Password should be cleared
         
         // Verify user was updated in the database
-        Optional<User> updatedUser = userJdbcService.findByUsername(OIDC_USER_ID);
+        Optional<User> updatedUser = userJdbcService.findByUsername(PREFERRED_USERNAME);
         assertThat(updatedUser).isPresent();
         assertThat(updatedUser.get().getDisplayName()).isEqualTo(DISPLAY_NAME);
         assertThat(updatedUser.get().getPassword()).isEmpty(); // Password should be cleared
-        
-        // Verify old username no longer exists
-        Optional<User> oldUser = userJdbcService.findByUsername(PREFERRED_USERNAME);
-        assertThat(oldUser).isEmpty();
+        assertThat(updatedUser.get().getExternalId()).isEqualTo(EXTERNAL_ID);
     }
 
     @Test
@@ -193,7 +193,8 @@ public class CustomOidcUserServiceTest {
         
         // Create existing user with password
         userJdbcService.createUser(new User()
-            .withUsername(OIDC_USER_ID)
+            .withUsername(PREFERRED_USERNAME)
+            .withExternalId(EXTERNAL_ID)
             .withDisplayName("Old Display Name")
             .withPassword("existing-password")
             .withRole(Role.USER));
@@ -208,15 +209,16 @@ public class CustomOidcUserServiceTest {
 
         // Then
         assertThat(result).isNotNull();
-        assertThat(result.getUsername()).isEqualTo(OIDC_USER_ID);
+        assertThat(result.getUsername()).isEqualTo(PREFERRED_USERNAME);
         assertThat(result.getDisplayName()).isEqualTo(DISPLAY_NAME);
         
         // Verify user was updated in the database but password preserved
-        Optional<User> updatedUser = userJdbcService.findByUsername(OIDC_USER_ID);
+        Optional<User> updatedUser = userJdbcService.findByUsername(PREFERRED_USERNAME);
         assertThat(updatedUser).isPresent();
         assertThat(updatedUser.get().getDisplayName()).isEqualTo(DISPLAY_NAME);
         assertThat(updatedUser.get().getPassword()).isEqualTo("existing-password"); // Password should be preserved
         assertThat(updatedUser.get().getProfileUrl()).isEqualTo(PROFILE_URL);
+        assertThat(updatedUser.get().getExternalId()).isEqualTo(EXTERNAL_ID);
     }
 
     @Test
@@ -237,7 +239,7 @@ public class CustomOidcUserServiceTest {
 
         // Then
         assertThat(result).isNotNull();
-        assertThat(result.getUsername()).isEqualTo(OIDC_USER_ID);
+        assertThat(result.getUsername()).isEqualTo(PREFERRED_USERNAME);
         
         // Verify avatar service was not called due to download failure
         verify(avatarService, never()).updateAvatar(any(), any(), any());
@@ -257,7 +259,7 @@ public class CustomOidcUserServiceTest {
 
         // Then
         assertThat(result).isNotNull();
-        assertThat(result.getUsername()).isEqualTo(OIDC_USER_ID);
+        assertThat(result.getUsername()).isEqualTo(PREFERRED_USERNAME);
         
         // Verify no avatar download was attempted
         verify(restTemplate, never()).getForObject(any(URI.class), eq(byte[].class));
