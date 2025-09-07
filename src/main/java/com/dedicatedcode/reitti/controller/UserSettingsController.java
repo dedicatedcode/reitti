@@ -9,6 +9,7 @@ import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.AvatarService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.core.io.ClassPathResource;
@@ -39,6 +40,8 @@ public class UserSettingsController {
     private final LocaleResolver localeResolver;
     private final AvatarService avatarService;
     private final PasswordEncoder passwordEncoder;
+    private final boolean localLoginDisabled;
+    private final boolean oidcEnabled;
 
     // Avatar constraints
     private static final long MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2MB
@@ -54,13 +57,17 @@ public class UserSettingsController {
                                   MessageSource messageSource,
                                   LocaleResolver localeResolver,
                                   AvatarService avatarService,
-                                  PasswordEncoder passwordEncoder) {
+                                  PasswordEncoder passwordEncoder,
+                                  @Value("${reitti.security.local-login.disable}") boolean localLoginDisabled,
+                                  @Value("${reitti.security.oidc.enabled:false}") boolean oidcEnabled) {
         this.userJdbcService = userJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.messageSource = messageSource;
         this.localeResolver = localeResolver;
         this.avatarService = avatarService;
         this.passwordEncoder = passwordEncoder;
+        this.localLoginDisabled = localLoginDisabled;
+        this.oidcEnabled = oidcEnabled;
     }
 
     private String getMessage(String key, Object... args) {
@@ -88,6 +95,9 @@ public class UserSettingsController {
             model.addAttribute("username", currentUser.getUsername());
             model.addAttribute("displayName", currentUser.getDisplayName());
             model.addAttribute("selectedRole", currentUser.getRole());
+            model.addAttribute("externallyManaged", currentUser.getExternalId() != null);
+            model.addAttribute("externalProfile", currentUser.getProfileUrl());
+
             UserSettings userSettings = userSettingsJdbcService.findByUserId(currentUser.getId()).orElse(UserSettings.defaultSettings(currentUser.getId()));
             model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
             model.addAttribute("selectedUnitSystem", userSettings.getUnitSystem().name());
