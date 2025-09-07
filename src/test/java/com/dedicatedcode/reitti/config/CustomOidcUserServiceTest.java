@@ -13,14 +13,14 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
-import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -251,6 +251,7 @@ public class CustomOidcUserServiceTest {
             .userInfoUri("https://example.com/userinfo")
             .jwkSetUri("https://example.com/jwks")
             .issuerUri(ISSUER)
+            .userNameAttributeName("preferred_username")
             .build();
 
         Map<String, Object> claims = new HashMap<>();
@@ -263,6 +264,7 @@ public class CustomOidcUserServiceTest {
         claims.put("profile", PROFILE_URL);
         claims.put("iss", ISSUER);
 
+
         OidcIdToken idToken = new OidcIdToken(
             "token-value",
             Instant.now(),
@@ -270,10 +272,19 @@ public class CustomOidcUserServiceTest {
             claims
         );
 
-        return new OidcUserRequest(clientRegistration, null, idToken);
+
+        OAuth2AccessToken oAuth2AccessToken = new OAuth2AccessToken(
+                OAuth2AccessToken.TokenType.BEARER,
+                "token value",
+                Instant.now().minus(1, ChronoUnit.SECONDS),
+                null
+        );
+        return new OidcUserRequest(clientRegistration, oAuth2AccessToken, idToken);
     }
 
     private OidcUserRequest createOidcUserRequestWithoutAvatar() {
+
+        //create a mock for the OidcUserRequest with the needed methods mocked to corrospond to  the needed methods in CustomOidcUserService AI!
         ClientRegistration clientRegistration = ClientRegistration.withRegistrationId("test")
             .clientId("test-client")
             .clientSecret("test-secret")
