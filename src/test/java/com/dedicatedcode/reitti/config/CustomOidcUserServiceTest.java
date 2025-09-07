@@ -12,8 +12,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.client.RestTemplate;
@@ -42,13 +44,13 @@ public class CustomOidcUserServiceTest {
 
     private CustomOidcUserService customOidcUserService;
 
-    private static final String ISSUER = "https://example.com";
+    private static final String ISSUER = "https://localhost";
     private static final String SUBJECT = "12345";
     private static final String PREFERRED_USERNAME = "testuser";
     private static final String OIDC_USER_ID = ISSUER + ":" + SUBJECT;
     private static final String DISPLAY_NAME = "Test User";
-    private static final String AVATAR_URL = "https://example.com/avatar.jpg";
-    private static final String PROFILE_URL = "https://example.com/profile";
+    private static final String AVATAR_URL = "https://localhost/avatar.jpg";
+    private static final String PROFILE_URL = "https://localhost/profile";
 
     @BeforeEach
     void setUp() {
@@ -240,13 +242,16 @@ public class CustomOidcUserServiceTest {
     private OidcUserRequest createOidcUserRequest() throws MalformedURLException {
         OidcUserRequest mockRequest = mock(OidcUserRequest.class);
         OidcIdToken mockIdToken = mock(OidcIdToken.class);
+        OAuth2AccessToken mockAccessToken = mock(OAuth2AccessToken.class);
+
         ClientRegistration mockClientRegistration = mock(ClientRegistration.class);
         ClientRegistration.ProviderDetails mockProviderDetails = mock(ClientRegistration.ProviderDetails.class);
         ClientRegistration.ProviderDetails.UserInfoEndpoint mockUserInfoEndpoint = mock(ClientRegistration.ProviderDetails.UserInfoEndpoint.class);
         
         when(mockRequest.getIdToken()).thenReturn(mockIdToken);
         when(mockRequest.getClientRegistration()).thenReturn(mockClientRegistration);
-        
+        when(mockRequest.getAccessToken()).thenReturn(mockAccessToken);
+
         when(mockIdToken.getPreferredUsername()).thenReturn(PREFERRED_USERNAME);
         when(mockIdToken.getIssuer()).thenReturn(URI.create(ISSUER).toURL());
         when(mockIdToken.getSubject()).thenReturn(SUBJECT);
@@ -254,7 +259,8 @@ public class CustomOidcUserServiceTest {
         // Mock ClientRegistration details needed by parent OidcUserService
         when(mockClientRegistration.getProviderDetails()).thenReturn(mockProviderDetails);
         when(mockProviderDetails.getUserInfoEndpoint()).thenReturn(mockUserInfoEndpoint);
-        when(mockUserInfoEndpoint.getUri()).thenReturn("https://example.com/userinfo");
+        when(mockUserInfoEndpoint.getUri()).thenReturn("https://localhost/userinfo");
+        when(mockUserInfoEndpoint.getUserNameAttributeName()).thenReturn("preferred_username");
         when(mockClientRegistration.getClientId()).thenReturn("test-client");
         when(mockClientRegistration.getClientSecret()).thenReturn("test-secret");
         when(mockClientRegistration.getAuthorizationGrantType()).thenReturn(AuthorizationGrantType.AUTHORIZATION_CODE);
@@ -266,13 +272,15 @@ public class CustomOidcUserServiceTest {
     private OidcUserRequest createOidcUserRequestWithoutAvatar() throws MalformedURLException {
         OidcUserRequest mockRequest = mock(OidcUserRequest.class);
         OidcIdToken mockIdToken = mock(OidcIdToken.class);
+        OAuth2AccessToken mockAccessToken = mock(OAuth2AccessToken.class);
         ClientRegistration mockClientRegistration = mock(ClientRegistration.class);
         ClientRegistration.ProviderDetails mockProviderDetails = mock(ClientRegistration.ProviderDetails.class);
         ClientRegistration.ProviderDetails.UserInfoEndpoint mockUserInfoEndpoint = mock(ClientRegistration.ProviderDetails.UserInfoEndpoint.class);
         
         when(mockRequest.getIdToken()).thenReturn(mockIdToken);
         when(mockRequest.getClientRegistration()).thenReturn(mockClientRegistration);
-        
+        when(mockRequest.getAccessToken()).thenReturn(mockAccessToken);
+
         when(mockIdToken.getPreferredUsername()).thenReturn(PREFERRED_USERNAME);
         when(mockIdToken.getIssuer()).thenReturn(URI.create(ISSUER).toURL());
         when(mockIdToken.getSubject()).thenReturn(SUBJECT);
@@ -280,7 +288,8 @@ public class CustomOidcUserServiceTest {
         // Mock ClientRegistration details needed by parent OidcUserService
         when(mockClientRegistration.getProviderDetails()).thenReturn(mockProviderDetails);
         when(mockProviderDetails.getUserInfoEndpoint()).thenReturn(mockUserInfoEndpoint);
-        when(mockUserInfoEndpoint.getUri()).thenReturn("https://example.com/userinfo");
+        when(mockUserInfoEndpoint.getUri()).thenReturn("https://localhost/userinfo");
+        when(mockUserInfoEndpoint.getUserNameAttributeName()).thenReturn("preferred_username");
         when(mockClientRegistration.getClientId()).thenReturn("test-client");
         when(mockClientRegistration.getClientSecret()).thenReturn("test-secret");
         when(mockClientRegistration.getAuthorizationGrantType()).thenReturn(AuthorizationGrantType.AUTHORIZATION_CODE);
