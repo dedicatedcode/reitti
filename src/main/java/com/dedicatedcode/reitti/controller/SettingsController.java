@@ -64,6 +64,8 @@ public class SettingsController {
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final AvatarService avatarService;
     private final VersionService versionService;
+    private final boolean localLoginDisabled;
+    private final boolean oidcEnabled;
 
     public SettingsController(ApiTokenService apiTokenService,
                               UserJdbcService userJdbcService,
@@ -84,7 +86,9 @@ public class SettingsController {
                               @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                               MessageSource messageSource,
                               ProcessingPipelineTrigger processingPipelineTrigger,
-                              VersionService versionService) {
+                              VersionService versionService,
+                              @Value("${reitti.security.oidc.enabled:false}") boolean oidcEnabled,
+                              @Value("${reitti.security.local-login.disable}") boolean localLoginDisabled) {
         this.apiTokenService = apiTokenService;
         this.userJdbcService = userJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
@@ -107,6 +111,8 @@ public class SettingsController {
         this.messageSource = messageSource;
         this.processingPipelineTrigger = processingPipelineTrigger;
         this.versionService = versionService;
+        this.oidcEnabled = oidcEnabled;
+        this.localLoginDisabled = localLoginDisabled;
     }
 
     private String getMessage(String key, Object... args) {
@@ -894,8 +900,9 @@ public class SettingsController {
             model.addAttribute("username", user.getUsername());
             model.addAttribute("displayName", user.getDisplayName());
             model.addAttribute("selectedRole", user.getRole());
-            ;
-
+            model.addAttribute("externallyManaged", user.getExternalId() != null && oidcEnabled);
+            model.addAttribute("externalProfile", user.getProfileUrl());
+            model.addAttribute("localLoginDisabled", this.localLoginDisabled);
             UserSettings userSettings = userSettingsJdbcService.findByUserId(user.getId())
                     .orElse(UserSettings.defaultSettings(user.getId()));
             model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());

@@ -347,14 +347,14 @@ Use both Photon and external services for maximum reliability.
 
 ### Choosing the Right Option
 
-| Requirement | Photon Only | External Only | Hybrid |
-|-------------|-------------|---------------|--------|
-| **Privacy** | ✅ Complete | ❌ Limited | ⚠️ Partial |
-| **Performance** | ✅ Fastest | ❌ Network dependent | ✅ Fast with fallback |
-| **Storage** | ❌ High (1-200GB) | ✅ None | ❌ High (1-200GB) |
-| **Setup Time** | ❌ Hours to days | ✅ Immediate | ❌ Hours to days |
-| **Reliability** | ⚠️ Single point | ⚠️ External dependency | ✅ Multiple sources |
-| **Cost** | ✅ Free | ⚠️ May have limits | ✅ Free with backup |
+| Requirement     | Photon Only      | External Only          | Hybrid               |
+|-----------------|------------------|------------------------|----------------------|
+| **Privacy**     | ✅ Complete       | ❌ Limited              | ⚠️ Partial           |
+| **Performance** | ✅ Fastest        | ❌ Network dependent    | ✅ Fast with fallback |
+| **Storage**     | ❌ High (1-200GB) | ✅ None                 | ❌ High (1-200GB)     |
+| **Setup Time**  | ❌ Hours to days  | ✅ Immediate            | ❌ Hours to days      |
+| **Reliability** | ⚠️ Single point  | ⚠️ External dependency | ✅ Multiple sources   |
+| **Cost**        | ✅ Free           | ⚠️ May have limits     | ✅ Free with backup   |
 
 ### Initial Setup Considerations
 
@@ -452,7 +452,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 There are multiple ways of getting support:
 
-- either create a [new issue](https://github.com/dedicatedcode/reitti/issues/new/choose)
+- create a [new issue](https://github.com/dedicatedcode/reitti/issues/new/choose)
 - tag me on [https://discuss.tchncs.de/u/danielgraf](Lemmy)
 - or join **#reitti** on [irc.dedicatedcode.com](https://irc.dedicatedcode.com)
 
@@ -462,4 +462,4 @@ There are multiple ways of getting support:
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License, see the LICENSE file for details.

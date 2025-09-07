@@ -95,7 +95,7 @@ public class UserSettingsController {
             model.addAttribute("username", currentUser.getUsername());
             model.addAttribute("displayName", currentUser.getDisplayName());
             model.addAttribute("selectedRole", currentUser.getRole());
-            model.addAttribute("externallyManaged", currentUser.getExternalId() != null);
+            model.addAttribute("externallyManaged", currentUser.getExternalId() != null && oidcEnabled);
             model.addAttribute("externalProfile", currentUser.getProfileUrl());
             model.addAttribute("localLoginDisabled", localLoginDisabled);
 
@@ -164,9 +164,9 @@ public class UserSettingsController {
     }
 
     @PostMapping("/users")
-    public String createUser(@RequestParam String username,
-                             @RequestParam String displayName,
-                             @RequestParam String password,
+    public String createUser(@RequestParam(required = false) String username,
+                             @RequestParam(required = false) String displayName,
+                             @RequestParam(required = false)  String password,
                              @RequestParam(defaultValue = "USER") Role role,
                              @RequestParam String preferred_language,
                              @RequestParam(defaultValue = "METRIC") String unit_system,
@@ -223,8 +223,8 @@ public class UserSettingsController {
 
     @PostMapping("/users/update")
     public String updateUser(@RequestParam Long userId,
-                             @RequestParam String username,
-                             @RequestParam String displayName,
+                             @RequestParam(required = false)  String username,
+                             @RequestParam(required = false)  String displayName,
                              @RequestParam(required = false) String password,
                              @RequestParam(defaultValue = "USER") Role role,
                              @RequestParam String preferred_language,
@@ -259,6 +259,13 @@ public class UserSettingsController {
             // Only update password if provided
             if (password != null && !password.trim().isEmpty()) {
                 encodedPassword = passwordEncoder.encode(password);
+            }
+
+            if (username == null || username.trim().isEmpty()) {
+                username = existingUser.getUsername();
+            }
+            if (displayName == null || displayName.trim().isEmpty()) {
+                displayName = existingUser.getDisplayName();
             }
 
             User updatedUser = new User(existingUser.getId(), username, encodedPassword, displayName, existingUser.getProfileUrl(), existingUser.getExternalId(), role, existingUser.getVersion());
@@ -339,7 +346,7 @@ public class UserSettingsController {
             model.addAttribute("username", username);
             model.addAttribute("displayName", displayName);
             model.addAttribute("selectedRole", role);
-            model.addAttribute("externallyManaged", user != null && user.getExternalId() != null);
+            model.addAttribute("externallyManaged", user != null && user.getExternalId() != null && oidcEnabled);
             model.addAttribute("externalProfile", user != null ? user.getProfileUrl() : null);
             model.addAttribute("localLoginDisabled", localLoginDisabled);
             UserSettings userSettings = userSettingsJdbcService.findByUserId(userId).orElse(UserSettings.defaultSettings(userId));
