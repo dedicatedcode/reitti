@@ -412,7 +412,7 @@ Reitti's OIDC authentication follows a flexible user matching and creation proce
 
 #### Required OIDC Claims
 Your OIDC provider must provide these claims for successful authentication:
-- `sub` (subject) - Required for external_id generation
+- `sub` (subject) Required for external_id generation
 - `preferred_username` - Required for username assignment
 - `name` - Recommended for display name
 - `profile` - Optional for profile URL
