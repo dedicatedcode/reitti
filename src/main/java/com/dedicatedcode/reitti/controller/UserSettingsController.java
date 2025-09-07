@@ -97,6 +97,7 @@ public class UserSettingsController {
             model.addAttribute("selectedRole", currentUser.getRole());
             model.addAttribute("externallyManaged", currentUser.getExternalId() != null);
             model.addAttribute("externalProfile", currentUser.getProfileUrl());
+            model.addAttribute("localLoginDisabled", localLoginDisabled);
 
             UserSettings userSettings = userSettingsJdbcService.findByUserId(currentUser.getId()).orElse(UserSettings.defaultSettings(currentUser.getId()));
             model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
@@ -334,9 +335,13 @@ public class UserSettingsController {
         }
         if (userId != null) {
             model.addAttribute("userId", userId);
+            User user = userJdbcService.findById(userId).orElse(null);
             model.addAttribute("username", username);
             model.addAttribute("displayName", displayName);
             model.addAttribute("selectedRole", role);
+            model.addAttribute("externallyManaged", user != null && user.getExternalId() != null);
+            model.addAttribute("externalProfile", user != null ? user.getProfileUrl() : null);
+            model.addAttribute("localLoginDisabled", localLoginDisabled);
             UserSettings userSettings = userSettingsJdbcService.findByUserId(userId).orElse(UserSettings.defaultSettings(userId));
             model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
             model.addAttribute("selectedUnitSystem", userSettings.getUnitSystem().name());
@@ -351,6 +356,9 @@ public class UserSettingsController {
             model.addAttribute("selectedRole", "USER");
             model.addAttribute("homeLatitude", null);
             model.addAttribute("homeLongitude", null);
+            model.addAttribute("externallyManaged", false);
+            model.addAttribute("externalProfile", null);
+            model.addAttribute("localLoginDisabled", localLoginDisabled);
         }
         
         // Add available unit systems to model
