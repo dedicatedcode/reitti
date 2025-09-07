@@ -19,6 +19,7 @@ import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -224,7 +225,7 @@ public class CustomOidcUserServiceTest {
     }
 
     @Test
-    void testLoadUser_NoAvatarUrl() {
+    void testLoadUser_NoAvatarUrl() throws MalformedURLException {
         // Given
         customOidcUserService = new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, false);
         OidcUserRequest oidcUserRequest = createOidcUserRequestWithoutAvatar();
@@ -242,6 +243,7 @@ public class CustomOidcUserServiceTest {
     }
 
     private OidcUserRequest createOidcUserRequest() {
+        // also create a mock here instead of the full classes AI!
         ClientRegistration clientRegistration = ClientRegistration.withRegistrationId("test")
             .clientId("test-client")
             .clientSecret("test-secret")
@@ -283,13 +285,13 @@ public class CustomOidcUserServiceTest {
         return new OidcUserRequest(clientRegistration, oAuth2AccessToken, idToken);
     }
 
-    private OidcUserRequest createOidcUserRequestWithoutAvatar() {
+    private OidcUserRequest createOidcUserRequestWithoutAvatar() throws MalformedURLException {
         OidcUserRequest mockRequest = mock(OidcUserRequest.class);
         OidcIdToken mockIdToken = mock(OidcIdToken.class);
         
         when(mockRequest.getIdToken()).thenReturn(mockIdToken);
         when(mockIdToken.getPreferredUsername()).thenReturn(PREFERRED_USERNAME);
-        when(mockIdToken.getIssuer()).thenReturn(URI.create(ISSUER));
+        when(mockIdToken.getIssuer()).thenReturn(URI.create(ISSUER).toURL());
         when(mockIdToken.getSubject()).thenReturn(SUBJECT);
         
         return mockRequest;
