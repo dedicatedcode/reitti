@@ -12,19 +12,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.mockito.Mock;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
-import org.springframework.security.oauth2.client.registration.ClientRegistration;
-import org.springframework.security.oauth2.core.AuthorizationGrantType;
-import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.MalformedURLException;
 import java.net.URI;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -243,46 +236,15 @@ public class CustomOidcUserServiceTest {
     }
 
     private OidcUserRequest createOidcUserRequest() {
-        // also create a mock here instead of the full classes AI!
-        ClientRegistration clientRegistration = ClientRegistration.withRegistrationId("test")
-            .clientId("test-client")
-            .clientSecret("test-secret")
-            .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-            .redirectUri("http://localhost/callback")
-            .authorizationUri("https://example.com/auth")
-            .tokenUri("https://example.com/token")
-            .userInfoUri("https://example.com/userinfo")
-            .jwkSetUri("https://example.com/jwks")
-            .issuerUri(ISSUER)
-            .userNameAttributeName("preferred_username")
-            .build();
-
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("sub", SUBJECT);
-        claims.put("preferred_username", PREFERRED_USERNAME);
-        claims.put("name", DISPLAY_NAME);
-        claims.put("given_name", "Test");
-        claims.put("family_name", "User");
-        claims.put("picture", AVATAR_URL);
-        claims.put("profile", PROFILE_URL);
-        claims.put("iss", ISSUER);
-
-
-        OidcIdToken idToken = new OidcIdToken(
-            "token-value",
-            Instant.now(),
-            Instant.now().plusSeconds(3600),
-            claims
-        );
-
-
-        OAuth2AccessToken oAuth2AccessToken = new OAuth2AccessToken(
-                OAuth2AccessToken.TokenType.BEARER,
-                "token value",
-                Instant.now().minus(1, ChronoUnit.SECONDS),
-                null
-        );
-        return new OidcUserRequest(clientRegistration, oAuth2AccessToken, idToken);
+        OidcUserRequest mockRequest = mock(OidcUserRequest.class);
+        OidcIdToken mockIdToken = mock(OidcIdToken.class);
+        
+        when(mockRequest.getIdToken()).thenReturn(mockIdToken);
+        when(mockIdToken.getPreferredUsername()).thenReturn(PREFERRED_USERNAME);
+        when(mockIdToken.getIssuer()).thenReturn(URI.create(ISSUER));
+        when(mockIdToken.getSubject()).thenReturn(SUBJECT);
+        
+        return mockRequest;
     }
 
     private OidcUserRequest createOidcUserRequestWithoutAvatar() throws MalformedURLException {
