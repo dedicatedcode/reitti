@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.config;
 import com.dedicatedcode.reitti.model.security.ExternalUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.service.AvatarService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,13 +22,16 @@ public class CustomOidcUserService extends OidcUserService {
 
     private static final Logger log = LogManager.getLogger(CustomOidcUserService.class);
     private final UserJdbcService userJdbcService;
+    private final AvatarService avatarService;
     private final boolean registrationEnabled;
     private final boolean localLoginDisabled;
 
     public CustomOidcUserService(UserJdbcService userJdbcService,
+                                 AvatarService avatarService,
                                  @Value("${reitti.security.oidc.registration.enabled}") boolean registrationEnabled,
                                  @Value("${reitti.security.local-login.disable:false}") boolean localLoginDisabled) {
         this.userJdbcService = userJdbcService;
+        this.avatarService = avatarService;
         this.registrationEnabled = registrationEnabled;
         this.localLoginDisabled = localLoginDisabled;
     }
@@ -98,5 +102,7 @@ public class CustomOidcUserService extends OidcUserService {
         }
         return displayName;
     }
+
+    //create a method to download the avatar picture from a given avatarUrl and save the user with the new avatar in the AvatarService AI!
 }
 
