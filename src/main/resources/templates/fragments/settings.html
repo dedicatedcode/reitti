@@ -177,12 +177,13 @@
                 </div>
 
                 <div class="alert alert-info">
-                    <strong>Need Help?</strong><br>
-                    For detailed setup instructions and tips, visit our comprehensive guide:
+                    <strong th:text="#{integrations.mobile.help.title}">Need Help?</strong><br>
+                    <span th:text="#{integrations.mobile.help.description}">For detailed setup instructions and tips, visit our comprehensive guide:</span>
                     <a href="https://www.dedicatedcode.com/projects/reitti/mobile-integration/"
                        target="_blank"
                        rel="noopener noreferrer"
-                       style="color: var(--color-accent); text-decoration: underline;">
+                       style="color: var(--color-accent); text-decoration: underline;"
+                       th:text="#{integrations.mobile.help.link.text}">
                         Mobile Integration Documentation
                     </a>
                 </div>
