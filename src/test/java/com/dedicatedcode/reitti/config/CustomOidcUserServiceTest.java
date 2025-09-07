@@ -10,7 +10,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.mockito.Mock;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -59,7 +58,7 @@ public class CustomOidcUserServiceTest {
     }
 
     @Test
-    void testLoadUser_NewUser_RegistrationEnabled() {
+    void testLoadUser_NewUser_RegistrationEnabled() throws MalformedURLException {
         // Given
         customOidcUserService = new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, false);
         OidcUserRequest oidcUserRequest = createOidcUserRequest();
@@ -90,7 +89,7 @@ public class CustomOidcUserServiceTest {
     }
 
     @Test
-    void testLoadUser_NewUser_RegistrationDisabled() {
+    void testLoadUser_NewUser_RegistrationDisabled() throws MalformedURLException {
         // Given
         customOidcUserService = new CustomOidcUserService(userJdbcService, avatarService, restTemplate, false, false);
         OidcUserRequest oidcUserRequest = createOidcUserRequest();
@@ -102,7 +101,7 @@ public class CustomOidcUserServiceTest {
     }
 
     @Test
-    void testLoadUser_ExistingUserByOidcId_LocalLoginDisabled() {
+    void testLoadUser_ExistingUserByOidcId_LocalLoginDisabled() throws MalformedURLException {
         // Given
         customOidcUserService = new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, true);
         
@@ -133,7 +132,7 @@ public class CustomOidcUserServiceTest {
     }
 
     @Test
-    void testLoadUser_ExistingUserByPreferredUsername_LocalLoginDisabled() {
+    void testLoadUser_ExistingUserByPreferredUsername_LocalLoginDisabled() throws MalformedURLException {
         // Given
         customOidcUserService = new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, true);
         
@@ -167,7 +166,7 @@ public class CustomOidcUserServiceTest {
     }
 
     @Test
-    void testLoadUser_ExistingUser_LocalLoginEnabled() {
+    void testLoadUser_ExistingUser_LocalLoginEnabled() throws MalformedURLException {
         // Given
         customOidcUserService = new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, false);
         
@@ -197,7 +196,7 @@ public class CustomOidcUserServiceTest {
     }
 
     @Test
-    void testLoadUser_AvatarDownloadFailure() {
+    void testLoadUser_AvatarDownloadFailure() throws MalformedURLException {
         // Given
         customOidcUserService = new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, false);
         OidcUserRequest oidcUserRequest = createOidcUserRequest();
@@ -235,13 +234,13 @@ public class CustomOidcUserServiceTest {
         verify(avatarService, never()).updateAvatar(any(), any(), any());
     }
 
-    private OidcUserRequest createOidcUserRequest() {
+    private OidcUserRequest createOidcUserRequest() throws MalformedURLException {
         OidcUserRequest mockRequest = mock(OidcUserRequest.class);
         OidcIdToken mockIdToken = mock(OidcIdToken.class);
         
         when(mockRequest.getIdToken()).thenReturn(mockIdToken);
         when(mockIdToken.getPreferredUsername()).thenReturn(PREFERRED_USERNAME);
-        when(mockIdToken.getIssuer()).thenReturn(URI.create(ISSUER));
+        when(mockIdToken.getIssuer()).thenReturn(URI.create(ISSUER).toURL());
         when(mockIdToken.getSubject()).thenReturn(SUBJECT);
         
         return mockRequest;
