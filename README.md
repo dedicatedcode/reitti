@@ -212,6 +212,7 @@ The included `docker-compose.yml` provides a complete setup with:
 | `OIDC_CLIENT_SECRET`       | Your OpenID Connect Client secret (from your provider)                                                                                                                          |                | F0oxfg8b2rp5X97YPS92C2ERxof1oike          |
 | `OIDC_ISSUER_URI`          | Your OpenID Connect Provider Discovery URI (don't include the /.well-known/openid-configuration part of the URI)                                                                |                | https://github.com/login/oauth            |
 | `OIDC_SCOPE`               | Your OpenID Connect scopes for your user (optional)                                                                                                                             | openid,profile | openid,profile                            |
+| `OIDC_SIGN_UP_ENABLED`     | Whether new users should be signed up automatically if they first login via the OIDC Provider. (optional)                                                                       | true           | false                                     |
 | `PHOTON_BASE_URL`          | Base URL for Photon geocoding service                                                                                                                                           |                |                                           |
 | `PROCESSING_WAIT_TIME`     | How many seconds to wait after the last data input before starting to process all unprocessed data. (⚠️ This needs to be lower than your integrated app reports data in Reitti) | 15             | 15                                        |
 | `DANGEROUS_LIFE`           | Enables data management features that can reset/delete all database data (⚠️ USE WITH CAUTION)                                                                                  | false          | true                                      |
@@ -386,12 +387,9 @@ There are two URLs provided by reitti that you should give to your OIDC provider
 The logout callback URL will allow your OIDC provider to sign you out of Reitti when you sign out from your provider. If you don't set it, you will have to manually sign out of Reitti even if you sign out from your OIDC provider.
 
 ### Login Requirements
-We don't support sign-ups via OIDC, so in order to sign in you will first have to create a user account in Reitti.
-This user **must** have a matching username to the username provided by your OIDC provider, commonly referred to as the `preferred_username`.
-
-E.g. If you have the username "myusername" with your OIDC provider, create a user in Reitti with the username "myusername". The "Display Name" can be set freely.
-
-**Note for Google accounts**: Google accounts use the email address as the `preferred_username`, so if you're using gmail you'd create an account with the username "myemail@gmail.com".
+When logging in the first time via OIDC, we try to match the `preferred_username` to the local username for your account. 
+Later we update your account with an `external_id` to allow changing your `username` in the OIDC provider.
+If no user is found with either the `preferred_username` or the `externalId` we create a new one with the information provided.
 
 ## Technologies
 
