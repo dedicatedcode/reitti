@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
-import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
@@ -342,7 +341,7 @@ public class CustomOidcUserServiceTest {
             claims
         );
 
-        return new DefaultOidcUser(null, idToken, claims);
+        return new DefaultOidcUser(null, idToken);
     }
 
     private OidcUser createMockOidcUserWithoutAvatar() {
@@ -362,6 +361,6 @@ public class CustomOidcUserServiceTest {
             claims
         );
 
-        return new DefaultOidcUser(null, idToken, claims);
+        return new DefaultOidcUser(null, idToken);
     }
 }
