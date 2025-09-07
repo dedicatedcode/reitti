@@ -17,11 +17,16 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -65,8 +70,11 @@ public class CustomOidcUserServiceTest {
     @Test
     void testLoadUser_NewUser_RegistrationEnabled() throws MalformedURLException {
         // Given
-        customOidcUserService = new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, false);
+        customOidcUserService = spy(new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, false));
         OidcUserRequest oidcUserRequest = createOidcUserRequest();
+        OidcUser mockOidcUser = createMockOidcUser();
+        
+        doReturn(mockOidcUser).when(customOidcUserService).getDefaultUser(oidcUserRequest);
         
         byte[] avatarData = "fake-avatar-data".getBytes();
         when(restTemplate.getForObject(eq(URI.create(AVATAR_URL)), eq(byte[].class)))
@@ -96,8 +104,11 @@ public class CustomOidcUserServiceTest {
     @Test
     void testLoadUser_NewUser_RegistrationDisabled() throws MalformedURLException {
         // Given
-        customOidcUserService = new CustomOidcUserService(userJdbcService, avatarService, restTemplate, false, false);
+        customOidcUserService = spy(new CustomOidcUserService(userJdbcService, avatarService, restTemplate, false, false));
         OidcUserRequest oidcUserRequest = createOidcUserRequest();
+        OidcUser mockOidcUser = createMockOidcUser();
+        
+        doReturn(mockOidcUser).when(customOidcUserService).getDefaultUser(oidcUserRequest);
 
         // When & Then
         assertThatThrownBy(() -> customOidcUserService.loadUser(oidcUserRequest))
@@ -108,7 +119,7 @@ public class CustomOidcUserServiceTest {
     @Test
     void testLoadUser_ExistingUserByOidcId_LocalLoginDisabled() throws MalformedURLException {
         // Given
-        customOidcUserService = new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, true);
+        customOidcUserService = spy(new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, true));
         
         // Create existing user with password
         userJdbcService.createUser(new User()
@@ -118,6 +129,9 @@ public class CustomOidcUserServiceTest {
             .withRole(Role.USER));
         
         OidcUserRequest oidcUserRequest = createOidcUserRequest();
+        OidcUser mockOidcUser = createMockOidcUser();
+        
+        doReturn(mockOidcUser).when(customOidcUserService).getDefaultUser(oidcUserRequest);
 
         // When
         ExternalUser result = (ExternalUser) customOidcUserService.loadUser(oidcUserRequest);
@@ -139,7 +153,7 @@ public class CustomOidcUserServiceTest {
     @Test
     void testLoadUser_ExistingUserByPreferredUsername_LocalLoginDisabled() throws MalformedURLException {
         // Given
-        customOidcUserService = new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, true);
+        customOidcUserService = spy(new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, true));
         
         // Create existing user with preferred username and password
         userJdbcService.createUser(new User()
@@ -149,6 +163,9 @@ public class CustomOidcUserServiceTest {
             .withRole(Role.USER));
         
         OidcUserRequest oidcUserRequest = createOidcUserRequest();
+        OidcUser mockOidcUser = createMockOidcUser();
+        
+        doReturn(mockOidcUser).when(customOidcUserService).getDefaultUser(oidcUserRequest);
 
         // When
         ExternalUser result = (ExternalUser) customOidcUserService.loadUser(oidcUserRequest);
@@ -173,7 +190,7 @@ public class CustomOidcUserServiceTest {
     @Test
     void testLoadUser_ExistingUser_LocalLoginEnabled() throws MalformedURLException {
         // Given
-        customOidcUserService = new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, false);
+        customOidcUserService = spy(new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, false));
         
         // Create existing user with password
         userJdbcService.createUser(new User()
@@ -183,6 +200,9 @@ public class CustomOidcUserServiceTest {
             .withRole(Role.USER));
         
         OidcUserRequest oidcUserRequest = createOidcUserRequest();
+        OidcUser mockOidcUser = createMockOidcUser();
+        
+        doReturn(mockOidcUser).when(customOidcUserService).getDefaultUser(oidcUserRequest);
 
         // When
         ExternalUser result = (ExternalUser) customOidcUserService.loadUser(oidcUserRequest);
@@ -203,8 +223,11 @@ public class CustomOidcUserServiceTest {
     @Test
     void testLoadUser_AvatarDownloadFailure() throws MalformedURLException {
         // Given
-        customOidcUserService = new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, false);
+        customOidcUserService = spy(new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, false));
         OidcUserRequest oidcUserRequest = createOidcUserRequest();
+        OidcUser mockOidcUser = createMockOidcUser();
+        
+        doReturn(mockOidcUser).when(customOidcUserService).getDefaultUser(oidcUserRequest);
         
         // Mock RestTemplate to throw exception
         when(restTemplate.getForObject(eq(URI.create(AVATAR_URL)), eq(byte[].class)))
@@ -224,8 +247,11 @@ public class CustomOidcUserServiceTest {
     @Test
     void testLoadUser_NoAvatarUrl() throws MalformedURLException {
         // Given
-        customOidcUserService = new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, false);
+        customOidcUserService = spy(new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, false));
         OidcUserRequest oidcUserRequest = createOidcUserRequestWithoutAvatar();
+        OidcUser mockOidcUser = createMockOidcUserWithoutAvatar();
+        
+        doReturn(mockOidcUser).when(customOidcUserService).getDefaultUser(oidcUserRequest);
 
         // When
         ExternalUser result = (ExternalUser) customOidcUserService.loadUser(oidcUserRequest);
@@ -296,5 +322,46 @@ public class CustomOidcUserServiceTest {
         when(mockClientRegistration.getClientAuthenticationMethod()).thenReturn(ClientAuthenticationMethod.CLIENT_SECRET_BASIC);
         
         return mockRequest;
+    }
+
+    private OidcUser createMockOidcUser() {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("sub", SUBJECT);
+        claims.put("preferred_username", PREFERRED_USERNAME);
+        claims.put("name", DISPLAY_NAME);
+        claims.put("given_name", "Test");
+        claims.put("family_name", "User");
+        claims.put("picture", AVATAR_URL);
+        claims.put("profile", PROFILE_URL);
+        claims.put("iss", ISSUER);
+
+        OidcIdToken idToken = new OidcIdToken(
+            "token-value",
+            Instant.now(),
+            Instant.now().plusSeconds(3600),
+            claims
+        );
+
+        return new DefaultOidcUser(null, idToken, claims);
+    }
+
+    private OidcUser createMockOidcUserWithoutAvatar() {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("sub", SUBJECT);
+        claims.put("preferred_username", PREFERRED_USERNAME);
+        claims.put("name", DISPLAY_NAME);
+        claims.put("given_name", "Test");
+        claims.put("family_name", "User");
+        claims.put("profile", PROFILE_URL);
+        claims.put("iss", ISSUER);
+
+        OidcIdToken idToken = new OidcIdToken(
+            "token-value",
+            Instant.now(),
+            Instant.now().plusSeconds(3600),
+            claims
+        );
+
+        return new DefaultOidcUser(null, idToken, claims);
     }
 }
