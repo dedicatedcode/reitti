@@ -1,25 +1,24 @@
 package com.dedicatedcode.reitti.config;
 
+import com.dedicatedcode.reitti.IntegrationTest;
+import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.ExternalUser;
-import com.dedicatedcode.reitti.model.security.Role;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.AvatarService;
-import com.dedicatedcode.reitti.test.IntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
-import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.time.Instant;
 import java.util.HashMap;
@@ -38,10 +37,10 @@ public class CustomOidcUserServiceTest {
     @Autowired
     private UserJdbcService userJdbcService;
 
-    @MockBean
+    @MockitoBean
     private AvatarService avatarService;
 
-    @MockBean
+    @MockitoBean
     private RestTemplate restTemplate;
 
     private CustomOidcUserService customOidcUserService;
@@ -62,8 +61,7 @@ public class CustomOidcUserServiceTest {
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
-        
+
         // Clear any existing test data
         userJdbcService.findByUsername(OIDC_USER_ID).ifPresent(user -> 
             userJdbcService.deleteUser(user.getId()));
@@ -72,7 +70,7 @@ public class CustomOidcUserServiceTest {
     }
 
     @Test
-    void testLoadUser_NewUser_RegistrationEnabled() {
+    void testLoadUser_NewUser_RegistrationEnabled() throws MalformedURLException {
         // Given
         customOidcUserService = new CustomOidcUserService(userJdbcService, avatarService, true, false);
         OidcUser oidcUser = createOidcUser();
@@ -91,7 +89,7 @@ public class CustomOidcUserServiceTest {
         assertThat(result.getDisplayName()).isEqualTo(DISPLAY_NAME);
         assertThat(result.getPassword()).isEmpty(); // Should be empty for OIDC users
         
-        // Verify user was created in database
+        // Verify user was created in the database
         Optional<User> savedUser = userJdbcService.findByUsername(OIDC_USER_ID);
         assertThat(savedUser).isPresent();
         assertThat(savedUser.get().getDisplayName()).isEqualTo(DISPLAY_NAME);
@@ -104,7 +102,7 @@ public class CustomOidcUserServiceTest {
     }
 
     @Test
-    void testLoadUser_NewUser_RegistrationDisabled() {
+    void testLoadUser_NewUser_RegistrationDisabled() throws MalformedURLException {
         // Given
         customOidcUserService = new CustomOidcUserService(userJdbcService, avatarService, false, false);
         OidcUser oidcUser = createOidcUser();
@@ -117,17 +115,16 @@ public class CustomOidcUserServiceTest {
     }
 
     @Test
-    void testLoadUser_ExistingUserByOidcId_LocalLoginDisabled() {
+    void testLoadUser_ExistingUserByOidcId_LocalLoginDisabled() throws MalformedURLException {
         // Given
         customOidcUserService = new CustomOidcUserService(userJdbcService, avatarService, true, true);
         
         // Create existing user with password
-        User existingUser = new User()
+        userJdbcService.createUser(new User()
             .withUsername(OIDC_USER_ID)
             .withDisplayName("Old Display Name")
             .withPassword("old-password")
-            .withRole(Role.USER);
-        existingUser = userJdbcService.createUser(existingUser);
+            .withRole(Role.USER));
         
         OidcUser oidcUser = createOidcUser();
         setupMocks(oidcUser);
@@ -141,7 +138,7 @@ public class CustomOidcUserServiceTest {
         assertThat(result.getDisplayName()).isEqualTo(DISPLAY_NAME);
         assertThat(result.getPassword()).isEmpty(); // Password should be cleared when local login disabled
         
-        // Verify user was updated in database
+        // Verify user was updated in the database
         Optional<User> updatedUser = userJdbcService.findByUsername(OIDC_USER_ID);
         assertThat(updatedUser).isPresent();
         assertThat(updatedUser.get().getDisplayName()).isEqualTo(DISPLAY_NAME);
@@ -150,17 +147,16 @@ public class CustomOidcUserServiceTest {
     }
 
     @Test
-    void testLoadUser_ExistingUserByPreferredUsername_LocalLoginDisabled() {
+    void testLoadUser_ExistingUserByPreferredUsername_LocalLoginDisabled() throws MalformedURLException {
         // Given
         customOidcUserService = new CustomOidcUserService(userJdbcService, avatarService, true, true);
         
         // Create existing user with preferred username and password
-        User existingUser = new User()
+        userJdbcService.createUser(new User()
             .withUsername(PREFERRED_USERNAME)
             .withDisplayName("Old Display Name")
             .withPassword("old-password")
-            .withRole(Role.USER);
-        existingUser = userJdbcService.createUser(existingUser);
+            .withRole(Role.USER));
         
         OidcUser oidcUser = createOidcUser();
         setupMocks(oidcUser);
@@ -174,7 +170,7 @@ public class CustomOidcUserServiceTest {
         assertThat(result.getDisplayName()).isEqualTo(DISPLAY_NAME);
         assertThat(result.getPassword()).isEmpty(); // Password should be cleared
         
-        // Verify user was updated in database
+        // Verify user was updated in the database
         Optional<User> updatedUser = userJdbcService.findByUsername(OIDC_USER_ID);
         assertThat(updatedUser).isPresent();
         assertThat(updatedUser.get().getDisplayName()).isEqualTo(DISPLAY_NAME);
@@ -186,17 +182,16 @@ public class CustomOidcUserServiceTest {
     }
 
     @Test
-    void testLoadUser_ExistingUser_LocalLoginEnabled() {
+    void testLoadUser_ExistingUser_LocalLoginEnabled() throws MalformedURLException {
         // Given
         customOidcUserService = new CustomOidcUserService(userJdbcService, avatarService, true, false);
         
         // Create existing user with password
-        User existingUser = new User()
+        userJdbcService.createUser(new User()
             .withUsername(OIDC_USER_ID)
             .withDisplayName("Old Display Name")
             .withPassword("existing-password")
-            .withRole(Role.USER);
-        existingUser = userJdbcService.createUser(existingUser);
+            .withRole(Role.USER));
         
         OidcUser oidcUser = createOidcUser();
         setupMocks(oidcUser);
@@ -209,7 +204,7 @@ public class CustomOidcUserServiceTest {
         assertThat(result.getUsername()).isEqualTo(OIDC_USER_ID);
         assertThat(result.getDisplayName()).isEqualTo(DISPLAY_NAME);
         
-        // Verify user was updated in database but password preserved
+        // Verify user was updated in the database but password preserved
         Optional<User> updatedUser = userJdbcService.findByUsername(OIDC_USER_ID);
         assertThat(updatedUser).isPresent();
         assertThat(updatedUser.get().getDisplayName()).isEqualTo(DISPLAY_NAME);
@@ -218,7 +213,7 @@ public class CustomOidcUserServiceTest {
     }
 
     @Test
-    void testLoadUser_AvatarDownloadFailure() {
+    void testLoadUser_AvatarDownloadFailure() throws MalformedURLException {
         // Given
         customOidcUserService = new CustomOidcUserService(userJdbcService, avatarService, true, false);
         OidcUser oidcUser = createOidcUser();
@@ -240,7 +235,7 @@ public class CustomOidcUserServiceTest {
     }
 
     @Test
-    void testLoadUser_NoAvatarUrl() {
+    void testLoadUser_NoAvatarUrl() throws MalformedURLException {
         // Given
         customOidcUserService = new CustomOidcUserService(userJdbcService, avatarService, true, false);
         OidcUser oidcUser = createOidcUserWithoutAvatar();
@@ -267,8 +262,8 @@ public class CustomOidcUserServiceTest {
         claims.put("family_name", "User");
         claims.put("picture", AVATAR_URL);
         claims.put("profile", PROFILE_URL);
-        
-        return new DefaultOidcUser(null, createIdToken(claims), claims);
+
+        return new DefaultOidcUser(null, createIdToken(claims));
     }
 
     private OidcUser createOidcUserWithoutAvatar() {
@@ -279,8 +274,8 @@ public class CustomOidcUserServiceTest {
         claims.put("given_name", "Test");
         claims.put("family_name", "User");
         claims.put("profile", PROFILE_URL);
-        
-        return new DefaultOidcUser(null, createIdToken(claims), claims);
+
+        return new DefaultOidcUser(null, createIdToken(claims));
     }
 
     private OidcIdToken createIdToken(Map<String, Object> claims) {
@@ -292,10 +287,11 @@ public class CustomOidcUserServiceTest {
         );
     }
 
-    private void setupMocks(OidcUser oidcUser) {
+    //instead of mocking out the parent class, create a valid oidcUserRequest. The parent calss should then work fine AI!
+    private void setupMocks(OidcUser oidcUser) throws MalformedURLException {
         when(oidcUserRequest.getIdToken()).thenReturn(idToken);
         when(idToken.getPreferredUsername()).thenReturn(PREFERRED_USERNAME);
-        when(idToken.getIssuer()).thenReturn(URI.create(ISSUER));
+        when(idToken.getIssuer()).thenReturn(URI.create(ISSUER).toURL());
         when(idToken.getSubject()).thenReturn(SUBJECT);
         
         // Mock the parent class behavior

@@ -83,8 +83,7 @@ public class CustomOidcUserService extends OidcUserService {
 
             User updatedUser = this.userJdbcService.updateUser(user);
             
-            // Download and save avatar if available and user doesn't have one
-            if (avatarUrl != null && !avatarUrl.trim().isEmpty() && !avatarService.getInfo(user.getId()).isPresent()) {
+            if (avatarUrl != null && !avatarUrl.trim().isEmpty()) {
                 downloadAndSaveAvatar(user.getId(), avatarUrl);
             }
             
@@ -98,7 +97,6 @@ public class CustomOidcUserService extends OidcUserService {
 
             user = this.userJdbcService.createUser(user);
             
-            // Download and save avatar if available
             if (avatarUrl != null && !avatarUrl.trim().isEmpty()) {
                 downloadAndSaveAvatar(user.getId(), avatarUrl);
             }
@@ -110,7 +108,6 @@ public class CustomOidcUserService extends OidcUserService {
     }
 
     private static String getDisplayName(OidcUser oidcUser, String preferredUsername) {
-        // Extract display name from OIDC user
         String displayName = oidcUser.getFullName();
         if (displayName == null || displayName.trim().isEmpty()) {
             displayName = oidcUser.getGivenName() + " " + oidcUser.getFamilyName();
@@ -128,9 +125,7 @@ public class CustomOidcUserService extends OidcUserService {
             byte[] avatarData = restTemplate.getForObject(URI.create(avatarUrl), byte[].class);
             
             if (avatarData != null && avatarData.length > 0) {
-                // Determine content type based on URL or default to image/jpeg
                 String contentType = determineContentType(avatarUrl);
-                
                 avatarService.updateAvatar(userId, contentType, avatarData);
                 log.info("Successfully saved avatar for user ID: {}", userId);
             } else {
