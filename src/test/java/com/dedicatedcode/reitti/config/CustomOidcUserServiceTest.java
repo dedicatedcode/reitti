@@ -11,6 +11,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.client.RestTemplate;
@@ -237,11 +240,25 @@ public class CustomOidcUserServiceTest {
     private OidcUserRequest createOidcUserRequest() throws MalformedURLException {
         OidcUserRequest mockRequest = mock(OidcUserRequest.class);
         OidcIdToken mockIdToken = mock(OidcIdToken.class);
+        ClientRegistration mockClientRegistration = mock(ClientRegistration.class);
+        ClientRegistration.ProviderDetails mockProviderDetails = mock(ClientRegistration.ProviderDetails.class);
+        ClientRegistration.ProviderDetails.UserInfoEndpoint mockUserInfoEndpoint = mock(ClientRegistration.ProviderDetails.UserInfoEndpoint.class);
         
         when(mockRequest.getIdToken()).thenReturn(mockIdToken);
+        when(mockRequest.getClientRegistration()).thenReturn(mockClientRegistration);
+        
         when(mockIdToken.getPreferredUsername()).thenReturn(PREFERRED_USERNAME);
         when(mockIdToken.getIssuer()).thenReturn(URI.create(ISSUER).toURL());
         when(mockIdToken.getSubject()).thenReturn(SUBJECT);
+        
+        // Mock ClientRegistration details needed by parent OidcUserService
+        when(mockClientRegistration.getProviderDetails()).thenReturn(mockProviderDetails);
+        when(mockProviderDetails.getUserInfoEndpoint()).thenReturn(mockUserInfoEndpoint);
+        when(mockUserInfoEndpoint.getUri()).thenReturn("https://example.com/userinfo");
+        when(mockClientRegistration.getClientId()).thenReturn("test-client");
+        when(mockClientRegistration.getClientSecret()).thenReturn("test-secret");
+        when(mockClientRegistration.getAuthorizationGrantType()).thenReturn(AuthorizationGrantType.AUTHORIZATION_CODE);
+        when(mockClientRegistration.getClientAuthenticationMethod()).thenReturn(ClientAuthenticationMethod.CLIENT_SECRET_BASIC);
         
         return mockRequest;
     }
@@ -249,11 +266,25 @@ public class CustomOidcUserServiceTest {
     private OidcUserRequest createOidcUserRequestWithoutAvatar() throws MalformedURLException {
         OidcUserRequest mockRequest = mock(OidcUserRequest.class);
         OidcIdToken mockIdToken = mock(OidcIdToken.class);
+        ClientRegistration mockClientRegistration = mock(ClientRegistration.class);
+        ClientRegistration.ProviderDetails mockProviderDetails = mock(ClientRegistration.ProviderDetails.class);
+        ClientRegistration.ProviderDetails.UserInfoEndpoint mockUserInfoEndpoint = mock(ClientRegistration.ProviderDetails.UserInfoEndpoint.class);
         
         when(mockRequest.getIdToken()).thenReturn(mockIdToken);
+        when(mockRequest.getClientRegistration()).thenReturn(mockClientRegistration);
+        
         when(mockIdToken.getPreferredUsername()).thenReturn(PREFERRED_USERNAME);
         when(mockIdToken.getIssuer()).thenReturn(URI.create(ISSUER).toURL());
         when(mockIdToken.getSubject()).thenReturn(SUBJECT);
+        
+        // Mock ClientRegistration details needed by parent OidcUserService
+        when(mockClientRegistration.getProviderDetails()).thenReturn(mockProviderDetails);
+        when(mockProviderDetails.getUserInfoEndpoint()).thenReturn(mockUserInfoEndpoint);
+        when(mockUserInfoEndpoint.getUri()).thenReturn("https://example.com/userinfo");
+        when(mockClientRegistration.getClientId()).thenReturn("test-client");
+        when(mockClientRegistration.getClientSecret()).thenReturn("test-secret");
+        when(mockClientRegistration.getAuthorizationGrantType()).thenReturn(AuthorizationGrantType.AUTHORIZATION_CODE);
+        when(mockClientRegistration.getClientAuthenticationMethod()).thenReturn(ClientAuthenticationMethod.CLIENT_SECRET_BASIC);
         
         return mockRequest;
     }
