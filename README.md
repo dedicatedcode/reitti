@@ -387,9 +387,41 @@ There are two URLs provided by reitti that you should give to your OIDC provider
 The logout callback URL will allow your OIDC provider to sign you out of Reitti when you sign out from your provider. If you don't set it, you will have to manually sign out of Reitti even if you sign out from your OIDC provider.
 
 ### Login Requirements
-When logging in the first time via OIDC, we try to match the `preferred_username` to the local username for your account. 
-Later we update your account with an `external_id` to allow changing your `username` in the OIDC provider.
-If no user is found with either the `preferred_username` or the `externalId` we create a new one with the information provided.
+
+Reitti's OIDC authentication follows a flexible user matching and creation process:
+
+#### User Matching Process
+1. **Primary Match**: First attempts to find an existing user by `external_id` (format: `{issuer}:{subject}`)
+2. **Fallback Match**: If no external_id match, searches for a user with the OIDC `preferred_username`
+3. **Account Linking**: When a username match is found, the account is updated with the external_id for future logins
+
+#### User Creation
+- **Automatic Registration**: When `OIDC_SIGN_UP_ENABLED=true` (default), new users are automatically created if no match is found
+- **Registration Disabled**: When `OIDC_SIGN_UP_ENABLED=false`, login fails with an error if no existing user matches
+
+#### User Data Handling
+- **Username**: Set to the OIDC `preferred_username` 
+- **Display Name**: Updated from OIDC `name` claim on each login
+- **External ID**: Set to `{issuer}:{subject}` for permanent account linking
+- **Profile URL**: Updated from OIDC `profile` claim if available
+- **Avatar**: Automatically downloaded from OIDC `picture` claim if provided
+
+#### Password Management
+- **Local Login Enabled** (`DISABLE_LOCAL_LOGIN=false`): Existing passwords are preserved, allowing both OIDC and local authentication
+- **Local Login Disabled** (`DISABLE_LOCAL_LOGIN=true`): Passwords are cleared from accounts to enforce OIDC-only authentication
+
+#### Required OIDC Claims
+Your OIDC provider must provide these claims for successful authentication:
+- `sub` (subject) - Required for external_id generation
+- `preferred_username` - Required for username assignment
+- `name` - Recommended for display name
+- `profile` - Optional for profile URL
+- `picture` - Optional for avatar download
+
+#### Security Considerations
+- External IDs are immutable once set, ensuring account security even if usernames change in the OIDC provider
+- User data is updated on each login to keep information current
+- Avatar downloads are performed securely with error handling for network failures
 
 ## Technologies
 
