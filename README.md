@@ -380,6 +380,8 @@ Reitti supports using a third party OIDC provider for sign-ins. It provides the 
 
 Setting `OIDC_ENABLED = true` enables OIDC, whereas the remaining need to be found from your OIDC provider, e.g. github. See the [Environment Variables](#environment-variables) section for examples.
 
+For detailed OIDC configuration instructions and provider-specific examples, see the [OIDC documentation](https://www.dedicatedcode.com/projects/reitti/oidc/).
+
 There are two URLs provided by reitti that you should give to your OIDC provider (see their documentation for further information on this), one of which is required.
 - (Required) Callback URL: https://<your-reitti-url>/login/oauth2/code/oauth (e.g. `https://reitti.internal/login/oauth2/code/oauth`)
 - (Optional) Logout callback URL: https://<your-reitti-url>/logout/connect/back-channel/oauth
