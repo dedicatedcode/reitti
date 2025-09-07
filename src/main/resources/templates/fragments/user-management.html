@@ -94,12 +94,10 @@
             <input type="text" id="displayName" name="displayName" required th:placeholder="#{users.display.name.placeholder}" autocomplete="off"
                    th:value="${displayName}" th:disabled="${externallyManaged}">
         </div>
-        <div class="form-group">
+        <div class="form-group" th:unless="${externallyManaged && localLoginDisabled}">
             <label for="password" th:text="#{users.password.label}">Password</label>
-            <input type="password" id="password" name="password" th:required="${userId == null}" th:placeholder="#{users.password.placeholder}" autocomplete="new-password"
-                   th:disabled="${externallyManaged && localLoginDisabled}">
+            <input type="password" id="password" name="password" th:required="${userId == null}" th:placeholder="#{users.password.placeholder}" autocomplete="new-password">
             <small th:if="${userId != null && !externallyManaged}" th:text="#{users.password.keep.current}">Leave empty to keep current password</small>
-            <small th:if="${externallyManaged && localLoginDisabled}" th:text="#{users.password.oidc.disabled}">Password authentication is disabled for OIDC users</small>
         </div>
         <div th:if="${isAdmin}" class="form-group">
             <label for="role" th:text="#{users.role.label}">Role</label>
