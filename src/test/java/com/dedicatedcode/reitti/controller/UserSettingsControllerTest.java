@@ -42,6 +42,7 @@ public class UserSettingsControllerTest {
                 .build();
     }
 
+    //update this class to create a new User and give this into the createUser method AI!
     private String randomUsername() {
         return "user_" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
     }
