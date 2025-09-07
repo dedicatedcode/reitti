@@ -41,6 +41,19 @@ public class CustomOidcUserService extends OidcUserService {
         this.restTemplate = new RestTemplate();
     }
 
+    // Constructor for testing with injected RestTemplate
+    public CustomOidcUserService(UserJdbcService userJdbcService,
+                                 AvatarService avatarService,
+                                 RestTemplate restTemplate,
+                                 boolean registrationEnabled,
+                                 boolean localLoginDisabled) {
+        this.userJdbcService = userJdbcService;
+        this.avatarService = avatarService;
+        this.registrationEnabled = registrationEnabled;
+        this.localLoginDisabled = localLoginDisabled;
+        this.restTemplate = restTemplate;
+    }
+
     @Override
     @Transactional
     public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
