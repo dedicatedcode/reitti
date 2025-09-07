@@ -29,17 +29,40 @@ public class CustomOidcUserService extends OidcUserService {
     @Override
     @Transactional
     public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
+        var oidcUser = super.loadUser(userRequest);
         var preferredUsername = userRequest.getIdToken().getPreferredUsername();
+        
+        // Extract display name from OIDC user
+        var displayName = oidcUser.getFullName();
+        if (displayName == null || displayName.trim().isEmpty()) {
+            displayName = oidcUser.getGivenName() + " " + oidcUser.getFamilyName();
+        }
+        if (displayName == null || displayName.trim().isEmpty()) {
+            displayName = preferredUsername;
+        }
 
         Optional<User> existingUser = userJdbcService.findByUsername(preferredUsername);
 
         User user;
         if (existingUser.isPresent()) {
-            //update user from OIDC provider AI!
-            user = existingUser.get();
+            // Update user from OIDC provider
+            User currentUser = existingUser.get();
+            if (!displayName.equals(currentUser.getDisplayName())) {
+                User updatedUser = new User(
+                    currentUser.getId(),
+                    currentUser.getUsername(),
+                    currentUser.getPassword(),
+                    displayName,
+                    currentUser.getRole(),
+                    currentUser.getVersion()
+                );
+                user = userJdbcService.updateUser(updatedUser);
+            } else {
+                user = currentUser;
+            }
         } else if (registrationEnabled) {
-            //if oidc_register_users = true
-            //create a new user with empty passord, names form oidc and the avatar binary
+            // Create a new user with empty password, names from OIDC
+            user = userJdbcService.createUser(preferredUsername, displayName, "");
         } else {
             user = null;
         }
@@ -47,7 +70,7 @@ public class CustomOidcUserService extends OidcUserService {
         if (user == null) {
             throw new UsernameNotFoundException("No internal user found for username: " + preferredUsername);
         }
-        return new ExternalUser(user.orElse(null), super.loadUser(userRequest));
+        return new ExternalUser(user, oidcUser);
     }
 }
 
