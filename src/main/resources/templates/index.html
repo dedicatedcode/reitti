@@ -119,9 +119,13 @@
             return new Date().toISOString().split('T')[0];
         }
     }
-    // Helper function for HTMX to get user timezone
+
     function getUserTimezone() {
-        return Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (window.userSettings.timezoneOverride) {
+            return window.userSettings.timezoneOverride;
+        } else {
+            return Intl.DateTimeFormat().resolvedOptions().timeZone;
+        }
     }
 
     function selectUser(userHeader) {
@@ -174,8 +178,7 @@
         }
 
         // Set date picker to URL date or today's date
-        const today = new Date();
-        const formattedDate = initialDate || today.toISOString().split('T')[0]; // YYYY-MM-DD format
+        const formattedDate = initialDate || new Date().toISOString().split('T')[0];
 
         // Function to update URL with date parameter
         function updateUrlWithDate(date) {

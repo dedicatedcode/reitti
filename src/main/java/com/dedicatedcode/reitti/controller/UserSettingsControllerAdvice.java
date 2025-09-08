@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.dto.UserSettingsDTO;
+import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
@@ -38,10 +39,9 @@ public class UserSettingsControllerAdvice {
     public UserSettingsDTO getCurrentUserSettings() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if (authentication == null || !authentication.isAuthenticated() ||
-            "anonymousUser".equals(authentication.getPrincipal())) {
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
             // Return default settings for anonymous users
-            return new UserSettingsDTO(false, "en", Instant.now(), UnitSystem.METRIC, DEFAULT_HOME_LATITUDE, DEFAULT_HOME_LONGITUDE, tilesCustomizationProvider.getTilesConfiguration(), UserSettingsDTO.UIMode.FULL);
+            return new UserSettingsDTO(false, "en", Instant.now(), UnitSystem.METRIC, DEFAULT_HOME_LATITUDE, DEFAULT_HOME_LONGITUDE, tilesCustomizationProvider.getTilesConfiguration(), UserSettingsDTO.UIMode.FULL, TimeDisplayMode.DEFAULT, null);
         }
         
         String username = authentication.getName();
@@ -57,11 +57,12 @@ public class UserSettingsControllerAdvice {
                     dbSettings.getHomeLatitude(),
                     dbSettings.getHomeLongitude(),
                     tilesCustomizationProvider.getTilesConfiguration(),
-                    uiMode);
+                    uiMode,
+                    dbSettings.getTimeDisplayMode(),
+                    dbSettings.getTimeZoneOverride());
         }
-        
         // Fallback for authenticated users not found in database
-        return new UserSettingsDTO(false, "en", Instant.now(), UnitSystem.METRIC, DEFAULT_HOME_LATITUDE, DEFAULT_HOME_LONGITUDE, tilesCustomizationProvider.getTilesConfiguration(), uiMode);
+        return new UserSettingsDTO(false, "en", Instant.now(), UnitSystem.METRIC, DEFAULT_HOME_LATITUDE, DEFAULT_HOME_LONGITUDE, tilesCustomizationProvider.getTilesConfiguration(), uiMode, TimeDisplayMode.DEFAULT, null);
     }
 
     private UserSettingsDTO.UIMode mapUserToUiMode(Authentication authentication) {
