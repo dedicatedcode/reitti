@@ -52,16 +52,14 @@ public class TimelineService {
     public List<TimelineEntry> buildTimelineEntries(User user, ZoneId userTimeZone, LocalDate selectedDate, Instant startOfDay, Instant endOfDay) {
 
         // Get processed visits and trips for the user and date range
-        List<ProcessedVisit> processedVisits = processedVisitJdbcService.findByUserAndTimeOverlap(
-                user, startOfDay, endOfDay);
-        List<Trip> trips = tripJdbcService.findByUserAndTimeOverlap(
-                user, startOfDay, endOfDay);
+        List<ProcessedVisit> processedVisits = processedVisitJdbcService.findByUserAndTimeOverlap(user, startOfDay, endOfDay);
+        List<Trip> trips = tripJdbcService.findByUserAndTimeOverlap(user, startOfDay, endOfDay);
 
         // Get user settings for unit system and connected accounts
         UserSettings userSettings = userSettingsJdbcService.findByUserId(user.getId())
                 .orElse(UserSettings.defaultSettings(user.getId()));
         try {
-            return buildTimelineEntries(user, processedVisits, trips, userTimeZone, selectedDate, userSettings.getUnitSystem());
+            return buildTimelineEntries(user, processedVisits, trips, userTimeZone, selectedDate, userSettings);
         } catch (JsonProcessingException e) {
             log.error("Unable to build timeline entries.", e);
             return Collections.emptyList();
@@ -71,7 +69,7 @@ public class TimelineService {
     /**
      * Build timeline entries from processed visits and trips
      */
-    private List<TimelineEntry> buildTimelineEntries(User user, List<ProcessedVisit> processedVisits, List<Trip> trips, ZoneId timezone, LocalDate selectedDate, UnitSystem unitSystem) throws JsonProcessingException {
+    private List<TimelineEntry> buildTimelineEntries(User user, List<ProcessedVisit> processedVisits, List<Trip> trips, ZoneId timezone, LocalDate selectedDate, UserSettings userSettings) throws JsonProcessingException {
         List<TimelineEntry> entries = new ArrayList<>();
 
         // Add processed visits to timeline
@@ -83,8 +81,11 @@ public class TimelineService {
                 entry.setType(TimelineEntry.Type.VISIT);
                 entry.setPlace(place);
                 entry.setStartTime(visit.getStartTime());
+                entry.setStartTimezone(visit.getPlace().getTimezone());
                 entry.setEndTime(visit.getEndTime());
+                entry.setEndTimezone(visit.getPlace().getTimezone());
                 entry.setFormattedTimeRange(formatTimeRange(visit.getStartTime(), visit.getEndTime(), timezone, selectedDate));
+                entry.setFormattedLocalTimeRange(formatTimeRange(visit.getStartTime(), visit.getEndTime(), visit.getPlace().getTimezone(), selectedDate));
                 entry.setFormattedDuration(formatDuration(visit.getStartTime(), visit.getEndTime()));
                 entries.add(entry);
             }
@@ -96,9 +97,12 @@ public class TimelineService {
             entry.setId("trip-" + trip.getId());
             entry.setType(TimelineEntry.Type.TRIP);
             entry.setStartTime(trip.getStartTime());
+            entry.setStartTimezone(trip.getStartVisit().getPlace().getTimezone());
             entry.setEndTime(trip.getEndTime());
+            entry.setEndTimezone(trip.getEndVisit().getPlace().getTimezone());
             entry.setFormattedTimeRange(formatTimeRange(trip.getStartTime(), trip.getEndTime(), timezone, selectedDate));
             entry.setFormattedDuration(formatDuration(trip.getStartTime(), trip.getEndTime()));
+            entry.setFormattedLocalTimeRange(formatTimeRange(trip.getStartTime(), trip.getEndTime(), trip.getStartVisit().getPlace().getTimezone(), trip.getEndVisit().getPlace().getTimezone(), selectedDate));
 
             List<RawLocationPoint> path = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, trip.getStartTime(), trip.getEndTime());
             List<PointInfo> pathPoints = new ArrayList<>();
@@ -109,10 +113,10 @@ public class TimelineService {
             entry.setPath(objectMapper.writeValueAsString(pathPoints));
             if (trip.getTravelledDistanceMeters() != null) {
                 entry.setDistanceMeters(trip.getTravelledDistanceMeters());
-                entry.setFormattedDistance(formatDistance(trip.getTravelledDistanceMeters(), unitSystem));
+                entry.setFormattedDistance(formatDistance(trip.getTravelledDistanceMeters(), userSettings.getUnitSystem()));
             } else if (trip.getEstimatedDistanceMeters() != null) {
                 entry.setDistanceMeters(trip.getEstimatedDistanceMeters());
-                entry.setFormattedDistance(formatDistance(trip.getEstimatedDistanceMeters(), unitSystem));
+                entry.setFormattedDistance(formatDistance(trip.getEstimatedDistanceMeters(), userSettings.getUnitSystem()));
             }
 
             if (trip.getTransportModeInferred() != null) {
@@ -128,34 +132,35 @@ public class TimelineService {
         return entries;
     }
 
-
-    /**
-     * Format time range for display
-     */
-    private String formatTimeRange(Instant startTime, Instant endTime, ZoneId timezone, LocalDate selectedDate) {
+    private String formatTimeRange(Instant startTime, Instant endTime, ZoneId startTimezone, ZoneId endTimezone, LocalDate selectedDate) {
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
         DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("MMM d HH:mm");
 
-        LocalDate startDate = startTime.atZone(timezone).toLocalDate();
-        LocalDate endDate = endTime.atZone(timezone).toLocalDate();
-
+        LocalDate startDate = startTime.atZone(startTimezone).toLocalDate();
+        LocalDate endDate = endTime.atZone(endTimezone).toLocalDate();
+        LocalDate selectedDateInStartTimezone = selectedDate.atTime(10,0).atZone(startTimezone).toLocalDate();
+        LocalDate selectedDateInEndTimezone = selectedDate.atTime(10,0).atZone(endTimezone).toLocalDate();
         String start, end;
 
         // If start time is not on the selected date, show date + time
-        if (!startDate.equals(selectedDate)) {
-            start = startTime.atZone(timezone).format(dateTimeFormatter);
+        if (!startDate.equals(selectedDateInStartTimezone)) {
+            start = startTime.atZone(startTimezone).format(dateTimeFormatter);
         } else {
-            start = startTime.atZone(timezone).format(timeFormatter);
+            start = startTime.atZone(startTimezone).format(timeFormatter);
         }
 
         // If end time is not on the selected date, show date + time
-        if (!endDate.equals(selectedDate)) {
-            end = endTime.atZone(timezone).format(dateTimeFormatter);
+        if (!endDate.equals(selectedDateInEndTimezone)) {
+            end = endTime.atZone(endTimezone).format(dateTimeFormatter);
         } else {
-            end = endTime.atZone(timezone).format(timeFormatter);
+            end = endTime.atZone(endTimezone).format(timeFormatter);
         }
 
         return start + " - " + end;
+    }
+
+    private String formatTimeRange(Instant startTime, Instant endTime, ZoneId timezone, LocalDate selectedDate) {
+        return formatTimeRange(startTime, endTime, timezone, timezone, selectedDate);
     }
 
     /**

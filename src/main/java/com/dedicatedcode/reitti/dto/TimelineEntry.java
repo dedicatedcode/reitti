@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.dto;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 
 import java.time.Instant;
+import java.time.ZoneId;
 
 /**
  * Inner class to represent timeline entries for the template
@@ -15,8 +16,11 @@ public class TimelineEntry {
     private SignificantPlace place;
     private String path;
     private Instant startTime;
+    private ZoneId startTimezone;
     private Instant endTime;
+    private ZoneId endTimezone;
     private String formattedTimeRange;
+    private String formattedLocalTimeRange;
     private String formattedDuration;
     private Double distanceMeters;
     private String formattedDistance;
@@ -63,12 +67,36 @@ public class TimelineEntry {
         this.endTime = endTime;
     }
 
+    public ZoneId getStartTimezone() {
+        return startTimezone;
+    }
+
+    public void setStartTimezone(ZoneId startTimezone) {
+        this.startTimezone = startTimezone;
+    }
+
+    public ZoneId getEndTimezone() {
+        return endTimezone;
+    }
+
+    public void setEndTimezone(ZoneId endTimezone) {
+        this.endTimezone = endTimezone;
+    }
+
     public String getFormattedTimeRange() {
         return formattedTimeRange;
     }
 
     public void setFormattedTimeRange(String formattedTimeRange) {
         this.formattedTimeRange = formattedTimeRange;
+    }
+
+    public String getFormattedLocalTimeRange() {
+        return formattedLocalTimeRange;
+    }
+
+    public void setFormattedLocalTimeRange(String formattedLocalTimeRange) {
+        this.formattedLocalTimeRange = formattedLocalTimeRange;
     }
 
     public String getFormattedDuration() {

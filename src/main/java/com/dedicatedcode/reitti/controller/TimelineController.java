@@ -7,6 +7,7 @@ import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.AvatarService;
 import com.dedicatedcode.reitti.service.TimelineService;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
@@ -37,18 +38,21 @@ public class TimelineController {
     private final AvatarService avatarService;
     private final ReittiIntegrationService reittiIntegrationService;
     private final TimelineService timelineService;
+    private final UserSettingsJdbcService userSettingsJdbcService;
 
     @Autowired
     public TimelineController(SignificantPlaceJdbcService placeService,
                               UserJdbcService userJdbcService,
                               AvatarService avatarService,
                               ReittiIntegrationService reittiIntegrationService,
-                              TimelineService timelineService) {
+                              TimelineService timelineService,
+                              UserSettingsJdbcService userSettingsJdbcService) {
         this.placeService = placeService;
         this.userJdbcService = userJdbcService;
         this.avatarService = avatarService;
         this.reittiIntegrationService = reittiIntegrationService;
         this.timelineService = timelineService;
+        this.userSettingsJdbcService = userSettingsJdbcService;
     }
 
     @GetMapping("/content")
@@ -159,6 +163,7 @@ public class TimelineController {
         model.addAttribute("selectedPlaceId", selectedPlaceId);
         model.addAttribute("data", selectedDate);
         model.addAttribute("timezone", timezone);
+        model.addAttribute("timeDisplayMode", userSettingsJdbcService.getOrCreateDefaultSettings(user.getId()).getTimeDisplayMode());
         return "fragments/timeline :: timeline-content";
     }
 }

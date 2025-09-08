@@ -9,6 +9,7 @@ class PhotoClient {
     /**
      * Update photos for the selected date
      * @param {string} date - Date in YYYY-MM-DD format
+     * @param timezone
      */
     async updatePhotosForDate(date, timezone) {
         this.currentDate = date;

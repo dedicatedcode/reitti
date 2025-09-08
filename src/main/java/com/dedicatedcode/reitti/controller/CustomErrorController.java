@@ -23,9 +23,9 @@ public class CustomErrorController implements ErrorController {
         Object status = request.getAttribute(RequestDispatcher.ERROR_STATUS_CODE);
         Object errorMessage = request.getAttribute(RequestDispatcher.ERROR_MESSAGE);
         Object exception = request.getAttribute(RequestDispatcher.ERROR_EXCEPTION);
-        Object requestUri = request.getAttribute(RequestDispatcher.ERROR_REQUEST_URI);
+        String requestUri = (String) request.getAttribute(RequestDispatcher.ERROR_REQUEST_URI);
 
-        if (IGNORED_PATHS.stream().anyMatch(path -> request.getRequestURI().startsWith(path))) {
+        if (IGNORED_PATHS.stream().anyMatch(requestUri::startsWith)) {
             return null;
         }
         if (status != null) {
