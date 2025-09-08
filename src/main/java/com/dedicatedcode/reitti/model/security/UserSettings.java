@@ -1,8 +1,10 @@
 package com.dedicatedcode.reitti.model.security;
 
+import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
 
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Objects;
 
 public class UserSettings {
@@ -13,25 +15,26 @@ public class UserSettings {
     private final UnitSystem unitSystem;
     private final Double homeLatitude;
     private final Double homeLongitude;
+    private final ZoneId timeZoneOverride;
+    private final TimeDisplayMode timeDisplayMode;
     private final Instant latestData;
     private final Long version;
 
-    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, UnitSystem unitSystem, Double homeLatitude, Double homeLongitude, Instant latestData, Long version) {
+    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, UnitSystem unitSystem, Double homeLatitude, Double homeLongitude, ZoneId timeZoneOverride, TimeDisplayMode timeDisplayMode, Instant latestData, Long version) {
         this.userId = userId;
         this.preferColoredMap = preferColoredMap;
         this.selectedLanguage = selectedLanguage;
         this.unitSystem = unitSystem;
         this.homeLatitude = homeLatitude;
         this.homeLongitude = homeLongitude;
+        this.timeZoneOverride = timeZoneOverride;
+        this.timeDisplayMode = timeDisplayMode;
         this.latestData = latestData;
         this.version = version;
     }
-    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, UnitSystem unitSystem, Double homeLatitude, Double homeLongitude, Instant latestData) {
-        this(userId, preferColoredMap, selectedLanguage, unitSystem, homeLatitude, homeLongitude, latestData, null);
-    }
 
     public static UserSettings defaultSettings(Long userId) {
-        return new UserSettings(userId, false, "en", UnitSystem.METRIC, null, null, null, null);
+        return new UserSettings(userId, false, "en", UnitSystem.METRIC, null, null, null, TimeDisplayMode.DEFAULT, null, null);
     }
     public Long getUserId() {
         return userId;
@@ -63,6 +66,14 @@ public class UserSettings {
 
     public Instant getLatestData() {
         return latestData;
+    }
+
+    public TimeDisplayMode getTimeDisplayMode() {
+        return timeDisplayMode;
+    }
+
+    public ZoneId getTimeZoneOverride() {
+        return timeZoneOverride;
     }
 
     @Override

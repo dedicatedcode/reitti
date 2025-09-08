@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
@@ -24,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.LocaleResolver;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -105,20 +107,14 @@ public class UserSettingsController {
             model.addAttribute("preferColoredMap", userSettings.isPreferColoredMap());
             model.addAttribute("homeLatitude", userSettings.getHomeLatitude());
             model.addAttribute("homeLongitude", userSettings.getHomeLongitude());
-
-            // Add available unit systems to model
             model.addAttribute("unitSystems", UnitSystem.values());
-
-            // Check if user has avatar
-            boolean hasAvatar = this.avatarService.getInfo(currentUser.getId()).isPresent();
-            model.addAttribute("hasAvatar", hasAvatar);
-
-            // Add default avatars to model
+            model.addAttribute("hasAvatar", this.avatarService.getInfo(currentUser.getId()).isPresent());
             model.addAttribute("defaultAvatars", DEFAULT_AVATARS);
-
-            // Add admin status to model
             model.addAttribute("isAdmin", false);
-
+            model.addAttribute("timeZoneOverride", userSettings.getTimeZoneOverride());
+            model.addAttribute("timeDisplayMode", userSettings.getTimeDisplayMode().name());
+            model.addAttribute("availableTimezones", ZoneId.getAvailableZoneIds());
+            model.addAttribute("availableTimeDisplayModes", TimeDisplayMode.values());
             return "fragments/user-management :: user-form-page";
         }
 
@@ -173,6 +169,8 @@ public class UserSettingsController {
                              @RequestParam(defaultValue = "false") boolean preferColoredMap,
                              @RequestParam(required = false) Double homeLatitude,
                              @RequestParam(required = false) Double homeLongitude,
+                             @RequestParam(name = "timezone_override", required = false) String timezoneOverride,
+                             @RequestParam(name = "time_display_mode", defaultValue = "DEFAULT") TimeDisplayMode timeDisplayMode,
                              @RequestParam(required = false) MultipartFile avatar,
                              @RequestParam(required = false) String defaultAvatar,
                              Authentication authentication,
@@ -194,7 +192,16 @@ public class UserSettingsController {
                         .withRole(role));
 
                 UnitSystem unitSystem = UnitSystem.valueOf(unit_system);
-                UserSettings userSettings = new UserSettings(createdUser.getId(), preferColoredMap, preferred_language, unitSystem, homeLatitude, homeLongitude, null);
+                UserSettings userSettings = new UserSettings(createdUser.getId(),
+                        preferColoredMap,
+                        preferred_language,
+                        unitSystem,
+                        homeLatitude,
+                        homeLongitude,
+                        StringUtils.hasText(timezoneOverride) ? ZoneId.of(timezoneOverride) : null,
+                        timeDisplayMode,
+                        null,
+                        null);
                 userSettingsJdbcService.save(userSettings);
                 
                 // Handle avatar - prioritize custom upload over default
@@ -233,6 +240,8 @@ public class UserSettingsController {
                              @RequestParam(required = false) Double homeLatitude,
                              @RequestParam(required = false) Double homeLongitude,
                              @RequestParam(required = false) MultipartFile avatar,
+                             @RequestParam(name = "timezone_override", required = false) String timezoneOverride,
+                             @RequestParam(name = "time_display_mode", defaultValue = "DEFAULT") TimeDisplayMode timeDisplayMode,
                              @RequestParam(required = false) String defaultAvatar,
                              @RequestParam(required = false) String removeAvatar,
                              Authentication authentication,
@@ -275,7 +284,7 @@ public class UserSettingsController {
                 .orElse(UserSettings.defaultSettings(userId));
             
             UnitSystem unitSystem = UnitSystem.valueOf(unit_system);
-            UserSettings updatedSettings = new UserSettings(userId, preferColoredMap, preferred_language, unitSystem, homeLatitude, homeLongitude, existingSettings.getLatestData(), existingSettings.getVersion());
+            UserSettings updatedSettings = new UserSettings(userId, preferColoredMap, preferred_language, unitSystem, homeLatitude, homeLongitude, StringUtils.hasText(timezoneOverride) ? ZoneId.of(timezoneOverride) : null, timeDisplayMode, existingSettings.getLatestData(), existingSettings.getVersion());
             userSettingsJdbcService.save(updatedSettings);
             
             // Handle avatar operations
@@ -355,6 +364,8 @@ public class UserSettingsController {
             model.addAttribute("preferColoredMap", userSettings.isPreferColoredMap());
             model.addAttribute("homeLatitude", userSettings.getHomeLatitude());
             model.addAttribute("homeLongitude", userSettings.getHomeLongitude());
+            model.addAttribute("timeZoneOverride", userSettings.getTimeZoneOverride());
+            model.addAttribute("timeDisplayMode", userSettings.getTimeDisplayMode().name());
         } else {
             // Default values for new users
             model.addAttribute("selectedLanguage", "en");
@@ -367,10 +378,10 @@ public class UserSettingsController {
             model.addAttribute("externalProfile", null);
             model.addAttribute("localLoginDisabled", localLoginDisabled);
         }
-        
-        // Add available unit systems to model
+
         model.addAttribute("unitSystems", UnitSystem.values());
-        
+        model.addAttribute("availableTimezones", ZoneId.getAvailableZoneIds().stream().sorted());
+        model.addAttribute("availableTimeDisplayModes", TimeDisplayMode.values());
         // Check if user has avatar
         if (userId != null) {
             boolean hasAvatar = this.avatarService.getInfo(userId).isPresent();

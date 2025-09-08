@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -35,9 +37,10 @@ public class UserSettingsJdbcService {
                 UnitSystem.valueOf(rs.getString("unit_system")),
                 rs.getDouble("home_lat"),
                 rs.getDouble("home_lng"),
+                rs.getString("time_zone_override") != null ? ZoneId.of(rs.getString("time_zone_override")) : null,
+                TimeDisplayMode.valueOf(rs.getString("time_display_mode")),
                 newestData != null ? newestData.toInstant() : null,
-                rs.getLong("version")
-        );
+                rs.getLong("version"));
     };
     
     public Optional<UserSettings> findByUserId(Long userId) {
@@ -56,13 +59,15 @@ public class UserSettingsJdbcService {
     public UserSettings save(UserSettings userSettings) {
         if (userSettings.getVersion() == null) {
             // Insert new settings
-            this.jdbcTemplate.update("INSERT INTO user_settings (user_id, prefer_colored_map, selected_language, unit_system, home_lat, home_lng, latest_data, version) VALUES (?, ?, ?, ?, ?, ?, ?, 1)",
+            this.jdbcTemplate.update("INSERT INTO user_settings (user_id, prefer_colored_map, selected_language, unit_system, home_lat, home_lng, time_zone_override, time_display_mode, latest_data, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
                     userSettings.getUserId(),
                     userSettings.isPreferColoredMap(),
                     userSettings.getSelectedLanguage(),
                     userSettings.getUnitSystem().name(),
                     userSettings.getHomeLatitude(),
                     userSettings.getHomeLongitude(),
+                    userSettings.getTimeZoneOverride() != null ? userSettings.getTimeZoneOverride().getId() : null,
+                    userSettings.getTimeDisplayMode().name(),
                     userSettings.getLatestData() != null ? Timestamp.from(userSettings.getLatestData()) : null);
 
             return new UserSettings(userSettings.getUserId(),
@@ -71,17 +76,20 @@ public class UserSettingsJdbcService {
                     userSettings.getUnitSystem(),
                     userSettings.getHomeLatitude(),
                     userSettings.getHomeLongitude(),
-                    userSettings.getLatestData(),
-                    1L);
+                    userSettings.getTimeZoneOverride(),
+                    userSettings.getTimeDisplayMode(),
+                    userSettings.getLatestData(), 1L);
         } else {
             // Update existing settings
             jdbcTemplate.update(
-                    "UPDATE user_settings SET prefer_colored_map = ?, selected_language = ?, unit_system = ?, home_lat = ?, home_lng = ?, latest_data = GREATEST(latest_data, ?), version = version + 1 WHERE user_id = ?",
+                    "UPDATE user_settings SET prefer_colored_map = ?, selected_language = ?, unit_system = ?, home_lat = ?, home_lng = ?, time_zone_override = ?, time_display_mode = ?, latest_data = GREATEST(latest_data, ?), version = version + 1 WHERE user_id = ?",
                     userSettings.isPreferColoredMap(),
                     userSettings.getSelectedLanguage(),
                     userSettings.getUnitSystem().name(),
                     userSettings.getHomeLatitude(),
                     userSettings.getHomeLongitude(),
+                    userSettings.getTimeZoneOverride() != null ? userSettings.getTimeZoneOverride().getId() : null,
+                    userSettings.getTimeDisplayMode().name(),
                     userSettings.getLatestData() != null ? Timestamp.from(userSettings.getLatestData()) : null,
                     userSettings.getUserId()
             );
