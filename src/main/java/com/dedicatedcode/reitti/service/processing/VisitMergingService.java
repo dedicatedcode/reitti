@@ -7,6 +7,7 @@ import com.dedicatedcode.reitti.event.VisitUpdatedEvent;
 import com.dedicatedcode.reitti.model.geo.*;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
+import com.dedicatedcode.reitti.service.GeoLocationTimezoneService;
 import com.dedicatedcode.reitti.service.UserNotificationService;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -39,6 +41,7 @@ public class VisitMergingService {
     private final GeometryFactory geometryFactory;
     private final RabbitTemplate rabbitTemplate;
     private final UserNotificationService userNotificationService;
+    private final GeoLocationTimezoneService timezoneService;
     private final long mergeThresholdSeconds;
     private final long mergeThresholdMeters;
     private final int searchRangeExtensionInHours;
@@ -52,6 +55,7 @@ public class VisitMergingService {
                                RawLocationPointJdbcService rawLocationPointJdbcService,
                                GeometryFactory geometryFactory,
                                UserNotificationService userNotificationService,
+                               GeoLocationTimezoneService timezoneService,
                                @Value("${reitti.visit.merge-max-stay-search-extension-days:2}") int maxStaySearchExtensionInDays,
                                @Value("${reitti.visit.merge-threshold-seconds:300}") long mergeThresholdSeconds,
                                @Value("${reitti.visit.merge-threshold-meters:100}") long mergeThresholdMeters) {
@@ -63,6 +67,7 @@ public class VisitMergingService {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.geometryFactory = geometryFactory;
         this.userNotificationService = userNotificationService;
+        this.timezoneService = timezoneService;
         this.mergeThresholdSeconds = mergeThresholdSeconds;
         this.mergeThresholdMeters = mergeThresholdMeters;
         this.searchRangeExtensionInHours = maxStaySearchExtensionInDays * 24;
@@ -218,9 +223,11 @@ public class VisitMergingService {
     }
 
     private SignificantPlace createSignificantPlace(User user, Visit visit) {
-        Point point = geometryFactory.createPoint(new Coordinate(visit.getLongitude(), visit.getLatitude()));
-
         SignificantPlace significantPlace = SignificantPlace.create(visit.getLatitude(), visit.getLongitude());
+        Optional<ZoneId> timezone = this.timezoneService.getTimezone(significantPlace);
+        if (timezone.isPresent()) {
+            significantPlace = significantPlace.withTimezone(timezone.get());
+        }
         significantPlace = this.significantPlaceJdbcService.create(user, significantPlace);
         publishSignificantPlaceCreatedEvent(significantPlace);
         return significantPlace;

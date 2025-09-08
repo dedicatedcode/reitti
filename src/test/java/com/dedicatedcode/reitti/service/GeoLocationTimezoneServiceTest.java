@@ -38,9 +38,7 @@ class GeoLocationTimezoneServiceTest {
     void testTimezoneForLondon() {
         // London, UK - Greenwich Mean Time
         SignificantPlace london = SignificantPlace.create(51.5074, -0.1278);
-        
         Optional<ZoneId> timezone = geoLocationTimezoneService.getTimezone(london);
-        
         assertTrue(timezone.isPresent());
         assertEquals(ZoneId.of("Europe/London"), timezone.get());
     }

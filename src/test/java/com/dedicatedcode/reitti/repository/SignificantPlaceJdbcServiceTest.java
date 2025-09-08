@@ -1,7 +1,9 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.IntegrationTest;
-import com.dedicatedcode.reitti.model.*;
+import com.dedicatedcode.reitti.model.Page;
+import com.dedicatedcode.reitti.model.PageRequest;
+import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +14,7 @@ import org.locationtech.jts.geom.Point;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -127,6 +130,7 @@ class SignificantPlaceJdbcServiceTest {
                 53.863149,
                 10.700927,
                 SignificantPlace.PlaceType.RESTAURANT,
+                ZoneId.systemDefault(),
                 true,
                 created.getVersion()
         );
@@ -139,6 +143,7 @@ class SignificantPlaceJdbcServiceTest {
         assertThat(result.getAddress()).isEqualTo("Updated Address");
         assertThat(result.getCountryCode()).isEqualTo("DE");
         assertThat(result.getType()).isEqualTo(SignificantPlace.PlaceType.RESTAURANT);
+        assertThat(result.getTimezone()).isEqualTo(ZoneId.systemDefault());
         assertThat(result.isGeocoded()).isTrue();
     }
 
@@ -209,6 +214,7 @@ class SignificantPlaceJdbcServiceTest {
                 created1.getLatitudeCentroid(),
                 created1.getLongitudeCentroid(),
                 SignificantPlace.PlaceType.HOME,
+                ZoneId.systemDefault(),
                 true, // geocoded = true
                 created1.getVersion()
         );
@@ -262,7 +268,8 @@ class SignificantPlaceJdbcServiceTest {
                 latitude,
                 longitude,
                 SignificantPlace.PlaceType.OTHER,
-                false,
+                ZoneId.systemDefault()
+                , false,
                 0L
         );
     }
@@ -276,6 +283,7 @@ class SignificantPlaceJdbcServiceTest {
                 latitude,
                 longitude,
                 SignificantPlace.PlaceType.OTHER,
+                ZoneId.systemDefault(),
                 false,
                 0L
         );

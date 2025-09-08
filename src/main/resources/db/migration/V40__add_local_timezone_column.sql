@@ -1,0 +1,1 @@
+ALTER TABLE significant_places ADD COLUMN timezone TEXT NULL;
