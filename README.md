@@ -3,7 +3,7 @@
 > What to do:
 > - Option A: Download the latest docker-compose.yml from the repository.
 > - Option B: Manually edit your existing docker-compose.yml and change the COUNTRY_CODE environment variable to REGION in the photon service definition.
-> For more details, you can see the exact changes in this commit. We recommend making this change before you next pull any images.
+> For more details, you can see the exact changes in this [commit](https://github.com/dedicatedcode/reitti/commit/b2416892a48c15793a39d11c305b500c2077a9d3). We recommend making this change before you next pull any images.
 
 ![](.github/banner.png)
 
