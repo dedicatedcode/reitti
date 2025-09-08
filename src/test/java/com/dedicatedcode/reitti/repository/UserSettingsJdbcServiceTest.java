@@ -60,7 +60,7 @@ public class UserSettingsJdbcServiceTest {
 
     @Test
     void save_WhenCreatingNewUserSettings_ShouldInsertAndReturnWithId() {
-        UserSettings newSettings = new UserSettings(testUserId1, true, "fi", UnitSystem.METRIC, 60.1699, 24.9384, null, TimeDisplayMode.DEFAULT, Instant.now(), 1L);
+        UserSettings newSettings = new UserSettings(testUserId1, true, "fi", UnitSystem.METRIC, 60.1699, 24.9384, null, TimeDisplayMode.DEFAULT, Instant.now(), null);
         
         UserSettings savedSettings = userSettingsJdbcService.save(newSettings);
         
@@ -75,7 +75,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void save_WhenUpdatingExistingUserSettings_ShouldUpdateAndIncrementVersion() {
         // Create initial settings
-        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", UnitSystem.METRIC, null, null, null, TimeDisplayMode.DEFAULT, Instant.now(), 1L);
+        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", UnitSystem.METRIC, null, null, null, TimeDisplayMode.DEFAULT, Instant.now(), null);
         UserSettings savedSettings = userSettingsJdbcService.save(initialSettings);
         
         // Update settings
@@ -104,7 +104,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void findByUserId_WhenUserSettingsExist_ShouldReturnSettings() {
         // Create settings
-        UserSettings newSettings = new UserSettings(testUserId1, true, "fr", UnitSystem.METRIC, 48.8566, 2.3522, null, TimeDisplayMode.DEFAULT, Instant.now(), 1L);
+        UserSettings newSettings = new UserSettings(testUserId1, true, "fr", UnitSystem.METRIC, 48.8566, 2.3522, null, TimeDisplayMode.DEFAULT, Instant.now(), null);
         userSettingsJdbcService.save(newSettings);
         
         Optional<UserSettings> result = userSettingsJdbcService.findByUserId(testUserId1);
@@ -137,7 +137,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void getOrCreateDefaultSettings_WhenUserSettingsExist_ShouldReturnExisting() {
         // Create existing settings
-        UserSettings existingSettings = new UserSettings(testUserId1, true, "fi", UnitSystem.METRIC, 60.1699, 24.9384, null, TimeDisplayMode.DEFAULT, Instant.now(), 1L);
+        UserSettings existingSettings = new UserSettings(testUserId1, true, "fi", UnitSystem.METRIC, 60.1699, 24.9384, null, TimeDisplayMode.DEFAULT, Instant.now(), null);
         userSettingsJdbcService.save(existingSettings);
         
         UserSettings result = userSettingsJdbcService.getOrCreateDefaultSettings(testUserId1);
