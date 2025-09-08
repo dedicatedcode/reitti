@@ -49,10 +49,10 @@ public class PhotoApiController {
             @PathVariable String assetId,
             @AuthenticationPrincipal User user) {
         
-        return proxyImageRequest(user, assetId, "original");
+        return proxyImageRequest(user, assetId, "fullsize");
     }
     
-    private ResponseEntity<byte[]> proxyImageRequest(User user, String assetId, String imageType) {
+    private ResponseEntity<byte[]> proxyImageRequest(User user, String assetId, String size) {
         Optional<ImmichIntegration> integrationOpt = immichIntegrationService.getIntegrationForUser(user);
         
         if (integrationOpt.isEmpty() || !integrationOpt.get().isEnabled()) {
@@ -64,11 +64,11 @@ public class PhotoApiController {
         try {
             String baseUrl = integration.getServerUrl().endsWith("/") ? 
                 integration.getServerUrl() : integration.getServerUrl() + "/";
-            String imageUrl = baseUrl + "api/assets/" + assetId + "/" + imageType;
+            String imageUrl = baseUrl + "api/assets/" + assetId + "/thumbnail?size=" + size;
             
             HttpHeaders headers = new HttpHeaders();
             headers.add("x-api-key", integration.getApiToken());
-            
+
             HttpEntity<String> entity = new HttpEntity<>(headers);
             
             ResponseEntity<byte[]> response = restTemplate.exchange(
