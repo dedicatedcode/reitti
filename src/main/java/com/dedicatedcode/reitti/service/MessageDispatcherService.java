@@ -70,7 +70,7 @@ public class MessageDispatcherService {
 
     @RabbitListener(queues = RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE, concurrency = "${reitti.events.concurrency}")
     public void handleSignificantPlaceCreated(SignificantPlaceCreatedEvent event) {
-        logger.debug("Dispatching SignificantPlaceCreatedEvent for place: {}", event.getPlaceId());
+        logger.debug("Dispatching SignificantPlaceCreatedEvent for place: {}", event.placeId());
         reverseGeocodingListener.handleSignificantPlaceCreated(event);
     }
 

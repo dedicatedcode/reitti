@@ -25,11 +25,11 @@ public class ReverseGeocodingListener {
     }
 
     public void handleSignificantPlaceCreated(SignificantPlaceCreatedEvent event) {
-        logger.info("Received SignificantPlaceCreatedEvent for place ID: {}", event.getPlaceId());
+        logger.info("Received SignificantPlaceCreatedEvent for place ID: {}", event.placeId());
 
-        Optional<SignificantPlace> placeOptional = significantPlaceJdbcService.findById(event.getPlaceId());
+        Optional<SignificantPlace> placeOptional = significantPlaceJdbcService.findById(event.placeId());
         if (placeOptional.isEmpty()) {
-            logger.error("Could not find SignificantPlace with ID: {}", event.getPlaceId());
+            logger.error("Could not find SignificantPlace with ID: {}", event.placeId());
             return;
         }
 
@@ -48,12 +48,11 @@ public class ReverseGeocodingListener {
                 SignificantPlace.PlaceType placeType = result.placeType();
                 String countryCode = result.countryCode();
 
+                String address = String.format("%s %s, %s %s", street, houseNumber, postcode, city);
                 if (!label.isEmpty()) {
-                    place = place.withName(label)
-                            .withAddress(String.format("%s %s, %s %s", street, houseNumber, postcode, city));
+                    place = place.withName(label).withAddress(address);
                 } else {
-                    place = place.withName(street)
-                            .withAddress(String.format("%s %s, %s %s", street, houseNumber, postcode, city));
+                    place = place.withName(street).withAddress(address);
                 }
                 place = place.withType(placeType).withCountryCode(countryCode);
 

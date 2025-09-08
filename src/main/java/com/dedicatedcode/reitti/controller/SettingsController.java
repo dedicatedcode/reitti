@@ -322,7 +322,7 @@ public class SettingsController {
                     significantPlace.getLatitudeCentroid(),
                     significantPlace.getLongitudeCentroid()
                 );
-                rabbitTemplate.convertAndSend(RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE, event);
+                rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.SIGNIFICANT_PLACE_ROUTING_KEY, event);
 
                 model.addAttribute("successMessage", getMessage("places.geocode.success"));
             } catch (Exception e) {
@@ -819,7 +819,7 @@ public class SettingsController {
                         place.getLatitudeCentroid(),
                         place.getLongitudeCentroid()
                     );
-                    rabbitTemplate.convertAndSend(RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE, event);
+                    rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.SIGNIFICANT_PLACE_ROUTING_KEY, event);
                 }
                 
                 model.addAttribute("successMessage", getMessage("geocoding.run.success", nonGeocodedPlaces.size()));
@@ -859,7 +859,7 @@ public class SettingsController {
                         place.getLatitudeCentroid(),
                         place.getLongitudeCentroid()
                     );
-                    rabbitTemplate.convertAndSend(RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE, event);
+                    rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.SIGNIFICANT_PLACE_ROUTING_KEY, event);
                 }
                 
                 model.addAttribute("successMessage", getMessage("geocoding.clear.success", allPlaces.size()));
