@@ -215,6 +215,39 @@
         </div>
         <div class="separator"></div>
         <div class="form-group">
+            <h3 th:text="#{time.title}">Time</h3>
+            
+            <div class="form-group">
+                <label for="timeDisplayMode" th:text="#{time.display.mode.label}">Time Display Mode</label>
+                <div class="select">
+                    <select id="timeDisplayMode" name="time_display_mode">
+                        <option value="DEFAULT" th:selected="${timeDisplayMode == 'DEFAULT' || timeDisplayMode == null}" th:text="#{time.display.mode.default}">Default</option>
+                        <option value="GEO_LOCAL" th:selected="${timeDisplayMode == 'GEO_LOCAL'}" th:text="#{time.display.mode.geo.local}">Geo Local</option>
+                    </select>
+                </div>
+                <p class="form-description" th:text="#{time.display.mode.description}">Choose how times are displayed throughout the application.</p>
+                <ul class="form-description">
+                    <li th:text="#{time.display.mode.default.description}">Default: All times are displayed in your timezone (from browser or timezone override below)</li>
+                    <li th:text="#{time.display.mode.geo.local.description}">Geo Local: All times are displayed in the timezone where the location is</li>
+                </ul>
+            </div>
+            
+            <div class="form-group">
+                <label for="timezoneOverride" th:text="#{time.timezone.override.label}">Timezone Override</label>
+                <div class="select">
+                    <select id="timezoneOverride" name="timezone_override">
+                        <option value="" th:text="#{time.timezone.override.none}">Use browser timezone</option>
+                        <option th:each="timezone : ${availableTimezones}" 
+                                th:value="${timezone}" 
+                                th:text="${timezone}"
+                                th:selected="${timeZoneOverride != null && timeZoneOverride.toString() == timezone}"></option>
+                    </select>
+                </div>
+                <p class="form-description" th:text="#{time.timezone.override.description}">Override your timezone instead of using the browser's detected timezone. This affects how times are displayed when using Default mode.</p>
+            </div>
+        </div>
+        <div class="separator"></div>
+        <div class="form-group">
             <label class="checkbox-container">
                 <input type="checkbox" name="preferColoredMap" th:checked="${preferColoredMap}" class="checkbox-input">
                 <span class="checkbox-checkmark"></span>
