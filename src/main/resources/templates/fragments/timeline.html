@@ -87,7 +87,8 @@
         
         <!-- Time -->
         <div class="entry-time">
-            <span th:text="${entry.formattedTimeRange}">09:00 - 10:30</span>
+            <span th:if="${timeDisplayMode.name() == 'GEO_LOCAL'}" th:text="${entry.formattedLocalTimeRange}">09:00 - 10:30</span>
+            <span th:if="${timeDisplayMode.name() == 'DEFAULT'}" th:text="${entry.formattedTimeRange}">09:00 - 10:30</span>
         </div>
     </div>
 </div>
