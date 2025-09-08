@@ -48,12 +48,12 @@ services:
       timeout: 5s
       retries: 5
   photon:
-    image: rtuszik/photon-docker:latest
+    image: rtuszik/photon-docker:1.0.0
     environment:
       - UPDATE_STRATEGY=PARALLEL
-      - COUNTRY_CODE=de #set your main country code here to save space or drop this line to fetch the whole index.
+      - REGION=de #set your main country code here to save space or drop this line to fetch the whole index.
     volumes:
-      - photon-data:/photon/photon_data
+      - photon-data:/photon/data
 volumes:
   postgis-data:
   rabbitmq-data:

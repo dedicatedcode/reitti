@@ -88,7 +88,7 @@ The easiest way to get started is using Docker Compose:
    or manually downloading it [here](https://raw.githubusercontent.com/dedicatedcode/reitti/refs/heads/main/docker-compose.yml)
 2. Adjust the compose file to your needs
    
-   Pay special attention to the Photon `COUNTRY_CODE`. This should match your main location.
+   Pay special attention to the Photon `REGION`. This should match your main location.
    
 4. Start all services (PostgreSQL, RabbitMQ, Redis and Reitti)
    ```bash
@@ -286,12 +286,12 @@ The included docker-compose.yml configuration provides a local Photon instance f
 **Included Configuration:**
 ```yaml
 photon:
-  image: rtuszik/photon-docker:latest
+  image: rtuszik/photon-docker:1.0.0
   environment:
     - UPDATE_STRATEGY=PARALLEL
-    - COUNTRY_CODE=de
+    - REGION=de
   volumes:
-    - photon-data:/photon/photon_data
+    - photon-data:/photon/data
   ports:
     - "2322:2322"
 ```
@@ -302,9 +302,9 @@ photon:
 - **PARALLEL mode**: Doubles storage requirements during updates (400GB total for global)
 
 **Configuration Options:**
-- **COUNTRY_CODE**: Set to your main country code (e.g., `de`, `us`, `fr`) to save space
+- **REGION**: Set to your main country code (e.g., `de`, `us`, `fr`) to save space
 - **UPDATE_STRATEGY=PARALLEL**: Faster updates but requires double storage space
-- **Remove COUNTRY_CODE**: Download complete global dataset for worldwide coverage
+- **Remove REGION**: Download complete global dataset for worldwide coverage
 
 **Benefits:**
 - Complete privacy - no external API calls

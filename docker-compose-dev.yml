@@ -45,14 +45,14 @@ services:
       timeout: 5s
       retries: 5
   photon:
-    image: rtuszik/photon-docker:latest
+    image: rtuszik/photon-docker:1.0.0
     environment:
       - UPDATE_STRATEGY=PARALLEL
-      - COUNTRY_CODE=de
+      - REGION=de
     ports:
       - "2322:2322"
     volumes:
-      - photon-data:/photon/photon_data
+      - photon-data:/photon/data
   ot-recorder:
     image: owntracks/recorder:latest
     depends_on:
