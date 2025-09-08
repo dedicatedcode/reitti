@@ -1,3 +1,10 @@
+> [!WARNING]  
+> To prevent an issue where the photon service downloads the entire planet's data (a very large file!), please update your docker-compose.yml file. This affects users who set up Reitti using our Docker Compose file before 2025-09-08. The photon service has renamed the COUNTRY_CODE variable to REGION.
+> What to do:
+> - Option A: Download the latest docker-compose.yml from the repository.
+> - Option B: Manually edit your existing docker-compose.yml and change the COUNTRY_CODE environment variable to REGION in the photon service definition.
+> For more details, you can see the exact changes in this commit. We recommend making this change before you next pull any images.
+
 ![](.github/banner.png)
 
 
