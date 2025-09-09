@@ -10,7 +10,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -30,13 +32,15 @@ public class GeoLocationTimezoneService {
     public void init() {
         List<SignificantPlace> places = significantPlaceJdbcService.findWithMissingTimezone();
         log.info("Searching for SignificantPlaces without Timezone data. Found [{}]", places.size());
+        Map<Long, ZoneId> foundTimezones = new HashMap<>();
         places.forEach(place -> {
             Optional<ZoneId> zoneId = engine.query(place.getLatitudeCentroid(), place.getLongitudeCentroid());
             zoneId.ifPresent(id -> {
                 log.debug("Zone ID [{}] found in for [{}]", id, place);
-                bulkUpdateTimezone(place.getId(), id);
+                foundTimezones.put(place.getId(), id);
             });
         });
+        //change the bulkUpdateTimezone to accpet the map and insert all at ones AI!
     }
 
     private void bulkUpdateTimezone(Long placeId, ZoneId timezone) {
