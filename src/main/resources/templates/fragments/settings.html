@@ -124,6 +124,10 @@
                 <i class="lni lni-phone"></i> <span th:text="#{integrations.data.ingestion.title}">Data Ingestion</span>
             </summary>
             <div style="padding: 15px;">
+                <div class="alert alert-info" style="margin-bottom: 20px;">
+                    <strong th:text="#{integrations.tracking.frequency.title}">📍 GPS Tracking Frequency</strong><br>
+                    <span th:text="#{integrations.tracking.frequency.description}">For optimal results, Reitti works best with a continuous stream of GPS locations. Make sure your tracking app records a point at least every 30 seconds to ensure accurate visit and trip detection.</span>
+                </div>
                 <p th:text="#{integrations.data.ingestion.description}" style="margin-bottom: 20px; color: var(--color-text-white);">Configure mobile apps to automatically send location data to Reitti</p>
                 <div class="integration-section" style="margin-bottom: 30px;">
                     <h3 th:text="#{integrations.gpslogger.title}">📱 GPSLogger Setup</h3>
