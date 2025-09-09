@@ -34,10 +34,17 @@ public class GeoLocationTimezoneService {
             Optional<ZoneId> zoneId = engine.query(place.getLatitudeCentroid(), place.getLongitudeCentroid());
             zoneId.ifPresent(id -> {
                 log.debug("Zone ID [{}] found in for [{}]", id, place);
-                //instead of saving every place on its own, add a bulk update method in this class which only updates the timezone column for a given id AI!
-                this.significantPlaceJdbcService.update(place.withTimezone(id));
+                bulkUpdateTimezone(place.getId(), id);
             });
         });
+    }
+
+    private void bulkUpdateTimezone(Long placeId, ZoneId timezone) {
+        jdbcTemplate.update(
+            "UPDATE significant_places SET timezone = ? WHERE id = ?",
+            timezone.getId(),
+            placeId
+        );
     }
 
     public Optional<ZoneId> getTimezone(SignificantPlace place) {
