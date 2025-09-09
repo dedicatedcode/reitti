@@ -161,7 +161,7 @@ docker pull dedicatedcode/reitti:latest
 docker compose up -d
 
 # View logs
-docker-compose logs -f reitti
+docker compose logs -f reitti
 ```
 
 ### Standalone Docker Usage
