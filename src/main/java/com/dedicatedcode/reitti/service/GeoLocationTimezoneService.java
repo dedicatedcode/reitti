@@ -40,15 +40,22 @@ public class GeoLocationTimezoneService {
                 foundTimezones.put(place.getId(), id);
             });
         });
-        //change the bulkUpdateTimezone to accpet the map and insert all at ones AI!
+        
+        if (!foundTimezones.isEmpty()) {
+            bulkUpdateTimezones(foundTimezones);
+        }
     }
 
-    private void bulkUpdateTimezone(Long placeId, ZoneId timezone) {
-        jdbcTemplate.update(
-            "UPDATE significant_places SET timezone = ? WHERE id = ?",
-            timezone.getId(),
-            placeId
-        );
+    private void bulkUpdateTimezones(Map<Long, ZoneId> timezoneUpdates) {
+        String sql = "UPDATE significant_places SET timezone = ? WHERE id = ?";
+        
+        jdbcTemplate.batchUpdate(sql, timezoneUpdates.entrySet(), timezoneUpdates.size(),
+            (ps, entry) -> {
+                ps.setString(1, entry.getValue().getId());
+                ps.setLong(2, entry.getKey());
+            });
+        
+        log.info("Bulk updated timezones for {} significant places", timezoneUpdates.size());
     }
 
     public Optional<ZoneId> getTimezone(SignificantPlace place) {
