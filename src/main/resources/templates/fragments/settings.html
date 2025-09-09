@@ -169,7 +169,7 @@
                             <li th:if="${hasToken}">Set the Endpoint to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + firstToken}">https://your-domain.com/api/v1/location-data</code></li>
                             <li th:unless="${hasToken}">Set the Endpoint to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/location-data</code></li>
                             <li>Disable <strong>Authentication</strong> (we use the token in the URL instead)</li>
-                            <li>Configure tracking settings as desired</li>
+                            <li>Configure tracking settings as desired. Make sure that Owntracks records a point at least every 30 seconds.</li>
                             <li>On the map view, set tracking mode to "Movement"</li>
                             <li>The app will automatically start sending location updates</li>
                         </ol>
