@@ -82,7 +82,7 @@ public class TimelineController {
                               @RequestParam(required = false) String type,
                               @RequestParam(required = false) String date,
                               @RequestParam(required = false, defaultValue = "UTC") String timezone,
-                              @AuthenticationPrincipal Authentication principal,
+                              Authentication principal,
                               Model model) {
         SignificantPlace place = placeService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         SignificantPlace updatedPlace = place.withName(name);
