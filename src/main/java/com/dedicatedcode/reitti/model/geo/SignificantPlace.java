@@ -18,7 +18,7 @@ public class SignificantPlace implements Serializable {
     private final Long version;
 
     public static SignificantPlace create(Double latitude, Double longitude) {
-        return new SignificantPlace(null, null, null, null, latitude, longitude, PlaceType.OTHER, null, false, 1L);
+        return new SignificantPlace(null, null, null, null, latitude, longitude, PlaceType.OTHER, ZoneId.systemDefault(), false, 1L);
     }
 
     public SignificantPlace(Long id,
@@ -41,7 +41,6 @@ public class SignificantPlace implements Serializable {
         this.geocoded = geocoded;
         this.version = version;
     }
-
 
     public Long getId() {
         return id;

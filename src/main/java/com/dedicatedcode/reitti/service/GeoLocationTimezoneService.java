@@ -59,6 +59,10 @@ public class GeoLocationTimezoneService {
     }
 
     public Optional<ZoneId> getTimezone(SignificantPlace place) {
-        return this.engine.query(place.getLatitudeCentroid(), place.getLongitudeCentroid());
+        Optional<ZoneId> zoneId = this.engine.query(place.getLatitudeCentroid(), place.getLongitudeCentroid());
+        if (zoneId.isEmpty()) {
+            log.warn("Unable to find timezone for place [{}]", place);
+        }
+        return zoneId;
     }
 }

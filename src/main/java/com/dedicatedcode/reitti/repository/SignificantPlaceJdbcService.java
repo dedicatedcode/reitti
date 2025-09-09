@@ -64,13 +64,14 @@ public class SignificantPlaceJdbcService {
     }
 
     public SignificantPlace create(User user, SignificantPlace place) {
-        String sql = "INSERT INTO significant_places (user_id, name, latitude_centroid, longitude_centroid, geom) " +
-                "VALUES (?, ?, ?, ?, ST_GeomFromText(?, '4326')) RETURNING id";
+        String sql = "INSERT INTO significant_places (user_id, name, latitude_centroid, longitude_centroid, timezone, geom) " +
+                "VALUES (?, ?, ?, ?, ?, ST_GeomFromText(?, '4326')) RETURNING id";
         Long id = jdbcTemplate.queryForObject(sql, Long.class,
                 user.getId(),
                 place.getName(),
                 place.getLatitudeCentroid(),
                 place.getLongitudeCentroid(),
+                place.getTimezone().getId(),
                 this.pointReaderWriter.write(place.getLongitudeCentroid(), place.getLatitudeCentroid())
         );
         return findById(id).orElseThrow();
