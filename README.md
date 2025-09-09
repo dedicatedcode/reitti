@@ -99,7 +99,7 @@ The easiest way to get started is using Docker Compose:
    
 4. Start all services (PostgreSQL, RabbitMQ, Redis and Reitti)
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 5. Access the application at `http://localhost:8080`
@@ -114,7 +114,7 @@ For development or custom deployments:
 
 1. Start infrastructure services
    ```bash
-   docker-compose up -d postgis rabbitmq
+   docker compose up -d postgis rabbitmq
    ```
 
 2. Build and run the application
@@ -158,7 +158,7 @@ For production use, we recommend using the provided docker-compose configuration
 docker pull dedicatedcode/reitti:latest
 
 # Start all services
-docker-compose up -d
+docker compose up -d
 
 # View logs
 docker-compose logs -f reitti
