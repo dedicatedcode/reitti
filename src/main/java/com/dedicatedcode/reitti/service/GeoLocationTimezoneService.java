@@ -55,7 +55,7 @@ public class GeoLocationTimezoneService {
                 ps.setLong(2, entry.getKey());
             });
         
-        log.info("Bulk updated timezones for {} significant places", timezoneUpdates.size());
+        log.info("Bulk updated timezones for [{}] significant places", timezoneUpdates.size());
     }
 
     public Optional<ZoneId> getTimezone(SignificantPlace place) {
