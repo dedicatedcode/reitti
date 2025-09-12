@@ -31,6 +31,9 @@ public class SecurityConfig {
     @Autowired
     private CustomAuthenticationSuccessHandler customAuthenticationSuccessHandler;
 
+    @Autowired
+    private SetupFilter setupFilter;
+
     @Autowired(required = false)
     private LogoutSuccessHandler oidcLogoutSuccessHandler;
 
@@ -40,7 +43,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/login", "/access", "/error").permitAll()
                         .requestMatchers("/settings/**").hasAnyRole(Role.ADMIN.name(), Role.USER.name())
-                        .requestMatchers("/css/**", "/js/**", "/images/**", "/img/**", "/error/magic-link/**").permitAll()
+                        .requestMatchers("/css/**", "/js/**", "/images/**", "/img/**", "/error/magic-link/**", "/setup/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/api/v1/reitti-integration/notify/**").permitAll()
                         .anyRequest().authenticated()
@@ -49,6 +52,7 @@ public class SecurityConfig {
                 .addFilterBefore(magicLinkAuthenticationFilter, MagicLinkSessionValidationFilter.class)
                 .addFilterBefore(bearerTokenAuthFilter, MagicLinkAuthenticationFilter.class)
                 .addFilterBefore(urlTokenAuthenticationFilter, TokenAuthenticationFilter.class)
+                .addFilterBefore(setupFilter, MagicLinkSessionValidationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(form -> form
                         .loginPage("/login")
