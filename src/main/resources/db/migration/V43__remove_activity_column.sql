@@ -1,0 +1,1 @@
+ALTER TABLE raw_location_points DROP COLUMN activity_provided;
