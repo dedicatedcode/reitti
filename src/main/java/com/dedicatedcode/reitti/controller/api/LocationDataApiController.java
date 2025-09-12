@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.controller.api;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
+import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
@@ -20,6 +21,7 @@ import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -84,6 +86,41 @@ public class LocationDataApiController {
             logger.error("Error fetching raw location points", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "Error fetching raw location points: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/latest-location")
+    public ResponseEntity<?> getLatestLocationForCurrentUser(@AuthenticationPrincipal User user,
+                                                             @RequestParam(required = false) Instant since) {
+        try {
+            Optional<RawLocationPoint> latest;
+            if (since == null) {
+                latest = rawLocationPointJdbcService.findLatest(user);
+            } else {
+                latest = rawLocationPointJdbcService.findLatest(user, since);
+            }
+
+            if (latest.isEmpty()) {
+                return ResponseEntity.ok(Map.of("hasLocation", false));
+            }
+            
+            RawLocationPoint latestPoint = latest.get();
+            
+            LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
+            point.setLatitude(latestPoint.getLatitude());
+            point.setLongitude(latestPoint.getLongitude());
+            point.setAccuracyMeters(latestPoint.getAccuracyMeters());
+            point.setTimestamp(latestPoint.getTimestamp().toString());
+            
+            return ResponseEntity.ok(Map.of(
+                "hasLocation", true,
+                "point", point
+            ));
+            
+        } catch (Exception e) {
+            logger.error("Error fetching latest location", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Error fetching latest location: " + e.getMessage()));
         }
     }
 }

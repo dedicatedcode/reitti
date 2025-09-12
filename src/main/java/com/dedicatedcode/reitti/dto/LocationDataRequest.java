@@ -52,8 +52,6 @@ public class LocationDataRequest {
         @NotNull
         private Double accuracyMeters;
         
-        private String activity; // Optional
-
         public Double getLatitude() {
             return latitude;
         }
@@ -86,14 +84,6 @@ public class LocationDataRequest {
             this.accuracyMeters = accuracyMeters;
         }
 
-        public String getActivity() {
-            return activity;
-        }
-
-        public void setActivity(String activity) {
-            this.activity = activity;
-        }
-
         @Override
         public String toString() {
             return "LocationPoint{" +
@@ -101,7 +91,6 @@ public class LocationDataRequest {
                     ", longitude=" + longitude +
                     ", timestamp='" + timestamp + '\'' +
                     ", accuracyMeters=" + accuracyMeters +
-                    ", activity='" + activity + '\'' +
                     '}';
         }
     }
