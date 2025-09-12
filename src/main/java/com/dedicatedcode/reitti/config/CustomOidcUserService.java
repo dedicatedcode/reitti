@@ -47,6 +47,9 @@ public class CustomOidcUserService extends OidcUserService {
     public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
         OidcUser oidcUser = getDefaultUser(userRequest);
         String preferredUsername = userRequest.getIdToken().getPreferredUsername();
+        if (preferredUsername == null) {
+            preferredUsername = oidcUser.getUserInfo().getPreferredUsername();
+        }
         String oidcUserId = userRequest.getIdToken().getIssuer().toString() + ":" + userRequest.getIdToken().getSubject();
 
         String displayName = getDisplayName(oidcUser, preferredUsername);
