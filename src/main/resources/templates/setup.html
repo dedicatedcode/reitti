@@ -5,171 +5,192 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Setup - Reitti</title>
     <link rel="stylesheet" href="/css/leaflet.css">
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/lineicons.css">
     <script src="/js/leaflet.js"></script>
     <script src="/js/TileLayer.Grayscale.js"></script>
-</head>
-<body>
-<div class="setup-container">
-    <!-- Left side - Form -->
-    <div class="setup-left">
-        <div class=" settings-card">
-            <div class="timeline-header">
-                <span><img class="logo" th:src="@{/img/logo.svg}" alt="reitti logo" title="reitti" src="/img/logo.svg"></span>
-            </div>
-            
-            <div class="setup-content ">
-                <h1>Initial Setup</h1>
-                <p>Please set a password for the admin user to continue.</p>
-
-                <div th:if="${error}" class="error-message" th:text="${error}"></div>
-                <div th:if="${message}" class="success-message" th:text="${message}"></div>
-
-                <form th:action="@{/setup}" method="post" th:object="${user}" class="setup-form">
-                    <div class="form-group">
-                        <label for="username">Username:</label>
-                        <input type="text" id="username" th:field="*{username}" readonly class="form-input">
-                        <small class="form-hint">Username cannot be changed</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="password">New Password:</label>
-                        <input type="password" id="password" th:field="*{password}" required class="form-input">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="displayName">Display Name:</label>
-                        <input type="text" id="displayName" th:field="*{displayName}" class="form-input">
-                    </div>
-
-                    <button type="submit" class="nav-link setup-button">
-                        <i class="lni lni-checkmark"></i>
-                        Complete Setup
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Right side - Map -->
-    <div class="setup-right">
-        <div id="setup-map"></div>
-    </div>
-</div>
-
-<style>
-    body {
-        margin: 0;
-        padding: 0;
-        height: 100vh;
-        overflow: hidden;
-    }
-    
-    .setup-container {
-        position: relative;
-        height: 100vh;
-        width: 100vw;
-    }
-    
-    .setup-left {
-        position: absolute;
-        top: 0;
-        left: 0;
-        z-index: 1000;
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        padding: 2rem;
-        height: 100vh;
-        width: 50%;
-        pointer-events: none;
-    }
-    
-    .settings-card {
-        pointer-events: all;
-        max-width: 400px;
-        width: 100%;
-    }
-    
-    .setup-right {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-    }
-    
-    #setup-map {
-        width: 100%;
-        height: 100%;
-    }
-    
-    .timeline-header {
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    
-    .logo {
-        height: 40px;
-    }
-    
-    .setup-content h1 {
-        text-align: center;
-        margin-bottom: 1rem;
-        color: #333;
-        font-size: 2rem;
-    }
-    
-    .setup-content p {
-        text-align: center;
-        margin-bottom: 2rem;
-        color: #666;
-        font-size: 1.1rem;
-    }
-    
-    .setup-form {
-        width: 100%;
-    }
-    .error-message {
-        background-color: #fee;
-        color: #c33;
-        padding: 1rem;
-        border-radius: 8px;
-        margin-bottom: 1rem;
-        border: 1px solid #fcc;
-    }
-
-    .success-message {
-        background-color: #efe;
-        color: #363;
-        padding: 1rem;
-        border-radius: 8px;
-        margin-bottom: 1rem;
-        border: 1px solid #cfc;
-    }
-    
-    @media (max-width: 768px) {
-        .setup-left {
-            width: 100%;
-            height: auto;
+    <style>
+        :root {
+            --color-highlight: #F5DEB3FF;
+            --color-background-dark: #3b3b3b;
+            --color-background-dark-light: #5c5c5c;
+            --color-text-white: #e3e3e3;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
             position: relative;
-            padding: 1rem;
-            background: rgba(255, 255, 255, 0.95);
+        }
+        
+        #setup-map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        .setup-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            background: rgba(17, 17, 17, 0.7);
+            backdrop-filter: blur(5px);
+        }
+        
+        .login-container {
+            background-color: var(--color-background-dark);
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            width: 350px;
+            border: 1px solid var(--color-highlight);
             backdrop-filter: blur(10px);
         }
         
-        .settings-card {
-            max-width: none;
-            padding: 2rem;
+        h1 {
+            text-align: center;
+            color: var(--color-highlight);
+            margin-bottom: 30px;
+            font-family: "Fraunces", serif;
+            font-size: 3rem;
+            font-weight: lighter;
         }
         
-        .setup-right {
-            position: fixed;
-            z-index: -1;
+        .setup-subtitle {
+            text-align: center;
+            color: var(--color-text-white);
+            margin-bottom: 30px;
+            font-size: 1.1rem;
         }
-    }
-</style>
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 400;
+            color: var(--color-text-white);
+        }
+        
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--color-background-dark-light);
+            border: 1px solid #666;
+            border-radius: 4px;
+            box-sizing: border-box;
+            color: var(--color-text-white);
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: var(--color-highlight);
+            outline: none;
+        }
+        
+        input[readonly] {
+            background-color: #444;
+            color: #999;
+        }
+        
+        .form-hint {
+            display: block;
+            margin-top: 4px;
+            font-size: 0.875rem;
+            color: #999;
+        }
+        
+        button {
+            background-color: transparent;
+            color: var(--color-highlight);
+            border: 1px solid var(--color-highlight);
+            padding: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            transition: background-color 0.3s, color 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        button:hover {
+            background-color: var(--color-highlight);
+            color: var(--color-background-dark);
+        }
+        
+        .error-message {
+            color: #ff6b6b;
+            margin-bottom: 20px;
+            text-align: center;
+            padding: 10px;
+            background-color: rgba(255, 107, 107, 0.1);
+            border-radius: 4px;
+        }
+        
+        .success-message {
+            color: #51cf66;
+            margin-bottom: 20px;
+            text-align: center;
+            padding: 10px;
+            background-color: rgba(81, 207, 102, 0.1);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Map -->
+    <div id="setup-map"></div>
+    
+    <!-- Setup Form Overlay -->
+    <div class="setup-overlay">
+        <div class="login-container">
+            <h1>Reitti</h1>
+            <p class="setup-subtitle">Please set a password for the admin user to continue.</p>
+            
+            <div th:if="${error}" class="error-message" th:text="${error}"></div>
+            <div th:if="${message}" class="success-message" th:text="${message}"></div>
+            
+            <form th:action="@{/setup}" method="post" th:object="${user}">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" th:field="*{username}" readonly>
+                    <small class="form-hint">Username cannot be changed</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">New Password</label>
+                    <input type="password" id="password" th:field="*{password}" required autofocus>
+                </div>
+                
+                <div class="form-group">
+                    <label for="displayName">Display Name</label>
+                    <input type="text" id="displayName" th:field="*{displayName}">
+                </div>
+                
+                <button type="submit">
+                    <i class="lni lni-checkmark"></i>
+                    Complete Setup
+                </button>
+            </form>
+        </div>
+    </div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -194,19 +215,19 @@
             attributionControl: false
         }).setView([randomCity.lat, randomCity.lng], randomCity.zoom);
         
-        // Add tile layer
+        // Add grayscale tile layer
         L.tileLayer.grayscale('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19
         }).addTo(map);
         
-        // Add a marker for the city
+        // Add a subtle marker for the city
         L.circleMarker([randomCity.lat, randomCity.lng], {
-            radius: 8,
-            fillColor: '#ff984f',
+            radius: 6,
+            fillColor: '#F5DEB3',
             color: '#fff',
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.8
+            weight: 1,
+            opacity: 0.7,
+            fillOpacity: 0.6
         }).addTo(map);
         
         // Disable map interaction to keep it as decoration
