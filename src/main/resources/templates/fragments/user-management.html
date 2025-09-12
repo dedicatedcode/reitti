@@ -180,6 +180,12 @@
                     </label>
 
                     <label class="btn language-btn">
+                        <input type="radio" name="preferred_language" value="ptbr" th:checked="${selectedLanguage == 'ptbr'}" style="display: none;">
+                        <span class="language-flag">🇧🇷</span>
+                        <span th:text="#{language.brazilian_portuguese}" class="language-name">Português (Brasil)</span>
+                    </label>
+
+                    <label class="btn language-btn">
                         <input type="radio" name="preferred_language" value="de" th:checked="${selectedLanguage == 'de'}" style="display: none;">
                         <span class="language-flag">🇩🇪</span>
                         <span th:text="#{language.german}" class="language-name">Deutsch</span>
