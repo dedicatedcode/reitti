@@ -67,25 +67,37 @@
     }
     
     .setup-container {
-        display: flex;
+        position: relative;
         height: 100vh;
         width: 100vw;
     }
     
     .setup-left {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1000;
         display: flex;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
+        padding: 2rem;
+        height: 100vh;
+        width: 50%;
+        pointer-events: none;
     }
     
-    .setup-form-container {
-        border-radius: 20px;
-        padding: 3rem;
+    .settings-card {
+        pointer-events: all;
+        max-width: 400px;
+        width: 100%;
     }
     
     .setup-right {
-        flex: 1;
-        position: relative;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
     }
     
     #setup-map {
@@ -138,17 +150,23 @@
     }
     
     @media (max-width: 768px) {
-        .setup-container {
-            flex-direction: column;
-        }
-        
         .setup-left {
-            flex: 0 0 60%;
+            width: 100%;
+            height: auto;
+            position: relative;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
         }
         
-        .setup-form-container {
+        .settings-card {
+            max-width: none;
             padding: 2rem;
-            border-radius: 15px;
+        }
+        
+        .setup-right {
+            position: fixed;
+            z-index: -1;
         }
     }
 </style>
