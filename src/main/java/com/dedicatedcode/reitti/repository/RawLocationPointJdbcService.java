@@ -170,7 +170,7 @@ public class RawLocationPointJdbcService {
         }
         
         String sql = "INSERT INTO raw_location_points (user_id, timestamp, accuracy_meters, geom, processed) " +
-                "VALUES (?, ?,  ?,  ?, CAST(? AS geometry), false) ON CONFLICT DO NOTHING;";
+                "VALUES (?, ?, ?, CAST(? AS geometry), false) ON CONFLICT DO NOTHING;";
 
         List<Object[]> batchArgs = new ArrayList<>();
         for (LocationDataRequest.LocationPoint point : points) {
@@ -178,7 +178,6 @@ public class RawLocationPointJdbcService {
             Timestamp timestamp = Timestamp.from(parse.toInstant());
             batchArgs.add(new Object[]{
                     user.getId(),
-                    point.getActivity(),
                     timestamp,
                     point.getAccuracyMeters(),
                     geometryFactory.createPoint(new Coordinate(point.getLongitude(), point.getLatitude())).toString()
