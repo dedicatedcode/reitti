@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.controller.api;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
+import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
@@ -89,10 +90,16 @@ public class LocationDataApiController {
     }
 
     @GetMapping("/latest-location")
-    public ResponseEntity<?> getLatestLocationForCurrentUser(@AuthenticationPrincipal User user) {
+    public ResponseEntity<?> getLatestLocationForCurrentUser(@AuthenticationPrincipal User user,
+                                                             @RequestParam(required = false) Instant since) {
         try {
-            Optional<RawLocationPoint> latest = rawLocationPointJdbcService.findLatest(user);
-            
+            Optional<RawLocationPoint> latest;
+            if (since == null) {
+                latest = rawLocationPointJdbcService.findLatest(user);
+            } else {
+                latest = rawLocationPointJdbcService.findLatest(user, since);
+            }
+
             if (latest.isEmpty()) {
                 return ResponseEntity.ok(Map.of("hasLocation", false));
             }
