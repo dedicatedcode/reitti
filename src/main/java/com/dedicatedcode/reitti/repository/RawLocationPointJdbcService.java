@@ -111,6 +111,15 @@ public class RawLocationPointJdbcService {
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
+    public Optional<RawLocationPoint> findLatest(User user) {
+        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.version " +
+                "FROM raw_location_points rlp " +
+                "WHERE rlp.user_id = ? " +
+                "ORDER BY rlp.timestamp LIMIT 1";
+        List<RawLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId());
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+    }
+
     public void deleteById(Long id) {
         String sql = "DELETE FROM raw_location_points WHERE id = ?";
         jdbcTemplate.update(sql, id);

@@ -20,6 +20,7 @@ import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -90,18 +91,13 @@ public class LocationDataApiController {
     @GetMapping("/latest-location")
     public ResponseEntity<?> getLatestLocationForCurrentUser(@AuthenticationPrincipal User user) {
         try {
-            List<RawLocationPoint> latestPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(
-                user, 
-                Instant.now().minusSeconds(86400), // Last 24 hours
-                Instant.now()
-            );
+            Optional<RawLocationPoint> latest = rawLocationPointJdbcService.findLatest(user);
             
-            if (latestPoints.isEmpty()) {
+            if (latest.isEmpty()) {
                 return ResponseEntity.ok(Map.of("hasLocation", false));
             }
             
-            // Get the most recent point
-            RawLocationPoint latestPoint = latestPoints.get(latestPoints.size() - 1);
+            RawLocationPoint latestPoint = latest.get();
             
             LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
             point.setLatitude(latestPoint.getLatitude());
