@@ -87,5 +87,37 @@ public class LocationDataApiController {
         }
     }
 
-    //add a new endpoint to fetch the latest RawLocationPoint for a loggedin user AI!
+    @GetMapping("/latest-location")
+    public ResponseEntity<?> getLatestLocationForCurrentUser(@AuthenticationPrincipal User user) {
+        try {
+            List<RawLocationPoint> latestPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(
+                user, 
+                Instant.now().minusSeconds(86400), // Last 24 hours
+                Instant.now()
+            );
+            
+            if (latestPoints.isEmpty()) {
+                return ResponseEntity.ok(Map.of("hasLocation", false));
+            }
+            
+            // Get the most recent point
+            RawLocationPoint latestPoint = latestPoints.get(latestPoints.size() - 1);
+            
+            LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
+            point.setLatitude(latestPoint.getLatitude());
+            point.setLongitude(latestPoint.getLongitude());
+            point.setAccuracyMeters(latestPoint.getAccuracyMeters());
+            point.setTimestamp(latestPoint.getTimestamp().toString());
+            
+            return ResponseEntity.ok(Map.of(
+                "hasLocation", true,
+                "point", point
+            ));
+            
+        } catch (Exception e) {
+            logger.error("Error fetching latest location", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Error fetching latest location: " + e.getMessage()));
+        }
+    }
 }
