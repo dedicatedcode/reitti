@@ -86,4 +86,6 @@ public class LocationDataApiController {
                 .body(Map.of("error", "Error fetching raw location points: " + e.getMessage()));
         }
     }
+
+    //add a new endpoint to fetch the latest RawLocationPoint for a loggedin user AI!
 }
