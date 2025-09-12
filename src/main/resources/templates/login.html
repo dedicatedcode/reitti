@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reitti - Login</title>
+    <link rel="stylesheet" href="/css/leaflet.css">
+    <script src="/js/leaflet.js"></script>
+    <script src="/js/TileLayer.Grayscale.js"></script>
     <style>
         :root {
             --color-highlight: #F5DEB3FF;
@@ -17,12 +20,31 @@
             margin: 0;
             padding: 0;
             height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #login-map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        .login-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
-            background-color: #111111;
-            background: linear-gradient(135deg, #111111 0%, #3b3b3b 100%);
-            color: var(--color-text-white);
+            z-index: 1000;
+            background: rgba(17, 17, 17, 0.7);
+            backdrop-filter: blur(5px);
         }
         
         .login-container {
@@ -111,7 +133,12 @@
     </style>
 </head>
 <body>
-    <div class="login-container">
+    <!-- Background Map -->
+    <div id="login-map"></div>
+    
+    <!-- Login Form Overlay -->
+    <div class="login-overlay">
+        <div class="login-container">
         <h1>Reitti</h1>
         
         <div th:if="${param.error}" class="error-message" th:text="#{login.invalid.credentials}">
@@ -143,5 +170,54 @@
             </a>
         </div>
     </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Random cities for the demo map
+        const cities = [
+            { name: 'Paris', lat: 48.8566, lng: 2.3522, zoom: 12 },
+            { name: 'Tokyo', lat: 35.6762, lng: 139.6503, zoom: 11 },
+            { name: 'New York', lat: 40.7128, lng: -74.0060, zoom: 11 },
+            { name: 'London', lat: 51.5074, lng: -0.1278, zoom: 11 },
+            { name: 'Sydney', lat: -33.8688, lng: 151.2093, zoom: 11 },
+            { name: 'Barcelona', lat: 41.3851, lng: 2.1734, zoom: 12 },
+            { name: 'Amsterdam', lat: 52.3676, lng: 4.9041, zoom: 12 },
+            { name: 'San Francisco', lat: 37.7749, lng: -122.4194, zoom: 12 }
+        ];
+        
+        // Pick a random city
+        const randomCity = cities[Math.floor(Math.random() * cities.length)];
+        
+        // Initialize the map
+        const map = L.map('login-map', {
+            zoomControl: false,
+            attributionControl: false
+        }).setView([randomCity.lat, randomCity.lng], randomCity.zoom);
+        
+        // Add grayscale tile layer
+        L.tileLayer.grayscale('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19
+        }).addTo(map);
+        
+        // Add a subtle marker for the city
+        L.circleMarker([randomCity.lat, randomCity.lng], {
+            radius: 6,
+            fillColor: '#F5DEB3',
+            color: '#fff',
+            weight: 1,
+            opacity: 0.7,
+            fillOpacity: 0.6
+        }).addTo(map);
+        
+        // Disable map interaction to keep it as decoration
+        map.dragging.disable();
+        map.touchZoom.disable();
+        map.doubleClickZoom.disable();
+        map.scrollWheelZoom.disable();
+        map.boxZoom.disable();
+        map.keyboard.disable();
+        if (map.tap) map.tap.disable();
+    });
+</script>
 </body>
 </html>
