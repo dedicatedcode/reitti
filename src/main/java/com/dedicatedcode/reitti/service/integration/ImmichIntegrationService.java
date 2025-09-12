@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.dto.ImmichAsset;
 import com.dedicatedcode.reitti.dto.ImmichSearchRequest;
 import com.dedicatedcode.reitti.dto.ImmichSearchResponse;
 import com.dedicatedcode.reitti.dto.PhotoResponse;
+import com.dedicatedcode.reitti.model.IntegrationTestResult;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ImmichIntegrationJdbcService;
@@ -57,10 +58,10 @@ public class ImmichIntegrationService {
         return immichIntegrationJdbcService.save(user, integration);
     }
     
-    public boolean testConnection(String serverUrl, String apiToken) {
+    public IntegrationTestResult testConnection(String serverUrl, String apiToken) {
         if (serverUrl == null || serverUrl.trim().isEmpty() || 
             apiToken == null || apiToken.trim().isEmpty()) {
-            return false;
+            return IntegrationTestResult.failed();
         }
 
         try {
@@ -78,11 +79,14 @@ public class ImmichIntegrationService {
                 entity, 
                 String.class
             );
-            
-            return response.getStatusCode().is2xxSuccessful();
-            
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                return IntegrationTestResult.ok();
+            } else {
+                return IntegrationTestResult.failed("StatusCode: " + response.getStatusCode() + " Message:" + response.getBody());
+            }
         } catch (Exception e) {
-            return false;
+            return new IntegrationTestResult(false, e.getMessage());
         }
     }
     

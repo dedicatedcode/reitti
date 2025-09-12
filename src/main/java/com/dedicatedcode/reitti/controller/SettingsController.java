@@ -476,14 +476,14 @@ public class SettingsController {
         Map<String, Object> response = new HashMap<>();
         
         try {
-            boolean connectionSuccessful = immichIntegrationService.testConnection(serverUrl, apiToken);
+            IntegrationTestResult result = immichIntegrationService.testConnection(serverUrl, apiToken);
             
-            if (connectionSuccessful) {
+            if (result.success()) {
                 response.put("success", true);
                 response.put("message", getMessage("integrations.immich.connection.success"));
             } else {
                 response.put("success", false);
-                response.put("message", getMessage("integrations.immich.connection.failed", "Invalid configuration"));
+                response.put("message", getMessage("integrations.immich.connection.failed", result.message()));
             }
         } catch (Exception e) {
             response.put("success", false);
