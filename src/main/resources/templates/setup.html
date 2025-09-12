@@ -8,17 +8,18 @@
     <link rel="stylesheet" href="/css/main.css">
     <link rel="stylesheet" href="/css/lineicons.css">
     <script src="/js/leaflet.js"></script>
+    <script src="/js/TileLayer.Grayscale.js"></script>
 </head>
 <body>
 <div class="setup-container">
     <!-- Left side - Form -->
     <div class="setup-left">
-        <div class="setup-form-container">
+        <div class=" settings-card">
             <div class="timeline-header">
                 <span><img class="logo" th:src="@{/img/logo.svg}" alt="reitti logo" title="reitti" src="/img/logo.svg"></span>
             </div>
             
-            <div class="setup-content">
+            <div class="setup-content ">
                 <h1>Initial Setup</h1>
                 <p>Please set a password for the admin user to continue.</p>
 
@@ -72,21 +73,14 @@
     }
     
     .setup-left {
-        flex: 0 0 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 2rem;
     }
     
     .setup-form-container {
-        background: white;
         border-radius: 20px;
         padding: 3rem;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-        max-width: 400px;
-        width: 100%;
     }
     
     .setup-right {
@@ -125,67 +119,6 @@
     .setup-form {
         width: 100%;
     }
-
-    .form-group {
-        margin-bottom: 1.5rem;
-    }
-
-    .form-group label {
-        display: block;
-        margin-bottom: 0.5rem;
-        font-weight: bold;
-        color: #333;
-    }
-
-    .form-input {
-        width: 100%;
-        padding: 0.75rem;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        font-size: 1rem;
-        background-color: #fff;
-        color: #333;
-        box-sizing: border-box;
-        transition: border-color 0.3s ease;
-    }
-
-    .form-input:focus {
-        outline: none;
-        border-color: #ff984f;
-        box-shadow: 0 0 0 3px rgba(255, 152, 79, 0.1);
-    }
-
-    .form-input[readonly] {
-        background-color: #f8f9fa;
-        color: #666;
-    }
-
-    .form-hint {
-        display: block;
-        margin-top: 0.25rem;
-        font-size: 0.875rem;
-        color: #666;
-    }
-
-    .setup-button {
-        width: 100%;
-        padding: 1rem;
-        font-size: 1.1rem;
-        justify-content: center;
-        margin-top: 1rem;
-        border: none;
-        cursor: pointer;
-        border-radius: 8px;
-        background: linear-gradient(135deg, #ff984f 0%, #ff6b35 100%);
-        color: white;
-        font-weight: bold;
-        transition: transform 0.2s ease;
-    }
-    
-    .setup-button:hover {
-        transform: translateY(-2px);
-    }
-
     .error-message {
         background-color: #fee;
         color: #c33;
@@ -244,7 +177,7 @@
         }).setView([randomCity.lat, randomCity.lng], randomCity.zoom);
         
         // Add tile layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        L.tileLayer.grayscale('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19
         }).addTo(map);
         
