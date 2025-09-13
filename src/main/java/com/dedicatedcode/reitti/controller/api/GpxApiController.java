@@ -59,10 +59,9 @@ public class GpxApiController {
                 });
         }
     }
-
     @PostMapping("/import")
-    public ResponseEntity<Map<String, Object>> importGpx(@RequestParam("file") MultipartFile file,
-                                                        @AuthenticationPrincipal User user) {
+    public ResponseEntity<Map<String, Object>> importGpx(@AuthenticationPrincipal User user,
+                                                         @RequestParam("file") MultipartFile file) {
         Map<String, Object> response = new HashMap<>();
         
         try {
