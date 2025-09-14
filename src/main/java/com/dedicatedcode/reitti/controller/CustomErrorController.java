@@ -33,12 +33,12 @@ public class CustomErrorController implements ErrorController {
         }
 
         // Check if this is an API request
-        if (requestUri != null && requestUri.startsWith("/api")) {
+        if (requestUri.startsWith("/api")) {
             return handleApiError(status, errorMessage, exception, requestUri);
         }
 
         // Handle web requests with HTML error page
-        return handleWebError(status, errorMessage, exception, requestUri, model);
+        return handleWebError(status, errorMessage, exception, requestUri, request, model);
     }
 
     private ResponseEntity<Map<String, Object>> handleApiError(Object status, Object errorMessage, Object exception, String requestUri) {
@@ -79,7 +79,7 @@ public class CustomErrorController implements ErrorController {
         return ResponseEntity.status(statusCode).body(errorResponse);
     }
 
-    private String handleWebError(Object status, Object errorMessage, Object exception, String requestUri, Model model) {
+    private String handleWebError(Object status, Object errorMessage, Object exception, String requestUri,HttpServletRequest request, Model model) {
         if (status != null) {
             Integer statusCode = Integer.valueOf(status.toString());
             model.addAttribute("status", statusCode);
