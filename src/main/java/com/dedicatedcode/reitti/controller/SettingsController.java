@@ -973,16 +973,16 @@ public class SettingsController {
         // Generate recommendations
         List<String> recommendations = new ArrayList<>();
         if (!isActivelyTracking) {
-            recommendations.add("No location data received in the last 24 hours. Check your mobile app configuration.");
+            recommendations.add(getMessage("integrations.data.quality.recommendation.no.data"));
         }
         if (avgPointsPerDay < 50) {
-            recommendations.add("Low tracking frequency detected. Consider reducing the tracking interval in your mobile app.");
+            recommendations.add(getMessage("integrations.data.quality.recommendation.low.frequency"));
         }
         if (goodAccuracyPercentage != null && goodAccuracyPercentage < 70) {
-            recommendations.add("Many location points have poor accuracy. Ensure GPS is enabled and avoid tracking indoors.");
+            recommendations.add(getMessage("integrations.data.quality.recommendation.poor.accuracy"));
         }
         if (avgAccuracy != null && avgAccuracy > 100) {
-            recommendations.add("Average accuracy is quite poor. Check if your device has a clear view of the sky for better GPS reception.");
+            recommendations.add(getMessage("integrations.data.quality.recommendation.very.poor.accuracy"));
         }
 
         return new DataQualityReport(
