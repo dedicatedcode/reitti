@@ -223,8 +223,6 @@ public class ReittiIntegrationService {
 
                     log.debug("Stored avatar for remote user [{}] with MIME type [{}]", info.userInfo().id(), mimeType);
                     this.jdbcService.store(integration, remoteUser, avatarData, mimeType);
-                } else {
-                    throw new RequestFailedException(avatarUrl, HttpStatusCode.valueOf(avatarResponse.statusCode()), avatarResponse.body());
                 }
 
                 persisted = Optional.of(remoteUser);
