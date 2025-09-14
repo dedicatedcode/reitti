@@ -6,7 +6,7 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Branch build
+name: PR build
 
 on:
   pull_request:
@@ -25,13 +25,3 @@ jobs:
         cache: maven
     - name: Build with Maven
       run: mvn verify -DskipTests
-    - name: Create bundle
-      run: mkdir staging && cp target/*.jar staging
-    - name: Upload packages
-      uses: actions/upload-artifact@v4
-      with:
-       name: Package
-       path: staging
-
-    - name: Update dependency graph
-      uses: advanced-security/maven-dependency-submission-action@571e99aab1055c2e71a1e2309b9691de18d6b7d6
