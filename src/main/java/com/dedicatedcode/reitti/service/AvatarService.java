@@ -75,7 +75,8 @@ public class AvatarService {
 
         String trimmed = displayName.trim();
 
-        // If display name contains whitespace, take first char of each word
+
+        //only take first chars of the first two words AI!
         if (trimmed.contains(" ")) {
             StringBuilder initials = new StringBuilder();
             String[] words = trimmed.split("\\s+");
@@ -86,7 +87,6 @@ public class AvatarService {
             }
             return initials.toString();
         } else {
-            // No whitespace - take first two letters, or just one if that's all there is
             if (trimmed.length() >= 2) {
                 return (Character.toUpperCase(trimmed.charAt(0)) + "" + Character.toUpperCase(trimmed.charAt(1)));
             } else {
