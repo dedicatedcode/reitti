@@ -904,7 +904,7 @@ public class SettingsController {
         
         List<RawLocationPoint> last24hPoints = allPoints.stream()
             .filter(point -> point.getTimestamp().isAfter(oneDayAgo))
-            .collect(Collectors.toList());
+            .toList();
 
         // Calculate basic statistics
         long totalPoints = rawLocationPointJdbcService.countByUser(user);
@@ -916,7 +916,7 @@ public class SettingsController {
         String latestPointTime = null;
         String timeSinceLastPoint = null;
         if (!allPoints.isEmpty()) {
-            RawLocationPoint latestPoint = allPoints.get(allPoints.size() - 1);
+            RawLocationPoint latestPoint = allPoints.getLast();
             latestPointTime = latestPoint.getTimestamp().toString();
             
             long minutesSince = java.time.Duration.between(latestPoint.getTimestamp(), now).toMinutes();
@@ -934,9 +934,9 @@ public class SettingsController {
         Integer goodAccuracyPercentage = null;
         if (!allPoints.isEmpty()) {
             List<Double> accuracies = allPoints.stream()
-                .filter(point -> point.getAccuracyMeters() != null)
                 .map(RawLocationPoint::getAccuracyMeters)
-                .collect(Collectors.toList());
+                .filter(Objects::nonNull)
+                .toList();
             
             if (!accuracies.isEmpty()) {
                 avgAccuracy = accuracies.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
