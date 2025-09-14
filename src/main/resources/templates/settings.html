@@ -14,73 +14,7 @@
 <body class="settings-page">
     <div class="settings-container">
         <!-- Settings navigation sidebar -->
-        <div class="settings-nav">
-            <div class="timeline-header">
-                <a th:href="@{/}"><img class="logo" th:src="@{/img/logo.svg}" alt="reitti logo" title="reitti" src="/img/logo.svg"></a>
-                <a href="/" class="nav-link" th:title="#{nav.timeline}"><i class="lni lni-route-1"></i></a>
-                <a href="/statistics" class="nav-link" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
-                <form th:action="@{/logout}" method="post" >
-                    <button type="submit" class="nav-link" style="font-size: 1.4rem;" th:title="#{nav.logout.tooltip}"><i
-                            class="lni lni-exit"></i>
-                    </button>
-                </form>
-            </div>
-            <a href="/settings?section=job-status" 
-               class="settings-nav-item" 
-               th:classappend="${activeSection == 'job-status'} ? 'active' : ''"
-               th:text="#{settings.job.status}">Job Status</a>
-            
-            <a href="/settings?section=file-upload" 
-               class="settings-nav-item"
-               th:classappend="${activeSection == 'file-upload'} ? 'active' : ''"
-               th:text="#{settings.import.data}">Import Data</a>
-
-            <a href="/settings?section=export-data"
-               class="settings-nav-item"
-               th:classappend="${activeSection == 'export-data'} ? 'active' : ''"
-               th:text="#{export.title}">Export Data</a>
-
-            <a href="/settings?section=api-tokens" 
-               class="settings-nav-item"
-               th:classappend="${activeSection == 'api-tokens'} ? 'active' : ''"
-               th:text="#{settings.api.tokens}">API Tokens</a>
-
-            <a href="/settings?section=sharing" 
-               class="settings-nav-item"
-               th:classappend="${activeSection == 'sharing'} ? 'active' : ''"
-               th:text="#{settings.share.access}">Share Access</a>
-
-            <a href="/settings?section=user-management"
-               class="settings-nav-item"
-               th:classappend="${activeSection == 'user-management'} ? 'active' : ''"
-               th:text="#{settings.user.management}">User Management</a>
-            
-            <a href="/settings?section=places-management" 
-               class="settings-nav-item"
-               th:classappend="${activeSection == 'places-management'} ? 'active' : ''"
-               th:text="#{settings.places}">Places</a>
-            
-            <a href="/settings?section=geocode-services" 
-               class="settings-nav-item"
-               th:classappend="${activeSection == 'geocode-services'} ? 'active' : ''"
-               th:text="#{settings.geocoding}">Geocoding</a>
-            
-            <a href="/settings?section=manage-data" 
-               th:if="${dataManagementEnabled}"
-               class="settings-nav-item"
-               th:classappend="${activeSection == 'manage-data'} ? 'active' : ''"
-               th:text="#{settings.manage.data}">Manage Data</a>
-            
-            <a href="/settings?section=integrations" 
-               class="settings-nav-item"
-               th:classappend="${activeSection == 'integrations'} ? 'active' : ''"
-               th:text="#{settings.integrations}">Integrations</a>
-
-            <a href="/settings?section=about-section" 
-               class="settings-nav-item"
-               th:classappend="${activeSection == 'about-section'} ? 'active' : ''"
-               th:text="#{settings.about}">About</a>
-        </div>
+        <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
 
         <!-- Settings content area -->
         <div class="settings-content-area">
