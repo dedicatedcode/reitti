@@ -947,6 +947,7 @@ public class SettingsController {
 
         // Calculate average interval between points
         String avgInterval = null;
+        long avgIntervalSeconds = -1;
         if (allPoints.size() > 1) {
             long totalIntervalSeconds = 0;
             for (int i = 1; i < allPoints.size(); i++) {
@@ -955,7 +956,7 @@ public class SettingsController {
                     allPoints.get(i).getTimestamp()
                 ).getSeconds();
             }
-            long avgIntervalSeconds = totalIntervalSeconds / (allPoints.size() - 1);
+            avgIntervalSeconds = totalIntervalSeconds / (allPoints.size() - 1);
             
             if (avgIntervalSeconds < 60) {
                 avgInterval = avgIntervalSeconds + " seconds";
@@ -968,14 +969,14 @@ public class SettingsController {
 
         // Determine status flags
         boolean isActivelyTracking = pointsLast24h > 0;
-        boolean hasGoodFrequency = avgPointsPerDay >= 100; // At least ~100 points per day
+        boolean hasGoodFrequency = avgIntervalSeconds < 50;
 
         // Generate recommendations
         List<String> recommendations = new ArrayList<>();
         if (!isActivelyTracking) {
             recommendations.add(getMessage("integrations.data.quality.recommendation.no.data"));
         }
-        if (avgPointsPerDay < 50) {
+        if (avgIntervalSeconds > 50) {
             recommendations.add(getMessage("integrations.data.quality.recommendation.low.frequency"));
         }
         if (goodAccuracyPercentage != null && goodAccuracyPercentage < 70) {
