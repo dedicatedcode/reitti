@@ -17,12 +17,12 @@
            th:classappend="${activeSection == 'job-status'} ? 'active' : ''"
            th:text="#{settings.job.status}">Job Status</a>
         
-        <a href="/settings?section=file-upload" 
+        <a href="/settings/file-upload"
            class="settings-nav-item"
            th:classappend="${activeSection == 'file-upload'} ? 'active' : ''"
            th:text="#{settings.import.data}">Import Data</a>
 
-        <a href="/settings?section=export-data"
+        <a href="/settings/export-data"
            class="settings-nav-item"
            th:classappend="${activeSection == 'export-data'} ? 'active' : ''"
            th:text="#{export.title}">Export Data</a>
@@ -52,7 +52,7 @@
            th:classappend="${activeSection == 'geocode-services'} ? 'active' : ''"
            th:text="#{settings.geocoding}">Geocoding</a>
         
-        <a href="/settings?section=manage-data" 
+        <a href="/settings/manage-data"
            th:if="${dataManagementEnabled}"
            class="settings-nav-item"
            th:classappend="${activeSection == 'manage-data'} ? 'active' : ''"

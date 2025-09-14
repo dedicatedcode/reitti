@@ -63,14 +63,17 @@ body {
 
 .alert-success {
     border-color: #155724;
+    background: #2c4828;
 }
 
 .alert-danger {
     border-color: #ff3434;
+    background: #995353;
 }
 
 .alert-warning {
     border-color: #ffa700;;
+    border-color: #e4a235;;
 }
 
 .alert-info {

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{settings.title}">Settings - Reitti</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/lineicons.css">
+    <script src="/js/htmx.min.js"></script>
+</head>
+<body class="settings-page">
+<div class="settings-container">
+    <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
+    <div class="settings-content-area">
+        <div id="export-data" class="settings-section active">
+            <div th:fragment="export-data-content">
+                <h2 th:text="#{export.title}">Export Data</h2>
+
+                <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+                    <span th:text="${successMessage}">Success message</span>
+                </div>
+                <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+                    <span th:text="${errorMessage}">Error message</span>
+                </div>
+
+                <div class="settings-card">
+                    <h3 th:text="#{export.date.range}">Date Range</h3>
+
+                    <div style="display: flex; gap: 15px; align-items: end; margin-bottom: 20px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="startDate" th:text="#{export.start.date}">Start Date</label>
+                            <input type="date"
+                                   id="startDate"
+                                   name="startDate"
+                                   th:value="${startDate}"
+                                   hx-get="/settings/export-data/data-content"
+                                   hx-target="#export-data"
+                                   hx-swap="innerHTML"
+                                   hx-trigger="change"
+                                   hx-include="#endDate"
+                                   hx-indicator="#loading-indicator"
+                                   required>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="endDate" th:text="#{export.end.date}">End Date</label>
+                            <input type="date"
+                                   id="endDate"
+                                   name="endDate"
+                                   th:value="${endDate}"
+                                   hx-get="/settings/export-data/data-content"
+                                   hx-target="#export-data"
+                                   hx-swap="innerHTML"
+                                   hx-trigger="change"
+                                   hx-include="#startDate"
+                                   hx-indicator="#loading-indicator"
+                                   required>
+                        </div>
+
+                        <div style="margin-left: auto;">
+                            <form action="/settings/export-data/gpx" method="post" style="margin: 0;">
+                                <input type="hidden" name="startDate" th:value="${startDate}">
+                                <input type="hidden" name="endDate" th:value="${endDate}">
+                                <button type="submit" class="btn" th:text="#{export.gpx.button}">Export as GPX</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-card">
+                    <h3 th:text="#{export.raw.data.title}">Raw Location Data</h3>
+
+                    <!-- Loading indicator -->
+                    <div id="loading-indicator" style="display: none; text-align: center; padding: 40px;">
+                        <div style="display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: var(--color-accent); animation: spin 1s ease-in-out infinite;"></div>
+                        <p style="margin-top: 15px; color: var(--color-text-white);">Loading location data...</p>
+                    </div>
+
+                    <div id="data-content">
+                        <div th:if="${rawLocationPoints.isEmpty()}">
+                            <p th:text="#{export.raw.data.no.data}">No location data found for the selected date range</p>
+                        </div>
+
+                        <div th:if="${!rawLocationPoints.isEmpty()}">
+                            <p style="margin-bottom: 15px; color: var(--color-text-white);">
+                                Found <strong th:text="${rawLocationPoints.size()}">0</strong> location points
+                            </p>
+
+                            <div class="export-data-table-container">
+                                <table>
+                                    <thead style="">
+                                    <tr>
+                                        <th th:text="#{export.raw.data.table.timestamp}">Timestamp</th>
+                                        <th th:text="#{export.raw.data.table.latitude}">Latitude</th>
+                                        <th th:text="#{export.raw.data.table.longitude}">Longitude</th>
+                                        <th th:text="#{export.raw.data.table.accuracy}">Accuracy (m)</th>
+                                        <th th:text="#{export.raw.data.table.processed}">Processed</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="point : ${rawLocationPoints}" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                        <td th:text="${#temporals.format(point.timestamp, 'yyyy-MM-dd HH:mm:ss')}">2024-01-01 12:00:00</td>
+                                        <td th:text="${#numbers.formatDecimal(point.latitude, 1, 6)}">60.123456</td>
+                                        <td th:text="${#numbers.formatDecimal(point.longitude, 1, 6)}">24.123456</td>
+                                        <td th:text="${point.accuracyMeters != null ? #numbers.formatDecimal(point.accuracyMeters, 1, 1) : 'N/A'}">10.0</td>
+                                        <td>
+                                            <span th:if="${point.processed}" style="color: #28a745;">✓</span>
+                                            <span th:unless="${point.processed}" style="color: #ffc107;">○</span>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+</body>

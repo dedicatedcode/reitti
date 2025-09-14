@@ -18,8 +18,6 @@ import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.*;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
 import com.dedicatedcode.reitti.service.integration.OwnTracksRecorderIntegrationService;
-import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
-import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
@@ -50,16 +48,13 @@ public class SettingsController {
     private final GeocodingResponseJdbcService geocodingResponseJdbcService;
     private final ImmichIntegrationService immichIntegrationService;
     private final OwnTracksRecorderIntegrationService ownTracksRecorderIntegrationService;
-    private final VisitJdbcService visitJdbcService;
-    private final TripJdbcService tripJdbcService;
-    private final ProcessedVisitJdbcService processedVisitJdbcService;
+
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final MagicLinkJdbcService magicLinkJdbcService;
     private final RabbitTemplate rabbitTemplate;
     private final int maxErrors;
     private final boolean dataManagementEnabled;
     private final MessageSource messageSource;
-    private final ProcessingPipelineTrigger processingPipelineTrigger;
 
     private final UserJdbcService userJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
@@ -78,15 +73,11 @@ public class SettingsController {
                               GeocodingResponseJdbcService geocodingResponseJdbcService,
                               ImmichIntegrationService immichIntegrationService,
                               OwnTracksRecorderIntegrationService ownTracksRecorderIntegrationService,
-                              VisitJdbcService visitJdbcService,
-                              TripJdbcService tripJdbcService,
-                              ProcessedVisitJdbcService processedVisitJdbcService,
                               RawLocationPointJdbcService rawLocationPointJdbcService, MagicLinkJdbcService magicLinkJdbcService,
                               RabbitTemplate rabbitTemplate,
                               @Value("${reitti.geocoding.max-errors}") int maxErrors,
                               @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                               MessageSource messageSource,
-                              ProcessingPipelineTrigger processingPipelineTrigger,
                               VersionService versionService,
                               @Value("${reitti.security.oidc.enabled:false}") boolean oidcEnabled,
                               @Value("${reitti.security.local-login.disable}") boolean localLoginDisabled) {
@@ -101,16 +92,12 @@ public class SettingsController {
         this.geocodingResponseJdbcService = geocodingResponseJdbcService;
         this.immichIntegrationService = immichIntegrationService;
         this.ownTracksRecorderIntegrationService = ownTracksRecorderIntegrationService;
-        this.visitJdbcService = visitJdbcService;
-        this.tripJdbcService = tripJdbcService;
-        this.processedVisitJdbcService = processedVisitJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.magicLinkJdbcService = magicLinkJdbcService;
         this.rabbitTemplate = rabbitTemplate;
         this.maxErrors = maxErrors;
         this.dataManagementEnabled = dataManagementEnabled;
         this.messageSource = messageSource;
-        this.processingPipelineTrigger = processingPipelineTrigger;
         this.versionService = versionService;
         this.oidcEnabled = oidcEnabled;
         this.localLoginDisabled = localLoginDisabled;
@@ -147,27 +134,20 @@ public class SettingsController {
             case "integrations":
                 getIntegrationsContent(user, request, model, null);
                 break;
-            case "manage-data":
-                if (dataManagementEnabled) {
-                    getManageDataContent(model);
-                }
-                break;
-            case "file-upload":
-                // File upload content will be loaded via HTMX as before
-                break;
-            case "export-data":
-                getExportDataContent(user, model);
-                break;
             case "about-section":
                 getAboutContent(model);
                 break;
-//            case "job-status":
-//            default:
-//                getQueueStatsContent(model);
-//                break;
         }
         
         return "settings";
+    }
+
+    @GetMapping("/file-upload")
+    public String getFileUploadPage(@AuthenticationPrincipal User user, Model model) {
+        model.addAttribute("activeSection", "file-upload");
+        model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
+        model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+        return "settings/import-data";
     }
 
     @GetMapping("/api-tokens-content")
@@ -663,96 +643,6 @@ public class SettingsController {
     }
 
 
-    @GetMapping("/manage-data-content")
-    public String getManageDataContent(Model model) {
-        if (!dataManagementEnabled) {
-            throw new RuntimeException("Data management is not enabled");
-        }
-        return "fragments/settings :: manage-data-content";
-    }
-
-    @PostMapping("/manage-data/process-visits-trips")
-    public String processVisitsTrips(Model model) {
-        if (!dataManagementEnabled) {
-            throw new RuntimeException("Data management is not enabled");
-        }
-
-        try {
-            processingPipelineTrigger.start();
-            model.addAttribute("successMessage", getMessage("data.process.success"));
-        } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("data.process.error", e.getMessage()));
-        }
-
-        return "fragments/settings :: manage-data-content";
-    }
-
-    @PostMapping("/manage-data/clear-and-reprocess")
-    public String clearAndReprocess(Authentication authentication, Model model) {
-        if (!dataManagementEnabled) {
-            throw new RuntimeException("Data management is not enabled");
-        }
-
-        try {
-            String username = authentication.getName();
-            User currentUser = userJdbcService.findByUsername(username)
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-            
-            // Clear all processed data except SignificantPlaces
-            // This would need to be implemented in appropriate service classes
-            // For now, we'll assume these methods exist or need to be created
-            clearProcessedDataExceptPlaces(currentUser);
-            
-            // Mark all raw location points as unprocessed
-            markRawLocationPointsAsUnprocessed(currentUser);
-            
-            processingPipelineTrigger.start();
-            
-            model.addAttribute("successMessage", getMessage("data.clear.reprocess.success"));
-        } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("data.clear.reprocess.error", e.getMessage()));
-        }
-
-        return "fragments/settings :: manage-data-content";
-    }
-
-    @PostMapping("/manage-data/remove-all-data")
-    public String removeAllData(Authentication authentication, Model model) {
-        if (!dataManagementEnabled) {
-            throw new RuntimeException("Data management is not enabled");
-        }
-
-        try {
-            String username = authentication.getName();
-            User currentUser = userJdbcService.findByUsername(username)
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-            
-            removeAllDataExceptPlaces(currentUser);
-            
-            model.addAttribute("successMessage", getMessage("data.remove.all.success"));
-        } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("data.remove.all.error", e.getMessage()));
-        }
-
-        return "fragments/settings :: manage-data-content";
-    }
-
-    private void clearProcessedDataExceptPlaces(User user) {
-        tripJdbcService.deleteAllForUser(user);
-        processedVisitJdbcService.deleteAllForUser(user);
-        visitJdbcService.deleteAllForUser(user);
-    }
-
-    private void markRawLocationPointsAsUnprocessed(User user) {
-        rawLocationPointJdbcService.markAllAsUnprocessedForUser(user);
-    }
-
-    private void removeAllDataExceptPlaces(User user) {
-        tripJdbcService.deleteAllForUser(user);
-        processedVisitJdbcService.deleteAllForUser(user);
-        visitJdbcService.deleteAllForUser(user);
-        rawLocationPointJdbcService.deleteAllForUser(user);
-    }
 
     @GetMapping("/geocode-services-content")
     public String getGeocodeServicesContent(Model model) {
@@ -1092,18 +982,6 @@ public class SettingsController {
         public boolean isHasGoodFrequency() { return hasGoodFrequency; }
         public boolean isHasFluctuatingFrequency() { return hasFluctuatingFrequency; }
         public List<String> getRecommendations() { return recommendations; }
-    }
-
-    private void getExportDataContent(@AuthenticationPrincipal User user, Model model) {
-        // Set default date range to today
-        java.time.LocalDate today = java.time.LocalDate.now();
-        model.addAttribute("startDate", today);
-        model.addAttribute("endDate", today);
-        
-        // Get raw location points for today by default
-        List<RawLocationPoint> rawLocationPoints = rawLocationPointJdbcService.findByUserAndDateRange(
-            user, today.atStartOfDay(), today.plusDays(1).atStartOfDay());
-        model.addAttribute("rawLocationPoints", rawLocationPoints);
     }
 
     private String getUserManagementPage(@AuthenticationPrincipal User user, Model model) {

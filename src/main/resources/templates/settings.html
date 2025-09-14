@@ -48,21 +48,6 @@
                 <div th:replace="~{fragments/settings :: integrations-content}"></div>
             </div>
 
-            <!-- Manage Data Section -->
-            <div th:if="${dataManagementEnabled && activeSection == 'manage-data'}" id="manage-data" class="settings-section active">
-                <div th:replace="~{fragments/settings :: manage-data-content}"></div>
-            </div>
-            <!-- File Upload Section -->
-            <div th:if="${activeSection == 'file-upload'}" id="file-upload" class="settings-section active"
-                 hx-get="/import/file-upload-content" hx-trigger="load once">
-                <div class="htmx-indicator">Loading file upload options...</div>
-            </div>
-
-            <!-- Export Data Section -->
-            <div th:if="${activeSection == 'export-data'}" id="export-data" class="settings-section active">
-                <div th:replace="~{fragments/export-data :: export-data-content}"></div>
-            </div>
-
             <!-- About Section -->
             <div th:if="${activeSection == 'about-section'}" id="about-section" class="settings-section active">
                 <div th:replace="~{fragments/settings :: about-content}"></div>
