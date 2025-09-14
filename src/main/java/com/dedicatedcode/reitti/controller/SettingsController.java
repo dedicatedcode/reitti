@@ -965,23 +965,42 @@ public class SettingsController {
             
             avgIntervalSeconds = totalIntervalSeconds / intervals.size();
             
-            // Check for frequency fluctuation (coefficient of variation > 1.0)
-            if (intervals.size() > 2) {
-                long finalAvgIntervalSeconds = avgIntervalSeconds;
-                double variance = intervals.stream()
-                    .mapToDouble(interval -> Math.pow(interval - finalAvgIntervalSeconds, 2))
-                    .average().orElse(0.0);
-                double stdDev = Math.sqrt(variance);
-                double coefficientOfVariation = avgIntervalSeconds > 0 ? stdDev / avgIntervalSeconds : 0;
-                hasFluctuatingFrequency = coefficientOfVariation > 1.0;
-            }
-            
             if (avgIntervalSeconds < 60) {
                 avgInterval = avgIntervalSeconds + " seconds";
             } else if (avgIntervalSeconds < 3600) {
                 avgInterval = (avgIntervalSeconds / 60) + " minutes";
             } else {
                 avgInterval = (avgIntervalSeconds / 3600) + " hours";
+            }
+        }
+        
+        // Check for frequency fluctuation using only last 24h data
+        if (last24hPoints.size() > 2) {
+            List<Long> last24hIntervals = new ArrayList<>();
+            long totalLast24hIntervalSeconds = 0;
+            
+            for (int i = 1; i < last24hPoints.size(); i++) {
+                long intervalSeconds = java.time.Duration.between(
+                    last24hPoints.get(i-1).getTimestamp(), 
+                    last24hPoints.get(i).getTimestamp()
+                ).getSeconds();
+                last24hIntervals.add(intervalSeconds);
+                totalLast24hIntervalSeconds += intervalSeconds;
+            }
+            
+            if (!last24hIntervals.isEmpty()) {
+                long avgLast24hIntervalSeconds = totalLast24hIntervalSeconds / last24hIntervals.size();
+                
+                // Check for frequency fluctuation (coefficient of variation > 1.0)
+                if (last24hIntervals.size() > 2) {
+                    long finalAvgLast24hIntervalSeconds = avgLast24hIntervalSeconds;
+                    double variance = last24hIntervals.stream()
+                        .mapToDouble(interval -> Math.pow(interval - finalAvgLast24hIntervalSeconds, 2))
+                        .average().orElse(0.0);
+                    double stdDev = Math.sqrt(variance);
+                    double coefficientOfVariation = avgLast24hIntervalSeconds > 0 ? stdDev / avgLast24hIntervalSeconds : 0;
+                    hasFluctuatingFrequency = coefficientOfVariation > 1.0;
+                }
             }
         }
 
