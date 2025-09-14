@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.controller;
+package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.dto.ReittiRemoteInfo;
 import com.dedicatedcode.reitti.model.integration.ReittiIntegration;

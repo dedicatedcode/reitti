@@ -5,28 +5,6 @@
 
 
 <!-- Queue Stats Content Fragment -->
-<div th:fragment="queue-stats-content">
-    <h2 th:text="#{jobs.title}">Job Status</h2>
-
-    <div class="queue-status">
-        <div class="queue-card" th:each="queue : ${queueStats}">
-            <div class="queue-name" th:text="${queue.name()}">Queue Name</div>
-            <div class="queue-count" th:text="${queue.count()}">0</div>
-            <div class="queue-time" th:text="#{jobs.estimated.time(${queue.estimatedTime()})}">Est. processing time: 0 min</div>
-            <div class="progress-bar">
-                <div class="progress-fill" th:style="'width:' + ${queue.rate()} + '%'"></div>
-            </div>
-        </div>
-    </div>
-
-    <div style="margin-top: 20px;">
-        <button class="btn" 
-                hx-get="/settings/queue-stats-content" 
-                hx-target="#job-status" 
-                hx-swap="innerHTML"
-                th:text="#{jobs.refresh}">Refresh Status</button>
-    </div>
-</div>
 
 <!-- Integrations Content Fragment -->
 <div th:fragment="integrations-content">
@@ -124,7 +102,6 @@
                         Verify Data Quality
                     </button>
                 </div>
-
             </div>
         </details>
         <details th:attr="open=${openSection == 'external-data-stores' ? 'open' : null}">

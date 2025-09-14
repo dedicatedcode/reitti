@@ -52,12 +52,6 @@
             <div th:if="${dataManagementEnabled && activeSection == 'manage-data'}" id="manage-data" class="settings-section active">
                 <div th:replace="~{fragments/settings :: manage-data-content}"></div>
             </div>
-
-            <!-- Job Status Section -->
-            <div th:if="${activeSection == 'job-status'}" id="job-status" class="settings-section active">
-                <div th:replace="~{fragments/settings :: queue-stats-content}"></div>
-            </div>
-
             <!-- File Upload Section -->
             <div th:if="${activeSection == 'file-upload'}" id="file-upload" class="settings-section active"
                  hx-get="/import/file-upload-content" hx-trigger="load once">

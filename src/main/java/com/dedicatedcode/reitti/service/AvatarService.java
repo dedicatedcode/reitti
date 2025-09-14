@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.service;
 
-import com.dedicatedcode.reitti.controller.UserSettingsController;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;

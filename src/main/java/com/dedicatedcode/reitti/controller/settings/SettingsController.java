@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.controller;
+package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.PlaceInfo;
@@ -161,10 +161,10 @@ public class SettingsController {
             case "about-section":
                 getAboutContent(model);
                 break;
-            case "job-status":
-            default:
-                getQueueStatsContent(model);
-                break;
+//            case "job-status":
+//            default:
+//                getQueueStatsContent(model);
+//                break;
         }
         
         return "settings";
@@ -378,7 +378,16 @@ public class SettingsController {
     @GetMapping("/queue-stats-content")
     public String getQueueStatsContent(Model model) {
         model.addAttribute("queueStats", queueStatsService.getQueueStats());
-        return "fragments/settings :: queue-stats-content";
+        return "settings/job-status :: queue-stats-content";
+    }
+
+    @GetMapping("/job-status")
+    public String getJobStatus(@AuthenticationPrincipal User user, Model model) {
+        model.addAttribute("activeSection", "job-status");
+        model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
+        model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+        model.addAttribute("queueStats", queueStatsService.getQueueStats());
+        return "settings/job-status";
     }
 
     @GetMapping("/integrations-content")
