@@ -1075,6 +1075,11 @@
                 <div style="font-weight: bold; color: #ffc107;" th:text="#{integrations.data.quality.status.fluctuating.frequency}">⚠️ Fluctuating Frequency</div>
                 <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.status.fluctuating.frequency.desc}">Tracking intervals vary significantly, which may affect accuracy</div>
             </div>
+            
+            <div th:unless="${dataQuality.hasFluctuatingFrequency}" class="alert alert-info">
+                <div style="font-weight: bold; color: #00ff00;" th:text="#{integrations.data.quality.status.good.consistency}">✅ Good Consistency</div>
+                <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.status.good.consistency.desc}">Tracking intervals are consistent and stable</div>
+            </div>
         </div>
 
         <!-- Recommendations -->
