@@ -192,6 +192,19 @@
                     </a>
                 </div>
 
+                <div style="margin-top: 20px; padding: 15px; background-color: rgba(255,255,255,0.1); border-radius: 4px;" id="data-quality">
+                    <h4 style="margin: 0 0 10px 0; color: var(--color-accent);" th:text="#{integrations.data.quality.title}">Data Quality Verification</h4>
+                    <p style="margin-bottom: 15px; color: var(--color-text-white);" th:text="#{integrations.data.quality.description}">Check the quality and frequency of your incoming location data to ensure optimal tracking performance.</p>
+                    <button class="btn" 
+                            id="data-quality-btn"
+                            hx-get="/settings/data-quality-content" 
+                            hx-target="#integrations"
+                            hx-swap="innerHTML"
+                            th:text="#{integrations.data.quality.button}">
+                        Verify Data Quality
+                    </button>
+                </div>
+
             </div>
         </details>
         <details th:attr="open=${openSection == 'external-data-stores' ? 'open' : null}">
@@ -973,6 +986,134 @@
     </div>
 </div>
 
+<!-- Data Quality Content Fragment -->
+<div th:fragment="data-quality-content">
+    <h2 style="color: var(--color-highlight); margin-bottom: 20px;" th:text="#{integrations.data.quality.report.title}">📊 Data Quality Report</h2>
+
+    <div th:if="${errorMessage}" class="alert alert-danger" style="display: block; margin-bottom: 20px;">
+        <span th:text="${errorMessage}">Error loading data quality information</span>
+    </div>
+    
+    <div th:if="${dataQuality}" style="color: var(--color-text-white);">
+        <!-- Overall Status -->
+        <div style="margin-bottom: 25px; padding: 20px; background-color: rgba(255,255,255,0.1); border-radius: 8px;">
+            <h3 style="margin: 0 0 15px 0; color: var(--color-accent);" th:text="#{integrations.data.quality.overall.title}">📈 Overall Data Quality</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div>
+                    <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.total.points}">Total Location Points</div>
+                    <div style="font-size: 1.5em; font-weight: bold;" th:text="${dataQuality.totalPoints}">0</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.last.24h}">Last 24 Hours</div>
+                    <div style="font-size: 1.5em; font-weight: bold;" th:text="${dataQuality.pointsLast24h}">0</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.last.7d}">Last 7 Days</div>
+                    <div style="font-size: 1.5em; font-weight: bold;" th:text="${dataQuality.pointsLast7d}">0</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.avg.per.day}">Average per Day</div>
+                    <div style="font-size: 1.5em; font-weight: bold;" th:text="${dataQuality.avgPointsPerDay}">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Freshness -->
+        <div style="margin-bottom: 25px; padding: 20px; background-color: rgba(255,255,255,0.1); border-radius: 8px;">
+            <h3 style="margin: 0 0 15px 0; color: var(--color-accent);" th:text="#{integrations.data.quality.freshness.title}">🕒 Data Freshness</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                <div>
+                    <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.latest.point}">Latest Point Received</div>
+                    <div style="font-size: 1.2em;" th:text="${dataQuality.latestPointTime ?: #messages.msg('integrations.data.quality.no.data')}">Never</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.time.since}">Time Since Last Point</div>
+                    <div style="font-size: 1.2em;" th:text="${dataQuality.timeSinceLastPoint ?: 'N/A'}">N/A</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tracking Quality -->
+        <div style="margin-bottom: 25px; padding: 20px; background-color: rgba(255,255,255,0.1); border-radius: 8px;">
+            <h3 style="margin: 0 0 15px 0; color: var(--color-accent);" th:text="#{integrations.data.quality.tracking.title}">📍 Tracking Quality</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div>
+                    <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.avg.accuracy}">Average Accuracy</div>
+                    <div style="font-size: 1.2em;" th:text="${dataQuality.avgAccuracy != null ? dataQuality.avgAccuracy + 'm' : 'N/A'}">N/A</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.good.accuracy}">Points with Good Accuracy (&lt;50m)</div>
+                    <div style="font-size: 1.2em;" th:text="${dataQuality.goodAccuracyPercentage != null ? dataQuality.goodAccuracyPercentage + '%' : 'N/A'}">N/A</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.avg.interval}">Average Interval</div>
+                    <div style="font-size: 1.2em;" th:text="${dataQuality.avgInterval ?: 'N/A'}">N/A</div>
+                </div>
+            </div>
+        </div>
+        <!-- Status Indicators -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+            <div th:if="${dataQuality.isActivelyTracking}" class="alert alert-info">
+                <div style="font-weight: bold; color: #00ff00;" th:text="#{integrations.data.quality.status.actively.tracking}">✅ Actively Tracking</div>
+                <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.status.actively.tracking.desc}">Location data is being received regularly</div>
+            </div>
+            <div th:unless="${dataQuality.isActivelyTracking}" class="alert alert-danger">
+                <div style="font-weight: bold; color: #ff0000;" th:text="#{integrations.data.quality.status.not.tracking}">❌ Not Actively Tracking</div>
+                <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.status.not.tracking.desc}">No recent location data received</div>
+            </div>
+            
+            <div th:if="${dataQuality.hasGoodFrequency}" class="alert alert-info">
+                <div style="font-weight: bold; color: #00ff00;" th:text="#{integrations.data.quality.status.good.frequency}">✅ Good Frequency</div>
+                <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.status.good.frequency.desc}">Location points are frequent enough for accurate tracking</div>
+            </div>
+            <div th:unless="${dataQuality.hasGoodFrequency}" class="alert alert-warning">
+                <div style="font-weight: bold; color: #ffc107;" th:text="#{integrations.data.quality.status.low.frequency}">⚠️ Low Frequency</div>
+                <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.status.low.frequency.desc}">Consider increasing tracking frequency for better accuracy</div>
+            </div>
+            
+            <div th:if="${dataQuality.hasFluctuatingFrequency}" class="alert alert-warning">
+                <div style="font-weight: bold; color: #ffc107;" th:text="#{integrations.data.quality.status.fluctuating.frequency}">⚠️ Fluctuating Frequency</div>
+                <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.status.fluctuating.frequency.desc}">Tracking intervals vary significantly, which may affect accuracy</div>
+            </div>
+            
+            <div th:unless="${dataQuality.hasFluctuatingFrequency}" class="alert alert-info">
+                <div style="font-weight: bold; color: #00ff00;" th:text="#{integrations.data.quality.status.good.consistency}">✅ Good Consistency</div>
+                <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.status.good.consistency.desc}">Tracking intervals are consistent and stable</div>
+            </div>
+        </div>
+
+        <!-- Recommendations -->
+        <div th:if="${dataQuality.recommendations != null && !dataQuality.recommendations.isEmpty()}" class="alert alert-warning">
+            <h3 style="margin: 0 0 15px 0; color: #ffc107;" th:text="#{integrations.data.quality.recommendations.title}">💡 Recommendations</h3>
+            <ul style="margin: 0; padding-left: 20px;">
+                <li th:each="recommendation : ${dataQuality.recommendations}"
+                    th:text="${recommendation}"
+                    style="margin-bottom: 8px; color: var(--color-text-white);">
+                    Recommendation
+                </li>
+            </ul>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="margin-top: 25px; text-align: center; display: flex; gap: 15px; justify-content: center;">
+            <button class="btn" 
+                    hx-get="/settings/data-quality-content" 
+                    hx-target="#integrations" 
+                    hx-swap="innerHTML"
+                    th:text="#{integrations.data.quality.refresh}">
+                Refresh Data
+            </button>
+            <button class="btn btn-secondary" 
+                    hx-get="/settings/integrations-content" 
+                    hx-target="#integrations" 
+                    hx-swap="innerHTML"
+                    th:text="#{form.close}">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Geocoding Response Content Fragment -->
 <div th:fragment="geocoding-response-content">
     <h2 th:text="#{places.geocoding.response.title(${place.name()})}">Geocoding Response for Place</h2>
@@ -1025,7 +1166,7 @@
     </div>
 </div>
 
-<script>
+
 // Avatar selection JavaScript
 document.addEventListener('DOMContentLoaded', function() {
     // Clear file input when default avatar is selected

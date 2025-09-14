@@ -6,11 +6,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.web.servlet.error.ErrorController;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 public class CustomErrorController implements ErrorController {
@@ -19,7 +22,7 @@ public class CustomErrorController implements ErrorController {
     private static final List<String> IGNORED_PATHS = List.of("/favicon.ico", "/js/", "/img/");
 
     @RequestMapping("/error")
-    public String handleError(HttpServletRequest request, Model model) {
+    public Object handleError(HttpServletRequest request, Model model) {
         Object status = request.getAttribute(RequestDispatcher.ERROR_STATUS_CODE);
         Object errorMessage = request.getAttribute(RequestDispatcher.ERROR_MESSAGE);
         Object exception = request.getAttribute(RequestDispatcher.ERROR_EXCEPTION);
@@ -28,6 +31,55 @@ public class CustomErrorController implements ErrorController {
         if (IGNORED_PATHS.stream().anyMatch(requestUri::startsWith)) {
             return null;
         }
+
+        // Check if this is an API request
+        if (requestUri.startsWith("/api")) {
+            return handleApiError(status, errorMessage, exception, requestUri);
+        }
+
+        // Handle web requests with HTML error page
+        return handleWebError(status, errorMessage, exception, requestUri, request, model);
+    }
+
+    private ResponseEntity<Map<String, Object>> handleApiError(Object status, Object errorMessage, Object exception, String requestUri) {
+        Integer statusCode = status != null ? Integer.valueOf(status.toString()) : 500;
+        String message = errorMessage != null ? errorMessage.toString() : "An error occurred";
+
+        // Log the error
+        log.error("API Error {} occurred for request URI: {}, message: {}",
+                statusCode, requestUri, errorMessage, (Throwable) exception);
+
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("success", false);
+        errorResponse.put("error", message);
+        errorResponse.put("status", statusCode);
+
+        // Add specific error messages for common status codes
+        switch (statusCode) {
+            case 404:
+                errorResponse.put("error", "The requested resource could not be found.");
+                break;
+            case 403:
+                errorResponse.put("error", "You don't have permission to access this resource.");
+                break;
+            case 401:
+                errorResponse.put("error", "Authentication required.");
+                break;
+            case 405:
+                errorResponse.put("error", "Method not allowed.");
+                break;
+            case 415:
+                errorResponse.put("error", "Unsupported media type.");
+                break;
+            case 500:
+                errorResponse.put("error", "An internal server error occurred.");
+                break;
+        }
+
+        return ResponseEntity.status(statusCode).body(errorResponse);
+    }
+
+    private String handleWebError(Object status, Object errorMessage, Object exception, String requestUri,HttpServletRequest request, Model model) {
         if (status != null) {
             Integer statusCode = Integer.valueOf(status.toString());
             model.addAttribute("status", statusCode);

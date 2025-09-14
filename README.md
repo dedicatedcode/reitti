@@ -229,6 +229,7 @@ The included `docker-compose.yml` provides a complete setup with:
 | `APP_UID`                  | User ID to run the application as                                                                                                                                               | 1000           | 1000                                      |
 | `APP_GID`                  | Group ID to run the application as                                                                                                                                              | 1000           | 1000                                      |
 | `JAVA_OPTS`                | JVM options                                                                                                                                                                     |                |                                           |
+| `LOGGING_LEVEL`            | Used to adjust the verbosity of the logs                                                                                                                                        | INFO           | DEBUG                                     |
 
 ### Tags
 

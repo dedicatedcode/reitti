@@ -83,12 +83,14 @@ public class ProcessingPipelineTrigger {
             Instant earliest = currentPoints.getFirst().getTimestamp();
             Instant latest = currentPoints.getLast().getTimestamp();
             log.debug("Scheduling stay detection event for user [{}] and points between [{}] and [{}]", user.getId(), earliest, latest);
+
+            currentPoints.forEach(RawLocationPoint::markProcessed);
+            rawLocationPointJdbcService.bulkUpdateProcessedStatus(currentPoints);
+
             this.rabbitTemplate
                     .convertAndSend(RabbitMQConfig.EXCHANGE_NAME,
                             RabbitMQConfig.STAY_DETECTION_ROUTING_KEY,
                             new LocationProcessEvent(user.getUsername(), earliest, latest));
-            currentPoints.forEach(RawLocationPoint::markProcessed);
-            rawLocationPointJdbcService.bulkUpdateProcessedStatus(currentPoints);
             i++;
         }
     }
