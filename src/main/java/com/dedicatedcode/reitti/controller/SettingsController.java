@@ -945,18 +945,35 @@ public class SettingsController {
             }
         }
 
-        // Calculate average interval between points
+        // Calculate average interval between points and check for fluctuation
         String avgInterval = null;
         long avgIntervalSeconds = -1;
+        boolean hasFluctuatingFrequency = false;
+        
         if (allPoints.size() > 1) {
+            List<Long> intervals = new ArrayList<>();
             long totalIntervalSeconds = 0;
+            
             for (int i = 1; i < allPoints.size(); i++) {
-                totalIntervalSeconds += java.time.Duration.between(
+                long intervalSeconds = java.time.Duration.between(
                     allPoints.get(i-1).getTimestamp(), 
                     allPoints.get(i).getTimestamp()
                 ).getSeconds();
+                intervals.add(intervalSeconds);
+                totalIntervalSeconds += intervalSeconds;
             }
-            avgIntervalSeconds = totalIntervalSeconds / (allPoints.size() - 1);
+            
+            avgIntervalSeconds = totalIntervalSeconds / intervals.size();
+            
+            // Check for frequency fluctuation (coefficient of variation > 1.0)
+            if (intervals.size() > 2) {
+                double variance = intervals.stream()
+                    .mapToDouble(interval -> Math.pow(interval - avgIntervalSeconds, 2))
+                    .average().orElse(0.0);
+                double stdDev = Math.sqrt(variance);
+                double coefficientOfVariation = avgIntervalSeconds > 0 ? stdDev / avgIntervalSeconds : 0;
+                hasFluctuatingFrequency = coefficientOfVariation > 1.0;
+            }
             
             if (avgIntervalSeconds < 60) {
                 avgInterval = avgIntervalSeconds + " seconds";
@@ -985,12 +1002,15 @@ public class SettingsController {
         if (avgAccuracy != null && avgAccuracy > 100) {
             recommendations.add(getMessage("integrations.data.quality.recommendation.very.poor.accuracy"));
         }
+        if (hasFluctuatingFrequency) {
+            recommendations.add(getMessage("integrations.data.quality.recommendation.fluctuating.frequency"));
+        }
 
         return new DataQualityReport(
             totalPoints, pointsLast24h, pointsLast7d, avgPointsPerDay,
             latestPointTime, timeSinceLastPoint,
             avgAccuracy, goodAccuracyPercentage, avgInterval,
-            isActivelyTracking, hasGoodFrequency, recommendations
+            isActivelyTracking, hasGoodFrequency, hasFluctuatingFrequency, recommendations
         );
     }
 
@@ -1007,12 +1027,13 @@ public class SettingsController {
         private final String avgInterval;
         private final boolean isActivelyTracking;
         private final boolean hasGoodFrequency;
+        private final boolean hasFluctuatingFrequency;
         private final List<String> recommendations;
 
         public DataQualityReport(long totalPoints, int pointsLast24h, int pointsLast7d, int avgPointsPerDay,
                                String latestPointTime, String timeSinceLastPoint, Double avgAccuracy,
                                Integer goodAccuracyPercentage, String avgInterval, boolean isActivelyTracking,
-                               boolean hasGoodFrequency, List<String> recommendations) {
+                               boolean hasGoodFrequency, boolean hasFluctuatingFrequency, List<String> recommendations) {
             this.totalPoints = totalPoints;
             this.pointsLast24h = pointsLast24h;
             this.pointsLast7d = pointsLast7d;
@@ -1024,6 +1045,7 @@ public class SettingsController {
             this.avgInterval = avgInterval;
             this.isActivelyTracking = isActivelyTracking;
             this.hasGoodFrequency = hasGoodFrequency;
+            this.hasFluctuatingFrequency = hasFluctuatingFrequency;
             this.recommendations = recommendations;
         }
 
@@ -1039,6 +1061,7 @@ public class SettingsController {
         public String getAvgInterval() { return avgInterval; }
         public boolean isActivelyTracking() { return isActivelyTracking; }
         public boolean isHasGoodFrequency() { return hasGoodFrequency; }
+        public boolean isHasFluctuatingFrequency() { return hasFluctuatingFrequency; }
         public List<String> getRecommendations() { return recommendations; }
     }
 

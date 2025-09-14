@@ -1070,6 +1070,11 @@
                 <div style="font-weight: bold; color: #ffc107;" th:text="#{integrations.data.quality.status.low.frequency}">⚠️ Low Frequency</div>
                 <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.status.low.frequency.desc}">Consider increasing tracking frequency for better accuracy</div>
             </div>
+            
+            <div th:if="${dataQuality.hasFluctuatingFrequency}" class="alert alert-warning">
+                <div style="font-weight: bold; color: #ffc107;" th:text="#{integrations.data.quality.status.fluctuating.frequency}">⚠️ Fluctuating Frequency</div>
+                <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.status.fluctuating.frequency.desc}">Tracking intervals vary significantly, which may affect accuracy</div>
+            </div>
         </div>
 
         <!-- Recommendations -->
