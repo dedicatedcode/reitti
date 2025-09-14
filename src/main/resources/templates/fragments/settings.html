@@ -198,9 +198,8 @@
                     <button class="btn" 
                             id="data-quality-btn"
                             hx-get="/settings/data-quality-content" 
-                            hx-target="#data-quality-modal-content" 
+                            hx-target="#integrations" 
                             hx-swap="innerHTML"
-                            onclick="openDataQualityModal()"
                             th:text="#{integrations.data.quality.button}">
                         Verify Data Quality
                     </button>
@@ -1039,43 +1038,6 @@
     </div>
 </div>
 
-<!-- Data Quality Modal -->
-<div id="data-quality-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); z-index: 10000; backdrop-filter: blur(5px);">
-    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: var(--color-background-dark); border-radius: 8px; padding: 30px; max-width: 800px; width: 90%; max-height: 80%; overflow-y: auto; border: 1px solid var(--color-highlight);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h2 style="margin: 0; color: var(--color-highlight);">📊 Data Quality Report</h2>
-            <button onclick="closeDataQualityModal()" style="background: none; border: none; color: var(--color-text-white); font-size: 24px; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">&times;</button>
-        </div>
-        <div id="data-quality-modal-content">
-            <!-- Content will be loaded here -->
-        </div>
-    </div>
-</div>
-
-<script>
-function openDataQualityModal() {
-    document.getElementById('data-quality-modal').style.display = 'block';
-    document.body.style.overflow = 'hidden';
-}
-
-function closeDataQualityModal() {
-    document.getElementById('data-quality-modal').style.display = 'none';
-    document.body.style.overflow = 'auto';
-}
-
-// Close modal when clicking outside
-document.getElementById('data-quality-modal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeDataQualityModal();
-    }
-});
-
-// Close modal with Escape key
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && document.getElementById('data-quality-modal').style.display === 'block') {
-        closeDataQualityModal();
-    }
-});
 
 // Avatar selection JavaScript
 document.addEventListener('DOMContentLoaded', function() {
