@@ -967,8 +967,9 @@ public class SettingsController {
             
             // Check for frequency fluctuation (coefficient of variation > 1.0)
             if (intervals.size() > 2) {
+                long finalAvgIntervalSeconds = avgIntervalSeconds;
                 double variance = intervals.stream()
-                    .mapToDouble(interval -> Math.pow(interval - avgIntervalSeconds, 2))
+                    .mapToDouble(interval -> Math.pow(interval - finalAvgIntervalSeconds, 2))
                     .average().orElse(0.0);
                 double stdDev = Math.sqrt(variance);
                 double coefficientOfVariation = avgIntervalSeconds > 0 ? stdDev / avgIntervalSeconds : 0;
