@@ -882,6 +882,165 @@ public class SettingsController {
         return "fragments/settings :: about-content";
     }
 
+    @GetMapping("/data-quality-content")
+    public String getDataQualityContent(@AuthenticationPrincipal User user, Model model) {
+        try {
+            DataQualityReport dataQuality = generateDataQualityReport(user);
+            model.addAttribute("dataQuality", dataQuality);
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", getMessage("integrations.data.quality.error", e.getMessage()));
+        }
+        return "fragments/settings :: data-quality-content";
+    }
+
+    private DataQualityReport generateDataQualityReport(User user) {
+        java.time.Instant now = java.time.Instant.now();
+        java.time.Instant oneDayAgo = now.minus(24, java.time.temporal.ChronoUnit.HOURS);
+        java.time.Instant sevenDaysAgo = now.minus(7, java.time.temporal.ChronoUnit.DAYS);
+
+        // Get location points for different time periods
+        List<RawLocationPoint> allPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(
+            user, sevenDaysAgo, now);
+        
+        List<RawLocationPoint> last24hPoints = allPoints.stream()
+            .filter(point -> point.getTimestamp().isAfter(oneDayAgo))
+            .collect(Collectors.toList());
+
+        // Calculate basic statistics
+        long totalPoints = rawLocationPointJdbcService.countByUser(user);
+        int pointsLast24h = last24hPoints.size();
+        int pointsLast7d = allPoints.size();
+        int avgPointsPerDay = pointsLast7d > 0 ? pointsLast7d / 7 : 0;
+
+        // Find latest point
+        String latestPointTime = null;
+        String timeSinceLastPoint = null;
+        if (!allPoints.isEmpty()) {
+            RawLocationPoint latestPoint = allPoints.get(allPoints.size() - 1);
+            latestPointTime = latestPoint.getTimestamp().toString();
+            
+            long minutesSince = java.time.Duration.between(latestPoint.getTimestamp(), now).toMinutes();
+            if (minutesSince < 60) {
+                timeSinceLastPoint = minutesSince + " minutes ago";
+            } else if (minutesSince < 1440) {
+                timeSinceLastPoint = (minutesSince / 60) + " hours ago";
+            } else {
+                timeSinceLastPoint = (minutesSince / 1440) + " days ago";
+            }
+        }
+
+        // Calculate accuracy statistics
+        Double avgAccuracy = null;
+        Integer goodAccuracyPercentage = null;
+        if (!allPoints.isEmpty()) {
+            List<Double> accuracies = allPoints.stream()
+                .filter(point -> point.getAccuracyMeters() != null)
+                .map(RawLocationPoint::getAccuracyMeters)
+                .collect(Collectors.toList());
+            
+            if (!accuracies.isEmpty()) {
+                avgAccuracy = accuracies.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+                long goodAccuracyCount = accuracies.stream().filter(acc -> acc < 50.0).count();
+                goodAccuracyPercentage = (int) ((goodAccuracyCount * 100) / accuracies.size());
+            }
+        }
+
+        // Calculate average interval between points
+        String avgInterval = null;
+        if (allPoints.size() > 1) {
+            long totalIntervalSeconds = 0;
+            for (int i = 1; i < allPoints.size(); i++) {
+                totalIntervalSeconds += java.time.Duration.between(
+                    allPoints.get(i-1).getTimestamp(), 
+                    allPoints.get(i).getTimestamp()
+                ).getSeconds();
+            }
+            long avgIntervalSeconds = totalIntervalSeconds / (allPoints.size() - 1);
+            
+            if (avgIntervalSeconds < 60) {
+                avgInterval = avgIntervalSeconds + " seconds";
+            } else if (avgIntervalSeconds < 3600) {
+                avgInterval = (avgIntervalSeconds / 60) + " minutes";
+            } else {
+                avgInterval = (avgIntervalSeconds / 3600) + " hours";
+            }
+        }
+
+        // Determine status flags
+        boolean isActivelyTracking = pointsLast24h > 0;
+        boolean hasGoodFrequency = avgPointsPerDay >= 100; // At least ~100 points per day
+
+        // Generate recommendations
+        List<String> recommendations = new ArrayList<>();
+        if (!isActivelyTracking) {
+            recommendations.add("No location data received in the last 24 hours. Check your mobile app configuration.");
+        }
+        if (avgPointsPerDay < 50) {
+            recommendations.add("Low tracking frequency detected. Consider reducing the tracking interval in your mobile app.");
+        }
+        if (goodAccuracyPercentage != null && goodAccuracyPercentage < 70) {
+            recommendations.add("Many location points have poor accuracy. Ensure GPS is enabled and avoid tracking indoors.");
+        }
+        if (avgAccuracy != null && avgAccuracy > 100) {
+            recommendations.add("Average accuracy is quite poor. Check if your device has a clear view of the sky for better GPS reception.");
+        }
+
+        return new DataQualityReport(
+            totalPoints, pointsLast24h, pointsLast7d, avgPointsPerDay,
+            latestPointTime, timeSinceLastPoint,
+            avgAccuracy, goodAccuracyPercentage, avgInterval,
+            isActivelyTracking, hasGoodFrequency, recommendations
+        );
+    }
+
+    // Data class for the quality report
+    public static class DataQualityReport {
+        private final long totalPoints;
+        private final int pointsLast24h;
+        private final int pointsLast7d;
+        private final int avgPointsPerDay;
+        private final String latestPointTime;
+        private final String timeSinceLastPoint;
+        private final Double avgAccuracy;
+        private final Integer goodAccuracyPercentage;
+        private final String avgInterval;
+        private final boolean isActivelyTracking;
+        private final boolean hasGoodFrequency;
+        private final List<String> recommendations;
+
+        public DataQualityReport(long totalPoints, int pointsLast24h, int pointsLast7d, int avgPointsPerDay,
+                               String latestPointTime, String timeSinceLastPoint, Double avgAccuracy,
+                               Integer goodAccuracyPercentage, String avgInterval, boolean isActivelyTracking,
+                               boolean hasGoodFrequency, List<String> recommendations) {
+            this.totalPoints = totalPoints;
+            this.pointsLast24h = pointsLast24h;
+            this.pointsLast7d = pointsLast7d;
+            this.avgPointsPerDay = avgPointsPerDay;
+            this.latestPointTime = latestPointTime;
+            this.timeSinceLastPoint = timeSinceLastPoint;
+            this.avgAccuracy = avgAccuracy;
+            this.goodAccuracyPercentage = goodAccuracyPercentage;
+            this.avgInterval = avgInterval;
+            this.isActivelyTracking = isActivelyTracking;
+            this.hasGoodFrequency = hasGoodFrequency;
+            this.recommendations = recommendations;
+        }
+
+        // Getters
+        public long getTotalPoints() { return totalPoints; }
+        public int getPointsLast24h() { return pointsLast24h; }
+        public int getPointsLast7d() { return pointsLast7d; }
+        public int getAvgPointsPerDay() { return avgPointsPerDay; }
+        public String getLatestPointTime() { return latestPointTime; }
+        public String getTimeSinceLastPoint() { return timeSinceLastPoint; }
+        public Double getAvgAccuracy() { return avgAccuracy; }
+        public Integer getGoodAccuracyPercentage() { return goodAccuracyPercentage; }
+        public String getAvgInterval() { return avgInterval; }
+        public boolean isActivelyTracking() { return isActivelyTracking; }
+        public boolean isHasGoodFrequency() { return hasGoodFrequency; }
+        public List<String> getRecommendations() { return recommendations; }
+    }
+
     private void getExportDataContent(@AuthenticationPrincipal User user, Model model) {
         // Set default date range to today
         java.time.LocalDate today = java.time.LocalDate.now();
