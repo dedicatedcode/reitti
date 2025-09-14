@@ -76,13 +76,14 @@ public class AvatarService {
         String trimmed = displayName.trim();
 
 
-        //only take first chars of the first two words AI!
         if (trimmed.contains(" ")) {
             StringBuilder initials = new StringBuilder();
             String[] words = trimmed.split("\\s+");
+            int wordCount = 0;
             for (String word : words) {
-                if (!word.isEmpty()) {
+                if (!word.isEmpty() && wordCount < 2) {
                     initials.append(Character.toUpperCase(word.charAt(0)));
+                    wordCount++;
                 }
             }
             return initials.toString();
