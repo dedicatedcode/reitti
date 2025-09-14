@@ -160,8 +160,12 @@ public class RawLocationPointJdbcService {
     }
 
     public long count() {
-        String sql = "SELECT COUNT(*) FROM raw_location_points";
-        return jdbcTemplate.queryForObject(sql, Long.class);
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM raw_location_points", Long.class);
+    }
+
+
+    public long countByUser(User user) {
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM raw_location_points WHERE user_id = ?", Long.class, user.getId());
     }
 
     public void bulkInsert(User user, List<LocationDataRequest.LocationPoint> points) {
@@ -214,6 +218,7 @@ public class RawLocationPointJdbcService {
         String sql = "DELETE FROM raw_location_points WHERE user_id = ?";
         jdbcTemplate.update(sql, user.getId());
     }
+
 
     public static class ClusteredPoint {
         private final RawLocationPoint point;

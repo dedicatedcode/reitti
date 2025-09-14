@@ -192,13 +192,13 @@
                     </a>
                 </div>
 
-                <div style="margin-top: 20px; padding: 15px; background-color: rgba(255,255,255,0.1); border-radius: 4px;">
-                    <h4 style="margin: 0 0 10px 0; color: var(--color-accent);">📊 Data Quality Verification</h4>
+                <div style="margin-top: 20px; padding: 15px; background-color: rgba(255,255,255,0.1); border-radius: 4px;" id="data-quality">
+                    <h4 style="margin: 0 0 10px 0; color: var(--color-accent);">Data Quality Verification</h4>
                     <p style="margin-bottom: 15px; color: var(--color-text-white);">Check the quality and frequency of your incoming location data to ensure optimal tracking performance.</p>
                     <button class="btn" 
                             id="data-quality-btn"
                             hx-get="/settings/data-quality-content" 
-                            hx-target="#integrations" 
+                            hx-target="#data-quality"
                             hx-swap="innerHTML"
                             th:text="#{integrations.data.quality.button}">
                         Verify Data Quality
