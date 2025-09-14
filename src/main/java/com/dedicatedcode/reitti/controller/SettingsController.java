@@ -210,7 +210,7 @@ public class SettingsController {
         model.addAttribute("isEmpty", places.isEmpty());
         model.addAttribute("placeTypes", SignificantPlace.PlaceType.values());
 
-        return "fragments/settings :: places-content";
+        return "fragments/places :: places-content";
     }
 
     @PostMapping("/tokens")
@@ -372,7 +372,7 @@ public class SettingsController {
             return getPlacesContent(user, page, model);
         }
         
-        return "fragments/settings :: geocoding-response-content";
+        return "fragments/places :: geocoding-response-content";
     }
 
     @GetMapping("/queue-stats-content")
