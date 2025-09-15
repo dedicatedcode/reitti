@@ -110,9 +110,6 @@ public class SettingsController {
         
         // Load the content for the active section immediately
         switch (section) {
-            case "api-tokens":
-                getApiTokensContent(user, model);
-                break;
             case "sharing":
                 getSharingContent(user, model);
                 break;
@@ -138,14 +135,6 @@ public class SettingsController {
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
         return "settings/import-data";
-    }
-
-    @GetMapping("/api-tokens-content")
-    public String getApiTokensContent(@AuthenticationPrincipal User user, Model model) {
-        model.addAttribute("tokens", apiTokenService.getTokensForUser(user));
-        model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(user, 10));
-        model.addAttribute("maxUsagesToShow", 10);
-        return "fragments/api-tokens :: api-tokens-content";
     }
 
     @GetMapping("/sharing-content")
@@ -181,52 +170,6 @@ public class SettingsController {
         model.addAttribute("placeTypes", SignificantPlace.PlaceType.values());
 
         return "fragments/places :: places-content";
-    }
-
-    @PostMapping("/tokens")
-    public String createToken(Authentication authentication, @RequestParam String name, Model model) {
-        String username = authentication.getName();
-        User user = userJdbcService.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-
-        try {
-            apiTokenService.createToken(user, name);
-            model.addAttribute("successMessage", getMessage("message.success.token.created"));
-        } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("message.error.token.creation", e.getMessage()));
-        }
-
-        // Get updated token list and add to model
-        List<ApiToken> tokens = apiTokenService.getTokensForUser(user);
-        model.addAttribute("tokens", tokens);
-        model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(user, 10));
-        model.addAttribute("maxUsagesToShow", 10);
-
-        // Return the api-tokens-content fragment
-        return "fragments/api-tokens :: api-tokens-content";
-    }
-
-    @PostMapping("/tokens/{tokenId}/delete")
-    public String deleteToken(@PathVariable Long tokenId, Authentication authentication, Model model) {
-        String username = authentication.getName();
-        User user = userJdbcService.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-
-        try {
-            apiTokenService.deleteToken(tokenId);
-            model.addAttribute("successMessage", getMessage("message.success.token.deleted"));
-        } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("message.error.token.deletion", e.getMessage()));
-        }
-
-        // Get updated token list and add to model
-        List<ApiToken> tokens = apiTokenService.getTokensForUser(user);
-        model.addAttribute("tokens", tokens);
-        model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(user, 10));
-        model.addAttribute("maxUsagesToShow", 10);
-
-        // Return the api-tokens-content fragment
-        return "fragments/api-tokens :: api-tokens-content";
     }
 
 
