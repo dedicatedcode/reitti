@@ -85,6 +85,42 @@ public class PlacesSettingsController {
         return "fragments/places :: places-content";
     }
 
+    @GetMapping("/{placeId}/edit")
+    public String editPlace(@PathVariable Long placeId,
+                            @RequestParam(defaultValue = "0") int page,
+                            Authentication authentication,
+                            Model model) {
+
+        User user = (User) authentication.getPrincipal();
+        if (!this.placeJdbcService.exists(user, placeId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+
+        try {
+            SignificantPlace place = placeJdbcService.findById(placeId).orElseThrow();
+
+            // Convert to PlaceInfo for the template
+            PlaceInfo placeInfo = new PlaceInfo(
+                    place.getId(),
+                    place.getName(),
+                    place.getAddress(),
+                    place.getType(),
+                    place.getLatitudeCentroid(),
+                    place.getLongitudeCentroid()
+            );
+
+            model.addAttribute("place", placeInfo);
+            model.addAttribute("currentPage", page);
+            model.addAttribute("placeTypes", SignificantPlace.PlaceType.values());
+
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", getMessage("message.error.place.update", e.getMessage()));
+            return getPlacesContent(user, page, model);
+        }
+
+        return "fragments/places :: edit-place-content";
+    }
+
     @PostMapping("/{placeId}/update")
     public String updatePlace(@PathVariable Long placeId,
                               @RequestParam String name,
@@ -109,20 +145,20 @@ public class PlacesSettingsController {
                         updatedPlace = updatedPlace.withType(placeType);
                     } catch (IllegalArgumentException e) {
                         model.addAttribute("errorMessage", getMessage("message.error.place.update", "Invalid place type"));
-                        return getPlacesContent(user, page, model);
+                        return editPlace(placeId, page, authentication, model);
                     }
                 }
 
                 placeJdbcService.update(updatedPlace);
                 model.addAttribute("successMessage", getMessage("message.success.place.updated"));
+                return editPlace(placeId, page, authentication, model);
             } catch (Exception e) {
                 model.addAttribute("errorMessage", getMessage("message.error.place.update", e.getMessage()));
+                return editPlace(placeId, page, authentication, model);
             }
         } else {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
-
-        return getPlacesContent(user, page, model);
     }
 
     @PostMapping("/{placeId}/geocode")
