@@ -29,3 +29,6 @@ replay_pid*
 
 *secrets.properties
 *oidc.properties
+
+# Local docker-compose override
+docker-compose.override.yml
