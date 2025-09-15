@@ -12,7 +12,23 @@
 <div class="settings-container">
     <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
     <div class="settings-content-area">
-
+        <div id="about-section" class="settings-section active">
+            <h2 th:text="#{about.title}">About Application</h2>
+            <div class="settings-card">
+                <p>
+                    <strong th:text="#{about.app.version}">Application Version:</strong>
+                    <span th:text="${buildVersion}">N/A</span>
+                </p>
+                <p>
+                    <strong th:text="#{about.git.commit.details}">Commit Details:</strong>
+                    <span th:text="${gitCommitDetails}">N/A</span>
+                </p>
+                <p>
+                    <strong th:text="#{about.build.time}">Build Time:</strong>
+                    <span th:text="${buildTime}">N/A</span>
+                </p>
+            </div>
+        </div>
     </div>
 </div>
 </body>

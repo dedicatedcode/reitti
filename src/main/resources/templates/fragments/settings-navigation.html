@@ -37,7 +37,7 @@
            th:classappend="${activeSection == 'sharing'} ? 'active' : ''"
            th:text="#{settings.share.access}">Share Access</a>
 
-        <a href="/settings?section=user-management"
+        <a href="/settings/user-management"
            class="settings-nav-item"
            th:classappend="${activeSection == 'user-management'} ? 'active' : ''"
            th:text="#{settings.user.management}">User Management</a>
@@ -63,7 +63,7 @@
            th:classappend="${activeSection == 'integrations'} ? 'active' : ''"
            th:text="#{settings.integrations}">Integrations</a>
 
-        <a href="/settings?section=about-section" 
+        <a href="/settings/about"
            class="settings-nav-item"
            th:classappend="${activeSection == 'about-section'} ? 'active' : ''"
            th:text="#{settings.about}">About</a>

@@ -88,7 +88,7 @@ public class UserSettingsController {
     public String getUserManagementPage(Authentication authentication, Model model) {
         model.addAttribute("activeSection", "user-management");
         getUsersContent(authentication, model);
-        return "settings";
+        return "settings/user-management";
     }
 
     private String getUserContent(Model model, User currentUser) {

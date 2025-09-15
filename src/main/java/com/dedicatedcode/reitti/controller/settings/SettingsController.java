@@ -3,20 +3,16 @@ package com.dedicatedcode.reitti.controller.settings;
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.PlaceInfo;
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
-import com.dedicatedcode.reitti.model.*;
-import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
+import com.dedicatedcode.reitti.model.Page;
+import com.dedicatedcode.reitti.model.PageRequest;
+import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geocoding.GeocodingResponse;
-import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
-import com.dedicatedcode.reitti.model.integration.OwnTracksRecorderIntegration;
-import com.dedicatedcode.reitti.model.security.ApiToken;
-import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.model.security.UserSettings;
-import com.dedicatedcode.reitti.repository.*;
-import com.dedicatedcode.reitti.service.*;
-import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
-import com.dedicatedcode.reitti.service.integration.OwnTracksRecorderIntegrationService;
+import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
+import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
+import com.dedicatedcode.reitti.service.PlaceService;
+import com.dedicatedcode.reitti.service.QueueStatsService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,14 +21,12 @@ import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.ZoneId;
-import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 
 
@@ -48,29 +42,12 @@ public class SettingsController {
     private final boolean dataManagementEnabled;
     private final MessageSource messageSource;
 
-    private final UserJdbcService userJdbcService;
-    private final UserSettingsJdbcService userSettingsJdbcService;
-    private final AvatarService avatarService;
-    private final VersionService versionService;
-    private final boolean localLoginDisabled;
-    private final boolean oidcEnabled;
-
-    public SettingsController(ApiTokenService apiTokenService,
-                              UserJdbcService userJdbcService,
-                              UserSettingsJdbcService userSettingsJdbcService,
-                              AvatarService avatarService,
-                              QueueStatsService queueStatsService,
+    public SettingsController(QueueStatsService queueStatsService,
                               PlaceService placeService, SignificantPlaceJdbcService placeJdbcService,
                               GeocodingResponseJdbcService geocodingResponseJdbcService,
                               RabbitTemplate rabbitTemplate,
                               @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
-                              MessageSource messageSource,
-                              VersionService versionService,
-                              @Value("${reitti.security.oidc.enabled:false}") boolean oidcEnabled,
-                              @Value("${reitti.security.local-login.disable}") boolean localLoginDisabled) {
-        this.userJdbcService = userJdbcService;
-        this.userSettingsJdbcService = userSettingsJdbcService;
-        this.avatarService = avatarService;
+                              MessageSource messageSource) {
         this.queueStatsService = queueStatsService;
         this.placeService = placeService;
         this.placeJdbcService = placeJdbcService;
@@ -78,9 +55,6 @@ public class SettingsController {
         this.rabbitTemplate = rabbitTemplate;
         this.dataManagementEnabled = dataManagementEnabled;
         this.messageSource = messageSource;
-        this.versionService = versionService;
-        this.oidcEnabled = oidcEnabled;
-        this.localLoginDisabled = localLoginDisabled;
     }
 
     private String getMessage(String key, Object... args) {
@@ -97,13 +71,9 @@ public class SettingsController {
         
         // Load the content for the active section immediately
         switch (section) {
-            case "user-management":
-                return getUserManagementPage(user, model);
+
             case "places-management":
                 getPlacesContent(user, 0, model);
-                break;
-            case "about-section":
-                getAboutContent(model);
                 break;
         }
         
@@ -270,56 +240,4 @@ public class SettingsController {
         model.addAttribute("queueStats", queueStatsService.getQueueStats());
         return "settings/job-status :: queue-stats-content";
     }
-
-
-    @GetMapping("/about-content")
-    public String getAboutContent(Model model) {
-        model.addAttribute("buildVersion", this.versionService.getVersion());
-        model.addAttribute("gitCommitDetails", this.versionService.getCommitDetails());
-        model.addAttribute("buildTime", this.versionService.getBuildTime());
-        return "fragments/settings :: about-content";
-    }
-
-    private String getUserManagementPage(@AuthenticationPrincipal User user, Model model) {
-        if (user.getRole() != Role.ADMIN) {
-            // For non-admin users, show their own form
-            model.addAttribute("userId", user.getId());
-            model.addAttribute("username", user.getUsername());
-            model.addAttribute("displayName", user.getDisplayName());
-            model.addAttribute("selectedRole", user.getRole());
-            model.addAttribute("externallyManaged", user.getExternalId() != null && oidcEnabled);
-            model.addAttribute("externalProfile", user.getProfileUrl());
-            model.addAttribute("localLoginDisabled", this.localLoginDisabled);
-            UserSettings userSettings = userSettingsJdbcService.findByUserId(user.getId()).orElse(UserSettings.defaultSettings(user.getId()));
-            model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
-            model.addAttribute("selectedUnitSystem", userSettings.getUnitSystem().name());
-            model.addAttribute("preferColoredMap", userSettings.isPreferColoredMap());
-            model.addAttribute("homeLatitude", userSettings.getHomeLatitude());
-            model.addAttribute("homeLongitude", userSettings.getHomeLongitude());
-            model.addAttribute("unitSystems", UnitSystem.values());
-            model.addAttribute("isAdmin", false);
-            model.addAttribute("timeZoneOverride", userSettings.getTimeZoneOverride());
-            model.addAttribute("timeDisplayMode", userSettings.getTimeDisplayMode().name());
-            model.addAttribute("availableTimezones", ZoneId.getAvailableZoneIds().stream().sorted());
-            model.addAttribute("availableTimeDisplayModes", TimeDisplayMode.values());
-
-            // Check if user has avatar
-            boolean hasAvatar = this.avatarService.getInfo(user.getId()).isPresent();
-            model.addAttribute("hasAvatar", hasAvatar);
-
-            // Add default avatars to model
-            model.addAttribute("defaultAvatars", Arrays.asList(
-                    "avatar_man.jpg", "avatar_woman.jpg", "avatar_boy.jpg", "avatar_girl.jpg"
-            ));
-        } else {
-            // For admin users, show user list
-            List<User> users = userJdbcService.getAllUsers();
-            model.addAttribute("users", users);
-            model.addAttribute("currentUsername", user.getUsername());
-            model.addAttribute("isAdmin", true);
-        }
-
-        return "settings";
-    }
-
 }
