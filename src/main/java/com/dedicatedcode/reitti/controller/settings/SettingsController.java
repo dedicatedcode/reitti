@@ -7,7 +7,6 @@ import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geocoding.GeocodingResponse;
-import com.dedicatedcode.reitti.model.geocoding.RemoteGeocodeService;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.integration.OwnTracksRecorderIntegration;
 import com.dedicatedcode.reitti.model.security.ApiToken;
@@ -44,7 +43,6 @@ public class SettingsController {
     private final QueueStatsService queueStatsService;
     private final PlaceService placeService;
     private final SignificantPlaceJdbcService placeJdbcService;
-    private final GeocodeServiceJdbcService geocodeServiceJdbcService;
     private final GeocodingResponseJdbcService geocodingResponseJdbcService;
     private final ImmichIntegrationService immichIntegrationService;
     private final OwnTracksRecorderIntegrationService ownTracksRecorderIntegrationService;
@@ -52,7 +50,6 @@ public class SettingsController {
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final MagicLinkJdbcService magicLinkJdbcService;
     private final RabbitTemplate rabbitTemplate;
-    private final int maxErrors;
     private final boolean dataManagementEnabled;
     private final MessageSource messageSource;
 
@@ -69,13 +66,11 @@ public class SettingsController {
                               AvatarService avatarService,
                               QueueStatsService queueStatsService,
                               PlaceService placeService, SignificantPlaceJdbcService placeJdbcService,
-                              GeocodeServiceJdbcService geocodeServiceJdbcService,
                               GeocodingResponseJdbcService geocodingResponseJdbcService,
                               ImmichIntegrationService immichIntegrationService,
                               OwnTracksRecorderIntegrationService ownTracksRecorderIntegrationService,
                               RawLocationPointJdbcService rawLocationPointJdbcService, MagicLinkJdbcService magicLinkJdbcService,
                               RabbitTemplate rabbitTemplate,
-                              @Value("${reitti.geocoding.max-errors}") int maxErrors,
                               @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                               MessageSource messageSource,
                               VersionService versionService,
@@ -88,14 +83,12 @@ public class SettingsController {
         this.queueStatsService = queueStatsService;
         this.placeService = placeService;
         this.placeJdbcService = placeJdbcService;
-        this.geocodeServiceJdbcService = geocodeServiceJdbcService;
         this.geocodingResponseJdbcService = geocodingResponseJdbcService;
         this.immichIntegrationService = immichIntegrationService;
         this.ownTracksRecorderIntegrationService = ownTracksRecorderIntegrationService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.magicLinkJdbcService = magicLinkJdbcService;
         this.rabbitTemplate = rabbitTemplate;
-        this.maxErrors = maxErrors;
         this.dataManagementEnabled = dataManagementEnabled;
         this.messageSource = messageSource;
         this.versionService = versionService;
@@ -127,9 +120,6 @@ public class SettingsController {
                 return getUserManagementPage(user, model);
             case "places-management":
                 getPlacesContent(user, 0, model);
-                break;
-            case "geocode-services":
-                getGeocodeServicesContent(model);
                 break;
             case "integrations":
                 getIntegrationsContent(user, request, model, null);
@@ -643,135 +633,6 @@ public class SettingsController {
     }
 
 
-
-    @GetMapping("/geocode-services-content")
-    public String getGeocodeServicesContent(Model model) {
-        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
-        model.addAttribute("maxErrors", maxErrors);
-        return "fragments/settings :: geocode-services-content";
-    }
-
-    @PostMapping("/geocode-services")
-    public String createGeocodeService(@RequestParam String name,
-                                       @RequestParam String urlTemplate,
-                                       Model model) {
-        try {
-            RemoteGeocodeService service = new RemoteGeocodeService(name, urlTemplate, true, 0, null, null);
-            geocodeServiceJdbcService.save(service);
-            model.addAttribute("successMessage", getMessage("message.success.geocode.created"));
-        } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("message.error.geocode.creation", e.getMessage()));
-        }
-
-        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
-        model.addAttribute("maxErrors", maxErrors);
-        return "fragments/settings :: geocode-services-content";
-    }
-
-    @PostMapping("/geocode-services/{id}/toggle")
-    public String toggleGeocodeService(@PathVariable Long id, Model model) {
-        RemoteGeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
-        service = service.withEnabled(!service.isEnabled());
-        if (service.isEnabled()) {
-            service = service.resetErrorCount();
-        }
-        geocodeServiceJdbcService.save(service);
-        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
-        model.addAttribute("maxErrors", maxErrors);
-        return "fragments/settings :: geocode-services-content";
-    }
-
-    @PostMapping("/geocode-services/{id}/delete")
-    public String deleteGeocodeService(@PathVariable Long id, Model model) {
-        RemoteGeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
-        geocodeServiceJdbcService.delete(service);
-        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
-        model.addAttribute("maxErrors", maxErrors);
-        return "fragments/settings :: geocode-services-content";
-    }
-
-    @PostMapping("/geocode-services/{id}/reset-errors")
-    public String resetGeocodeServiceErrors(@PathVariable Long id, Model model) {
-        RemoteGeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
-        geocodeServiceJdbcService.save(service.resetErrorCount().withEnabled(true));
-        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
-        model.addAttribute("maxErrors", maxErrors);
-        return "fragments/settings :: geocode-services-content";
-    }
-
-    @PostMapping("/geocode-services/run-geocoding")
-    public String runGeocoding(Authentication authentication, Model model) {
-        try {
-            String username = authentication.getName();
-            User currentUser = userJdbcService.findByUsername(username)
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-            
-            // Find all non-geocoded significant places for the user
-            List<SignificantPlace> nonGeocodedPlaces = placeJdbcService.findNonGeocodedByUser(currentUser);
-            
-            if (nonGeocodedPlaces.isEmpty()) {
-                model.addAttribute("successMessage", getMessage("geocoding.no.places"));
-            } else {
-                // Send SignificantPlaceCreatedEvent for each non-geocoded place
-                for (SignificantPlace place : nonGeocodedPlaces) {
-                    SignificantPlaceCreatedEvent event = new SignificantPlaceCreatedEvent(
-                        place.getId(), 
-                        place.getLatitudeCentroid(),
-                        place.getLongitudeCentroid()
-                    );
-                    rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.SIGNIFICANT_PLACE_ROUTING_KEY, event);
-                }
-                
-                model.addAttribute("successMessage", getMessage("geocoding.run.success", nonGeocodedPlaces.size()));
-            }
-        } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("geocoding.run.error", e.getMessage()));
-        }
-
-        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
-        model.addAttribute("maxErrors", maxErrors);
-        return "fragments/settings :: geocode-services-content";
-    }
-
-    @PostMapping("/geocode-services/clear-and-rerun")
-    public String clearAndRerunGeocoding(Authentication authentication, Model model) {
-        try {
-            String username = authentication.getName();
-            User currentUser = userJdbcService.findByUsername(username)
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-            
-            // Find all significant places for the user
-            List<SignificantPlace> allPlaces = placeJdbcService.findAllByUser(currentUser);
-            
-            if (allPlaces.isEmpty()) {
-                model.addAttribute("successMessage", getMessage("geocoding.no.places"));
-            } else {
-                // Clear geocoding data for all places
-                for (SignificantPlace place : allPlaces) {
-                    SignificantPlace clearedPlace = place.withGeocoded(false).withAddress(null);
-                    placeJdbcService.update(clearedPlace);
-                }
-                
-                // Send SignificantPlaceCreatedEvent for each place
-                for (SignificantPlace place : allPlaces) {
-                    SignificantPlaceCreatedEvent event = new SignificantPlaceCreatedEvent(
-                        place.getId(), 
-                        place.getLatitudeCentroid(),
-                        place.getLongitudeCentroid()
-                    );
-                    rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.SIGNIFICANT_PLACE_ROUTING_KEY, event);
-                }
-                
-                model.addAttribute("successMessage", getMessage("geocoding.clear.success", allPlaces.size()));
-            }
-        } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("geocoding.clear.error", e.getMessage()));
-        }
-
-        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
-        model.addAttribute("maxErrors", maxErrors);
-        return "fragments/settings :: geocode-services-content";
-    }
 
     @GetMapping("/about-content")
     public String getAboutContent(Model model) {
