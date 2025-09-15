@@ -18,13 +18,13 @@
         <div class="pagination-buttons">
             <button th:if="${currentPage > 0}" 
                     class="btn"
-                    th:attr="hx-get=@{/settings/places-content(page=${currentPage - 1})}"
+                    th:attr="hx-get=@{/settings/places/places-content(page=${currentPage - 1})}"
                     hx-target="#places-management"
                     hx-swap="innerHTML"
                     th:text="#{form.previous}">Previous</button>
             <button th:if="${currentPage < totalPages - 1}" 
                     class="btn"
-                    th:attr="hx-get=@{/settings/places-content(page=${currentPage + 1})}"
+                    th:attr="hx-get=@{/settings/places/places-content(page=${currentPage + 1})}"
                     hx-target="#places-management"
                     hx-swap="innerHTML"
                     th:text="#{form.next}">Next</button>
@@ -89,7 +89,7 @@
 
     <div style="margin-bottom: 20px;">
         <button class="btn" 
-                th:attr="hx-get=@{/settings/places-content(page=${currentPage})}"
+                th:attr="hx-get=@{/settings/places/places-content(page=${currentPage})}"
                 hx-target="#places-management"
                 hx-swap="innerHTML"
                 th:text="#{places.geocoding.response.back}">Back to Places</button>

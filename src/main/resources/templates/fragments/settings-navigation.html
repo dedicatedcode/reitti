@@ -42,9 +42,9 @@
            th:classappend="${activeSection == 'user-management'} ? 'active' : ''"
            th:text="#{settings.user.management}">User Management</a>
         
-        <a href="/settings?section=places-management" 
+        <a href="/settings/places"
            class="settings-nav-item"
-           th:classappend="${activeSection == 'places-management'} ? 'active' : ''"
+           th:classappend="${activeSection == 'places'} ? 'active' : ''"
            th:text="#{settings.places}">Places</a>
         
         <a href="/settings/geocode-services"
