@@ -61,23 +61,9 @@ public class SettingsController {
         return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
     }
 
-    @GetMapping("")
-    public String settingsPage(@AuthenticationPrincipal User user,
-                               @RequestParam(required = false, defaultValue = "job-status") String section,
-                               HttpServletRequest request,
-                               Model model) {
-        model.addAttribute("dataManagementEnabled", dataManagementEnabled);
-        model.addAttribute("activeSection", section);
-        
-        // Load the content for the active section immediately
-        switch (section) {
-
-            case "places-management":
-                getPlacesContent(user, 0, model);
-                break;
-        }
-        
-        return "settings";
+    @GetMapping
+    public String settingsPage() {
+        return "redirect:/settings/job-status";
     }
 
 
