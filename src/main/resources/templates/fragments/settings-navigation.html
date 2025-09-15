@@ -17,7 +17,7 @@
            th:classappend="${activeSection == 'job-status'} ? 'active' : ''"
            th:text="#{settings.job.status}">Job Status</a>
         
-        <a href="/settings/file-upload"
+        <a href="/settings/import"
            class="settings-nav-item"
            th:classappend="${activeSection == 'file-upload'} ? 'active' : ''"
            th:text="#{settings.import.data}">Import Data</a>
@@ -32,7 +32,7 @@
            th:classappend="${activeSection == 'api-tokens'} ? 'active' : ''"
            th:text="#{settings.api.tokens}">API Tokens</a>
 
-        <a href="/settings?section=sharing" 
+        <a href="/settings/magic-links"
            class="settings-nav-item"
            th:classappend="${activeSection == 'sharing'} ? 'active' : ''"
            th:text="#{settings.share.access}">Share Access</a>

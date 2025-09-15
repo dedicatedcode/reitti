@@ -1,12 +1,16 @@
 package com.dedicatedcode.reitti.controller.settings;
 
+import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.importer.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -17,7 +21,7 @@ import java.io.InputStream;
 import java.util.Map;
 
 @Controller
-@RequestMapping("/import")
+@RequestMapping("/settings/import")
 public class FileImportController {
 
     private static final Logger logger = LoggerFactory.getLogger(FileImportController.class);
@@ -27,19 +31,30 @@ public class FileImportController {
     private final GoogleAndroidTimelineImporter googleAndroidTimelineImporter;
     private final GoogleIOSTimelineImporter googleTimelineIOSImporter;
     private final GeoJsonImporter geoJsonImporter;
+    private final boolean dataManagementEnabled;
 
     public FileImportController(GpxImporter gpxImporter,
                                 GoogleRecordsImporter googleRecordsImporter,
                                 GoogleAndroidTimelineImporter googleAndroidTimelineImporter,
                                 GoogleIOSTimelineImporter googleTimelineIOSImporter,
-                                GeoJsonImporter geoJsonImporter) {
+                                GeoJsonImporter geoJsonImporter,
+                                @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.gpxImporter = gpxImporter;
         this.googleRecordsImporter = googleRecordsImporter;
         this.googleAndroidTimelineImporter = googleAndroidTimelineImporter;
         this.googleTimelineIOSImporter = googleTimelineIOSImporter;
         this.geoJsonImporter = geoJsonImporter;
+        this.dataManagementEnabled = dataManagementEnabled;
     }
 
+
+    @GetMapping
+    public String getFileUploadPage(@AuthenticationPrincipal User user, Model model) {
+        model.addAttribute("activeSection", "file-upload");
+        model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
+        model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+        return "settings/import-data";
+    }
 
     @PostMapping("/gpx")
     public String importGpx(@RequestParam("files") MultipartFile[] files,

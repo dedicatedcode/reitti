@@ -62,7 +62,7 @@ body {
 }
 
 .alert-success {
-    border-color: #155724;
+    border-color: #e5ffeb;
     background: #2c4828;
 }
 
@@ -72,7 +72,7 @@ body {
 }
 
 .alert-warning {
-    border-color: #ffa700;;
+    background: #ffa700;;
     border-color: #e4a235;;
 }
 

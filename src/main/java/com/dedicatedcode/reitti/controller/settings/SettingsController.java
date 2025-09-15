@@ -48,7 +48,6 @@ public class SettingsController {
     private final OwnTracksRecorderIntegrationService ownTracksRecorderIntegrationService;
 
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
-    private final MagicLinkJdbcService magicLinkJdbcService;
     private final RabbitTemplate rabbitTemplate;
     private final boolean dataManagementEnabled;
     private final MessageSource messageSource;
@@ -69,7 +68,7 @@ public class SettingsController {
                               GeocodingResponseJdbcService geocodingResponseJdbcService,
                               ImmichIntegrationService immichIntegrationService,
                               OwnTracksRecorderIntegrationService ownTracksRecorderIntegrationService,
-                              RawLocationPointJdbcService rawLocationPointJdbcService, MagicLinkJdbcService magicLinkJdbcService,
+                              RawLocationPointJdbcService rawLocationPointJdbcService,
                               RabbitTemplate rabbitTemplate,
                               @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                               MessageSource messageSource,
@@ -87,7 +86,6 @@ public class SettingsController {
         this.immichIntegrationService = immichIntegrationService;
         this.ownTracksRecorderIntegrationService = ownTracksRecorderIntegrationService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
-        this.magicLinkJdbcService = magicLinkJdbcService;
         this.rabbitTemplate = rabbitTemplate;
         this.dataManagementEnabled = dataManagementEnabled;
         this.messageSource = messageSource;
@@ -110,9 +108,6 @@ public class SettingsController {
         
         // Load the content for the active section immediately
         switch (section) {
-            case "sharing":
-                getSharingContent(user, model);
-                break;
             case "user-management":
                 return getUserManagementPage(user, model);
             case "places-management":
@@ -129,20 +124,6 @@ public class SettingsController {
         return "settings";
     }
 
-    @GetMapping("/file-upload")
-    public String getFileUploadPage(@AuthenticationPrincipal User user, Model model) {
-        model.addAttribute("activeSection", "file-upload");
-        model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
-        model.addAttribute("dataManagementEnabled", dataManagementEnabled);
-        return "settings/import-data";
-    }
-
-    @GetMapping("/sharing-content")
-    public String getSharingContent(@AuthenticationPrincipal User user, Model model) {
-        model.addAttribute("tokens", this.magicLinkJdbcService.findByUser(user));
-        model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
-        return "fragments/magic-links :: magic-links-content";
-    }
 
     @GetMapping("/places-content")
     public String getPlacesContent(@AuthenticationPrincipal User user,
