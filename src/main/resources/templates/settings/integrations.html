@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{settings.title}">Settings - Reitti</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/lineicons.css">
+    <script src="/js/htmx.min.js"></script>
+</head>
+<body class="settings-page">
+<div class="settings-container">
+    <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
+    <div class="settings-content-area">
+        <div id="integrations" class="settings-section active">
+            <div th:fragment="integrations-content">
+                <h2 th:text="#{integrations.title}">Integrations</h2>
+
+                <div th:if="${!hasToken}" style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 15px; margin-bottom: 20px; color: #856404;">
+                    <strong>⚠️ No API Token Available</strong><br>
+                    <span th:text="#{integrations.no.token.warning}">You need to create an API token first in the "API Tokens" tab before setting up app integrations.</span>
+                </div>
+
+                <!-- Data Ingestion Collapsible Section -->
+                <div>
+                    <details th:attr="open=${openSection == 'data-ingestion' ? 'open' : null}">
+                        <summary>
+                            <i class="lni lni-phone"></i> <span th:text="#{integrations.data.ingestion.title}">Data Ingestion</span>
+                        </summary>
+                        <div style="padding: 15px;">
+                            <div class="alert alert-info" style="margin-bottom: 20px;">
+                                <strong th:text="#{integrations.tracking.frequency.title}">📍 GPS Tracking Frequency</strong><br>
+                                <span th:text="#{integrations.tracking.frequency.description}">For optimal results, Reitti works best with a continuous stream of GPS locations. Make sure your tracking app records a point at least every 30 seconds to ensure accurate visit and trip detection.</span>
+                            </div>
+                            <p th:text="#{integrations.data.ingestion.description}" style="margin-bottom: 20px; color: var(--color-text-white);">Configure mobile apps to automatically send location data to Reitti</p>
+                            <div class="integration-section" style="margin-bottom: 30px;">
+                                <h3 th:text="#{integrations.gpslogger.title}">📱 GPSLogger Setup</h3>
+                                <p th:text="#{integrations.gpslogger.description}">GPSLogger is a free Android app that can automatically log your location and send it to Reitti.</p>
+                                <p><strong>Download:</strong> <a href="https://gpslogger.app/" target="_blank" rel="noopener noreferrer" style="color: var(--color-accent); text-decoration: underline;">https://gpslogger.app/</a></p>
+                                <div class="setup-steps">
+                                    <h4 th:text="#{integrations.setup.instructions}">Setup Instructions:</h4>
+                                    <ol>
+                                        <li>Download GPSLogger from the Google Play Store</li>
+                                        <li>Open GPSLogger and go to <strong>Logging details → Log to custom URL</strong></li>
+                                        <li>Enable "Log to custom URL"</li>
+                                        <li th:if="${hasToken}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + firstToken}">https://your-domain.com/api/v1/location-data</code></li>
+                                        <li th:unless="${hasToken}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/location-data</code></li>
+                                        <li>Set HTTP Method to <strong>POST</strong></li>
+                                        <li>Set HTTP Body to: <code>{
+                                            "_type" : "location",
+                                            "t": "u",
+                                            "acc": "%ACC",
+                                            "alt": "%ALT",
+                                            "batt": "%BATT",
+                                            "bs": "%ISCHARGING",
+                                            "lat": "%LAT",
+                                            "lon": "%LON",
+                                            "tst": "%TIMESTAMP",
+                                            "vel": "%SPD"
+                                            }</code></li>
+                                        <li>Set HTTP header to: <code>Content-Type: application/json</code></li>
+                                        <li>Start logging!</li>
+                                    </ol>
+                                </div>
+                            </div>
+                            <div class="integration-section">
+                                <h3 th:text="#{integrations.owntracks.title}">🗺️ OwnTracks Setup</h3>
+                                <p th:text="#{integrations.owntracks.description}">OwnTracks is a privacy-focused location tracking app available for iOS and Android.</p>
+                                <p><strong>Download:</strong> <a href="https://owntracks.org/" target="_blank" rel="noopener noreferrer" style="color: var(--color-accent); text-decoration: underline;">https://owntracks.org/</a></p>
+
+                                <div class="setup-steps">
+                                    <h4 th:text="#{integrations.setup.instructions}">Setup Instructions:</h4>
+                                    <ol>
+                                        <li>Download OwnTracks from the App Store or Google Play Store</li>
+                                        <li>Open OwnTracks and go to <strong>Settings → Connection</strong></li>
+                                        <li>Set Mode to <strong>HTTP</strong></li>
+                                        <li th:if="${hasToken}">Set the Endpoint to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + firstToken}">https://your-domain.com/api/v1/location-data</code></li>
+                                        <li th:unless="${hasToken}">Set the Endpoint to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/location-data</code></li>
+                                        <li>Disable <strong>Authentication</strong> (we use the token in the URL instead)</li>
+                                        <li>Configure tracking settings as desired. Make sure that Owntracks records a point at least every 30 seconds.</li>
+                                        <li>On the map view, set tracking mode to "Movement"</li>
+                                        <li>The app will automatically start sending location updates</li>
+                                    </ol>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-info">
+                                <strong th:text="#{integrations.mobile.help.title}">Need Help?</strong><br>
+                                <span th:text="#{integrations.mobile.help.description}">For detailed setup instructions and tips, visit our comprehensive guide:</span>
+                                <a href="https://www.dedicatedcode.com/projects/reitti/mobile-integration/"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   style="color: var(--color-accent); text-decoration: underline;"
+                                   th:text="#{integrations.mobile.help.link.text}">
+                                    Mobile Integration Documentation
+                                </a>
+                            </div>
+
+                            <div style="margin-top: 20px; padding: 15px; background-color: rgba(255,255,255,0.1); border-radius: 4px;" id="data-quality">
+                                <h4 style="margin: 0 0 10px 0; color: var(--color-accent);" th:text="#{integrations.data.quality.title}">Data Quality Verification</h4>
+                                <p style="margin-bottom: 15px; color: var(--color-text-white);" th:text="#{integrations.data.quality.description}">Check the quality and frequency of your incoming location data to ensure optimal tracking performance.</p>
+                                <button class="btn"
+                                        id="data-quality-btn"
+                                        hx-get="/settings/integrations/data-quality-content"
+                                        hx-target="#integrations"
+                                        hx-swap="innerHTML"
+                                        th:text="#{integrations.data.quality.button}">
+                                    Verify Data Quality
+                                </button>
+                            </div>
+                        </div>
+                    </details>
+                    <details th:attr="open=${openSection == 'external-data-stores' ? 'open' : null}">
+                        <summary>
+                            <i class="lni lni-database-2"></i> <span th:text="#{integrations.data-stores.title}">External Data Stores</span>
+                        </summary>
+                        <div style="padding: 15px;">
+                            <p th:text="#{integrations.data-stores.description}" style="margin-bottom: 20px; color: var(--color-text-white);">Configure Reitti to connect to external data storage like OwnTracks Recorder.</p>
+
+                            <div class="integration-section">
+                                <h3 th:text="#{integrations.owntracks.recorder.title}">📊 OwnTracks Recorder Integration</h3>
+                                <p th:text="#{integrations.owntracks.recorder.description}">Connect to an OwnTracks Recorder instance to fetch location data from specific users and devices.</p>
+
+                                <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+                                    <span th:text="${successMessage}">Configuration saved successfully</span>
+                                </div>
+                                <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+                                    <span th:text="${errorMessage}">Error message</span>
+                                </div>
+
+                                <form hx-post="/settings/integrations/owntracks-recorder-integration" hx-target="#integrations" hx-swap="innerHTML" class="owntracks-recorder-form" style="margin-top: 20px;" autocomplete="off">
+                                    <div class="form-group">
+                                        <label for="recorderBaseUrl" th:text="#{integrations.owntracks.recorder.base.url}">Base URL</label>
+                                        <input type="url"
+                                               id="recorderBaseUrl"
+                                               name="baseUrl"
+                                               required
+                                               autocomplete="off"
+                                               th:placeholder="#{integrations.owntracks.recorder.base.url.placeholder}"
+                                               th:value="${ownTracksRecorderIntegration?.baseUrl}">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="recorderUsername" th:text="#{integrations.owntracks.recorder.username}">Username</label>
+                                        <input type="text"
+                                               id="recorderUsername"
+                                               name="username"
+                                               required
+                                               autocomplete="off"
+                                               th:placeholder="#{integrations.owntracks.recorder.username.placeholder}"
+                                               th:value="${ownTracksRecorderIntegration?.username}">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="recorderDeviceId" th:text="#{integrations.owntracks.recorder.device.id}">Device ID</label>
+                                        <input type="text"
+                                               id="recorderDeviceId"
+                                               name="deviceId"
+                                               required
+                                               autocomplete="off"
+                                               th:placeholder="#{integrations.owntracks.recorder.device.id.placeholder}"
+                                               th:value="${ownTracksRecorderIntegration?.deviceId}">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="checkbox"
+                                                   name="enabled"
+                                                   value="true"
+                                                   th:checked="${ownTracksRecorderIntegration?.enabled}">
+                                            <span th:text="#{integrations.owntracks.recorder.enabled}">Enable Integration</span>
+                                        </label>
+                                    </div>
+
+                                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                                        <button type="submit" class="btn" th:text="#{integrations.owntracks.recorder.save}">Save Configuration</button>
+                                        <button type="button"
+                                                class="btn"
+                                                id="test-recorder-connection-btn"
+                                                th:text="#{integrations.owntracks.recorder.test.connection}">Test Connection</button>
+                                        <button type="button"
+                                                class="btn"
+                                                id="load-historical-btn"
+                                                th:attr="hx-post=@{/settings/integrations/owntracks-recorder-integration/load-historical}, hx-confirm=#{integrations.owntracks.recorder.load.historical.confirm}, disabled=${!hasRecorderIntegration}"
+                                                hx-target="#integrations"
+                                                hx-swap="innerHTML"
+                                                th:text="#{integrations.owntracks.recorder.load.historical}">Load Historical Data</button>
+                                    </div>
+                                </form>
+
+                                <div id="recorder-connection-test-result" style="margin-top: 10px;"></div>
+
+                                <script>
+                                    document.getElementById('test-recorder-connection-btn').addEventListener('click', function() {
+                                        const baseUrl = document.getElementById('recorderBaseUrl').value;
+                                        const username = document.getElementById('recorderUsername').value;
+                                        const deviceId = document.getElementById('recorderDeviceId').value;
+                                        const resultDiv = document.getElementById('recorder-connection-test-result');
+
+                                        if (!baseUrl || !username || !deviceId) {
+                                            resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">Please fill in Base URL, Username, and Device ID</div>';
+                                            return;
+                                        }
+
+                                        // Show loading state
+                                        resultDiv.innerHTML = '<div style="color: var(--color-text-white);">Testing connection...</div>';
+
+                                        // Make AJAX request to test connection
+                                        fetch('/settings/integrations/owntracks-recorder-integration/test', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/x-www-form-urlencoded',
+                                            },
+                                            body: new URLSearchParams({
+                                                baseUrl: baseUrl,
+                                                username: username,
+                                                deviceId: deviceId
+                                            })
+                                        })
+                                            .then(response => response.json())
+                                            .then(data => {
+                                                if (data.success) {
+                                                    resultDiv.innerHTML = '<div class="alert alert-success" style="display: block;">' + data.message + '</div>';
+                                                } else {
+                                                    resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + data.message + '</div>';
+                                                }
+                                            })
+                                            .catch(error => {
+                                                resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">Connection test failed: ' + error.message + '</div>';
+                                            });
+                                    });
+
+                                    // Add loading indicator for Load Historical Data button
+                                    document.addEventListener('htmx:beforeRequest', function(evt) {
+                                        if (evt.detail.elt.id === 'load-historical-btn') {
+                                            evt.detail.elt.innerHTML = '<span style="display: inline-flex; align-items: center; gap: 8px;"><span style="width: 16px; height: 16px; border: 2px solid #ffffff; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></span>Loading Historical Data...</span>';
+                                            evt.detail.elt.disabled = true;
+                                        }
+                                    });
+
+                                    // Add CSS for spinner animation
+                                    if (!document.querySelector('#spinner-styles')) {
+                                        const style = document.createElement('style');
+                                        style.id = 'spinner-styles';
+                                        style.textContent = `
+                                @keyframes spin {
+                                    0% { transform: rotate(0deg); }
+                                    100% { transform: rotate(360deg); }
+                                }
+                            `;
+                                        document.head.appendChild(style);
+                                    }
+                                </script>
+                            </div>
+                        </div>
+                    </details>
+                    <details th:attr="open=${openSection == 'photos' ? 'open' : null}">
+                        <summary>
+                            <i class="lni lni-photos"></i> <span th:text="#{integrations.photos.title}">Photos</span>
+                        </summary>
+                        <div id="photos-section" hx-get="/settings/integrations/photos-content" hx-trigger="load" hx-swap="innerHTML" style="padding: 15px;">
+                            <!-- Photos content will be loaded here -->
+                        </div>
+                    </details>
+                    <details th:attr="open=${openSection == 'shared-instances' ? 'open' : null}">
+                        <summary>
+                            <i class="lni lni-network"></i> <span th:text="#{integrations.shared.instances.title}">Shared Instances</span>
+                        </summary>
+                        <div id="shared-instances-section" hx-get="/settings/integrations/shared-instances-content" hx-trigger="load" hx-swap="innerHTML" style="padding: 15px;">
+                            <!-- Shared instances content will be loaded here -->
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Data Quality Content Fragment -->
+<div th:if="${dataQuality}" th:fragment="data-quality-content">
+    <h2 style="color: var(--color-highlight); margin-bottom: 20px;" th:text="#{integrations.data.quality.report.title}">📊 Data Quality Report</h2>
+    <div th:if="${errorMessage}" class="alert alert-danger" style="display: block; margin-bottom: 20px;">
+        <span th:text="${errorMessage}">Error loading data quality information</span>
+    </div>
+
+    <div style="color: var(--color-text-white);">
+        <!-- Overall Status -->
+        <div style="margin-bottom: 25px; padding: 20px; background-color: rgba(255,255,255,0.1); border-radius: 8px;">
+            <h3 style="margin: 0 0 15px 0; color: var(--color-accent);" th:text="#{integrations.data.quality.overall.title}">📈 Overall Data Quality</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div>
+                    <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.total.points}">Total Location Points</div>
+                    <div style="font-size: 1.5em; font-weight: bold;" th:text="${dataQuality.totalPoints}">0</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.last.24h}">Last 24 Hours</div>
+                    <div style="font-size: 1.5em; font-weight: bold;" th:text="${dataQuality.pointsLast24h}">0</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.last.7d}">Last 7 Days</div>
+                    <div style="font-size: 1.5em; font-weight: bold;" th:text="${dataQuality.pointsLast7d}">0</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.avg.per.day}">Average per Day</div>
+                    <div style="font-size: 1.5em; font-weight: bold;" th:text="${dataQuality.avgPointsPerDay}">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Freshness -->
+        <div style="margin-bottom: 25px; padding: 20px; background-color: rgba(255,255,255,0.1); border-radius: 8px;">
+            <h3 th:text="#{integrations.data.quality.freshness.title}">🕒 Data Freshness</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                <div>
+                    <div th:text="#{integrations.data.quality.latest.point}">Latest Point Received</div>
+                    <div th:text="${dataQuality.latestPointTime ?: #messages.msg('integrations.data.quality.no.data')}">Never</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.time.since}">Time Since Last Point</div>
+                    <div style="font-size: 1.2em;" th:text="${dataQuality.timeSinceLastPoint ?: 'N/A'}">N/A</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tracking Quality -->
+        <div style="margin-bottom: 25px; padding: 20px; background-color: rgba(255,255,255,0.1); border-radius: 8px;">
+            <h3 style="margin: 0 0 15px 0; color: var(--color-accent);" th:text="#{integrations.data.quality.tracking.title}">📍 Tracking Quality</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div>
+                    <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.avg.accuracy}">Average Accuracy</div>
+                    <div style="font-size: 1.2em;" th:text="${dataQuality.avgAccuracy != null ? dataQuality.avgAccuracy + 'm' : 'N/A'}">N/A</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.good.accuracy}">Points with Good Accuracy (&lt;50m)</div>
+                    <div style="font-size: 1.2em;" th:text="${dataQuality.goodAccuracyPercentage != null ? dataQuality.goodAccuracyPercentage + '%' : 'N/A'}">N/A</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.9em; color: #ccc;" th:text="#{integrations.data.quality.avg.interval}">Average Interval</div>
+                    <div style="font-size: 1.2em;" th:text="${dataQuality.avgInterval ?: 'N/A'}">N/A</div>
+                </div>
+            </div>
+        </div>
+        <!-- Status Indicators -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+            <div th:if="${dataQuality.isActivelyTracking}" class="alert alert-info">
+                <div th:text="#{integrations.data.quality.status.actively.tracking}">✅ Actively Tracking</div>
+                <div th:text="#{integrations.data.quality.status.actively.tracking.desc}">Location data is being received regularly</div>
+            </div>
+            <div th:unless="${dataQuality.isActivelyTracking}" class="alert alert-danger">
+                <div th:text="#{integrations.data.quality.status.not.tracking}">❌ Not Actively Tracking</div>
+                <div th:text="#{integrations.data.quality.status.not.tracking.desc}">No recent location data received</div>
+            </div>
+
+            <div th:if="${dataQuality.hasGoodFrequency}" class="alert alert-info">
+                <div th:text="#{integrations.data.quality.status.good.frequency}">✅ Good Frequency</div>
+                <div th:text="#{integrations.data.quality.status.good.frequency.desc}">Location points are frequent enough for accurate tracking</div>
+            </div>
+            <div th:unless="${dataQuality.hasGoodFrequency}" class="alert alert-warning">
+                <div th:text="#{integrations.data.quality.status.low.frequency}">⚠️ Low Frequency</div>
+                <div th:text="#{integrations.data.quality.status.low.frequency.desc}">Consider increasing tracking frequency for better accuracy</div>
+            </div>
+
+            <div th:if="${dataQuality.hasFluctuatingFrequency}" class="alert alert-warning">
+                <div th:text="#{integrations.data.quality.status.fluctuating.frequency}">⚠️ Fluctuating Frequency</div>
+                <div th:text="#{integrations.data.quality.status.fluctuating.frequency.desc}">Tracking intervals vary significantly, which may affect accuracy</div>
+            </div>
+
+            <div th:unless="${dataQuality.hasFluctuatingFrequency}" class="alert alert-info">
+                <div th:text="#{integrations.data.quality.status.good.consistency}">✅ Good Consistency</div>
+                <div th:text="#{integrations.data.quality.status.good.consistency.desc}">Tracking intervals are consistent and stable</div>
+            </div>
+        </div>
+
+        <!-- Recommendations -->
+        <div th:if="${dataQuality.recommendations != null && !dataQuality.recommendations.isEmpty()}" class="alert alert-warning">
+            <p th:text="#{integrations.data.quality.recommendations.title}">💡 Recommendations</p>
+            <ul>
+                <li th:each="recommendation : ${dataQuality.recommendations}"
+                    th:text="${recommendation}">
+                    Recommendation
+                </li>
+            </ul>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="margin-top: 25px; text-align: center; display: flex; gap: 15px; justify-content: center;">
+            <button class="btn"
+                    hx-get="/settings/integrations/data-quality-content"
+                    hx-target="#integrations"
+                    hx-swap="innerHTML"
+                    th:text="#{integrations.data.quality.refresh}">
+                Refresh Data
+            </button>
+            <button class="btn btn-secondary"
+                    hx-get="/settings/integrations/integrations-content"
+                    hx-target="#integrations"
+                    hx-swap="innerHTML"
+                    th:text="#{form.close}">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+
+</body>

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="shared-instances-content">
+    <p th:text="#{integrations.shared.instances.description}" style="margin-bottom: 20px; color: var(--color-text-white);">Connect to other Reitti instances to share location data with friends, family, or colleagues. This allows you to view their location data alongside yours on the timeline map.</p>
+
+    <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+        <span th:text="${successMessage}">Configuration saved successfully</span>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+        <span th:text="${errorMessage}">Error message</span>
+    </div>
+
+    <div class="integration-section">
+        <h3 th:text="#{integrations.reitti.title}">🌐 Reitti Instance Integration</h3>
+        <p th:text="#{integrations.reitti.description}">Connect to a local or remote Reitti instance to access another user's location data.</p>
+
+        <div class="settings-card" th:if="${reittiIntegrations.isEmpty()}">
+            <p th:text="#{integrations.reitti.no.integrations}">No Reitti integrations configured.</p>
+        </div>
+
+        <div class="settings-card" th:if="${!reittiIntegrations.isEmpty()}">
+            <table>
+                <thead>
+                <tr>
+                    <th th:text="#{integrations.reitti.table.url}">Instance URL</th>
+                    <th th:text="#{integrations.reitti.table.enabled}">Enabled</th>
+                    <th th:text="#{integrations.reitti.table.status}">Status</th>
+                    <th th:text="#{integrations.reitti.table.last.used}">Last Used</th>
+                    <th th:text="#{integrations.reitti.table.color}">Color</th>
+                    <th th:text="#{integrations.reitti.table.actions}">Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="integration : ${reittiIntegrations}">
+                    <td th:text="${integration.url}"></td>
+                    <td>
+                        <span th:if="${integration.enabled}">
+                            <i class="lni lni-check"></i> <span th:text="#{integrations.reitti.status.enabled}">Enabled</span>
+                        </span>
+                        <span th:if="${!integration.enabled}" style="color: orange;">
+                            <i class="lni lni-xmark"></i> <span th:text="#{integrations.reitti.status.disabled}">Disabled</span>
+                        </span>
+                    </td>
+                    <td>
+                        <span>
+                            <span th:text="#{'integrations.reitti.status.' + ${integration.status} + '.name'}">ACTIVE</span>
+                        </span>
+                    </td>
+                    <td th:text="${integration.lastUsed.isPresent() ? #temporals.format(integration.lastUsed.get(), 'yyyy-MM-dd HH:mm') : #messages.msg('integrations.reitti.never.used')}"></td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div th:style="'width: 20px; height: 20px; border-radius: 50%; background-color: ' + ${integration.color ?: '#3498db'} + '; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3);'"></div>
+                            <span th:text="${integration.color ?: '#3498db'}" style="font-family: monospace; font-size: 0.9em;"></span>
+                        </div>
+                    </td>
+                    <td>
+                        <button class="btn"
+                                th:attr="hx-get=@{/settings/integrations/reitti-integrations/{id}/info(id=${integration.id})}"
+                                hx-target="#reitti-info-display"
+                                hx-swap="innerHTML"
+                                th:text="#{integrations.reitti.info}">Info
+                        </button>
+                        <button class="btn"
+                                th:attr="onclick='editReittiIntegration(' + ${integration.id} + ', \'' + ${integration.url} + '\', \'' + ${integration.token} + '\', \'' + ${integration.color} + '\', ' + ${integration.enabled} + ', ' + ${integration.version} + ')'"
+                                th:text="#{form.edit}">Edit
+                        </button>
+                        <button class="btn"
+                                th:attr="hx-post=@{/settings/integrations/reitti-integrations/{id}/toggle(id=${integration.id})}"
+                                hx-target="#shared-instances-section"
+                                hx-swap="innerHTML"
+                                th:text="${integration.enabled ? #messages.msg('integrations.reitti.disable') : #messages.msg('integrations.reitti.enable')}">
+                            Toggle
+                        </button>
+                        <button class="btn btn-danger"
+                                th:attr="hx-post=@{/settings/integrations/reitti-integrations/{id}/delete(id=${integration.id})}, hx-confirm=#{integrations.reitti.delete.confirm}"
+                                hx-target="#shared-instances-section"
+                                hx-swap="innerHTML"
+                                th:text="#{form.delete}">Delete
+                        </button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            <!-- Info Display Area -->
+            <div id="reitti-info-display" style="margin-top: 20px;">
+                <!-- Remote instance info will be displayed here -->
+            </div>
+        </div>
+
+        <div class="settings-card">
+            <form id="reitti-integration-form" hx-post="/settings/integrations/reitti-integrations" hx-target="#shared-instances-section" hx-swap="innerHTML" class="reitti-integration-form" style="margin-top: 20px;" autocomplete="off">
+                <h4 id="form-title" th:text="#{integrations.reitti.add.title}">Add New Reitti Integration</h4>
+
+                <input type="hidden" id="integrationId" name="id" value="">
+                <input type="hidden" id="integrationVersion" name="version" value="">
+
+                <div class="form-group">
+                    <label for="reittiUrl" th:text="#{integrations.reitti.url}">Instance URL</label>
+                    <input type="url"
+                           id="reittiUrl"
+                           name="url"
+                           required
+                           autocomplete="off"
+                           th:placeholder="#{integrations.reitti.url.placeholder}">
+                </div>
+
+                <div class="form-group">
+                    <label for="reittiToken" th:text="#{integrations.reitti.token}">API Token</label>
+                    <input type="text"
+                           id="reittiToken"
+                           name="remote_token"
+                           required
+                           autocomplete="new-password"
+                           th:placeholder="#{integrations.reitti.token.placeholder}">
+                </div>
+
+                <div class="form-group">
+                    <label for="reittiColor" th:text="#{integrations.reitti.color}">Color</label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="color"
+                               id="reittiColor"
+                               name="color"
+                               value="#3498db"
+                               style="width: 50px; height: 40px; border: none; border-radius: 4px; cursor: pointer; padding: 2px;">
+                        <span style="color: var(--color-text-white); font-size: 0.9em;" th:text="#{integrations.reitti.color.description}">Choose a color to identify this integration on the map</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox"
+                               id="reittiEnabled"
+                               name="enabled"
+                               value="true"
+                               checked>
+                        <span th:text="#{integrations.reitti.enabled}">Enable Integration</span>
+                    </label>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" id="submit-btn" class="btn" th:text="#{integrations.reitti.save}">Save Configuration</button>
+                    <button type="button"
+                            class="btn"
+                            id="test-reitti-connection-btn"
+                            th:text="#{integrations.reitti.test.connection}">Test Connection</button>
+                    <button type="button"
+                            class="btn btn-secondary"
+                            id="cancel-edit-btn"
+                            style="display: none;"
+                            onclick="cancelEdit()"
+                            th:text="#{form.cancel}">Cancel</button>
+                </div>
+            </form>
+
+            <div id="reitti-connection-test-result" style="margin-top: 10px;"></div>
+        </div>
+    </div>
+
+    <script>
+        function editReittiIntegration(id, url, token, color, enabled, version) {
+            // Update form title
+            document.getElementById('form-title').textContent = 'Edit Reitti Integration';
+
+            // Set form action to update
+            const form = document.getElementById('reitti-integration-form');
+            form.setAttribute('hx-post', '/settings/integrations/reitti-integrations/' + id + '/update');
+
+            // Tell HTMX to process the form again after changing attributes
+            htmx.process(form);
+
+            // Fill form fields
+            document.getElementById('integrationId').value = id;
+            document.getElementById('integrationVersion').value = version;
+            document.getElementById('reittiUrl').value = url;
+            document.getElementById('reittiToken').value = token;
+            document.getElementById('reittiColor').value = color;
+            document.getElementById('reittiEnabled').checked = enabled;
+
+            // Update button text and show cancel button
+            document.getElementById('submit-btn').textContent = 'Update Configuration';
+            document.getElementById('cancel-edit-btn').style.display = 'inline-block';
+
+            // Clear any previous test results
+            document.getElementById('reitti-connection-test-result').innerHTML = '';
+
+            // Scroll to form
+            form.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function cancelEdit() {
+            // Reset form title
+            document.getElementById('form-title').textContent = 'Add New Reitti Integration';
+
+            // Reset form action to create
+            const form = document.getElementById('reitti-integration-form');
+            form.setAttribute('hx-post', '/settings/integrations/reitti-integrations');
+
+            // Tell HTMX to process the form again after changing attributes
+            htmx.process(form);
+
+            // Clear form fields
+            document.getElementById('integrationId').value = '';
+            document.getElementById('integrationVersion').value = '';
+            document.getElementById('reittiUrl').value = '';
+            document.getElementById('reittiToken').value = '';
+            document.getElementById('reittiColor').value = '#3498db';
+            document.getElementById('reittiEnabled').checked = true;
+
+            // Reset button text and hide cancel button
+            document.getElementById('submit-btn').textContent = 'Save Configuration';
+            document.getElementById('cancel-edit-btn').style.display = 'none';
+
+            // Clear any previous test results
+            document.getElementById('reitti-connection-test-result').innerHTML = '';
+        }
+
+        document.getElementById('test-reitti-connection-btn').addEventListener('click', function() {
+            const url = document.getElementById('reittiUrl').value;
+            const token = document.getElementById('reittiToken').value;
+            const resultDiv = document.getElementById('reitti-connection-test-result');
+
+            if (!url || !token) {
+                resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">Please fill in both Instance URL and API Token</div>';
+                return;
+            }
+
+            // Show loading state
+            resultDiv.innerHTML = '<div style="color: var(--color-text-white);">Testing connection...</div>';
+
+            // Make AJAX request to test connection
+            fetch('/settings/integrations/reitti-integrations/test', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    url: url,
+                    foreign_token: token
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        resultDiv.innerHTML = '<div class="alert alert-success" style="display: block;">' + data.message + '</div>';
+                    } else {
+                        resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + data.message + '</div>';
+                    }
+                })
+                .catch(error => {
+                    resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">Connection test failed: ' + error.message + '</div>';
+                });
+        });
+    </script>
+</div>
+
+<!-- Reitti Info Content Fragment -->
+<div th:fragment="reitti-info-content">
+    <div class="settings-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h4 style="margin: 0; color: var(--color-accent);" th:text="#{integrations.reitti.info.title}">Remote Instance Information</h4>
+            <button class="btn btn-secondary"
+                    hx-get="/settings/integrations/shared-instances-content"
+                    hx-target="#shared-instances-section"
+                    hx-swap="innerHTML"
+                    th:text="#{form.close}">Close</button>
+        </div>
+
+        <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+            <span th:text="${errorMessage}">Error fetching information</span>
+        </div>
+
+        <div th:if="${remoteInfo}" style="color: var(--color-text-white);">
+            <div th:if="${remoteInfo.serverInfo()}" style="margin-bottom: 20px;">
+                <h5 style="margin: 0 0 10px 0; color: var(--color-accent);">🖥️ Server Information</h5>
+                <div style="background-color: rgba(255,255,255,0.1); padding: 15px; border-radius: 4px;">
+                    <div><strong>Name:</strong> <span th:text="${remoteInfo.serverInfo().name() ?: 'N/A'}">N/A</span></div>
+                    <div><strong>Version:</strong> <span th:text="${remoteInfo.serverInfo().version() ?: 'N/A'}">N/A</span></div>
+                    <div><strong>System Time:</strong> <span th:text="${remoteInfo.serverInfo().systemTime() ?: 'N/A'}">N/A</span></div>
+                </div>
+            </div>
+
+            <div th:if="${remoteInfo.userInfo()}" style="margin-bottom: 20px;">
+                <h5 style="margin: 0 0 10px 0; color: var(--color-accent);">👤 User Information</h5>
+                <div style="background-color: rgba(255,255,255,0.1); padding: 15px; border-radius: 4px;">
+                    <div><strong>Username:</strong> <span th:text="${remoteInfo.userInfo().username() ?: 'N/A'}">N/A</span></div>
+                    <div><strong>Display Name:</strong> <span th:text="${remoteInfo.userInfo().displayName() ?: 'N/A'}">N/A</span></div>
+                    <div><strong>User ID:</strong> <span th:text="${remoteInfo.userInfo().id() ?: 'N/A'}">N/A</span></div>
+                    <div><strong>Version:</strong> <span th:text="${remoteInfo.userInfo().version() ?: 'N/A'}">N/A</span></div>
+                </div>
+            </div>
+
+            <div style="padding: 10px; background-color: rgba(0,255,0,0.1); border-radius: 4px; border-left: 4px solid #00ff00;">
+                <strong>✅ Connection successful!</strong> You can access this user's location data.
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
