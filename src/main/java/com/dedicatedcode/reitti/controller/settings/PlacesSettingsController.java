@@ -47,7 +47,6 @@ public class PlacesSettingsController {
         this.dataManagementEnabled = dataManagementEnabled;
     }
 
-
     @GetMapping
     public String getPage(@AuthenticationPrincipal User user, Model model) {
         model.addAttribute("activeSection", "places");
@@ -86,6 +85,45 @@ public class PlacesSettingsController {
         return "fragments/places :: places-content";
     }
 
+    @PostMapping("/{placeId}/update")
+    public String updatePlace(@PathVariable Long placeId,
+                              @RequestParam String name,
+                              @RequestParam(required = false) String address,
+                              @RequestParam(required = false) String type,
+                              @RequestParam(defaultValue = "0") int page,
+                              Authentication authentication,
+                              Model model) {
+
+        User user = (User) authentication.getPrincipal();
+        if (this.placeJdbcService.exists(user, placeId)) {
+            try {
+                SignificantPlace significantPlace = placeJdbcService.findById(placeId).orElseThrow();
+                SignificantPlace updatedPlace = significantPlace.withName(name);
+                if (address != null) {
+                    updatedPlace = updatedPlace.withAddress(address.trim().isEmpty() ? null : address.trim());
+                }
+
+                if (type != null && !type.isEmpty()) {
+                    try {
+                        SignificantPlace.PlaceType placeType = SignificantPlace.PlaceType.valueOf(type);
+                        updatedPlace = updatedPlace.withType(placeType);
+                    } catch (IllegalArgumentException e) {
+                        model.addAttribute("errorMessage", getMessage("message.error.place.update", "Invalid place type"));
+                        return getPlacesContent(user, page, model);
+                    }
+                }
+
+                placeJdbcService.update(updatedPlace);
+                model.addAttribute("successMessage", getMessage("message.success.place.updated"));
+            } catch (Exception e) {
+                model.addAttribute("errorMessage", getMessage("message.error.place.update", e.getMessage()));
+            }
+        } else {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+
+        return getPlacesContent(user, page, model);
+    }
 
     @PostMapping("/{placeId}/geocode")
     public String geocodePlace(@PathVariable Long placeId,
