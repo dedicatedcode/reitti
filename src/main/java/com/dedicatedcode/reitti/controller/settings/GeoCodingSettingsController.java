@@ -68,7 +68,7 @@ public class GeoCodingSettingsController {
         return "settings/geocode-services :: geocode-services-content";
     }
 
-    @PostMapping("/geocode-services")
+    @PostMapping
     public String createGeocodeService(@RequestParam String name,
                                        @RequestParam String urlTemplate,
                                        Model model) {
@@ -85,7 +85,7 @@ public class GeoCodingSettingsController {
         return "settings/geocode-services :: geocode-services-content";
     }
 
-    @PostMapping("/geocode-services/{id}/toggle")
+    @PostMapping("/{id}/toggle")
     public String toggleGeocodeService(@PathVariable Long id, Model model) {
         RemoteGeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
         service = service.withEnabled(!service.isEnabled());
@@ -98,7 +98,7 @@ public class GeoCodingSettingsController {
         return "settings/geocode-services :: geocode-services-content";
     }
 
-    @PostMapping("/geocode-services/{id}/delete")
+    @PostMapping("/{id}/delete")
     public String deleteGeocodeService(@PathVariable Long id, Model model) {
         RemoteGeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
         geocodeServiceJdbcService.delete(service);
@@ -107,7 +107,7 @@ public class GeoCodingSettingsController {
         return "settings/geocode-services :: geocode-services-content";
     }
 
-    @PostMapping("/geocode-services/{id}/reset-errors")
+    @PostMapping("/{id}/reset-errors")
     public String resetGeocodeServiceErrors(@PathVariable Long id, Model model) {
         RemoteGeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
         geocodeServiceJdbcService.save(service.resetErrorCount().withEnabled(true));
@@ -116,7 +116,7 @@ public class GeoCodingSettingsController {
         return "settings/geocode-services :: geocode-services-content";
     }
 
-    @PostMapping("/geocode-services/run-geocoding")
+    @PostMapping("/run-geocoding")
     public String runGeocoding(Authentication authentication, Model model) {
         try {
             String username = authentication.getName();
@@ -150,7 +150,7 @@ public class GeoCodingSettingsController {
         return "settings/geocode-services :: geocode-services-content";
     }
 
-    @PostMapping("/geocode-services/clear-and-rerun")
+    @PostMapping("/clear-and-rerun")
     public String clearAndRerunGeocoding(Authentication authentication, Model model) {
         try {
             String username = authentication.getName();
