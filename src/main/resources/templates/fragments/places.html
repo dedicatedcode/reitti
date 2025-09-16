@@ -158,12 +158,6 @@
                        th:text="${#temporals.format(visitStats.lastVisit, 'yyyy-MM-dd HH:mm')}">Last Visit Date</a>
                 </div>
             </div>
-            <div th:if="${visitStats.totalVisits > 0}" style="margin-top: 15px;">
-                <a th:href="@{/(place=${place.id()})}" 
-                   target="_blank" 
-                   class="btn btn-secondary"
-                   th:text="#{places.edit.view.all.visits}">View All Visits</a>
-            </div>
         </div>
         <div th:if="${visitStats == null || visitStats.totalVisits == 0}" class="no-visits">
             <p th:text="#{places.edit.no.visits}">No visits recorded for this place yet.</p>

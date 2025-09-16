@@ -47,6 +47,10 @@ body {
     height: 100vh;
 }
 
+.btn.btn-block {
+    width: 100%;
+}
+
 .btn.btn-danger {
     background: #995353;
     font-weight: bolder;

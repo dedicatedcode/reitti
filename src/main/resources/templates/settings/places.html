@@ -15,7 +15,7 @@
     <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
     <div class="settings-content-area">
         <div id="places-management" class="settings-section active">
-            <div th:include="~{fragments/places :: places-content}"></div>
+            <div th:insert="~{fragments/places :: places-content}"></div>
         </div>
     </div>
 </div>
