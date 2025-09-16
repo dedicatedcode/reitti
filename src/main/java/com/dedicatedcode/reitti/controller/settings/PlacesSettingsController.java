@@ -109,9 +109,13 @@ public class PlacesSettingsController {
                     place.getLongitudeCentroid()
             );
 
+            // Get visit statistics for this place
+            var visitStats = placeService.getVisitStatisticsForPlace(user, placeId);
+
             model.addAttribute("place", placeInfo);
             model.addAttribute("currentPage", page);
             model.addAttribute("placeTypes", SignificantPlace.PlaceType.values());
+            model.addAttribute("visitStats", visitStats);
 
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("message.error.place.update", e.getMessage()));
