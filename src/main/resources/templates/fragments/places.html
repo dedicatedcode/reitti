@@ -140,18 +140,18 @@
     <div class="settings-card" style="margin-bottom: 20px;">
         <h3 th:text="#{places.edit.visit.stats.title}">Visit Statistics</h3>
         <div th:if="${visitStats != null && visitStats.totalVisits > 0}" class="visit-stats">
-            <p th:text="#{places.edit.visit.summary(${place.name()}, ${visitStats.totalVisits})}">You visited this place X times.</p>
-            <p th:if="${visitStats.firstVisit != null}">
-                <span th:text="#{places.edit.visit.first.sentence}">The first time you were there was on </span>
-                <a th:href="@{/(date=${#temporals.format(visitStats.firstVisit, 'yyyy-MM-dd')})}" 
-                   target="_blank"
-                   th:text="${#temporals.format(visitStats.firstVisit, 'yyyy-MM-dd HH:mm')}">First Visit Date</a>.
-            </p>
-            <p th:if="${visitStats.lastVisit != null}">
-                <span th:text="#{places.edit.visit.last.sentence}">The last time you were there was on </span>
-                <a th:href="@{/(date=${#temporals.format(visitStats.lastVisit, 'yyyy-MM-dd')})}" 
-                   target="_blank"
-                   th:text="${#temporals.format(visitStats.lastVisit, 'yyyy-MM-dd HH:mm')}">Last Visit Date</a>.
+            <p>
+                <span th:text="#{places.edit.visit.summary(${place.name()}, ${visitStats.totalVisits})}">You visited this place X times.</span>
+                <span th:if="${visitStats.firstVisit != null && visitStats.lastVisit != null}">
+                    <span th:text="#{places.edit.visit.timespan.sentence}"> Your visits span from </span>
+                    <a th:href="@{/(date=${#temporals.format(visitStats.firstVisit, 'yyyy-MM-dd')})}" 
+                       target="_blank"
+                       th:text="${#temporals.format(visitStats.firstVisit, 'yyyy-MM-dd HH:mm')}">First Visit Date</a>
+                    <span th:text="#{places.edit.visit.to}"> to </span>
+                    <a th:href="@{/(date=${#temporals.format(visitStats.lastVisit, 'yyyy-MM-dd')})}" 
+                       target="_blank"
+                       th:text="${#temporals.format(visitStats.lastVisit, 'yyyy-MM-dd HH:mm')}">Last Visit Date</a>.
+                </span>
             </p>
         </div>
         <div th:if="${visitStats == null || visitStats.totalVisits == 0}" class="no-visits">
