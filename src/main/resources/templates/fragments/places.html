@@ -140,18 +140,15 @@
     <div class="settings-card" style="margin-bottom: 20px;">
         <h3 th:text="#{places.edit.visit.stats.title}">Visit Statistics</h3>
         <div th:if="${visitStats != null && visitStats.totalVisits > 0}" class="visit-stats">
-            <p>
-                <span th:text="#{places.edit.visit.summary(${place.name()}, ${visitStats.totalVisits})}">You visited this place X times.</span>
-                <span th:if="${visitStats.firstVisit != null && visitStats.lastVisit != null}">
-                    <span th:text="#{places.edit.visit.first.sentence}"> Your first visit was on </span>
-                    <a th:href="@{/(date=${#temporals.format(visitStats.firstVisit, 'yyyy-MM-dd')})}" 
-                       target="_blank"
-                       th:text="${#temporals.format(visitStats.firstVisit, 'yyyy-MM-dd HH:mm')}">First Visit Date</a>
-                    <span th:text="#{places.edit.visit.and}"> and your most recent visit was on </span>
-                    <a th:href="@{/(date=${#temporals.format(visitStats.lastVisit, 'yyyy-MM-dd')})}" 
-                       target="_blank"
-                       th:text="${#temporals.format(visitStats.lastVisit, 'yyyy-MM-dd HH:mm')}">Last Visit Date</a>.
+            <p th:if="${visitStats.firstVisit != null && visitStats.lastVisit != null}">
+                <span th:utext="#{places.edit.visit.complete(${place.name()}, ${visitStats.totalVisits}, 
+                    '&lt;a href=&quot;/?date=' + ${#temporals.format(visitStats.firstVisit, 'yyyy-MM-dd')} + '&quot; target=&quot;_blank&quot;&gt;' + ${#temporals.format(visitStats.firstVisit, 'yyyy-MM-dd HH:mm')} + '&lt;/a&gt;',
+                    '&lt;a href=&quot;/?date=' + ${#temporals.format(visitStats.lastVisit, 'yyyy-MM-dd')} + '&quot; target=&quot;_blank&quot;&gt;' + ${#temporals.format(visitStats.lastVisit, 'yyyy-MM-dd HH:mm')} + '&lt;/a&gt;')}">
+                    Complete visit summary
                 </span>
+            </p>
+            <p th:if="${visitStats.firstVisit == null || visitStats.lastVisit == null}">
+                <span th:text="#{places.edit.visit.summary(${place.name()}, ${visitStats.totalVisits})}">You visited this place X times.</span>
             </p>
         </div>
         <div th:if="${visitStats == null || visitStats.totalVisits == 0}" class="no-visits">
