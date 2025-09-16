@@ -107,6 +107,7 @@
     let maxWaitTimeoutId = null;
     let pendingEvents = [];
     let firstEventTime = null;
+    let reconnectTimeoutId = null;
 
     // Initialize the map
     const map = L.map('map', {zoomControl: false, attributionControl: false}).setView([window.userSettings.homeLatitude, window.userSettings.homeLongitude], 12);
@@ -561,41 +562,8 @@
             // Start the timer to check for date changes every 30 seconds
             startAutoUpdateTimer();
 
-            eventSource = new EventSource('/events'); // Connect to your SSE endpoint
-
-            eventSource.onopen = function() {
-                console.log('SSE connection opened.');
-                messagesDiv.classList.remove('active')
-            };
-
-            eventSource.onerror = function(error) {
-                console.error('EventSource failed:', error);
-                messagesDiv.innerHTML = `<p><strong>${window.locale.sse.error}</strong></p>`;
-                messagesDiv.classList.add('active')
-            };
-
-            eventSource.onmessage = function(event) {
-                console.log('Received generic event:', event.data);
-                
-                // Parse the event data
-                try {
-                    const eventData = JSON.parse(event.data);
-                    
-                    // Check if the event has a date field and it matches today
-                    if (eventData.date) {
-                        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-                        const eventDate = eventData.date;
-                        
-                        // If event date matches today and we're in auto-update mode, schedule reload
-                        if (eventDate === today && autoUpdateMode) {
-                            console.log('Auto-update: Scheduling timeline reload due to SSE event for today');
-                            scheduleTimelineReload(eventData);
-                        }
-                    }
-                } catch (error) {
-                    console.warn('Could not parse SSE event data:', error);
-                }
-            };
+            // Connect to SSE with automatic reconnection
+            connectSSE();
 
         } else {
             // Disable auto-update mode
@@ -633,6 +601,12 @@
         // Clear pending events
         pendingEvents = [];
         firstEventTime = null;
+        
+        // Clear reconnect timeout
+        if (reconnectTimeoutId) {
+            clearTimeout(reconnectTimeoutId);
+            reconnectTimeoutId = null;
+        }
         
         if (eventSource) {
             eventSource.close();
@@ -756,6 +730,83 @@
         // Clear pending events and reset first event time
         pendingEvents = [];
         firstEventTime = null;
+    }
+
+    function connectSSE() {
+        if (!autoUpdateMode) {
+            return; // Don't connect if auto-update is disabled
+        }
+
+        console.log('Connecting to SSE...');
+        eventSource = new EventSource('/events');
+
+        eventSource.onopen = function() {
+            console.log('SSE connection opened.');
+            messagesDiv.innerHTML = ''; // Clear any error messages
+            messagesDiv.classList.remove('active');
+            
+            // Clear any pending reconnect timeout since we're connected
+            if (reconnectTimeoutId) {
+                clearTimeout(reconnectTimeoutId);
+                reconnectTimeoutId = null;
+            }
+        };
+
+        eventSource.onerror = function(error) {
+            console.error('EventSource failed:', error);
+            messagesDiv.innerHTML = `<p><strong>${window.locale.sse.error}</strong></p>`;
+            messagesDiv.classList.add('active');
+            
+            // Close the current connection
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+            
+            // Schedule reconnection after 5 seconds if still in auto-update mode
+            if (autoUpdateMode && !reconnectTimeoutId) {
+                console.log('Scheduling SSE reconnection in 5 seconds...');
+                reconnectTimeoutId = setTimeout(() => {
+                    reconnectTimeoutId = null;
+                    connectSSE();
+                }, 5000);
+            }
+        };
+
+        eventSource.onmessage = function(event) {
+            console.log('Received generic event:', event.data);
+            
+            // Clear error messages on successful message receipt (fallback for onopen)
+            if (messagesDiv.classList.contains('active')) {
+                messagesDiv.innerHTML = '';
+                messagesDiv.classList.remove('active');
+            }
+            
+            // Clear any pending reconnect timeout since we're receiving messages
+            if (reconnectTimeoutId) {
+                clearTimeout(reconnectTimeoutId);
+                reconnectTimeoutId = null;
+            }
+            
+            // Parse the event data
+            try {
+                const eventData = JSON.parse(event.data);
+                
+                // Check if the event has a date field and it matches today
+                if (eventData.date) {
+                    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+                    const eventDate = eventData.date;
+                    
+                    // If event date matches today and we're in auto-update mode, schedule reload
+                    if (eventDate === today && autoUpdateMode) {
+                        console.log('Auto-update: Scheduling timeline reload due to SSE event for today');
+                        scheduleTimelineReload(eventData);
+                    }
+                }
+            } catch (error) {
+                console.warn('Could not parse SSE event data:', error);
+            }
+        };
     }
 
     function hideUIElements() {
