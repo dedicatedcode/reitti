@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.event.SSEEvent;
+import com.dedicatedcode.reitti.event.SSEType;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
 import org.slf4j.Logger;
@@ -43,6 +44,11 @@ public class UserSseEmitterService implements SmartLifecycle {
             log.error("SSE connection error for user [{}]: {}", user, throwable.getMessage());
             removeEmitter(user, emitter);
         });
+        try {
+            emitter.send(SseEmitter.event().data(new SSEEvent(SSEType.CONNECTED, null, null, null)));
+        } catch (IOException e) {
+            log.error("Unable to send initial event for user [{}]", user, e);
+        }
         log.info("Emitter added for user: {}. Total emitters for user: {}", user, userEmitters.get(user).size());
         return emitter;
     }
