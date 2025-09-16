@@ -199,6 +199,7 @@ public class PlacesSettingsController {
     @GetMapping("/{placeId}/geocoding-response")
     public String getGeocodingResponse(@PathVariable Long placeId,
                                        @RequestParam(defaultValue = "0") int page,
+                                       @RequestParam(defaultValue = "places") String context,
                                        Authentication authentication,
                                        Model model) {
 
@@ -225,6 +226,7 @@ public class PlacesSettingsController {
 
             model.addAttribute("place", placeInfo);
             model.addAttribute("currentPage", page);
+            model.addAttribute("context", context);
             model.addAttribute("geocodingResponses", geocodingResponses);
 
         } catch (Exception e) {

@@ -63,7 +63,7 @@
 
     <div style="margin-bottom: 20px;">
         <button class="btn" 
-                th:attr="hx-get=@{/settings/places/places-content(page=${currentPage})}"
+                th:attr="hx-get=${context == 'edit' ? '/settings/places/' + place.id() + '/edit?page=' + currentPage : '/settings/places/places-content?page=' + currentPage}"
                 hx-target="#places-management"
                 hx-swap="innerHTML"
                 th:text="#{places.geocoding.response.back}">Back to Places</button>
@@ -173,7 +173,7 @@
                         th:text="#{places.geocode.button}">Geocode</button>
                 <button type="button" 
                         class="btn btn-secondary"
-                        th:attr="hx-get=@{/settings/places/{id}/geocoding-response(id=${place.id()}, page=${currentPage})}"
+                        th:attr="hx-get=@{/settings/places/{id}/geocoding-response(id=${place.id()}, page=${currentPage}, context='edit')}"
                         hx-target="#places-management"
                         hx-swap="innerHTML"
                         th:text="#{places.geocoding.response.button}">View Geocoding</button>
