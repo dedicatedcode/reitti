@@ -79,7 +79,7 @@ class PhotoClient {
      */
     groupPhotosByLocation(photos) {
         const groups = [];
-        const tolerance = 0.0001; // ~10 meters tolerance
+        const tolerance = 0.0003; // ~10 meters tolerance
         
         photos.forEach(photo => {
             let foundGroup = false;
