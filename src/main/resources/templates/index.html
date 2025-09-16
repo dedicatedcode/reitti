@@ -711,7 +711,7 @@
             clearTimeout(reloadTimeoutId);
         }
         
-        // Schedule reload after 5 seconds of idle time but at least every 1 minute of there is data available AI!
+        // Schedule reload after 5 seconds of idle time
         reloadTimeoutId = setTimeout(() => {
             if (autoUpdateMode && pendingEvents.length > 0) {
                 console.log(`Auto-update: Reloading timeline data after ${pendingEvents.length} accumulated events`);
