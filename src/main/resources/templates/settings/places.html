@@ -29,7 +29,12 @@
 
 
     function initPlaceMaps() {
+        // Initialize read-only place maps
         document.querySelectorAll('.place-map:not(.leaflet-container)').forEach(mapElement => {
+            if (mapElement.id.startsWith('edit-map-')) {
+                return; // Skip edit maps, they're handled separately
+            }
+            
             const lat = parseFloat(mapElement.dataset.lat);
             const lng = parseFloat(mapElement.dataset.lng);
             const placeMap = L.map(mapElement, {
@@ -55,6 +60,40 @@
                     fillColor: '#4a89dc',
                     color: '#fff',
                     weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(placeMap);
+                placeMap.invalidateSize();
+            }
+        });
+
+        // Initialize interactive edit maps
+        document.querySelectorAll('.place-map[id^="edit-map-"]:not(.leaflet-container)').forEach(mapElement => {
+            const lat = parseFloat(mapElement.dataset.lat);
+            const lng = parseFloat(mapElement.dataset.lng);
+            const placeMap = L.map(mapElement, {
+                zoomControl: true,
+                attributionControl: true,
+                dragging: true,
+                scrollWheelZoom: true
+            })
+            const tilesUrl = window.userSettings.tiles.service;
+            const tilesAttribution = window.userSettings.tiles.attribution;
+
+            const tileLayer = window.userSettings.preferColoredMap ? L.tileLayer : L.tileLayer.grayscale;
+            tileLayer(tilesUrl, {
+                maxZoom: 19,
+                attribution: tilesAttribution
+            }).addTo(placeMap);
+
+            if (!isNaN(lat) && !isNaN(lng)) {
+                placeMap.setView([lat, lng], 16);
+
+                L.circleMarker([lat, lng], {
+                    radius: 10,
+                    fillColor: '#4a89dc',
+                    color: '#fff',
+                    weight: 2,
                     opacity: 1,
                     fillOpacity: 0.8
                 }).addTo(placeMap);
