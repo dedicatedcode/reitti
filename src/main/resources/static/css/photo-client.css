@@ -238,3 +238,22 @@
     border: 2px solid #fff;
     z-index: 20;
 }
+
+.time-matched-indicator {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: rgba(255, 193, 7, 0.9);
+    color: #333;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    border: 2px solid #fff;
+    z-index: 21;
+    cursor: help;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}

@@ -5,9 +5,11 @@ import com.dedicatedcode.reitti.dto.ImmichSearchRequest;
 import com.dedicatedcode.reitti.dto.ImmichSearchResponse;
 import com.dedicatedcode.reitti.dto.PhotoResponse;
 import com.dedicatedcode.reitti.model.IntegrationTestResult;
+import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ImmichIntegrationJdbcService;
+import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
@@ -18,6 +20,7 @@ import org.springframework.web.client.RestTemplate;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,10 +32,14 @@ public class ImmichIntegrationService {
     private static final Logger log = LoggerFactory.getLogger(ImmichIntegrationService.class);
 
     private final ImmichIntegrationJdbcService immichIntegrationJdbcService;
+    private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final RestTemplate restTemplate;
-    
-    public ImmichIntegrationService(ImmichIntegrationJdbcService immichIntegrationJdbcService, RestTemplate restTemplate) {
+
+    public ImmichIntegrationService(ImmichIntegrationJdbcService immichIntegrationJdbcService,
+                                    RawLocationPointJdbcService rawLocationPointJdbcService,
+                                    RestTemplate restTemplate) {
         this.immichIntegrationJdbcService = immichIntegrationJdbcService;
+        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.restTemplate = restTemplate;
     }
     
@@ -126,7 +133,7 @@ public class ImmichIntegrationService {
             );
             
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return convertToPhotoResponses(response.getBody(), baseUrl);
+                return convertToPhotoResponses(user, response.getBody(), baseUrl);
             }
             
         } catch (Exception e) {
@@ -135,8 +142,8 @@ public class ImmichIntegrationService {
         
         return new ArrayList<>();
     }
-    
-    private List<PhotoResponse> convertToPhotoResponses(ImmichSearchResponse searchResponse, String baseUrl) {
+
+    private List<PhotoResponse> convertToPhotoResponses(User user, ImmichSearchResponse searchResponse, String baseUrl) {
         List<PhotoResponse> photos = new ArrayList<>();
         
         if (searchResponse.getAssets() != null && searchResponse.getAssets().getItems() != null) {
@@ -148,15 +155,27 @@ public class ImmichIntegrationService {
                 Double latitude = null;
                 Double longitude = null;
                 String dateTime = asset.getLocalDateTime();
-                
+                boolean timeMatched = false;
                 if (asset.getExifInfo() != null) {
                     latitude = asset.getExifInfo().getLatitude();
                     longitude = asset.getExifInfo().getLongitude();
                     if (asset.getExifInfo().getDateTimeOriginal() != null) {
                         dateTime = asset.getExifInfo().getDateTimeOriginal();
                     }
+
                 }
-                
+
+                if (latitude == null && longitude == null) {
+                    log.debug("Asset [{}] had no exif data, will try to match it to a point we know of.", asset.getId());
+                    ZonedDateTime takenAt = ZonedDateTime.parse(dateTime, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+                    ZonedDateTime utc = takenAt.withZoneSameInstant(ZoneId.of("UTC"));
+                    Optional<RawLocationPoint> proximatePoint = this.rawLocationPointJdbcService.findProximatePoint(user, utc.toInstant(), 60);
+                    if (proximatePoint.isPresent()) {
+                        latitude = proximatePoint.get().getLatitude();
+                        longitude = proximatePoint.get().getLongitude();
+                        timeMatched = true;
+                    }
+                }
                 PhotoResponse photo = new PhotoResponse(
                     asset.getId(),
                     asset.getOriginalFileName(),
@@ -164,7 +183,8 @@ public class ImmichIntegrationService {
                     fullImageUrl,
                     latitude,
                     longitude,
-                    dateTime
+                    dateTime,
+                    timeMatched
                 );
                 
                 photos.add(photo);

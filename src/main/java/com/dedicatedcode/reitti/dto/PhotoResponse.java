@@ -9,11 +9,10 @@ public class PhotoResponse {
     private Double latitude;
     private Double longitude;
     private String dateTime;
+    private boolean timeMatched;
 
-    public PhotoResponse() {}
-
-    public PhotoResponse(String id, String fileName, String thumbnailUrl, String fullImageUrl, 
-                        Double latitude, Double longitude, String dateTime) {
+    public PhotoResponse(String id, String fileName, String thumbnailUrl, String fullImageUrl,
+                        Double latitude, Double longitude, String dateTime, boolean timeMatched) {
         this.id = id;
         this.fileName = fileName;
         this.thumbnailUrl = thumbnailUrl;
@@ -21,6 +20,7 @@ public class PhotoResponse {
         this.latitude = latitude;
         this.longitude = longitude;
         this.dateTime = dateTime;
+        this.timeMatched = timeMatched;
     }
 
     public String getId() {
@@ -77,5 +77,13 @@ public class PhotoResponse {
 
     public void setDateTime(String dateTime) {
         this.dateTime = dateTime;
+    }
+
+    public boolean isTimeMatched() {
+        return timeMatched;
+    }
+
+    public void setTimeMatched(boolean timeMatched) {
+        this.timeMatched = timeMatched;
     }
 }

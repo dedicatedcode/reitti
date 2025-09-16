@@ -79,7 +79,7 @@ class PhotoClient {
      */
     groupPhotosByLocation(photos) {
         const groups = [];
-        const tolerance = 0.0001; // ~10 meters tolerance
+        const tolerance = 0.0003; // ~10 meters tolerance
         
         photos.forEach(photo => {
             let foundGroup = false;
@@ -215,6 +215,15 @@ class PhotoClient {
                 photoElement.style.fontSize = '24px';
                 photoElement.style.color = '#ccc';
             });
+
+            // Add time-matched indicator if photo was aligned by time
+            if (photo.timeMatched === true) {
+                const timeMatchedIndicator = document.createElement('div');
+                timeMatchedIndicator.className = 'time-matched-indicator';
+                timeMatchedIndicator.innerHTML = '!';
+                timeMatchedIndicator.title = 'This photo had no GPS coordinates and was aligned by time to your path';
+                photoElement.appendChild(timeMatchedIndicator);
+            }
 
             photoElement.addEventListener('click', (e) => {
                 e.stopPropagation();
