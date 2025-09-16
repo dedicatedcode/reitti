@@ -742,6 +742,7 @@
 
         eventSource.onopen = function() {
             console.log('SSE connection opened.');
+            messagesDiv.innerHTML = ''; // Clear any error messages
             messagesDiv.classList.remove('active');
             
             // Clear any pending reconnect timeout since we're connected
