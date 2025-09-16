@@ -45,23 +45,11 @@
                 </div>
                 <div style="display: flex; gap: 10px; margin-top: 10px;">
                     <button type="button" 
-                            class="btn"
+                            class="btn btn-block"
                             th:attr="hx-get=@{/settings/places/{id}/edit(id=${place.id()}, page=${currentPage})}"
                             hx-target="#places-management"
                             hx-swap="innerHTML"
                             th:text="#{places.edit.button}">Edit</button>
-                    <button type="button" 
-                            class="btn btn-secondary"
-                            th:attr="hx-post=@{/settings/places/{id}/geocode(id=${place.id()}, page=${currentPage})}, hx-confirm=#{places.geocode.confirm}"
-                            hx-target="#places-management"
-                            hx-swap="innerHTML"
-                            th:text="#{places.geocode.button}">Geocode</button>
-                    <button type="button" 
-                            class="btn btn-secondary"
-                            th:attr="hx-get=@{/settings/places/{id}/geocoding-response(id=${place.id()}, page=${currentPage})}"
-                            hx-target="#places-management"
-                            hx-swap="innerHTML"
-                            th:text="#{places.geocoding.response.button}">View Geocoding</button>
                 </div>
             </div>
         </div>
@@ -130,7 +118,7 @@
                 th:attr="hx-get=@{/settings/places/places-content(page=${currentPage})}"
                 hx-target="#places-management"
                 hx-swap="innerHTML"
-                th:text="#{places.edit.close}">Close</button>
+                th:text="#{form.close}">Close</button>
     </div>
 
     <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
@@ -141,14 +129,11 @@
     </div>
 
     <!-- Large Interactive Map -->
-    <div class="settings-card" style="margin-bottom: 20px;">
-        <h3 th:text="#{places.edit.map.title}">Location</h3>
-        <div class="place-map-container" style="height: 400px; width: 100%;">
-            <div class="place-map" th:id="'edit-map-' + ${place.id()}" 
-                 th:data-lat="${place.latitude()}" 
-                 th:data-lng="${place.longitude()}" 
-                 style="height: 100%; width: 100%;"></div>
-        </div>
+    <div class="settings-card" style="margin-bottom: 20px; height: 500px;">
+        <div class="place-map" th:id="'edit-map-' + ${place.id()}"
+             th:data-lat="${place.latitude()}"
+             th:data-lng="${place.longitude()}"
+             style="height: 100%; width: 100%;"></div>
     </div>
 
     <!-- Edit Form -->
