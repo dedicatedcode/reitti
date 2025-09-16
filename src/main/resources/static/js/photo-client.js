@@ -216,6 +216,15 @@ class PhotoClient {
                 photoElement.style.color = '#ccc';
             });
 
+            // Add time-matched indicator if photo was aligned by time
+            if (photo.timeMatched === true) {
+                const timeMatchedIndicator = document.createElement('div');
+                timeMatchedIndicator.className = 'time-matched-indicator';
+                timeMatchedIndicator.innerHTML = '⚠️';
+                timeMatchedIndicator.title = 'This photo had no GPS coordinates and was aligned by time to the path';
+                photoElement.appendChild(timeMatchedIndicator);
+            }
+
             photoElement.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.showPhotoModal(photo, () => {
