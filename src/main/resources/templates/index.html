@@ -775,6 +775,18 @@
         eventSource.onmessage = function(event) {
             console.log('Received generic event:', event.data);
             
+            // Clear error messages on successful message receipt (fallback for onopen)
+            if (messagesDiv.classList.contains('active')) {
+                messagesDiv.innerHTML = '';
+                messagesDiv.classList.remove('active');
+            }
+            
+            // Clear any pending reconnect timeout since we're receiving messages
+            if (reconnectTimeoutId) {
+                clearTimeout(reconnectTimeoutId);
+                reconnectTimeoutId = null;
+            }
+            
             // Parse the event data
             try {
                 const eventData = JSON.parse(event.data);
