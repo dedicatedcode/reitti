@@ -220,8 +220,8 @@ class PhotoClient {
             if (photo.timeMatched === true) {
                 const timeMatchedIndicator = document.createElement('div');
                 timeMatchedIndicator.className = 'time-matched-indicator';
-                timeMatchedIndicator.innerHTML = '⚠️';
-                timeMatchedIndicator.title = 'This photo had no GPS coordinates and was aligned by time to the path';
+                timeMatchedIndicator.innerHTML = '!';
+                timeMatchedIndicator.title = 'This photo had no GPS coordinates and was aligned by time to your path';
                 photoElement.appendChild(timeMatchedIndicator);
             }
 

@@ -219,6 +219,10 @@ public class RawLocationPointJdbcService {
         jdbcTemplate.update(sql, user.getId());
     }
 
+    public Optional<RawLocationPoint> findProximatePoint(User user, Instant when, int maxOffsetInSeconds) {
+        List<RawLocationPoint> result = findByUserAndTimestampBetweenOrderByTimestampAsc(user, when.minusSeconds(maxOffsetInSeconds / 2), when.plusSeconds(maxOffsetInSeconds / 2));
+        return result.stream().findFirst();
+    }
 
     public static class ClusteredPoint {
         private final RawLocationPoint point;
