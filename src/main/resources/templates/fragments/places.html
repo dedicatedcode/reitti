@@ -143,11 +143,11 @@
             <p>
                 <span th:text="#{places.edit.visit.summary(${place.name()}, ${visitStats.totalVisits})}">You visited this place X times.</span>
                 <span th:if="${visitStats.firstVisit != null && visitStats.lastVisit != null}">
-                    <span th:text="#{places.edit.visit.timespan.sentence}"> Your visits span from </span>
+                    <span th:text="#{places.edit.visit.first.sentence}"> Your first visit was on </span>
                     <a th:href="@{/(date=${#temporals.format(visitStats.firstVisit, 'yyyy-MM-dd')})}" 
                        target="_blank"
                        th:text="${#temporals.format(visitStats.firstVisit, 'yyyy-MM-dd HH:mm')}">First Visit Date</a>
-                    <span th:text="#{places.edit.visit.to}"> to </span>
+                    <span th:text="#{places.edit.visit.and}"> and your most recent visit was on </span>
                     <a th:href="@{/(date=${#temporals.format(visitStats.lastVisit, 'yyyy-MM-dd')})}" 
                        target="_blank"
                        th:text="${#temporals.format(visitStats.lastVisit, 'yyyy-MM-dd HH:mm')}">Last Visit Date</a>.
