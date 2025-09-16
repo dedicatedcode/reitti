@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{settings.title}">Settings - Reitti</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/lineicons.css">
+    <script src="/js/htmx.min.js"></script>
+</head>
+<body class="settings-page">
+<div class="settings-container">
+    <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
+    <div class="settings-content-area">
+        <div id="job-status" class="settings-section active">
+            <div th:fragment="queue-stats-content">
+                <h2 th:text="#{jobs.title}">Job Status</h2>
+
+                <div class="queue-status">
+                    <div class="queue-card" th:each="queue : ${queueStats}">
+                        <div class="queue-name" th:text="${queue.name()}">Queue Name</div>
+                        <div class="queue-count" th:text="${queue.count()}">0</div>
+                        <div class="queue-time" th:text="#{jobs.estimated.time(${queue.estimatedTime()})}">Est. processing time: 0 min</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" th:style="'width:' + ${queue.rate()} + '%'"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <button class="btn"
+                            hx-trigger="every 2s"
+                            hx-get="/settings/queue-stats-content"
+                            hx-target="#job-status"
+                            hx-swap="innerHTML"
+                            th:text="#{jobs.refresh}">Refresh Status</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

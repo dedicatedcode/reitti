@@ -2,6 +2,8 @@ package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
+import org.springframework.dao.DataAccessException;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -25,10 +27,15 @@ public class ReittiIntegrationController {
     @GetMapping("/avatar/{integrationId}")
     public ResponseEntity<byte[]> getAvatar(@PathVariable Long integrationId) {
 
-        Map<String, Object> result = jdbcTemplate.queryForMap(
-                "SELECT mime_type, binary_data FROM remote_user_info WHERE integration_id = ?",
-                integrationId
-        );
+        Map<String, Object> result;
+        try {
+            result = jdbcTemplate.queryForMap(
+                    "SELECT mime_type, binary_data FROM remote_user_info WHERE integration_id = ?",
+                    integrationId
+            );
+        } catch (EmptyResultDataAccessException ignored) {
+            return  ResponseEntity.notFound().build();
+        }
 
         String contentType = (String) result.get("mime_type");
         byte[] imageData = (byte[]) result.get("binary_data");

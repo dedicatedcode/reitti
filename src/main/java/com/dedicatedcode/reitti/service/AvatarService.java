@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.service;
 
-import com.dedicatedcode.reitti.controller.UserSettingsController;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -75,18 +74,19 @@ public class AvatarService {
 
         String trimmed = displayName.trim();
 
-        // If display name contains whitespace, take first char of each word
+
         if (trimmed.contains(" ")) {
             StringBuilder initials = new StringBuilder();
             String[] words = trimmed.split("\\s+");
+            int wordCount = 0;
             for (String word : words) {
-                if (!word.isEmpty()) {
+                if (!word.isEmpty() && wordCount < 2) {
                     initials.append(Character.toUpperCase(word.charAt(0)));
+                    wordCount++;
                 }
             }
             return initials.toString();
         } else {
-            // No whitespace - take first two letters, or just one if that's all there is
             if (trimmed.length() >= 2) {
                 return (Character.toUpperCase(trimmed.charAt(0)) + "" + Character.toUpperCase(trimmed.charAt(1)));
             } else {

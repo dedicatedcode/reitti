@@ -1,10 +1,13 @@
-package com.dedicatedcode.reitti.controller;
+package com.dedicatedcode.reitti.controller.settings;
 
+import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.importer.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,7 +21,7 @@ import java.io.InputStream;
 import java.util.Map;
 
 @Controller
-@RequestMapping("/import")
+@RequestMapping("/settings/import")
 public class FileImportController {
 
     private static final Logger logger = LoggerFactory.getLogger(FileImportController.class);
@@ -28,21 +31,29 @@ public class FileImportController {
     private final GoogleAndroidTimelineImporter googleAndroidTimelineImporter;
     private final GoogleIOSTimelineImporter googleTimelineIOSImporter;
     private final GeoJsonImporter geoJsonImporter;
+    private final boolean dataManagementEnabled;
 
     public FileImportController(GpxImporter gpxImporter,
                                 GoogleRecordsImporter googleRecordsImporter,
                                 GoogleAndroidTimelineImporter googleAndroidTimelineImporter,
-                                GoogleIOSTimelineImporter googleTimelineIOSImporter, GeoJsonImporter geoJsonImporter) {
+                                GoogleIOSTimelineImporter googleTimelineIOSImporter,
+                                GeoJsonImporter geoJsonImporter,
+                                @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.gpxImporter = gpxImporter;
         this.googleRecordsImporter = googleRecordsImporter;
         this.googleAndroidTimelineImporter = googleAndroidTimelineImporter;
         this.googleTimelineIOSImporter = googleTimelineIOSImporter;
         this.geoJsonImporter = geoJsonImporter;
+        this.dataManagementEnabled = dataManagementEnabled;
     }
 
-    @GetMapping("/file-upload-content")
-    public String getDataImportContent() {
-        return "fragments/file-upload :: file-upload-content";
+
+    @GetMapping
+    public String getFileUploadPage(@AuthenticationPrincipal User user, Model model) {
+        model.addAttribute("activeSection", "file-upload");
+        model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
+        model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+        return "settings/import-data";
     }
 
     @PostMapping("/gpx")
@@ -53,7 +64,7 @@ public class FileImportController {
 
         if (files.length == 0) {
             model.addAttribute("uploadErrorMessage", "No files selected");
-            return "fragments/file-upload :: file-upload-content";
+            return "settings/import-data :: file-upload-content";
         }
 
         int totalProcessed = 0;
@@ -97,7 +108,7 @@ public class FileImportController {
             model.addAttribute("uploadErrorMessage", "No files were processed successfully. " + errorMessages);
         }
 
-        return "fragments/file-upload :: file-upload-content";
+        return "settings/import-data :: file-upload-content";
     }
 
     @PostMapping("/google-records")
@@ -108,12 +119,12 @@ public class FileImportController {
 
         if (file.isEmpty() || file.getOriginalFilename() == null) {
             model.addAttribute("uploadErrorMessage", "File is empty");
-            return "fragments/file-upload :: file-upload-content";
+            return "settings/import-data :: file-upload-content";
         }
 
         if (!file.getOriginalFilename().endsWith(".json")) {
             model.addAttribute("uploadErrorMessage", "Only JSON files are supported");
-            return "fragments/file-upload :: file-upload-content";
+            return "settings/import-data :: file-upload-content";
         }
 
         try (InputStream inputStream = file.getInputStream()) {
@@ -125,10 +136,10 @@ public class FileImportController {
                 model.addAttribute("uploadErrorMessage", result.get("error"));
             }
 
-            return "fragments/file-upload :: file-upload-content";
+            return "settings/import-data :: file-upload-content";
         } catch (IOException e) {
             model.addAttribute("uploadErrorMessage", "Error processing file: " + e.getMessage());
-            return "fragments/file-upload :: file-upload-content";
+            return "settings/import-data :: file-upload-content";
         }
     }
 
@@ -140,12 +151,12 @@ public class FileImportController {
 
         if (file.isEmpty() || file.getOriginalFilename() == null) {
             model.addAttribute("uploadErrorMessage", "File is empty");
-            return "fragments/file-upload :: file-upload-content";
+            return "settings/import-data :: file-upload-content";
         }
 
         if (!file.getOriginalFilename().endsWith(".json")) {
             model.addAttribute("uploadErrorMessage", "Only JSON files are supported");
-            return "fragments/file-upload :: file-upload-content";
+            return "settings/import-data :: file-upload-content";
         }
 
         try (InputStream inputStream = file.getInputStream()) {
@@ -157,10 +168,10 @@ public class FileImportController {
                 model.addAttribute("uploadErrorMessage", result.get("error"));
             }
 
-            return "fragments/file-upload :: file-upload-content";
+            return "settings/import-data :: file-upload-content";
         } catch (IOException e) {
             model.addAttribute("uploadErrorMessage", "Error processing file: " + e.getMessage());
-            return "fragments/file-upload :: file-upload-content";
+            return "settings/import-data :: file-upload-content";
         }
     }
 
@@ -172,12 +183,12 @@ public class FileImportController {
 
         if (file.isEmpty() || file.getOriginalFilename() == null) {
             model.addAttribute("uploadErrorMessage", "File is empty");
-            return "fragments/file-upload :: file-upload-content";
+            return "settings/import-data :: file-upload-content";
         }
 
         if (!file.getOriginalFilename().endsWith(".json")) {
             model.addAttribute("uploadErrorMessage", "Only JSON files are supported");
-            return "fragments/file-upload :: file-upload-content";
+            return "settings/import-data :: file-upload-content";
         }
 
         try (InputStream inputStream = file.getInputStream()) {
@@ -189,10 +200,10 @@ public class FileImportController {
                 model.addAttribute("uploadErrorMessage", result.get("error"));
             }
 
-            return "fragments/file-upload :: file-upload-content";
+            return "settings/import-data :: file-upload-content";
         } catch (IOException e) {
             model.addAttribute("uploadErrorMessage", "Error processing file: " + e.getMessage());
-            return "fragments/file-upload :: file-upload-content";
+            return "settings/import-data :: file-upload-content";
         }
     }
 
@@ -204,7 +215,7 @@ public class FileImportController {
 
         if (files.length == 0) {
             model.addAttribute("uploadErrorMessage", "No files selected");
-            return "fragments/file-upload :: file-upload-content";
+            return "settings/import-data :: file-upload-content";
         }
 
         int totalProcessed = 0;
@@ -249,6 +260,6 @@ public class FileImportController {
             model.addAttribute("uploadErrorMessage", "No files were processed successfully. " + errorMessages);
         }
 
-        return "fragments/file-upload :: file-upload-content";
+        return "settings/import-data :: file-upload-content";
     }
 }

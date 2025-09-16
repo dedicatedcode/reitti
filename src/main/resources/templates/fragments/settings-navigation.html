@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+    <div th:fragment="settings-nav(activeSection, dataManagementEnabled, isAdmin)" class="settings-nav">
+        <div class="timeline-header">
+            <a th:href="@{/}"><img class="logo" th:src="@{/img/logo.svg}" alt="reitti logo" title="reitti" src="/img/logo.svg"></a>
+            <a href="/" class="nav-link" th:title="#{nav.timeline}"><i class="lni lni-route-1"></i></a>
+            <a href="/statistics" class="nav-link" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
+            <form th:action="@{/logout}" method="post" >
+                <button type="submit" class="nav-link" style="font-size: 1.4rem;" th:title="#{nav.logout.tooltip}"><i
+                        class="lni lni-exit"></i>
+                </button>
+            </form>
+        </div>
+        <a href="/settings/job-status"
+           class="settings-nav-item" 
+           th:classappend="${activeSection == 'job-status'} ? 'active' : ''"
+           th:text="#{settings.job.status}">Job Status</a>
+        
+        <a href="/settings/import"
+           class="settings-nav-item"
+           th:classappend="${activeSection == 'file-upload'} ? 'active' : ''"
+           th:text="#{settings.import.data}">Import Data</a>
+
+        <a href="/settings/export-data"
+           class="settings-nav-item"
+           th:classappend="${activeSection == 'export-data'} ? 'active' : ''"
+           th:text="#{export.title}">Export Data</a>
+
+        <a href="/settings/api-tokens"
+           class="settings-nav-item"
+           th:classappend="${activeSection == 'api-tokens'} ? 'active' : ''"
+           th:text="#{settings.api.tokens}">API Tokens</a>
+
+        <a href="/settings/magic-links"
+           class="settings-nav-item"
+           th:classappend="${activeSection == 'sharing'} ? 'active' : ''"
+           th:text="#{settings.share.access}">Share Access</a>
+
+        <a href="/settings/user-management"
+           class="settings-nav-item"
+           th:classappend="${activeSection == 'user-management'} ? 'active' : ''"
+           th:text="#{settings.user.management}">User Management</a>
+        
+        <a href="/settings/places"
+           class="settings-nav-item"
+           th:classappend="${activeSection == 'places'} ? 'active' : ''"
+           th:text="#{settings.places}">Places</a>
+        
+        <a href="/settings/geocode-services"
+           class="settings-nav-item"
+           th:classappend="${activeSection == 'geocode-services'} ? 'active' : ''"
+           th:text="#{settings.geocoding}">Geocoding</a>
+        
+        <a href="/settings/manage-data"
+           th:if="${dataManagementEnabled}"
+           class="settings-nav-item"
+           th:classappend="${activeSection == 'manage-data'} ? 'active' : ''"
+           th:text="#{settings.manage.data}">Manage Data</a>
+        
+        <a href="/settings/integrations"
+           class="settings-nav-item"
+           th:classappend="${activeSection == 'integrations'} ? 'active' : ''"
+           th:text="#{settings.integrations}">Integrations</a>
+
+        <a href="/settings/about"
+           class="settings-nav-item"
+           th:classappend="${activeSection == 'about'} ? 'active' : ''"
+           th:text="#{settings.about}">About</a>
+    </div>
+</body>
+</html>

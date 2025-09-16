@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Places Content Fragment -->
+<div th:fragment="places-content">
+    <h2 th:text="#{places.title}">Significant Places</h2>
+
+    <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+        <span th:text="${successMessage}">Success message</span>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+        <span th:text="${errorMessage}">Error message</span>
+    </div>
+
+    <div class="pagination-controls">
+        <span th:text="#{places.page.info(${currentPage + 1}, ${totalPages})}">Page 1 of 1</span>
+        <div class="pagination-buttons">
+            <button th:if="${currentPage > 0}" 
+                    class="btn"
+                    th:attr="hx-get=@{/settings/places/places-content(page=${currentPage - 1})}"
+                    hx-target="#places-management"
+                    hx-swap="innerHTML"
+                    th:text="#{form.previous}">Previous</button>
+            <button th:if="${currentPage < totalPages - 1}" 
+                    class="btn"
+                    th:attr="hx-get=@{/settings/places/places-content(page=${currentPage + 1})}"
+                    hx-target="#places-management"
+                    hx-swap="innerHTML"
+                    th:text="#{form.next}">Next</button>
+        </div>
+    </div>
+
+    <div class="places-grid" th:if="${!isEmpty}">
+        <div class="place-stats-card" th:each="place : ${places}">
+            <div class="place-map-container">
+                <div class="place-map" th:id="'map-' + ${place.id()}" th:data-lat="${place.latitude()}" th:data-lng="${place.longitude()}" ></div>
+            </div>
+            <div class="place-details text-align-left">
+                <div class="place-info">
+                    <div><strong th:text="#{places.name.label}">Name:</strong> <span th:text="${place.name()}"></span></div>
+                    <div><strong th:text="#{places.address.label}">Address:</strong> <span th:text="${place.address() ?: #messages.msg('places.address.not.available')}"></span></div>
+                    <div><strong th:text="#{places.category.label}">Category:</strong> <span th:text="#{${place.type().messageKey}}"></span></div>
+                    <div><strong th:text="#{places.coordinates.label}">Coordinates:</strong> <span th:text="${place.latitude() + ', ' + place.longitude()}"></span></div>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button type="button" 
+                            class="btn btn-block"
+                            th:attr="hx-get=@{/settings/places/{id}/edit(id=${place.id()}, page=${currentPage})}"
+                            hx-target="#places-management"
+                            hx-swap="innerHTML"
+                            th:text="#{places.edit.button}">Edit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <p th:if="${isEmpty}" th:text="#{places.no.places}">No significant places found.</p>
+</div>
+
+<!-- Geocoding Response Content Fragment -->
+<div th:fragment="geocoding-response-content">
+    <h2 th:text="#{places.geocoding.response.title(${place.name()})}">Geocoding Response for Place</h2>
+
+    <div style="margin-bottom: 20px;">
+        <button class="btn" 
+                th:attr="hx-get=${context == 'edit' ? '/settings/places/' + place.id() + '/edit?page=' + currentPage : '/settings/places/places-content?page=' + currentPage}"
+                hx-target="#places-management"
+                hx-swap="innerHTML"
+                th:text="#{places.geocoding.response.back}">Back to Places</button>
+    </div>
+
+    <div class="settings-card">
+        <h3 th:text="${place.name()}">Place Name</h3>
+        <p><strong th:text="#{places.address.label}">Address:</strong> <span th:text="${place.address() ?: #messages.msg('places.address.not.available')}">Address</span></p>
+        <p><strong th:text="#{places.coordinates.label}">Coordinates:</strong> <span th:text="${place.latitude() + ', ' + place.longitude()}">Coordinates</span></p>
+    </div>
+
+    <div th:if="${!geocodingResponses.isEmpty()}" class="settings-card">
+        <h3>Geocoding Responses</h3>
+        <div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.2);">
+            <table>
+                <thead>
+                <tr>
+                    <th th:text="#{places.geocoding.response.provider}">Provider</th>
+                    <th th:text="#{places.geocoding.response.status}">Status</th>
+                    <th th:text="#{places.geocoding.response.fetched.at}">Fetched At</th>
+                    <th th:text="#{places.geocoding.response.error.details}">Error Details</th>
+                    <th th:text="#{places.geocoding.response.raw.data}">Raw Data</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="response, iterStat : ${geocodingResponses}">
+                    <td th:text="${response.providerName}">Provider Name</td>
+                    <td th:text="${response.status}">Status</td>
+                    <td th:text="${#temporals.format(response.fetchedAt, 'yyyy-MM-dd HH:mm:ss')}">Fetched At</td>
+                    <td><span  th:if="${response.errorDetails}" th:text="${response.errorDetails}">Error Details</span></td>
+                    <td>
+                        <pre style="background-color: rgba(255,255,255,0.1); padding: 15px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; max-height: 300px; overflow-y: auto;"
+                             th:text="${response.rawData}"></pre>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div th:if="${geocodingResponses.isEmpty()}" class="settings-card">
+        <p th:text="#{places.geocoding.response.no.data}">No geocoding response available for this place</p>
+    </div>
+</div>
+
+<!-- Edit Place Content Fragment -->
+<div th:fragment="edit-place-content">
+    <h2 th:text="#{places.edit.title(${place.name()})}">Edit Place</h2>
+
+    <div style="margin-bottom: 20px;">
+        <button class="btn" 
+                th:attr="hx-get=@{/settings/places/places-content(page=${currentPage})}"
+                hx-target="#places-management"
+                hx-swap="innerHTML"
+                th:text="#{form.close}">Close</button>
+    </div>
+
+    <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+        <span th:text="${successMessage}">Success message</span>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+        <span th:text="${errorMessage}">Error message</span>
+    </div>
+
+    <!-- Large Interactive Map -->
+    <div class="settings-card" style="margin-bottom: 20px; height: 500px;">
+        <div class="place-map" th:id="'edit-map-' + ${place.id()}"
+             th:data-lat="${place.latitude()}"
+             th:data-lng="${place.longitude()}"
+             style="height: 100%; width: 100%;"></div>
+    </div>
+
+    <!-- Visit Statistics Section -->
+    <div class="settings-card" style="margin-bottom: 20px;">
+        <h3 th:text="#{places.edit.visit.stats.title}">Visit Statistics</h3>
+        <div th:if="${visitStats != null && visitStats.totalVisits > 0}" class="visit-stats">
+            <p th:if="${visitStats.firstVisit != null && visitStats.lastVisit != null}">
+                <span th:utext="#{places.edit.visit.complete(${place.name()}, ${visitStats.totalVisits}, 
+                    '&lt;a href=&quot;/?date=' + ${#temporals.format(visitStats.firstVisit, 'yyyy-MM-dd')} + '&quot; target=&quot;_blank&quot;&gt;' + ${#temporals.format(visitStats.firstVisit, 'yyyy-MM-dd HH:mm')} + '&lt;/a&gt;',
+                    '&lt;a href=&quot;/?date=' + ${#temporals.format(visitStats.lastVisit, 'yyyy-MM-dd')} + '&quot; target=&quot;_blank&quot;&gt;' + ${#temporals.format(visitStats.lastVisit, 'yyyy-MM-dd HH:mm')} + '&lt;/a&gt;')}">
+                    Complete visit summary
+                </span>
+            </p>
+            <p th:if="${visitStats.firstVisit == null || visitStats.lastVisit == null}">
+                <span th:text="#{places.edit.visit.summary(${place.name()}, ${visitStats.totalVisits})}">You visited this place X times.</span>
+            </p>
+        </div>
+        <div th:if="${visitStats == null || visitStats.totalVisits == 0}" class="no-visits">
+            <p th:text="#{places.edit.no.visits}">No visits recorded for this place yet.</p>
+        </div>
+    </div>
+
+    <!-- Edit Form -->
+    <div class="settings-card">
+        <h3 th:text="#{places.edit.details.title}">Place Details</h3>
+        <form th:id="'edit-place-form-' + ${place.id()}" autocomplete="off"
+              th:attr="hx-post=@{/settings/places/{id}/update(id=${place.id()}, page=${currentPage})}"
+              hx-target="#places-management"
+              hx-swap="innerHTML">
+            <div class="form-group">
+                <label th:for="'edit-name-' + ${place.id()}" th:text="#{places.name.label}">Name</label>
+                <input type="text" th:id="'edit-name-' + ${place.id()}" name="name" th:value="${place.name()}" required>
+            </div>
+            <div class="form-group">
+                <label th:for="'edit-address-' + ${place.id()}" th:text="#{places.address.label}">Address</label>
+                <input type="text" th:id="'edit-address-' + ${place.id()}" name="address" th:value="${place.address()}" th:placeholder="#{places.address.placeholder}">
+            </div>
+            <div class="form-group">
+                <label th:for="'edit-type-' + ${place.id()}" th:text="#{places.category.label}">Category</label>
+                <select th:id="'edit-type-' + ${place.id()}" name="type" class="form-select">
+                    <option th:each="placeType : ${placeTypes}" 
+                            th:value="${placeType.name()}" 
+                            th:selected="${placeType == place.type()}"
+                            th:text="#{${placeType.messageKey}}">Place Type</option>
+                </select>
+            </div>
+            <div class="place-info">
+                <div><strong th:text="#{places.coordinates.label}">Coordinates:</strong> <span th:text="${place.latitude() + ', ' + place.longitude()}"></span></div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="submit" class="btn" th:text="#{form.update}">Update</button>
+                <button type="button" 
+                        class="btn btn-secondary"
+                        th:attr="hx-post=@{/settings/places/{id}/geocode(id=${place.id()}, page=${currentPage})}, hx-confirm=#{places.geocode.confirm}"
+                        hx-target="#places-management"
+                        hx-swap="innerHTML"
+                        th:text="#{places.geocode.button}">Geocode</button>
+                <button type="button" 
+                        class="btn btn-secondary"
+                        th:attr="hx-get=@{/settings/places/{id}/geocoding-response(id=${place.id()}, page=${currentPage}, context='edit')}"
+                        hx-target="#places-management"
+                        hx-swap="innerHTML"
+                        th:text="#{places.geocoding.response.button}">View Geocoding</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+</body>
+</html>

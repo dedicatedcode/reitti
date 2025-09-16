@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{settings.title}">Settings - Reitti</title>
+    <link rel="stylesheet" href="/css/leaflet.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/lineicons.css">
+    <script src="/js/htmx.min.js"></script>
+    <script src="/js/leaflet.js"></script>
+    <script src="/js/TileLayer.Grayscale.js"></script></head>
+<body class="settings-page">
+<div class="settings-container">
+    <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
+    <div class="settings-content-area">
+        <div id="places-management" class="settings-section active">
+            <div th:insert="~{fragments/places :: places-content}"></div>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    window.userSettings = /*[[${userSettings}]]*/ {}
+
+    document.addEventListener('DOMContentLoaded', function () {
+        initPlaceMaps();
+    })
+
+
+    function initPlaceMaps() {
+        // Initialize read-only place maps
+        document.querySelectorAll('.place-map:not(.leaflet-container)').forEach(mapElement => {
+            if (mapElement.id.startsWith('edit-map-')) {
+                return; // Skip edit maps, they're handled separately
+            }
+            
+            const lat = parseFloat(mapElement.dataset.lat);
+            const lng = parseFloat(mapElement.dataset.lng);
+            const placeMap = L.map(mapElement, {
+                zoomControl: false,
+                attributionControl: false,
+                dragging: false,
+                scrollWheelZoom: false
+            })
+            const tilesUrl = window.userSettings.tiles.service;
+            const tilesAttribution = window.userSettings.tiles.attribution;
+
+            const tileLayer = window.userSettings.preferColoredMap ? L.tileLayer : L.tileLayer.grayscale;
+            tileLayer(tilesUrl, {
+                maxZoom: 19,
+                attribution: tilesAttribution
+            }).addTo(placeMap);
+
+            if (!isNaN(lat) && !isNaN(lng)) {
+                placeMap.setView([lat, lng], 14);
+
+                L.circleMarker([lat, lng], {
+                    radius: 8,
+                    fillColor: '#4a89dc',
+                    color: '#fff',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(placeMap);
+                placeMap.invalidateSize();
+            }
+        });
+
+        // Initialize interactive edit maps
+        document.querySelectorAll('.place-map[id^="edit-map-"]:not(.leaflet-container)').forEach(mapElement => {
+            const lat = parseFloat(mapElement.dataset.lat);
+            const lng = parseFloat(mapElement.dataset.lng);
+            const placeMap = L.map(mapElement, {
+                zoomControl: true,
+                attributionControl: true,
+                dragging: true,
+                scrollWheelZoom: true
+            })
+            const tilesUrl = window.userSettings.tiles.service;
+            const tilesAttribution = window.userSettings.tiles.attribution;
+
+            const tileLayer = window.userSettings.preferColoredMap ? L.tileLayer : L.tileLayer.grayscale;
+            tileLayer(tilesUrl, {
+                maxZoom: 19,
+                attribution: tilesAttribution
+            }).addTo(placeMap);
+
+            if (!isNaN(lat) && !isNaN(lng)) {
+                placeMap.setView([lat, lng], 16);
+
+                L.circleMarker([lat, lng], {
+                    radius: 10,
+                    fillColor: '#4a89dc',
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(placeMap);
+                placeMap.invalidateSize();
+            }
+        });
+    }
+
+    document.body.addEventListener('htmx:afterSettle', function (event) {
+        if (event.detail.target.id === 'places-management' ||
+            event.detail.target.closest('#places-management')) {
+            initPlaceMaps();
+        }
+    });
+</script>
+</body>

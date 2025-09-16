@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Integrations Content Fragment -->
+<!-- Photos Content Fragment -->
+<div th:fragment="photos-content">
+    <p th:text="#{integrations.photos.description}" style="margin-bottom: 20px; color: var(--color-text-white);">
+        Configure photo management integration with Immich</p>
+
+    <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+        <span th:text="${successMessage}">Configuration saved successfully</span>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+        <span th:text="${errorMessage}">Error message</span>
+    </div>
+
+    <div class="integration-section">
+        <h3 th:text="#{integrations.immich.title}">🖼️ Immich Integration</h3>
+        <p th:text="#{integrations.immich.description}">Immich is a self-hosted photo and video backup solution. Connect
+            your Immich instance to show photos taken at specific locations and dates on your timeline map.</p>
+
+        <form hx-post="/settings/immich-integration" hx-target="#photos-section" hx-swap="innerHTML" class="immich-form"
+              style="margin-top: 20px;" autocomplete="off">
+            <div class="form-group">
+                <label for="serverUrl" th:text="#{integrations.immich.server.url}">Server URL</label>
+                <input type="url"
+                       id="serverUrl"
+                       name="serverUrl"
+                       required
+                       autocomplete="off"
+                       th:placeholder="#{integrations.immich.server.url.placeholder}"
+                       th:value="${hasIntegration ? immichIntegration.serverUrl : ''}">
+            </div>
+
+            <div class="form-group">
+                <label for="apiToken" th:text="#{integrations.immich.api.token}">API Token</label>
+                <input type="password"
+                       id="apiToken"
+                       name="apiToken"
+                       required
+                       autocomplete="new-password"
+                       th:placeholder="#{integrations.immich.api.token.placeholder}"
+                       th:value="${hasIntegration ? immichIntegration.apiToken : ''}">
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox"
+                           name="enabled"
+                           value="true"
+                           th:checked="${hasIntegration && immichIntegration.enabled}">
+                    <span th:text="#{integrations.immich.enabled}">Enable Integration</span>
+                </label>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="submit" class="btn" th:text="#{integrations.immich.save}">Save Configuration</button>
+                <button type="button"
+                        class="btn"
+                        id="test-connection-btn"
+                        th:text="#{integrations.immich.test.connection}">Test Connection
+                </button>
+            </div>
+        </form>
+
+        <div id="connection-test-result" style="margin-top: 10px;"></div>
+
+        <script>
+            document.getElementById('test-connection-btn').addEventListener('click', function () {
+                const serverUrl = document.getElementById('serverUrl').value;
+                const apiToken = document.getElementById('apiToken').value;
+                const resultDiv = document.getElementById('connection-test-result');
+
+                if (!serverUrl || !apiToken) {
+                    resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">Please fill in both Server URL and API Token</div>';
+                    return;
+                }
+
+                // Show loading state
+                resultDiv.innerHTML = '<div style="color: var(--color-text-white);">Testing connection...</div>';
+
+                // Make AJAX request to test connection
+                fetch('/settings/integrations/immich-integration/test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        serverUrl: serverUrl,
+                        apiToken: apiToken
+                    })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            resultDiv.innerHTML = '<div class="alert alert-success" style="display: block;">' + data.message + '</div>';
+                        } else {
+                            resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + data.message + '</div>';
+                        }
+                    })
+                    .catch(error => {
+                        resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">Connection test failed: ' + error.message + '</div>';
+                    });
+            });
+        </script>
+    </div>
+</div>
+</body>
+</html>

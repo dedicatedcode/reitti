@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{settings.title}">Settings - Reitti</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/lineicons.css">
+    <script src="/js/htmx.min.js"></script>
+</head>
+<body class="settings-page">
+<div class="settings-container">
+    <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
+    <div class="settings-content-area">
+        <div id="about-section" class="settings-section active">
+            <h2 th:text="#{about.title}">About Application</h2>
+            <div class="settings-card">
+                <p>
+                    <strong th:text="#{about.app.version}">Application Version:</strong>
+                    <span th:text="${buildVersion}">N/A</span>
+                </p>
+                <p>
+                    <strong th:text="#{about.git.commit.details}">Commit Details:</strong>
+                    <span th:text="${gitCommitDetails}">N/A</span>
+                </p>
+                <p>
+                    <strong th:text="#{about.build.time}">Build Time:</strong>
+                    <span th:text="${buildTime}">N/A</span>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+</body>

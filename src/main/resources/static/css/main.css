@@ -47,6 +47,10 @@ body {
     height: 100vh;
 }
 
+.btn.btn-block {
+    width: 100%;
+}
+
 .btn.btn-danger {
     background: #995353;
     font-weight: bolder;
@@ -62,15 +66,18 @@ body {
 }
 
 .alert-success {
-    border-color: #155724;
+    border-color: #e5ffeb;
+    background: #2c4828;
 }
 
 .alert-danger {
     border-color: #ff3434;
+    background: #995353;
 }
 
 .alert-warning {
-    border-color: #ffa700;;
+    background: #5c4c2f;
+    border-color: #ffd38b;
 }
 
 .alert-info {

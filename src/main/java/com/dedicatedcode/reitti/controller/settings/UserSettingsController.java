@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.controller;
+package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
@@ -15,6 +15,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
@@ -44,6 +45,8 @@ public class UserSettingsController {
     private final PasswordEncoder passwordEncoder;
     private final boolean localLoginDisabled;
     private final boolean oidcEnabled;
+    private final boolean dataManagementEnabled;
+
 
     // Avatar constraints
     private static final long MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2MB
@@ -61,7 +64,8 @@ public class UserSettingsController {
                                   AvatarService avatarService,
                                   PasswordEncoder passwordEncoder,
                                   @Value("${reitti.security.local-login.disable}") boolean localLoginDisabled,
-                                  @Value("${reitti.security.oidc.enabled:false}") boolean oidcEnabled) {
+                                  @Value("${reitti.security.oidc.enabled:false}") boolean oidcEnabled,
+                                  @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.userJdbcService = userJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.messageSource = messageSource;
@@ -70,6 +74,7 @@ public class UserSettingsController {
         this.passwordEncoder = passwordEncoder;
         this.localLoginDisabled = localLoginDisabled;
         this.oidcEnabled = oidcEnabled;
+        this.dataManagementEnabled = dataManagementEnabled;
     }
 
     private String getMessage(String key, Object... args) {
@@ -77,18 +82,17 @@ public class UserSettingsController {
     }
 
     @GetMapping("/users-content")
-    public String getUsersContent(Authentication authentication, Model model) {
-        String currentUsername = authentication.getName();
-        User currentUser = userJdbcService.findByUsername(currentUsername)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUsername));
-        return getUserContent(model, currentUser);
+    public String getUsersContent(@AuthenticationPrincipal User user, Model model) {
+        return getUserContent(model, user);
     }
 
     @GetMapping("/user-management")
-    public String getUserManagementPage(Authentication authentication, Model model) {
+    public String getUserManagementPage(@AuthenticationPrincipal User user, Model model) {
         model.addAttribute("activeSection", "user-management");
-        getUsersContent(authentication, model);
-        return "settings";
+        model.addAttribute("isAdmin", user.getRole() == ADMIN);
+        model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+        getUsersContent(user, model);
+        return "settings/user-management";
     }
 
     private String getUserContent(Model model, User currentUser) {

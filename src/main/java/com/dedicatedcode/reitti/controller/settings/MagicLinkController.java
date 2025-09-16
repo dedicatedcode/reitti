@@ -1,10 +1,12 @@
-package com.dedicatedcode.reitti.controller;
+package com.dedicatedcode.reitti.controller.settings;
 
+import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.MagicLinkToken;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.MagicLinkJdbcService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -26,11 +28,16 @@ public class MagicLinkController {
     private final MagicLinkJdbcService magicLinkJdbcService;
     private final MessageSource messageSource;
     private final PasswordEncoder passwordEncoder;
+    private final boolean dataManagementEnabled;
 
-    public MagicLinkController(MagicLinkJdbcService magicLinkJdbcService, MessageSource messageSource, PasswordEncoder passwordEncoder) {
+    public MagicLinkController(MagicLinkJdbcService magicLinkJdbcService,
+                               MessageSource messageSource,
+                               PasswordEncoder passwordEncoder,
+                               @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.magicLinkJdbcService = magicLinkJdbcService;
         this.messageSource = messageSource;
         this.passwordEncoder = passwordEncoder;
+        this.dataManagementEnabled = dataManagementEnabled;
     }
 
     @GetMapping
@@ -38,7 +45,10 @@ public class MagicLinkController {
         List<MagicLinkToken> tokens = magicLinkJdbcService.findByUser(user);
         model.addAttribute("tokens", tokens);
         model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
-        return "fragments/magic-links :: magic-links-content";
+        model.addAttribute("activeSection", "sharing");
+        model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
+        model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+        return "settings/magic-links";
     }
 
     @PostMapping
@@ -63,7 +73,7 @@ public class MagicLinkController {
                     List<MagicLinkToken> tokens = magicLinkJdbcService.findByUser(user);
                     model.addAttribute("tokens", tokens);
                     model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
-                    return "fragments/magic-links :: magic-links-content";
+                    return "settings/magic-links :: magic-links-content";
                 }
             }
 
@@ -83,7 +93,7 @@ public class MagicLinkController {
             model.addAttribute("tokens", tokens);
             model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
 
-            return "fragments/magic-links :: magic-links-content";
+            return "settings/magic-links :: magic-links-content";
 
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("magic.links.create.error", e.getMessage()));
@@ -92,7 +102,7 @@ public class MagicLinkController {
             model.addAttribute("tokens", tokens);
             model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
             
-            return "fragments/magic-links :: magic-links-content";
+            return "settings/magic-links :: magic-links-content";
         }
     }
 
@@ -111,7 +121,7 @@ public class MagicLinkController {
         model.addAttribute("tokens", tokens);
         model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
 
-        return "fragments/magic-links :: magic-links-content";
+        return "settings/magic-links :: magic-links-content";
     }
 
     private String getBaseUrl(HttpServletRequest request) {

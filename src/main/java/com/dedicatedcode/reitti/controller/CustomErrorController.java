@@ -20,6 +20,7 @@ public class CustomErrorController implements ErrorController {
 
     private static final Logger log = LoggerFactory.getLogger(CustomErrorController.class);
     private static final List<String> IGNORED_PATHS = List.of("/favicon.ico", "/js/", "/img/");
+    private static final List<Integer> SILENT_CODES = List.of(400, 401, 403, 404);
 
     @RequestMapping("/error")
     public Object handleError(HttpServletRequest request, Model model) {
@@ -88,10 +89,11 @@ public class CustomErrorController implements ErrorController {
             HttpStatus httpStatus = HttpStatus.valueOf(statusCode);
             model.addAttribute("error", httpStatus.getReasonPhrase());
 
-            // Log the error
-            log.error("Error {} occurred for request URI: {}, message: {}",
-                    statusCode, requestUri, errorMessage, (Throwable) exception);
 
+            if (!SILENT_CODES.contains(statusCode)) {
+                log.error("Error {} occurred for request URI: {}, message: {}",
+                        statusCode, requestUri, errorMessage, (Throwable) exception);
+            }
             // Add custom messages for common error codes
             switch (statusCode) {
                 case 404:

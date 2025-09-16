@@ -1,9 +1,11 @@
-package com.dedicatedcode.reitti.controller;
+package com.dedicatedcode.reitti.controller.settings;
 
+import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.GpxExportService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -25,16 +27,36 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Controller
-@RequestMapping("/export")
+@RequestMapping("/settings/export-data")
 public class ExportDataController {
     
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final GpxExportService gpxExportService;
+    private final boolean dataManagementEnabled;
 
-    public ExportDataController(RawLocationPointJdbcService rawLocationPointJdbcService, 
-                               GpxExportService gpxExportService) {
+    public ExportDataController(RawLocationPointJdbcService rawLocationPointJdbcService,
+                                GpxExportService gpxExportService,
+                                @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.gpxExportService = gpxExportService;
+        this.dataManagementEnabled = dataManagementEnabled;
+    }
+
+
+    @GetMapping
+    public void getExportDataContent(@AuthenticationPrincipal User user, Model model) {
+        // Set default date range to today
+        java.time.LocalDate today = java.time.LocalDate.now();
+        model.addAttribute("startDate", today);
+        model.addAttribute("endDate", today);
+
+        // Get raw location points for today by default
+        List<RawLocationPoint> rawLocationPoints = rawLocationPointJdbcService.findByUserAndDateRange(
+                user, today.atStartOfDay(), today.plusDays(1).atStartOfDay());
+        model.addAttribute("rawLocationPoints", rawLocationPoints);
+        model.addAttribute("activeSection", "export-data");
+        model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
+        model.addAttribute("dataManagementEnabled", dataManagementEnabled);
     }
 
     @GetMapping("/data-content")
@@ -54,7 +76,7 @@ public class ExportDataController {
             user, start.atStartOfDay(), end.plusDays(1).atStartOfDay());
         model.addAttribute("rawLocationPoints", rawLocationPoints);
         
-        return "fragments/export-data :: export-data-content";
+        return "settings/export-data :: export-data-content";
     }
     
     @PostMapping("/gpx")

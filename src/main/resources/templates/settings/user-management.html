@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{settings.title}">Settings - Reitti</title>
+    <link rel="stylesheet" href="/css/leaflet.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/lineicons.css">
+    <script src="/js/htmx.min.js"></script>
+    <script src="/js/leaflet.js"></script>
+    <script src="/js/TileLayer.Grayscale.js"></script>
+</head>
+<body class="settings-page">
+<div class="settings-container">
+    <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
+    <div class="settings-content-area">
+        <div id="user-management" class="settings-section active">
+            <div th:replace="~{fragments/user-management :: ${isAdmin ? 'users-list' : 'user-form-page'}}"></div>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    window.userSettings = /*[[${userSettings}]]*/ {}
+
+    // Avatar selection JavaScript
+    document.addEventListener('DOMContentLoaded', function() {
+        // Clear file input when default avatar is selected
+        document.addEventListener('change', function(e) {
+            if (e.target.name === 'defaultAvatar') {
+                const fileInput = document.getElementById('avatar');
+                if (fileInput) {
+                    fileInput.value = '';
+                }
+            }
+        });
+
+        // Clear default avatar selection when file is selected
+        const avatarFileInput = document.getElementById('avatar');
+        if (avatarFileInput) {
+            avatarFileInput.addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    document.querySelectorAll('input[name="defaultAvatar"]').forEach(radio => {
+                        radio.checked = false;
+                    });
+                }
+            });
+        }
+    });
+
+    function removeCurrentAvatar() {
+        // Hide the current avatar preview
+        const avatarPreview = document.querySelector('.current-avatar');
+        if (avatarPreview) {
+            avatarPreview.style.display = 'none';
+        }
+
+        // Clear the file input
+        const fileInput = document.getElementById('avatar');
+        if (fileInput) {
+            fileInput.value = '';
+        }
+
+        // Set the remove flag
+        const removeFlag = document.getElementById('removeAvatarFlag');
+        if (removeFlag) {
+            removeFlag.value = 'true';
+        }
+
+        // Hide the remove button
+        const avatarActions = document.querySelector('.avatar-actions');
+        if (avatarActions) {
+            avatarActions.style.display = 'none';
+        }
+    }
+    // Home location map functionality
+    let homeLocationMap;
+    let homeLocationMarker;
+
+    function initializeHomeLocationMap() {
+        if (typeof L === 'undefined') {
+            console.error('Leaflet is not loaded');
+            return;
+        }
+        const tilesUrl = window.userSettings.tiles.service;
+        const tilesAttribution = window.userSettings.tiles.attribution;
+        const tileLayer = window.userSettings.preferColoredMap ? L.tileLayer : L.tileLayer.grayscale;
+
+        // Initialize map
+        homeLocationMap = L.map('homeLocationMap').setView([60.1699, 24.9384], 10)
+        // Add tile layer
+        tileLayer(tilesUrl, {
+            attribution: tilesAttribution
+        }).addTo(homeLocationMap);
+
+        // Get current home location from form inputs
+        const latInput = document.getElementById('homeLatitude');
+        const lngInput = document.getElementById('homeLongitude');
+
+        if (latInput && latInput.value && lngInput && lngInput.value) {
+            const lat = parseFloat(latInput.value);
+            const lng = parseFloat(lngInput.value);
+
+            if (!isNaN(lat) && !isNaN(lng)) {
+                homeLocationMap.setView([lat, lng], 13);
+                // Create marker
+                homeLocationMarker = L.circleMarker([lat, lng], {
+                    radius: 15,
+                    fillColor: '#ff6c00',
+                    color: '#fff',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8,
+                    draggable: true
+                }).addTo(homeLocationMap);
+
+                homeLocationMarker.on('dragend', function(e) {
+                    const position = e.target.getLatLng();
+                    updateCoordinateInputs(position.lat, position.lng);
+                });
+            }
+        }
+
+        // Add click event to map
+        homeLocationMap.on('click', function(e) {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+
+            if (homeLocationMarker) {
+                homeLocationMap.removeLayer(homeLocationMarker);
+            }
+
+            homeLocationMarker = L.circleMarker([lat, lng], {
+                radius: 15,
+                fillColor: '#ff6c00',
+                color: '#fff',
+                weight: 1,
+                opacity: 1,
+                fillOpacity: 0.8,
+                draggable: true
+            }).addTo(homeLocationMap);
+            updateCoordinateInputs(lat, lng);
+
+            homeLocationMarker.on('dragend', function(e) {
+                const position = e.target.getLatLng();
+                updateCoordinateInputs(position.lat, position.lng);
+            });
+        });
+    }
+
+    function updateCoordinateInputs(lat, lng) {
+        const latInput = document.getElementById('homeLatitude');
+        const lngInput = document.getElementById('homeLongitude');
+        if (latInput && lngInput) {
+            latInput.value = lat.toFixed(6);
+            lngInput.value = lng.toFixed(6);
+        }
+    }
+
+    window.updateMapMarker = function() {
+        if (!homeLocationMap) return;
+
+        const latInput = document.getElementById('homeLatitude');
+        const lngInput = document.getElementById('homeLongitude');
+
+        if (!latInput || !lngInput) return;
+
+        const lat = parseFloat(latInput.value);
+        const lng = parseFloat(lngInput.value);
+
+        if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+            if (homeLocationMarker) {
+                homeLocationMap.removeLayer(homeLocationMarker);
+            }
+
+            homeLocationMarker = L.circleMarker([lat, lng], {
+                radius: 15,
+                fillColor: '#ff6c00',
+                color: '#fff',
+                weight: 1,
+                opacity: 1,
+                fillOpacity: 0.8,
+                draggable: true
+            }).addTo(homeLocationMap);
+            homeLocationMap.setView([lat, lng], 13);
+
+            homeLocationMarker.on('dragend', function(e) {
+                const position = e.target.getLatLng();
+                updateCoordinateInputs(position.lat, position.lng);
+            });
+        } else if (homeLocationMarker) {
+            homeLocationMap.removeLayer(homeLocationMarker);
+            homeLocationMarker = null;
+        }
+    }
+
+    window.clearHomeLocation = function() {
+        const latInput = document.getElementById('homeLatitude');
+        const lngInput = document.getElementById('homeLongitude');
+
+        if (latInput) latInput.value = '';
+        if (lngInput) lngInput.value = '';
+
+        if (homeLocationMarker && homeLocationMap) {
+            homeLocationMap.removeLayer(homeLocationMarker);
+            homeLocationMarker = null;
+        }
+    }
+
+    // Initialize home location map when user management section loads
+    document.body.addEventListener('htmx:afterSettle', function(evt) {
+        if (evt.detail.target.querySelector && evt.detail.target.querySelector('#homeLocationMap')) {
+            setTimeout(initializeHomeLocationMap, 100);
+        }
+    });
+</script>
+</body>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{settings.title}">Settings - Reitti</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/lineicons.css">
+    <script src="/js/htmx.min.js"></script>
+</head>
+<body class="settings-page">
+<div class="settings-container">
+    <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
+    <div class="settings-content-area">
+        <div id="api-tokens" class="settings-section active">
+            <div th:fragment="api-tokens-content">
+                <h2 th:text="#{tokens.title}">API Tokens</h2>
+
+                <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+                    <span th:text="${successMessage}">Token created successfully</span>
+                </div>
+                <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+                    <span th:text="${errorMessage}">Error message</span>
+                </div>
+
+
+                <div class="settings-card" th:if="${tokens.isEmpty()}">
+                    <p th:text="#{tokens.no.tokens}">No API tokens found. Create one to get started.</p>
+                </div>
+
+                <div class="settings-card">
+                    <table th:if="${!tokens.isEmpty()}">
+                        <thead>
+                        <tr>
+                            <th th:text="#{tokens.table.name}">Name</th>
+                            <th th:text="#{tokens.table.token}">Token</th>
+                            <th th:text="#{tokens.table.created}">Created</th>
+                            <th th:text="#{tokens.table.last.used}">Last Used</th>
+                            <th th:text="#{tokens.table.actions}">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="token : ${tokens}">
+                            <td th:text="${token.name}"></td>
+                            <td th:text="${token.token}"></td>
+                            <td th:text="${#temporals.format(token.createdAt, 'yyyy-MM-dd HH:mm')}"></td>
+                            <td th:text="${token.lastUsedAt != null ? #temporals.format(token.lastUsedAt, 'yyyy-MM-dd HH:mm') : 'Never'}"></td>
+                            <td>
+                                <button class="btn btn-danger"
+                                        th:attr="hx-post=@{/settings/api-tokens/{id}/delete(id=${token.id})}, hx-confirm=#{tokens.delete.confirm}"
+                                        hx-target="#api-tokens"
+                                        hx-swap="innerHTML"
+                                        th:text="#{form.delete}">Delete
+                                </button>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="settings-card">
+                    <form hx-post="/settings/api-tokens" hx-target="#api-tokens" hx-swap="innerHTML" class="token-form"
+                          style="margin-bottom: 20px;">
+                        <div class="form-group">
+                            <label for="tokenName" th:text="#{tokens.name.label}">Token Name</label>
+                            <input type="text" id="tokenName" name="name" required th:placeholder="#{tokens.name.placeholder}">
+                        </div>
+                        <button type="submit" class="btn" th:text="#{form.create}">Create New Token</button>
+                    </form>
+                </div>
+
+
+                <div class="settings-card" th:if="${recentUsages != null && !recentUsages.isEmpty()}">
+                    <h3 th:text="#{tokens.recent.usages.title}">Recent Token Usages</h3>
+                    <p th:text="#{tokens.recent.usages.description(${maxUsagesToShow})}">Showing the last 10 token usages</p>
+                    <table>
+                        <thead>
+                        <tr>
+                            <th th:text="#{tokens.usage.table.token}">Token</th>
+                            <th th:text="#{tokens.usage.table.timestamp}">Timestamp</th>
+                            <th th:text="#{tokens.usage.table.endpoint}">Endpoint</th>
+                            <th th:text="#{tokens.usage.table.ip}">IP Address</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="usage : ${recentUsages}">
+                            <td th:text="${usage.name()}"></td>
+                            <td th:text="${#temporals.format(usage.at(), 'yyyy-MM-dd HH:mm:ss')}"></td>
+                            <td th:text="${usage.endpoint()}"></td>
+                            <td th:text="${usage.ip()}"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+</body>

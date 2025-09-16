@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{settings.title}">Settings - Reitti</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/lineicons.css">
+    <script src="/js/htmx.min.js"></script>
+</head>
+<body class="settings-page">
+<div class="settings-container">
+    <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
+    <div class="settings-content-area">
+        <div id="manage-data" class="settings-section active">
+            <div th:fragment="manage-data-content">
+                <h2 th:text="#{data.title}">Manage Data</h2>
+
+                <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+                    <span th:text="${successMessage}">Processing started successfully</span>
+                </div>
+                <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+                    <span th:text="${errorMessage}">Error message</span>
+                </div>
+
+                <div class="settings-card">
+                    <h3 th:text="#{data.about.title}">About Data Processing</h3>
+                    <p th:text="#{data.about.description}">This section allows you to manually trigger data processing operations. These operations normally run automatically on a schedule, but you can trigger them manually here if needed.</p>
+                    <p><strong th:text="#{data.about.warning}">Warning: Manual processing may take some time depending on the amount of data to process.</strong> </p>
+                </div>
+
+                <div class="settings-card">
+                    <div class="action-card">
+                        <h3 th:text="#{data.process.visits.title}">Process Visits and Trips</h3>
+                        <p th:text="#{data.process.visits.description}">Manually trigger the processing of raw location data into visits and trips. This will analyze unprocessed location points and create meaningful visits and trips from them.</p>
+                        <button class="btn"
+                                hx-post="/settings/manage-data/process-visits-trips"
+                                hx-target="#manage-data"
+                                hx-swap="innerHTML"
+                                th:attr="hx-confirm=#{data.process.visits.confirm}"
+                                th:text="#{data.process.visits.button}">
+                            Start Processing
+                        </button>
+                    </div>
+
+                    <div class="action-card" style="margin-top: 15px;">
+                        <h3 th:text="#{data.clear.reprocess.title}">Clear and Reprocess All Data</h3>
+                        <p th:text="#{data.clear.reprocess.description}">Clear all processed data (visits, trips, processed visits) while preserving significant places and raw location points. Raw location points will be marked as unprocessed, and the processing pipeline will be triggered automatically.</p>
+                        <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 10px; margin: 10px 0; color: #856404;">
+                            <strong>⚠️ Warning:</strong> <span th:text="#{data.clear.reprocess.warning}">This action will permanently delete all visits, trips, and processed visits. This cannot be undone.</span>
+                        </div>
+                        <button class="btn btn-danger"
+                                hx-post="/settings/manage-data/clear-and-reprocess"
+                                hx-target="#manage-data"
+                                hx-swap="innerHTML"
+                                th:attr="hx-confirm=#{data.clear.reprocess.confirm}"
+                                th:text="#{data.clear.reprocess.button}">
+                            Clear and Reprocess
+                        </button>
+                    </div>
+
+                    <div class="action-card" style="margin-top: 15px;">
+                        <h3 th:text="#{data.remove.all.title}">Remove All Data</h3>
+                        <p th:text="#{data.remove.all.description}">Remove all data except significant places. This will permanently delete all raw location points, visits, trips, and processed visits while preserving your significant places.</p>
+                        <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; padding: 10px; margin: 10px 0; color: #721c24;">
+                            <strong>⚠️ Danger:</strong> <span th:text="#{data.remove.all.warning}">This action will permanently delete ALL location data except significant places. This cannot be undone.</span>
+                        </div>
+                        <button class="btn btn-danger"
+                                hx-post="/settings/manage-data/remove-all-data"
+                                hx-target="#manage-data"
+                                hx-swap="innerHTML"
+                                th:attr="hx-confirm=#{data.remove.all.confirm}"
+                                th:text="#{data.remove.all.button}">
+                            Remove All Data
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+</body>

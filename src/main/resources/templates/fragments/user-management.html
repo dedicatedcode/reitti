@@ -2,11 +2,6 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 
-<!-- Users Content Fragment -->
-<div th:fragment="users-content">
-    <h2 th:text="#{users.title}">User Management</h2>
-    <div hx-get="/settings/users-content" hx-trigger="load" hx-target="this" hx-swap="innerHTML"></div>
-</div>
 
 <!-- Users List Fragment -->
 <div th:fragment="users-list">
@@ -309,5 +304,6 @@
         </div>
     </form>
 </div>
+
 </body>
 </html>

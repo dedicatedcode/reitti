@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.controller;
+package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.dto.ReittiRemoteInfo;
 import com.dedicatedcode.reitti.model.integration.ReittiIntegration;
@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 @Controller
-@RequestMapping("/settings")
+@RequestMapping("/settings/integrations")
 public class ReittiIntegrationSettingsController {
     private final ReittiIntegrationJdbcService jdbcService;
     private final ReittiIntegrationService reittiIntegrationService;
@@ -34,7 +34,7 @@ public class ReittiIntegrationSettingsController {
     public String getSharedInstancesContent(@AuthenticationPrincipal User user, Model model) {
         List<ReittiIntegration> integrations = jdbcService.findAllByUser(user);
         model.addAttribute("reittiIntegrations", integrations);
-        return "fragments/settings :: shared-instances-content";
+        return "fragments/shared-instances :: shared-instances-content";
     }
 
     @PostMapping("/reitti-integrations")
@@ -158,7 +158,7 @@ public class ReittiIntegrationSettingsController {
         } catch (Exception e) {
             model.addAttribute("errorMessage", "Error fetching integration info: " + e.getMessage());
         }
-        return "fragments/settings :: reitti-info-content";
+        return "fragments/shared-instances :: reitti-info-content";
     }
 
     @PostMapping("/reitti-integrations/test")

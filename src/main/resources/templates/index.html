@@ -104,7 +104,9 @@
     let autoUpdateTimeInterval = null;
     let eventSource = null;
     let reloadTimeoutId = null;
+    let maxWaitTimeoutId = null;
     let pendingEvents = [];
+    let firstEventTime = null;
 
     // Initialize the map
     const map = L.map('map', {zoomControl: false, attributionControl: false}).setView([window.userSettings.homeLatitude, window.userSettings.homeLongitude], 12);
@@ -622,8 +624,15 @@
             reloadTimeoutId = null;
         }
         
+        // Clear max wait timeout
+        if (maxWaitTimeoutId) {
+            clearTimeout(maxWaitTimeoutId);
+            maxWaitTimeoutId = null;
+        }
+        
         // Clear pending events
         pendingEvents = [];
+        firstEventTime = null;
         
         if (eventSource) {
             eventSource.close();
@@ -706,21 +715,47 @@
         // Add event to pending events
         pendingEvents.push(eventData);
         
-        // Clear existing timeout if any
+        if (firstEventTime === null) {
+            firstEventTime = Date.now();
+            
+            // Set maximum wait timeout (30 seconds from first event)
+            maxWaitTimeoutId = setTimeout(() => {
+                if (autoUpdateMode && pendingEvents.length > 0) {
+                    console.log(`Auto-update: Reloading timeline data after max wait time (30s) with ${pendingEvents.length} accumulated events`);
+                    executeTimelineReload();
+                }
+            }, 30000);
+        }
+        
         if (reloadTimeoutId) {
             clearTimeout(reloadTimeoutId);
         }
         
-        // Schedule reload after 5 seconds of idle time
         reloadTimeoutId = setTimeout(() => {
             if (autoUpdateMode && pendingEvents.length > 0) {
-                console.log(`Auto-update: Reloading timeline data after ${pendingEvents.length} accumulated events`);
-                document.body.dispatchEvent(new CustomEvent('dateChanged'));
-                // Clear pending events
-                pendingEvents = [];
+                console.log(`Auto-update: Reloading timeline data after 5s settle time with ${pendingEvents.length} accumulated events`);
+                executeTimelineReload();
             }
+        }, 5000);
+    }
+    
+    function executeTimelineReload() {
+        // Clear all timeouts
+        if (reloadTimeoutId) {
+            clearTimeout(reloadTimeoutId);
             reloadTimeoutId = null;
-        }, 5000); // 5 seconds
+        }
+        if (maxWaitTimeoutId) {
+            clearTimeout(maxWaitTimeoutId);
+            maxWaitTimeoutId = null;
+        }
+        
+        // Reload timeline
+        document.body.dispatchEvent(new CustomEvent('dateChanged'));
+        
+        // Clear pending events and reset first event time
+        pendingEvents = [];
+        firstEventTime = null;
     }
 
     function hideUIElements() {
