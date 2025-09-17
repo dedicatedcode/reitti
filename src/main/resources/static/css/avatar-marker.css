@@ -15,6 +15,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    animation: avatar-pulse 5s infinite;
 }
 
 .avatar-marker-img {
@@ -32,31 +33,14 @@
     line-height: 1;
 }
 
-/* Pulsing animation for the avatar marker */
-.avatar-marker::after {
-    content: '';
-    position: absolute;
-    top: -6px;
-    left: -6px;
-    right: -6px;
-    bottom: -6px;
-    border: 2px solid #ff6c00;
-    border-radius: 50%;
-    animation: avatar-pulse 2s infinite;
-    opacity: 0.7;
-}
-
 @keyframes avatar-pulse {
     0% {
         transform: scale(1);
-        opacity: 0.7;
     }
     50% {
         transform: scale(1.1);
-        opacity: 0.3;
     }
     100% {
         transform: scale(1);
-        opacity: 0.7;
     }
 }
