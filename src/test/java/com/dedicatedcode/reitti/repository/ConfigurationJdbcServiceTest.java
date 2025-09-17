@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -24,201 +23,209 @@ class ConfigurationJdbcServiceTest {
     @Autowired
     private TestingService testingService;
 
-    private User admin;
+    private User testUser;
 
     @BeforeEach
     void setUp() {
-        admin = testingService.admin();
+        testingService.clearData();
+        testUser = testingService.randomUser();
     }
 
     @Test
-    void shouldFindCurrentConfigurationForUser() {
-        // When
-        Optional<Configuration> result = configurationJdbcService.findCurrentConfigurationForUser(admin);
-        
-        // Then
-        assertThat(result).isPresent();
-        Configuration config = result.get();
-        assertThat(config.id()).isNotNull(); // Should have an ID from migration
-        assertThat(config.validSince()).isNull(); // Default configuration from migration
-        assertThat(config.visitDetection().searchDistanceInMeters()).isEqualTo(100);
-        assertThat(config.visitDetection().minimumAdjacentPoints()).isEqualTo(5);
-        assertThat(config.visitDetection().minimumStayTimeInSeconds()).isEqualTo(300);
-        assertThat(config.visitDetection().maxMergeTimeBetweenSameStayPoints()).isEqualTo(300);
-        assertThat(config.visitMerging().searchDurationInHours()).isEqualTo(48);
-        assertThat(config.visitMerging().maxMergeTimeBetweenSameVisits()).isEqualTo(300);
-        assertThat(config.visitMerging().minDistanceBetweenVisits()).isEqualTo(200);
-    }
-
-    @Test
-    void shouldSaveNewConfiguration() {
+    void shouldSaveAndFindConfiguration() {
         // Given
-        Instant validSince = Instant.now().truncatedTo(ChronoUnit.MILLIS);
-        
         Configuration.VisitDetection visitDetection = new Configuration.VisitDetection(
-            150, 7, 600, 450
+                100L, 5L, 300L, 600L
         );
         Configuration.VisitMerging visitMerging = new Configuration.VisitMerging(
-            72, 450, 300
+                24L, 1800L, 50L
         );
-        Configuration newConfig = new Configuration(null, visitDetection, visitMerging, validSince);
-        
+        Configuration configuration = new Configuration(
+                null, visitDetection, visitMerging, Instant.now()
+        );
+
         // When
-        configurationJdbcService.saveConfiguration(admin, newConfig);
-        
+        configurationJdbcService.saveConfiguration(testUser, configuration);
+
         // Then
-        Optional<Configuration> result = configurationJdbcService.findCurrentConfigurationForUser(admin);
-        assertThat(result).isPresent();
-        Configuration savedConfig = result.get();
+        List<Configuration> configurations = configurationJdbcService.findAllConfigurationsForUser(testUser);
+        assertThat(configurations).hasSize(1);
+
+        Configuration savedConfig = configurations.getFirst();
         assertThat(savedConfig.id()).isNotNull();
-        assertThat(savedConfig.validSince()).isEqualTo(validSince);
-        assertThat(savedConfig.visitDetection().searchDistanceInMeters()).isEqualTo(150);
-        assertThat(savedConfig.visitDetection().minimumAdjacentPoints()).isEqualTo(7);
-        assertThat(savedConfig.visitMerging().searchDurationInHours()).isEqualTo(72);
+        assertThat(savedConfig.visitDetection().searchDistanceInMeters()).isEqualTo(100L);
+        assertThat(savedConfig.visitDetection().minimumAdjacentPoints()).isEqualTo(5L);
+        assertThat(savedConfig.visitDetection().minimumStayTimeInSeconds()).isEqualTo(300L);
+        assertThat(savedConfig.visitDetection().maxMergeTimeBetweenSameStayPoints()).isEqualTo(600L);
+        assertThat(savedConfig.visitMerging().searchDurationInHours()).isEqualTo(24L);
+        assertThat(savedConfig.visitMerging().maxMergeTimeBetweenSameVisits()).isEqualTo(1800L);
+        assertThat(savedConfig.visitMerging().minDistanceBetweenVisits()).isEqualTo(50L);
+        assertThat(savedConfig.validSince()).isNotNull();
     }
 
     @Test
-    void shouldFindAllConfigurationsForUser() {
-        // Given - Save additional configurations with different valid_since dates
-        Instant past = Instant.now().minus(1, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MILLIS);
-        Instant future = Instant.now().plus(1, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MILLIS);
-        
-        Configuration.VisitDetection visitDetection1 = new Configuration.VisitDetection(
-            200, 10, 900, 600
+    void shouldSaveConfigurationWithNullValidSince() {
+        // Given
+        Configuration.VisitDetection visitDetection = new Configuration.VisitDetection(
+                200L, 3L, 600L, 1200L
         );
-        Configuration.VisitMerging visitMerging1 = new Configuration.VisitMerging(
-            24, 600, 400
+        Configuration.VisitMerging visitMerging = new Configuration.VisitMerging(
+                12L, 900L, 25L
         );
-        Configuration pastConfig = new Configuration(null, visitDetection1, visitMerging1, past);
-        
-        Configuration.VisitDetection visitDetection2 = new Configuration.VisitDetection(
-            250, 12, 1200, 800
+        Configuration configuration = new Configuration(
+                null, visitDetection, visitMerging, null
         );
-        Configuration.VisitMerging visitMerging2 = new Configuration.VisitMerging(
-            96, 800, 500
-        );
-        Configuration futureConfig = new Configuration(null, visitDetection2, visitMerging2, future);
-        
-        configurationJdbcService.saveConfiguration(admin, pastConfig);
-        configurationJdbcService.saveConfiguration(admin, futureConfig);
-        
+
         // When
-        List<Configuration> allConfigs = configurationJdbcService.findAllConfigurationsForUser(admin);
-        
+        configurationJdbcService.saveConfiguration(testUser, configuration);
+
         // Then
-        assertThat(allConfigs).hasSize(3); // Default + past + future
-        assertThat(allConfigs.get(0).validSince()).isEqualTo(future); // Most recent first
-        assertThat(allConfigs.get(1).validSince()).isEqualTo(past);
-        assertThat(allConfigs.get(2).validSince()).isNull(); // Default config
+        List<Configuration> configurations = configurationJdbcService.findAllConfigurationsForUser(testUser);
+        assertThat(configurations).hasSize(1);
+        assertThat(configurations.getFirst().validSince()).isNull();
     }
 
     @Test
     void shouldUpdateConfiguration() {
-        // Given
-        Optional<Configuration> currentConfig = configurationJdbcService.findCurrentConfigurationForUser(admin);
-        assertThat(currentConfig).isPresent();
-        
-        Configuration.VisitDetection newVisitDetection = new Configuration.VisitDetection(
-            300, 15, 1800, 900
+        // Given - save initial configuration
+        Configuration.VisitDetection initialVisitDetection = new Configuration.VisitDetection(
+                100L, 5L, 300L, 600L
         );
-        Configuration.VisitMerging newVisitMerging = new Configuration.VisitMerging(
-            120, 900, 600
+        Configuration.VisitMerging initialVisitMerging = new Configuration.VisitMerging(
+                24L, 1800L, 50L
         );
-        Instant newValidSince = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        Configuration initialConfig = new Configuration(
+                null, initialVisitDetection, initialVisitMerging, Instant.now()
+        );
+        configurationJdbcService.saveConfiguration(testUser, initialConfig);
+
+        List<Configuration> savedConfigs = configurationJdbcService.findAllConfigurationsForUser(testUser);
+        Configuration savedConfig = savedConfigs.getFirst();
+
+        // When - update the configuration
+        Configuration.VisitDetection updatedVisitDetection = new Configuration.VisitDetection(
+                150L, 7L, 450L, 900L
+        );
+        Configuration.VisitMerging updatedVisitMerging = new Configuration.VisitMerging(
+                48L, 3600L, 75L
+        );
+        Instant newValidSince = Instant.now().plusSeconds(3600).truncatedTo(ChronoUnit.MILLIS);
         Configuration updatedConfig = new Configuration(
-            currentConfig.get().id(), 
-            newVisitDetection, 
-            newVisitMerging, 
-            newValidSince
+                savedConfig.id(), updatedVisitDetection, updatedVisitMerging, newValidSince
         );
-        
-        // When
         configurationJdbcService.updateConfiguration(updatedConfig);
-        
+
         // Then
-        Optional<Configuration> result = configurationJdbcService.findCurrentConfigurationForUser(admin);
-        assertThat(result).isPresent();
-        assertThat(result.get().id()).isEqualTo(currentConfig.get().id());
-        assertThat(result.get().validSince()).isEqualTo(newValidSince);
-        assertThat(result.get().visitDetection().searchDistanceInMeters()).isEqualTo(300);
-        assertThat(result.get().visitMerging().searchDurationInHours()).isEqualTo(120);
+        List<Configuration> configurations = configurationJdbcService.findAllConfigurationsForUser(testUser);
+        assertThat(configurations).hasSize(1);
+
+        Configuration result = configurations.getFirst();
+        assertThat(result.id()).isEqualTo(savedConfig.id());
+        assertThat(result.visitDetection().searchDistanceInMeters()).isEqualTo(150L);
+        assertThat(result.visitDetection().minimumAdjacentPoints()).isEqualTo(7L);
+        assertThat(result.visitDetection().minimumStayTimeInSeconds()).isEqualTo(450L);
+        assertThat(result.visitDetection().maxMergeTimeBetweenSameStayPoints()).isEqualTo(900L);
+        assertThat(result.visitMerging().searchDurationInHours()).isEqualTo(48L);
+        assertThat(result.visitMerging().maxMergeTimeBetweenSameVisits()).isEqualTo(3600L);
+        assertThat(result.visitMerging().minDistanceBetweenVisits()).isEqualTo(75L);
+        assertThat(result.validSince()).isEqualTo(newValidSince);
     }
 
     @Test
     void shouldDeleteConfiguration() {
-        // Given
-        Instant validSince = Instant.now();
+        // Given - save configuration with validSince
         Configuration.VisitDetection visitDetection = new Configuration.VisitDetection(
-            400, 20, 2400, 1200
+                100L, 5L, 300L, 600L
         );
         Configuration.VisitMerging visitMerging = new Configuration.VisitMerging(
-            144, 1200, 800
+                24L, 1800L, 50L
         );
-        Configuration configToDelete = new Configuration(null, visitDetection, visitMerging, validSince);
+        Configuration configuration = new Configuration(
+                null, visitDetection, visitMerging, Instant.now()
+        );
+        configurationJdbcService.saveConfiguration(testUser, configuration);
 
-        int beforeAdd = configurationJdbcService.findAllConfigurationsForUser(admin).size();
-        configurationJdbcService.saveConfiguration(admin, configToDelete);
-        
-        // Verify it was saved
-        List<Configuration> beforeDelete = configurationJdbcService.findAllConfigurationsForUser(admin);
-        assertThat(beforeDelete).hasSize(beforeAdd + 1); // Default + new one
-        
-        // Get the saved configuration to get its ID
-        Configuration savedConfig = beforeDelete.stream()
-            .filter(config -> config.validSince() != null && config.validSince().equals(validSince))
-            .findFirst()
-            .orElseThrow();
-        
+        List<Configuration> savedConfigs = configurationJdbcService.findAllConfigurationsForUser(testUser);
+        Long configId = savedConfigs.getFirst().id();
+
         // When
-        configurationJdbcService.deleteConfiguration(savedConfig.id());
-        
+        configurationJdbcService.delete(configId);
+
         // Then
-        List<Configuration> afterDelete = configurationJdbcService.findAllConfigurationsForUser(admin);
-        assertThat(afterDelete).hasSize(beforeAdd); // Only default remains
-        assertThat(afterDelete.get(0).validSince()).isNull(); // Default config
+        List<Configuration> configurations = configurationJdbcService.findAllConfigurationsForUser(testUser);
+        assertThat(configurations).isEmpty();
     }
 
     @Test
-    void shouldReturnCurrentConfigurationBasedOnValidSince() {
-        // Given - Create configurations with past, present, and future valid_since
-        Instant past = Instant.now().minus(2, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MILLIS);
-        Instant present = Instant.now().minus(1, ChronoUnit.HOURS).truncatedTo(ChronoUnit.MILLIS);
-        Instant future = Instant.now().plus(1, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MILLIS);
-        
-        Configuration.VisitDetection pastDetection = new Configuration.VisitDetection(
-            100, 5, 300, 300
+    void shouldNotDeleteConfigurationWithNullValidSince() {
+        // Given - save configuration with null validSince
+        Configuration.VisitDetection visitDetection = new Configuration.VisitDetection(
+                100L, 5L, 300L, 600L
         );
-        Configuration.VisitMerging pastMerging = new Configuration.VisitMerging(
-            48, 300, 200
+        Configuration.VisitMerging visitMerging = new Configuration.VisitMerging(
+                24L, 1800L, 50L
         );
-        Configuration pastConfig = new Configuration(null, pastDetection, pastMerging, past);
-        
-        Configuration.VisitDetection presentDetection = new Configuration.VisitDetection(
-            200, 10, 600, 600
+        Configuration configuration = new Configuration(
+                null, visitDetection, visitMerging, null
         );
-        Configuration.VisitMerging presentMerging = new Configuration.VisitMerging(
-            72, 600, 400
-        );
-        Configuration presentConfig = new Configuration(null, presentDetection, presentMerging, present);
-        
-        Configuration.VisitDetection futureDetection = new Configuration.VisitDetection(
-            300, 15, 900, 900
-        );
-        Configuration.VisitMerging futureMerging = new Configuration.VisitMerging(
-            96, 900, 600
-        );
-        Configuration futureConfig = new Configuration(null, futureDetection, futureMerging, future);
-        
-        configurationJdbcService.saveConfiguration(admin, pastConfig);
-        configurationJdbcService.saveConfiguration(admin, presentConfig);
-        configurationJdbcService.saveConfiguration(admin, futureConfig);
-        
+        configurationJdbcService.saveConfiguration(testUser, configuration);
+
+        List<Configuration> savedConfigs = configurationJdbcService.findAllConfigurationsForUser(testUser);
+        Long configId = savedConfigs.getFirst().id();
+
         // When
-        Optional<Configuration> currentConfig = configurationJdbcService.findCurrentConfigurationForUser(admin);
-        
-        // Then - Should return the most recent valid configuration (present, not future)
-        assertThat(currentConfig).isPresent();
-        assertThat(currentConfig.get().validSince()).isEqualTo(present);
-        assertThat(currentConfig.get().visitDetection().searchDistanceInMeters()).isEqualTo(200);
+        configurationJdbcService.delete(configId);
+
+        // Then - configuration should still exist because validSince is null
+        List<Configuration> configurations = configurationJdbcService.findAllConfigurationsForUser(testUser);
+        assertThat(configurations).hasSize(1);
+    }
+
+    @Test
+    void shouldFindMultipleConfigurationsOrderedByValidSince() {
+        // Given
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        Instant earlier = now.minusSeconds(3600);
+        Instant later = now.plusSeconds(3600);
+
+        Configuration.VisitDetection visitDetection = new Configuration.VisitDetection(
+                100L, 5L, 300L, 600L
+        );
+        Configuration.VisitMerging visitMerging = new Configuration.VisitMerging(
+                24L, 1800L, 50L
+        );
+
+        // Save configurations in different order
+        Configuration config1 = new Configuration(null, visitDetection, visitMerging, now);
+        Configuration config2 = new Configuration(null, visitDetection, visitMerging, later);
+        Configuration config3 = new Configuration(null, visitDetection, visitMerging, earlier);
+        Configuration config4 = new Configuration(null, visitDetection, visitMerging, null);
+
+        configurationJdbcService.saveConfiguration(testUser, config1);
+        configurationJdbcService.saveConfiguration(testUser, config2);
+        configurationJdbcService.saveConfiguration(testUser, config3);
+        configurationJdbcService.saveConfiguration(testUser, config4);
+
+        // When
+        List<Configuration> configurations = configurationJdbcService.findAllConfigurationsForUser(testUser);
+
+        // Then - should be ordered by validSince DESC NULLS LAST
+        assertThat(configurations).hasSize(4);
+        assertThat(configurations.get(0).validSince()).isEqualTo(later);
+        assertThat(configurations.get(1).validSince()).isEqualTo(now);
+        assertThat(configurations.get(2).validSince()).isEqualTo(earlier);
+        assertThat(configurations.get(3).validSince()).isNull();
+    }
+
+    @Test
+    void shouldReturnEmptyListForUserWithNoConfigurations() {
+        // Given
+        User anotherUser = testingService.randomUser();
+
+        // When
+        List<Configuration> configurations = configurationJdbcService.findAllConfigurationsForUser(anotherUser);
+
+        // Then
+        assertThat(configurations).isEmpty();
     }
 }

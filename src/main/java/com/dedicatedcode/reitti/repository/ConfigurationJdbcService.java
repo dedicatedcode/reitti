@@ -12,7 +12,6 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @Transactional
@@ -48,24 +47,12 @@ public class ConfigurationJdbcService {
         }
     };
 
-    @Transactional(readOnly = true)
-    public Optional<Configuration> findCurrentConfigurationForUser(User user) {
-        String sql = """
-            SELECT * FROM visit_detection_parameters 
-            WHERE user_id = ? AND (valid_since IS NULL OR valid_since <= NOW()) 
-            ORDER BY valid_since DESC NULLS LAST 
-            LIMIT 1
-            """;
-        
-        List<Configuration> results = jdbcTemplate.query(sql, CONFIGURATION_ROW_MAPPER, user.getId());
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
-    }
 
     @Transactional(readOnly = true)
     public List<Configuration> findAllConfigurationsForUser(User user) {
         String sql = """
-            SELECT * FROM visit_detection_parameters 
-            WHERE user_id = ? 
+            SELECT * FROM visit_detection_parameters
+            WHERE user_id = ?
             ORDER BY valid_since DESC NULLS LAST
             """;
         
@@ -75,7 +62,7 @@ public class ConfigurationJdbcService {
     public void saveConfiguration(User user, Configuration configuration) {
         String sql = """
             INSERT INTO visit_detection_parameters (
-                user_id, valid_since, detection_search_distance_meters, 
+                user_id, valid_since, detection_search_distance_meters,
                 detection_minimum_adjacent_points, detection_minimum_stay_time_seconds, 
                 detection_max_merge_time_between_same_stay_points, merging_search_duration_in_hours, 
                 merging_max_merge_time_between_same_visits, merging_min_distance_between_visits
@@ -128,10 +115,10 @@ public class ConfigurationJdbcService {
         );
     }
 
-    public void deleteConfiguration(Long configurationId) {
+    public void delete(Long configurationId) {
         String sql = """
-            DELETE FROM visit_detection_parameters 
-            WHERE id = ?
+            DELETE FROM visit_detection_parameters
+            WHERE id = ? AND valid_since IS NOT NULL
             """;
         
         jdbcTemplate.update(sql, configurationId);

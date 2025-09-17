@@ -42,6 +42,7 @@ public class VisitMergingService {
     private final RabbitTemplate rabbitTemplate;
     private final UserNotificationService userNotificationService;
     private final GeoLocationTimezoneService timezoneService;
+
     private final long mergeThresholdSeconds;
     private final long mergeThresholdMeters;
     private final int searchRangeExtensionInHours;
