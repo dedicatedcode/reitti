@@ -1,6 +1,22 @@
 package com.dedicatedcode.reitti.model.processing;
 
-public record Configuration() {
-    public record VisitDetection(int searchDistanceInMeters, int minimumClosePoints, int minimumStayTimeInSeconds, int maxTimeBetweenSameStayPoints) {}
-    public record VisitMerging(int searchDurationInHours, int maxTimeBetweenSameVisits, int mergeThresholdMeters) {}
+import java.time.Instant;
+
+public record Configuration(
+    VisitDetection visitDetection,
+    VisitMerging visitMerging,
+    Instant validSince
+) {
+    public record VisitDetection(
+        long searchDistanceInMeters, 
+        long minimumAdjacentPoints, 
+        long minimumStayTimeInSeconds, 
+        long maxMergeTimeBetweenSameStayPoints
+    ) {}
+    
+    public record VisitMerging(
+        long searchDurationInHours, 
+        long maxMergeTimeBetweenSameVisits, 
+        long minDistanceBetweenVisits
+    ) {}
 }
