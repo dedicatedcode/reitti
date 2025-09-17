@@ -1,9 +1,9 @@
 package com.dedicatedcode.reitti.repository;
 
+import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.processing.Configuration;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.test.IntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,7 +52,7 @@ class ConfigurationJdbcServiceTest {
     @Test
     void shouldSaveNewConfiguration() {
         // Given
-        Instant validSince = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+        Instant validSince = Instant.now().truncatedTo(ChronoUnit.MILLIS);
         
         Configuration.VisitDetection visitDetection = new Configuration.VisitDetection(
             150, 7, 600, 450
@@ -79,8 +79,8 @@ class ConfigurationJdbcServiceTest {
     @Test
     void shouldFindAllConfigurationsForUser() {
         // Given - Save additional configurations with different valid_since dates
-        Instant past = Instant.now().minus(1, ChronoUnit.DAYS).truncatedTo(ChronoUnit.SECONDS);
-        Instant future = Instant.now().plus(1, ChronoUnit.DAYS).truncatedTo(ChronoUnit.SECONDS);
+        Instant past = Instant.now().minus(1, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MILLIS);
+        Instant future = Instant.now().plus(1, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MILLIS);
         
         Configuration.VisitDetection visitDetection1 = new Configuration.VisitDetection(
             200, 10, 900, 600
@@ -105,10 +105,10 @@ class ConfigurationJdbcServiceTest {
         List<Configuration> allConfigs = configurationJdbcService.findAllConfigurationsForUser(admin);
         
         // Then
-        assertThat(allConfigs).hasSize(3); // Default + past + future
+        assertThat(allConfigs).hasSize(4); // Default + past + future
         assertThat(allConfigs.get(0).validSince()).isEqualTo(future); // Most recent first
         assertThat(allConfigs.get(1).validSince()).isEqualTo(past);
-        assertThat(allConfigs.get(2).validSince()).isNull(); // Default config
+        assertThat(allConfigs.get(3).validSince()).isNull(); // Default config
     }
 
     @Test
@@ -123,7 +123,7 @@ class ConfigurationJdbcServiceTest {
         Configuration.VisitMerging newVisitMerging = new Configuration.VisitMerging(
             120, 900, 600
         );
-        Instant newValidSince = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+        Instant newValidSince = Instant.now().truncatedTo(ChronoUnit.MILLIS);
         Configuration updatedConfig = new Configuration(
             currentConfig.get().id(), 
             newVisitDetection, 
@@ -146,7 +146,7 @@ class ConfigurationJdbcServiceTest {
     @Test
     void shouldDeleteConfiguration() {
         // Given
-        Instant validSince = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+        Instant validSince = Instant.now();
         Configuration.VisitDetection visitDetection = new Configuration.VisitDetection(
             400, 20, 2400, 1200
         );
@@ -154,12 +154,13 @@ class ConfigurationJdbcServiceTest {
             144, 1200, 800
         );
         Configuration configToDelete = new Configuration(null, visitDetection, visitMerging, validSince);
-        
+
+        int beforeAdd = configurationJdbcService.findAllConfigurationsForUser(admin).size();
         configurationJdbcService.saveConfiguration(admin, configToDelete);
         
         // Verify it was saved
         List<Configuration> beforeDelete = configurationJdbcService.findAllConfigurationsForUser(admin);
-        assertThat(beforeDelete).hasSize(2); // Default + new one
+        assertThat(beforeDelete).hasSize(beforeAdd + 2 ); // Default + new one
         
         // Get the saved configuration to get its ID
         Configuration savedConfig = beforeDelete.stream()
@@ -172,16 +173,16 @@ class ConfigurationJdbcServiceTest {
         
         // Then
         List<Configuration> afterDelete = configurationJdbcService.findAllConfigurationsForUser(admin);
-        assertThat(afterDelete).hasSize(1); // Only default remains
+        assertThat(afterDelete).hasSize(beforeAdd + 1); // Only default remains
         assertThat(afterDelete.get(0).validSince()).isNull(); // Default config
     }
 
     @Test
     void shouldReturnCurrentConfigurationBasedOnValidSince() {
         // Given - Create configurations with past, present, and future valid_since
-        Instant past = Instant.now().minus(2, ChronoUnit.DAYS).truncatedTo(ChronoUnit.SECONDS);
-        Instant present = Instant.now().minus(1, ChronoUnit.HOURS).truncatedTo(ChronoUnit.SECONDS);
-        Instant future = Instant.now().plus(1, ChronoUnit.DAYS).truncatedTo(ChronoUnit.SECONDS);
+        Instant past = Instant.now().minus(2, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MILLIS);
+        Instant present = Instant.now().minus(1, ChronoUnit.HOURS).truncatedTo(ChronoUnit.MILLIS);
+        Instant future = Instant.now().plus(1, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MILLIS);
         
         Configuration.VisitDetection pastDetection = new Configuration.VisitDetection(
             100, 5, 300, 300
