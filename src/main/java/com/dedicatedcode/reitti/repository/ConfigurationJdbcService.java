@@ -27,6 +27,7 @@ public class ConfigurationJdbcService {
     private static final RowMapper<Configuration> CONFIGURATION_ROW_MAPPER = new RowMapper<Configuration>() {
         @Override
         public Configuration mapRow(ResultSet rs, int rowNum) throws SQLException {
+            Long id = rs.getLong("id");
             Timestamp validSinceTimestamp = rs.getTimestamp("valid_since");
             Instant validSince = validSinceTimestamp != null ? validSinceTimestamp.toInstant() : null;
             
@@ -43,7 +44,7 @@ public class ConfigurationJdbcService {
                 rs.getLong("merging_min_distance_between_visits")
             );
             
-            return new Configuration(visitDetection, visitMerging, validSince);
+            return new Configuration(id, visitDetection, visitMerging, validSince);
         }
     };
 
@@ -97,31 +98,42 @@ public class ConfigurationJdbcService {
         );
     }
 
-    public void updateConfiguration(User user, Configuration oldConfiguration, Configuration newConfiguration) {
-        // Delete the old configuration
-        String deleteSql = """
-            DELETE FROM visit_detection_parameters 
-            WHERE user_id = ? AND valid_since = ?
-            """;
-        
-        Timestamp oldValidSinceTimestamp = oldConfiguration.validSince() != null ? 
-            Timestamp.from(oldConfiguration.validSince()) : null;
-        
-        jdbcTemplate.update(deleteSql, user.getId(), oldValidSinceTimestamp);
-        
-        // Insert the new configuration
-        saveConfiguration(user, newConfiguration);
-    }
-
-    public void deleteConfiguration(User user, Configuration configuration) {
+    public void updateConfiguration(Configuration configuration) {
         String sql = """
-            DELETE FROM visit_detection_parameters 
-            WHERE user_id = ? AND valid_since = ?
+            UPDATE visit_detection_parameters SET
+                valid_since = ?,
+                detection_search_distance_meters = ?,
+                detection_minimum_adjacent_points = ?,
+                detection_minimum_stay_time_seconds = ?,
+                detection_max_merge_time_between_same_stay_points = ?,
+                merging_search_duration_in_hours = ?,
+                merging_max_merge_time_between_same_visits = ?,
+                merging_min_distance_between_visits = ?
+            WHERE id = ?
             """;
         
         Timestamp validSinceTimestamp = configuration.validSince() != null ? 
             Timestamp.from(configuration.validSince()) : null;
         
-        jdbcTemplate.update(sql, user.getId(), validSinceTimestamp);
+        jdbcTemplate.update(sql,
+            validSinceTimestamp,
+            configuration.visitDetection().searchDistanceInMeters(),
+            configuration.visitDetection().minimumAdjacentPoints(),
+            configuration.visitDetection().minimumStayTimeInSeconds(),
+            configuration.visitDetection().maxMergeTimeBetweenSameStayPoints(),
+            configuration.visitMerging().searchDurationInHours(),
+            configuration.visitMerging().maxMergeTimeBetweenSameVisits(),
+            configuration.visitMerging().minDistanceBetweenVisits(),
+            configuration.id()
+        );
+    }
+
+    public void deleteConfiguration(Long configurationId) {
+        String sql = """
+            DELETE FROM visit_detection_parameters 
+            WHERE id = ?
+            """;
+        
+        jdbcTemplate.update(sql, configurationId);
     }
 }

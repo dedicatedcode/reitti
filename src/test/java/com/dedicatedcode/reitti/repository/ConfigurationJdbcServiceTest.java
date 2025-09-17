@@ -60,7 +60,7 @@ class ConfigurationJdbcServiceTest {
         Configuration.VisitMerging visitMerging = new Configuration.VisitMerging(
             72, 450, 300
         );
-        Configuration newConfig = new Configuration(visitDetection, visitMerging, validSince);
+        Configuration newConfig = new Configuration(null, visitDetection, visitMerging, validSince);
         
         // When
         configurationJdbcService.saveConfiguration(admin, newConfig);
@@ -69,6 +69,7 @@ class ConfigurationJdbcServiceTest {
         Optional<Configuration> result = configurationJdbcService.findCurrentConfigurationForUser(admin);
         assertThat(result).isPresent();
         Configuration savedConfig = result.get();
+        assertThat(savedConfig.id()).isNotNull();
         assertThat(savedConfig.validSince()).isEqualTo(validSince);
         assertThat(savedConfig.visitDetection().searchDistanceInMeters()).isEqualTo(150);
         assertThat(savedConfig.visitDetection().minimumAdjacentPoints()).isEqualTo(7);
@@ -87,7 +88,7 @@ class ConfigurationJdbcServiceTest {
         Configuration.VisitMerging visitMerging1 = new Configuration.VisitMerging(
             24, 600, 400
         );
-        Configuration pastConfig = new Configuration(visitDetection1, visitMerging1, past);
+        Configuration pastConfig = new Configuration(null, visitDetection1, visitMerging1, past);
         
         Configuration.VisitDetection visitDetection2 = new Configuration.VisitDetection(
             250, 12, 1200, 800
@@ -95,7 +96,7 @@ class ConfigurationJdbcServiceTest {
         Configuration.VisitMerging visitMerging2 = new Configuration.VisitMerging(
             96, 800, 500
         );
-        Configuration futureConfig = new Configuration(visitDetection2, visitMerging2, future);
+        Configuration futureConfig = new Configuration(null, visitDetection2, visitMerging2, future);
         
         configurationJdbcService.saveConfiguration(admin, pastConfig);
         configurationJdbcService.saveConfiguration(admin, futureConfig);
@@ -123,17 +124,23 @@ class ConfigurationJdbcServiceTest {
             120, 900, 600
         );
         Instant newValidSince = Instant.now().truncatedTo(ChronoUnit.SECONDS);
-        Configuration newConfig = new Configuration(newVisitDetection, newVisitMerging, newValidSince);
+        Configuration updatedConfig = new Configuration(
+            currentConfig.get().id(), 
+            newVisitDetection, 
+            newVisitMerging, 
+            newValidSince
+        );
         
         // When
-        configurationJdbcService.updateConfiguration(admin, currentConfig.get(), newConfig);
+        configurationJdbcService.updateConfiguration(updatedConfig);
         
         // Then
-        Optional<Configuration> updatedConfig = configurationJdbcService.findCurrentConfigurationForUser(admin);
-        assertThat(updatedConfig).isPresent();
-        assertThat(updatedConfig.get().validSince()).isEqualTo(newValidSince);
-        assertThat(updatedConfig.get().visitDetection().searchDistanceInMeters()).isEqualTo(300);
-        assertThat(updatedConfig.get().visitMerging().searchDurationInHours()).isEqualTo(120);
+        Optional<Configuration> result = configurationJdbcService.findCurrentConfigurationForUser(admin);
+        assertThat(result).isPresent();
+        assertThat(result.get().id()).isEqualTo(currentConfig.get().id());
+        assertThat(result.get().validSince()).isEqualTo(newValidSince);
+        assertThat(result.get().visitDetection().searchDistanceInMeters()).isEqualTo(300);
+        assertThat(result.get().visitMerging().searchDurationInHours()).isEqualTo(120);
     }
 
     @Test
@@ -146,7 +153,7 @@ class ConfigurationJdbcServiceTest {
         Configuration.VisitMerging visitMerging = new Configuration.VisitMerging(
             144, 1200, 800
         );
-        Configuration configToDelete = new Configuration(visitDetection, visitMerging, validSince);
+        Configuration configToDelete = new Configuration(null, visitDetection, visitMerging, validSince);
         
         configurationJdbcService.saveConfiguration(admin, configToDelete);
         
@@ -154,8 +161,14 @@ class ConfigurationJdbcServiceTest {
         List<Configuration> beforeDelete = configurationJdbcService.findAllConfigurationsForUser(admin);
         assertThat(beforeDelete).hasSize(2); // Default + new one
         
+        // Get the saved configuration to get its ID
+        Configuration savedConfig = beforeDelete.stream()
+            .filter(config -> config.validSince() != null && config.validSince().equals(validSince))
+            .findFirst()
+            .orElseThrow();
+        
         // When
-        configurationJdbcService.deleteConfiguration(admin, configToDelete);
+        configurationJdbcService.deleteConfiguration(savedConfig.id());
         
         // Then
         List<Configuration> afterDelete = configurationJdbcService.findAllConfigurationsForUser(admin);
@@ -176,7 +189,7 @@ class ConfigurationJdbcServiceTest {
         Configuration.VisitMerging pastMerging = new Configuration.VisitMerging(
             48, 300, 200
         );
-        Configuration pastConfig = new Configuration(pastDetection, pastMerging, past);
+        Configuration pastConfig = new Configuration(null, pastDetection, pastMerging, past);
         
         Configuration.VisitDetection presentDetection = new Configuration.VisitDetection(
             200, 10, 600, 600
@@ -184,7 +197,7 @@ class ConfigurationJdbcServiceTest {
         Configuration.VisitMerging presentMerging = new Configuration.VisitMerging(
             72, 600, 400
         );
-        Configuration presentConfig = new Configuration(presentDetection, presentMerging, present);
+        Configuration presentConfig = new Configuration(null, presentDetection, presentMerging, present);
         
         Configuration.VisitDetection futureDetection = new Configuration.VisitDetection(
             300, 15, 900, 900
@@ -192,7 +205,7 @@ class ConfigurationJdbcServiceTest {
         Configuration.VisitMerging futureMerging = new Configuration.VisitMerging(
             96, 900, 600
         );
-        Configuration futureConfig = new Configuration(futureDetection, futureMerging, future);
+        Configuration futureConfig = new Configuration(null, futureDetection, futureMerging, future);
         
         configurationJdbcService.saveConfiguration(admin, pastConfig);
         configurationJdbcService.saveConfiguration(admin, presentConfig);

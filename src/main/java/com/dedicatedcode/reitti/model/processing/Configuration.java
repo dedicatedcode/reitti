@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.model.processing;
 import java.time.Instant;
 
 public record Configuration(
+    Long id,
     VisitDetection visitDetection,
     VisitMerging visitMerging,
     Instant validSince
