@@ -39,6 +39,7 @@ class ConfigurationJdbcServiceTest {
         // Then
         assertThat(result).isPresent();
         Configuration config = result.get();
+        assertThat(config.id()).isNotNull(); // Should have an ID from migration
         assertThat(config.validSince()).isNull(); // Default configuration from migration
         assertThat(config.visitDetection().searchDistanceInMeters()).isEqualTo(100);
         assertThat(config.visitDetection().minimumAdjacentPoints()).isEqualTo(5);
@@ -105,10 +106,10 @@ class ConfigurationJdbcServiceTest {
         List<Configuration> allConfigs = configurationJdbcService.findAllConfigurationsForUser(admin);
         
         // Then
-        assertThat(allConfigs).hasSize(4); // Default + past + future
+        assertThat(allConfigs).hasSize(3); // Default + past + future
         assertThat(allConfigs.get(0).validSince()).isEqualTo(future); // Most recent first
         assertThat(allConfigs.get(1).validSince()).isEqualTo(past);
-        assertThat(allConfigs.get(3).validSince()).isNull(); // Default config
+        assertThat(allConfigs.get(2).validSince()).isNull(); // Default config
     }
 
     @Test
@@ -160,7 +161,7 @@ class ConfigurationJdbcServiceTest {
         
         // Verify it was saved
         List<Configuration> beforeDelete = configurationJdbcService.findAllConfigurationsForUser(admin);
-        assertThat(beforeDelete).hasSize(beforeAdd + 2 ); // Default + new one
+        assertThat(beforeDelete).hasSize(beforeAdd + 1); // Default + new one
         
         // Get the saved configuration to get its ID
         Configuration savedConfig = beforeDelete.stream()
@@ -173,7 +174,7 @@ class ConfigurationJdbcServiceTest {
         
         // Then
         List<Configuration> afterDelete = configurationJdbcService.findAllConfigurationsForUser(admin);
-        assertThat(afterDelete).hasSize(beforeAdd + 1); // Only default remains
+        assertThat(afterDelete).hasSize(beforeAdd); // Only default remains
         assertThat(afterDelete.get(0).validSince()).isNull(); // Default config
     }
 
