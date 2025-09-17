@@ -2,6 +2,8 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.processing.Configuration;
 import com.dedicatedcode.reitti.model.security.User;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -49,6 +51,7 @@ public class ConfigurationJdbcService {
 
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "configurations", key = "#user.id")
     public List<Configuration> findAllConfigurationsForUser(User user) {
         String sql = """
             SELECT * FROM visit_detection_parameters
@@ -59,6 +62,7 @@ public class ConfigurationJdbcService {
         return jdbcTemplate.query(sql, CONFIGURATION_ROW_MAPPER, user.getId());
     }
 
+    @CacheEvict(value = "configurations", key = "#user.id")
     public void saveConfiguration(User user, Configuration configuration) {
         String sql = """
             INSERT INTO visit_detection_parameters (
@@ -85,6 +89,7 @@ public class ConfigurationJdbcService {
         );
     }
 
+    @CacheEvict(value = "configurations", allEntries = true)
     public void updateConfiguration(Configuration configuration) {
         String sql = """
             UPDATE visit_detection_parameters SET
@@ -115,6 +120,7 @@ public class ConfigurationJdbcService {
         );
     }
 
+    @CacheEvict(value = "configurations", allEntries = true)
     public void delete(Long configurationId) {
         String sql = """
             DELETE FROM visit_detection_parameters
