@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/css/lineicons.css">
     <link rel="stylesheet" href="/css/photo-client.css">
     <link rel="stylesheet" href="/css/inline-edit.css">
+    <link rel="stylesheet" href="/css/avatar-marker.css">
     <script src="/js/HumanizeDuration.js"></script>
     <script src="/js/horizontal-date-picker.js"></script>
     <script src="/js/timeline-scroll-indicator.js"></script>
@@ -288,10 +289,20 @@
                 rawPointsPath.addTo(map);
                 rawPointPaths.push(rawPointsPath)
                 
-                // Add pulsating marker for the latest point if in auto-update mode and today is selected
+                // Add avatar marker for the latest point if in auto-update mode and today is selected
                 if (autoUpdateMode && isSelectedDateToday() && rawPointsData.points.length > 0) {
                     const latestPoint = rawPointsData.points[rawPointsData.points.length - 1];
-                    addPulsatingMarker(latestPoint.latitude, latestPoint.longitude, color);
+                    // Find the corresponding timeline section to get user data
+                    const timelineContainers = document.querySelectorAll('.user-timeline-section');
+                    const timelineSection = timelineContainers[rawPointsData.index];
+                    if (timelineSection) {
+                        const userData = {
+                            avatarUrl: timelineSection.dataset.userAvatarUrl,
+                            avatarFallback: timelineSection.dataset.avatarFallback,
+                            displayName: timelineSection.dataset.displayName
+                        };
+                        addAvatarMarker(latestPoint.latitude, latestPoint.longitude, userData);
+                    }
                 }
             }
 
@@ -655,25 +666,35 @@
         return selectedDate === today;
     }
 
-    function addPulsatingMarker(lat, lng, color) {
-        // Create new pulsating marker
-        const cssIcon = L.divIcon({
-            // Specify a class name we can refer to in CSS.
-            className: 'css-icon',
-            html: `<div style="border-color: ${color || '#606060'}" class="gps_ring"></div>`
-            ,iconSize: [22,22]
+    function addAvatarMarker(lat, lng, userData) {
+        // Create avatar marker with user's avatar
+        const avatarHtml = `
+            <div class="avatar-marker">
+                <img src="${userData.avatarUrl}" 
+                     alt="${userData.avatarFallback}" 
+                     class="avatar-marker-img"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <div class="avatar-marker-fallback" style="display: none;">${userData.avatarFallback}</div>
+            </div>
+        `;
+        
+        const avatarIcon = L.divIcon({
+            className: 'avatar-marker-icon',
+            html: avatarHtml,
+            iconSize: [40, 40],
+            iconAnchor: [20, 20]
         });
 
-        const pulsatingMarker = L.marker([lat, lng], {icon: cssIcon}).addTo(map);
+        const avatarMarker = L.marker([lat, lng], {icon: avatarIcon}).addTo(map);
 
         // Add tooltip
-        pulsatingMarker.bindTooltip(window.locale.autoupdate.latestLocation, {
+        avatarMarker.bindTooltip(`${window.locale.autoupdate.latestLocation} - ${userData.displayName}`, {
             permanent: false,
             direction: 'top'
         });
 
         // Store the marker for cleanup later
-        pulsatingMarkers.push(pulsatingMarker);
+        pulsatingMarkers.push(avatarMarker);
     }
 
     function removePulsatingMarkers() {
