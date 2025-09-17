@@ -294,7 +294,7 @@
                     const latestPoint = rawPointsData.points[rawPointsData.points.length - 1];
                     // Find the corresponding timeline section to get user data
                     const timelineContainers = document.querySelectorAll('.user-timeline-section');
-                    const timelineSection = timelineContainers[result.index];
+                    const timelineSection = timelineContainers[rawPointsData.index];
                     if (timelineSection) {
                         const userData = {
                             avatarUrl: timelineSection.dataset.userAvatarUrl,
