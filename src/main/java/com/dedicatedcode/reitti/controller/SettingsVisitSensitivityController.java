@@ -54,7 +54,7 @@ public class SettingsVisitSensitivityController {
     @GetMapping("/new")
     public String newConfiguration(@RequestParam(defaultValue = "simple") String mode, Model model) {
         ConfigurationForm form = new ConfigurationForm();
-        form.setValidSince(LocalDateTime.now()); // Default to current time
+        form.setValidSince(LocalDateTime.now());
         
         model.addAttribute("configurationForm", form);
         model.addAttribute("mode", mode);
