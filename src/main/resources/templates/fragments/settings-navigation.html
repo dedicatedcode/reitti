@@ -47,6 +47,11 @@
            th:classappend="${activeSection == 'places'} ? 'active' : ''"
            th:text="#{settings.places}">Places</a>
         
+        <a href="/settings/visit-sensitivity"
+           class="settings-nav-item"
+           th:classappend="${activeSection == 'visit-sensitivity'} ? 'active' : ''"
+           th:text="#{visit.sensitivity.title}">Visit Sensitivity</a>
+        
         <a href="/settings/geocode-services"
            class="settings-nav-item"
            th:classappend="${activeSection == 'geocode-services'} ? 'active' : ''"
