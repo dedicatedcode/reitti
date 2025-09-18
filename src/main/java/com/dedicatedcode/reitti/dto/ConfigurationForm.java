@@ -64,24 +64,24 @@ public class ConfigurationForm {
         form.setId(config.id());
         
         // Set advanced mode values
-        form.setSearchDistanceInMeters(config.visitDetection().searchDistanceInMeters());
-        form.setMinimumAdjacentPoints(config.visitDetection().minimumAdjacentPoints());
-        form.setMinimumStayTimeInSeconds(config.visitDetection().minimumStayTimeInSeconds());
-        form.setMaxMergeTimeBetweenSameStayPoints(config.visitDetection().maxMergeTimeBetweenSameStayPoints());
-        form.setSearchDurationInHours(config.visitMerging().searchDurationInHours());
-        form.setMaxMergeTimeBetweenSameVisits(config.visitMerging().maxMergeTimeBetweenSameVisits());
-        form.setMinDistanceBetweenVisits(config.visitMerging().minDistanceBetweenVisits());
+        form.setSearchDistanceInMeters(config.getVisitDetection().getSearchDistanceInMeters());
+        form.setMinimumAdjacentPoints(config.getVisitDetection().getMinimumAdjacentPoints());
+        form.setMinimumStayTimeInSeconds(config.getVisitDetection().getMinimumStayTimeInSeconds());
+        form.setMaxMergeTimeBetweenSameStayPoints(config.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints());
+        form.setSearchDurationInHours(config.getVisitMerging().getSearchDurationInHours());
+        form.setMaxMergeTimeBetweenSameVisits(config.getVisitMerging().getMaxMergeTimeBetweenSameVisits());
+        form.setMinDistanceBetweenVisits(config.getVisitMerging().getMinDistanceBetweenVisits());
         
         // Convert to simple mode sensitivity level (1-5 scale based on stay time)
-        long stayTime = config.visitDetection().minimumStayTimeInSeconds();
+        long stayTime = config.getVisitDetection().getMinimumStayTimeInSeconds();
         if (stayTime <= 180) form.setSensitivityLevel(5); // High sensitivity
         else if (stayTime <= 300) form.setSensitivityLevel(4);
         else if (stayTime <= 600) form.setSensitivityLevel(3); // Medium
         else if (stayTime <= 1200) form.setSensitivityLevel(2);
         else form.setSensitivityLevel(1); // Low sensitivity
         
-        if (config.validSince() != null) {
-            form.setValidSince(LocalDateTime.ofInstant(config.validSince(), ZoneOffset.UTC));
+        if (config.getValidSince() != null) {
+            form.setValidSince(LocalDateTime.ofInstant(config.getValidSince(), ZoneOffset.UTC));
         }
         
         return form;
@@ -113,7 +113,7 @@ public class ConfigurationForm {
         
         Instant validSinceInstant = validSince != null ? validSince.toInstant(ZoneOffset.UTC) : null;
         
-        return new Configuration(id, visitDetection, visitMerging, validSinceInstant);
+        return new Configuration(getId(), visitDetection, visitMerging, validSinceInstant);
     }
     
     private Configuration.VisitDetection mapSensitivityToVisitDetection(int level) {

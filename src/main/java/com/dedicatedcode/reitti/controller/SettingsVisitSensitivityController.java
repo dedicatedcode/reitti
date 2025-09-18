@@ -39,14 +39,14 @@ public class SettingsVisitSensitivityController {
         User user = (User) auth.getPrincipal();
         List<Configuration> configurations = configurationService.findAllConfigurationsForUser(user);
         Configuration config = configurations.stream()
-            .filter(c -> c.id().equals(id))
+            .filter(c -> c.getId().equals(id))
             .findFirst()
             .orElseThrow(() -> new IllegalArgumentException("Configuration not found"));
         
         ConfigurationForm form = ConfigurationForm.fromConfiguration(config);
         model.addAttribute("configurationForm", form);
         model.addAttribute("mode", mode);
-        model.addAttribute("isDefaultConfig", config.validSince() == null);
+        model.addAttribute("isDefaultConfig", config.getValidSince() == null);
         
         return "fragments/configuration-form :: configuration-form";
     }
@@ -69,7 +69,7 @@ public class SettingsVisitSensitivityController {
         User user = (User) auth.getPrincipal();
         Configuration config = form.toConfiguration();
         
-        if (config.id() == null) {
+        if (config.getId() == null) {
             configurationService.saveConfiguration(user, config);
         } else {
             configurationService.updateConfiguration(config);
@@ -88,11 +88,11 @@ public class SettingsVisitSensitivityController {
         // Verify this is not the default configuration
         List<Configuration> configurations = configurationService.findAllConfigurationsForUser(user);
         Configuration config = configurations.stream()
-            .filter(c -> c.id().equals(id))
+            .filter(c -> c.getId().equals(id))
             .findFirst()
             .orElseThrow(() -> new IllegalArgumentException("Configuration not found"));
         
-        if (config.validSince() == null) {
+        if (config.getValidSince() == null) {
             throw new IllegalArgumentException("Cannot delete default configuration");
         }
         

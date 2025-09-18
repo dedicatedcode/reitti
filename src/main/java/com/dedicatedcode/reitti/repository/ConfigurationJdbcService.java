@@ -79,13 +79,13 @@ public class ConfigurationJdbcService {
         jdbcTemplate.update(sql,
             user.getId(),
             validSinceTimestamp,
-            configuration.visitDetection().searchDistanceInMeters(),
-            configuration.visitDetection().minimumAdjacentPoints(),
-            configuration.visitDetection().minimumStayTimeInSeconds(),
-            configuration.visitDetection().maxMergeTimeBetweenSameStayPoints(),
-            configuration.visitMerging().searchDurationInHours(),
-            configuration.visitMerging().maxMergeTimeBetweenSameVisits(),
-            configuration.visitMerging().minDistanceBetweenVisits()
+            configuration.getVisitDetection().getSearchDistanceInMeters(),
+            configuration.getVisitDetection().getMinimumAdjacentPoints(),
+            configuration.getVisitDetection().getMinimumStayTimeInSeconds(),
+            configuration.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints(),
+            configuration.getVisitMerging().getSearchDurationInHours(),
+            configuration.getVisitMerging().getMaxMergeTimeBetweenSameVisits(),
+            configuration.getVisitMerging().getMinDistanceBetweenVisits()
         );
     }
 
@@ -104,19 +104,19 @@ public class ConfigurationJdbcService {
             WHERE id = ?
             """;
         
-        Timestamp validSinceTimestamp = configuration.validSince() != null ? 
-            Timestamp.from(configuration.validSince()) : null;
+        Timestamp validSinceTimestamp = configuration.getValidSince() != null ? 
+            Timestamp.from(configuration.getValidSince()) : null;
         
         jdbcTemplate.update(sql,
             validSinceTimestamp,
-            configuration.visitDetection().searchDistanceInMeters(),
-            configuration.visitDetection().minimumAdjacentPoints(),
-            configuration.visitDetection().minimumStayTimeInSeconds(),
-            configuration.visitDetection().maxMergeTimeBetweenSameStayPoints(),
-            configuration.visitMerging().searchDurationInHours(),
-            configuration.visitMerging().maxMergeTimeBetweenSameVisits(),
-            configuration.visitMerging().minDistanceBetweenVisits(),
-            configuration.id()
+            configuration.getVisitDetection().getSearchDistanceInMeters(),
+            configuration.getVisitDetection().getMinimumAdjacentPoints(),
+            configuration.getVisitDetection().getMinimumStayTimeInSeconds(),
+            configuration.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints(),
+            configuration.getVisitMerging().getSearchDurationInHours(),
+            configuration.getVisitMerging().getMaxMergeTimeBetweenSameVisits(),
+            configuration.getVisitMerging().getMinDistanceBetweenVisits(),
+            configuration.getId()
         );
     }
 
