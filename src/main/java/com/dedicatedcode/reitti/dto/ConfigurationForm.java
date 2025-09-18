@@ -120,22 +120,22 @@ public class ConfigurationForm {
     
     private static Configuration.VisitDetection mapSensitivityToVisitDetection(int level) {
         return switch (level) {
-            case 1 -> new Configuration.VisitDetection(300, 5, 1800, 7200); // Low sensitivity
-            case 2 -> new Configuration.VisitDetection(200, 4, 1200, 5400);
-            case 3 -> new Configuration.VisitDetection(100, 5, 300, 300);  // Medium
-            case 4 -> new Configuration.VisitDetection(100, 3, 300, 1800);
-            case 5 -> new Configuration.VisitDetection(75, 2, 180, 900);    // High sensitivity
+            case 1 -> new Configuration.VisitDetection(200, 8, 600, 600);   // Low sensitivity
+            case 2 -> new Configuration.VisitDetection(150, 6, 450, 450);   
+            case 3 -> new Configuration.VisitDetection(100, 5, 300, 300);   // Medium (baseline)
+            case 4 -> new Configuration.VisitDetection(75, 4, 225, 225);    
+            case 5 -> new Configuration.VisitDetection(50, 3, 150, 150);    // High sensitivity
             default -> throw new IllegalArgumentException("Unhandled level [" + level + "] detected!");
         };
     }
     
     private static Configuration.VisitMerging mapSensitivityToVisitMerging(int level) {
         return switch (level) {
-            case 1 -> new Configuration.VisitMerging(72, 14400, 500); // Low sensitivity
-            case 2 -> new Configuration.VisitMerging(48, 10800, 300);
-            case 3 -> new Configuration.VisitMerging(48, 300, 200);  // Medium
-            case 4 -> new Configuration.VisitMerging(12, 3600, 150);
-            case 5 -> new Configuration.VisitMerging(6, 1800, 100);   // High sensitivity
+            case 1 -> new Configuration.VisitMerging(96, 600, 400);   // Low sensitivity
+            case 2 -> new Configuration.VisitMerging(72, 450, 300);   
+            case 3 -> new Configuration.VisitMerging(48, 300, 200);   // Medium (baseline)
+            case 4 -> new Configuration.VisitMerging(24, 225, 150);   
+            case 5 -> new Configuration.VisitMerging(12, 150, 100);   // High sensitivity
             default -> throw new IllegalArgumentException("Unhandled level [" + level + "] detected!");
         };
     }
