@@ -96,11 +96,12 @@
                     }
                     
                     .sensitivity-ticks {
-                        display: grid;
-                        grid-template-columns: repeat(5, 1fr);
+                        display: flex;
+                        justify-content: space-between;
                         margin-top: 0.5rem;
                         position: relative;
                         width: 100%;
+                        padding: 0 10px;
                     }
                     
                     .sensitivity-tick {
@@ -108,15 +109,15 @@
                         flex-direction: column;
                         align-items: center;
                         position: relative;
-                        justify-self: center;
+                        flex: 0 0 auto;
                     }
                     
                     .sensitivity-tick:first-child {
-                        justify-self: start;
+                        margin-left: -10px;
                     }
                     
                     .sensitivity-tick:last-child {
-                        justify-self: end;
+                        margin-right: -10px;
                     }
                     
                     .sensitivity-tick::before {
