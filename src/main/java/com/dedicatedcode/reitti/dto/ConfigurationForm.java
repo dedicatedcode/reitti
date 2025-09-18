@@ -3,7 +3,7 @@ package com.dedicatedcode.reitti.dto;
 import com.dedicatedcode.reitti.model.processing.Configuration;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 
 public class ConfigurationForm {
@@ -22,7 +22,7 @@ public class ConfigurationForm {
     private Long maxMergeTimeBetweenSameVisits;
     private Long minDistanceBetweenVisits;
     
-    private LocalDateTime validSince;
+    private LocalDate validSince;
     
     // Getters and setters
     public Long getId() { return id; }
@@ -55,8 +55,8 @@ public class ConfigurationForm {
     public Long getMinDistanceBetweenVisits() { return minDistanceBetweenVisits; }
     public void setMinDistanceBetweenVisits(Long minDistanceBetweenVisits) { this.minDistanceBetweenVisits = minDistanceBetweenVisits; }
     
-    public LocalDateTime getValidSince() { return validSince; }
-    public void setValidSince(LocalDateTime validSince) { this.validSince = validSince; }
+    public LocalDate getValidSince() { return validSince; }
+    public void setValidSince(LocalDate validSince) { this.validSince = validSince; }
     
     // Convert from Configuration
     public static ConfigurationForm fromConfiguration(Configuration config) {
@@ -81,7 +81,7 @@ public class ConfigurationForm {
         else form.setSensitivityLevel(1); // Low sensitivity
         
         if (config.getValidSince() != null) {
-            form.setValidSince(LocalDateTime.ofInstant(config.getValidSince(), ZoneOffset.UTC));
+            form.setValidSince(LocalDate.ofInstant(config.getValidSince(), ZoneOffset.UTC));
         }
         
         return form;
@@ -111,7 +111,7 @@ public class ConfigurationForm {
             );
         }
         
-        Instant validSinceInstant = validSince != null ? validSince.toInstant(ZoneOffset.UTC) : null;
+        Instant validSinceInstant = validSince != null ? validSince.atStartOfDay().toInstant(ZoneOffset.UTC) : null;
         
         return new Configuration(getId(), visitDetection, visitMerging, validSinceInstant);
     }

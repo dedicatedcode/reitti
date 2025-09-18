@@ -9,7 +9,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 
 @Controller
@@ -54,7 +54,7 @@ public class SettingsVisitSensitivityController {
     @GetMapping("/new")
     public String newConfiguration(@RequestParam(defaultValue = "simple") String mode, Model model) {
         ConfigurationForm form = new ConfigurationForm();
-        form.setValidSince(LocalDateTime.now());
+        form.setValidSince(LocalDate.now());
         
         model.addAttribute("configurationForm", form);
         model.addAttribute("mode", mode);
