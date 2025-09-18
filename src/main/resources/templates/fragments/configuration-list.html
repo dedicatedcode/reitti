@@ -13,7 +13,7 @@
                 <tr th:each="config : ${configurations}">
                     <td>
                         <span th:if="${config.getValidSince() != null}" 
-                              th:text="${#temporals.format(config.getValidSince(), 'yyyy-MM-dd HH:mm')}"></span>
+                              th:text="${#temporals.format(config.getValidSince(), 'yyyy-MM-dd')}"></span>
                         <span th:if="${config.getValidSince() == null}" 
                               th:text="#{visit.sensitivity.default.config}"
                               class="default-config-label">Default Configuration</span>
@@ -25,7 +25,7 @@
                               th:text="#{visit.sensitivity.specific.description}">Applied from this date forward</span>
                     </td>
                     <td>
-                        <button th:hx-get="@{'/settings/visit-sensitivity/edit/' + ${config.getId()} + '?mode=simple'}"
+                        <button th:hx-get="@{'/settings/visit-sensitivity/edit/' + ${config.getId()}}"
                                 hx-target="#edit-form"
                                 class="btn btn-primary btn-sm"
                                 th:text="#{visit.sensitivity.edit}">Edit</button>
