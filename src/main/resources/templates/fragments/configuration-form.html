@@ -39,11 +39,11 @@
             <div class="toggle-buttons">
                 <button type="button" 
                         th:class="${mode == 'simple' ? 'btn active' : 'btn'}"
-                        th:hx-get="@{'/settings/visit-sensitivity/edit/' + ${configurationForm.id} + '?mode=simple'}"
+                        th:hx-get="${configurationForm.id != null ? '/settings/visit-sensitivity/edit/' + configurationForm.id + '?mode=simple' : '/settings/visit-sensitivity/new?mode=simple'}"
                         hx-target="#edit-form">Simple</button>
                 <button type="button" 
                         th:class="${mode == 'advanced' ? 'btn active' : 'btn'}"
-                        th:hx-get="@{'/settings/visit-sensitivity/edit/' + ${configurationForm.id} + '?mode=advanced'}"
+                        th:hx-get="${configurationForm.id != null ? '/settings/visit-sensitivity/edit/' + configurationForm.id + '?mode=advanced' : '/settings/visit-sensitivity/new?mode=advanced'}"
                         hx-target="#edit-form">Advanced</button>
             </div>
         </div>
