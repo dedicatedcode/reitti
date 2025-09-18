@@ -36,7 +36,7 @@ public class SettingsVisitSensitivityController {
     
     @GetMapping("/edit/{id}")
     public String editConfiguration(@PathVariable Long id,
-                                    @RequestParam(defaultValue = "simple") String mode,
+                                    @RequestParam(required = false) String mode,
                                     @RequestParam(required = false, defaultValue = "UTC") String timezone,
                                     @AuthenticationPrincipal User user, Model model) {
         ZoneId userTimezone = ZoneId.of(timezone);
@@ -48,8 +48,12 @@ public class SettingsVisitSensitivityController {
             .orElseThrow(() -> new IllegalArgumentException("Configuration not found"));
 
         ConfigurationForm form = ConfigurationForm.fromConfiguration(config, userTimezone);
+        
+        // Use the mode from the form if not explicitly specified in the request
+        String effectiveMode = mode != null ? mode : form.getMode();
+        
         model.addAttribute("configurationForm", form);
-        model.addAttribute("mode", mode);
+        model.addAttribute("mode", effectiveMode);
         model.addAttribute("isDefaultConfig", config.getValidSince() == null);
         
         return "fragments/configuration-form :: configuration-form";
