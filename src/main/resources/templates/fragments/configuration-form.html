@@ -171,13 +171,6 @@
                         </div>
                     </div>
                 </div>
-                <div class="sensitivity-labels">
-                    <span th:text="#{visit.sensitivity.low}">Low</span>
-                    <span th:text="#{visit.sensitivity.high}">High</span>
-                </div>
-                <div class="sensitivity-description">
-                    <span th:text="#{visit.sensitivity.current.level(${configurationForm.sensitivityLevel})}">Current: Level [[${configurationForm.sensitivityLevel}]]</span>
-                </div>
                 <small class="form-text text-muted" th:text="#{visit.sensitivity.level.help}">
                     Low sensitivity detects fewer, longer visits. High sensitivity detects more, shorter visits. 
                     Adjust based on your tracking needs: use low for general location tracking, high for detailed movement analysis.
