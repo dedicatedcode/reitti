@@ -19,7 +19,7 @@
     
     <form hx-post="/settings/visit-sensitivity/save" hx-target="#configuration-list" th:object="${configurationForm}">
         <input type="hidden" th:field="*{id}">
-        <input type="hidden" th:field="*{mode}" th:value="${mode}">
+        <input type="hidden" name="mode" th:value="${mode}">
         
         <!-- Simple Mode -->
         <div th:if="${mode == 'simple'}" class="simple-mode">
