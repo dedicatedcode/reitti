@@ -7,47 +7,42 @@
             <style>
                 .toggle-buttons {
                     display: inline-flex;
-                    border: 1px solid #dee2e6;
-                    border-radius: 0.375rem;
-                    overflow: hidden;
                 }
                 
-                .toggle-buttons .toggle-btn {
+                .toggle-buttons .btn {
                     padding: 0.375rem 0.75rem;
                     border: none;
-                    background-color: #f8f9fa;
-                    color: #6c757d;
                     cursor: pointer;
                     transition: all 0.15s ease-in-out;
                     font-size: 0.875rem;
                     font-weight: 500;
                 }
                 
-                .toggle-buttons .toggle-btn:not(:last-child) {
-                    border-right: 1px solid #dee2e6;
+                .toggle-buttons .btn:not(:last-child) {
+                    border-bottom-right-radius: 0;
+                    border-top-right-radius: 0;
                 }
+
+                .toggle-buttons .btn:not(:first-child) {
+                    border-bottom-left-radius: 0;
+                    border-top-left-radius: 0;
+                }
+
                 
-                .toggle-buttons .toggle-btn:hover {
-                    background-color: #e9ecef;
-                    color: #495057;
+
+                .toggle-buttons .btn.active {
+                    background: var(--color-background-dark-light);
+                    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
                 }
-                
-                .toggle-buttons .toggle-btn.active {
-                    background-color: #007bff;
-                    color: white;
-                }
-                
-                .toggle-buttons .toggle-btn.active:hover {
-                    background-color: #0056b3;
-                }
+
             </style>
             <div class="toggle-buttons">
                 <button type="button" 
-                        th:class="${mode == 'simple' ? 'toggle-btn active' : 'toggle-btn'}"
+                        th:class="${mode == 'simple' ? 'btn active' : 'btn'}"
                         th:hx-get="@{'/settings/visit-sensitivity/edit/' + ${configurationForm.id} + '?mode=simple'}"
                         hx-target="#edit-form">Simple</button>
                 <button type="button" 
-                        th:class="${mode == 'advanced' ? 'toggle-btn active' : 'toggle-btn'}"
+                        th:class="${mode == 'advanced' ? 'btn active' : 'btn'}"
                         th:hx-get="@{'/settings/visit-sensitivity/edit/' + ${configurationForm.id} + '?mode=advanced'}"
                         hx-target="#edit-form">Advanced</button>
             </div>
