@@ -1,0 +1,30 @@
+<div xmlns:th="http://www.thymeleaf.org" th:fragment="configuration-preview" class="settings-card">
+    <h3 th:text="#{visit.sensitivity.preview.title}">Configuration Preview</h3>
+    
+    <div class="preview-content">
+        <h4 th:text="#{visit.detection.title}">Visit Detection Settings</h4>
+        <ul>
+            <li><strong th:text="#{visit.detection.search.distance}">Search Distance:</strong> <span th:text="${previewConfig.visitDetection().searchDistanceInMeters()} + ' meters'"></span></li>
+            <li><strong th:text="#{visit.detection.minimum.points}">Minimum Adjacent Points:</strong> <span th:text="${previewConfig.visitDetection().minimumAdjacentPoints()}"></span></li>
+            <li><strong th:text="#{visit.detection.minimum.stay}">Minimum Stay Time:</strong> <span th:text="${previewConfig.visitDetection().minimumStayTimeInSeconds()} + ' seconds (' + ${previewConfig.visitDetection().minimumStayTimeInSeconds() / 60} + ' minutes)'"></span></li>
+            <li><strong th:text="#{visit.detection.max.merge.time}">Max Merge Time:</strong> <span th:text="${previewConfig.visitDetection().maxMergeTimeBetweenSameStayPoints()} + ' seconds (' + ${previewConfig.visitDetection().maxMergeTimeBetweenSameStayPoints() / 60} + ' minutes)'"></span></li>
+        </ul>
+        
+        <h4 th:text="#{visit.merging.title}">Visit Merging Settings</h4>
+        <ul>
+            <li><strong th:text="#{visit.merging.search.duration}">Search Duration:</strong> <span th:text="${previewConfig.visitMerging().searchDurationInHours()} + ' hours'"></span></li>
+            <li><strong th:text="#{visit.merging.max.merge.time}">Max Merge Time:</strong> <span th:text="${previewConfig.visitMerging().maxMergeTimeBetweenSameVisits()} + ' seconds (' + ${previewConfig.visitMerging().maxMergeTimeBetweenSameVisits() / 60} + ' minutes)'"></span></li>
+            <li><strong th:text="#{visit.merging.min.distance}">Min Distance:</strong> <span th:text="${previewConfig.visitMerging().minDistanceBetweenVisits()} + ' meters'"></span></li>
+        </ul>
+        
+        <div class="preview-explanation">
+            <h5 th:text="#{visit.sensitivity.preview.explanation}">What this means:</h5>
+            <p th:text="#{visit.sensitivity.preview.detection.explanation(${previewConfig.visitDetection().minimumStayTimeInSeconds() / 60}, ${previewConfig.visitDetection().searchDistanceInMeters()})}">
+                Visits will be detected when you stay within [[${previewConfig.visitDetection().searchDistanceInMeters()}]] meters for at least [[${previewConfig.visitDetection().minimumStayTimeInSeconds() / 60}]] minutes.
+            </p>
+            <p th:text="#{visit.sensitivity.preview.merging.explanation(${previewConfig.visitMerging().minDistanceBetweenVisits()}, ${previewConfig.visitMerging().maxMergeTimeBetweenSameVisits() / 60})}">
+                Visits closer than [[${previewConfig.visitMerging().minDistanceBetweenVisits()}]] meters and within [[${previewConfig.visitMerging().maxMergeTimeBetweenSameVisits() / 60}]] minutes of each other may be merged.
+            </p>
+        </div>
+    </div>
+</div>

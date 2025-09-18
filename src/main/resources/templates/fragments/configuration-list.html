@@ -1,0 +1,51 @@
+<div xmlns:th="http://www.thymeleaf.org" th:fragment="configuration-list(configurations)" class="settings-card" id="configuration-list">
+    <h3 th:text="#{visit.sensitivity.configurations}">Current Configurations</h3>
+    <div class="configuration-table">
+        <table>
+            <thead>
+                <tr>
+                    <th th:text="#{visit.sensitivity.valid.since}">Valid Since</th>
+                    <th th:text="#{visit.sensitivity.description}">Description</th>
+                    <th th:text="#{visit.sensitivity.actions}">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="config : ${configurations}">
+                    <td>
+                        <span th:if="${config.validSince() != null}" 
+                              th:text="${#temporals.format(config.validSince(), 'yyyy-MM-dd HH:mm')}"></span>
+                        <span th:if="${config.validSince() == null}" 
+                              th:text="#{visit.sensitivity.default.config}"
+                              class="default-config-label">Default Configuration</span>
+                    </td>
+                    <td>
+                        <span th:if="${config.validSince() == null}" 
+                              th:text="#{visit.sensitivity.default.description}">Applied to all data before any specific configuration</span>
+                        <span th:if="${config.validSince() != null}" 
+                              th:text="#{visit.sensitivity.specific.description}">Applied from this date forward</span>
+                    </td>
+                    <td>
+                        <button hx-get="/settings/visit-sensitivity/edit/${config.id()}?mode=simple"
+                                hx-target="#edit-form"
+                                class="btn btn-primary btn-sm"
+                                th:text="#{visit.sensitivity.edit}">Edit</button>
+                        <button th:if="${config.validSince() != null}"
+                                hx-delete="/settings/visit-sensitivity/${config.id()}"
+                                hx-target="#configuration-list"
+                                hx-confirm="#{visit.sensitivity.delete.confirm}"
+                                class="btn btn-danger btn-sm"
+                                th:text="#{visit.sensitivity.delete}">Delete</button>
+                        <span th:if="${config.validSince() == null}"
+                              class="text-muted small"
+                              th:text="#{visit.sensitivity.cannot.delete}">Cannot delete default</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <button hx-get="/settings/visit-sensitivity/new"
+            hx-target="#edit-form"
+            class="btn btn-success"
+            th:text="#{visit.sensitivity.add.new}">Add New Configuration</button>
+</div>
