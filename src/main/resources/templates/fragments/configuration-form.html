@@ -57,10 +57,111 @@
         <div th:if="${mode == 'simple'}" class="simple-mode">
             <div class="form-group">
                 <label th:text="#{visit.sensitivity.level}">Sensitivity Level</label>
-                <input type="range" 
-                       th:field="*{sensitivityLevel}" 
-                       min="1" max="5" step="1"
-                       class="sensitivity-slider">
+                <style>
+                    .sensitivity-slider-container {
+                        position: relative;
+                        width: 100%;
+                        margin: 1rem 0;
+                    }
+                    
+                    .sensitivity-slider {
+                        width: 100%;
+                        height: 6px;
+                        border-radius: 3px;
+                        background: #ddd;
+                        outline: none;
+                        -webkit-appearance: none;
+                    }
+                    
+                    .sensitivity-slider::-webkit-slider-thumb {
+                        -webkit-appearance: none;
+                        appearance: none;
+                        width: 20px;
+                        height: 20px;
+                        border-radius: 50%;
+                        background: #007bff;
+                        cursor: pointer;
+                    }
+                    
+                    .sensitivity-slider::-moz-range-thumb {
+                        width: 20px;
+                        height: 20px;
+                        border-radius: 50%;
+                        background: #007bff;
+                        cursor: pointer;
+                        border: none;
+                    }
+                    
+                    .sensitivity-ticks {
+                        display: flex;
+                        justify-content: space-between;
+                        margin-top: 0.5rem;
+                        position: relative;
+                    }
+                    
+                    .sensitivity-tick {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        flex: 1;
+                        position: relative;
+                    }
+                    
+                    .sensitivity-tick::before {
+                        content: '';
+                        width: 2px;
+                        height: 8px;
+                        background: #666;
+                        margin-bottom: 0.25rem;
+                    }
+                    
+                    .sensitivity-tick-label {
+                        font-size: 0.75rem;
+                        color: #666;
+                        text-align: center;
+                    }
+                    
+                    .sensitivity-tick-value {
+                        font-weight: bold;
+                        font-size: 0.875rem;
+                        margin-bottom: 0.25rem;
+                    }
+                    
+                    .sensitivity-labels {
+                        display: flex;
+                        justify-content: space-between;
+                        margin-top: 0.5rem;
+                        font-weight: 500;
+                    }
+                </style>
+                <div class="sensitivity-slider-container">
+                    <input type="range" 
+                           th:field="*{sensitivityLevel}" 
+                           min="1" max="5" step="1"
+                           class="sensitivity-slider">
+                    <div class="sensitivity-ticks">
+                        <div class="sensitivity-tick">
+                            <div class="sensitivity-tick-value">1</div>
+                            <div class="sensitivity-tick-label">Very Low</div>
+                        </div>
+                        <div class="sensitivity-tick">
+                            <div class="sensitivity-tick-value">2</div>
+                            <div class="sensitivity-tick-label">Low</div>
+                        </div>
+                        <div class="sensitivity-tick">
+                            <div class="sensitivity-tick-value">3</div>
+                            <div class="sensitivity-tick-label">Medium</div>
+                        </div>
+                        <div class="sensitivity-tick">
+                            <div class="sensitivity-tick-value">4</div>
+                            <div class="sensitivity-tick-label">High</div>
+                        </div>
+                        <div class="sensitivity-tick">
+                            <div class="sensitivity-tick-value">5</div>
+                            <div class="sensitivity-tick-label">Very High</div>
+                        </div>
+                    </div>
+                </div>
                 <div class="sensitivity-labels">
                     <span th:text="#{visit.sensitivity.low}">Low</span>
                     <span th:text="#{visit.sensitivity.high}">High</span>
