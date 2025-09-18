@@ -4,38 +4,6 @@
         
         <!-- Mode Toggle -->
         <div class="mode-toggle">
-            <style>
-                .toggle-buttons {
-                    display: inline-flex;
-                }
-                
-                .toggle-buttons .btn {
-                    padding: 0.375rem 0.75rem;
-                    border: none;
-                    cursor: pointer;
-                    transition: all 0.15s ease-in-out;
-                    font-size: 0.875rem;
-                    font-weight: 500;
-                }
-                
-                .toggle-buttons .btn:not(:last-child) {
-                    border-bottom-right-radius: 0;
-                    border-top-right-radius: 0;
-                }
-
-                .toggle-buttons .btn:not(:first-child) {
-                    border-bottom-left-radius: 0;
-                    border-top-left-radius: 0;
-                }
-
-                
-
-                .toggle-buttons .btn.active {
-                    background: var(--color-background-dark-light);
-                    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
-                }
-
-            </style>
             <div class="toggle-buttons">
                 <button type="button" 
                         th:class="${mode == 'simple' ? 'btn active' : 'btn'}"
@@ -57,69 +25,24 @@
         <div th:if="${mode == 'simple'}" class="simple-mode">
             <div class="form-group">
                 <label th:text="#{visit.sensitivity.level}">Sensitivity Level</label>
-                <style>
-                    .sensitivity-buttons-container {
-                        margin: 1rem 0;
-                    }
-                    
-                    .sensitivity-buttons {
-                        display: inline-flex;
-                        border: 1px solid #dee2e6;
-                        border-radius: 0.375rem;
-                        overflow: hidden;
-                        width: 100%;
-                    }
-                    
-                    .sensitivity-buttons .sensitivity-btn {
-                        flex: 1;
-                        padding: 0.75rem 1rem;
-                        border: none;
-                        background-color: #f8f9fa;
-                        color: #6c757d;
-                        cursor: pointer;
-                        transition: all 0.15s ease-in-out;
-                        font-size: 0.875rem;
-                        font-weight: 500;
-                        text-align: center;
-                    }
-                    
-                    .sensitivity-buttons .sensitivity-btn:not(:last-child) {
-                        border-right: 1px solid #dee2e6;
-                    }
-                    
-                    .sensitivity-buttons .sensitivity-btn:hover {
-                        background-color: #e9ecef;
-                        color: #495057;
-                    }
-                    
-                    .sensitivity-buttons .sensitivity-btn.active {
-                        background-color: var(--color-highlight);
-                        color: var(--color-background-dark);
-                        font-weight: 600;
-                    }
-                    
-                    .sensitivity-buttons .sensitivity-btn.active:hover {
-                        background-color: var(--color-highlight);
-                        opacity: 0.9;
-                    }
-                </style>
+
                 <div class="sensitivity-buttons-container">
                     <input type="hidden" th:field="*{sensitivityLevel}">
-                    <div class="sensitivity-buttons">
+                    <div class="toggle-buttons">
                         <button type="button" 
-                                th:class="${configurationForm.sensitivityLevel == 1 ? 'sensitivity-btn active' : 'sensitivity-btn'}"
+                                th:class="${configurationForm.sensitivityLevel == 1 ? 'btn active' : 'btn'}"
                                 onclick="setSensitivityLevel(1)">Very Low</button>
                         <button type="button" 
-                                th:class="${configurationForm.sensitivityLevel == 2 ? 'sensitivity-btn active' : 'sensitivity-btn'}"
+                                th:class="${configurationForm.sensitivityLevel == 2 ? 'btn active' : 'btn'}"
                                 onclick="setSensitivityLevel(2)">Low</button>
                         <button type="button" 
-                                th:class="${configurationForm.sensitivityLevel == 3 ? 'sensitivity-btn active' : 'sensitivity-btn'}"
+                                th:class="${configurationForm.sensitivityLevel == 3 ? 'btn active' : 'btn'}"
                                 onclick="setSensitivityLevel(3)">Medium</button>
                         <button type="button" 
-                                th:class="${configurationForm.sensitivityLevel == 4 ? 'sensitivity-btn active' : 'sensitivity-btn'}"
+                                th:class="${configurationForm.sensitivityLevel == 4 ? 'btn active' : 'btn'}"
                                 onclick="setSensitivityLevel(4)">High</button>
                         <button type="button" 
-                                th:class="${configurationForm.sensitivityLevel == 5 ? 'sensitivity-btn active' : 'sensitivity-btn'}"
+                                th:class="${configurationForm.sensitivityLevel == 5 ? 'btn active' : 'btn'}"
                                 onclick="setSensitivityLevel(5)">Very High</button>
                     </div>
                 </div>
@@ -129,7 +52,7 @@
                         document.querySelector('input[name="sensitivityLevel"]').value = level;
                         
                         // Update button states
-                        document.querySelectorAll('.sensitivity-btn').forEach(btn => {
+                        document.querySelectorAll('.sensitivity-buttons-container button').forEach(btn => {
                             btn.classList.remove('active');
                         });
                         event.target.classList.add('active');
@@ -251,7 +174,7 @@
             <button type="submit" class="btn btn-success" th:text="#{visit.sensitivity.save}">Save</button>
             <button type="button" 
                     hx-get="/settings/visit-sensitivity"
-                    hx-target="#edit-form"
+                    hx-target="body"
                     hx-swap="innerHTML"
                     class="btn btn-secondary"
                     th:text="#{visit.sensitivity.cancel}">Cancel</button>
