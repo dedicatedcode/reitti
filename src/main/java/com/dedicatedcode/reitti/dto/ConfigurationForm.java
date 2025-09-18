@@ -61,7 +61,7 @@ public class ConfigurationForm {
     // Convert from Configuration
     public static ConfigurationForm fromConfiguration(Configuration config) {
         ConfigurationForm form = new ConfigurationForm();
-        form.setId(config.id());
+        form.setId(config.getId());
         
         // Set advanced mode values
         form.setSearchDistanceInMeters(config.getVisitDetection().getSearchDistanceInMeters());

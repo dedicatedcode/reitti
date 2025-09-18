@@ -52,15 +52,15 @@ class ConfigurationJdbcServiceTest {
         assertThat(configurations).hasSize(1);
 
         Configuration savedConfig = configurations.getFirst();
-        assertThat(savedConfig.id()).isNotNull();
-        assertThat(savedConfig.visitDetection().searchDistanceInMeters()).isEqualTo(100L);
-        assertThat(savedConfig.visitDetection().minimumAdjacentPoints()).isEqualTo(5L);
-        assertThat(savedConfig.visitDetection().minimumStayTimeInSeconds()).isEqualTo(300L);
-        assertThat(savedConfig.visitDetection().maxMergeTimeBetweenSameStayPoints()).isEqualTo(600L);
-        assertThat(savedConfig.visitMerging().searchDurationInHours()).isEqualTo(24L);
-        assertThat(savedConfig.visitMerging().maxMergeTimeBetweenSameVisits()).isEqualTo(1800L);
-        assertThat(savedConfig.visitMerging().minDistanceBetweenVisits()).isEqualTo(50L);
-        assertThat(savedConfig.validSince()).isNotNull();
+        assertThat(savedConfig.getId()).isNotNull();
+        assertThat(savedConfig.getVisitDetection().getSearchDistanceInMeters()).isEqualTo(100L);
+        assertThat(savedConfig.getVisitDetection().getMinimumAdjacentPoints()).isEqualTo(5L);
+        assertThat(savedConfig.getVisitDetection().getMinimumStayTimeInSeconds()).isEqualTo(300L);
+        assertThat(savedConfig.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints()).isEqualTo(600L);
+        assertThat(savedConfig.getVisitMerging().getSearchDurationInHours()).isEqualTo(24L);
+        assertThat(savedConfig.getVisitMerging().getMaxMergeTimeBetweenSameVisits()).isEqualTo(1800L);
+        assertThat(savedConfig.getVisitMerging().getMinDistanceBetweenVisits()).isEqualTo(50L);
+        assertThat(savedConfig.getValidSince()).isNotNull();
     }
 
     @Test
@@ -82,7 +82,7 @@ class ConfigurationJdbcServiceTest {
         // Then
         List<Configuration> configurations = configurationJdbcService.findAllConfigurationsForUser(testUser);
         assertThat(configurations).hasSize(1);
-        assertThat(configurations.getFirst().validSince()).isNull();
+        assertThat(configurations.getFirst().getValidSince()).isNull();
     }
 
     @Test
@@ -111,7 +111,7 @@ class ConfigurationJdbcServiceTest {
         );
         Instant newValidSince = Instant.now().plusSeconds(3600).truncatedTo(ChronoUnit.MILLIS);
         Configuration updatedConfig = new Configuration(
-                savedConfig.id(), updatedVisitDetection, updatedVisitMerging, newValidSince
+                savedConfig.getId(), updatedVisitDetection, updatedVisitMerging, newValidSince
         );
         configurationJdbcService.updateConfiguration(updatedConfig);
 
@@ -120,15 +120,15 @@ class ConfigurationJdbcServiceTest {
         assertThat(configurations).hasSize(1);
 
         Configuration result = configurations.getFirst();
-        assertThat(result.id()).isEqualTo(savedConfig.id());
-        assertThat(result.visitDetection().searchDistanceInMeters()).isEqualTo(150L);
-        assertThat(result.visitDetection().minimumAdjacentPoints()).isEqualTo(7L);
-        assertThat(result.visitDetection().minimumStayTimeInSeconds()).isEqualTo(450L);
-        assertThat(result.visitDetection().maxMergeTimeBetweenSameStayPoints()).isEqualTo(900L);
-        assertThat(result.visitMerging().searchDurationInHours()).isEqualTo(48L);
-        assertThat(result.visitMerging().maxMergeTimeBetweenSameVisits()).isEqualTo(3600L);
-        assertThat(result.visitMerging().minDistanceBetweenVisits()).isEqualTo(75L);
-        assertThat(result.validSince()).isEqualTo(newValidSince);
+        assertThat(result.getId()).isEqualTo(savedConfig.getId());
+        assertThat(result.getVisitDetection().getSearchDistanceInMeters()).isEqualTo(150L);
+        assertThat(result.getVisitDetection().getMinimumAdjacentPoints()).isEqualTo(7L);
+        assertThat(result.getVisitDetection().getMinimumStayTimeInSeconds()).isEqualTo(450L);
+        assertThat(result.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints()).isEqualTo(900L);
+        assertThat(result.getVisitMerging().getSearchDurationInHours()).isEqualTo(48L);
+        assertThat(result.getVisitMerging().getMaxMergeTimeBetweenSameVisits()).isEqualTo(3600L);
+        assertThat(result.getVisitMerging().getMinDistanceBetweenVisits()).isEqualTo(75L);
+        assertThat(result.getValidSince()).isEqualTo(newValidSince);
     }
 
     @Test
@@ -146,7 +146,7 @@ class ConfigurationJdbcServiceTest {
         configurationJdbcService.saveConfiguration(testUser, configuration);
 
         List<Configuration> savedConfigs = configurationJdbcService.findAllConfigurationsForUser(testUser);
-        Long configId = savedConfigs.getFirst().id();
+        Long configId = savedConfigs.getFirst().getId();
 
         // When
         configurationJdbcService.delete(configId);
@@ -171,7 +171,7 @@ class ConfigurationJdbcServiceTest {
         configurationJdbcService.saveConfiguration(testUser, configuration);
 
         List<Configuration> savedConfigs = configurationJdbcService.findAllConfigurationsForUser(testUser);
-        Long configId = savedConfigs.getFirst().id();
+        Long configId = savedConfigs.getFirst().getId();
 
         // When
         configurationJdbcService.delete(configId);
@@ -211,10 +211,10 @@ class ConfigurationJdbcServiceTest {
 
         // Then - should be ordered by validSince DESC NULLS LAST
         assertThat(configurations).hasSize(4);
-        assertThat(configurations.get(0).validSince()).isEqualTo(later);
-        assertThat(configurations.get(1).validSince()).isEqualTo(now);
-        assertThat(configurations.get(2).validSince()).isEqualTo(earlier);
-        assertThat(configurations.get(3).validSince()).isNull();
+        assertThat(configurations.get(0).getValidSince()).isEqualTo(later);
+        assertThat(configurations.get(1).getValidSince()).isEqualTo(now);
+        assertThat(configurations.get(2).getValidSince()).isEqualTo(earlier);
+        assertThat(configurations.get(3).getValidSince()).isNull();
     }
 
     @Test

@@ -73,8 +73,8 @@ public class ConfigurationJdbcService {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
         
-        Timestamp validSinceTimestamp = configuration.validSince() != null ? 
-            Timestamp.from(configuration.validSince()) : null;
+        Timestamp validSinceTimestamp = configuration.getValidSince() != null ?
+            Timestamp.from(configuration.getValidSince()) : null;
         
         jdbcTemplate.update(sql,
             user.getId(),

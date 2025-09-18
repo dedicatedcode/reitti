@@ -1,8 +1,9 @@
 package com.dedicatedcode.reitti.model.processing;
 
+import java.io.Serializable;
 import java.time.Instant;
 
-public class Configuration {
+public class Configuration implements Serializable {
     private final Long id;
     private final VisitDetection visitDetection;
     private final VisitMerging visitMerging;
@@ -31,7 +32,7 @@ public class Configuration {
         return validSince;
     }
 
-    public static class VisitDetection {
+    public static class VisitDetection implements Serializable{
         private final long searchDistanceInMeters;
         private final long minimumAdjacentPoints;
         private final long minimumStayTimeInSeconds;
@@ -62,7 +63,7 @@ public class Configuration {
         }
     }
 
-    public static class VisitMerging {
+    public static class VisitMerging implements Serializable {
         private final long searchDurationInHours;
         private final long maxMergeTimeBetweenSameVisits;
         private final long minDistanceBetweenVisits;

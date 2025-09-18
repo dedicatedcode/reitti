@@ -25,26 +25,23 @@
                               th:text="#{visit.sensitivity.specific.description}">Applied from this date forward</span>
                     </td>
                     <td>
-                        <button hx-get="/settings/visit-sensitivity/edit/${config.getId()}?mode=simple"
+                        <button th:hx-get="@{'/settings/visit-sensitivity/edit/' + ${config.getId()} + '?mode=simple'}"
                                 hx-target="#edit-form"
                                 class="btn btn-primary btn-sm"
                                 th:text="#{visit.sensitivity.edit}">Edit</button>
-                        <button th:if="${config.getValidSince() != null}"
-                                hx-delete="/settings/visit-sensitivity/${config.getId()}"
+                        <button th:hx-delete="@{'/settings/visit-sensitivity/' + ${config.getId()}}"
                                 hx-target="#configuration-list"
                                 hx-confirm="#{visit.sensitivity.delete.confirm}"
+                                th:disabled="${config.getValidSince() == null}"
                                 class="btn btn-danger btn-sm"
                                 th:text="#{visit.sensitivity.delete}">Delete</button>
-                        <span th:if="${config.getValidSince() == null}"
-                              class="text-muted small"
-                              th:text="#{visit.sensitivity.cannot.delete}">Cannot delete default</span>
                     </td>
                 </tr>
             </tbody>
         </table>
     </div>
     
-    <button hx-get="/settings/visit-sensitivity/new"
+    <button th:hx-get="@{/settings/visit-sensitivity/new}"
             hx-target="#edit-form"
             class="btn btn-success"
             th:text="#{visit.sensitivity.add.new}">Add New Configuration</button>
