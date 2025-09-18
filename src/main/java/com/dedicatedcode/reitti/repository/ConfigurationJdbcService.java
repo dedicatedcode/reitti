@@ -62,6 +62,17 @@ public class ConfigurationJdbcService {
         return jdbcTemplate.query(sql, CONFIGURATION_ROW_MAPPER, user.getId());
     }
 
+    @Transactional(readOnly = true)
+    public Configuration findById(Long id, User user) {
+        String sql = """
+            SELECT * FROM visit_detection_parameters
+            WHERE id = ? AND user_id = ?
+            """;
+        
+        List<Configuration> results = jdbcTemplate.query(sql, CONFIGURATION_ROW_MAPPER, id, user.getId());
+        return results.isEmpty() ? null : results.get(0);
+    }
+
     @CacheEvict(value = "configurations", key = "#user.id")
     public void saveConfiguration(User user, Configuration configuration) {
         String sql = """
