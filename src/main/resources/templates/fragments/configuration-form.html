@@ -159,9 +159,9 @@
         <!-- Valid Since - disabled for default configuration -->
         <div class="form-group" th:unless="${isDefaultConfig}">
             <label th:text="#{visit.sensitivity.valid.since}">Valid Since</label>
-            <input type="datetime-local" th:field="*{validSince}" class="form-control">
+            <input type="date" th:field="*{validSince}" class="form-control">
             <small class="form-text text-muted" th:text="#{visit.sensitivity.valid.since.help}">
-                This configuration will apply to all location data from this date and time forward. 
+                This configuration will apply to all location data from this date forward. 
                 Any data before this date will continue to use the previous configuration settings.
                 Leave empty to apply immediately to all future data processing.
             </small>
