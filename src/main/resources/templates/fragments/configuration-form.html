@@ -68,9 +68,10 @@
                         width: 100%;
                         height: 6px;
                         border-radius: 3px;
-                        background: #ddd;
+                        background: var(--color-background-dark-light);
                         outline: none;
                         -webkit-appearance: none;
+                        cursor: pointer;
                     }
                     
                     .sensitivity-slider::-webkit-slider-thumb {
@@ -79,17 +80,19 @@
                         width: 20px;
                         height: 20px;
                         border-radius: 50%;
-                        background: #007bff;
+                        background: var(--color-highlight);
                         cursor: pointer;
+                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
                     }
                     
                     .sensitivity-slider::-moz-range-thumb {
                         width: 20px;
                         height: 20px;
                         border-radius: 50%;
-                        background: #007bff;
+                        background: var(--color-highlight);
                         cursor: pointer;
                         border: none;
+                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
                     }
                     
                     .sensitivity-ticks {
@@ -97,34 +100,39 @@
                         justify-content: space-between;
                         margin-top: 0.5rem;
                         position: relative;
+                        padding: 0 10px;
                     }
                     
                     .sensitivity-tick {
                         display: flex;
                         flex-direction: column;
                         align-items: center;
-                        flex: 1;
                         position: relative;
+                        flex: 0 0 auto;
                     }
                     
                     .sensitivity-tick::before {
                         content: '';
                         width: 2px;
                         height: 8px;
-                        background: #666;
+                        background: var(--color-text-white);
                         margin-bottom: 0.25rem;
+                        opacity: 0.6;
                     }
                     
                     .sensitivity-tick-label {
                         font-size: 0.75rem;
-                        color: #666;
+                        color: var(--color-text-white);
                         text-align: center;
+                        opacity: 0.8;
+                        white-space: nowrap;
                     }
                     
                     .sensitivity-tick-value {
                         font-weight: bold;
                         font-size: 0.875rem;
                         margin-bottom: 0.25rem;
+                        color: var(--color-highlight);
                     }
                     
                     .sensitivity-labels {
@@ -132,6 +140,7 @@
                         justify-content: space-between;
                         margin-top: 0.5rem;
                         font-weight: 500;
+                        color: var(--color-text-white);
                     }
                 </style>
                 <div class="sensitivity-slider-container">
@@ -140,7 +149,7 @@
                            min="1" max="5" step="1"
                            class="sensitivity-slider">
                     <div class="sensitivity-ticks">
-                        <div class="sensitivity-tick">
+                        <div class="sensitivity-tick" style="margin-left: -10px;">
                             <div class="sensitivity-tick-value">1</div>
                             <div class="sensitivity-tick-label">Very Low</div>
                         </div>
@@ -156,7 +165,7 @@
                             <div class="sensitivity-tick-value">4</div>
                             <div class="sensitivity-tick-label">High</div>
                         </div>
-                        <div class="sensitivity-tick">
+                        <div class="sensitivity-tick" style="margin-right: -10px;">
                             <div class="sensitivity-tick-value">5</div>
                             <div class="sensitivity-tick-label">Very High</div>
                         </div>
