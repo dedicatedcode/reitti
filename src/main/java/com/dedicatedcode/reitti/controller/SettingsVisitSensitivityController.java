@@ -5,11 +5,13 @@ import com.dedicatedcode.reitti.model.processing.Configuration;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ConfigurationJdbcService;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 
 @Controller
@@ -33,17 +35,19 @@ public class SettingsVisitSensitivityController {
     }
     
     @GetMapping("/edit/{id}")
-    public String editConfiguration(@PathVariable Long id, 
-                                  @RequestParam(defaultValue = "simple") String mode,
-                                  Authentication auth, Model model) {
-        User user = (User) auth.getPrincipal();
+    public String editConfiguration(@PathVariable Long id,
+                                    @RequestParam(defaultValue = "simple") String mode,
+                                    @RequestParam(required = false, defaultValue = "UTC") String timezone,
+                                    @AuthenticationPrincipal User user, Model model) {
+        ZoneId userTimezone = ZoneId.of(timezone);
+
         List<Configuration> configurations = configurationService.findAllConfigurationsForUser(user);
         Configuration config = configurations.stream()
             .filter(c -> c.getId().equals(id))
             .findFirst()
             .orElseThrow(() -> new IllegalArgumentException("Configuration not found"));
-        
-        ConfigurationForm form = ConfigurationForm.fromConfiguration(config);
+
+        ConfigurationForm form = ConfigurationForm.fromConfiguration(config, userTimezone);
         model.addAttribute("configurationForm", form);
         model.addAttribute("mode", mode);
         model.addAttribute("isDefaultConfig", config.getValidSince() == null);
@@ -52,9 +56,11 @@ public class SettingsVisitSensitivityController {
     }
     
     @GetMapping("/new")
-    public String newConfiguration(@RequestParam(defaultValue = "simple") String mode, Model model) {
+    public String newConfiguration(@RequestParam(defaultValue = "simple") String mode,
+                                   @RequestParam(required = false, defaultValue = "UTC") String timezone,
+                                   Model model) {
         ConfigurationForm form = new ConfigurationForm();
-        form.setValidSince(LocalDate.now());
+        form.setValidSince(Instant.now().atZone(ZoneId.of(timezone)).toLocalDate());
         
         model.addAttribute("configurationForm", form);
         model.addAttribute("mode", mode);
@@ -64,10 +70,11 @@ public class SettingsVisitSensitivityController {
     }
     
     @PostMapping("/save")
-    public String saveConfiguration(@ModelAttribute ConfigurationForm form, 
-                                  Authentication auth, Model model) {
-        User user = (User) auth.getPrincipal();
-        Configuration config = form.toConfiguration();
+    public String saveConfiguration(@ModelAttribute ConfigurationForm form,
+                                    @RequestParam(required = false, defaultValue = "UTC") String timezone,
+                                    @AuthenticationPrincipal User user,
+                                    Model model) {
+        Configuration config = form.toConfiguration(ZoneId.of(timezone));
         
         if (config.getId() == null) {
             configurationService.saveConfiguration(user, config);
@@ -105,8 +112,10 @@ public class SettingsVisitSensitivityController {
     }
     
     @PostMapping("/preview")
-    public String previewConfiguration(@ModelAttribute ConfigurationForm form, Model model) {
-        Configuration config = form.toConfiguration();
+    public String previewConfiguration(@ModelAttribute ConfigurationForm form,
+                                       @RequestParam(required = false, defaultValue = "UTC") String timezone,
+                                       Model model) {
+        Configuration config = form.toConfiguration(ZoneId.of(timezone));
         model.addAttribute("previewConfig", config);
         return "fragments/configuration-preview :: configuration-preview";
     }

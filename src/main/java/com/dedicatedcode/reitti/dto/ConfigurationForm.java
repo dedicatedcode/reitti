@@ -1,10 +1,10 @@
 package com.dedicatedcode.reitti.dto;
 
 import com.dedicatedcode.reitti.model.processing.Configuration;
+import org.springframework.format.annotation.DateTimeFormat;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.time.*;
+import java.util.TimeZone;
 
 public class ConfigurationForm {
     private Long id;
@@ -21,7 +21,8 @@ public class ConfigurationForm {
     private Long searchDurationInHours;
     private Long maxMergeTimeBetweenSameVisits;
     private Long minDistanceBetweenVisits;
-    
+
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate validSince;
     
     // Getters and setters
@@ -59,7 +60,7 @@ public class ConfigurationForm {
     public void setValidSince(LocalDate validSince) { this.validSince = validSince; }
     
     // Convert from Configuration
-    public static ConfigurationForm fromConfiguration(Configuration config) {
+    public static ConfigurationForm fromConfiguration(Configuration config, ZoneId zoneId) {
         ConfigurationForm form = new ConfigurationForm();
         form.setId(config.getId());
         
@@ -81,14 +82,14 @@ public class ConfigurationForm {
         else form.setSensitivityLevel(1); // Low sensitivity
         
         if (config.getValidSince() != null) {
-            form.setValidSince(LocalDate.ofInstant(config.getValidSince(), ZoneOffset.UTC));
+            form.setValidSince(LocalDate.ofInstant(config.getValidSince(), zoneId));
         }
         
         return form;
     }
     
     // Convert to Configuration
-    public Configuration toConfiguration() {
+    public Configuration toConfiguration(ZoneId timezone) {
         Configuration.VisitDetection visitDetection;
         Configuration.VisitMerging visitMerging;
         
@@ -111,7 +112,7 @@ public class ConfigurationForm {
             );
         }
         
-        Instant validSinceInstant = validSince != null ? validSince.atStartOfDay().toInstant(ZoneOffset.UTC) : null;
+        Instant validSinceInstant = validSince != null ? ZonedDateTime.of(validSince.atStartOfDay(), timezone).toInstant() : null;
         
         return new Configuration(getId(), visitDetection, visitMerging, validSinceInstant);
     }
