@@ -30,5 +30,18 @@
         </div>
     </div>
 </div>
+
+<script th:inline="javascript">
+
+    window.userSettings = /*[[${userSettings}]]*/ {}
+
+    function getUserTimezone() {
+        if (window.userSettings.timezoneOverride) {
+            return window.userSettings.timezoneOverride;
+        } else {
+            return Intl.DateTimeFormat().resolvedOptions().timeZone;
+        }
+    }
+</script>
 </body>
 </html>

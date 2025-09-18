@@ -41,11 +41,7 @@ public class SettingsVisitSensitivityController {
                                     @AuthenticationPrincipal User user, Model model) {
         ZoneId userTimezone = ZoneId.of(timezone);
 
-        List<Configuration> configurations = configurationService.findAllConfigurationsForUser(user);
-        Configuration config = configurations.stream()
-            .filter(c -> c.getId().equals(id))
-            .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException("Configuration not found"));
+        Configuration config = configurationService.findById(id, user).orElseThrow(() -> new IllegalArgumentException("Configuration not found"));
 
         ConfigurationForm form = ConfigurationForm.fromConfiguration(config, userTimezone);
         
