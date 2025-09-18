@@ -27,6 +27,7 @@
                     <td>
                         <button th:hx-get="@{'/settings/visit-sensitivity/edit/' + ${config.getId()}}"
                                 hx-target="#edit-form"
+                                hx-vals='js:{"timezone": getUserTimezone()}'
                                 class="btn btn-primary btn-sm"
                                 th:text="#{visit.sensitivity.edit}">Edit</button>
                         <button th:hx-delete="@{'/settings/visit-sensitivity/' + ${config.getId()}}"
@@ -43,6 +44,7 @@
     
     <button th:hx-get="@{/settings/visit-sensitivity/new}"
             hx-target="#edit-form"
+            hx-vals='js:{"timezone": getUserTimezone()}'
             class="btn btn-success"
             th:text="#{visit.sensitivity.add.new}">Add New Configuration</button>
 </div>
