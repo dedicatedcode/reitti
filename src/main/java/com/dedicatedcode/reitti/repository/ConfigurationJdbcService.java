@@ -14,6 +14,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -63,14 +64,14 @@ public class ConfigurationJdbcService {
     }
 
     @Transactional(readOnly = true)
-    public Configuration findById(Long id, User user) {
+    public Optional<Configuration> findById(Long id, User user) {
         String sql = """
             SELECT * FROM visit_detection_parameters
             WHERE id = ? AND user_id = ?
             """;
         
         List<Configuration> results = jdbcTemplate.query(sql, CONFIGURATION_ROW_MAPPER, id, user.getId());
-        return results.isEmpty() ? null : results.get(0);
+        return results.stream().findFirst();
     }
 
     @CacheEvict(value = "configurations", key = "#user.id")
