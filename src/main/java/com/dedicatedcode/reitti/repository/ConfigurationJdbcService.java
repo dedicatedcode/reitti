@@ -64,6 +64,7 @@ public class ConfigurationJdbcService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "configurations", key = "#user.id + '_' + #id")
     public Optional<Configuration> findById(Long id, User user) {
         String sql = """
             SELECT * FROM visit_detection_parameters
