@@ -1,14 +1,16 @@
 <div xmlns:th="http://www.thymeleaf.org" th:fragment="configuration-form" class="settings-card">
-    <h3 th:text="${configurationForm.id != null ? 'Edit Configuration' : 'New Configuration'}">Configuration</h3>
-    
-    <!-- Mode Toggle -->
-    <div class="mode-toggle">
-        <button th:class="${mode == 'simple' ? 'btn btn-primary' : 'btn btn-secondary'}"
-                th:hx-get="@{'/settings/visit-sensitivity/edit/' + ${configurationForm.id} + '?mode=simple'}"
-                hx-target="#edit-form">Simple</button>
-        <button th:class="${mode == 'advanced' ? 'btn btn-primary' : 'btn btn-secondary'}"
-                th:hx-get="@{'/settings/visit-sensitivity/edit/' + ${configurationForm.id} + '?mode=advanced'}"
-                hx-target="#edit-form">Advanced</button>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 th:text="${configurationForm.id != null ? 'Edit Configuration' : 'New Configuration'}">Configuration</h3>
+        
+        <!-- Mode Toggle -->
+        <div class="mode-toggle">
+            <button th:class="${mode == 'simple' ? 'btn btn-primary' : 'btn btn-secondary'}"
+                    th:hx-get="@{'/settings/visit-sensitivity/edit/' + ${configurationForm.id} + '?mode=simple'}"
+                    hx-target="#edit-form">Simple</button>
+            <button th:class="${mode == 'advanced' ? 'btn btn-primary' : 'btn btn-secondary'}"
+                    th:hx-get="@{'/settings/visit-sensitivity/edit/' + ${configurationForm.id} + '?mode=advanced'}"
+                    hx-target="#edit-form">Advanced</button>
+        </div>
     </div>
     
     <form hx-post="/settings/visit-sensitivity/save" hx-target="#configuration-list" th:object="${configurationForm}">
