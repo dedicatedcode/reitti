@@ -4,7 +4,6 @@ import com.dedicatedcode.reitti.model.processing.Configuration;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.*;
-import java.util.TimeZone;
 
 public class ConfigurationForm {
     private Long id;
@@ -94,8 +93,8 @@ public class ConfigurationForm {
     private static Integer findMatchingSensitivityLevel(Configuration config) {
         // Check each sensitivity level to see if it matches the configuration
         for (int level = 1; level <= 5; level++) {
-            Configuration.VisitDetection expectedDetection = mapSensitivityToVisitDetectionStatic(level);
-            Configuration.VisitMerging expectedMerging = mapSensitivityToVisitMergingStatic(level);
+            Configuration.VisitDetection expectedDetection = mapSensitivityToVisitDetection(level);
+            Configuration.VisitMerging expectedMerging = mapSensitivityToVisitMerging(level);
             
             if (configurationMatches(config, expectedDetection, expectedMerging)) {
                 return level;
@@ -119,25 +118,25 @@ public class ConfigurationForm {
                actualMerging.getMinDistanceBetweenVisits() == expectedMerging.getMinDistanceBetweenVisits();
     }
     
-    private static Configuration.VisitDetection mapSensitivityToVisitDetectionStatic(int level) {
+    private static Configuration.VisitDetection mapSensitivityToVisitDetection(int level) {
         return switch (level) {
             case 1 -> new Configuration.VisitDetection(300, 5, 1800, 7200); // Low sensitivity
             case 2 -> new Configuration.VisitDetection(200, 4, 1200, 5400);
-            case 3 -> new Configuration.VisitDetection(150, 3, 600, 3600);  // Medium
+            case 3 -> new Configuration.VisitDetection(100, 5, 300, 300);  // Medium
             case 4 -> new Configuration.VisitDetection(100, 3, 300, 1800);
             case 5 -> new Configuration.VisitDetection(75, 2, 180, 900);    // High sensitivity
-            default -> new Configuration.VisitDetection(150, 3, 600, 3600); // Default to medium
+            default -> throw new IllegalArgumentException("Unhandled level [" + level + "] detected!");
         };
     }
     
-    private static Configuration.VisitMerging mapSensitivityToVisitMergingStatic(int level) {
+    private static Configuration.VisitMerging mapSensitivityToVisitMerging(int level) {
         return switch (level) {
             case 1 -> new Configuration.VisitMerging(72, 14400, 500); // Low sensitivity
             case 2 -> new Configuration.VisitMerging(48, 10800, 300);
-            case 3 -> new Configuration.VisitMerging(24, 7200, 200);  // Medium
+            case 3 -> new Configuration.VisitMerging(48, 300, 200);  // Medium
             case 4 -> new Configuration.VisitMerging(12, 3600, 150);
             case 5 -> new Configuration.VisitMerging(6, 1800, 100);   // High sensitivity
-            default -> new Configuration.VisitMerging(24, 7200, 200); // Default to medium
+            default -> throw new IllegalArgumentException("Unhandled level [" + level + "] detected!");
         };
     }
     
@@ -168,27 +167,5 @@ public class ConfigurationForm {
         Instant validSinceInstant = validSince != null ? ZonedDateTime.of(validSince.atStartOfDay(), timezone).toInstant() : null;
         
         return new Configuration(getId(), visitDetection, visitMerging, validSinceInstant);
-    }
-    
-    private Configuration.VisitDetection mapSensitivityToVisitDetection(int level) {
-        return switch (level) {
-            case 1 -> new Configuration.VisitDetection(300, 5, 1800, 7200); // Low sensitivity
-            case 2 -> new Configuration.VisitDetection(200, 4, 1200, 5400);
-            case 3 -> new Configuration.VisitDetection(150, 3, 600, 3600);  // Medium
-            case 4 -> new Configuration.VisitDetection(100, 3, 300, 1800);
-            case 5 -> new Configuration.VisitDetection(75, 2, 180, 900);    // High sensitivity
-            default -> new Configuration.VisitDetection(150, 3, 600, 3600); // Default to medium
-        };
-    }
-    
-    private Configuration.VisitMerging mapSensitivityToVisitMerging(int level) {
-        return switch (level) {
-            case 1 -> new Configuration.VisitMerging(72, 14400, 500); // Low sensitivity
-            case 2 -> new Configuration.VisitMerging(48, 10800, 300);
-            case 3 -> new Configuration.VisitMerging(24, 7200, 200);  // Medium
-            case 4 -> new Configuration.VisitMerging(12, 3600, 150);
-            case 5 -> new Configuration.VisitMerging(6, 1800, 100);   // High sensitivity
-            default -> new Configuration.VisitMerging(24, 7200, 200); // Default to medium
-        };
     }
 }
