@@ -11,7 +11,7 @@
                 hx-target="#edit-form">Advanced</button>
     </div>
     
-    <form hx-post="/settings/visit-sensitivity/save" hx-target="#configuration-list">
+    <form hx-post="/settings/visit-sensitivity/save" hx-target="#configuration-list" th:object="${configurationForm}">
         <input type="hidden" th:field="*{id}">
         <input type="hidden" th:field="*{mode}" th:value="${mode}">
         
