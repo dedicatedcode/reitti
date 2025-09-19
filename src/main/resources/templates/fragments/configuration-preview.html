@@ -14,6 +14,10 @@
                 </span>
             </button>
         </div>
+        <div class="date-selection">
+            <label for="preview-date">Preview Date:</label>
+            <input type="date" id="preview-date" th:value="${previewDate}" onchange="onPreviewDateChange()">
+        </div>
     </div>
     
     <div class="preview-maps">
@@ -56,6 +60,7 @@
         (function() {
             const previewId = /*[[${previewId}]]*/ '';
             const userId = /*[[${userId}]]*/ '';
+            const previewDate = /*[[${previewDate}]]*/ '';
             let currentMapInitialized = false;
             let previewMapInitialized = false;
             let previewReady = false;
@@ -124,6 +129,28 @@
             // Initialize current map by default
             initCurrentMap();
             
+            window.onPreviewDateChange = function() {
+                const selectedDate = document.getElementById('preview-date').value;
+                if (selectedDate) {
+                    // Get the current configuration form data
+                    const form = document.querySelector('form[action*="/preview"]');
+                    if (form) {
+                        // Add the selected date to the form
+                        let dateInput = form.querySelector('input[name="previewDate"]');
+                        if (!dateInput) {
+                            dateInput = document.createElement('input');
+                            dateInput.type = 'hidden';
+                            dateInput.name = 'previewDate';
+                            form.appendChild(dateInput);
+                        }
+                        dateInput.value = selectedDate;
+                        
+                        // Submit the form to get a new preview
+                        form.submit();
+                    }
+                }
+            };
+            
             // Start polling for preview status
             checkPreviewStatus();
         })();
@@ -132,12 +159,33 @@
     <style>
         .preview-controls {
             margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
         .toggle-buttons {
             display: flex;
             gap: 10px;
             align-items: center;
+        }
+        
+        .date-selection {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .date-selection label {
+            font-weight: 500;
+            margin: 0;
+        }
+        
+        .date-selection input[type="date"] {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9em;
         }
         
         .toggle-buttons button {
