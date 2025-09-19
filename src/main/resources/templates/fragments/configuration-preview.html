@@ -162,6 +162,7 @@
                     .then(data => {
                         updateMapWithData(currentMap, data, '#ff6c00');
                         updateTimelineContent('current-timeline-content', data);
+                        loadRawLocationData(currentMap, data, '#ff6c00');
                     })
                     .catch(error => {
                         console.error('Error loading current map data:', error);
@@ -178,6 +179,7 @@
                     .then(data => {
                         updateMapWithData(previewMap, data, '#4CAF50');
                         updateTimelineContent('preview-timeline-content', data);
+                        loadRawLocationData(previewMap, data, '#4CAF50');
                     })
                     .catch(error => {
                         console.error('Error loading preview map data:', error);
@@ -199,30 +201,34 @@
                 // Group places by coordinates to avoid duplicate markers
                 const placeGroups = new Map();
                 
-                if (data.visits) {
-                    data.visits.forEach(visit => {
-                        const lat = visit.place?.latitudeCentroid;
-                        const lng = visit.place?.longitudeCentroid;
-                        
-                        if (lat && lng) {
-                            const coordKey = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+                // Process timeline data (similar to index.html)
+                if (data && data.length > 0) {
+                    data.forEach(element => {
+                        if (element.type === 'VISIT') {
+                            const visit = element;
+                            const lat = visit.place?.latitudeCentroid;
+                            const lng = visit.place?.longitudeCentroid;
                             
-                            if (!placeGroups.has(coordKey)) {
-                                placeGroups.set(coordKey, {
-                                    lat: lat,
-                                    lng: lng,
-                                    totalDurationMs: 0,
-                                    visits: [],
-                                    place: visit.place
-                                });
+                            if (lat && lng) {
+                                const coordKey = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+                                
+                                if (!placeGroups.has(coordKey)) {
+                                    placeGroups.set(coordKey, {
+                                        lat: lat,
+                                        lng: lng,
+                                        totalDurationMs: 0,
+                                        visits: [],
+                                        place: visit.place
+                                    });
+                                }
+                                
+                                const group = placeGroups.get(coordKey);
+                                group.totalDurationMs += visit.durationSeconds * 1000;
+                                group.visits.push(visit);
+                                
+                                bounds.extend([lat, lng]);
+                                hasValidCoords = true;
                             }
-                            
-                            const group = placeGroups.get(coordKey);
-                            group.totalDurationMs += visit.durationSeconds * 1000;
-                            group.visits.push(visit);
-                            
-                            bounds.extend([lat, lng]);
-                            hasValidCoords = true;
                         }
                     });
                 }
@@ -274,13 +280,9 @@
                     circle.bindTooltip(tooltip);
                 });
                 
-                // Fit map to bounds if we have valid coordinates
+                // Store bounds for later use
                 if (hasValidCoords && bounds.isValid()) {
-                    map.fitBounds(bounds, {
-                        paddingTopLeft: [20, 20],
-                        paddingBottomRight: [20, 20],
-                        maxZoom: 15
-                    });
+                    map._previewBounds = bounds;
                 }
             }
             
@@ -332,6 +334,74 @@
                 }
                 
                 container.innerHTML = html;
+            }
+            
+            function loadRawLocationData(map, timelineData, color) {
+                // Extract raw location points URL from timeline data
+                let rawLocationPointsUrl = null;
+                
+                // Look for raw location points URL in the timeline data
+                if (timelineData && timelineData.length > 0) {
+                    const firstUserSection = timelineData.find(item => item.rawLocationPointsUrl);
+                    if (firstUserSection) {
+                        rawLocationPointsUrl = firstUserSection.rawLocationPointsUrl;
+                    }
+                }
+                
+                if (!rawLocationPointsUrl) {
+                    // Construct URL based on current date and user
+                    rawLocationPointsUrl = `/api/v1/raw-location-points?date=${previewDate}&timezone=${getUserTimezone()}`;
+                }
+                
+                // Fetch and display raw location points
+                fetch(rawLocationPointsUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            console.warn('Could not fetch raw location points');
+                            return { points: [] };
+                        }
+                        return response.json();
+                    })
+                    .then(rawPointsData => {
+                        updateMapWithRawPoints(map, rawPointsData, color);
+                    })
+                    .catch(error => {
+                        console.warn('Error fetching raw location points:', error);
+                    });
+            }
+            
+            function updateMapWithRawPoints(map, rawPointsData, color) {
+                const bounds = L.latLngBounds();
+                
+                const rawPointsPath = L.geodesic([], {
+                    color: color,
+                    weight: 6,
+                    opacity: 0.9,
+                    lineJoin: 'round',
+                    lineCap: 'round',
+                    steps: 2
+                });
+                
+                if (rawPointsData && rawPointsData.points && rawPointsData.points.length > 0) {
+                    const rawPointsCoords = rawPointsData.points.map(point => [point.latitude, point.longitude]);
+                    bounds.extend(rawPointsCoords);
+                    rawPointsPath.setLatLngs(rawPointsCoords);
+                    rawPointsPath.addTo(map);
+                    
+                    // Combine with existing bounds if they exist
+                    if (map._previewBounds && map._previewBounds.isValid()) {
+                        bounds.extend(map._previewBounds);
+                    }
+                    
+                    // Fit map to combined bounds
+                    if (bounds.isValid()) {
+                        map.fitBounds(bounds, {
+                            paddingTopLeft: [20, 20],
+                            paddingBottomRight: [20, 20],
+                            maxZoom: 15
+                        });
+                    }
+                }
             }
             
             function getUserTimezone() {
