@@ -74,12 +74,18 @@ public class SettingsVisitSensitivityController {
                                     @RequestParam(required = false, defaultValue = "UTC") String timezone,
                                     @AuthenticationPrincipal User user,
                                     Model model) {
-        Configuration config = form.toConfiguration(ZoneId.of(timezone));
-        
-        if (config.getId() == null) {
-            configurationService.saveConfiguration(user, config);
-        } else {
-            configurationService.updateConfiguration(config);
+        try {
+            Configuration config = form.toConfiguration(ZoneId.of(timezone));
+            
+            if (config.getId() == null) {
+                configurationService.saveConfiguration(user, config);
+                model.addAttribute("successMessage", "Configuration saved successfully");
+            } else {
+                configurationService.updateConfiguration(config);
+                model.addAttribute("successMessage", "Configuration updated successfully");
+            }
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", "Failed to save configuration: " + e.getMessage());
         }
         
         // Return updated list
