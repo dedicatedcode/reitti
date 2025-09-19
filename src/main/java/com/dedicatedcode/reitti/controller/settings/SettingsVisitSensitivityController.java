@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.processing.Configuration;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ConfigurationJdbcService;
+import com.dedicatedcode.reitti.service.VisitDetectionPreviewService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -12,8 +13,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
-import java.time.ZoneId;
+import java.time.*;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Controller
@@ -21,11 +22,14 @@ import java.util.List;
 public class SettingsVisitSensitivityController {
     
     private final ConfigurationJdbcService configurationService;
+    private final VisitDetectionPreviewService visitDetectionPreviewService;
     private final boolean dataManagementEnabled;
 
     public SettingsVisitSensitivityController(ConfigurationJdbcService configurationService,
+                                              VisitDetectionPreviewService visitDetectionPreviewService,
                                               @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.configurationService = configurationService;
+        this.visitDetectionPreviewService = visitDetectionPreviewService;
         this.dataManagementEnabled = dataManagementEnabled;
     }
     
@@ -135,14 +139,13 @@ public class SettingsVisitSensitivityController {
                                        @AuthenticationPrincipal User user,
                                        Model model) {
         Configuration config = form.toConfiguration(ZoneId.of(timezone));
-        String previewId = java.util.UUID.randomUUID().toString();
-        
-        // Use current date if no preview date is provided
-        String effectivePreviewDate = previewDate != null ? previewDate : 
+
+
+        Instant date = previewDate != null ? ZonedDateTime.of(LocalDate.parse(previewDate).atStartOfDay(), ZoneId.of(timezone)).toInstant() : Instant.now().truncatedTo(ChronoUnit.DAYS);
+        String effectivePreviewDate = previewDate != null ? previewDate :
             Instant.now().atZone(ZoneId.of(timezone)).toLocalDate().toString();
-        
-        // TODO: Start async processing of preview data with the previewId and date
-        // This would trigger background processing with the new configuration for the specified date
+
+        String previewId = this.visitDetectionPreviewService.startPreview(user, config, date);
         
         model.addAttribute("previewConfig", config);
         model.addAttribute("previewId", previewId);

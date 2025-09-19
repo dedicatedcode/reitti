@@ -61,7 +61,7 @@ public class ImportBatchProcessor {
         
         ScheduledFuture<?> newTrigger = scheduler.schedule(() -> {
             try {
-                TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(username);
+                TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(username, null);
                 rabbitTemplate.convertAndSend(
                         RabbitMQConfig.EXCHANGE_NAME,
                         RabbitMQConfig.TRIGGER_PROCESSING_PIPELINE_ROUTING_KEY,

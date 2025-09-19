@@ -46,13 +46,6 @@ public class ProcessedVisitJdbcService {
         }
     };
 
-    public List<ProcessedVisit> findAll() {
-        String sql = "SELECT pv.* " +
-                "FROM processed_visits pv " +
-                "ORDER BY pv.start_time";
-        return jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER);
-
-    }
     public List<ProcessedVisit> findByUser(User user) {
         String sql = "SELECT pv.* " +
                 "FROM processed_visits pv " +

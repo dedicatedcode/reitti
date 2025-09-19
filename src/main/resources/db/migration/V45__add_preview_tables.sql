@@ -16,6 +16,10 @@ CREATE TABLE preview_visits (
     LIKE visits INCLUDING ALL
 );
 
+CREATE TABLE preview_visit_detection_parameters (
+    LIKE visit_detection_parameters
+);
+
 ALTER TABLE preview_processed_visits ADD COLUMN preview_id VARCHAR(36) NOT NULL DEFAULT '';
 ALTER TABLE preview_processed_visits ADD COLUMN preview_created_at TIMESTAMP DEFAULT now();
 ALTER TABLE preview_processed_visits ALTER COLUMN id SET DEFAULT nextval('preview_processed_visits_id_seq'::regclass);
@@ -23,9 +27,16 @@ ALTER SEQUENCE preview_processed_visits_id_seq OWNED BY preview_processed_visits
 
 ALTER TABLE preview_raw_location_points ADD COLUMN preview_id VARCHAR(36) NOT NULL DEFAULT '';
 ALTER TABLE preview_raw_location_points ADD COLUMN preview_created_at TIMESTAMP DEFAULT now();
+drop index preview_raw_location_points_user_id_timestamp_idx;
 
 ALTER TABLE preview_trips ADD COLUMN preview_id VARCHAR(36) NOT NULL DEFAULT '';
 ALTER TABLE preview_trips ADD COLUMN preview_created_at TIMESTAMP DEFAULT now();
 
 ALTER TABLE preview_visits ADD COLUMN preview_id VARCHAR(36) NOT NULL DEFAULT '';
 ALTER TABLE preview_visits ADD COLUMN preview_created_at TIMESTAMP DEFAULT now();
+
+ALTER TABLE preview_visit_detection_parameters ADD COLUMN preview_id VARCHAR(36) NOT NULL DEFAULT '';
+ALTER TABLE preview_visit_detection_parameters ADD COLUMN preview_created_at TIMESTAMP DEFAULT now();
+
+ALTER TABLE preview_visit_detection_parameters ALTER id ADD GENERATED ALWAYS AS IDENTITY;
+

@@ -20,6 +20,7 @@
                    id="preview-date" 
                    th:value="${previewDate}" 
                    hx-post="/settings/visit-sensitivity/preview"
+                   hx-vals='js:{"timezone": getUserTimezone()}'
                    hx-target="#preview-area"
                    hx-include="#configuration-form"
                    hx-trigger="change[target.value != '']"
@@ -174,7 +175,7 @@
                 if (!previewMap || !previewReady) return;
                 
                 // Fetch preview processed visits/trips
-                fetch(`/api/v1/preview/timeline/?date=${previewDate}&timezone=${getUserTimezone()}`)
+                fetch(`/api/v1/preview/${previewId}/timeline?date=${previewDate}&timezone=${getUserTimezone()}`)
                     .then(response => response.json())
                     .then(data => {
                         updateTimelineContent('preview-timeline-content', data);
@@ -221,7 +222,6 @@
                                         place: visit.place
                                     });
                                 }
-                                debugger
                                 const group = placeGroups.get(coordKey);
                                 group.totalDurationMs += parseDurationText(element.formattedDuration);
                                 group.visits.push(visit);
@@ -414,7 +414,7 @@
             
             function checkPreviewStatus() {
                 // TODO: Poll backend to check if preview calculation is complete
-                fetch(`/api/preview/${previewId}/status`)
+                fetch(`/api/v1/preview/${previewId}/status`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.ready) {

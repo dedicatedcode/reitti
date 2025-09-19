@@ -167,6 +167,7 @@
         <div class="form-actions">
             <button type="button" 
                     hx-post="/settings/visit-sensitivity/preview"
+                    hx-vals='js:{"timezone": getUserTimezone()}'
                     hx-target="#preview-area"
                     hx-include="closest form"
                     class="btn btn-info"

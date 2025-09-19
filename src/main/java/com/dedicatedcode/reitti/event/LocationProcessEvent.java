@@ -11,15 +11,18 @@ public class LocationProcessEvent implements Serializable {
     private final String username;
     private final Instant earliest;
     private final Instant latest;
+    private final String previewId;
 
     @JsonCreator
     public LocationProcessEvent(
             @JsonProperty("username") String username,
             @JsonProperty("earliest") Instant earliest,
-            @JsonProperty("latest") Instant latest) {
+            @JsonProperty("latest") Instant latest,
+            @JsonProperty("previewId") String previewId) {
         this.username = username;
         this.earliest = earliest;
         this.latest = latest;
+        this.previewId = previewId;
     }
 
     public String getUsername() {
@@ -32,6 +35,10 @@ public class LocationProcessEvent implements Serializable {
 
     public Instant getLatest() {
         return latest;
+    }
+
+    public String getPreviewId() {
+        return previewId;
     }
 
     @Override

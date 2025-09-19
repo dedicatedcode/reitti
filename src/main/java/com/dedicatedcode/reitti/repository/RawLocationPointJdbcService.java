@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.model.ClusteredPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import org.locationtech.jts.geom.Coordinate;
@@ -222,23 +223,5 @@ public class RawLocationPointJdbcService {
     public Optional<RawLocationPoint> findProximatePoint(User user, Instant when, int maxOffsetInSeconds) {
         List<RawLocationPoint> result = findByUserAndTimestampBetweenOrderByTimestampAsc(user, when.minusSeconds(maxOffsetInSeconds / 2), when.plusSeconds(maxOffsetInSeconds / 2));
         return result.stream().findFirst();
-    }
-
-    public static class ClusteredPoint {
-        private final RawLocationPoint point;
-        private final Integer clusterId;
-
-        public ClusteredPoint(RawLocationPoint point, Integer clusterId) {
-            this.point = point;
-            this.clusterId = clusterId;
-        }
-
-        public RawLocationPoint getPoint() {
-            return point;
-        }
-
-        public Integer getClusterId() {
-            return clusterId;
-        }
     }
 }

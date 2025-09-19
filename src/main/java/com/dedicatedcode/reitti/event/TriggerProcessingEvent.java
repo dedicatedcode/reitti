@@ -8,12 +8,15 @@ import java.time.Instant;
 
 public class TriggerProcessingEvent implements Serializable {
     private final String username;
+    private final String previewId;
     private final Instant receivedAt;
 
     @JsonCreator
     public TriggerProcessingEvent(
-            @JsonProperty("username") String username) {
+            @JsonProperty("username") String username,
+            String previewId) {
         this.username = username;
+        this.previewId = previewId;
         this.receivedAt = Instant.now();
     }
 
@@ -23,5 +26,9 @@ public class TriggerProcessingEvent implements Serializable {
 
     public Instant getReceivedAt() {
         return receivedAt;
+    }
+
+    public String getPreviewId() {
+        return this.previewId;
     }
 }
