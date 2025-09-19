@@ -27,7 +27,7 @@
                     </td>
                     <td>
                         <button th:hx-get="@{'/settings/visit-sensitivity/edit/' + ${config.getId()}}"
-                                hx-target="#edit-form"
+                                hx-target="body"
                                 hx-vals='js:{"timezone": getUserTimezone()}'
                                 class="btn btn-primary btn-sm"
                                 th:text="#{visit.sensitivity.edit}">Edit</button>

@@ -25,7 +25,8 @@
             
             <!-- Edit Form Area -->
             <div id="edit-form">
-                <!-- Form will be loaded here via HTMX -->
+                <div th:if="${showEditForm}" th:replace="~{fragments/configuration-form :: configuration-form}"></div>
+                <!-- Form will be loaded here via HTMX when not showing edit form -->
             </div>
             
             <!-- Preview Area -->
