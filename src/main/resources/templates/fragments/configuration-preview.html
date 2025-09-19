@@ -21,7 +21,7 @@
                    th:value="${previewDate}" 
                    hx-post="/settings/visit-sensitivity/preview"
                    hx-target="#preview-area"
-                   hx-include="form"
+                   hx-include="#configuration-form"
                    hx-trigger="change[target.value != '']"
                    name="previewDate">
         </div>

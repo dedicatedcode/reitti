@@ -17,7 +17,7 @@
         </div>
     </div>
     
-    <form hx-post="/settings/visit-sensitivity/save" hx-target="body" th:object="${configurationForm}">
+    <form id="configuration-form" hx-post="/settings/visit-sensitivity/save" hx-target="body" th:object="${configurationForm}">
         <input type="hidden" th:field="*{id}">
         <input type="hidden" name="mode" th:value="${mode}">
         
