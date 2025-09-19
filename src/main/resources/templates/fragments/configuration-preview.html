@@ -32,7 +32,7 @@
         <h4 th:text="#{visit.sensitivity.preview.config.details}">Configuration Details</h4>
         <div class="config-details">
             <div class="detail-group">
-                <h5 th:text="#{visit.sensitivity.visit.detection}">Visit Detection</h5>
+                <h4 th:text="#{visit.sensitivity.visit.detection}">Visit Detection</h4>
                 <p><strong th:text="#{visit.sensitivity.search.distance}">Search Distance:</strong> 
                    <span th:text="${previewConfig.visitDetection.searchDistanceInMeters}"></span>m</p>
                 <p><strong th:text="#{visit.sensitivity.min.points}">Minimum Adjacent Points:</strong> 
@@ -41,7 +41,7 @@
                    <span th:text="${previewConfig.visitDetection.minimumStayTimeInSeconds}"></span>s</p>
             </div>
             <div class="detail-group">
-                <h5 th:text="#{visit.sensitivity.visit.merging}">Visit Merging</h5>
+                <h4 th:text="#{visit.sensitivity.visit.merging}">Visit Merging</h4>
                 <p><strong th:text="#{visit.sensitivity.search.duration}">Search Duration:</strong> 
                    <span th:text="${previewConfig.visitMerging.searchDurationInHours}"></span>h</p>
                 <p><strong th:text="#{visit.sensitivity.max.merge.time}">Max Merge Time:</strong> 
