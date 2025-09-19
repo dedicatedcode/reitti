@@ -30,12 +30,28 @@
     <div class="preview-maps">
         <!-- Current Data Map -->
         <div id="current-map-container" class="map-container active">
-            <div id="current-map" class="map" style="height: 400px;"></div>
+            <div class="map-with-timeline">
+                <div id="current-timeline" class="timeline-sidebar">
+                    <h4>Current Timeline</h4>
+                    <div id="current-timeline-content" class="timeline-content">
+                        <div class="loading">Loading timeline...</div>
+                    </div>
+                </div>
+                <div id="current-map" class="map" style="height: 400px;"></div>
+            </div>
         </div>
         
         <!-- Preview Data Map -->
         <div id="preview-map-container" class="map-container">
-            <div id="preview-map" class="map" style="height: 400px;"></div>
+            <div class="map-with-timeline">
+                <div id="preview-timeline" class="timeline-sidebar">
+                    <h4>Preview Timeline</h4>
+                    <div id="preview-timeline-content" class="timeline-content">
+                        <div class="loading">Loading preview...</div>
+                    </div>
+                </div>
+                <div id="preview-map" class="map" style="height: 400px;"></div>
+            </div>
         </div>
     </div>
     
@@ -147,9 +163,11 @@
                     .then(response => response.json())
                     .then(data => {
                         updateMapWithData(currentMap, data, '#ff6c00');
+                        updateTimelineContent('current-timeline-content', data);
                     })
                     .catch(error => {
                         console.error('Error loading current map data:', error);
+                        document.getElementById('current-timeline-content').innerHTML = '<div class="error">Error loading timeline</div>';
                     });
             }
             
@@ -161,9 +179,11 @@
                     .then(response => response.json())
                     .then(data => {
                         updateMapWithData(previewMap, data, '#4CAF50');
+                        updateTimelineContent('preview-timeline-content', data);
                     })
                     .catch(error => {
                         console.error('Error loading preview map data:', error);
+                        document.getElementById('preview-timeline-content').innerHTML = '<div class="error">Error loading preview</div>';
                     });
             }
             
@@ -264,6 +284,57 @@
                         maxZoom: 15
                     });
                 }
+            }
+            
+            function updateTimelineContent(containerId, data) {
+                const container = document.getElementById(containerId);
+                if (!container) return;
+                
+                let html = '';
+                
+                if (data.visits && data.visits.length > 0) {
+                    data.visits.forEach(visit => {
+                        const startTime = new Date(visit.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        const endTime = new Date(visit.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        const duration = humanizeDuration(visit.durationSeconds * 1000, {units: ["h", "m"], round: true});
+                        const placeName = visit.place?.name || 'Unknown Place';
+                        
+                        html += `
+                            <div class="timeline-entry visit" data-lat="${visit.place?.latitudeCentroid}" data-lng="${visit.place?.longitudeCentroid}">
+                                <div class="entry-time">${startTime} - ${endTime}</div>
+                                <div class="place-name">${placeName}</div>
+                                <div class="entry-duration">${duration}</div>
+                            </div>
+                        `;
+                    });
+                }
+                
+                if (data.trips && data.trips.length > 0) {
+                    data.trips.forEach(trip => {
+                        const startTime = new Date(trip.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        const endTime = new Date(trip.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        const duration = humanizeDuration(trip.durationSeconds * 1000, {units: ["h", "m"], round: true});
+                        const distance = trip.travelledDistanceMeters ? (trip.travelledDistanceMeters / 1000).toFixed(1) + ' km' : '';
+                        const mode = trip.transportModeInferred || 'Unknown';
+                        
+                        html += `
+                            <div class="timeline-entry trip">
+                                <div class="entry-time">${startTime} - ${endTime}</div>
+                                <div class="trip-info">
+                                    <span class="transport-mode">${mode}</span>
+                                    ${distance ? `<span class="distance">${distance}</span>` : ''}
+                                </div>
+                                <div class="entry-duration">${duration}</div>
+                            </div>
+                        `;
+                    });
+                }
+                
+                if (html === '') {
+                    html = '<div class="no-data">No timeline data for this date</div>';
+                }
+                
+                container.innerHTML = html;
             }
             
             function getUserTimezone() {
@@ -376,6 +447,95 @@
         .detail-group p {
             margin: 5px 0;
             font-size: 0.9em;
+        }
+        
+        .map-with-timeline {
+            display: flex;
+            height: 400px;
+        }
+        
+        .timeline-sidebar {
+            width: 300px;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-right: none;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .timeline-sidebar h4 {
+            margin: 0 0 15px 0;
+            font-size: 1.1em;
+            color: #333;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 8px;
+        }
+        
+        .timeline-content {
+            font-size: 0.9em;
+        }
+        
+        .timeline-entry {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .timeline-entry:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .timeline-entry.visit {
+            border-left: 4px solid #ff6c00;
+        }
+        
+        .timeline-entry.trip {
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .entry-time {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        
+        .place-name {
+            color: #666;
+            margin-bottom: 2px;
+        }
+        
+        .trip-info {
+            color: #666;
+            margin-bottom: 2px;
+        }
+        
+        .transport-mode {
+            font-style: italic;
+        }
+        
+        .distance {
+            margin-left: 8px;
+            font-weight: 500;
+        }
+        
+        .entry-duration {
+            font-size: 0.8em;
+            color: #888;
+        }
+        
+        .loading, .error, .no-data {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 20px;
+        }
+        
+        .error {
+            color: #d32f2f;
         }
     </style>
 </div>
