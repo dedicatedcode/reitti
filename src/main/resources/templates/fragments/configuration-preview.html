@@ -2,29 +2,5 @@
     <h3 th:text="#{visit.sensitivity.preview.title}">Configuration Preview</h3>
     
     <div class="preview-content">
-        <h4 th:text="#{visit.detection.title}">Visit Detection Settings</h4>
-        <ul>
-            <li><strong th:text="#{visit.detection.search.distance}">Search Distance:</strong> <span th:text="${previewConfig.getVisitDetection().getSearchDistanceInMeters()} + ' meters'"></span></li>
-            <li><strong th:text="#{visit.detection.minimum.points}">Minimum Adjacent Points:</strong> <span th:text="${previewConfig.getVisitDetection().getMinimumAdjacentPoints()}"></span></li>
-            <li><strong th:text="#{visit.detection.minimum.stay}">Minimum Stay Time:</strong> <span th:text="${previewConfig.getVisitDetection().getMinimumStayTimeInSeconds()} + ' seconds (' + ${previewConfig.getVisitDetection().getMinimumStayTimeInSeconds() / 60} + ' minutes)'"></span></li>
-            <li><strong th:text="#{visit.detection.max.merge.time}">Max Merge Time:</strong> <span th:text="${previewConfig.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints()} + ' seconds (' + ${previewConfig.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints() / 60} + ' minutes)'"></span></li>
-        </ul>
-        
-        <h4 th:text="#{visit.merging.title}">Visit Merging Settings</h4>
-        <ul>
-            <li><strong th:text="#{visit.merging.search.duration}">Search Duration:</strong> <span th:text="${previewConfig.getVisitMerging().getSearchDurationInHours()} + ' hours'"></span></li>
-            <li><strong th:text="#{visit.merging.max.merge.time}">Max Merge Time:</strong> <span th:text="${previewConfig.getVisitMerging().getMaxMergeTimeBetweenSameVisits()} + ' seconds (' + ${previewConfig.getVisitMerging().getMaxMergeTimeBetweenSameVisits() / 60} + ' minutes)'"></span></li>
-            <li><strong th:text="#{visit.merging.min.distance}">Min Distance:</strong> <span th:text="${previewConfig.getVisitMerging().getMinDistanceBetweenVisits()} + ' meters'"></span></li>
-        </ul>
-        
-        <div class="preview-explanation">
-            <h5 th:text="#{visit.sensitivity.preview.explanation}">What this means:</h5>
-            <p th:text="#{visit.sensitivity.preview.detection.explanation(${previewConfig.getVisitDetection().getMinimumStayTimeInSeconds() / 60}, ${previewConfig.getVisitDetection().getSearchDistanceInMeters()})}">
-                Visits will be detected when you stay within [[${previewConfig.getVisitDetection().getSearchDistanceInMeters()}]] meters for at least [[${previewConfig.getVisitDetection().getMinimumStayTimeInSeconds() / 60}]] minutes.
-            </p>
-            <p th:text="#{visit.sensitivity.preview.merging.explanation(${previewConfig.getVisitMerging().getMinDistanceBetweenVisits()}, ${previewConfig.getVisitMerging().getMaxMergeTimeBetweenSameVisits() / 60})}">
-                Visits closer than [[${previewConfig.getVisitMerging().getMinDistanceBetweenVisits()}]] meters and within [[${previewConfig.getVisitMerging().getMaxMergeTimeBetweenSameVisits() / 60}]] minutes of each other may be merged.
-            </p>
-        </div>
     </div>
 </div>
