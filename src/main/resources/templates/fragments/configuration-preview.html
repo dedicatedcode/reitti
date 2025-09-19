@@ -53,78 +53,80 @@
     </div>
     
     <script th:inline="javascript">
-        const previewId = /*[[${previewId}]]*/ '';
-        const userId = /*[[${userId}]]*/ '';
-        let currentMapInitialized = false;
-        let previewMapInitialized = false;
-        let previewReady = false;
-        
-        function showCurrentData() {
-            document.getElementById('current-data-btn').classList.add('active');
-            document.getElementById('preview-data-btn').classList.remove('active');
-            document.getElementById('current-map-container').classList.add('active');
-            document.getElementById('preview-map-container').classList.remove('active');
+        (function() {
+            const previewId = /*[[${previewId}]]*/ '';
+            const userId = /*[[${userId}]]*/ '';
+            let currentMapInitialized = false;
+            let previewMapInitialized = false;
+            let previewReady = false;
             
-            if (!currentMapInitialized) {
-                initCurrentMap();
-            }
-        }
-        
-        function showPreviewData() {
-            document.getElementById('current-data-btn').classList.remove('active');
-            document.getElementById('preview-data-btn').classList.add('active');
-            document.getElementById('current-map-container').classList.remove('active');
-            document.getElementById('preview-map-container').classList.add('active');
+            window.showCurrentData = function() {
+                document.getElementById('current-data-btn').classList.add('active');
+                document.getElementById('preview-data-btn').classList.remove('active');
+                document.getElementById('current-map-container').classList.add('active');
+                document.getElementById('preview-map-container').classList.remove('active');
+                
+                if (!currentMapInitialized) {
+                    initCurrentMap();
+                }
+            };
             
-            if (!previewMapInitialized && previewReady) {
-                initPreviewMap();
+            window.showPreviewData = function() {
+                document.getElementById('current-data-btn').classList.remove('active');
+                document.getElementById('preview-data-btn').classList.add('active');
+                document.getElementById('current-map-container').classList.remove('active');
+                document.getElementById('preview-map-container').classList.add('active');
+                
+                if (!previewMapInitialized && previewReady) {
+                    initPreviewMap();
+                }
+            };
+            
+            function initCurrentMap() {
+                // TODO: Initialize current data map
+                // Load current visit/trip data for the user
+                currentMapInitialized = true;
             }
-        }
-        
-        function initCurrentMap() {
-            // TODO: Initialize current data map
-            // Load current visit/trip data for the user
-            currentMapInitialized = true;
-        }
-        
-        function initPreviewMap() {
-            // TODO: Initialize preview data map
-            // Load preview visit/trip data using previewId
-            previewMapInitialized = true;
-        }
-        
-        function checkPreviewStatus() {
-            // TODO: Poll backend to check if preview calculation is complete
-            fetch(`/api/preview/${previewId}/status`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.ready) {
-                        previewReady = true;
-                        document.getElementById('preview-status').innerHTML = 
-                            '<i class="lni lni-checkmark-circle"></i><span>Ready</span>';
-                        document.getElementById('preview-data-btn').disabled = false;
-                        
-                        // If preview tab is active, initialize the map
-                        if (document.getElementById('preview-data-btn').classList.contains('active')) {
-                            initPreviewMap();
+            
+            function initPreviewMap() {
+                // TODO: Initialize preview data map
+                // Load preview visit/trip data using previewId
+                previewMapInitialized = true;
+            }
+            
+            function checkPreviewStatus() {
+                // TODO: Poll backend to check if preview calculation is complete
+                fetch(`/api/preview/${previewId}/status`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.ready) {
+                            previewReady = true;
+                            document.getElementById('preview-status').innerHTML = 
+                                '<i class="lni lni-checkmark-circle"></i><span>Ready</span>';
+                            document.getElementById('preview-data-btn').disabled = false;
+                            
+                            // If preview tab is active, initialize the map
+                            if (document.getElementById('preview-data-btn').classList.contains('active')) {
+                                initPreviewMap();
+                            }
+                        } else {
+                            // Continue polling
+                            setTimeout(checkPreviewStatus, 2000);
                         }
-                    } else {
-                        // Continue polling
-                        setTimeout(checkPreviewStatus, 2000);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error checking preview status:', error);
-                    document.getElementById('preview-status').innerHTML = 
-                        '<i class="lni lni-warning"></i><span>Error</span>';
-                });
-        }
-        
-        // Initialize current map by default
-        initCurrentMap();
-        
-        // Start polling for preview status
-        checkPreviewStatus();
+                    })
+                    .catch(error => {
+                        console.error('Error checking preview status:', error);
+                        document.getElementById('preview-status').innerHTML = 
+                            '<i class="lni lni-warning"></i><span>Error</span>';
+                    });
+            }
+            
+            // Initialize current map by default
+            initCurrentMap();
+            
+            // Start polling for preview status
+            checkPreviewStatus();
+        })();
     </script>
     
     <style>
