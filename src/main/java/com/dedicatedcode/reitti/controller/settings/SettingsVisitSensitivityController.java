@@ -51,10 +51,8 @@ public class SettingsVisitSensitivityController {
 
         ConfigurationForm form = ConfigurationForm.fromConfiguration(config, userTimezone);
         
-        // Use the mode from the form if not explicitly specified in the request
         String effectiveMode = mode != null ? mode : form.getMode();
         
-        // Add all necessary model attributes for the full page
         List<Configuration> configurations = configurationService.findAllConfigurationsForUser(user);
         model.addAttribute("configurations", configurations);
         model.addAttribute("configurationForm", form);
@@ -100,7 +98,6 @@ public class SettingsVisitSensitivityController {
             model.addAttribute("errorMessage", "Failed to save configuration: " + e.getMessage());
         }
         
-        // Return updated list
         List<Configuration> configurations = configurationService.findAllConfigurationsForUser(user);
         model.addAttribute("configurations", configurations);
         model.addAttribute("activeSection", "visit-sensitivity");
@@ -113,7 +110,6 @@ public class SettingsVisitSensitivityController {
     public String deleteConfiguration(@PathVariable Long id, Authentication auth, Model model) {
         User user = (User) auth.getPrincipal();
         
-        // Verify this is not the default configuration
         List<Configuration> configurations = configurationService.findAllConfigurationsForUser(user);
         Configuration config = configurations.stream()
             .filter(c -> c.getId().equals(id))

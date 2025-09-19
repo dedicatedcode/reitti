@@ -17,9 +17,15 @@ CREATE TABLE preview_visits (
 );
 
 ALTER TABLE preview_processed_visits ADD COLUMN preview_id VARCHAR(36) NOT NULL DEFAULT '';
+ALTER TABLE preview_processed_visits ADD COLUMN preview_created_at TIMESTAMP DEFAULT now();
 ALTER TABLE preview_processed_visits ALTER COLUMN id SET DEFAULT nextval('preview_processed_visits_id_seq'::regclass);
 ALTER SEQUENCE preview_processed_visits_id_seq OWNED BY preview_processed_visits.id;
 
 ALTER TABLE preview_raw_location_points ADD COLUMN preview_id VARCHAR(36) NOT NULL DEFAULT '';
+ALTER TABLE preview_raw_location_points ADD COLUMN preview_created_at TIMESTAMP DEFAULT now();
+
 ALTER TABLE preview_trips ADD COLUMN preview_id VARCHAR(36) NOT NULL DEFAULT '';
+ALTER TABLE preview_trips ADD COLUMN preview_created_at TIMESTAMP DEFAULT now();
+
 ALTER TABLE preview_visits ADD COLUMN preview_id VARCHAR(36) NOT NULL DEFAULT '';
+ALTER TABLE preview_visits ADD COLUMN preview_created_at TIMESTAMP DEFAULT now();
