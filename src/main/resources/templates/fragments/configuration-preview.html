@@ -59,7 +59,6 @@
     <script th:inline="javascript">
         (function() {
             const previewId = /*[[${previewId}]]*/ '';
-            const userId = /*[[${userId}]]*/ '';
             const previewDate = /*[[${previewDate}]]*/ '';
             let currentMap = null;
             let previewMap = null;
@@ -137,7 +136,7 @@
                 if (!currentMap) return;
                 
                 // Fetch current processed visits/trips for the selected date
-                fetch(`/api/timeline/visits?date=${previewDate}&timezone=${getUserTimezone()}`)
+                fetch(`/api/v1/timeline?date=${previewDate}&timezone=${getUserTimezone()}`)
                     .then(response => response.json())
                     .then(data => {
                         updateMapWithData(currentMap, data, '#ff6c00');
@@ -151,7 +150,7 @@
                 if (!previewMap || !previewReady) return;
                 
                 // Fetch preview processed visits/trips
-                fetch(`/api/preview/${previewId}/visits`)
+                fetch(`/api/v1/preview/timeline/?date=${previewDate}&timezone=${getUserTimezone()}`)
                     .then(response => response.json())
                     .then(data => {
                         updateMapWithData(previewMap, data, '#4CAF50');
