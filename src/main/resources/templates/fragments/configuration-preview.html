@@ -160,8 +160,8 @@
                 fetch(`/api/v1/timeline?date=${previewDate}&timezone=${getUserTimezone()}`)
                     .then(response => response.json())
                     .then(data => {
-                        updateMapWithData(currentMap, data, '#ff6c00');
                         updateTimelineContent('current-timeline-content', data);
+                        updateMapWithData(currentMap, data, '#ff6c00');
                         loadRawLocationData(currentMap, data, '#ff6c00');
                     })
                     .catch(error => {
@@ -177,8 +177,8 @@
                 fetch(`/api/v1/preview/timeline/?date=${previewDate}&timezone=${getUserTimezone()}`)
                     .then(response => response.json())
                     .then(data => {
-                        updateMapWithData(previewMap, data, '#4CAF50');
                         updateTimelineContent('preview-timeline-content', data);
+                        updateMapWithData(previewMap, data, '#4CAF50');
                         loadRawLocationData(previewMap, data, '#4CAF50');
                     })
                     .catch(error => {
@@ -221,9 +221,9 @@
                                         place: visit.place
                                     });
                                 }
-                                
+                                debugger
                                 const group = placeGroups.get(coordKey);
-                                group.totalDurationMs += visit.durationSeconds * 1000;
+                                group.totalDurationMs += parseDurationText(element.formattedDuration);
                                 group.visits.push(visit);
                                 
                                 bounds.extend([lat, lng]);
@@ -242,7 +242,7 @@
                     const baseRadius = 15;
                     const maxRadius = 100;
                     const minRadius = 15;
-                    
+
                     const logScale = Math.log(1 + durationHours) / Math.log(1 + 24);
                     const radius = Math.min(maxRadius, Math.max(minRadius, baseRadius + (logScale * (maxRadius - baseRadius))));
                     
@@ -375,7 +375,7 @@
                 
                 const rawPointsPath = L.geodesic([], {
                     color: color,
-                    weight: 6,
+                    weight: 2,
                     opacity: 0.9,
                     lineJoin: 'round',
                     lineCap: 'round',
@@ -441,7 +441,15 @@
                             '<i class="lni lni-warning"></i><span>Error</span>';
                     });
             }
-            
+
+            // Helper function to parse duration text (simple implementation)
+            function parseDurationText(durationText) {
+                // Extract numbers followed by 'h' or 'm'
+                const hours = (durationText.match(/(\d+)h/) || [0, 0])[1];
+                const minutes = (durationText.match(/(\d+)m/) || [0, 0])[1];
+                return (parseInt(hours) * 60 + parseInt(minutes)) * 60 * 1000; // Convert to milliseconds
+            }
+
             // Initialize current map by default
             initCurrentMap();
             
