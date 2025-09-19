@@ -16,7 +16,13 @@
         </div>
         <div class="date-selection">
             <label for="preview-date">Preview Date:</label>
-            <input type="date" id="preview-date" th:value="${previewDate}" onchange="onPreviewDateChange()">
+            <input type="date" 
+                   id="preview-date" 
+                   th:value="${previewDate}" 
+                   hx-post="/settings/visit-sensitivity/preview"
+                   hx-target="#preview-area"
+                   hx-include="closest form"
+                   name="previewDate">
         </div>
     </div>
     
@@ -300,27 +306,6 @@
             // Initialize current map by default
             initCurrentMap();
             
-            window.onPreviewDateChange = function() {
-                const selectedDate = document.getElementById('preview-date').value;
-                if (selectedDate) {
-                    // Get the current configuration form data
-                    const form = document.querySelector('form[action*="/preview"]');
-                    if (form) {
-                        // Add the selected date to the form
-                        let dateInput = form.querySelector('input[name="previewDate"]');
-                        if (!dateInput) {
-                            dateInput = document.createElement('input');
-                            dateInput.type = 'hidden';
-                            dateInput.name = 'previewDate';
-                            form.appendChild(dateInput);
-                        }
-                        dateInput.value = selectedDate;
-                        
-                        // Submit the form to get a new preview
-                        form.submit();
-                    }
-                }
-            };
             
             // Start polling for preview status
             checkPreviewStatus();
