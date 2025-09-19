@@ -91,7 +91,8 @@ public class SettingsVisitSensitivityController {
         // Return updated list
         List<Configuration> configurations = configurationService.findAllConfigurationsForUser(user);
         model.addAttribute("configurations", configurations);
-        return "fragments/configuration-list :: configuration-list";
+        model.addAttribute("activeSection", "visit-sensitivity");
+        return "settings/visit-sensitivity";
     }
     
     @DeleteMapping("/{id}")
