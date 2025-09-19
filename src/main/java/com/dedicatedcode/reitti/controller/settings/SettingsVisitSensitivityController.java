@@ -129,9 +129,17 @@ public class SettingsVisitSensitivityController {
     @PostMapping("/preview")
     public String previewConfiguration(@ModelAttribute ConfigurationForm form,
                                        @RequestParam(required = false, defaultValue = "UTC") String timezone,
+                                       @AuthenticationPrincipal User user,
                                        Model model) {
         Configuration config = form.toConfiguration(ZoneId.of(timezone));
+        String previewId = java.util.UUID.randomUUID().toString();
+        
+        // TODO: Start async processing of preview data with the previewId
+        // This would trigger background processing with the new configuration
+        
         model.addAttribute("previewConfig", config);
+        model.addAttribute("previewId", previewId);
+        model.addAttribute("userId", user.getId());
         return "fragments/configuration-preview :: configuration-preview";
     }
 }
