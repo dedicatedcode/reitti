@@ -61,6 +61,8 @@
             const previewId = /*[[${previewId}]]*/ '';
             const userId = /*[[${userId}]]*/ '';
             const previewDate = /*[[${previewDate}]]*/ '';
+            let currentMap = null;
+            let previewMap = null;
             let currentMapInitialized = false;
             let previewMapInitialized = false;
             let previewReady = false;
@@ -88,15 +90,182 @@
             };
             
             function initCurrentMap() {
-                // TODO: Initialize current data map
-                // Load current visit/trip data for the user
+                if (currentMapInitialized) return;
+                
+                // Initialize Leaflet map for current data
+                currentMap = L.map('current-map', {zoomControl: false, attributionControl: false})
+                    .setView([window.userSettings?.homeLatitude || 60.1699, window.userSettings?.homeLongitude || 24.9384], 12);
+                
+                // Add tile layer
+                const tilesUrl = window.userSettings?.tiles?.service || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+                const tilesAttribution = window.userSettings?.tiles?.attribution || '© OpenStreetMap contributors';
+                
+                const tileLayer = window.userSettings?.preferColoredMap ? L.tileLayer : L.tileLayer.grayscale;
+                tileLayer(tilesUrl, {
+                    maxZoom: 19,
+                    attribution: tilesAttribution
+                }).addTo(currentMap);
+                
+                // Load current data for the selected date
+                loadCurrentMapData();
                 currentMapInitialized = true;
             }
             
             function initPreviewMap() {
-                // TODO: Initialize preview data map
-                // Load preview visit/trip data using previewId
+                if (previewMapInitialized) return;
+                
+                // Initialize Leaflet map for preview data
+                previewMap = L.map('preview-map', {zoomControl: false, attributionControl: false})
+                    .setView([window.userSettings?.homeLatitude || 60.1699, window.userSettings?.homeLongitude || 24.9384], 12);
+                
+                // Add tile layer
+                const tilesUrl = window.userSettings?.tiles?.service || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+                const tilesAttribution = window.userSettings?.tiles?.attribution || '© OpenStreetMap contributors';
+                
+                const tileLayer = window.userSettings?.preferColoredMap ? L.tileLayer : L.tileLayer.grayscale;
+                tileLayer(tilesUrl, {
+                    maxZoom: 19,
+                    attribution: tilesAttribution
+                }).addTo(previewMap);
+                
+                // Load preview data
+                loadPreviewMapData();
                 previewMapInitialized = true;
+            }
+            
+            function loadCurrentMapData() {
+                if (!currentMap) return;
+                
+                // Fetch current processed visits/trips for the selected date
+                fetch(`/api/timeline/visits?date=${previewDate}&timezone=${getUserTimezone()}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        updateMapWithData(currentMap, data, '#ff6c00');
+                    })
+                    .catch(error => {
+                        console.error('Error loading current map data:', error);
+                    });
+            }
+            
+            function loadPreviewMapData() {
+                if (!previewMap || !previewReady) return;
+                
+                // Fetch preview processed visits/trips
+                fetch(`/api/preview/${previewId}/visits`)
+                    .then(response => response.json())
+                    .then(data => {
+                        updateMapWithData(previewMap, data, '#4CAF50');
+                    })
+                    .catch(error => {
+                        console.error('Error loading preview map data:', error);
+                    });
+            }
+            
+            function updateMapWithData(map, data, color) {
+                // Clear existing layers (except tile layer)
+                map.eachLayer(layer => {
+                    if (!layer._url) {
+                        map.removeLayer(layer);
+                    }
+                });
+                
+                const bounds = L.latLngBounds();
+                let hasValidCoords = false;
+                
+                // Group places by coordinates to avoid duplicate markers
+                const placeGroups = new Map();
+                
+                if (data.visits) {
+                    data.visits.forEach(visit => {
+                        const lat = visit.place?.latitudeCentroid;
+                        const lng = visit.place?.longitudeCentroid;
+                        
+                        if (lat && lng) {
+                            const coordKey = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+                            
+                            if (!placeGroups.has(coordKey)) {
+                                placeGroups.set(coordKey, {
+                                    lat: lat,
+                                    lng: lng,
+                                    totalDurationMs: 0,
+                                    visits: [],
+                                    place: visit.place
+                                });
+                            }
+                            
+                            const group = placeGroups.get(coordKey);
+                            group.totalDurationMs += visit.durationSeconds * 1000;
+                            group.visits.push(visit);
+                            
+                            bounds.extend([lat, lng]);
+                            hasValidCoords = true;
+                        }
+                    });
+                }
+                
+                // Draw markers for grouped places
+                placeGroups.forEach((group) => {
+                    const { lat, lng, totalDurationMs, visits, place } = group;
+                    
+                    // Calculate radius using logarithmic scale
+                    const durationHours = totalDurationMs / (1000 * 60 * 60);
+                    const baseRadius = 15;
+                    const maxRadius = 100;
+                    const minRadius = 15;
+                    
+                    const logScale = Math.log(1 + durationHours) / Math.log(1 + 24);
+                    const radius = Math.min(maxRadius, Math.max(minRadius, baseRadius + (logScale * (maxRadius - baseRadius))));
+                    
+                    // Create marker
+                    L.circleMarker([lat, lng], {
+                        radius: 5,
+                        fillColor: color,
+                        color: '#fff',
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+                    
+                    // Create circle with calculated radius
+                    const circle = L.circle([lat, lng], {
+                        color: color,
+                        fillColor: color,
+                        fillOpacity: 0.1,
+                        radius: radius
+                    }).addTo(map);
+                    
+                    const totalDurationText = humanizeDuration(totalDurationMs, {units: ["h", "m"], round: true});
+                    const visitCount = visits.length;
+                    const visitText = visitCount === 1 ? 'visit' : 'visits';
+                    
+                    const tooltip = L.tooltip([lat, lng], {
+                        content: `<div style="font-size: 1.4rem; color: wheat">${place.name || 'Unknown Place'}</div>
+                         <div style="margin-top: 4px; font-weight: bold;">
+                             ${visitCount} ${visitText} - Total: ${totalDurationText}
+                         </div>`,
+                        className: 'visit-popup',
+                        permanent: false
+                    });
+                    
+                    circle.bindTooltip(tooltip);
+                });
+                
+                // Fit map to bounds if we have valid coordinates
+                if (hasValidCoords && bounds.isValid()) {
+                    map.fitBounds(bounds, {
+                        paddingTopLeft: [20, 20],
+                        paddingBottomRight: [20, 20],
+                        maxZoom: 15
+                    });
+                }
+            }
+            
+            function getUserTimezone() {
+                if (window.userSettings?.timezoneOverride) {
+                    return window.userSettings.timezoneOverride;
+                } else {
+                    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+                }
             }
             
             function checkPreviewStatus() {
@@ -113,6 +282,9 @@
                             // If preview tab is active, initialize the map
                             if (document.getElementById('preview-data-btn').classList.contains('active')) {
                                 initPreviewMap();
+                            } else if (previewMapInitialized) {
+                                // If map is already initialized, just load the data
+                                loadPreviewMapData();
                             }
                         } else {
                             // Continue polling
