@@ -63,8 +63,7 @@ public class SettingsVisitSensitivityController {
         model.addAttribute("activeSection", "visit-sensitivity");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
-        model.addAttribute("showEditForm", true);
-        
+
         return "settings/visit-sensitivity";
     }
     
