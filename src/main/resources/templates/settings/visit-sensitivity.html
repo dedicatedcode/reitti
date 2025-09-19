@@ -10,11 +10,16 @@
 </head>
 <body class="settings-page">
 <div class="settings-container">
+
     <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
     <div class="settings-content-area">
         <div id="visit-sensitivity-section" class="settings-section active">
             <h2 th:text="#{visit.sensitivity.title}">Visit Sensitivity</h2>
-            
+
+            <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+
             <!-- Configuration List -->
             <div th:replace="~{fragments/configuration-list :: configuration-list(${configurations})}"></div>
             

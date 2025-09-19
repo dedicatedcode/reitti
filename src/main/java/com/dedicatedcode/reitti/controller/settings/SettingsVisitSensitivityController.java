@@ -1,9 +1,11 @@
 package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.dto.ConfigurationForm;
+import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.processing.Configuration;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ConfigurationJdbcService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -19,16 +21,20 @@ import java.util.List;
 public class SettingsVisitSensitivityController {
     
     private final ConfigurationJdbcService configurationService;
-    
-    public SettingsVisitSensitivityController(ConfigurationJdbcService configurationService) {
+    private final boolean dataManagementEnabled;
+
+    public SettingsVisitSensitivityController(ConfigurationJdbcService configurationService,
+                                              @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.configurationService = configurationService;
+        this.dataManagementEnabled = dataManagementEnabled;
     }
     
     @GetMapping
-    public String visitSensitivitySettings(Authentication auth, Model model) {
-        User user = (User) auth.getPrincipal();
+    public String visitSensitivitySettings(@AuthenticationPrincipal User user, Model model) {
         List<Configuration> configurations = configurationService.findAllConfigurationsForUser(user);
         
+        model.addAttribute("isAdmin", user.getRole() ==  Role.ADMIN);
+        model.addAttribute("dataManagementEnabled", dataManagementEnabled);
         model.addAttribute("configurations", configurations);
         model.addAttribute("activeSection", "visit-sensitivity");
         return "settings/visit-sensitivity";
@@ -92,6 +98,8 @@ public class SettingsVisitSensitivityController {
         List<Configuration> configurations = configurationService.findAllConfigurationsForUser(user);
         model.addAttribute("configurations", configurations);
         model.addAttribute("activeSection", "visit-sensitivity");
+        model.addAttribute("isAdmin", user.getRole() ==  Role.ADMIN);
+        model.addAttribute("dataManagementEnabled", dataManagementEnabled);
         return "settings/visit-sensitivity";
     }
     

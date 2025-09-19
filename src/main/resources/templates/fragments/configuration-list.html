@@ -1,8 +1,5 @@
 <div xmlns:th="http://www.thymeleaf.org" th:fragment="configuration-list(configurations)" class="settings-card" id="configuration-list">
     <!-- Success/Error Messages -->
-    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
-    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
-    
     <h3 th:text="#{visit.sensitivity.configurations}">Current Configurations</h3>
     <div class="configuration-table">
         <table>
