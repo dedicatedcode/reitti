@@ -57,16 +57,11 @@ public class SettingsVisitSensitivityController {
         
         String effectiveMode = mode != null ? mode : form.getMode();
         
-        List<Configuration> configurations = configurationService.findAllConfigurationsForUser(user);
-        model.addAttribute("configurations", configurations);
         model.addAttribute("configurationForm", form);
         model.addAttribute("mode", effectiveMode);
         model.addAttribute("isDefaultConfig", config.getValidSince() == null);
-        model.addAttribute("activeSection", "visit-sensitivity");
-        model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
-        model.addAttribute("dataManagementEnabled", dataManagementEnabled);
 
-        return "settings/visit-sensitivity";
+        return "fragments/configuration-form :: configuration-form";
     }
     
     @GetMapping("/new")
