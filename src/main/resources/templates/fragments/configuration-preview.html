@@ -80,8 +80,8 @@
     
     <script th:inline="javascript">
         (function() {
-            const previewId = /*[[${previewId}]]*/ '';
-            const previewDate = /*[[${previewDate}]]*/ '';
+            let previewId = /*[[${previewId}]]*/ '';
+            let previewDate = /*[[${previewDate}]]*/ '';
             let currentMap = null;
             let previewMap = null;
             let currentMapInitialized = false;
@@ -418,7 +418,6 @@
             }
             
             function checkPreviewStatus() {
-                // TODO: Poll backend to check if preview calculation is complete
                 fetch(`/api/v1/preview/${previewId}/status`)
                     .then(response => response.json())
                     .then(data => {
