@@ -557,6 +557,18 @@
                 disconnectSSE();
             });
             
+            // Listen for htmx beforeSwap event to cleanup before DOM replacement
+            document.addEventListener('htmx:beforeSwap', function(event) {
+                // Check if the target contains our preview area
+                if (event.detail.target && (
+                    event.detail.target.id === 'preview-area' || 
+                    event.detail.target.closest('#preview-area')
+                )) {
+                    console.log('Configuration Preview: Cleaning up SSE before DOM swap');
+                    disconnectSSE();
+                }
+            });
+            
             // Also disconnect when the page is hidden (e.g., tab switch)
             document.addEventListener('visibilitychange', function() {
                 if (document.hidden) {
