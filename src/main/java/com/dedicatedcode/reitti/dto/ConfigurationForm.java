@@ -140,6 +140,25 @@ public class ConfigurationForm {
         };
     }
     
+    // Apply sensitivity level values to advanced mode fields
+    public void applySensitivityLevel(Integer level) {
+        if (level == null || level < 1 || level > 5) {
+            return;
+        }
+        
+        Configuration.VisitDetection visitDetection = mapSensitivityToVisitDetection(level);
+        Configuration.VisitMerging visitMerging = mapSensitivityToVisitMerging(level);
+        
+        this.searchDistanceInMeters = visitDetection.getSearchDistanceInMeters();
+        this.minimumAdjacentPoints = visitDetection.getMinimumAdjacentPoints();
+        this.minimumStayTimeInSeconds = visitDetection.getMinimumStayTimeInSeconds();
+        this.maxMergeTimeBetweenSameStayPoints = visitDetection.getMaxMergeTimeBetweenSameStayPoints();
+        this.searchDurationInHours = visitMerging.getSearchDurationInHours();
+        this.maxMergeTimeBetweenSameVisits = visitMerging.getMaxMergeTimeBetweenSameVisits();
+        this.minDistanceBetweenVisits = visitMerging.getMinDistanceBetweenVisits();
+        this.sensitivityLevel = level;
+    }
+    
     // Convert to Configuration
     public Configuration toConfiguration(ZoneId timezone) {
         Configuration.VisitDetection visitDetection;
