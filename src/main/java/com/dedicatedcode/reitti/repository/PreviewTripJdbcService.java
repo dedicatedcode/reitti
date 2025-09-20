@@ -21,17 +21,17 @@ import java.util.stream.Collectors;
 public class PreviewTripJdbcService {
 
     private final JdbcTemplate jdbcTemplate;
-    private final ProcessedVisitJdbcService processedVisitJdbcService;
-    public PreviewTripJdbcService(JdbcTemplate jdbcTemplate, ProcessedVisitJdbcService processedVisitJdbcService) {
+    private final PreviewProcessedVisitJdbcService previewProcessedVisitJdbcService;
+    public PreviewTripJdbcService(JdbcTemplate jdbcTemplate, PreviewProcessedVisitJdbcService previewProcessedVisitJdbcService) {
         this.jdbcTemplate = jdbcTemplate;
-        this.processedVisitJdbcService = processedVisitJdbcService;
+        this.previewProcessedVisitJdbcService = previewProcessedVisitJdbcService;
     }
 
     private final RowMapper<Trip> TRIP_ROW_MAPPER = new RowMapper<>() {
         @Override
         public Trip mapRow(ResultSet rs, int rowNum) throws SQLException {
-            ProcessedVisit startVisit = processedVisitJdbcService.findById(rs.getLong("start_visit_id")).orElseThrow();
-            ProcessedVisit endVisit = processedVisitJdbcService.findById(rs.getLong("end_visit_id")).orElseThrow();
+            ProcessedVisit startVisit = previewProcessedVisitJdbcService.findById(rs.getLong("start_visit_id")).orElseThrow();
+            ProcessedVisit endVisit = previewProcessedVisitJdbcService.findById(rs.getLong("end_visit_id")).orElseThrow();
             return new Trip(
                     rs.getLong("id"),
                     rs.getTimestamp("start_time").toInstant(),
@@ -61,80 +61,6 @@ public class PreviewTripJdbcService {
                 Timestamp.from(endTime), Timestamp.from(startTime),
                 Timestamp.from(startTime), Timestamp.from(endTime),
                 Timestamp.from(startTime), Timestamp.from(endTime));
-    }
-
-    public boolean existsByUserAndStartTimeAndEndTime(User user, Instant startTime, Instant endTime) {
-        String sql = "SELECT COUNT(*) FROM trips WHERE user_id = ? AND start_time = ? AND end_time = ?";
-        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, user.getId(),
-                Timestamp.from(startTime), Timestamp.from(endTime));
-        return count != null && count > 0;
-    }
-
-    public List<Object[]> findTransportStatisticsByUser(User user) {
-        String sql = "SELECT transport_mode_inferred, SUM(travelled_distance_meters), SUM(duration_seconds), COUNT(*) " +
-                "FROM trips " +
-                "WHERE user_id = ? " +
-                "GROUP BY transport_mode_inferred " +
-                "ORDER BY SUM(travelled_distance_meters) DESC";
-        return jdbcTemplate.query(sql, (rs, _) -> new Object[]{
-                rs.getString(1),
-                rs.getDouble(2),
-                rs.getLong(3),
-                rs.getLong(4)
-        }, user.getId());
-    }
-
-    public List<Object[]> findTransportStatisticsByUserAndTimeRange(User user, Instant startTime, Instant endTime) {
-        String sql = "SELECT transport_mode_inferred, SUM(travelled_distance_meters), SUM(duration_seconds), COUNT(*) " +
-                "FROM trips " +
-                "WHERE user_id = ? AND start_time >= ? AND end_time <= ? " +
-                "GROUP BY transport_mode_inferred " +
-                "ORDER BY SUM(travelled_distance_meters) DESC";
-        return jdbcTemplate.query(sql, (rs, _) -> new Object[]{
-                rs.getString(1),
-                rs.getDouble(2),
-                rs.getLong(3),
-                rs.getLong(4)
-        }, user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
-    }
-
-    public Trip create(User user, Trip trip) {
-        String sql = "INSERT INTO trips (user_id, start_time, end_time, duration_seconds, travelled_distance_meters, transport_mode_inferred, start_visit_id, end_visit_id, version) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1) RETURNING id";
-        Long id = jdbcTemplate.queryForObject(sql, Long.class,
-                user.getId(),
-                Timestamp.from(trip.getStartTime()),
-                Timestamp.from(trip.getEndTime()),
-                trip.getDurationSeconds(),
-                trip.getTravelledDistanceMeters(),
-                trip.getTransportModeInferred(),
-                trip.getStartVisit() != null ? trip.getStartVisit().getId() : null,
-                trip.getEndVisit() != null ? trip.getEndVisit().getId() : null
-        );
-        return trip.withId(id);
-    }
-
-    public Trip update(Trip trip) {
-        String sql = "UPDATE trips SET start_time = ?, end_time = ?, duration_seconds = ?, travelled_distance_meters = ?, transport_mode_inferred = ?, start_place_id = ?, end_place_id = ?, start_visit_id = ?, end_visit_id = ?, version = ? WHERE id = ?";
-        jdbcTemplate.update(sql,
-                Timestamp.from(trip.getStartTime()),
-                Timestamp.from(trip.getEndTime()),
-                trip.getDurationSeconds(),
-                trip.getTravelledDistanceMeters(),
-                trip.getTransportModeInferred(),
-                trip.getStartVisit() != null ? trip.getStartVisit().getId() : null,
-                trip.getEndVisit() != null ? trip.getEndVisit().getId() : null,
-                trip.getId()
-        );
-        return trip;
-    }
-
-    public Optional<Trip> findById(Long id) {
-        String sql = "SELECT t.* " +
-                "FROM trips t " +
-                "WHERE t.id = ?";
-        List<Trip> results = jdbcTemplate.query(sql, TRIP_ROW_MAPPER, id);
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
     public void bulkInsert(User user, String previewId, List<Trip> tripsToInsert) {

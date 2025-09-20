@@ -92,7 +92,7 @@ public class ReittiIntegrationApiController {
             }
 
             this.userJdbcService.findById(userId.get()).ifPresentOrElse(user -> {
-                this.userNotificationService.sendToQueue(user, notificationData.getAffectedDates(), notificationData.getEventType());
+                this.userNotificationService.sendToQueue(user, notificationData.getAffectedDates(), notificationData.getEventType(), null);
             }, () -> log.warn("Unable to find user for [{}]", subscriptionId));
 
             return ResponseEntity.ok().build();

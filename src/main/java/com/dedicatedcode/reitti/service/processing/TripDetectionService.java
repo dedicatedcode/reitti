@@ -100,7 +100,11 @@ public class TripDetectionService {
                     previewTripJdbcService.bulkInsert(user, event.getPreviewId(), trips);
 
                 }
-                userNotificationService.newTrips(user, trips);
+                if (event.getPreviewId() == null) {
+                    userNotificationService.newTrips(user, trips, event.getPreviewId());
+                } else {
+                    userNotificationService.newTrips(user, trips);
+                }
             });
         } finally {
             userLock.unlock();

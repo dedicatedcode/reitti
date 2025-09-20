@@ -45,36 +45,12 @@ public class PreviewVisitJdbcService {
         return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, visitIds.toArray());
     }
 
-    public List<Visit> findByUserAndStartTimeAndEndTime(User user, String previewId, Instant startTime, Instant endTime) {
+    private List<Visit> findByUserAndStartTimeAndEndTime(User user, String previewId, Instant startTime, Instant endTime) {
         String sql = "SELECT v.* " +
                 "FROM preview_visits v " +
                 "WHERE v.user_id = ? AND v.start_time = ? AND v.end_time = ? AND preview_id = ?";
         return jdbcTemplate.query(sql, VISIT_ROW_MAPPER, user.getId(),
                 Timestamp.from(startTime), Timestamp.from(endTime), previewId);
-    }
-
-    public Visit create(User user, Visit visit) {
-        String sql = "INSERT INTO visits (user_id, longitude, latitude, start_time, end_time, duration_seconds, processed, version) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?,?) RETURNING id";
-        Long id = jdbcTemplate.queryForObject(sql, Long.class,
-                user.getId(),
-                visit.getLongitude(),
-                visit.getLatitude(),
-                Timestamp.from(visit.getStartTime()),
-                Timestamp.from(visit.getEndTime()),
-                visit.getDurationSeconds(),
-                visit.isProcessed(),
-                visit.getVersion()
-        );
-        return visit.withId(id);
-    }
-
-    public Optional<Visit> findById(Long id) {
-        String sql = "SELECT v.* " +
-                "FROM visits v " +
-                "WHERE v.id = ?";
-        List<Visit> results = jdbcTemplate.query(sql, VISIT_ROW_MAPPER, id);
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
     public List<Visit> findByUserAndTimeAfterAndStartTimeBefore(User user, String previewId, Instant windowStart, Instant windowEnd) {
@@ -94,7 +70,7 @@ public class PreviewVisitJdbcService {
         List<Visit> createdVisits = new ArrayList<>();
         String sql = """
                 INSERT INTO preview_visits (user_id, latitude, longitude, start_time, end_time, duration_seconds, processed, version, preview_id, preview_created_at)
-                VALUES (?, ?, ?, ?, ?, ?, false, 1, ?, now()) ON CONFLICT DO NOTHING;
+                VALUES (?, ?, ?, ?, ?, ?, false, 1, ?, now());
                 """;
 
         List<Object[]> batchArgs = visitsToInsert.stream()

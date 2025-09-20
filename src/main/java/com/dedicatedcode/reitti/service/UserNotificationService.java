@@ -39,15 +39,22 @@ public class UserNotificationService {
         SSEType eventType = SSEType.TRIPS;
         log.debug("New trips for user [{}]", user.getId());
         Set<LocalDate> dates = calculateAffectedDates(trips.stream().map(Trip::getStartTime).toList(), trips.stream().map(Trip::getEndTime).toList());
-        sendToQueue(user, dates, eventType);
+        sendToQueue(user, dates, eventType, null);
         notifyReittiSubscriptions(user, eventType, dates);
+    }
+
+    public void newTrips(User user, List<Trip> trips, String previewId) {
+        SSEType eventType = SSEType.TRIPS;
+        log.debug("New preview trips for user [{}]", user.getId());
+        Set<LocalDate> dates = calculateAffectedDates(trips.stream().map(Trip::getStartTime).toList(), trips.stream().map(Trip::getEndTime).toList());
+        sendToQueue(user, dates, eventType, previewId);
     }
 
     public void newVisits(User user, List<ProcessedVisit> processedVisits) {
         SSEType eventType = SSEType.VISITS;
         log.debug("New Visits for user [{}]", user.getId());
         Set<LocalDate> dates = calculateAffectedDates(processedVisits.stream().map(ProcessedVisit::getStartTime).toList(), processedVisits.stream().map(ProcessedVisit::getEndTime).toList());
-        sendToQueue(user, dates, eventType);
+        sendToQueue(user, dates, eventType, null);
         notifyReittiSubscriptions(user, eventType, dates);
     }
 
@@ -55,13 +62,13 @@ public class UserNotificationService {
         SSEType eventType = SSEType.RAW_DATA;
         log.debug("New RawLocationPoints for user [{}]", user.getId());
         Set<LocalDate> dates = calculateAffectedDates(filtered.stream().map(LocationDataRequest.LocationPoint::getTimestamp).map(s -> ZonedDateTime.parse(s).toInstant()).toList());
-        sendToQueue(user, dates, eventType);
+        sendToQueue(user, dates, eventType, null);
         notifyReittiSubscriptions(user, eventType, dates);
     }
 
-    public void sendToQueue(User user, Set<LocalDate> dates, SSEType eventType) {
+    public void sendToQueue(User user, Set<LocalDate> dates, SSEType eventType, String previewId) {
         for (LocalDate date : dates) {
-            this.rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.USER_EVENT_ROUTING_KEY, new SSEEvent(eventType, user.getId(), user.getId(), date));
+            this.rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.USER_EVENT_ROUTING_KEY, new SSEEvent(eventType, user.getId(), user.getId(), date, previewId));
         }
     }
 

@@ -157,7 +157,9 @@ public class VisitMergingService {
         }
         logger.debug("Processed [{}] visits into [{}] merged visits for user: [{}]",
                 allVisits.size(), processedVisits.size(), user.getUsername());
-        this.userNotificationService.newVisits(user, processedVisits);
+        if (previewId == null) {
+            this.userNotificationService.newVisits(user, processedVisits);
+        }
     }
 
 
