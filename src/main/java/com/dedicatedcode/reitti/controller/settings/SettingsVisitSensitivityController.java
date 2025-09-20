@@ -4,7 +4,7 @@ import com.dedicatedcode.reitti.dto.ConfigurationForm;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.processing.Configuration;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.ConfigurationJdbcService;
+import com.dedicatedcode.reitti.repository.VisitDetectionParametersJdbcService;
 import com.dedicatedcode.reitti.service.VisitDetectionPreviewService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -21,11 +21,11 @@ import java.util.List;
 @RequestMapping("/settings/visit-sensitivity")
 public class SettingsVisitSensitivityController {
     
-    private final ConfigurationJdbcService configurationService;
+    private final VisitDetectionParametersJdbcService configurationService;
     private final VisitDetectionPreviewService visitDetectionPreviewService;
     private final boolean dataManagementEnabled;
 
-    public SettingsVisitSensitivityController(ConfigurationJdbcService configurationService,
+    public SettingsVisitSensitivityController(VisitDetectionParametersJdbcService configurationService,
                                               VisitDetectionPreviewService visitDetectionPreviewService,
                                               @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.configurationService = configurationService;
@@ -139,7 +139,6 @@ public class SettingsVisitSensitivityController {
                                        @AuthenticationPrincipal User user,
                                        Model model) {
         Configuration config = form.toConfiguration(ZoneId.of(timezone));
-
 
         Instant date = previewDate != null ? ZonedDateTime.of(LocalDate.parse(previewDate).atStartOfDay(), ZoneId.of(timezone)).toInstant() : Instant.now().truncatedTo(ChronoUnit.DAYS);
         String effectivePreviewDate = previewDate != null ? previewDate :

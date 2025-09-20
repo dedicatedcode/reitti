@@ -15,10 +15,10 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @IntegrationTest
-class ConfigurationJdbcServiceTest {
+class VisitDetectionParametersJdbcServiceTest {
 
     @Autowired
-    private ConfigurationJdbcService configurationJdbcService;
+    private VisitDetectionParametersJdbcService visitDetectionParametersJdbcService;
 
     @Autowired
     private TestingService testingService;
@@ -35,7 +35,7 @@ class ConfigurationJdbcServiceTest {
     void shouldSaveAndFindConfiguration() {
         // Given
         Configuration.VisitDetection visitDetection = new Configuration.VisitDetection(
-                100L, 5L, 300L, 600L
+                100L, 5, 300L, 600L
         );
         Configuration.VisitMerging visitMerging = new Configuration.VisitMerging(
                 24L, 1800L, 50L
@@ -45,10 +45,10 @@ class ConfigurationJdbcServiceTest {
         );
 
         // When
-        configurationJdbcService.saveConfiguration(testUser, configuration);
+        visitDetectionParametersJdbcService.saveConfiguration(testUser, configuration);
 
         // Then
-        List<Configuration> configurations = configurationJdbcService.findAllConfigurationsForUser(testUser);
+        List<Configuration> configurations = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
         assertThat(configurations).hasSize(1);
 
         Configuration savedConfig = configurations.getFirst();
@@ -67,7 +67,7 @@ class ConfigurationJdbcServiceTest {
     void shouldSaveConfigurationWithNullValidSince() {
         // Given
         Configuration.VisitDetection visitDetection = new Configuration.VisitDetection(
-                200L, 3L, 600L, 1200L
+                200L, 3, 600L, 1200L
         );
         Configuration.VisitMerging visitMerging = new Configuration.VisitMerging(
                 12L, 900L, 25L
@@ -77,10 +77,10 @@ class ConfigurationJdbcServiceTest {
         );
 
         // When
-        configurationJdbcService.saveConfiguration(testUser, configuration);
+        visitDetectionParametersJdbcService.saveConfiguration(testUser, configuration);
 
         // Then
-        List<Configuration> configurations = configurationJdbcService.findAllConfigurationsForUser(testUser);
+        List<Configuration> configurations = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
         assertThat(configurations).hasSize(1);
         assertThat(configurations.getFirst().getValidSince()).isNull();
     }
@@ -89,7 +89,7 @@ class ConfigurationJdbcServiceTest {
     void shouldUpdateConfiguration() {
         // Given - save initial configuration
         Configuration.VisitDetection initialVisitDetection = new Configuration.VisitDetection(
-                100L, 5L, 300L, 600L
+                100L, 5, 300L, 600L
         );
         Configuration.VisitMerging initialVisitMerging = new Configuration.VisitMerging(
                 24L, 1800L, 50L
@@ -97,14 +97,14 @@ class ConfigurationJdbcServiceTest {
         Configuration initialConfig = new Configuration(
                 null, initialVisitDetection, initialVisitMerging, Instant.now()
         );
-        configurationJdbcService.saveConfiguration(testUser, initialConfig);
+        visitDetectionParametersJdbcService.saveConfiguration(testUser, initialConfig);
 
-        List<Configuration> savedConfigs = configurationJdbcService.findAllConfigurationsForUser(testUser);
+        List<Configuration> savedConfigs = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
         Configuration savedConfig = savedConfigs.getFirst();
 
         // When - update the configuration
         Configuration.VisitDetection updatedVisitDetection = new Configuration.VisitDetection(
-                150L, 7L, 450L, 900L
+                150L, 7, 450L, 900L
         );
         Configuration.VisitMerging updatedVisitMerging = new Configuration.VisitMerging(
                 48L, 3600L, 75L
@@ -113,10 +113,10 @@ class ConfigurationJdbcServiceTest {
         Configuration updatedConfig = new Configuration(
                 savedConfig.getId(), updatedVisitDetection, updatedVisitMerging, newValidSince
         );
-        configurationJdbcService.updateConfiguration(updatedConfig);
+        visitDetectionParametersJdbcService.updateConfiguration(updatedConfig);
 
         // Then
-        List<Configuration> configurations = configurationJdbcService.findAllConfigurationsForUser(testUser);
+        List<Configuration> configurations = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
         assertThat(configurations).hasSize(1);
 
         Configuration result = configurations.getFirst();
@@ -135,7 +135,7 @@ class ConfigurationJdbcServiceTest {
     void shouldDeleteConfiguration() {
         // Given - save configuration with validSince
         Configuration.VisitDetection visitDetection = new Configuration.VisitDetection(
-                100L, 5L, 300L, 600L
+                100L, 5, 300L, 600L
         );
         Configuration.VisitMerging visitMerging = new Configuration.VisitMerging(
                 24L, 1800L, 50L
@@ -143,16 +143,16 @@ class ConfigurationJdbcServiceTest {
         Configuration configuration = new Configuration(
                 null, visitDetection, visitMerging, Instant.now()
         );
-        configurationJdbcService.saveConfiguration(testUser, configuration);
+        visitDetectionParametersJdbcService.saveConfiguration(testUser, configuration);
 
-        List<Configuration> savedConfigs = configurationJdbcService.findAllConfigurationsForUser(testUser);
+        List<Configuration> savedConfigs = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
         Long configId = savedConfigs.getFirst().getId();
 
         // When
-        configurationJdbcService.delete(configId);
+        visitDetectionParametersJdbcService.delete(configId);
 
         // Then
-        List<Configuration> configurations = configurationJdbcService.findAllConfigurationsForUser(testUser);
+        List<Configuration> configurations = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
         assertThat(configurations).isEmpty();
     }
 
@@ -160,7 +160,7 @@ class ConfigurationJdbcServiceTest {
     void shouldNotDeleteConfigurationWithNullValidSince() {
         // Given - save configuration with null validSince
         Configuration.VisitDetection visitDetection = new Configuration.VisitDetection(
-                100L, 5L, 300L, 600L
+                100L, 5, 300L, 600L
         );
         Configuration.VisitMerging visitMerging = new Configuration.VisitMerging(
                 24L, 1800L, 50L
@@ -168,16 +168,16 @@ class ConfigurationJdbcServiceTest {
         Configuration configuration = new Configuration(
                 null, visitDetection, visitMerging, null
         );
-        configurationJdbcService.saveConfiguration(testUser, configuration);
+        visitDetectionParametersJdbcService.saveConfiguration(testUser, configuration);
 
-        List<Configuration> savedConfigs = configurationJdbcService.findAllConfigurationsForUser(testUser);
+        List<Configuration> savedConfigs = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
         Long configId = savedConfigs.getFirst().getId();
 
         // When
-        configurationJdbcService.delete(configId);
+        visitDetectionParametersJdbcService.delete(configId);
 
         // Then - configuration should still exist because validSince is null
-        List<Configuration> configurations = configurationJdbcService.findAllConfigurationsForUser(testUser);
+        List<Configuration> configurations = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
         assertThat(configurations).hasSize(1);
     }
 
@@ -189,7 +189,7 @@ class ConfigurationJdbcServiceTest {
         Instant later = now.plusSeconds(3600);
 
         Configuration.VisitDetection visitDetection = new Configuration.VisitDetection(
-                100L, 5L, 300L, 600L
+                100L, 5, 300L, 600L
         );
         Configuration.VisitMerging visitMerging = new Configuration.VisitMerging(
                 24L, 1800L, 50L
@@ -201,13 +201,13 @@ class ConfigurationJdbcServiceTest {
         Configuration config3 = new Configuration(null, visitDetection, visitMerging, earlier);
         Configuration config4 = new Configuration(null, visitDetection, visitMerging, null);
 
-        configurationJdbcService.saveConfiguration(testUser, config1);
-        configurationJdbcService.saveConfiguration(testUser, config2);
-        configurationJdbcService.saveConfiguration(testUser, config3);
-        configurationJdbcService.saveConfiguration(testUser, config4);
+        visitDetectionParametersJdbcService.saveConfiguration(testUser, config1);
+        visitDetectionParametersJdbcService.saveConfiguration(testUser, config2);
+        visitDetectionParametersJdbcService.saveConfiguration(testUser, config3);
+        visitDetectionParametersJdbcService.saveConfiguration(testUser, config4);
 
         // When
-        List<Configuration> configurations = configurationJdbcService.findAllConfigurationsForUser(testUser);
+        List<Configuration> configurations = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
 
         // Then - should be ordered by validSince DESC NULLS LAST
         assertThat(configurations).hasSize(4);
@@ -223,7 +223,7 @@ class ConfigurationJdbcServiceTest {
         User anotherUser = testingService.randomUser();
 
         // When
-        List<Configuration> configurations = configurationJdbcService.findAllConfigurationsForUser(anotherUser);
+        List<Configuration> configurations = visitDetectionParametersJdbcService.findAllConfigurationsForUser(anotherUser);
 
         // Then
         assertThat(configurations).isEmpty();

@@ -5,10 +5,12 @@ import com.dedicatedcode.reitti.event.ProcessedVisitCreatedEvent;
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.event.VisitUpdatedEvent;
 import com.dedicatedcode.reitti.model.geo.*;
+import com.dedicatedcode.reitti.model.processing.Configuration;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.GeoLocationTimezoneService;
 import com.dedicatedcode.reitti.service.UserNotificationService;
+import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -16,7 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -45,10 +46,7 @@ public class VisitMergingService {
     private final RabbitTemplate rabbitTemplate;
     private final UserNotificationService userNotificationService;
     private final GeoLocationTimezoneService timezoneService;
-
-    private final long mergeThresholdSeconds;
-    private final long mergeThresholdMeters;
-    private final int searchRangeExtensionInHours;
+    private final VisitDetectionParametersService visitDetectionParametersService;
 
     @Autowired
     public VisitMergingService(VisitJdbcService visitJdbcService,
@@ -63,9 +61,7 @@ public class VisitMergingService {
                                GeometryFactory geometryFactory,
                                UserNotificationService userNotificationService,
                                GeoLocationTimezoneService timezoneService,
-                               @Value("${reitti.visit.merge-max-stay-search-extension-days:2}") int maxStaySearchExtensionInDays,
-                               @Value("${reitti.visit.merge-threshold-seconds:300}") long mergeThresholdSeconds,
-                               @Value("${reitti.visit.merge-threshold-meters:100}") long mergeThresholdMeters) {
+                               VisitDetectionParametersService visitDetectionParametersService) {
         this.visitJdbcService = visitJdbcService;
         this.previewVisitJdbcService = previewVisitJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
@@ -78,9 +74,7 @@ public class VisitMergingService {
         this.geometryFactory = geometryFactory;
         this.userNotificationService = userNotificationService;
         this.timezoneService = timezoneService;
-        this.mergeThresholdSeconds = mergeThresholdSeconds;
-        this.mergeThresholdMeters = mergeThresholdMeters;
-        this.searchRangeExtensionInHours = maxStaySearchExtensionInDays * 24;
+        this.visitDetectionParametersService = visitDetectionParametersService;
     }
 
     public void visitUpdated(VisitUpdatedEvent event) {
@@ -100,12 +94,20 @@ public class VisitMergingService {
             return;
         }
 
-        Instant searchStart = visits.stream().min(Comparator.comparing(Visit::getStartTime)).map(Visit::getStartTime).map(instant -> instant.minus(searchRangeExtensionInHours, ChronoUnit.HOURS)).orElseThrow();
-        Instant searchEnd = visits.stream().max(Comparator.comparing(Visit::getEndTime)).map(Visit::getEndTime).map(instant -> instant.plus(searchRangeExtensionInHours, ChronoUnit.HOURS)).orElseThrow();
-        processAndMergeVisits(user.get(), previewId, searchStart, searchEnd);
+        Instant firstVisitTime = visits.stream().map(Visit::getStartTime).min(Comparator.naturalOrder()).orElseThrow();
+        Configuration.VisitMerging mergeConfiguration;
+        if (previewId == null) {
+            mergeConfiguration = this.visitDetectionParametersService.getCurrentConfiguration(user.get(), firstVisitTime).getVisitMerging();
+        } else{
+            mergeConfiguration = this.visitDetectionParametersService.getCurrentConfiguration(user.get(), previewId).getVisitMerging();
+        }
+        Instant searchStart = visits.stream().min(Comparator.comparing(Visit::getStartTime)).map(Visit::getStartTime).map(instant -> instant.minus(mergeConfiguration.getSearchDurationInHours(), ChronoUnit.HOURS)).orElseThrow();
+        Instant searchEnd = visits.stream().max(Comparator.comparing(Visit::getEndTime)).map(Visit::getEndTime).map(instant -> instant.plus(mergeConfiguration.getSearchDurationInHours(), ChronoUnit.HOURS)).orElseThrow();
+
+        processAndMergeVisits(user.get(), previewId, searchStart, searchEnd, mergeConfiguration);
     }
 
-    private void processAndMergeVisits(User user, String previewId, Instant searchStart, Instant searchEnd) {
+    private void processAndMergeVisits(User user, String previewId, Instant searchStart, Instant searchEnd, Configuration.VisitMerging mergeConfiguration) {
         logger.info("Processing and merging visits for user: [{}] between [{}] and [{}]", user.getUsername(), searchStart, searchEnd);
         List<ProcessedVisit> allProcessedVisitsInRange;
         if (previewId == null) {
@@ -142,13 +144,13 @@ public class VisitMergingService {
         }
 
         // Process all visits chronologically to avoid overlaps
-        List<ProcessedVisit> processedVisits = mergeVisitsChronologically(user, previewId, allVisits);
+        List<ProcessedVisit> processedVisits = mergeVisitsChronologically(user, previewId, allVisits, mergeConfiguration);
 
         if (previewId == null) {
             processedVisitJdbcService.bulkInsert(user, processedVisits)
                     .stream()
                     .sorted(Comparator.comparing(ProcessedVisit::getStartTime))
-                    .forEach(processedVisit -> this.rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, new ProcessedVisitCreatedEvent(user.getUsername(), processedVisit.getId(), previewId)));
+                    .forEach(processedVisit -> this.rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.DETECT_TRIP_ROUTING_KEY, new ProcessedVisitCreatedEvent(user.getUsername(), processedVisit.getId(), null)));
         } else {
             previewProcessedVisitJdbcService.bulkInsert(user, previewId, processedVisits)
                     .stream()
@@ -163,7 +165,7 @@ public class VisitMergingService {
     }
 
 
-    private List<ProcessedVisit> mergeVisitsChronologically(User user, String previewId, List<Visit> visits) {
+    private List<ProcessedVisit> mergeVisitsChronologically(User user, String previewId, List<Visit> visits, Configuration.VisitMerging mergeConfiguration) {
         if (logger.isDebugEnabled()) {
             logger.debug("Merging [{}] visits between [{}] and [{}]", visits.size(), visits.getFirst().getStartTime(), visits.getLast().getEndTime());
         }
@@ -195,7 +197,7 @@ public class VisitMergingService {
 
             // Check if the next visit is at the same place and within the time threshold
             boolean samePlace = nextPlace.getId().equals(currentPlace.getId());
-            boolean withinTimeThreshold = Duration.between(currentEndTime, nextVisit.getStartTime()).getSeconds() <= mergeThresholdSeconds;
+            boolean withinTimeThreshold = Duration.between(currentEndTime, nextVisit.getStartTime()).getSeconds() <= mergeConfiguration.getMaxMergeTimeBetweenSameVisits();
 
             boolean shouldMergeWithNextVisit = samePlace && withinTimeThreshold;
 
@@ -209,7 +211,7 @@ public class VisitMergingService {
                 }
                 if (pointsBetweenVisits.size() > 2) {
                     double travelledDistanceInMeters = GeoUtils.calculateTripDistance(pointsBetweenVisits);
-                    shouldMergeWithNextVisit = travelledDistanceInMeters < mergeThresholdMeters;
+                    shouldMergeWithNextVisit = travelledDistanceInMeters <= mergeConfiguration.getMinDistanceBetweenVisits();
                 } else {
                     logger.debug("There are no points tracked between {} and {}. Will merge consecutive visits because they are on the same place", currentEndTime, nextVisit.getStartTime());
                     shouldMergeWithNextVisit = true;

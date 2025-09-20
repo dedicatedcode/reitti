@@ -10,9 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,7 +23,7 @@ public class PreviewRawLocationPointJdbcService {
 
     public PreviewRawLocationPointJdbcService(JdbcTemplate jdbcTemplate, PointReaderWriter pointReaderWriter) {
         this.jdbcTemplate = jdbcTemplate;
-        this.rawLocationPointRowMapper = (rs, rowNum) -> new RawLocationPoint(
+        this.rawLocationPointRowMapper = (rs, _) -> new RawLocationPoint(
                 rs.getLong("id"),
                 rs.getTimestamp("timestamp").toInstant(),
                 pointReaderWriter.read(rs.getString("geom")),

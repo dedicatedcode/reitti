@@ -14,7 +14,7 @@ public class ConfigurationForm {
     
     // Advanced mode - all Configuration fields
     private Long searchDistanceInMeters;
-    private Long minimumAdjacentPoints;
+    private Integer minimumAdjacentPoints;
     private Long minimumStayTimeInSeconds;
     private Long maxMergeTimeBetweenSameStayPoints;
     private Long searchDurationInHours;
@@ -37,8 +37,8 @@ public class ConfigurationForm {
     public Long getSearchDistanceInMeters() { return searchDistanceInMeters; }
     public void setSearchDistanceInMeters(Long searchDistanceInMeters) { this.searchDistanceInMeters = searchDistanceInMeters; }
     
-    public Long getMinimumAdjacentPoints() { return minimumAdjacentPoints; }
-    public void setMinimumAdjacentPoints(Long minimumAdjacentPoints) { this.minimumAdjacentPoints = minimumAdjacentPoints; }
+    public Integer getMinimumAdjacentPoints() { return minimumAdjacentPoints; }
+    public void setMinimumAdjacentPoints(Integer minimumAdjacentPoints) { this.minimumAdjacentPoints = minimumAdjacentPoints; }
     
     public Long getMinimumStayTimeInSeconds() { return minimumStayTimeInSeconds; }
     public void setMinimumStayTimeInSeconds(Long minimumStayTimeInSeconds) { this.minimumStayTimeInSeconds = minimumStayTimeInSeconds; }

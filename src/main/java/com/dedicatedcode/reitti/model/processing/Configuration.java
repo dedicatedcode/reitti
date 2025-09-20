@@ -34,11 +34,11 @@ public class Configuration implements Serializable {
 
     public static class VisitDetection implements Serializable{
         private final long searchDistanceInMeters;
-        private final long minimumAdjacentPoints;
+        private final int minimumAdjacentPoints;
         private final long minimumStayTimeInSeconds;
         private final long maxMergeTimeBetweenSameStayPoints;
 
-        public VisitDetection(long searchDistanceInMeters, long minimumAdjacentPoints, 
+        public VisitDetection(long searchDistanceInMeters, int minimumAdjacentPoints,
                              long minimumStayTimeInSeconds, long maxMergeTimeBetweenSameStayPoints) {
             this.searchDistanceInMeters = searchDistanceInMeters;
             this.minimumAdjacentPoints = minimumAdjacentPoints;
@@ -50,7 +50,7 @@ public class Configuration implements Serializable {
             return searchDistanceInMeters;
         }
 
-        public long getMinimumAdjacentPoints() {
+        public int getMinimumAdjacentPoints() {
             return minimumAdjacentPoints;
         }
 
