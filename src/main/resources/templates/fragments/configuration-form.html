@@ -184,78 +184,80 @@
         </div>
     </form>
     <script>
-        let formChangeTimeout = null;
-        let isPreviewOpen = false;
+        (function() {
+            let formChangeTimeout = null;
+            let isPreviewOpen = false;
 
-        // Check if preview is currently open
-        function checkPreviewOpen() {
-            return document.getElementById('configuration-preview') !== null;
-        }
-
-        function handleFormChange(event) {
-            // Skip if preview is not open
-            if (!checkPreviewOpen()) {
-                return;
+            // Check if preview is currently open
+            function checkPreviewOpen() {
+                return document.getElementById('configuration-preview') !== null;
             }
 
-            // Skip change events from the preview date input to avoid infinite loops
-            if (event && event.target && event.target.id === 'preview-date') {
-                return;
-            }
+            window.handleFormChange = function(event) {
+                // Skip if preview is not open
+                if (!checkPreviewOpen()) {
+                    return;
+                }
 
-            // Debounce form changes to avoid too many requests
-            if (formChangeTimeout) {
-                clearTimeout(formChangeTimeout);
-            }
+                // Skip change events from the preview date input to avoid infinite loops
+                if (event && event.target && event.target.id === 'preview-date') {
+                    return;
+                }
 
-            formChangeTimeout = setTimeout(() => {
-                triggerPreviewUpdate();
-            }, 500); // Wait 500ms after last change
-        }
+                // Debounce form changes to avoid too many requests
+                if (formChangeTimeout) {
+                    clearTimeout(formChangeTimeout);
+                }
 
-        function triggerPreviewUpdate() {
-            const previewArea = document.getElementById('preview-area');
-            const previewDateInput = document.getElementById('preview-date');
+                formChangeTimeout = setTimeout(() => {
+                    triggerPreviewUpdate();
+                }, 500); // Wait 500ms after last change
+            };
 
-            if (!previewArea || !previewDateInput) {
-                return;
-            }
+            function triggerPreviewUpdate() {
+                const previewArea = document.getElementById('preview-area');
+                const previewDateInput = document.getElementById('preview-date');
 
-            // Store current state
-            const currentDate = previewDateInput.value;
-            const currentActiveTab = document.querySelector('#configuration-preview .btn.active')?.id;
+                if (!previewArea || !previewDateInput) {
+                    return;
+                }
 
-            // Create a temporary form data object that includes the current preview date
-            const form = document.getElementById('configuration-form');
-            const formData = new FormData(form);
-            formData.set('previewDate', currentDate);
+                // Store current state
+                const currentDate = previewDateInput.value;
+                const currentActiveTab = document.querySelector('#configuration-preview .btn.active')?.id;
 
-            // Trigger the preview update
-            htmx.ajax('POST', '/settings/visit-sensitivity/preview', {
-                values: Object.fromEntries(formData),
-                target: '#preview-area',
-                swap: 'innerHTML'
-            }).then(() => {
-                // After the preview is updated, restore the active tab
-                setTimeout(() => {
-                    if (currentActiveTab === 'preview-data-btn') {
-                        const previewBtn = document.getElementById('preview-data-btn');
-                        if (previewBtn && typeof window.showPreviewData === 'function') {
-                            window.showPreviewData();
+                // Create a temporary form data object that includes the current preview date
+                const form = document.getElementById('configuration-form');
+                const formData = new FormData(form);
+                formData.set('previewDate', currentDate);
+
+                // Trigger the preview update
+                htmx.ajax('POST', '/settings/visit-sensitivity/preview', {
+                    values: Object.fromEntries(formData),
+                    target: '#preview-area',
+                    swap: 'innerHTML'
+                }).then(() => {
+                    // After the preview is updated, restore the active tab
+                    setTimeout(() => {
+                        if (currentActiveTab === 'preview-data-btn') {
+                            const previewBtn = document.getElementById('preview-data-btn');
+                            if (previewBtn && typeof window.showPreviewData === 'function') {
+                                window.showPreviewData();
+                            }
                         }
-                    }
-                    // Current data tab is active by default, so no need to explicitly set it
-                }, 100);
-            });
-        }
-
-        // Function to get user timezone (needed for preview requests)
-        function getUserTimezone() {
-            if (window.userSettings?.timezoneOverride) {
-                return window.userSettings.timezoneOverride;
-            } else {
-                return Intl.DateTimeFormat().resolvedOptions().timeZone;
+                        // Current data tab is active by default, so no need to explicitly set it
+                    }, 100);
+                });
             }
-        }
+
+            // Function to get user timezone (needed for preview requests)
+            window.getUserTimezone = function() {
+                if (window.userSettings?.timezoneOverride) {
+                    return window.userSettings.timezoneOverride;
+                } else {
+                    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+                }
+            };
+        })();
     </script>
 </div>
