@@ -8,11 +8,13 @@
                 <button type="button" 
                         th:class="${mode == 'simple' ? 'btn active' : 'btn'}"
                         th:hx-get="${configurationForm.id != null ? '/settings/visit-sensitivity/edit/' + configurationForm.id + '?mode=simple' : '/settings/visit-sensitivity/new?mode=simple'}"
-                        hx-target="#edit-form">Simple</button>
+                        hx-target="#configuration-form"
+                        hx-swap="outerHTML">Simple</button>
                 <button type="button" 
                         th:class="${mode == 'advanced' ? 'btn active' : 'btn'}"
                         th:hx-get="${configurationForm.id != null ? '/settings/visit-sensitivity/edit/' + configurationForm.id + '?mode=advanced' : '/settings/visit-sensitivity/new?mode=advanced'}"
-                        hx-target="#edit-form">Advanced</button>
+                        hx-target="#configuration-form"
+                        hx-swap="outerHTML">Advanced</button>
             </div>
         </div>
     </div>
