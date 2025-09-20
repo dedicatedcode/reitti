@@ -87,6 +87,8 @@
             let currentMapInitialized = false;
             let previewMapInitialized = false;
             let previewReady = false;
+            let eventSource = null;
+            let reconnectTimeoutId = null;
             
             window.showCurrentData = function() {
                 document.getElementById('current-data-btn').classList.add('active');
@@ -107,6 +109,9 @@
                 
                 if (!previewMapInitialized && previewReady) {
                     initPreviewMap();
+                } else if (previewMapInitialized && previewReady) {
+                    // Reload data in case it was updated while tab was inactive
+                    loadPreviewMapData();
                 }
             };
             
@@ -449,6 +454,94 @@
                 const minutes = (durationText.match(/(\d+)m/) || [0, 0])[1];
                 return (parseInt(hours) * 60 + parseInt(minutes)) * 60 * 1000; // Convert to milliseconds
             }
+            
+            function connectSSE() {
+                console.log('Configuration Preview: Connecting to SSE...');
+                eventSource = new EventSource('/events');
+
+                eventSource.onopen = function() {
+                    console.log('Configuration Preview: SSE connection opened.');
+                    
+                    // Clear any pending reconnect timeout since we're connected
+                    if (reconnectTimeoutId) {
+                        clearTimeout(reconnectTimeoutId);
+                        reconnectTimeoutId = null;
+                    }
+                };
+
+                eventSource.onerror = function(error) {
+                    console.error('Configuration Preview: EventSource failed:', error);
+                    
+                    // Close the current connection
+                    if (eventSource) {
+                        eventSource.close();
+                        eventSource = null;
+                    }
+                    
+                    // Schedule reconnection after 5 seconds
+                    if (!reconnectTimeoutId) {
+                        console.log('Configuration Preview: Scheduling SSE reconnection in 5 seconds...');
+                        reconnectTimeoutId = setTimeout(() => {
+                            reconnectTimeoutId = null;
+                            connectSSE();
+                        }, 5000);
+                    }
+                };
+
+                eventSource.onmessage = function(event) {
+                    console.log('Configuration Preview: Received SSE event:', event.data);
+                    
+                    // Clear any pending reconnect timeout since we're receiving messages
+                    if (reconnectTimeoutId) {
+                        clearTimeout(reconnectTimeoutId);
+                        reconnectTimeoutId = null;
+                    }
+                    
+                    // Parse the event data
+                    try {
+                        const eventData = JSON.parse(event.data);
+                        
+                        // Check if this event is for our preview
+                        if (eventData.previewId && eventData.previewId === previewId) {
+                            console.log('Configuration Preview: Received event for our preview, reloading data');
+                            
+                            // Check if the event date matches our preview date
+                            if (eventData.date && eventData.date === previewDate) {
+                                // Reload preview data if preview is ready and visible
+                                if (previewReady) {
+                                    if (document.getElementById('preview-data-btn').classList.contains('active')) {
+                                        // Preview tab is active, reload immediately
+                                        loadPreviewMapData();
+                                    } else {
+                                        // Preview tab is not active, just mark that data needs refresh
+                                        console.log('Configuration Preview: Preview data updated, will refresh when tab becomes active');
+                                    }
+                                }
+                                
+                                // Also reload current data to show the difference
+                                if (currentMapInitialized) {
+                                    loadCurrentMapData();
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.warn('Configuration Preview: Could not parse SSE event data:', error);
+                    }
+                };
+            }
+            
+            function disconnectSSE() {
+                if (eventSource) {
+                    console.log('Configuration Preview: Disconnecting SSE...');
+                    eventSource.close();
+                    eventSource = null;
+                }
+                
+                if (reconnectTimeoutId) {
+                    clearTimeout(reconnectTimeoutId);
+                    reconnectTimeoutId = null;
+                }
+            }
 
             // Initialize current map by default
             initCurrentMap();
@@ -456,6 +549,24 @@
             
             // Start polling for preview status
             checkPreviewStatus();
+            
+            // Connect to SSE for real-time updates
+            connectSSE();
+            
+            // Cleanup function for when the fragment is removed/replaced
+            window.addEventListener('beforeunload', function() {
+                disconnectSSE();
+            });
+            
+            // Also disconnect when the page is hidden (e.g., tab switch)
+            document.addEventListener('visibilitychange', function() {
+                if (document.hidden) {
+                    disconnectSSE();
+                } else {
+                    // Reconnect when page becomes visible again
+                    connectSSE();
+                }
+            });
         })();
     </script>
     
