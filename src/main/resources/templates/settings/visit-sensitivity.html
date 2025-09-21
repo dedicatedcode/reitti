@@ -32,13 +32,13 @@
                     <button type="button" 
                             class="btn btn-warning"
                             hx-post="/settings/visit-sensitivity/recalculate"
-                            hx-target="#visit-sensitivity-section"
-                            hx-confirm="#{visit.sensitivity.recalculation.confirm}"
+                            hx-target="body"
+                            th:hx-confirm="#{visit.sensitivity.recalculation.confirm}"
                             th:text="#{visit.sensitivity.recalculation.start}">Start Recalculation</button>
                     <button type="button" 
                             class="btn btn-secondary"
                             hx-post="/settings/visit-sensitivity/dismiss-recalculation"
-                            hx-target="#visit-sensitivity-section"
+                            hx-target="body"
                             th:text="#{visit.sensitivity.recalculation.dismiss}">Dismiss</button>
                 </div>
             </div>
