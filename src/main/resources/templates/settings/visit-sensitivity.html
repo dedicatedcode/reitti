@@ -30,10 +30,12 @@
             
             <!-- Edit Form Area -->
             <div id="edit-form">
-                <div th:if="${configurationForm}" th:replace="~{fragments/configuration-form :: configuration-form}"></div>
+                <div th:if="${configurationForm}">>
+                    <div th:replace="~{fragments/configuration-form :: configuration-form}"></div>
                 <!-- Form will be loaded here via HTMX when not showing edit form -->
+                </div>
             </div>
-            
+
             <!-- Preview Area -->
             <div id="preview-area">
                 <!-- Preview will be loaded here via HTMX -->

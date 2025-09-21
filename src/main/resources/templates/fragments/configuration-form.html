@@ -1,4 +1,4 @@
-<div xmlns:th="http://www.thymeleaf.org" th:fragment="configuration-form" class="settings-card">
+<div xmlns:th="http://www.thymeleaf.org" th:fragment="configuration-form" id="edit-form" class="settings-card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h3 th:text="${configurationForm.id != null ? 'Edit Configuration' : 'New Configuration'}">Configuration</h3>
         
@@ -8,12 +8,12 @@
                 <button type="button" 
                         th:class="${mode == 'simple' ? 'btn active' : 'btn'}"
                         th:hx-get="${configurationForm.id != null ? '/settings/visit-sensitivity/edit/' + configurationForm.id + '?mode=simple' : '/settings/visit-sensitivity/new?mode=simple'}"
-                        hx-target="#configuration-form"
+                        hx-target="#edit-form"
                         hx-swap="outerHTML">Simple</button>
                 <button type="button" 
                         th:class="${mode == 'advanced' ? 'btn active' : 'btn'}"
                         th:hx-get="${configurationForm.id != null ? '/settings/visit-sensitivity/edit/' + configurationForm.id + '?mode=advanced' : '/settings/visit-sensitivity/new?mode=advanced'}"
-                        hx-target="#configuration-form"
+                        hx-target="#edit-form"
                         hx-swap="outerHTML">Advanced</button>
             </div>
         </div>
