@@ -141,11 +141,14 @@ public class SettingsVisitSensitivityController {
         
         configurationService.delete(id);
         
-        // Return updated list with recalculation message
+        // Return whole page with recalculation message
         configurations = configurationService.findAllConfigurationsForUser(user);
         model.addAttribute("configurations", configurations);
         model.addAttribute("successMessage", "visit.sensitivity.recalculation.advised");
-        return "fragments/configuration-list :: configuration-list";
+        model.addAttribute("activeSection", "visit-sensitivity");
+        model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
+        model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+        return "settings/visit-sensitivity";
     }
     
     @PostMapping("/preview")
