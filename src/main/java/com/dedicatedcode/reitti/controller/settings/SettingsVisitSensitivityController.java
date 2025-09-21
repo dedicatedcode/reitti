@@ -7,6 +7,8 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.VisitDetectionParametersJdbcService;
 import com.dedicatedcode.reitti.service.VisitDetectionPreviewService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -26,13 +28,16 @@ public class SettingsVisitSensitivityController {
     
     private final VisitDetectionParametersJdbcService configurationService;
     private final VisitDetectionPreviewService visitDetectionPreviewService;
+    private final MessageSource messageSource;
     private final boolean dataManagementEnabled;
 
     public SettingsVisitSensitivityController(VisitDetectionParametersJdbcService configurationService,
                                               VisitDetectionPreviewService visitDetectionPreviewService,
+                                              MessageSource messageSource,
                                               @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.configurationService = configurationService;
         this.visitDetectionPreviewService = visitDetectionPreviewService;
+        this.messageSource = messageSource;
         this.dataManagementEnabled = dataManagementEnabled;
     }
     
@@ -161,9 +166,9 @@ public class SettingsVisitSensitivityController {
             // TODO: Implement recalculation logic here
             // This should trigger the recalculation process and mark configurations as no longer needing recalculation
             
-            model.addAttribute("successMessage", "visit.sensitivity.recalculation.started");
+            model.addAttribute("successMessage", messageSource.getMessage("visit.sensitivity.recalculation.started", null, LocaleContextHolder.getLocale()));
         } catch (Exception e) {
-            model.addAttribute("errorMessage", "visit.sensitivity.recalculation.error");
+            model.addAttribute("errorMessage", messageSource.getMessage("visit.sensitivity.recalculation.error", new Object[]{e.getMessage()}, LocaleContextHolder.getLocale()));
         }
         
         List<DetectionParameter> detectionParameters = configurationService.findAllConfigurationsForUser(user);
@@ -182,9 +187,9 @@ public class SettingsVisitSensitivityController {
             this.configurationService.findAllConfigurationsForUser(user).forEach(config -> {
                 this.configurationService.updateConfiguration(config.withNeedsRecalculation(false));
             });
-            model.addAttribute("successMessage", "visit.sensitivity.recalculation.dismissed");
+            model.addAttribute("successMessage", messageSource.getMessage("visit.sensitivity.recalculation.dismissed", null, LocaleContextHolder.getLocale()));
         } catch (Exception e) {
-            model.addAttribute("errorMessage", "Error dismissing recalculation advice: " + e.getMessage());
+            model.addAttribute("errorMessage", messageSource.getMessage("visit.sensitivity.recalculation.error", new Object[]{e.getMessage()}, LocaleContextHolder.getLocale()));
         }
         
         List<DetectionParameter> detectionParameters = configurationService.findAllConfigurationsForUser(user);
