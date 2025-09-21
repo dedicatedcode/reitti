@@ -1,0 +1,2 @@
+-- we are setting the admin password again else every request will be redirected to the setup page
+UPDATE users SET password = '$2a$10$jKFC64u08A1xpRAq9.dueei5dA6s2AkdTDPf2mZSDuJ3EwiiPEoOG' WHERE username = 'admin';
