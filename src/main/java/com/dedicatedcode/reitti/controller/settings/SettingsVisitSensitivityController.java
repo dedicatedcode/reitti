@@ -13,7 +13,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.*;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -176,9 +179,9 @@ public class SettingsVisitSensitivityController {
     @PostMapping("/dismiss-recalculation")
     public String dismissRecalculation(@AuthenticationPrincipal User user, Model model) {
         try {
-            // TODO: Implement dismiss logic here
-            // This should mark all configurations as no longer needing recalculation without actually recalculating
-            
+            this.configurationService.findAllConfigurationsForUser(user).forEach(config -> {
+                this.configurationService.updateConfiguration(config.withNeedsRecalculation(false));
+            });
             model.addAttribute("successMessage", "visit.sensitivity.recalculation.dismissed");
         } catch (Exception e) {
             model.addAttribute("errorMessage", "Error dismissing recalculation advice: " + e.getMessage());
