@@ -33,6 +33,7 @@
                                 th:text="#{visit.sensitivity.edit}">Edit</button>
                         <button th:hx-delete="@{'/settings/visit-sensitivity/' + ${config.getId()}}"
                                 hx-target="#configuration-list"
+                                hx-swap="outerHTML"
                                 hx-confirm="#{visit.sensitivity.delete.confirm}"
                                 th:disabled="${config.getValidSince() == null}"
                                 class="btn btn-danger btn-sm"

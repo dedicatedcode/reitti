@@ -46,9 +46,11 @@ public class SettingsVisitSensitivityController {
     
     @GetMapping("/edit/{id}")
     public String editConfiguration(@PathVariable Long id,
-                                    @RequestParam(required = false) String mode,
+                                    @RequestParam(required = false, name = "new-mode") String mode,
                                     @RequestParam(required = false, defaultValue = "UTC") String timezone,
-                                    @AuthenticationPrincipal User user, Model model) {
+                                    @RequestParam(required = false) Integer sensitivityLevel,
+                                    @AuthenticationPrincipal User user,
+                                    Model model) {
         ZoneId userTimezone = ZoneId.of(timezone);
 
         Configuration config = configurationService.findById(id, user).orElseThrow(() -> new IllegalArgumentException("Configuration not found"));
@@ -56,7 +58,11 @@ public class SettingsVisitSensitivityController {
         ConfigurationForm form = ConfigurationForm.fromConfiguration(config, userTimezone);
         
         String effectiveMode = mode != null ? mode : form.getMode();
-        
+
+        if (sensitivityLevel != null && "advanced".equals(effectiveMode)) {
+            form.applySensitivityLevel(sensitivityLevel);
+        }
+
         model.addAttribute("configurationForm", form);
         model.addAttribute("mode", effectiveMode);
         model.addAttribute("isDefaultConfig", config.getValidSince() == null);
@@ -65,12 +71,12 @@ public class SettingsVisitSensitivityController {
     }
     
     @GetMapping("/new")
-    public String newConfiguration(@RequestParam(defaultValue = "simple") String mode,
+    public String newConfiguration(@RequestParam(defaultValue = "simple", name = "new-mode") String mode,
                                    @RequestParam(required = false, defaultValue = "UTC") String timezone,
                                    Model model) {
         ConfigurationForm form = new ConfigurationForm();
         form.setValidSince(Instant.now().atZone(ZoneId.of(timezone)).toLocalDate());
-        
+
         model.addAttribute("configurationForm", form);
         model.addAttribute("mode", mode);
         model.addAttribute("isDefaultConfig", false);
@@ -102,6 +108,7 @@ public class SettingsVisitSensitivityController {
         model.addAttribute("activeSection", "visit-sensitivity");
         model.addAttribute("isAdmin", user.getRole() ==  Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+        model.addAttribute("configurationForm", null);
         return "settings/visit-sensitivity";
     }
     
