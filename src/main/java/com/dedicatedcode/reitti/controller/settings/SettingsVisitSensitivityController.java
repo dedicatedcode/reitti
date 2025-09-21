@@ -152,6 +152,48 @@ public class SettingsVisitSensitivityController {
         return "settings/visit-sensitivity";
     }
     
+    @PostMapping("/recalculate")
+    public String startRecalculation(@AuthenticationPrincipal User user, Model model) {
+        try {
+            // TODO: Implement recalculation logic here
+            // This should trigger the recalculation process and mark configurations as no longer needing recalculation
+            
+            model.addAttribute("successMessage", "visit.sensitivity.recalculation.started");
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", "visit.sensitivity.recalculation.error");
+        }
+        
+        List<DetectionParameter> detectionParameters = configurationService.findAllConfigurationsForUser(user);
+        model.addAttribute("configurations", detectionParameters);
+        model.addAttribute("activeSection", "visit-sensitivity");
+        model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
+        model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+        model.addAttribute("recalculationAdvised", detectionParameters.stream().anyMatch(this::calculateNeedsConfiguration));
+        
+        return "settings/visit-sensitivity";
+    }
+    
+    @PostMapping("/dismiss-recalculation")
+    public String dismissRecalculation(@AuthenticationPrincipal User user, Model model) {
+        try {
+            // TODO: Implement dismiss logic here
+            // This should mark all configurations as no longer needing recalculation without actually recalculating
+            
+            model.addAttribute("successMessage", "visit.sensitivity.recalculation.dismissed");
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", "Error dismissing recalculation advice: " + e.getMessage());
+        }
+        
+        List<DetectionParameter> detectionParameters = configurationService.findAllConfigurationsForUser(user);
+        model.addAttribute("configurations", detectionParameters);
+        model.addAttribute("activeSection", "visit-sensitivity");
+        model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
+        model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+        model.addAttribute("recalculationAdvised", detectionParameters.stream().anyMatch(this::calculateNeedsConfiguration));
+        
+        return "settings/visit-sensitivity";
+    }
+    
     @PostMapping("/preview")
     public String previewConfiguration(@ModelAttribute ConfigurationForm form,
                                        @RequestParam(required = false, defaultValue = "UTC") String timezone,

@@ -28,6 +28,19 @@
             <div th:if="${recalculationAdvised}" class="alert alert-warning">
                 <h3><span th:text="#{visit.sensitivity.recalculation.title}">Recalculation Advised</span></h3>
                 <p th:text="#{visit.sensitivity.recalculation.message}">Configuration has changed. Recalculation is highly advised for these changes to take effect on existing data, otherwise they will only affect new incoming data.</p>
+                <div class="alert-actions">
+                    <button type="button" 
+                            class="btn btn-warning"
+                            hx-post="/settings/visit-sensitivity/recalculate"
+                            hx-target="#visit-sensitivity-section"
+                            hx-confirm="#{visit.sensitivity.recalculation.confirm}"
+                            th:text="#{visit.sensitivity.recalculation.start}">Start Recalculation</button>
+                    <button type="button" 
+                            class="btn btn-secondary"
+                            hx-post="/settings/visit-sensitivity/dismiss-recalculation"
+                            hx-target="#visit-sensitivity-section"
+                            th:text="#{visit.sensitivity.recalculation.dismiss}">Dismiss</button>
+                </div>
             </div>
 
 
