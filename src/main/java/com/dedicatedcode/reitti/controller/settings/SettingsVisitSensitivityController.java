@@ -91,13 +91,26 @@ public class SettingsVisitSensitivityController {
                                     Model model) {
         try {
             Configuration config = form.toConfiguration(ZoneId.of(timezone));
+            boolean recalculationNeeded = false;
             
             if (config.getId() == null) {
+                // New configuration
                 configurationService.saveConfiguration(user, config);
-                model.addAttribute("successMessage", "Configuration saved successfully");
+                recalculationNeeded = true;
             } else {
+                // Existing configuration - check if it has changed
+                Configuration originalConfig = configurationService.findById(config.getId(), user)
+                    .orElseThrow(() -> new IllegalArgumentException("Configuration not found"));
+                
+                recalculationNeeded = form.hasConfigurationChanged(originalConfig);
                 configurationService.updateConfiguration(config);
-                model.addAttribute("successMessage", "Configuration updated successfully");
+            }
+            
+            // Set appropriate success message based on whether recalculation is needed
+            if (recalculationNeeded) {
+                model.addAttribute("successMessage", "visit.sensitivity.recalculation.advised");
+            } else {
+                model.addAttribute("successMessage", "visit.sensitivity.recalculation.not.needed");
             }
         } catch (Exception e) {
             model.addAttribute("errorMessage", "Failed to save configuration: " + e.getMessage());
@@ -128,9 +141,10 @@ public class SettingsVisitSensitivityController {
         
         configurationService.delete(id);
         
-        // Return updated list
+        // Return updated list with recalculation message
         configurations = configurationService.findAllConfigurationsForUser(user);
         model.addAttribute("configurations", configurations);
+        model.addAttribute("successMessage", "visit.sensitivity.recalculation.advised");
         return "fragments/configuration-list :: configuration-list";
     }
     

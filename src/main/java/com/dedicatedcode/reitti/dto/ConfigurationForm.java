@@ -159,6 +159,38 @@ public class ConfigurationForm {
         this.sensitivityLevel = level;
     }
     
+    // Check if configuration has changed compared to original
+    public boolean hasConfigurationChanged(Configuration original) {
+        if (original == null) {
+            return true; // New configuration
+        }
+        
+        Configuration current = toConfiguration(ZoneId.systemDefault()); // Timezone doesn't matter for comparison
+        
+        // Compare visit detection parameters
+        Configuration.VisitDetection originalDetection = original.getVisitDetection();
+        Configuration.VisitDetection currentDetection = current.getVisitDetection();
+        
+        if (originalDetection.getSearchDistanceInMeters() != currentDetection.getSearchDistanceInMeters() ||
+            originalDetection.getMinimumAdjacentPoints() != currentDetection.getMinimumAdjacentPoints() ||
+            originalDetection.getMinimumStayTimeInSeconds() != currentDetection.getMinimumStayTimeInSeconds() ||
+            originalDetection.getMaxMergeTimeBetweenSameStayPoints() != currentDetection.getMaxMergeTimeBetweenSameStayPoints()) {
+            return true;
+        }
+        
+        // Compare visit merging parameters
+        Configuration.VisitMerging originalMerging = original.getVisitMerging();
+        Configuration.VisitMerging currentMerging = current.getVisitMerging();
+        
+        if (originalMerging.getSearchDurationInHours() != currentMerging.getSearchDurationInHours() ||
+            originalMerging.getMaxMergeTimeBetweenSameVisits() != currentMerging.getMaxMergeTimeBetweenSameVisits() ||
+            originalMerging.getMinDistanceBetweenVisits() != currentMerging.getMinDistanceBetweenVisits()) {
+            return true;
+        }
+        
+        return false;
+    }
+    
     // Convert to Configuration
     public Configuration toConfiguration(ZoneId timezone) {
         Configuration.VisitDetection visitDetection;
