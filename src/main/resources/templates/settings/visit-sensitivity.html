@@ -34,7 +34,13 @@
                             hx-post="/settings/visit-sensitivity/recalculate"
                             hx-target="body"
                             th:hx-confirm="#{visit.sensitivity.recalculation.confirm}"
-                            th:text="#{visit.sensitivity.recalculation.start}">Start Recalculation</button>
+                            hx-indicator="#recalculate-spinner">
+                        <span class="button-text" th:text="#{visit.sensitivity.recalculation.start}">Start Recalculation</span>
+                        <span id="recalculate-spinner" class="htmx-indicator">
+                            <i class="lni lni-spinner-arrow"></i>
+                            <span th:text="#{visit.sensitivity.recalculation.starting}">Starting Recalculation...</span>
+                        </span>
+                    </button>
                     <button type="button" 
                             class="btn btn-secondary"
                             hx-post="/settings/visit-sensitivity/dismiss-recalculation"
