@@ -41,6 +41,7 @@ public class SettingsVisitSensitivityController {
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
         model.addAttribute("configurations", detectionParameters);
         model.addAttribute("activeSection", "visit-sensitivity");
+        model.addAttribute("recalculationAdvised", detectionParameters.stream().anyMatch(this::calculateNeedsConfiguration));
         return "settings/visit-sensitivity";
     }
     
@@ -91,28 +92,20 @@ public class SettingsVisitSensitivityController {
                                     Model model) {
         try {
             DetectionParameter config = form.toConfiguration(ZoneId.of(timezone));
-            boolean recalculationNeeded = false;
-            
+
             if (config.getId() == null) {
-                // New configuration
+                config = config.withNeedsRecalculation(true);
                 configurationService.saveConfiguration(user, config);
-                recalculationNeeded = true;
             } else {
                 // Existing configuration - check if it has changed
                 DetectionParameter originalConfig = configurationService.findById(config.getId(), user)
                     .orElseThrow(() -> new IllegalArgumentException("Configuration not found"));
                 
-                recalculationNeeded = form.hasConfigurationChanged(originalConfig);
+                config = config.withNeedsRecalculation(form.hasConfigurationChanged(originalConfig));
                 configurationService.updateConfiguration(config);
             }
             
-            // Set appropriate success message and recalculation advice
-            if (recalculationNeeded) {
-                model.addAttribute("successMessage", "Configuration saved successfully.");
-                model.addAttribute("recalculationAdvised", true);
-            } else {
-                model.addAttribute("successMessage", "Configuration saved successfully. Changes will apply to new incoming data.");
-            }
+            model.addAttribute("successMessage", "Configuration saved successfully. Changes will apply to new incoming data.");
         } catch (Exception e) {
             model.addAttribute("errorMessage", "Failed to save configuration: " + e.getMessage());
         }
@@ -123,9 +116,15 @@ public class SettingsVisitSensitivityController {
         model.addAttribute("isAdmin", user.getRole() ==  Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
         model.addAttribute("configurationForm", null);
+        model.addAttribute("recalculationAdvised", detectionParameters.stream().anyMatch(this::calculateNeedsConfiguration));
+
         return "settings/visit-sensitivity";
     }
-    
+
+    private boolean calculateNeedsConfiguration(DetectionParameter config) {
+        return config.needsRecalculation();
+    }
+
     @DeleteMapping("/{id}")
     public String deleteConfiguration(@PathVariable Long id, Authentication auth, Model model) {
         User user = (User) auth.getPrincipal();
@@ -142,14 +141,14 @@ public class SettingsVisitSensitivityController {
         
         configurationService.delete(id);
         
-        // Return whole page with recalculation message
         detectionParameters = configurationService.findAllConfigurationsForUser(user);
         model.addAttribute("configurations", detectionParameters);
         model.addAttribute("successMessage", "Configuration deleted successfully.");
-        model.addAttribute("recalculationAdvised", true);
         model.addAttribute("activeSection", "visit-sensitivity");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+        model.addAttribute("recalculationAdvised", detectionParameters.stream().anyMatch(this::calculateNeedsConfiguration));
+
         return "settings/visit-sensitivity";
     }
     
