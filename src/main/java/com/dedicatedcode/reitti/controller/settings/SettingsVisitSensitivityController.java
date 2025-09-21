@@ -106,11 +106,12 @@ public class SettingsVisitSensitivityController {
                 configurationService.updateConfiguration(config);
             }
             
-            // Set appropriate success message based on whether recalculation is needed
+            // Set appropriate success message and recalculation advice
             if (recalculationNeeded) {
-                model.addAttribute("successMessage", "visit.sensitivity.recalculation.advised");
+                model.addAttribute("successMessage", "Configuration saved successfully.");
+                model.addAttribute("recalculationAdvised", true);
             } else {
-                model.addAttribute("successMessage", "visit.sensitivity.recalculation.not.needed");
+                model.addAttribute("successMessage", "Configuration saved successfully. Changes will apply to new incoming data.");
             }
         } catch (Exception e) {
             model.addAttribute("errorMessage", "Failed to save configuration: " + e.getMessage());
@@ -144,7 +145,8 @@ public class SettingsVisitSensitivityController {
         // Return whole page with recalculation message
         configurations = configurationService.findAllConfigurationsForUser(user);
         model.addAttribute("configurations", configurations);
-        model.addAttribute("successMessage", "visit.sensitivity.recalculation.advised");
+        model.addAttribute("successMessage", "Configuration deleted successfully.");
+        model.addAttribute("recalculationAdvised", true);
         model.addAttribute("activeSection", "visit-sensitivity");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);

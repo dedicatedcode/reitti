@@ -23,6 +23,12 @@
 
             <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
             <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+            
+            <!-- Recalculation Advice Section -->
+            <div th:if="${recalculationAdvised}" class="alert alert-warning">
+                <h5><i class="lni lni-warning"></i> <span th:text="#{visit.sensitivity.recalculation.title}">Recalculation Advised</span></h5>
+                <p th:text="#{visit.sensitivity.recalculation.message}">Configuration changes have been saved. Recalculation is highly advised for these changes to take effect on existing data, otherwise they will only affect new incoming data.</p>
+            </div>
 
 
             <!-- Configuration List -->
