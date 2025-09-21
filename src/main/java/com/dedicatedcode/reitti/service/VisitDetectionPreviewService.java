@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
-import com.dedicatedcode.reitti.model.processing.Configuration;
+import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +27,7 @@ public class VisitDetectionPreviewService {
         this.rabbitTemplate = rabbitTemplate;
     }
 
-    public String startPreview(User user, Configuration config, Instant date) {
+    public String startPreview(User user, DetectionParameter config, Instant date) {
         log.info("Starting preview process for user {}", user.getId());
         LocalDateTime now = LocalDateTime.now();
 

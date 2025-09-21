@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
-import com.dedicatedcode.reitti.model.processing.Configuration;
+import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,24 +34,24 @@ class VisitDetectionParametersJdbcServiceTest {
     @Test
     void shouldSaveAndFindConfiguration() {
         // Given
-        Configuration.VisitDetection visitDetection = new Configuration.VisitDetection(
+        DetectionParameter.VisitDetection visitDetection = new DetectionParameter.VisitDetection(
                 100L, 5, 300L, 600L
         );
-        Configuration.VisitMerging visitMerging = new Configuration.VisitMerging(
+        DetectionParameter.VisitMerging visitMerging = new DetectionParameter.VisitMerging(
                 24L, 1800L, 50L
         );
-        Configuration configuration = new Configuration(
+        DetectionParameter detectionParameter = new DetectionParameter(
                 null, visitDetection, visitMerging, Instant.now()
         );
 
         // When
-        visitDetectionParametersJdbcService.saveConfiguration(testUser, configuration);
+        visitDetectionParametersJdbcService.saveConfiguration(testUser, detectionParameter);
 
         // Then
-        List<Configuration> configurations = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
-        assertThat(configurations).hasSize(1);
+        List<DetectionParameter> detectionParameters = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
+        assertThat(detectionParameters).hasSize(1);
 
-        Configuration savedConfig = configurations.getFirst();
+        DetectionParameter savedConfig = detectionParameters.getFirst();
         assertThat(savedConfig.getId()).isNotNull();
         assertThat(savedConfig.getVisitDetection().getSearchDistanceInMeters()).isEqualTo(100L);
         assertThat(savedConfig.getVisitDetection().getMinimumAdjacentPoints()).isEqualTo(5L);
@@ -66,60 +66,60 @@ class VisitDetectionParametersJdbcServiceTest {
     @Test
     void shouldSaveConfigurationWithNullValidSince() {
         // Given
-        Configuration.VisitDetection visitDetection = new Configuration.VisitDetection(
+        DetectionParameter.VisitDetection visitDetection = new DetectionParameter.VisitDetection(
                 200L, 3, 600L, 1200L
         );
-        Configuration.VisitMerging visitMerging = new Configuration.VisitMerging(
+        DetectionParameter.VisitMerging visitMerging = new DetectionParameter.VisitMerging(
                 12L, 900L, 25L
         );
-        Configuration configuration = new Configuration(
+        DetectionParameter detectionParameter = new DetectionParameter(
                 null, visitDetection, visitMerging, null
         );
 
         // When
-        visitDetectionParametersJdbcService.saveConfiguration(testUser, configuration);
+        visitDetectionParametersJdbcService.saveConfiguration(testUser, detectionParameter);
 
         // Then
-        List<Configuration> configurations = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
-        assertThat(configurations).hasSize(1);
-        assertThat(configurations.getFirst().getValidSince()).isNull();
+        List<DetectionParameter> detectionParameters = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
+        assertThat(detectionParameters).hasSize(1);
+        assertThat(detectionParameters.getFirst().getValidSince()).isNull();
     }
 
     @Test
     void shouldUpdateConfiguration() {
         // Given - save initial configuration
-        Configuration.VisitDetection initialVisitDetection = new Configuration.VisitDetection(
+        DetectionParameter.VisitDetection initialVisitDetection = new DetectionParameter.VisitDetection(
                 100L, 5, 300L, 600L
         );
-        Configuration.VisitMerging initialVisitMerging = new Configuration.VisitMerging(
+        DetectionParameter.VisitMerging initialVisitMerging = new DetectionParameter.VisitMerging(
                 24L, 1800L, 50L
         );
-        Configuration initialConfig = new Configuration(
+        DetectionParameter initialConfig = new DetectionParameter(
                 null, initialVisitDetection, initialVisitMerging, Instant.now()
         );
         visitDetectionParametersJdbcService.saveConfiguration(testUser, initialConfig);
 
-        List<Configuration> savedConfigs = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
-        Configuration savedConfig = savedConfigs.getFirst();
+        List<DetectionParameter> savedConfigs = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
+        DetectionParameter savedConfig = savedConfigs.getFirst();
 
         // When - update the configuration
-        Configuration.VisitDetection updatedVisitDetection = new Configuration.VisitDetection(
+        DetectionParameter.VisitDetection updatedVisitDetection = new DetectionParameter.VisitDetection(
                 150L, 7, 450L, 900L
         );
-        Configuration.VisitMerging updatedVisitMerging = new Configuration.VisitMerging(
+        DetectionParameter.VisitMerging updatedVisitMerging = new DetectionParameter.VisitMerging(
                 48L, 3600L, 75L
         );
         Instant newValidSince = Instant.now().plusSeconds(3600).truncatedTo(ChronoUnit.MILLIS);
-        Configuration updatedConfig = new Configuration(
+        DetectionParameter updatedConfig = new DetectionParameter(
                 savedConfig.getId(), updatedVisitDetection, updatedVisitMerging, newValidSince
         );
         visitDetectionParametersJdbcService.updateConfiguration(updatedConfig);
 
         // Then
-        List<Configuration> configurations = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
-        assertThat(configurations).hasSize(1);
+        List<DetectionParameter> detectionParameters = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
+        assertThat(detectionParameters).hasSize(1);
 
-        Configuration result = configurations.getFirst();
+        DetectionParameter result = detectionParameters.getFirst();
         assertThat(result.getId()).isEqualTo(savedConfig.getId());
         assertThat(result.getVisitDetection().getSearchDistanceInMeters()).isEqualTo(150L);
         assertThat(result.getVisitDetection().getMinimumAdjacentPoints()).isEqualTo(7L);
@@ -134,51 +134,51 @@ class VisitDetectionParametersJdbcServiceTest {
     @Test
     void shouldDeleteConfiguration() {
         // Given - save configuration with validSince
-        Configuration.VisitDetection visitDetection = new Configuration.VisitDetection(
+        DetectionParameter.VisitDetection visitDetection = new DetectionParameter.VisitDetection(
                 100L, 5, 300L, 600L
         );
-        Configuration.VisitMerging visitMerging = new Configuration.VisitMerging(
+        DetectionParameter.VisitMerging visitMerging = new DetectionParameter.VisitMerging(
                 24L, 1800L, 50L
         );
-        Configuration configuration = new Configuration(
+        DetectionParameter detectionParameter = new DetectionParameter(
                 null, visitDetection, visitMerging, Instant.now()
         );
-        visitDetectionParametersJdbcService.saveConfiguration(testUser, configuration);
+        visitDetectionParametersJdbcService.saveConfiguration(testUser, detectionParameter);
 
-        List<Configuration> savedConfigs = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
+        List<DetectionParameter> savedConfigs = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
         Long configId = savedConfigs.getFirst().getId();
 
         // When
         visitDetectionParametersJdbcService.delete(configId);
 
         // Then
-        List<Configuration> configurations = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
-        assertThat(configurations).isEmpty();
+        List<DetectionParameter> detectionParameters = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
+        assertThat(detectionParameters).isEmpty();
     }
 
     @Test
     void shouldNotDeleteConfigurationWithNullValidSince() {
         // Given - save configuration with null validSince
-        Configuration.VisitDetection visitDetection = new Configuration.VisitDetection(
+        DetectionParameter.VisitDetection visitDetection = new DetectionParameter.VisitDetection(
                 100L, 5, 300L, 600L
         );
-        Configuration.VisitMerging visitMerging = new Configuration.VisitMerging(
+        DetectionParameter.VisitMerging visitMerging = new DetectionParameter.VisitMerging(
                 24L, 1800L, 50L
         );
-        Configuration configuration = new Configuration(
+        DetectionParameter detectionParameter = new DetectionParameter(
                 null, visitDetection, visitMerging, null
         );
-        visitDetectionParametersJdbcService.saveConfiguration(testUser, configuration);
+        visitDetectionParametersJdbcService.saveConfiguration(testUser, detectionParameter);
 
-        List<Configuration> savedConfigs = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
+        List<DetectionParameter> savedConfigs = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
         Long configId = savedConfigs.getFirst().getId();
 
         // When
         visitDetectionParametersJdbcService.delete(configId);
 
         // Then - configuration should still exist because validSince is null
-        List<Configuration> configurations = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
-        assertThat(configurations).hasSize(1);
+        List<DetectionParameter> detectionParameters = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
+        assertThat(detectionParameters).hasSize(1);
     }
 
     @Test
@@ -188,18 +188,18 @@ class VisitDetectionParametersJdbcServiceTest {
         Instant earlier = now.minusSeconds(3600);
         Instant later = now.plusSeconds(3600);
 
-        Configuration.VisitDetection visitDetection = new Configuration.VisitDetection(
+        DetectionParameter.VisitDetection visitDetection = new DetectionParameter.VisitDetection(
                 100L, 5, 300L, 600L
         );
-        Configuration.VisitMerging visitMerging = new Configuration.VisitMerging(
+        DetectionParameter.VisitMerging visitMerging = new DetectionParameter.VisitMerging(
                 24L, 1800L, 50L
         );
 
         // Save configurations in different order
-        Configuration config1 = new Configuration(null, visitDetection, visitMerging, now);
-        Configuration config2 = new Configuration(null, visitDetection, visitMerging, later);
-        Configuration config3 = new Configuration(null, visitDetection, visitMerging, earlier);
-        Configuration config4 = new Configuration(null, visitDetection, visitMerging, null);
+        DetectionParameter config1 = new DetectionParameter(null, visitDetection, visitMerging, now);
+        DetectionParameter config2 = new DetectionParameter(null, visitDetection, visitMerging, later);
+        DetectionParameter config3 = new DetectionParameter(null, visitDetection, visitMerging, earlier);
+        DetectionParameter config4 = new DetectionParameter(null, visitDetection, visitMerging, null);
 
         visitDetectionParametersJdbcService.saveConfiguration(testUser, config1);
         visitDetectionParametersJdbcService.saveConfiguration(testUser, config2);
@@ -207,14 +207,14 @@ class VisitDetectionParametersJdbcServiceTest {
         visitDetectionParametersJdbcService.saveConfiguration(testUser, config4);
 
         // When
-        List<Configuration> configurations = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
+        List<DetectionParameter> detectionParameters = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
 
         // Then - should be ordered by validSince DESC NULLS LAST
-        assertThat(configurations).hasSize(4);
-        assertThat(configurations.get(0).getValidSince()).isEqualTo(later);
-        assertThat(configurations.get(1).getValidSince()).isEqualTo(now);
-        assertThat(configurations.get(2).getValidSince()).isEqualTo(earlier);
-        assertThat(configurations.get(3).getValidSince()).isNull();
+        assertThat(detectionParameters).hasSize(4);
+        assertThat(detectionParameters.get(0).getValidSince()).isEqualTo(later);
+        assertThat(detectionParameters.get(1).getValidSince()).isEqualTo(now);
+        assertThat(detectionParameters.get(2).getValidSince()).isEqualTo(earlier);
+        assertThat(detectionParameters.get(3).getValidSince()).isNull();
     }
 
     @Test
@@ -223,9 +223,9 @@ class VisitDetectionParametersJdbcServiceTest {
         User anotherUser = testingService.randomUser();
 
         // When
-        List<Configuration> configurations = visitDetectionParametersJdbcService.findAllConfigurationsForUser(anotherUser);
+        List<DetectionParameter> detectionParameters = visitDetectionParametersJdbcService.findAllConfigurationsForUser(anotherUser);
 
         // Then
-        assertThat(configurations).isEmpty();
+        assertThat(detectionParameters).isEmpty();
     }
 }

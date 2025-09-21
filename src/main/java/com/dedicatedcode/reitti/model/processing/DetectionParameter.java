@@ -3,13 +3,13 @@ package com.dedicatedcode.reitti.model.processing;
 import java.io.Serializable;
 import java.time.Instant;
 
-public class Configuration implements Serializable {
+public class DetectionParameter implements Serializable {
     private final Long id;
     private final VisitDetection visitDetection;
     private final VisitMerging visitMerging;
     private final Instant validSince;
 
-    public Configuration(Long id, VisitDetection visitDetection, VisitMerging visitMerging, Instant validSince) {
+    public DetectionParameter(Long id, VisitDetection visitDetection, VisitMerging visitMerging, Instant validSince) {
         this.id = id;
         this.visitDetection = visitDetection;
         this.visitMerging = visitMerging;

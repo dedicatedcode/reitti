@@ -5,7 +5,7 @@ import com.dedicatedcode.reitti.event.LocationProcessEvent;
 import com.dedicatedcode.reitti.event.VisitUpdatedEvent;
 import com.dedicatedcode.reitti.model.ClusteredPoint;
 import com.dedicatedcode.reitti.model.geo.*;
-import com.dedicatedcode.reitti.model.processing.Configuration;
+import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
@@ -68,7 +68,7 @@ public class VisitDetectionService {
             // Get points from 1 day after the latest new point
             Instant windowEnd = incoming.getLatest().plus(5, ChronoUnit.MINUTES);
 
-            Configuration.VisitDetection detectionParameters;
+            DetectionParameter.VisitDetection detectionParameters;
             if (incoming.getPreviewId() == null) {
                 detectionParameters = this.visitDetectionParametersService.getCurrentConfiguration(user, windowStart).getVisitDetection();
             } else {
@@ -153,7 +153,7 @@ public class VisitDetectionService {
     }
 
 
-    private List<StayPoint> detectStayPointsFromTrajectory(Map<Integer, List<RawLocationPoint>> points, Configuration.VisitDetection visitDetectionParameters) {
+    private List<StayPoint> detectStayPointsFromTrajectory(Map<Integer, List<RawLocationPoint>> points, DetectionParameter.VisitDetection visitDetectionParameters) {
         logger.debug("Starting cluster-based stay point detection with {} different spatial clusters.", points.size());
 
         List<List<RawLocationPoint>> clusters = new ArrayList<>();

@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.dto.ConfigurationForm;
 import com.dedicatedcode.reitti.model.Role;
-import com.dedicatedcode.reitti.model.processing.Configuration;
+import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.VisitDetectionParametersJdbcService;
 import com.dedicatedcode.reitti.service.VisitDetectionPreviewService;
@@ -35,11 +35,11 @@ public class SettingsVisitSensitivityController {
     
     @GetMapping
     public String visitSensitivitySettings(@AuthenticationPrincipal User user, Model model) {
-        List<Configuration> configurations = configurationService.findAllConfigurationsForUser(user);
+        List<DetectionParameter> detectionParameters = configurationService.findAllConfigurationsForUser(user);
         
         model.addAttribute("isAdmin", user.getRole() ==  Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
-        model.addAttribute("configurations", configurations);
+        model.addAttribute("configurations", detectionParameters);
         model.addAttribute("activeSection", "visit-sensitivity");
         return "settings/visit-sensitivity";
     }
@@ -53,7 +53,7 @@ public class SettingsVisitSensitivityController {
                                     Model model) {
         ZoneId userTimezone = ZoneId.of(timezone);
 
-        Configuration config = configurationService.findById(id, user).orElseThrow(() -> new IllegalArgumentException("Configuration not found"));
+        DetectionParameter config = configurationService.findById(id, user).orElseThrow(() -> new IllegalArgumentException("Configuration not found"));
 
         ConfigurationForm form = ConfigurationForm.fromConfiguration(config, userTimezone);
         
@@ -90,7 +90,7 @@ public class SettingsVisitSensitivityController {
                                     @AuthenticationPrincipal User user,
                                     Model model) {
         try {
-            Configuration config = form.toConfiguration(ZoneId.of(timezone));
+            DetectionParameter config = form.toConfiguration(ZoneId.of(timezone));
             boolean recalculationNeeded = false;
             
             if (config.getId() == null) {
@@ -99,7 +99,7 @@ public class SettingsVisitSensitivityController {
                 recalculationNeeded = true;
             } else {
                 // Existing configuration - check if it has changed
-                Configuration originalConfig = configurationService.findById(config.getId(), user)
+                DetectionParameter originalConfig = configurationService.findById(config.getId(), user)
                     .orElseThrow(() -> new IllegalArgumentException("Configuration not found"));
                 
                 recalculationNeeded = form.hasConfigurationChanged(originalConfig);
@@ -117,8 +117,8 @@ public class SettingsVisitSensitivityController {
             model.addAttribute("errorMessage", "Failed to save configuration: " + e.getMessage());
         }
         
-        List<Configuration> configurations = configurationService.findAllConfigurationsForUser(user);
-        model.addAttribute("configurations", configurations);
+        List<DetectionParameter> detectionParameters = configurationService.findAllConfigurationsForUser(user);
+        model.addAttribute("configurations", detectionParameters);
         model.addAttribute("activeSection", "visit-sensitivity");
         model.addAttribute("isAdmin", user.getRole() ==  Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
@@ -130,8 +130,8 @@ public class SettingsVisitSensitivityController {
     public String deleteConfiguration(@PathVariable Long id, Authentication auth, Model model) {
         User user = (User) auth.getPrincipal();
         
-        List<Configuration> configurations = configurationService.findAllConfigurationsForUser(user);
-        Configuration config = configurations.stream()
+        List<DetectionParameter> detectionParameters = configurationService.findAllConfigurationsForUser(user);
+        DetectionParameter config = detectionParameters.stream()
             .filter(c -> c.getId().equals(id))
             .findFirst()
             .orElseThrow(() -> new IllegalArgumentException("Configuration not found"));
@@ -143,8 +143,8 @@ public class SettingsVisitSensitivityController {
         configurationService.delete(id);
         
         // Return whole page with recalculation message
-        configurations = configurationService.findAllConfigurationsForUser(user);
-        model.addAttribute("configurations", configurations);
+        detectionParameters = configurationService.findAllConfigurationsForUser(user);
+        model.addAttribute("configurations", detectionParameters);
         model.addAttribute("successMessage", "Configuration deleted successfully.");
         model.addAttribute("recalculationAdvised", true);
         model.addAttribute("activeSection", "visit-sensitivity");
@@ -159,7 +159,7 @@ public class SettingsVisitSensitivityController {
                                        @RequestParam(required = false) String previewDate,
                                        @AuthenticationPrincipal User user,
                                        Model model) {
-        Configuration config = form.toConfiguration(ZoneId.of(timezone));
+        DetectionParameter config = form.toConfiguration(ZoneId.of(timezone));
 
         Instant date = previewDate != null ? ZonedDateTime.of(LocalDate.parse(previewDate).atStartOfDay(), ZoneId.of(timezone)).toInstant() : Instant.now().truncatedTo(ChronoUnit.DAYS);
         String effectivePreviewDate = previewDate != null ? previewDate :

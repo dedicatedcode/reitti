@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.service;
 
-import com.dedicatedcode.reitti.model.processing.Configuration;
+import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.PreviewVisitDetectionParametersJdbcService;
 import com.dedicatedcode.reitti.repository.VisitDetectionParametersJdbcService;
@@ -19,10 +19,10 @@ public class VisitDetectionParametersService {
         this.previewVisitDetectionParametersJdbcService = previewVisitDetectionParametersJdbcService;
     }
 
-    public Configuration getCurrentConfiguration(User user, String previewId) {
+    public DetectionParameter getCurrentConfiguration(User user, String previewId) {
         return this.previewVisitDetectionParametersJdbcService.findCurrent(user, previewId);
     }
-    public Configuration getCurrentConfiguration(User user, Instant instant) {
+    public DetectionParameter getCurrentConfiguration(User user, Instant instant) {
         return this.visitDetectionParametersJdbcService.findCurrent(user, instant);
 
     }

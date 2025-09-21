@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.dto;
 
-import com.dedicatedcode.reitti.model.processing.Configuration;
+import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.*;
@@ -59,7 +59,7 @@ public class ConfigurationForm {
     public void setValidSince(LocalDate validSince) { this.validSince = validSince; }
     
     // Convert from Configuration
-    public static ConfigurationForm fromConfiguration(Configuration config, ZoneId zoneId) {
+    public static ConfigurationForm fromConfiguration(DetectionParameter config, ZoneId zoneId) {
         ConfigurationForm form = new ConfigurationForm();
         form.setId(config.getId());
         
@@ -90,11 +90,11 @@ public class ConfigurationForm {
         return form;
     }
     
-    private static Integer findMatchingSensitivityLevel(Configuration config) {
+    private static Integer findMatchingSensitivityLevel(DetectionParameter config) {
         // Check each sensitivity level to see if it matches the configuration
         for (int level = 1; level <= 5; level++) {
-            Configuration.VisitDetection expectedDetection = mapSensitivityToVisitDetection(level);
-            Configuration.VisitMerging expectedMerging = mapSensitivityToVisitMerging(level);
+            DetectionParameter.VisitDetection expectedDetection = mapSensitivityToVisitDetection(level);
+            DetectionParameter.VisitMerging expectedMerging = mapSensitivityToVisitMerging(level);
             
             if (configurationMatches(config, expectedDetection, expectedMerging)) {
                 return level;
@@ -103,11 +103,11 @@ public class ConfigurationForm {
         return null; // No match found
     }
     
-    private static boolean configurationMatches(Configuration config, 
-                                              Configuration.VisitDetection expectedDetection, 
-                                              Configuration.VisitMerging expectedMerging) {
-        Configuration.VisitDetection actualDetection = config.getVisitDetection();
-        Configuration.VisitMerging actualMerging = config.getVisitMerging();
+    private static boolean configurationMatches(DetectionParameter config,
+                                                DetectionParameter.VisitDetection expectedDetection,
+                                                DetectionParameter.VisitMerging expectedMerging) {
+        DetectionParameter.VisitDetection actualDetection = config.getVisitDetection();
+        DetectionParameter.VisitMerging actualMerging = config.getVisitMerging();
         
         return actualDetection.getSearchDistanceInMeters() == expectedDetection.getSearchDistanceInMeters() &&
                actualDetection.getMinimumAdjacentPoints() == expectedDetection.getMinimumAdjacentPoints() &&
@@ -118,24 +118,24 @@ public class ConfigurationForm {
                actualMerging.getMinDistanceBetweenVisits() == expectedMerging.getMinDistanceBetweenVisits();
     }
     
-    private static Configuration.VisitDetection mapSensitivityToVisitDetection(int level) {
+    private static DetectionParameter.VisitDetection mapSensitivityToVisitDetection(int level) {
         return switch (level) {
-            case 1 -> new Configuration.VisitDetection(200, 8, 600, 600);   // Low sensitivity
-            case 2 -> new Configuration.VisitDetection(150, 6, 450, 450);   
-            case 3 -> new Configuration.VisitDetection(100, 5, 300, 300);   // Medium (baseline)
-            case 4 -> new Configuration.VisitDetection(75, 4, 225, 225);    
-            case 5 -> new Configuration.VisitDetection(50, 3, 150, 150);    // High sensitivity
+            case 1 -> new DetectionParameter.VisitDetection(200, 8, 600, 600);   // Low sensitivity
+            case 2 -> new DetectionParameter.VisitDetection(150, 6, 450, 450);
+            case 3 -> new DetectionParameter.VisitDetection(100, 5, 300, 300);   // Medium (baseline)
+            case 4 -> new DetectionParameter.VisitDetection(75, 4, 225, 225);
+            case 5 -> new DetectionParameter.VisitDetection(50, 3, 150, 150);    // High sensitivity
             default -> throw new IllegalArgumentException("Unhandled level [" + level + "] detected!");
         };
     }
     
-    private static Configuration.VisitMerging mapSensitivityToVisitMerging(int level) {
+    private static DetectionParameter.VisitMerging mapSensitivityToVisitMerging(int level) {
         return switch (level) {
-            case 1 -> new Configuration.VisitMerging(96, 600, 400);   // Low sensitivity
-            case 2 -> new Configuration.VisitMerging(72, 450, 300);   
-            case 3 -> new Configuration.VisitMerging(48, 300, 200);   // Medium (baseline)
-            case 4 -> new Configuration.VisitMerging(24, 225, 150);   
-            case 5 -> new Configuration.VisitMerging(12, 150, 100);   // High sensitivity
+            case 1 -> new DetectionParameter.VisitMerging(96, 600, 400);   // Low sensitivity
+            case 2 -> new DetectionParameter.VisitMerging(72, 450, 300);
+            case 3 -> new DetectionParameter.VisitMerging(48, 300, 200);   // Medium (baseline)
+            case 4 -> new DetectionParameter.VisitMerging(24, 225, 150);
+            case 5 -> new DetectionParameter.VisitMerging(12, 150, 100);   // High sensitivity
             default -> throw new IllegalArgumentException("Unhandled level [" + level + "] detected!");
         };
     }
@@ -146,8 +146,8 @@ public class ConfigurationForm {
             return;
         }
         
-        Configuration.VisitDetection visitDetection = mapSensitivityToVisitDetection(level);
-        Configuration.VisitMerging visitMerging = mapSensitivityToVisitMerging(level);
+        DetectionParameter.VisitDetection visitDetection = mapSensitivityToVisitDetection(level);
+        DetectionParameter.VisitMerging visitMerging = mapSensitivityToVisitMerging(level);
         
         this.searchDistanceInMeters = visitDetection.getSearchDistanceInMeters();
         this.minimumAdjacentPoints = visitDetection.getMinimumAdjacentPoints();
@@ -160,16 +160,16 @@ public class ConfigurationForm {
     }
     
     // Check if configuration has changed compared to original
-    public boolean hasConfigurationChanged(Configuration original) {
+    public boolean hasConfigurationChanged(DetectionParameter original) {
         if (original == null) {
             return true; // New configuration
         }
         
-        Configuration current = toConfiguration(ZoneId.systemDefault()); // Timezone doesn't matter for comparison
+        DetectionParameter current = toConfiguration(ZoneId.systemDefault()); // Timezone doesn't matter for comparison
         
         // Compare visit detection parameters
-        Configuration.VisitDetection originalDetection = original.getVisitDetection();
-        Configuration.VisitDetection currentDetection = current.getVisitDetection();
+        DetectionParameter.VisitDetection originalDetection = original.getVisitDetection();
+        DetectionParameter.VisitDetection currentDetection = current.getVisitDetection();
         
         if (originalDetection.getSearchDistanceInMeters() != currentDetection.getSearchDistanceInMeters() ||
             originalDetection.getMinimumAdjacentPoints() != currentDetection.getMinimumAdjacentPoints() ||
@@ -179,8 +179,8 @@ public class ConfigurationForm {
         }
         
         // Compare visit merging parameters
-        Configuration.VisitMerging originalMerging = original.getVisitMerging();
-        Configuration.VisitMerging currentMerging = current.getVisitMerging();
+        DetectionParameter.VisitMerging originalMerging = original.getVisitMerging();
+        DetectionParameter.VisitMerging currentMerging = current.getVisitMerging();
         
         if (originalMerging.getSearchDurationInHours() != currentMerging.getSearchDurationInHours() ||
             originalMerging.getMaxMergeTimeBetweenSameVisits() != currentMerging.getMaxMergeTimeBetweenSameVisits() ||
@@ -192,9 +192,9 @@ public class ConfigurationForm {
     }
     
     // Convert to Configuration
-    public Configuration toConfiguration(ZoneId timezone) {
-        Configuration.VisitDetection visitDetection;
-        Configuration.VisitMerging visitMerging;
+    public DetectionParameter toConfiguration(ZoneId timezone) {
+        DetectionParameter.VisitDetection visitDetection;
+        DetectionParameter.VisitMerging visitMerging;
         
         if ("simple".equals(mode)) {
             // Map sensitivity level to parameters
@@ -202,13 +202,13 @@ public class ConfigurationForm {
             visitMerging = mapSensitivityToVisitMerging(sensitivityLevel);
         } else {
             // Use advanced mode values
-            visitDetection = new Configuration.VisitDetection(
+            visitDetection = new DetectionParameter.VisitDetection(
                 searchDistanceInMeters,
                 minimumAdjacentPoints,
                 minimumStayTimeInSeconds,
                 maxMergeTimeBetweenSameStayPoints
             );
-            visitMerging = new Configuration.VisitMerging(
+            visitMerging = new DetectionParameter.VisitMerging(
                 searchDurationInHours,
                 maxMergeTimeBetweenSameVisits,
                 minDistanceBetweenVisits
@@ -217,6 +217,6 @@ public class ConfigurationForm {
         
         Instant validSinceInstant = validSince != null ? ZonedDateTime.of(validSince.atStartOfDay(), timezone).toInstant() : null;
         
-        return new Configuration(getId(), visitDetection, visitMerging, validSinceInstant);
+        return new DetectionParameter(getId(), visitDetection, visitMerging, validSinceInstant);
     }
 }

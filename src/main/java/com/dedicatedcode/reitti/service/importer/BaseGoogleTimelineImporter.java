@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
-import com.dedicatedcode.reitti.model.processing.Configuration;
+import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ImportBatchProcessor;
 import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
@@ -32,14 +32,14 @@ public abstract class BaseGoogleTimelineImporter {
     }
 
     protected int handleVisit(User user, ZonedDateTime startTime, ZonedDateTime endTime, LatLng latLng, List<LocationDataRequest.LocationPoint> batch) {
-        Configuration configuration = parametersService.getCurrentConfiguration(user, startTime.toInstant());
+        DetectionParameter detectionParameter = parametersService.getCurrentConfiguration(user, startTime.toInstant());
 
-        logger.info("Found visit at [{}] from start [{}] to end [{}]. Will insert at least [{}] synthetic geo locations.", latLng, startTime, endTime, configuration.getVisitDetection().getMinimumAdjacentPoints());
+        logger.info("Found visit at [{}] from start [{}] to end [{}]. Will insert at least [{}] synthetic geo locations.", latLng, startTime, endTime, detectionParameter.getVisitDetection().getMinimumAdjacentPoints());
         createAndScheduleLocationPoint(latLng, startTime, user, batch);
         int count = 1;
 
         long durationBetween = Duration.between(startTime.toInstant(), endTime.toInstant()).toSeconds();
-        if (durationBetween > configuration.getVisitDetection().getMinimumStayTimeInSeconds()) {
+        if (durationBetween > detectionParameter.getVisitDetection().getMinimumStayTimeInSeconds()) {
             long increment = 60;
             ZonedDateTime currentTime = startTime.plusSeconds(increment);
             while (currentTime.isBefore(endTime)) {
@@ -49,7 +49,7 @@ public abstract class BaseGoogleTimelineImporter {
             }
             logger.debug("Inserting synthetic points into import to simulate stays at [{}] from [{}] till [{}]", latLng, startTime, endTime);
         } else {
-            logger.info("Skipping creating synthetic points at [{}] since duration was less then [{}] seconds ", latLng, configuration.getVisitDetection().getMinimumStayTimeInSeconds());
+            logger.info("Skipping creating synthetic points at [{}] since duration was less then [{}] seconds ", latLng, detectionParameter.getVisitDetection().getMinimumStayTimeInSeconds());
         }
         createAndScheduleLocationPoint(latLng, endTime, user, batch);
         return count + 1;

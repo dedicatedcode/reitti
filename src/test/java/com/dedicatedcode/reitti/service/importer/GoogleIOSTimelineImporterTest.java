@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.LocationDataEvent;
-import com.dedicatedcode.reitti.model.processing.Configuration;
+import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ImportBatchProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
@@ -26,9 +26,9 @@ class GoogleIOSTimelineImporterTest {
     void shouldParseNewGoogleTakeOutFileFromIOS() {
         RabbitTemplate mock = mock(RabbitTemplate.class);
         VisitDetectionParametersService parametersService = mock(VisitDetectionParametersService.class);
-        Configuration config = new Configuration(-1L,
-                new Configuration.VisitDetection(100, 5, 300, 300),
-                new Configuration.VisitMerging(24,300, 100),
+        DetectionParameter config = new DetectionParameter(-1L,
+                new DetectionParameter.VisitDetection(100, 5, 300, 300),
+                new DetectionParameter.VisitMerging(24,300, 100),
                 null);
         when(parametersService.getCurrentConfiguration(any(), any(Instant.class))).thenReturn(config);
 

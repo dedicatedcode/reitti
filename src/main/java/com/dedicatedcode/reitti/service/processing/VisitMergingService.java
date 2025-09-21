@@ -5,7 +5,7 @@ import com.dedicatedcode.reitti.event.ProcessedVisitCreatedEvent;
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.event.VisitUpdatedEvent;
 import com.dedicatedcode.reitti.model.geo.*;
-import com.dedicatedcode.reitti.model.processing.Configuration;
+import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.GeoLocationTimezoneService;
@@ -95,7 +95,7 @@ public class VisitMergingService {
         }
 
         Instant firstVisitTime = visits.stream().map(Visit::getStartTime).min(Comparator.naturalOrder()).orElseThrow();
-        Configuration.VisitMerging mergeConfiguration;
+        DetectionParameter.VisitMerging mergeConfiguration;
         if (previewId == null) {
             mergeConfiguration = this.visitDetectionParametersService.getCurrentConfiguration(user.get(), firstVisitTime).getVisitMerging();
         } else{
@@ -107,7 +107,7 @@ public class VisitMergingService {
         processAndMergeVisits(user.get(), previewId, searchStart, searchEnd, mergeConfiguration);
     }
 
-    private void processAndMergeVisits(User user, String previewId, Instant searchStart, Instant searchEnd, Configuration.VisitMerging mergeConfiguration) {
+    private void processAndMergeVisits(User user, String previewId, Instant searchStart, Instant searchEnd, DetectionParameter.VisitMerging mergeConfiguration) {
         logger.info("Processing and merging visits for user: [{}] between [{}] and [{}]", user.getUsername(), searchStart, searchEnd);
         List<ProcessedVisit> allProcessedVisitsInRange;
         if (previewId == null) {
@@ -165,7 +165,7 @@ public class VisitMergingService {
     }
 
 
-    private List<ProcessedVisit> mergeVisitsChronologically(User user, String previewId, List<Visit> visits, Configuration.VisitMerging mergeConfiguration) {
+    private List<ProcessedVisit> mergeVisitsChronologically(User user, String previewId, List<Visit> visits, DetectionParameter.VisitMerging mergeConfiguration) {
         if (logger.isDebugEnabled()) {
             logger.debug("Merging [{}] visits between [{}] and [{}]", visits.size(), visits.getFirst().getStartTime(), visits.getLast().getEndTime());
         }

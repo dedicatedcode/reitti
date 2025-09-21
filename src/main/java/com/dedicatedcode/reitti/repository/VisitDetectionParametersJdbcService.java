@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.repository;
 
-import com.dedicatedcode.reitti.model.processing.Configuration;
+import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -24,31 +24,31 @@ public class VisitDetectionParametersJdbcService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    private static final RowMapper<Configuration> CONFIGURATION_ROW_MAPPER = (rs, _) -> {
+    private static final RowMapper<DetectionParameter> CONFIGURATION_ROW_MAPPER = (rs, _) -> {
         Long id = rs.getLong("id");
         Timestamp validSinceTimestamp = rs.getTimestamp("valid_since");
         Instant validSince = validSinceTimestamp != null ? validSinceTimestamp.toInstant() : null;
 
-        Configuration.VisitDetection visitDetection = new Configuration.VisitDetection(
+        DetectionParameter.VisitDetection visitDetection = new DetectionParameter.VisitDetection(
                 rs.getLong("detection_search_distance_meters"),
                 rs.getInt("detection_minimum_adjacent_points"),
                 rs.getLong("detection_minimum_stay_time_seconds"),
                 rs.getLong("detection_max_merge_time_between_same_stay_points")
         );
 
-        Configuration.VisitMerging visitMerging = new Configuration.VisitMerging(
+        DetectionParameter.VisitMerging visitMerging = new DetectionParameter.VisitMerging(
                 rs.getLong("merging_search_duration_in_hours"),
                 rs.getLong("merging_max_merge_time_between_same_visits"),
                 rs.getLong("merging_min_distance_between_visits")
         );
 
-        return new Configuration(id, visitDetection, visitMerging, validSince);
+        return new DetectionParameter(id, visitDetection, visitMerging, validSince);
     };
 
 
     @Transactional(readOnly = true)
     @Cacheable(value = "configurations", key = "#user.id")
-    public List<Configuration> findAllConfigurationsForUser(User user) {
+    public List<DetectionParameter> findAllConfigurationsForUser(User user) {
         String sql = """
             SELECT * FROM visit_detection_parameters
             WHERE user_id = ?
@@ -60,18 +60,18 @@ public class VisitDetectionParametersJdbcService {
 
     @Transactional(readOnly = true)
     @Cacheable(value = "configurations", key = "#user.id + '_' + #id")
-    public Optional<Configuration> findById(Long id, User user) {
+    public Optional<DetectionParameter> findById(Long id, User user) {
         String sql = """
             SELECT * FROM visit_detection_parameters
             WHERE id = ? AND user_id = ?
             """;
         
-        List<Configuration> results = jdbcTemplate.query(sql, CONFIGURATION_ROW_MAPPER, id, user.getId());
+        List<DetectionParameter> results = jdbcTemplate.query(sql, CONFIGURATION_ROW_MAPPER, id, user.getId());
         return results.stream().findFirst();
     }
 
     @CacheEvict(value = "configurations", key = "#user.id")
-    public void saveConfiguration(User user, Configuration configuration) {
+    public void saveConfiguration(User user, DetectionParameter detectionParameter) {
         String sql = """
             INSERT INTO visit_detection_parameters (
                 user_id, valid_since, detection_search_distance_meters,
@@ -81,24 +81,24 @@ public class VisitDetectionParametersJdbcService {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
         
-        Timestamp validSinceTimestamp = configuration.getValidSince() != null ?
-            Timestamp.from(configuration.getValidSince()) : null;
+        Timestamp validSinceTimestamp = detectionParameter.getValidSince() != null ?
+            Timestamp.from(detectionParameter.getValidSince()) : null;
         
         jdbcTemplate.update(sql,
             user.getId(),
             validSinceTimestamp,
-            configuration.getVisitDetection().getSearchDistanceInMeters(),
-            configuration.getVisitDetection().getMinimumAdjacentPoints(),
-            configuration.getVisitDetection().getMinimumStayTimeInSeconds(),
-            configuration.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints(),
-            configuration.getVisitMerging().getSearchDurationInHours(),
-            configuration.getVisitMerging().getMaxMergeTimeBetweenSameVisits(),
-            configuration.getVisitMerging().getMinDistanceBetweenVisits()
+            detectionParameter.getVisitDetection().getSearchDistanceInMeters(),
+            detectionParameter.getVisitDetection().getMinimumAdjacentPoints(),
+            detectionParameter.getVisitDetection().getMinimumStayTimeInSeconds(),
+            detectionParameter.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints(),
+            detectionParameter.getVisitMerging().getSearchDurationInHours(),
+            detectionParameter.getVisitMerging().getMaxMergeTimeBetweenSameVisits(),
+            detectionParameter.getVisitMerging().getMinDistanceBetweenVisits()
         );
     }
 
     @CacheEvict(value = "configurations", allEntries = true)
-    public void updateConfiguration(Configuration configuration) {
+    public void updateConfiguration(DetectionParameter detectionParameter) {
         String sql = """
             UPDATE visit_detection_parameters SET
                 valid_since = ?,
@@ -112,19 +112,19 @@ public class VisitDetectionParametersJdbcService {
             WHERE id = ?
             """;
         
-        Timestamp validSinceTimestamp = configuration.getValidSince() != null ? 
-            Timestamp.from(configuration.getValidSince()) : null;
+        Timestamp validSinceTimestamp = detectionParameter.getValidSince() != null ?
+            Timestamp.from(detectionParameter.getValidSince()) : null;
         
         jdbcTemplate.update(sql,
             validSinceTimestamp,
-            configuration.getVisitDetection().getSearchDistanceInMeters(),
-            configuration.getVisitDetection().getMinimumAdjacentPoints(),
-            configuration.getVisitDetection().getMinimumStayTimeInSeconds(),
-            configuration.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints(),
-            configuration.getVisitMerging().getSearchDurationInHours(),
-            configuration.getVisitMerging().getMaxMergeTimeBetweenSameVisits(),
-            configuration.getVisitMerging().getMinDistanceBetweenVisits(),
-            configuration.getId()
+            detectionParameter.getVisitDetection().getSearchDistanceInMeters(),
+            detectionParameter.getVisitDetection().getMinimumAdjacentPoints(),
+            detectionParameter.getVisitDetection().getMinimumStayTimeInSeconds(),
+            detectionParameter.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints(),
+            detectionParameter.getVisitMerging().getSearchDurationInHours(),
+            detectionParameter.getVisitMerging().getMaxMergeTimeBetweenSameVisits(),
+            detectionParameter.getVisitMerging().getMinDistanceBetweenVisits(),
+            detectionParameter.getId()
         );
     }
 
@@ -138,7 +138,7 @@ public class VisitDetectionParametersJdbcService {
         jdbcTemplate.update(sql, configurationId);
     }
 
-    public Configuration findCurrent(User user, Instant instant) {
+    public DetectionParameter findCurrent(User user, Instant instant) {
         String sql = """
             SELECT * FROM visit_detection_parameters
             WHERE user_id = ? AND valid_since <= ? OR valid_since IS NULL
