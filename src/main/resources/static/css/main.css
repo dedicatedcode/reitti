@@ -435,6 +435,9 @@ nav {
 .htmx-indicator {
     display: none;
 }
+.htmx-indicator i {
+    vertical-align: middle;
+}
 
 .htmx-indicator.htmx-request,
 .htmx-request .htmx-indicator {
