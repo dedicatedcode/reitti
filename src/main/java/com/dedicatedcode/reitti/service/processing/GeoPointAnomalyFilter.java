@@ -73,6 +73,7 @@ public class GeoPointAnomalyFilter {
             if (prev.getTimestamp() != null && curr.getTimestamp() != null) {
                 double distance = GeoUtils.distanceInMeters(prev, curr);
                 long timeDiffSeconds = java.time.Duration.between(
+                        //is there a more performant way to calculate the diff between these two times? AI!
                         getTimestamp(prev.getTimestamp()), getTimestamp(curr.getTimestamp())).getSeconds();
 
                 if (timeDiffSeconds > 0) {
