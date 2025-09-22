@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -72,8 +74,7 @@ public class GeoPointAnomalyFilter {
 
             if (prev.getTimestamp() != null && curr.getTimestamp() != null) {
                 double distance = GeoUtils.distanceInMeters(prev, curr);
-                long timeDiffSeconds = java.time.Duration.between(
-                        getTimestamp(prev.getTimestamp()), getTimestamp(curr.getTimestamp())).getSeconds();
+                long timeDiffSeconds = ChronoUnit.SECONDS.between(getTimestamp(prev.getTimestamp()), getTimestamp(curr.getTimestamp()));
 
                 if (timeDiffSeconds > 0) {
                     double speedKmh = (distance / 1000.0) / (timeDiffSeconds / 3600.0);
@@ -97,8 +98,7 @@ public class GeoPointAnomalyFilter {
     }
 
     private Instant getTimestamp(String timestamp) {
-        ZonedDateTime parse = ZonedDateTime.parse(timestamp);
-        return parse.toInstant();
+        return DateTimeFormatter.ISO_ZONED_DATE_TIME.parse(timestamp, Instant::from);
     }
 
     /**

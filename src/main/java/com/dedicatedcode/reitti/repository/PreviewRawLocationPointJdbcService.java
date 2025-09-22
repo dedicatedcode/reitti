@@ -53,6 +53,15 @@ public class PreviewRawLocationPointJdbcService {
         return jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId(), previewId);
     }
 
+    public List<RawLocationPoint> findByUserAndProcessedIsFalseOrderByTimestampWithLimit(User user, String previewId, int limit, int offset) {
+        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.version " +
+                "FROM preview_raw_location_points rlp " +
+                "WHERE rlp.user_id = ? AND rlp.processed = false AND preview_id = ? " +
+                "ORDER BY rlp.timestamp " +
+                "LIMIT ? OFFSET ?";
+        return jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId(), previewId, limit, offset);
+    }
+
     public List<ClusteredPoint> findClusteredPointsInTimeRangeForUser(
             User user, String previewId, Instant startTime, Instant endTime, int minimumPoints, double distanceInMeters) {
         String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.version , " +
