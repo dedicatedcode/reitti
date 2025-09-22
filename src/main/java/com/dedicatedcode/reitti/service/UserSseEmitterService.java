@@ -67,8 +67,6 @@ public class UserSseEmitterService implements SmartLifecycle {
                     removeEmitter(user, emitter);
                 }
             }
-        } else {
-            log.debug("No active SSE emitters for user: {}", user);
         }
     }
 
