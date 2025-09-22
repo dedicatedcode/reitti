@@ -104,8 +104,11 @@
                                         hx-get="/settings/integrations/data-quality-content"
                                         hx-target="#integrations"
                                         hx-swap="innerHTML"
-                                        th:text="#{integrations.data.quality.button}">
-                                    Verify Data Quality
+                                        hx-indicator="#data-quality-spinner">
+                                    <span class="button-text" th:text="#{integrations.data.quality.button}">Verify Data Quality</span>
+                                    <span id="data-quality-spinner" class="htmx-indicator">
+                                        <i class="lni lni-is-spinning lni-spinner-2-sacle"></i>
+                                    </span>
                                 </button>
                             </div>
                         </div>
@@ -389,8 +392,11 @@
                     hx-get="/settings/integrations/data-quality-content"
                     hx-target="#integrations"
                     hx-swap="innerHTML"
-                    th:text="#{integrations.data.quality.refresh}">
-                Refresh Data
+                    hx-indicator="#refresh-data-spinner">
+                <span class="button-text" th:text="#{integrations.data.quality.refresh}">Refresh Data</span>
+                <span id="refresh-data-spinner" class="htmx-indicator">
+                    <i class="lni lni-is-spinning lni-spinner-2-sacle"></i>
+                </span>
             </button>
             <button class="btn btn-secondary"
                     hx-get="/settings/integrations/integrations-content"

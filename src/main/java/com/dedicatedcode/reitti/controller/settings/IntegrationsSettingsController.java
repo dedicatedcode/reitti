@@ -380,20 +380,10 @@ public class IntegrationsSettingsController {
         long avgIntervalSeconds = -1;
         boolean hasFluctuatingFrequency = false;
 
-        if (allPoints.size() > 1) {
-            List<Long> intervals = new ArrayList<>();
-            long totalIntervalSeconds = 0;
 
-            for (int i = 1; i < allPoints.size(); i++) {
-                long intervalSeconds = java.time.Duration.between(
-                        allPoints.get(i-1).getTimestamp(),
-                        allPoints.get(i).getTimestamp()
-                ).getSeconds();
-                intervals.add(intervalSeconds);
-                totalIntervalSeconds += intervalSeconds;
-            }
+        if (last24hPoints.size() > 1) {
 
-            avgIntervalSeconds = totalIntervalSeconds / intervals.size();
+            avgIntervalSeconds = (24 * 60 * 60) / last24hPoints.size();
 
             if (avgIntervalSeconds < 60) {
                 avgInterval = avgIntervalSeconds + " seconds";
@@ -423,27 +413,27 @@ public class IntegrationsSettingsController {
 
                 // Check for frequency fluctuation (coefficient of variation > 1.0)
                 if (last24hIntervals.size() > 2) {
-                    long finalAvgLast24hIntervalSeconds = avgLast24hIntervalSeconds;
                     double variance = last24hIntervals.stream()
-                            .mapToDouble(interval -> Math.pow(interval - finalAvgLast24hIntervalSeconds, 2))
+                            .mapToDouble(interval -> Math.pow(interval - avgLast24hIntervalSeconds, 2))
                             .average().orElse(0.0);
                     double stdDev = Math.sqrt(variance);
                     double coefficientOfVariation = avgLast24hIntervalSeconds > 0 ? stdDev / avgLast24hIntervalSeconds : 0;
-                    hasFluctuatingFrequency = coefficientOfVariation > 1.0;
+                    hasFluctuatingFrequency = coefficientOfVariation > 10.0;
                 }
             }
         }
 
         // Determine status flags
         boolean isActivelyTracking = pointsLast24h > 0;
-        boolean hasGoodFrequency = avgIntervalSeconds < 50;
+        int recommendedFrequency = 75;
+        boolean hasGoodFrequency = avgIntervalSeconds < recommendedFrequency;
 
         // Generate recommendations
         List<String> recommendations = new ArrayList<>();
         if (!isActivelyTracking) {
             recommendations.add(getMessage("integrations.data.quality.recommendation.no.data"));
         }
-        if (avgIntervalSeconds > 50) {
+        if (avgIntervalSeconds > recommendedFrequency) {
             recommendations.add(getMessage("integrations.data.quality.recommendation.low.frequency"));
         }
         if (goodAccuracyPercentage != null && goodAccuracyPercentage < 70) {
