@@ -77,6 +77,7 @@ public class ProcessingPipelineTrigger {
 
     private void handleDataForUser(User user, String previewId) {
 
+        //do not load all unprocessed raw location points in memory, but rather let the database return them in batches AI!
         List<RawLocationPoint> allUnprocessedPoints;
         if (previewId == null) {
             allUnprocessedPoints = rawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestamp(user);
