@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{settings.title}">Settings - Reitti</title>
+    <link rel="stylesheet" href="/css/leaflet.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/lineicons.css">
+    <script src="/js/HumanizeDuration.js"></script>
+    <script src="/js/htmx.min.js"></script>
+    <script src="/js/leaflet.js"></script>
+    <script src="/js/TileLayer.Grayscale.js"></script>
+    <script src="/js/leaflet.geodesic.2.7.2.js"></script>
+</head>
+<body class="settings-page">
+<div class="settings-container">
+
+    <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
+    <div class="settings-content-area">
+        <div id="visit-sensitivity-section" class="settings-section active">
+            <h2 th:text="#{visit.sensitivity.title}">Visit Sensitivity</h2>
+
+            <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+            
+            <!-- Recalculation Advice Section -->
+            <div th:if="${recalculationAdvised}" class="alert alert-warning">
+                <h3><span th:text="#{visit.sensitivity.recalculation.title}">Recalculation Advised</span></h3>
+                <p th:text="#{visit.sensitivity.recalculation.message}">Configuration has changed. Recalculation is highly advised for these changes to take effect on existing data, otherwise they will only affect new incoming data.</p>
+                <div class="alert-actions">
+                    <button type="button" 
+                            class="btn btn-warning"
+                            hx-post="/settings/visit-sensitivity/recalculate"
+                            hx-target="body"
+                            th:hx-confirm="#{visit.sensitivity.recalculation.confirm}"
+                            hx-indicator="#recalculate-spinner">
+                        <span class="button-text" th:text="#{visit.sensitivity.recalculation.start}">Start Recalculation</span>
+                        <span id="recalculate-spinner" class="htmx-indicator">
+                            <i class="lni lni-spinner-arrow"></i>
+                            <span th:text="#{visit.sensitivity.recalculation.starting}">Starting Recalculation...</span>
+                        </span>
+                    </button>
+                    <button type="button" 
+                            class="btn btn-secondary"
+                            hx-post="/settings/visit-sensitivity/dismiss-recalculation"
+                            hx-target="body"
+                            th:text="#{visit.sensitivity.recalculation.dismiss}">Dismiss</button>
+                </div>
+            </div>
+
+
+            <!-- Configuration List -->
+            <div th:replace="~{fragments/configuration-list :: configuration-list(${configurations})}"></div>
+            
+            <!-- Edit Form Area -->
+            <div id="edit-form">
+                <div th:if="${configurationForm}">
+                    <div th:replace="~{fragments/configuration-form :: configuration-form}"></div>
+                <!-- Form will be loaded here via HTMX when not showing edit form -->
+                </div>
+            </div>
+
+            <!-- Preview Area -->
+            <div id="preview-area">
+                <!-- Preview will be loaded here via HTMX -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+
+    window.userSettings = /*[[${userSettings}]]*/ {}
+
+    function getUserTimezone() {
+        if (window.userSettings.timezoneOverride) {
+            return window.userSettings.timezoneOverride;
+        } else {
+            return Intl.DateTimeFormat().resolvedOptions().timeZone;
+        }
+    }
+</script>
+</body>
+</html>

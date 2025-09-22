@@ -3,17 +3,16 @@ package com.dedicatedcode.reitti.service.processing;
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.LocationProcessEvent;
 import com.dedicatedcode.reitti.event.VisitUpdatedEvent;
+import com.dedicatedcode.reitti.model.ClusteredPoint;
 import com.dedicatedcode.reitti.model.geo.*;
+import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.OptimisticLockException;
-import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
-import com.dedicatedcode.reitti.repository.UserJdbcService;
-import com.dedicatedcode.reitti.repository.VisitJdbcService;
+import com.dedicatedcode.reitti.repository.*;
+import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -28,12 +27,12 @@ import java.util.stream.Collectors;
 public class VisitDetectionService {
     private static final Logger logger = LoggerFactory.getLogger(VisitDetectionService.class);
 
-    private final double distanceThreshold; // meters
-    private final long timeThreshold; // seconds
-    private final int minPointsInCluster; // Minimum points to form a valid cluster
     private final UserJdbcService userJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final VisitDetectionParametersService visitDetectionParametersService;
+    private final PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService;
     private final VisitJdbcService visitJdbcService;
+    private final PreviewVisitJdbcService previewVisitJdbcService;
 
     private final RabbitTemplate rabbitTemplate;
     private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
@@ -41,22 +40,19 @@ public class VisitDetectionService {
     @Autowired
     public VisitDetectionService(
             RawLocationPointJdbcService rawLocationPointJdbcService,
-            @Value("${reitti.staypoint.distance-threshold-meters:50}") double distanceThreshold,
-            @Value("${reitti.visit.merge-threshold-seconds:300}") long timeThreshold,
-            @Value("${reitti.staypoint.min-points:5}") int minPointsInCluster,
+            PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService,
+            VisitDetectionParametersService visitDetectionParametersService,
             UserJdbcService userJdbcService,
             VisitJdbcService visitJdbcService,
+            PreviewVisitJdbcService previewVisitJdbcService,
             RabbitTemplate rabbitTemplate) {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
-        this.distanceThreshold = distanceThreshold;
-        this.timeThreshold = timeThreshold;
-        this.minPointsInCluster = minPointsInCluster;
+        this.visitDetectionParametersService = visitDetectionParametersService;
         this.userJdbcService = userJdbcService;
+        this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
         this.visitJdbcService = visitJdbcService;
+        this.previewVisitJdbcService = previewVisitJdbcService;
         this.rabbitTemplate = rabbitTemplate;
-
-        logger.info("StayPointDetectionService initialized with: distanceThreshold={}m, timeThreshold={}s, minPointsInCluster={}",
-                distanceThreshold, timeThreshold, minPointsInCluster);
     }
 
     public void detectStayPoints(LocationProcessEvent incoming) {
@@ -65,26 +61,37 @@ public class VisitDetectionService {
         
         userLock.lock();
         try {
-            logger.debug("Detecting stay points for user {} from {} to {} ", username, incoming.getEarliest(), incoming.getLatest());
+            logger.debug("Detecting stay points for user {} from {} to {}. Mode: {}", username, incoming.getEarliest(), incoming.getLatest(), incoming.getPreviewId() == null ? "live" : "preview");
             User user = userJdbcService.findByUsername(username).orElseThrow();
             // We extend the search window slightly to catch visits spanning midnight
             Instant windowStart = incoming.getEarliest().minus(5, ChronoUnit.MINUTES);
             // Get points from 1 day after the latest new point
             Instant windowEnd = incoming.getLatest().plus(5, ChronoUnit.MINUTES);
 
-            /*
-            -----+++++----------+++++------+++++++---+++----------------++++++++-----------------------------------------------
-            ----------------------#-------------------#------------------------------------------------------------------------
-            --------------------++#++------+++++++---+#+-----------------------------------------------------------------------
-             */
-            List<Visit> affectedVisits = this.visitJdbcService.findByUserAndTimeAfterAndStartTimeBefore(user, windowStart, windowEnd);
+            DetectionParameter.VisitDetection detectionParameters;
+            if (incoming.getPreviewId() == null) {
+                detectionParameters = this.visitDetectionParametersService.getCurrentConfiguration(user, windowStart).getVisitDetection();
+            } else {
+                detectionParameters = this.visitDetectionParametersService.getCurrentConfiguration(user, incoming.getPreviewId()).getVisitDetection();
+
+            }
+            List<Visit> affectedVisits;
+            if (incoming.getPreviewId() == null) {
+                affectedVisits = this.visitJdbcService.findByUserAndTimeAfterAndStartTimeBefore(user, windowStart, windowEnd);
+            } else {
+                affectedVisits = this.previewVisitJdbcService.findByUserAndTimeAfterAndStartTimeBefore(user, incoming.getPreviewId(), windowStart, windowEnd);
+            }
             if (logger.isDebugEnabled()) {
                 logger.debug("Found [{}] visits which touch the timerange from [{}] to [{}]", affectedVisits.size(), windowStart, windowEnd);
                 affectedVisits.forEach(visit -> logger.debug("Visit [{}] from [{}] to [{}] at [{},{}]", visit.getId(), visit.getStartTime(), visit.getEndTime(), visit.getLongitude(), visit.getLatitude()));
 
             }
             try {
-                this.visitJdbcService.delete(affectedVisits);
+                if (incoming.getPreviewId() == null) {
+                    this.visitJdbcService.delete(affectedVisits);
+                } else {
+                    this.previewVisitJdbcService.delete(affectedVisits);
+                }
                 logger.debug("Deleted [{}] visits with ids [{}]", affectedVisits.size(), affectedVisits.stream().map(Visit::getId).map(Object::toString).collect(Collectors.joining()));
             } catch (OptimisticLockException e) {
                 logger.error("Optimistic lock exception", e);
@@ -103,10 +110,16 @@ public class VisitDetectionService {
             logger.debug("Searching for points in the timerange from [{}] to [{}]", windowStart, windowEnd);
 
             double baseLatitude = affectedVisits.isEmpty() ? 50 : affectedVisits.getFirst().getLatitude();
-            double[] metersAsDegrees = GeoUtils.metersToDegreesAtPosition(distanceThreshold, baseLatitude);
-            List<RawLocationPointJdbcService.ClusteredPoint> clusteredPointsInTimeRangeForUser = this.rawLocationPointJdbcService.findClusteredPointsInTimeRangeForUser(user, windowStart, windowEnd, minPointsInCluster, metersAsDegrees[0]);
+            double[] metersAsDegrees = GeoUtils.metersToDegreesAtPosition(detectionParameters.getSearchDistanceInMeters(), baseLatitude);
+            List<ClusteredPoint> clusteredPointsInTimeRangeForUser;
+            if (incoming.getPreviewId() == null) {
+                clusteredPointsInTimeRangeForUser = this.rawLocationPointJdbcService.findClusteredPointsInTimeRangeForUser(user, windowStart, windowEnd, detectionParameters.getMinimumAdjacentPoints(), metersAsDegrees[0]);
+            } else {
+                clusteredPointsInTimeRangeForUser = this.previewRawLocationPointJdbcService.findClusteredPointsInTimeRangeForUser(user, incoming.getPreviewId(), windowStart, windowEnd, detectionParameters.getMinimumAdjacentPoints(), metersAsDegrees[0]);
+            }
+
             Map<Integer, List<RawLocationPoint>> clusteredByLocation = new HashMap<>();
-            for (RawLocationPointJdbcService.ClusteredPoint clusteredPoint : clusteredPointsInTimeRangeForUser) {
+            for (ClusteredPoint clusteredPoint : clusteredPointsInTimeRangeForUser) {
                 if (clusteredPoint.getClusterId() != null) {
                     clusteredByLocation.computeIfAbsent(clusteredPoint.getClusterId(), _ -> new ArrayList<>()).add(clusteredPoint.getPoint());
                 }
@@ -115,7 +128,7 @@ public class VisitDetectionService {
             logger.debug("Found {} point clusters in the processing window from [{}] to [{}]", clusteredByLocation.size(), windowStart, windowEnd);
 
             // Apply the stay point detection algorithm
-            List<StayPoint> stayPoints = detectStayPointsFromTrajectory(clusteredByLocation);
+            List<StayPoint> stayPoints = detectStayPointsFromTrajectory(clusteredByLocation, detectionParameters);
 
             logger.info("Detected {} stay points for user {}", stayPoints.size(), user.getUsername());
 
@@ -127,22 +140,27 @@ public class VisitDetectionService {
                     createdVisits.add(visit);
             }
 
-            List<Long> createdIds = visitJdbcService.bulkInsert(user, createdVisits).stream().map(Visit::getId).toList();
-            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitUpdatedEvent(user.getUsername(), createdIds));
+            List<Long> createdIds;
+            if (incoming.getPreviewId() == null) {
+                createdIds = visitJdbcService.bulkInsert(user, createdVisits).stream().map(Visit::getId).toList();
+            } else {
+                createdIds = previewVisitJdbcService.bulkInsert(user, incoming.getPreviewId(), createdVisits).stream().map(Visit::getId).toList();
+            }
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.MERGE_VISIT_ROUTING_KEY, new VisitUpdatedEvent(user.getUsername(), createdIds, incoming.getPreviewId()));
         } finally {
             userLock.unlock();
         }
     }
 
 
-    private List<StayPoint> detectStayPointsFromTrajectory(Map<Integer, List<RawLocationPoint>> points) {
+    private List<StayPoint> detectStayPointsFromTrajectory(Map<Integer, List<RawLocationPoint>> points, DetectionParameter.VisitDetection visitDetectionParameters) {
         logger.debug("Starting cluster-based stay point detection with {} different spatial clusters.", points.size());
 
         List<List<RawLocationPoint>> clusters = new ArrayList<>();
 
         //split them up when time is x seconds between
         for (List<RawLocationPoint> clusteredByLocation : points.values()) {
-            logger.debug("Start splitting up geospatial cluster with [{}] elements based on minimum time [{}]s between points", clusteredByLocation.size(), timeThreshold);
+            logger.debug("Start splitting up geospatial cluster with [{}] elements based on minimum time [{}]s between points", clusteredByLocation.size(), visitDetectionParameters.getMinimumStayTimeInSeconds());
             //first sort them by timestamp
             clusteredByLocation.sort(Comparator.comparing(RawLocationPoint::getTimestamp));
 
@@ -154,7 +172,7 @@ public class VisitDetectionService {
 
             for (int i = 1; i < clusteredByLocation.size(); i++) {
                 RawLocationPoint next = clusteredByLocation.get(i);
-                if (Duration.between(currentTime, next.getTimestamp()).getSeconds() < timeThreshold) {
+                if (Duration.between(currentTime, next.getTimestamp()).getSeconds() < visitDetectionParameters.getMaxMergeTimeBetweenSameStayPoints()) {
                     currentTimedCluster.add(next);
                 } else {
                     currentTimedCluster = new ArrayList<>();
@@ -168,7 +186,7 @@ public class VisitDetectionService {
         logger.debug("Detected {} stay points after splitting them up.", clusters.size());
         //filter them by duration
         List<List<RawLocationPoint>> filteredByMinimumDuration = clusters.stream()
-                .filter(c -> Duration.between(c.getFirst().getTimestamp(), c.getLast().getTimestamp()).toSeconds() > timeThreshold)
+                .filter(c -> Duration.between(c.getFirst().getTimestamp(), c.getLast().getTimestamp()).toSeconds() > visitDetectionParameters.getMinimumStayTimeInSeconds())
                 .toList();
 
         logger.debug("Found {} valid clusters after duration filtering", filteredByMinimumDuration.size());

@@ -15,57 +15,74 @@
         <a href="/settings/job-status"
            class="settings-nav-item" 
            th:classappend="${activeSection == 'job-status'} ? 'active' : ''"
+           th:title="#{settings.job.status.description}"
            th:text="#{settings.job.status}">Job Status</a>
         
         <a href="/settings/import"
            class="settings-nav-item"
            th:classappend="${activeSection == 'file-upload'} ? 'active' : ''"
+           th:title="#{settings.import.data.description}"
            th:text="#{settings.import.data}">Import Data</a>
 
         <a href="/settings/export-data"
            class="settings-nav-item"
            th:classappend="${activeSection == 'export-data'} ? 'active' : ''"
+           th:title="#{export.title.description}"
            th:text="#{export.title}">Export Data</a>
 
         <a href="/settings/api-tokens"
            class="settings-nav-item"
            th:classappend="${activeSection == 'api-tokens'} ? 'active' : ''"
+           th:title="#{settings.api.tokens.description}"
            th:text="#{settings.api.tokens}">API Tokens</a>
 
         <a href="/settings/magic-links"
            class="settings-nav-item"
            th:classappend="${activeSection == 'sharing'} ? 'active' : ''"
+           th:title="#{settings.share.access.description}"
            th:text="#{settings.share.access}">Share Access</a>
 
         <a href="/settings/user-management"
            class="settings-nav-item"
            th:classappend="${activeSection == 'user-management'} ? 'active' : ''"
+           th:title="#{settings.user.management.description}"
            th:text="#{settings.user.management}">User Management</a>
         
         <a href="/settings/places"
            class="settings-nav-item"
            th:classappend="${activeSection == 'places'} ? 'active' : ''"
+           th:title="#{settings.places.description}"
            th:text="#{settings.places}">Places</a>
+        
+        <a href="/settings/visit-sensitivity"
+           class="settings-nav-item"
+           th:classappend="${activeSection == 'visit-sensitivity'} ? 'active' : ''"
+           th:title="#{visit.sensitivity.title.description}"
+           th:text="#{visit.sensitivity.title}">Visit Sensitivity</a>
         
         <a href="/settings/geocode-services"
            class="settings-nav-item"
            th:classappend="${activeSection == 'geocode-services'} ? 'active' : ''"
+           th:title="#{settings.geocoding.description}"
            th:text="#{settings.geocoding}">Geocoding</a>
         
         <a href="/settings/manage-data"
            th:if="${dataManagementEnabled}"
            class="settings-nav-item"
            th:classappend="${activeSection == 'manage-data'} ? 'active' : ''"
+           th:title="#{settings.manage.data.description}"
            th:text="#{settings.manage.data}">Manage Data</a>
         
         <a href="/settings/integrations"
            class="settings-nav-item"
            th:classappend="${activeSection == 'integrations'} ? 'active' : ''"
+           th:title="#{settings.integrations.description}"
            th:text="#{settings.integrations}">Integrations</a>
 
         <a href="/settings/about"
            class="settings-nav-item"
            th:classappend="${activeSection == 'about'} ? 'active' : ''"
+           th:title="#{settings.about.description}"
            th:text="#{settings.about}">About</a>
     </div>
 </body>

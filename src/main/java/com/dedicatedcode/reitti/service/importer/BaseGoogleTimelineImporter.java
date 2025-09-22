@@ -1,12 +1,13 @@
 package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ImportBatchProcessor;
+import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.time.Duration;
 import java.time.ZonedDateTime;
@@ -20,28 +21,25 @@ public abstract class BaseGoogleTimelineImporter {
 
     protected final ObjectMapper objectMapper;
     protected final ImportBatchProcessor batchProcessor;
-    protected final int minStayPointDetectionPoints;
-    protected final int distanceThresholdMeters;
-    protected final int mergeThresholdSeconds;
+    private final VisitDetectionParametersService parametersService;
 
     public BaseGoogleTimelineImporter(ObjectMapper objectMapper,
                                       ImportBatchProcessor batchProcessor,
-                                      @Value("${reitti.staypoint.min-points}") int minStayPointDetectionPoints,
-                                      @Value("${reitti.staypoint.distance-threshold-meters}") int distanceThresholdMeters,
-                                      @Value("${reitti.visit.merge-threshold-seconds}") int mergeThresholdSeconds) {
+                                      VisitDetectionParametersService parametersService) {
         this.objectMapper = objectMapper;
         this.batchProcessor = batchProcessor;
-        this.minStayPointDetectionPoints = minStayPointDetectionPoints;
-        this.distanceThresholdMeters = distanceThresholdMeters;
-        this.mergeThresholdSeconds = mergeThresholdSeconds;
+        this.parametersService = parametersService;
     }
 
     protected int handleVisit(User user, ZonedDateTime startTime, ZonedDateTime endTime, LatLng latLng, List<LocationDataRequest.LocationPoint> batch) {
-        logger.info("Found visit at [{}] from start [{}] to end [{}]. Will insert at least [{}] synthetic geo locations.", latLng, startTime, endTime, minStayPointDetectionPoints);
+        DetectionParameter detectionParameter = parametersService.getCurrentConfiguration(user, startTime.toInstant());
+
+        logger.info("Found visit at [{}] from start [{}] to end [{}]. Will insert at least [{}] synthetic geo locations.", latLng, startTime, endTime, detectionParameter.getVisitDetection().getMinimumAdjacentPoints());
         createAndScheduleLocationPoint(latLng, startTime, user, batch);
         int count = 1;
+
         long durationBetween = Duration.between(startTime.toInstant(), endTime.toInstant()).toSeconds();
-        if (durationBetween > mergeThresholdSeconds) {
+        if (durationBetween > detectionParameter.getVisitDetection().getMinimumStayTimeInSeconds()) {
             long increment = 60;
             ZonedDateTime currentTime = startTime.plusSeconds(increment);
             while (currentTime.isBefore(endTime)) {
@@ -51,7 +49,7 @@ public abstract class BaseGoogleTimelineImporter {
             }
             logger.debug("Inserting synthetic points into import to simulate stays at [{}] from [{}] till [{}]", latLng, startTime, endTime);
         } else {
-            logger.info("Skipping creating synthetic points at [{}] since duration was less then [{}] seconds ", latLng, mergeThresholdSeconds);
+            logger.info("Skipping creating synthetic points at [{}] since duration was less then [{}] seconds ", latLng, detectionParameter.getVisitDetection().getMinimumStayTimeInSeconds());
         }
         createAndScheduleLocationPoint(latLng, endTime, user, batch);
         return count + 1;

@@ -10,13 +10,15 @@ public class SSEEvent implements Serializable {
     private final Long userId;
     private final Long changedUserId;
     private final LocalDate date;
+    private final String previewId;
 
     @JsonCreator
-    public SSEEvent(SSEType type, Long userId, Long changedUserId, LocalDate date) {
+    public SSEEvent(SSEType type, Long userId, Long changedUserId, LocalDate date, String previewId) {
         this.type = type;
         this.userId = userId;
         this.changedUserId = changedUserId;
         this.date = date;
+        this.previewId = previewId;
     }
 
     public SSEType getType() {
@@ -33,5 +35,9 @@ public class SSEEvent implements Serializable {
 
     public LocalDate getDate() {
         return date;
+    }
+
+    public String getPreviewId() {
+        return previewId;
     }
 }

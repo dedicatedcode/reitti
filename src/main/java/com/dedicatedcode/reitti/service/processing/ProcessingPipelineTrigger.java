@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.event.LocationProcessEvent;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.PreviewRawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
@@ -26,6 +27,7 @@ public class ProcessingPipelineTrigger {
 
     private final ImportStateHolder stateHolder;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService;
     private final UserJdbcService userJdbcService;
     private final RabbitTemplate rabbitTemplate;
 
@@ -33,10 +35,12 @@ public class ProcessingPipelineTrigger {
 
     public ProcessingPipelineTrigger(ImportStateHolder stateHolder,
                                      RawLocationPointJdbcService rawLocationPointJdbcService,
+                                     PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService,
                                      UserJdbcService userJdbcService,
                                      RabbitTemplate rabbitTemplate) {
         this.stateHolder = stateHolder;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
         this.userJdbcService = userJdbcService;
         this.rabbitTemplate = rabbitTemplate;
     }
@@ -48,7 +52,7 @@ public class ProcessingPipelineTrigger {
         isRunning.set(true);
         try {
             for (User user : userJdbcService.findAll()) {
-                handleDataForUser(user);
+                handleDataForUser(user, null);
             }
         } finally {
             isRunning.set(false);
@@ -62,7 +66,7 @@ public class ProcessingPipelineTrigger {
         try {
             Optional<User> byUsername = this.userJdbcService.findByUsername(event.getUsername());
             if (byUsername.isPresent()) {
-                handleDataForUser(byUsername.get());
+                handleDataForUser(byUsername.get(), event.getPreviewId());
             } else {
                 log.warn("No user found for username: {}", event.getUsername());
             }
@@ -71,8 +75,14 @@ public class ProcessingPipelineTrigger {
         }
     }
 
-    private void handleDataForUser(User user) {
-        List<RawLocationPoint> allUnprocessedPoints = rawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestamp(user);
+    private void handleDataForUser(User user, String previewId) {
+
+        List<RawLocationPoint> allUnprocessedPoints;
+        if (previewId == null) {
+            allUnprocessedPoints = rawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestamp(user);
+        } else {
+            allUnprocessedPoints = previewRawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestamp(user, previewId);
+        }
 
         log.debug("Found [{}] unprocessed points for user [{}]", allUnprocessedPoints.size(), user.getId());
         int i = 0;
@@ -85,12 +95,15 @@ public class ProcessingPipelineTrigger {
             log.debug("Scheduling stay detection event for user [{}] and points between [{}] and [{}]", user.getId(), earliest, latest);
 
             currentPoints.forEach(RawLocationPoint::markProcessed);
-            rawLocationPointJdbcService.bulkUpdateProcessedStatus(currentPoints);
-
+            if (previewId != null) {
+                previewRawLocationPointJdbcService.bulkUpdateProcessedStatus(currentPoints);
+            } else {
+                rawLocationPointJdbcService.bulkUpdateProcessedStatus(currentPoints);
+            }
             this.rabbitTemplate
                     .convertAndSend(RabbitMQConfig.EXCHANGE_NAME,
                             RabbitMQConfig.STAY_DETECTION_ROUTING_KEY,
-                            new LocationProcessEvent(user.getUsername(), earliest, latest));
+                            new LocationProcessEvent(user.getUsername(), earliest, latest, previewId));
             i++;
         }
     }

@@ -1,0 +1,50 @@
+<div xmlns:th="http://www.thymeleaf.org" th:fragment="configuration-list(configurations)" class="settings-card" id="configuration-list">
+    <h3 th:text="#{visit.sensitivity.configurations}">Current Configurations</h3>
+    <div class="configuration-table">
+        <table>
+            <thead>
+                <tr>
+                    <th th:text="#{visit.sensitivity.valid.since}">Valid Since</th>
+                    <th th:text="#{visit.sensitivity.description}">Description</th>
+                    <th th:text="#{visit.sensitivity.actions}">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="config : ${configurations}">
+                    <td>
+                        <span th:if="${config.getValidSince() != null}" 
+                              th:text="${#temporals.format(config.getValidSince(), 'yyyy-MM-dd')}"></span>
+                        <span th:if="${config.getValidSince() == null}" 
+                              th:text="#{visit.sensitivity.default.config}"
+                              class="default-config-label">Default Configuration</span>
+                    </td>
+                    <td>
+                        <span th:if="${config.getValidSince() == null}" 
+                              th:text="#{visit.sensitivity.default.description}">Applied to all data before any specific configuration</span>
+                        <span th:if="${config.getValidSince() != null}" 
+                              th:text="#{visit.sensitivity.specific.description}">Applied from this date forward</span>
+                    </td>
+                    <td>
+                        <button th:hx-get="@{'/settings/visit-sensitivity/edit/' + ${config.getId()}}"
+                                hx-target="#edit-form"
+                                hx-vals='js:{"timezone": getUserTimezone()}'
+                                class="btn btn-primary btn-sm"
+                                th:text="#{visit.sensitivity.edit}">Edit</button>
+                        <button th:hx-delete="@{'/settings/visit-sensitivity/' + ${config.getId()}}"
+                                hx-target="body"
+                                th:hx-confirm="#{visit.sensitivity.delete.confirm}"
+                                th:disabled="${config.getValidSince() == null}"
+                                class="btn btn-danger btn-sm"
+                                th:text="#{visit.sensitivity.delete}">Delete</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <button th:hx-get="@{/settings/visit-sensitivity/new}"
+            hx-target="#edit-form"
+            hx-vals='js:{"timezone": getUserTimezone()}'
+            class="btn btn-success"
+            th:text="#{visit.sensitivity.add.new}">Add New Configuration</button>
+</div>

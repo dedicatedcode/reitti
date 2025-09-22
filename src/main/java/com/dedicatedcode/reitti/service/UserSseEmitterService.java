@@ -30,12 +30,12 @@ public class UserSseEmitterService implements SmartLifecycle {
         SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
         userEmitters.computeIfAbsent(user, _ -> new CopyOnWriteArraySet<>()).add(emitter);
         emitter.onCompletion(() -> {
-            log.info("SSE connection completed for user: [{}]", user);
+            log.debug("SSE connection completed for user: [{}]", user);
             removeEmitter(user, emitter);
         });
 
         emitter.onTimeout(() -> {
-            log.info("SSE connection timed out for user: [{}]", user);
+            log.debug("SSE connection timed out for user: [{}]", user);
             emitter.complete();
             removeEmitter(user, emitter);
         });
@@ -45,7 +45,7 @@ public class UserSseEmitterService implements SmartLifecycle {
             removeEmitter(user, emitter);
         });
         try {
-            emitter.send(SseEmitter.event().data(new SSEEvent(SSEType.CONNECTED, null, null, null)));
+            emitter.send(SseEmitter.event().data(new SSEEvent(SSEType.CONNECTED, null, null, null, null)));
         } catch (IOException e) {
             log.error("Unable to send initial event for user [{}]", user, e);
         }

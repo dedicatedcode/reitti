@@ -50,7 +50,8 @@ public class UserSettingsControllerTest {
         User user = new User()
                 .withUsername(username)
                 .withDisplayName(displayName)
-                .withPassword(password);
+                .withPassword(password)
+                .withRole(Role.USER);
         return userJdbcService.createUser(user);
     }
 
@@ -58,10 +59,10 @@ public class UserSettingsControllerTest {
     void getUsersContent_AsRegularUser_ShouldReturnUserForm() throws Exception {
         // Create the test user as a regular user
         String testUsername = randomUsername();
-        createTestUser(testUsername, "Test User", "password");
-        
+        User testUser = createTestUser(testUsername, "Test User", "password");
+
         mockMvc.perform(get("/settings/users-content")
-                        .with(user(testUsername)))
+                        .with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: user-form-page"))
                 .andExpect(model().attributeExists("userId"))
@@ -79,7 +80,7 @@ public class UserSettingsControllerTest {
         userJdbcService.updateUser(adminUser);
         
         mockMvc.perform(get("/settings/users-content")
-                        .with(user(adminUsername)))
+                        .with(user(adminUser)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: users-list"))
                 .andExpect(model().attributeExists("users"))
@@ -112,7 +113,7 @@ public class UserSettingsControllerTest {
                         .param("preferred_language", "en")
                         .param("unit_system", "METRIC")
                         .with(csrf())
-                        .with(user(adminUsername)))
+                        .with(user(adminUser)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: users-list"))
                 .andExpect(model().attributeExists("successMessage"))
@@ -132,8 +133,8 @@ public class UserSettingsControllerTest {
     void createUser_AsRegularUser_ShouldShowAccessDenied() throws Exception {
         // Create the test user as a regular user
         String testUsername = randomUsername();
-        createTestUser(testUsername, "Test User", "password");
-        
+        User testUser = createTestUser(testUsername, "Test User", "password");
+
         String newUsername = randomUsername();
         String newDisplayName = "New User";
         String newPassword = "password123";
@@ -146,7 +147,7 @@ public class UserSettingsControllerTest {
                         .param("preferred_language", "en")
                         .param("unit_system", "METRIC")
                         .with(csrf())
-                        .with(user(testUsername)))
+                        .with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: user-form-page"))
                 .andExpect(model().attributeExists("errorMessage"));
@@ -172,7 +173,7 @@ public class UserSettingsControllerTest {
                         .param("preferred_language", "en")
                         .param("unit_system", "METRIC")
                         .with(csrf())
-                        .with(user(adminUsername)))
+                        .with(user(adminUser)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: users-list"))
                 .andExpect(model().attributeExists("errorMessage"))
@@ -210,7 +211,7 @@ public class UserSettingsControllerTest {
                         .param("preferred_language", "en")
                         .param("unit_system", "METRIC")
                         .with(csrf())
-                        .with(user(adminUsername)))
+                        .with(user(adminUser)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: users-list"))
                 .andExpect(model().attributeExists("successMessage"))
@@ -246,7 +247,7 @@ public class UserSettingsControllerTest {
 
         mockMvc.perform(post("/settings/users/{userId}/delete", userId)
                         .with(csrf())
-                        .with(user(adminUsername)))
+                        .with(user(adminUser)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: users-list"))
                 .andExpect(model().attributeExists("successMessage"))
@@ -261,8 +262,8 @@ public class UserSettingsControllerTest {
     void deleteUser_AsRegularUser_ShouldShowAccessDenied() throws Exception {
         // Create the test user as a regular user
         String testUsername = randomUsername();
-        createTestUser(testUsername, "Test User", "password");
-        
+        User testUser = createTestUser(testUsername, "Test User", "password");
+
         // Create another user to try to delete
         String usernameToDelete = randomUsername();
         String displayName = "Delete User";
@@ -274,7 +275,7 @@ public class UserSettingsControllerTest {
 
         mockMvc.perform(post("/settings/users/{userId}/delete", userId)
                         .with(csrf())
-                        .with(user(testUsername)))
+                        .with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: user-form-page"))
                 .andExpect(model().attributeExists("errorMessage"));
@@ -296,7 +297,7 @@ public class UserSettingsControllerTest {
 
         mockMvc.perform(post("/settings/users/{userId}/delete", userId)
                         .with(csrf())
-                        .with(user(currentUsername)))
+                        .with(user(currentUser)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: user-form-page"))
                 .andExpect(model().attributeExists("errorMessage"))
@@ -315,7 +316,7 @@ public class UserSettingsControllerTest {
         userJdbcService.updateUser(adminUser);
         
         mockMvc.perform(get("/settings/user-form")
-                        .with(user(adminUsername)))
+                        .with(user(adminUser)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: user-form-page"))
                 .andExpect(model().attributeDoesNotExist("userId"))
@@ -328,10 +329,10 @@ public class UserSettingsControllerTest {
     void getUserForm_AsRegularUser_WithoutUserId_ShouldShowAccessDenied() throws Exception {
         // Create the test user as a regular user
         String testUsername = randomUsername();
-        createTestUser(testUsername, "Test User", "password");
-        
+        User testUser = createTestUser(testUsername, "Test User", "password");
+
         mockMvc.perform(get("/settings/user-form")
-                        .with(user(testUsername)))
+                        .with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: user-form-page"))
                 .andExpect(model().attributeExists("errorMessage"));
@@ -355,7 +356,7 @@ public class UserSettingsControllerTest {
                         .param("username", username)
                         .param("displayName", displayName)
                         .param("role", role)
-                        .with(user(adminUsername)))
+                        .with(user(adminUser)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: user-form-page"))
                 .andExpect(model().attribute("userId", userId))
@@ -389,7 +390,7 @@ public class UserSettingsControllerTest {
                         .param("preferred_language", "en")
                         .param("unit_system", "METRIC")
                         .with(csrf())
-                        .with(user(currentUsername)))
+                        .with(user(currentUser)))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: user-form-page"))
@@ -411,7 +412,7 @@ public class UserSettingsControllerTest {
         userJdbcService.updateUser(adminUser);
         
         mockMvc.perform(get("/settings/user-form")
-                        .with(user(adminUsername)))
+                        .with(user(adminUser)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: user-form-page"))
                 .andExpect(model().attributeExists("unitSystems"))

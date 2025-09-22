@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.dto.LocationDataRequest;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ImportBatchProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
+import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
 import com.dedicatedcode.reitti.service.importer.dto.ios.IOSSemanticSegment;
 import com.dedicatedcode.reitti.service.importer.dto.ios.IOSVisit;
 import com.fasterxml.jackson.core.JsonFactory;
@@ -33,10 +34,8 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
     public GoogleIOSTimelineImporter(ObjectMapper objectMapper,
                                      ImportStateHolder stateHolder,
                                      ImportBatchProcessor batchProcessor,
-                                     @Value("${reitti.staypoint.min-points}") int minStayPointDetectionPoints,
-                                     @Value("${reitti.staypoint.distance-threshold-meters}") int distanceThresholdMeters,
-                                     @Value("${reitti.visit.merge-threshold-seconds}") int mergeThresholdSeconds) {
-        super(objectMapper, batchProcessor, minStayPointDetectionPoints, distanceThresholdMeters, mergeThresholdSeconds);
+                                     VisitDetectionParametersService parametersService) {
+        super(objectMapper, batchProcessor, parametersService);
         this.stateHolder = stateHolder;
     }
 

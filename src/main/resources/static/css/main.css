@@ -56,6 +56,22 @@ body {
     font-weight: bolder;
 }
 
+.btn.btn-danger:disabled {
+    background: #917575;
+    font-weight: normal;
+}
+
+fieldset {
+    margin-bottom: 16px;
+    border-radius: 4px;
+    border-color: wheat;
+}
+
+legend {
+    font-weight: bold;
+    color: wheat;
+}
+
 .alert {
     padding: 10px 15px;
     margin-bottom: 15px;
@@ -98,7 +114,37 @@ label {
     font-weight: 500;
 }
 
-input[type="text"], input[type="password"], input[type="url"], input[type="date"], select {
+.toggle-buttons {
+    display: inline-flex;
+}
+
+.toggle-buttons .btn {
+    padding: 0.375rem 0.75rem;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.toggle-buttons .btn:not(:last-child) {
+    border-bottom-right-radius: 0;
+    border-top-right-radius: 0;
+}
+
+.toggle-buttons .btn:not(:first-child) {
+    border-bottom-left-radius: 0;
+    border-top-left-radius: 0;
+}
+
+
+
+.toggle-buttons .btn.active {
+    background: var(--color-background-dark-light);
+    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
+}
+
+input[type="text"], input[type="password"], input[type="url"], input[type="number"], input[type="date"], select {
     width: 100%;
     padding: 8px;
     border: 1px solid #ddd;
@@ -155,6 +201,10 @@ tr:hover {
     display: flex;
     gap: 20px;
     flex-wrap: wrap;
+}
+
+.queue-description {
+    margin-top: 16px;
 }
 
 .queue-card {
@@ -382,14 +432,14 @@ nav {
     position: relative;
 }
 
+.htmx-indicator {
+    display: none;
+}
 
+.htmx-indicator.htmx-request,
 .htmx-request .htmx-indicator {
     display: inline;
     height: initial;
-}
-
-.htmx-indicator {
-    display: none;
 }
 
 button {

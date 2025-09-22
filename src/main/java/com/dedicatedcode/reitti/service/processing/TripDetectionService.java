@@ -3,10 +3,7 @@ package com.dedicatedcode.reitti.service.processing;
 import com.dedicatedcode.reitti.event.ProcessedVisitCreatedEvent;
 import com.dedicatedcode.reitti.model.geo.*;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
-import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
-import com.dedicatedcode.reitti.repository.TripJdbcService;
-import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.UserNotificationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,20 +23,29 @@ public class TripDetectionService {
     private static final Logger logger = LoggerFactory.getLogger(TripDetectionService.class);
 
     private final ProcessedVisitJdbcService processedVisitJdbcService;
+    private final PreviewProcessedVisitJdbcService previewProcessedVisitJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService;
     private final TripJdbcService tripJdbcService;
+    private final PreviewTripJdbcService previewTripJdbcService;
     private final UserJdbcService userJdbcService;
     private final UserNotificationService userNotificationService;
     private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
 
     public TripDetectionService(ProcessedVisitJdbcService processedVisitJdbcService,
+                                PreviewProcessedVisitJdbcService previewProcessedVisitJdbcService,
                                 RawLocationPointJdbcService rawLocationPointJdbcService,
+                                PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService,
                                 TripJdbcService tripJdbcService,
+                                PreviewTripJdbcService previewTripJdbcService,
                                 UserJdbcService userJdbcService,
                                 UserNotificationService userNotificationService) {
         this.processedVisitJdbcService = processedVisitJdbcService;
+        this.previewProcessedVisitJdbcService = previewProcessedVisitJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
         this.tripJdbcService = tripJdbcService;
+        this.previewTripJdbcService = previewTripJdbcService;
         this.userJdbcService = userJdbcService;
         this.userNotificationService = userNotificationService;
     }
@@ -52,13 +58,23 @@ public class TripDetectionService {
         try {
             User user = this.userJdbcService.findByUsername(username).orElseThrow();
 
-            Optional<ProcessedVisit> createdVisit = this.processedVisitJdbcService.findByUserAndId(user, event.getVisitId());
+            Optional<ProcessedVisit> createdVisit;
+            if (event.getPreviewId() == null) {
+                createdVisit = this.processedVisitJdbcService.findByUserAndId(user, event.getVisitId());
+            } else {
+                createdVisit = this.previewProcessedVisitJdbcService.findByUserAndId(user, event.getVisitId());
+            }
             createdVisit.ifPresent(visit -> {
                 //find visits in timerange
                 Instant searchStart = visit.getStartTime().minus(1, ChronoUnit.DAYS);
                 Instant searchEnd = visit.getEndTime().plus(1, ChronoUnit.DAYS);
 
-                List<ProcessedVisit> visits = this.processedVisitJdbcService.findByUserAndTimeOverlap(user, searchStart, searchEnd);
+                List<ProcessedVisit> visits;
+                if (event.getPreviewId() == null) {
+                    visits = this.processedVisitJdbcService.findByUserAndTimeOverlap(user, searchStart, searchEnd);
+                } else {
+                    visits = this.previewProcessedVisitJdbcService.findByUserAndTimeOverlap(user, event.getPreviewId(), searchStart, searchEnd);
+                }
 
                 if (visits.size() < 2) {
                     logger.info("Not enough visits to detect trips for user: {}", user.getUsername());
@@ -72,30 +88,46 @@ public class TripDetectionService {
                     ProcessedVisit endVisit = visits.get(i + 1);
 
                     // Create a trip between these two visits
-                    Trip trip = createTripBetweenVisits(user, startVisit, endVisit);
+                    Trip trip = createTripBetweenVisits(user, event.getPreviewId(), startVisit, endVisit);
                     if (trip != null) {
                         trips.add(trip);
                     }
                 }
 
-                tripJdbcService.bulkInsert(user, trips);
-                userNotificationService.newTrips(user, trips);
+                if (event.getPreviewId() == null) {
+                    tripJdbcService.bulkInsert(user, trips);
+                } else {
+                    previewTripJdbcService.bulkInsert(user, event.getPreviewId(), trips);
+
+                }
+                if (event.getPreviewId() == null) {
+                    userNotificationService.newTrips(user, trips, event.getPreviewId());
+                } else {
+                    userNotificationService.newTrips(user, trips);
+                }
             });
         } finally {
             userLock.unlock();
         }
     }
 
-    private Trip createTripBetweenVisits(User user, ProcessedVisit startVisit, ProcessedVisit endVisit) {
+    private Trip createTripBetweenVisits(User user, String previewId, ProcessedVisit startVisit, ProcessedVisit endVisit) {
         // Trip starts when the first visit ends
         Instant tripStartTime = startVisit.getEndTime();
 
         // Trip ends when the second visit starts
         Instant tripEndTime = endVisit.getStartTime();
 
-        if (this.processedVisitJdbcService.findById(startVisit.getId()).isEmpty() || this.processedVisitJdbcService.findById(endVisit.getId()).isEmpty()) {
-            logger.debug("One of the following visits [{},{}] where already deleted. Will skip trip creation.", startVisit.getId(), endVisit.getId());
-            return null;
+        if (previewId != null) {
+            if (this.previewProcessedVisitJdbcService.findById(startVisit.getId()).isEmpty() || this.previewProcessedVisitJdbcService.findById(endVisit.getId()).isEmpty()) {
+                logger.debug("One of the following preview visits [{},{}] where already deleted. Will skip trip creation.", startVisit.getId(), endVisit.getId());
+                return null;
+            }
+        } else {
+            if (this.processedVisitJdbcService.findById(startVisit.getId()).isEmpty() || this.processedVisitJdbcService.findById(endVisit.getId()).isEmpty()) {
+                logger.debug("One of the following visits [{},{}] where already deleted. Will skip trip creation.", startVisit.getId(), endVisit.getId());
+                return null;
+            }
         }
         // If end time is before or equal to start time, this is not a valid trip
         if (tripEndTime.isBefore(tripStartTime) || tripEndTime.equals(tripStartTime)) {
@@ -104,17 +136,23 @@ public class TripDetectionService {
             return null;
         }
 
-        // Check if a trip already exists with the same start and end times
-        if (tripJdbcService.existsByUserAndStartTimeAndEndTime(user, tripStartTime, tripEndTime)) {
-            logger.debug("Trip already exists for user {} from {} to {}",
-                    user.getUsername(), tripStartTime, tripEndTime);
-            return null;
+
+        if (previewId == null) {
+            // Check if a trip already exists with the same start and end times
+            if (tripJdbcService.existsByUserAndStartTimeAndEndTime(user, tripStartTime, tripEndTime)) {
+                logger.debug("Trip already exists for user {} from {} to {}",
+                        user.getUsername(), tripStartTime, tripEndTime);
+                return null;
+            }
         }
 
         // Get location points between the two visits
-        List<RawLocationPoint> tripPoints = rawLocationPointJdbcService
-                .findByUserAndTimestampBetweenOrderByTimestampAsc(
-                        user, tripStartTime, tripEndTime);
+        List<RawLocationPoint> tripPoints;
+        if (previewId == null) {
+            tripPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, tripStartTime, tripEndTime);
+        } else {
+            tripPoints = previewRawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, previewId, tripStartTime, tripEndTime);
+        }
         double estimatedDistanceInMeters = calculateDistanceBetweenPlaces(startVisit.getPlace(), endVisit.getPlace());
         double travelledDistanceMeters = GeoUtils.calculateTripDistance(tripPoints);
         // Create a new trip

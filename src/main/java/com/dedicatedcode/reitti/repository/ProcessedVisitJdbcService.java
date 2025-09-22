@@ -46,13 +46,6 @@ public class ProcessedVisitJdbcService {
         }
     };
 
-    public List<ProcessedVisit> findAll() {
-        String sql = "SELECT pv.* " +
-                "FROM processed_visits pv " +
-                "ORDER BY pv.start_time";
-        return jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER);
-
-    }
     public List<ProcessedVisit> findByUser(User user) {
         String sql = "SELECT pv.* " +
                 "FROM processed_visits pv " +
@@ -207,15 +200,21 @@ public class ProcessedVisitJdbcService {
         }
         return result;
     }
-
+    @SuppressWarnings("SqlWithoutWhere")
     public void deleteAll() {
         String sql = "DELETE FROM processed_visits";
         jdbcTemplate.update(sql);
     }
 
     public void deleteAllForUser(User user) {
-        String sql = "DELETE FROM processed_visits WHERE user_id = ?";
-        jdbcTemplate.update(sql, user.getId());
+        jdbcTemplate.update("DELETE FROM processed_visits WHERE user_id = ?", user.getId());
     }
 
+    public void deleteAllForUserBetween(User user, Instant start, Instant end) {
+        jdbcTemplate.update("DELETE FROM processed_visits WHERE user_id = ?  AND start_time <= ? AND end_time >= ?", user.getId(), Timestamp.from(end), Timestamp.from(start));
+    }
+
+    public void deleteAllForUserAfter(User user, Instant start) {
+        jdbcTemplate.update("DELETE FROM processed_visits WHERE user_id = ?  AND end_time >= ?", user.getId(), Timestamp.from(start));
+    }
 }

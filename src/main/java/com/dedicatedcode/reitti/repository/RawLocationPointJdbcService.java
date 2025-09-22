@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.model.ClusteredPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import org.locationtech.jts.geom.Coordinate;
@@ -214,6 +215,16 @@ public class RawLocationPointJdbcService {
         jdbcTemplate.update(sql, user.getId());
     }
 
+    public void markAllAsUnprocessedForUserAfter(User user, Instant start) {
+        String sql = "UPDATE raw_location_points SET processed = false WHERE user_id = ? AND timestamp > ?";
+        jdbcTemplate.update(sql, user.getId(), Timestamp.from(start));
+    }
+
+    public void markAllAsUnprocessedForUserBetween(User user, Instant start, Instant end) {
+        String sql = "UPDATE raw_location_points SET processed = false WHERE user_id = ? AND timestamp BETWEEN ? AND ?";
+        jdbcTemplate.update(sql, user.getId(), Timestamp.from(start), Timestamp.from(end));
+    }
+
     public void deleteAllForUser(User user) {
         String sql = "DELETE FROM raw_location_points WHERE user_id = ?";
         jdbcTemplate.update(sql, user.getId());
@@ -224,21 +235,20 @@ public class RawLocationPointJdbcService {
         return result.stream().findFirst();
     }
 
-    public static class ClusteredPoint {
-        private final RawLocationPoint point;
-        private final Integer clusterId;
+    public boolean containsData(User user, Instant start, Instant end) {
+        Integer count = this.jdbcTemplate.queryForObject("SELECT count(*) FROM raw_location_points WHERE user_id = ? AND timestamp > ? AND timestamp < ? LIMIT 1",
+                Integer.class,
+                user.getId(),
+                start != null ? Timestamp.from(start) : Timestamp.valueOf("1970-01-01 00:00:00"),
+                Timestamp.from(end));
+        return count != null && count > 0;
+    }
 
-        public ClusteredPoint(RawLocationPoint point, Integer clusterId) {
-            this.point = point;
-            this.clusterId = clusterId;
-        }
-
-        public RawLocationPoint getPoint() {
-            return point;
-        }
-
-        public Integer getClusterId() {
-            return clusterId;
-        }
+    public boolean containsDataAfter(User user, Instant start) {
+        Integer count = this.jdbcTemplate.queryForObject("SELECT count(*) FROM raw_location_points WHERE user_id = ? AND timestamp > ? LIMIT 1",
+                Integer.class,
+                user.getId(),
+                Timestamp.from(start));
+        return count != null && count > 0;
     }
 }

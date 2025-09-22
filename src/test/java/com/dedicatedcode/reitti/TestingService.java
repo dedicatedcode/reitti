@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -67,9 +68,13 @@ public class TestingService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + (Long) 1L));
     }
 
-    public void triggerProcessingPipeline(int timeoout) {
+    public User randomUser() {
+       return this.userJdbcService.createUser(new User(UUID.randomUUID().toString(), "Test User"));
+    }
+
+    public void triggerProcessingPipeline(int timeout) {
         trigger.start();
-        awaitDataImport(timeoout);
+        awaitDataImport(timeout);
     }
 
     public void awaitDataImport(int seconds) {

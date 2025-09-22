@@ -3,6 +3,8 @@ package com.dedicatedcode.reitti.service;
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -16,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class QueueStatsService {
 
     private final RabbitAdmin rabbitAdmin;
+    private final MessageSource messageSource;
 
     private static final int LOOKBACK_HOURS = 24;
     private static final long DEFAULT_PROCESSING_TIME = 2000;
@@ -34,8 +37,9 @@ public class QueueStatsService {
     private final Map<String, Integer> previousMessageCounts = new ConcurrentHashMap<>();
 
     @Autowired
-    public QueueStatsService(RabbitAdmin rabbitAdmin) {
+    public QueueStatsService(RabbitAdmin rabbitAdmin, MessageSource messageSource) {
         this.rabbitAdmin = rabbitAdmin;
+        this.messageSource = messageSource;
         QUEUES.forEach(queue -> {
             processingHistory.put(queue, new ArrayList<>());
             previousMessageCounts.put(queue, 0);
@@ -50,7 +54,10 @@ public class QueueStatsService {
             long avgProcessingTime = calculateAverageProcessingTime(name);
             long estimatedTime = currentMessageCount * avgProcessingTime;
             
-            return new QueueStats(name, currentMessageCount, formatProcessingTime(estimatedTime), calculateProgress(name, currentMessageCount));
+            String displayName = getLocalizedDisplayName(name);
+            String description = getLocalizedDescription(name);
+            
+            return new QueueStats(name, displayName, description, currentMessageCount, formatProcessingTime(estimatedTime), calculateProgress(name, currentMessageCount));
         }).toList();
     }
 
@@ -151,6 +158,28 @@ public class QueueStatsService {
         return 10;
     }
 
+
+    private String getLocalizedDisplayName(String queueName) {
+        String key = getMessageKeyForQueue(queueName, "name");
+        return messageSource.getMessage(key, null, queueName, LocaleContextHolder.getLocale());
+    }
+    
+    private String getLocalizedDescription(String queueName) {
+        String key = getMessageKeyForQueue(queueName, "description");
+        return messageSource.getMessage(key, null, "Processing " + queueName, LocaleContextHolder.getLocale());
+    }
+    
+    private String getMessageKeyForQueue(String queueName, String suffix) {
+        return switch (queueName) {
+            case RabbitMQConfig.LOCATION_DATA_QUEUE -> "queue.location.data." + suffix;
+            case RabbitMQConfig.STAY_DETECTION_QUEUE -> "queue.stay.detection." + suffix;
+            case RabbitMQConfig.MERGE_VISIT_QUEUE -> "queue.merge.visit." + suffix;
+            case RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE -> "queue.significant.place." + suffix;
+            case RabbitMQConfig.DETECT_TRIP_QUEUE -> "queue.detect.trip." + suffix;
+            case RabbitMQConfig.USER_EVENT_QUEUE -> "queue.user.event." + suffix;
+            default -> "queue.unknown." + suffix;
+        };
+    }
 
     private record ProcessingRecord(LocalDateTime timestamp, long numberOfMessages, long processingTimeMs) { }
 

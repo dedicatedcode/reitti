@@ -1,0 +1,1 @@
+ALTER TABLE visit_detection_parameters ADD COLUMN needs_recalculation BOOLEAN DEFAULT FALSE;

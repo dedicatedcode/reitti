@@ -1,0 +1,269 @@
+<div xmlns:th="http://www.thymeleaf.org" th:fragment="configuration-form" id="edit-form" class="settings-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 th:text="${configurationForm.id != null ? 'Edit Configuration' : 'New Configuration'}">Configuration</h3>
+        
+        <!-- Mode Toggle -->
+        <div class="mode-toggle">
+            <div class="toggle-buttons">
+                <button type="button" 
+                        th:class="${mode == 'simple' ? 'btn active' : 'btn'}"
+                        th:hx-get="${configurationForm.id != null ? '/settings/visit-sensitivity/edit/' + configurationForm.id + '?new-mode=simple' : '/settings/visit-sensitivity/new?new-mode=simple'}"
+                        hx-target="#edit-form"
+                        hx-swap="outerHTML"
+                        hx-include="#configuration-form">Simple</button>
+                <button type="button" 
+                        th:class="${mode == 'advanced' ? 'btn active' : 'btn'}"
+                        th:hx-get="${configurationForm.id != null ? '/settings/visit-sensitivity/edit/' + configurationForm.id + '?new-mode=advanced' : '/settings/visit-sensitivity/new?new-mode=advanced'}"
+                        hx-target="#edit-form"
+                        hx-swap="outerHTML"
+                        hx-include="#configuration-form">Advanced</button>
+            </div>
+        </div>
+    </div>
+    
+    <form id="configuration-form" hx-post="/settings/visit-sensitivity/save"
+          hx-target="body" th:object="${configurationForm}"
+          onchange="handleFormChange(event)">
+        <input type="hidden" th:field="*{id}">
+        <input type="hidden" name="mode" th:value="${mode}">
+        
+        <!-- Simple Mode -->
+        <div th:if="${mode == 'simple'}" class="simple-mode">
+            <div class="form-group">
+                <label th:text="#{visit.sensitivity.level}">Sensitivity Level</label>
+
+                <div class="sensitivity-buttons-container">
+                    <input type="hidden" th:field="*{sensitivityLevel}">
+                    <div class="toggle-buttons">
+                        <button type="button" 
+                                th:class="${configurationForm.sensitivityLevel == 1 ? 'btn active' : 'btn'}"
+                                onclick="setSensitivityLevel(1)">Very Low</button>
+                        <button type="button" 
+                                th:class="${configurationForm.sensitivityLevel == 2 ? 'btn active' : 'btn'}"
+                                onclick="setSensitivityLevel(2)">Low</button>
+                        <button type="button" 
+                                th:class="${configurationForm.sensitivityLevel == 3 ? 'btn active' : 'btn'}"
+                                onclick="setSensitivityLevel(3)">Medium</button>
+                        <button type="button" 
+                                th:class="${configurationForm.sensitivityLevel == 4 ? 'btn active' : 'btn'}"
+                                onclick="setSensitivityLevel(4)">High</button>
+                        <button type="button" 
+                                th:class="${configurationForm.sensitivityLevel == 5 ? 'btn active' : 'btn'}"
+                                onclick="setSensitivityLevel(5)">Very High</button>
+                    </div>
+                </div>
+                <script>
+                    function setSensitivityLevel(level) {
+                        // Update hidden input
+                        document.querySelector('input[name="sensitivityLevel"]').value = level;
+                        
+                        // Update button states
+                        document.querySelectorAll('.sensitivity-buttons-container button').forEach(btn => {
+                            btn.classList.remove('active');
+                        });
+                        event.target.classList.add('active');
+                        handleFormChange();
+                    }
+                </script>
+                <small class="form-text text-muted" th:text="#{visit.sensitivity.level.help}">
+                    Low sensitivity detects fewer, longer visits. High sensitivity detects more, shorter visits. 
+                    Adjust based on your tracking needs: use low for general location tracking, high for detailed movement analysis.
+                </small>
+            </div>
+        </div>
+        
+        <!-- Advanced Mode -->
+        <div th:if="${mode == 'advanced'}" class="advanced-mode">
+            <fieldset>
+                <legend th:text="#{visit.detection.title}">Visit Detection</legend>
+                
+                <div class="form-group">
+                    <label th:text="#{visit.detection.search.distance}">Search Distance (meters)</label>
+                    <input type="number" th:field="*{searchDistanceInMeters}" class="form-control">
+                    <small class="form-text text-muted" th:text="#{visit.detection.search.distance.help}">
+                        Maximum distance between location points to be considered part of the same visit. 
+                        Smaller values (50-100m) detect precise locations, larger values (200-500m) group nearby locations together.
+                        Typical values: 100m for urban areas, 200m for suburban areas.
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <label th:text="#{visit.detection.minimum.points}">Minimum Adjacent Points</label>
+                    <input type="number" th:field="*{minimumAdjacentPoints}" class="form-control">
+                    <small class="form-text text-muted" th:text="#{visit.detection.minimum.points.help}">
+                        Minimum number of consecutive location points required to detect a visit. 
+                        Higher values reduce false positives but may miss short visits. 
+                        Recommended: 3-5 points for most use cases.
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <label th:text="#{visit.detection.minimum.stay}">Minimum Stay Time (seconds)</label>
+                    <input type="number" th:field="*{minimumStayTimeInSeconds}" class="form-control">
+                    <small class="form-text text-muted" th:text="#{visit.detection.minimum.stay.help}">
+                        Minimum duration to consider a location as a visit rather than just passing through. 
+                        Lower values (60-300s) detect brief stops, higher values (600-1800s) only detect significant stays.
+                        Typical values: 300s (5 min) for detailed tracking, 900s (15 min) for major locations only.
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <label th:text="#{visit.detection.max.merge.time}">Max Merge Time Between Same Stay Points (seconds)</label>
+                    <input type="number" th:field="*{maxMergeTimeBetweenSameStayPoints}" class="form-control">
+                    <small class="form-text text-muted" th:text="#{visit.detection.max.merge.time.help}">
+                        Maximum time gap between visits to the same location before they are considered separate visits. 
+                        If you leave and return to the same place within this time, it will be treated as one continuous visit.
+                        Typical values: 1800s (30 min) for brief errands, 3600s (1 hour) for longer breaks.
+                    </small>
+                </div>
+            </fieldset>
+            
+            <fieldset>
+                <legend th:text="#{visit.merging.title}">Visit Merging</legend>
+                
+                <div class="form-group">
+                    <label th:text="#{visit.merging.search.duration}">Search Duration (hours)</label>
+                    <input type="number" th:field="*{searchDurationInHours}" class="form-control">
+                    <small class="form-text text-muted" th:text="#{visit.merging.search.duration.help}">
+                        Time window to look for nearby visits that should be merged together. 
+                        Larger values may merge visits that should remain separate, smaller values may miss related visits.
+                        Recommended: 24-72 hours for most scenarios.
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <label th:text="#{visit.merging.max.merge.time}">Max Merge Time Between Same Visits (seconds)</label>
+                    <input type="number" th:field="*{maxMergeTimeBetweenSameVisits}" class="form-control">
+                    <small class="form-text text-muted" th:text="#{visit.merging.max.merge.time.help}">
+                        Maximum time between visits to the same location before they are considered separate events. 
+                        This helps merge visits that were incorrectly split due to GPS inaccuracies or brief departures.
+                        Typical values: 3600s (1 hour) for strict separation, 7200s (2 hours) for more lenient merging.
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <label th:text="#{visit.merging.min.distance}">Min Distance Between Visits (meters)</label>
+                    <input type="number" th:field="*{minDistanceBetweenVisits}" class="form-control">
+                    <small class="form-text text-muted" th:text="#{visit.merging.min.distance.help}">
+                        Minimum distance required between visits to keep them as separate locations. 
+                        Visits closer than this distance may be merged if they occur within the time window.
+                        Recommended: 50-100m for precise location separation, 200-300m for broader area grouping.
+                    </small>
+                </div>
+            </fieldset>
+        </div>
+        
+        <!-- Valid Since - disabled for default configuration -->
+        <div class="form-group" th:unless="${isDefaultConfig}">
+            <label th:text="#{visit.sensitivity.valid.since}">Valid Since</label>
+            <input type="date" th:field="*{validSince}" class="form-control">
+            <small class="form-text text-muted" th:text="#{visit.sensitivity.valid.since.help}">
+                This configuration will apply to all location data from this date forward. 
+                Any data before this date will continue to use the previous configuration settings.
+                Leave empty to apply immediately to all future data processing.
+            </small>
+        </div>
+        
+        <div th:if="${isDefaultConfig}" class="alert alert-info">
+            <span th:text="#{visit.sensitivity.default.config.note}">
+                This is the default configuration that applies to all historical data and any periods not covered by specific date configurations.
+                Changes to this configuration will affect the processing of all your location data when reprocessing occurs.
+            </span>
+        </div>
+        
+        <div class="form-actions">
+            <button type="button"
+                    id="preview-btn"
+                    hx-post="/settings/visit-sensitivity/preview"
+                    hx-vals='js:{"timezone": getUserTimezone()}'
+                    hx-target="#preview-area"
+                    hx-include="#configuration-form"
+                    class="btn btn-info"
+                    th:text="#{visit.sensitivity.preview}">Preview</button>
+            <button type="submit" class="btn btn-success" th:text="#{visit.sensitivity.save}">Save</button>
+            <button type="button" 
+                    hx-get="/settings/visit-sensitivity"
+                    hx-target="body"
+                    hx-swap="innerHTML"
+                    class="btn btn-secondary"
+                    th:text="#{visit.sensitivity.cancel}">Cancel</button>
+        </div>
+    </form>
+    <script>
+        (function() {
+            let formChangeTimeout = null;
+            let isPreviewOpen = false;
+
+            // Check if preview is currently open
+            function checkPreviewOpen() {
+                return document.getElementById('configuration-preview') !== null;
+            }
+
+            window.handleFormChange = function(event) {
+                // Skip if preview is not open
+                if (!checkPreviewOpen()) {
+                    return;
+                }
+
+                // Skip change events from the preview date input to avoid infinite loops
+                if (event && event.target && event.target.id === 'preview-date') {
+                    return;
+                }
+
+                // Debounce form changes to avoid too many requests
+                if (formChangeTimeout) {
+                    clearTimeout(formChangeTimeout);
+                }
+
+                formChangeTimeout = setTimeout(() => {
+                    triggerPreviewUpdate();
+                }, 500); // Wait 500ms after last change
+            };
+
+            function triggerPreviewUpdate() {
+                const previewArea = document.getElementById('preview-area');
+                const previewDateInput = document.getElementById('preview-date');
+
+                if (!previewArea || !previewDateInput) {
+                    return;
+                }
+
+                // Store current state
+                const currentDate = previewDateInput.value;
+                const currentActiveTab = document.querySelector('#configuration-preview .btn.active')?.id;
+
+                // Create a temporary form data object that includes the current preview date
+                const form = document.getElementById('configuration-form');
+                const formData = new FormData(form);
+                formData.set('previewDate', currentDate);
+
+                // Trigger the preview update
+                htmx.ajax('POST', '/settings/visit-sensitivity/preview', {
+                    values: Object.fromEntries(formData),
+                    target: '#preview-area',
+                    swap: 'innerHTML'
+                }).then(() => {
+                    // After the preview is updated, restore the active tab
+                    setTimeout(() => {
+                        if (currentActiveTab === 'preview-data-btn') {
+                            const previewBtn = document.getElementById('preview-data-btn');
+                            if (previewBtn && typeof window.showPreviewData === 'function') {
+                                window.showPreviewData();
+                            }
+                        }
+                        // Current data tab is active by default, so no need to explicitly set it
+                    }, 100);
+                });
+            }
+
+            // Function to get user timezone (needed for preview requests)
+            window.getUserTimezone = function() {
+                if (window.userSettings?.timezoneOverride) {
+                    return window.userSettings.timezoneOverride;
+                } else {
+                    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+                }
+            };
+        })();
+    </script>
+</div>
