@@ -115,6 +115,10 @@ public class VisitJdbcService {
         jdbcTemplate.update(sql, user.getId());
     }
 
+    public void deleteAllForUserBetween(User user, Instant start, Instant end) {
+        jdbcTemplate.update("DELETE FROM visits WHERE user_id = ?  AND start_time <= ? AND end_time >= ?", user.getId(), Timestamp.from(end), Timestamp.from(start));
+    }
+
     public List<Visit> findByUserAndTimeAfterAndStartTimeBefore(User user, Instant windowStart, Instant windowEnd) {
         String sql = "SELECT v.* " +
                 "FROM visits v " +
@@ -180,5 +184,9 @@ public class VisitJdbcService {
         
         Object[] ids = affectedVisits.stream().map(Visit::getId).toArray();
         jdbcTemplate.update(sql, ids);
+    }
+
+    public void deleteAllForUserAfter(User user, Instant start) {
+        jdbcTemplate.update("DELETE FROM visits WHERE user_id = ?  AND end_time >= ?", user.getId(), Timestamp.from(start));
     }
 }

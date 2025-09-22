@@ -26,6 +26,7 @@ public class VisitDetectionParametersJdbcService {
 
     private static final RowMapper<DetectionParameter> CONFIGURATION_ROW_MAPPER = (rs, _) -> {
         Long id = rs.getLong("id");
+        boolean needsRecalculation = rs.getBoolean("needs_recalculation");
         Timestamp validSinceTimestamp = rs.getTimestamp("valid_since");
         Instant validSince = validSinceTimestamp != null ? validSinceTimestamp.toInstant() : null;
 
@@ -42,7 +43,7 @@ public class VisitDetectionParametersJdbcService {
                 rs.getLong("merging_min_distance_between_visits")
         );
 
-        return new DetectionParameter(id, visitDetection, visitMerging, validSince);
+        return new DetectionParameter(id, visitDetection, visitMerging, validSince, needsRecalculation);
     };
 
 
@@ -77,8 +78,8 @@ public class VisitDetectionParametersJdbcService {
                 user_id, valid_since, detection_search_distance_meters,
                 detection_minimum_adjacent_points, detection_minimum_stay_time_seconds, 
                 detection_max_merge_time_between_same_stay_points, merging_search_duration_in_hours, 
-                merging_max_merge_time_between_same_visits, merging_min_distance_between_visits
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            merging_max_merge_time_between_same_visits, merging_min_distance_between_visits, needs_recalculation
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
         
         Timestamp validSinceTimestamp = detectionParameter.getValidSince() != null ?
@@ -93,7 +94,8 @@ public class VisitDetectionParametersJdbcService {
             detectionParameter.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints(),
             detectionParameter.getVisitMerging().getSearchDurationInHours(),
             detectionParameter.getVisitMerging().getMaxMergeTimeBetweenSameVisits(),
-            detectionParameter.getVisitMerging().getMinDistanceBetweenVisits()
+            detectionParameter.getVisitMerging().getMinDistanceBetweenVisits(),
+            detectionParameter.needsRecalculation()
         );
     }
 
@@ -108,7 +110,8 @@ public class VisitDetectionParametersJdbcService {
                 detection_max_merge_time_between_same_stay_points = ?,
                 merging_search_duration_in_hours = ?,
                 merging_max_merge_time_between_same_visits = ?,
-                merging_min_distance_between_visits = ?
+                merging_min_distance_between_visits = ?,
+                needs_recalculation = ?
             WHERE id = ?
             """;
         
@@ -124,6 +127,7 @@ public class VisitDetectionParametersJdbcService {
             detectionParameter.getVisitMerging().getSearchDurationInHours(),
             detectionParameter.getVisitMerging().getMaxMergeTimeBetweenSameVisits(),
             detectionParameter.getVisitMerging().getMinDistanceBetweenVisits(),
+            detectionParameter.needsRecalculation(),
             detectionParameter.getId()
         );
     }
@@ -141,7 +145,7 @@ public class VisitDetectionParametersJdbcService {
     public DetectionParameter findCurrent(User user, Instant instant) {
         String sql = """
             SELECT * FROM visit_detection_parameters
-            WHERE user_id = ? AND valid_since <= ? OR valid_since IS NULL
+            WHERE user_id = ? AND (valid_since <= ? OR valid_since IS NULL)
             ORDER BY valid_since DESC NULLS LAST
             """;
 

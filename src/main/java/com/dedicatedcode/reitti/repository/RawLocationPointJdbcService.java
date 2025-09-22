@@ -215,6 +215,16 @@ public class RawLocationPointJdbcService {
         jdbcTemplate.update(sql, user.getId());
     }
 
+    public void markAllAsUnprocessedForUserAfter(User user, Instant start) {
+        String sql = "UPDATE raw_location_points SET processed = false WHERE user_id = ? AND timestamp > ?";
+        jdbcTemplate.update(sql, user.getId(), Timestamp.from(start));
+    }
+
+    public void markAllAsUnprocessedForUserBetween(User user, Instant start, Instant end) {
+        String sql = "UPDATE raw_location_points SET processed = false WHERE user_id = ? AND timestamp BETWEEN ? AND ?";
+        jdbcTemplate.update(sql, user.getId(), Timestamp.from(start), Timestamp.from(end));
+    }
+
     public void deleteAllForUser(User user) {
         String sql = "DELETE FROM raw_location_points WHERE user_id = ?";
         jdbcTemplate.update(sql, user.getId());
@@ -223,5 +233,22 @@ public class RawLocationPointJdbcService {
     public Optional<RawLocationPoint> findProximatePoint(User user, Instant when, int maxOffsetInSeconds) {
         List<RawLocationPoint> result = findByUserAndTimestampBetweenOrderByTimestampAsc(user, when.minusSeconds(maxOffsetInSeconds / 2), when.plusSeconds(maxOffsetInSeconds / 2));
         return result.stream().findFirst();
+    }
+
+    public boolean containsData(User user, Instant start, Instant end) {
+        Integer count = this.jdbcTemplate.queryForObject("SELECT count(*) FROM raw_location_points WHERE user_id = ? AND timestamp > ? AND timestamp < ? LIMIT 1",
+                Integer.class,
+                user.getId(),
+                start != null ? Timestamp.from(start) : Timestamp.valueOf("1970-01-01 00:00:00"),
+                Timestamp.from(end));
+        return count != null && count > 0;
+    }
+
+    public boolean containsDataAfter(User user, Instant start) {
+        Integer count = this.jdbcTemplate.queryForObject("SELECT count(*) FROM raw_location_points WHERE user_id = ? AND timestamp > ? LIMIT 1",
+                Integer.class,
+                user.getId(),
+                Timestamp.from(start));
+        return count != null && count > 0;
     }
 }

@@ -39,20 +39,8 @@ public class PreviewVisitDetectionParametersJdbcService {
                 rs.getLong("merging_min_distance_between_visits")
         );
 
-        return new DetectionParameter(id, visitDetection, visitMerging, validSince);
+        return new DetectionParameter(id, visitDetection, visitMerging, validSince, false);
     };
-
-
-    @Transactional(readOnly = true)
-    public List<DetectionParameter> findAllConfigurationsForUser(User user, String previewId) {
-        String sql = """
-            SELECT * FROM preview_visit_detection_parameters
-            WHERE user_id = ? and preview_id = ?
-            ORDER BY valid_since DESC NULLS LAST
-            """;
-        
-        return jdbcTemplate.query(sql, CONFIGURATION_ROW_MAPPER, user.getId(), previewId);
-    }
 
     public DetectionParameter findCurrent(User user, String previewId) {
         String sql = """

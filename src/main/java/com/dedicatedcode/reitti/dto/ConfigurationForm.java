@@ -217,6 +217,6 @@ public class ConfigurationForm {
         
         Instant validSinceInstant = validSince != null ? ZonedDateTime.of(validSince.atStartOfDay(), timezone).toInstant() : null;
         
-        return new DetectionParameter(getId(), visitDetection, visitMerging, validSinceInstant);
+        return new DetectionParameter(getId(), visitDetection, visitMerging, validSinceInstant, true);
     }
 }

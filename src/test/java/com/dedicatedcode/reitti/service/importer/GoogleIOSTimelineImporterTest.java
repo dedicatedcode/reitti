@@ -29,7 +29,7 @@ class GoogleIOSTimelineImporterTest {
         DetectionParameter config = new DetectionParameter(-1L,
                 new DetectionParameter.VisitDetection(100, 5, 300, 300),
                 new DetectionParameter.VisitMerging(24,300, 100),
-                null);
+                null, false);
         when(parametersService.getCurrentConfiguration(any(), any(Instant.class))).thenReturn(config);
 
         GoogleIOSTimelineImporter importHandler = new GoogleIOSTimelineImporter(new ObjectMapper(), new ImportStateHolder(), new ImportBatchProcessor(mock, 100, 15), parametersService);

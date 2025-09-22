@@ -41,7 +41,7 @@ class VisitDetectionParametersJdbcServiceTest {
                 24L, 1800L, 50L
         );
         DetectionParameter detectionParameter = new DetectionParameter(
-                null, visitDetection, visitMerging, Instant.now()
+                null, visitDetection, visitMerging, Instant.now(), false
         );
 
         // When
@@ -73,7 +73,7 @@ class VisitDetectionParametersJdbcServiceTest {
                 12L, 900L, 25L
         );
         DetectionParameter detectionParameter = new DetectionParameter(
-                null, visitDetection, visitMerging, null
+                null, visitDetection, visitMerging, null, false
         );
 
         // When
@@ -95,7 +95,7 @@ class VisitDetectionParametersJdbcServiceTest {
                 24L, 1800L, 50L
         );
         DetectionParameter initialConfig = new DetectionParameter(
-                null, initialVisitDetection, initialVisitMerging, Instant.now()
+                null, initialVisitDetection, initialVisitMerging, Instant.now(), false
         );
         visitDetectionParametersJdbcService.saveConfiguration(testUser, initialConfig);
 
@@ -111,7 +111,7 @@ class VisitDetectionParametersJdbcServiceTest {
         );
         Instant newValidSince = Instant.now().plusSeconds(3600).truncatedTo(ChronoUnit.MILLIS);
         DetectionParameter updatedConfig = new DetectionParameter(
-                savedConfig.getId(), updatedVisitDetection, updatedVisitMerging, newValidSince
+                savedConfig.getId(), updatedVisitDetection, updatedVisitMerging, newValidSince, false
         );
         visitDetectionParametersJdbcService.updateConfiguration(updatedConfig);
 
@@ -141,7 +141,7 @@ class VisitDetectionParametersJdbcServiceTest {
                 24L, 1800L, 50L
         );
         DetectionParameter detectionParameter = new DetectionParameter(
-                null, visitDetection, visitMerging, Instant.now()
+                null, visitDetection, visitMerging, Instant.now(), false
         );
         visitDetectionParametersJdbcService.saveConfiguration(testUser, detectionParameter);
 
@@ -166,7 +166,7 @@ class VisitDetectionParametersJdbcServiceTest {
                 24L, 1800L, 50L
         );
         DetectionParameter detectionParameter = new DetectionParameter(
-                null, visitDetection, visitMerging, null
+                null, visitDetection, visitMerging, null, false
         );
         visitDetectionParametersJdbcService.saveConfiguration(testUser, detectionParameter);
 
@@ -196,10 +196,10 @@ class VisitDetectionParametersJdbcServiceTest {
         );
 
         // Save configurations in different order
-        DetectionParameter config1 = new DetectionParameter(null, visitDetection, visitMerging, now);
-        DetectionParameter config2 = new DetectionParameter(null, visitDetection, visitMerging, later);
-        DetectionParameter config3 = new DetectionParameter(null, visitDetection, visitMerging, earlier);
-        DetectionParameter config4 = new DetectionParameter(null, visitDetection, visitMerging, null);
+        DetectionParameter config1 = new DetectionParameter(null, visitDetection, visitMerging, now, false);
+        DetectionParameter config2 = new DetectionParameter(null, visitDetection, visitMerging, later, false);
+        DetectionParameter config3 = new DetectionParameter(null, visitDetection, visitMerging, earlier, false);
+        DetectionParameter config4 = new DetectionParameter(null, visitDetection, visitMerging, null, false);
 
         visitDetectionParametersJdbcService.saveConfiguration(testUser, config1);
         visitDetectionParametersJdbcService.saveConfiguration(testUser, config2);

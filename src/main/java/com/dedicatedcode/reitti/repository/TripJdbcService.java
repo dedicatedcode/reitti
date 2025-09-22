@@ -180,4 +180,13 @@ public class TripJdbcService {
         String sql = "DELETE FROM trips WHERE user_id = ?";
         jdbcTemplate.update(sql, user.getId());
     }
+
+    public void deleteAllForUserBetween(User user, Instant start, Instant end) {
+        String sql = "DELETE FROM trips WHERE user_id = ? AND start_time <= ? AND end_time >= ?";
+        jdbcTemplate.update(sql, user.getId(), Timestamp.from(end), Timestamp.from(start));
+    }
+    public void deleteAllForUserAfter(User user, Instant start) {
+        String sql = "DELETE FROM trips WHERE user_id = ? AND end_time >= ?";
+        jdbcTemplate.update(sql, user.getId(), Timestamp.from(start));
+    }
 }

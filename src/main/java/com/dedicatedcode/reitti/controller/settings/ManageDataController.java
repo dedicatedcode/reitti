@@ -84,16 +84,9 @@ public class ManageDataController {
         }
 
         try {
-            // Clear all processed data except SignificantPlaces
-            // This would need to be implemented in appropriate service classes
-            // For now, we'll assume these methods exist or need to be created
             clearProcessedDataExceptPlaces(user);
-
-            // Mark all raw location points as unprocessed
             markRawLocationPointsAsUnprocessed(user);
-
             processingPipelineTrigger.start();
-
             model.addAttribute("successMessage", getMessage("data.clear.reprocess.success"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("data.clear.reprocess.error", e.getMessage()));
@@ -110,7 +103,6 @@ public class ManageDataController {
 
         try {
             removeAllDataExceptPlaces(user);
-
             model.addAttribute("successMessage", getMessage("data.remove.all.success"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("data.remove.all.error", e.getMessage()));

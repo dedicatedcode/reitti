@@ -428,14 +428,14 @@ nav {
     position: relative;
 }
 
+.htmx-indicator {
+    display: none;
+}
 
+.htmx-indicator.htmx-request,
 .htmx-request .htmx-indicator {
     display: inline;
     height: initial;
-}
-
-.htmx-indicator {
-    display: none;
 }
 
 button {
