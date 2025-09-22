@@ -120,20 +120,27 @@ public class SettingsVisitSensitivityController {
         try {
             DetectionParameter config = form.toConfiguration(ZoneId.of(timezone));
 
-            if (config.getId() == null) {
-                config = config.withNeedsRecalculation(this.rawLocationPointJdbcService.containsDataAfter(user, config.getValidSince()));
-                configurationService.saveConfiguration(user, config);
+            String validationError = validateConfiguration(config, user);
+            if (validationError != null) {
+                model.addAttribute("errorMessage", validationError);
             } else {
-                // Existing configuration - check if it has changed
-                DetectionParameter originalConfig = configurationService.findById(config.getId(), user)
-                    .orElseThrow(() -> new IllegalArgumentException("Configuration not found"));
-                
-                config = config.withNeedsRecalculation(form.hasConfigurationChanged(originalConfig));
-                configurationService.updateConfiguration(config);
+                if (config.getId() == null) {
+                    config = config.withNeedsRecalculation(this.rawLocationPointJdbcService.containsDataAfter(user, config.getValidSince()));
+                    configurationService.saveConfiguration(user, config);
+                } else {
+                    // Existing configuration - check if it has changed
+                    DetectionParameter originalConfig = configurationService.findById(config.getId(), user)
+                            .orElseThrow(() -> new IllegalArgumentException("Configuration not found"));
+
+                    config = config.withNeedsRecalculation(form.hasConfigurationChanged(originalConfig));
+                    configurationService.updateConfiguration(config);
+                }
+                model.addAttribute("successMessage", "Configuration saved successfully. Changes will apply to new incoming data.");
             }
-            model.addAttribute("successMessage", "Configuration saved successfully. Changes will apply to new incoming data.");
         } catch (Exception e) {
-            model.addAttribute("errorMessage", "Failed to save configuration: " + e.getMessage());
+            String errorMessage = messageSource.getMessage("visit.sensitivity.validation.save.error",
+                new Object[]{e.getMessage()}, LocaleContextHolder.getLocale());
+            model.addAttribute("errorMessage", errorMessage);
         }
 
         List<DetectionParameter> detectionParameters = configurationService.findAllConfigurationsForUser(user);
@@ -284,5 +291,33 @@ public class SettingsVisitSensitivityController {
         allConfigurationsForUser.forEach(config -> this.configurationService.updateConfiguration(config.withNeedsRecalculation(false)));
         processingPipelineTrigger.start();
         log.debug("Recalculation of all configurations completed");
+    }
+
+    private String validateConfiguration(DetectionParameter config, User user) {
+        if (config.getValidSince() == null) {
+            return null;
+        }
+
+        if (config.getId() == null) {
+            List<DetectionParameter> existingConfigs = configurationService.findAllConfigurationsForUser(user);
+            boolean dateExists = existingConfigs.stream()
+                .anyMatch(existing -> existing.getValidSince() != null && 
+                         existing.getValidSince().equals(config.getValidSince()));
+            
+            if (dateExists) {
+                return messageSource.getMessage("visit.sensitivity.validation.date.duplicate", null, LocaleContextHolder.getLocale());
+            }
+        } else {
+            List<DetectionParameter> existingConfigs = configurationService.findAllConfigurationsForUser(user);
+            boolean dateExists = existingConfigs.stream()
+                .anyMatch(existing -> existing.getValidSince() != null && 
+                         existing.getValidSince().equals(config.getValidSince()) &&
+                         !existing.getId().equals(config.getId()));
+            
+            if (dateExists) {
+                return messageSource.getMessage("visit.sensitivity.validation.date.duplicate", null, LocaleContextHolder.getLocale());
+            }
+        }
+        return null;
     }
 }
