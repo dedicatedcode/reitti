@@ -18,12 +18,13 @@
 
                 <div class="queue-status">
                     <div class="queue-card" th:each="queue : ${queueStats}">
-                        <div class="queue-name" th:text="${queue.name()}">Queue Name</div>
+                        <div class="queue-name" th:text="${queue.displayName()}">Queue Name</div>
                         <div class="queue-count" th:text="${queue.count()}">0</div>
                         <div class="queue-time" th:text="#{jobs.estimated.time(${queue.estimatedTime()})}">Est. processing time: 0 min</div>
                         <div class="progress-bar">
                             <div class="progress-fill" th:style="'width:' + ${queue.rate()} + '%'"></div>
                         </div>
+                        <div class="queue-description" th:text="${queue.description()}">Queue Description</div>
                     </div>
                 </div>
 

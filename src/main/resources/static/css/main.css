@@ -203,6 +203,10 @@ tr:hover {
     flex-wrap: wrap;
 }
 
+.queue-description {
+    margin-top: 16px;
+}
+
 .queue-card {
     background-color: var(--color-background-dark);
     border-radius: 8px;
