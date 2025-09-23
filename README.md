@@ -472,7 +472,7 @@ There are multiple ways of getting support:
 
 ## Translations
 
-We are using [weblate](https://hosted.weblate.org/engage/reitti/) to tranlate Reitti. If you want to add your languagem click on this [link](https://hosted.weblate.org/engage/reitti/)
+We are using [weblate](https://hosted.weblate.org/engage/reitti/) to tranlate Reitti. If you want to add your language click on this [link](https://hosted.weblate.org/engage/reitti/)
 
 [![Translation status](https://hosted.weblate.org/widget/reitti/reitti/multi-auto.svg)](https://hosted.weblate.org/engage/reitti/)
 
