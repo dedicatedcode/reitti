@@ -101,9 +101,9 @@ public class TripDetectionService {
 
                 }
                 if (event.getPreviewId() == null) {
-                    userNotificationService.newTrips(user, trips, event.getPreviewId());
-                } else {
                     userNotificationService.newTrips(user, trips);
+                } else {
+                    userNotificationService.newTrips(user, trips, event.getPreviewId());
                 }
             });
         } finally {
