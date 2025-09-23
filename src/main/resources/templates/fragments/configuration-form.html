@@ -1,6 +1,6 @@
 <div xmlns:th="http://www.thymeleaf.org" th:fragment="configuration-form" id="edit-form" class="settings-card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3 th:text="${configurationForm.id != null ? 'Edit Configuration' : 'New Configuration'}">Configuration</h3>
+        <h3 th:text="#{${configurationForm.id != null ? 'visit.sensitivity.form.title.edit' : 'visit.sensitivity.form.title.new'}}">Configuration</h3>
         
         <!-- Mode Toggle -->
         <div class="mode-toggle">
@@ -10,13 +10,17 @@
                         th:hx-get="${configurationForm.id != null ? '/settings/visit-sensitivity/edit/' + configurationForm.id + '?new-mode=simple' : '/settings/visit-sensitivity/new?new-mode=simple'}"
                         hx-target="#edit-form"
                         hx-swap="outerHTML"
-                        hx-include="#configuration-form">Simple</button>
+                        hx-include="#configuration-form"
+                        th:text="#{visit.sensitivity.mode.simple}"
+                        th:title="#{visit.sensitivity.mode.simple.description}">Simple</button>
                 <button type="button" 
                         th:class="${mode == 'advanced' ? 'btn active' : 'btn'}"
                         th:hx-get="${configurationForm.id != null ? '/settings/visit-sensitivity/edit/' + configurationForm.id + '?new-mode=advanced' : '/settings/visit-sensitivity/new?new-mode=advanced'}"
                         hx-target="#edit-form"
                         hx-swap="outerHTML"
-                        hx-include="#configuration-form">Advanced</button>
+                        hx-include="#configuration-form"
+                        th:text="#{visit.sensitivity.mode.advanced}"
+                        th:title="#{visit.sensitivity.mode.advanced.description}">Advanced</button>
             </div>
         </div>
     </div>
