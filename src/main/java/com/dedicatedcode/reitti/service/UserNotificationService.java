@@ -36,16 +36,12 @@ public class UserNotificationService {
     }
 
     public void newTrips(User user, List<Trip> trips) {
-        SSEType eventType = SSEType.TRIPS;
-        log.debug("New trips for user [{}]", user.getId());
-        Set<LocalDate> dates = calculateAffectedDates(trips.stream().map(Trip::getStartTime).toList(), trips.stream().map(Trip::getEndTime).toList());
-        sendToQueue(user, dates, eventType, null);
-        notifyReittiSubscriptions(user, eventType, dates);
+       newTrips(user, trips, null);
     }
 
     public void newTrips(User user, List<Trip> trips, String previewId) {
         SSEType eventType = SSEType.TRIPS;
-        log.debug("New preview trips for user [{}]", user.getId());
+        log.debug("New trips for user [{}]", user.getId());
         Set<LocalDate> dates = calculateAffectedDates(trips.stream().map(Trip::getStartTime).toList(), trips.stream().map(Trip::getEndTime).toList());
         sendToQueue(user, dates, eventType, previewId);
     }
