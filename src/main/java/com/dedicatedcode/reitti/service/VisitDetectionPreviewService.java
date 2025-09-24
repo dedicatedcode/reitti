@@ -14,14 +14,20 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class VisitDetectionPreviewService {
     private static final Logger log = LoggerFactory.getLogger(VisitDetectionPreviewService.class);
+    private static final int MAX_PREVIEW_ENTRIES = 1000;
+    private static final long READY_THRESHOLD_SECONDS = 10;
 
     private final JdbcTemplate jdbcTemplate;
     private final RabbitTemplate rabbitTemplate;
+    private final Map<String, Instant> previewLastUpdated = new ConcurrentHashMap<>();
+
     public VisitDetectionPreviewService(JdbcTemplate jdbcTemplate, RabbitTemplate rabbitTemplate) {
         this.jdbcTemplate = jdbcTemplate;
         this.rabbitTemplate = rabbitTemplate;
@@ -66,6 +72,31 @@ public class VisitDetectionPreviewService {
                 RabbitMQConfig.TRIGGER_PROCESSING_PIPELINE_ROUTING_KEY,
                 triggerEvent
         );
+        
+        // Initialize preview status tracking
+        updatePreviewStatus(previewId);
+        
         return previewId;
+    }
+
+    public boolean isPreviewReady(String previewId) {
+        Instant lastUpdate = previewLastUpdated.get(previewId);
+        if (lastUpdate == null) {
+            return false; // Preview not found or never started
+        }
+        return Instant.now().minusSeconds(READY_THRESHOLD_SECONDS).isAfter(lastUpdate);
+    }
+
+    public void updatePreviewStatus(String previewId) {
+        if (previewId != null) {
+            log.debug("Updating preview status for previewId: {}", previewId);
+            previewLastUpdated.put(previewId, Instant.now());
+            
+            // Keep the map bounded by removing old entries
+            if (previewLastUpdated.size() > MAX_PREVIEW_ENTRIES) {
+                Instant cutoff = Instant.now().minusSeconds(READY_THRESHOLD_SECONDS * 6); // Keep entries for 1 minute
+                previewLastUpdated.entrySet().removeIf(entry -> entry.getValue().isBefore(cutoff));
+            }
+        }
     }
 }
