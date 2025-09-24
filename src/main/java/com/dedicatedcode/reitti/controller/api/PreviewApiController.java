@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.controller.api;
 import com.dedicatedcode.reitti.dto.TimelineEntry;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.TimelineService;
+import com.dedicatedcode.reitti.service.VisitDetectionPreviewService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -17,14 +18,16 @@ import java.util.Map;
 @RequestMapping("/api/v1/preview")
 public class PreviewApiController {
     private final TimelineService timelineService;
+    private final VisitDetectionPreviewService visitDetectionPreviewService;
 
-    public PreviewApiController(TimelineService timelineService) {
+    public PreviewApiController(TimelineService timelineService, VisitDetectionPreviewService visitDetectionPreviewService) {
         this.timelineService = timelineService;
+        this.visitDetectionPreviewService = visitDetectionPreviewService;
     }
 
     @GetMapping("/{previewId}/status")
     public ResponseEntity<Map<String, Object>> getPreviewStatus(@PathVariable String previewId) {
-        boolean ready = true;
+        boolean ready = visitDetectionPreviewService.isPreviewReady(previewId);
         
         return ResponseEntity.ok(Map.of(
             "ready", ready,

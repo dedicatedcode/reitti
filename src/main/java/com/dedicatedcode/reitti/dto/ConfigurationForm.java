@@ -131,11 +131,11 @@ public class ConfigurationForm {
     
     private static DetectionParameter.VisitMerging mapSensitivityToVisitMerging(int level) {
         return switch (level) {
-            case 1 -> new DetectionParameter.VisitMerging(96, 600, 400);   // Low sensitivity
-            case 2 -> new DetectionParameter.VisitMerging(72, 450, 300);
+            case 1 -> new DetectionParameter.VisitMerging(48, 600, 400);   // Low sensitivity
+            case 2 -> new DetectionParameter.VisitMerging(48, 450, 300);
             case 3 -> new DetectionParameter.VisitMerging(48, 300, 200);   // Medium (baseline)
-            case 4 -> new DetectionParameter.VisitMerging(24, 225, 150);
-            case 5 -> new DetectionParameter.VisitMerging(12, 150, 100);   // High sensitivity
+            case 4 -> new DetectionParameter.VisitMerging(48, 225, 150);
+            case 5 -> new DetectionParameter.VisitMerging(48, 150, 100);   // High sensitivity
             default -> throw new IllegalArgumentException("Unhandled level [" + level + "] detected!");
         };
     }

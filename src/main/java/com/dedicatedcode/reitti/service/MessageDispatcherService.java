@@ -24,6 +24,7 @@ public class MessageDispatcherService {
     private final ProcessingPipelineTrigger processingPipelineTrigger;
     private final UserSseEmitterService userSseEmitterService;
     private final UserJdbcService  userJdbcService;
+    private final VisitDetectionPreviewService visitDetectionPreviewService;
 
     @Autowired
     public MessageDispatcherService(LocationDataIngestPipeline locationDataIngestPipeline,
@@ -33,7 +34,8 @@ public class MessageDispatcherService {
                                     ReverseGeocodingListener reverseGeocodingListener,
                                     ProcessingPipelineTrigger processingPipelineTrigger,
                                     UserSseEmitterService userSseEmitterService,
-                                    UserJdbcService userJdbcService) {
+                                    UserJdbcService userJdbcService,
+                                    VisitDetectionPreviewService visitDetectionPreviewService) {
         this.locationDataIngestPipeline = locationDataIngestPipeline;
         this.visitDetectionService = visitDetectionService;
         this.visitMergingService = visitMergingService;
@@ -42,6 +44,7 @@ public class MessageDispatcherService {
         this.processingPipelineTrigger = processingPipelineTrigger;
         this.userSseEmitterService = userSseEmitterService;
         this.userJdbcService = userJdbcService;
+        this.visitDetectionPreviewService = visitDetectionPreviewService;
     }
 
     @RabbitListener(queues = RabbitMQConfig.LOCATION_DATA_QUEUE, concurrency = "${reitti.events.concurrency}")
@@ -54,18 +57,21 @@ public class MessageDispatcherService {
     public void handleStayDetection(LocationProcessEvent event) {
         logger.debug("Dispatching LocationProcessEvent for user: {}", event.getUsername());
         visitDetectionService.detectStayPoints(event);
+        visitDetectionPreviewService.updatePreviewStatus(event.getPreviewId());
     }
 
     @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE, concurrency = "1")
     public void handleVisitMerging(VisitUpdatedEvent event) {
         logger.debug("Dispatching VisitUpdatedEvent for user: {}", event.getUsername());
         visitMergingService.visitUpdated(event);
+        visitDetectionPreviewService.updatePreviewStatus(event.getPreviewId());
     }
 
     @RabbitListener(queues = RabbitMQConfig.DETECT_TRIP_QUEUE, concurrency = "${reitti.events.concurrency}")
     public void handleTripDetection(ProcessedVisitCreatedEvent event) {
         logger.debug("Dispatching ProcessedVisitCreatedEvent for user: {}", event.getUsername());
         tripDetectionService.visitCreated(event);
+        visitDetectionPreviewService.updatePreviewStatus(event.getPreviewId());
     }
 
     @RabbitListener(queues = RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE, concurrency = "${reitti.events.concurrency}")
@@ -84,5 +90,6 @@ public class MessageDispatcherService {
     public void handleTriggerProcessingEvent(TriggerProcessingEvent event) {
         logger.debug("Dispatching TriggerProcessingEvent for user: {}", event.getUsername());
         processingPipelineTrigger.handle(event);
+        visitDetectionPreviewService.updatePreviewStatus(event.getPreviewId());
     }
 }

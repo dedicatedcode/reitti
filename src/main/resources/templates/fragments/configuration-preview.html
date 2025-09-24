@@ -9,7 +9,7 @@
             <button id="preview-data-btn" class="btn btn-secondary" onclick="showPreviewData()">
                 <span th:text="#{visit.sensitivity.preview.new}">Preview Data</span>
                 <span id="preview-status" class="status-indicator">
-                    <i class="lni lni-spinner-arrow spinning"></i>
+                   <i class="lni lni-is-spinning lni-spinner-2-sacle"></i>
                     <span th:text="#{visit.sensitivity.preview.calculating}">Calculating...</span>
                 </span>
             </button>
@@ -607,20 +607,6 @@
             font-size: 0.9em;
         }
         
-        .status-indicator {
-            font-size: 0.9em;
-            color: #666;
-        }
-        
-        .spinning {
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        
         .map-container {
             display: none;
         }
@@ -703,7 +689,6 @@
         
         .loading, .error, .no-data {
             text-align: center;
-            color: #666;
             font-style: italic;
             padding: 20px;
         }
