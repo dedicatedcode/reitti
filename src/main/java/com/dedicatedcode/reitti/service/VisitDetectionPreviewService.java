@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class VisitDetectionPreviewService {
     private static final Logger log = LoggerFactory.getLogger(VisitDetectionPreviewService.class);
     private static final int MAX_PREVIEW_ENTRIES = 1000;
-    private static final long READY_THRESHOLD_SECONDS = 10;
+    private static final long READY_THRESHOLD_SECONDS = 5;
 
     private final JdbcTemplate jdbcTemplate;
     private final RabbitTemplate rabbitTemplate;
@@ -82,7 +82,7 @@ public class VisitDetectionPreviewService {
     public boolean isPreviewReady(String previewId) {
         Instant lastUpdate = previewLastUpdated.get(previewId);
         if (lastUpdate == null) {
-            return false; // Preview not found or never started
+            return false;
         }
         return Instant.now().minusSeconds(READY_THRESHOLD_SECONDS).isAfter(lastUpdate);
     }
@@ -92,9 +92,8 @@ public class VisitDetectionPreviewService {
             log.debug("Updating preview status for previewId: {}", previewId);
             previewLastUpdated.put(previewId, Instant.now());
             
-            // Keep the map bounded by removing old entries
             if (previewLastUpdated.size() > MAX_PREVIEW_ENTRIES) {
-                Instant cutoff = Instant.now().minusSeconds(READY_THRESHOLD_SECONDS * 6); // Keep entries for 1 minute
+                Instant cutoff = Instant.now().minusSeconds(3600);
                 previewLastUpdated.entrySet().removeIf(entry -> entry.getValue().isBefore(cutoff));
             }
         }

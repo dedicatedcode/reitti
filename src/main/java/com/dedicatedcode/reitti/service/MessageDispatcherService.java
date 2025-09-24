@@ -51,7 +51,6 @@ public class MessageDispatcherService {
     public void handleLocationData(LocationDataEvent event) {
         logger.debug("Dispatching LocationDataEvent for user: {}", event.getUsername());
         locationDataIngestPipeline.processLocationData(event);
-        visitDetectionPreviewService.updatePreviewStatus(event.getPreviewId());
     }
 
     @RabbitListener(queues = RabbitMQConfig.STAY_DETECTION_QUEUE, concurrency = "${reitti.events.concurrency}")
