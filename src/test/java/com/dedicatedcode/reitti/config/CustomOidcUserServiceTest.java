@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.model.security.ExternalUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.AvatarService;
+import com.dedicatedcode.reitti.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +41,9 @@ public class CustomOidcUserServiceTest {
     @Autowired
     private UserJdbcService userJdbcService;
 
+    @Autowired
+    private UserService userService;
+
     @MockitoBean
     private AvatarService avatarService;
 
@@ -69,7 +73,7 @@ public class CustomOidcUserServiceTest {
     @Test
     void testLoadUser_NewUser_RegistrationEnabled() throws MalformedURLException {
         // Given
-        customOidcUserService = spy(new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, false));
+        customOidcUserService = spy(new CustomOidcUserService(userJdbcService, userService, avatarService, restTemplate, true, false));
         OidcUserRequest oidcUserRequest = createOidcUserRequest();
         OidcUser mockOidcUser = createMockOidcUser();
         
@@ -104,7 +108,7 @@ public class CustomOidcUserServiceTest {
     @Test
     void testLoadUser_NewUser_RegistrationDisabled() throws MalformedURLException {
         // Given
-        customOidcUserService = spy(new CustomOidcUserService(userJdbcService, avatarService, restTemplate, false, false));
+        customOidcUserService = spy(new CustomOidcUserService(userJdbcService, userService, avatarService, restTemplate, false, false));
         OidcUserRequest oidcUserRequest = createOidcUserRequest();
         OidcUser mockOidcUser = createMockOidcUser();
         
@@ -119,7 +123,7 @@ public class CustomOidcUserServiceTest {
     @Test
     void testLoadUser_ExistingUserByOidcId_LocalLoginDisabled() throws MalformedURLException {
         // Given
-        customOidcUserService = spy(new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, true));
+        customOidcUserService = spy(new CustomOidcUserService(userJdbcService, userService, avatarService, restTemplate, true, true));
         
         // Create existing user with password
         userJdbcService.createUser(new User()
@@ -155,7 +159,7 @@ public class CustomOidcUserServiceTest {
     @Test
     void testLoadUser_ExistingUserByPreferredUsername_LocalLoginDisabled() throws MalformedURLException {
         // Given
-        customOidcUserService = spy(new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, true));
+        customOidcUserService = spy(new CustomOidcUserService(userJdbcService, userService, avatarService, restTemplate, true, true));
         
         // Create existing user with preferred username and password
         userJdbcService.createUser(new User()
@@ -189,7 +193,7 @@ public class CustomOidcUserServiceTest {
     @Test
     void testLoadUser_ExistingUser_LocalLoginEnabled() throws MalformedURLException {
         // Given
-        customOidcUserService = spy(new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, false));
+        customOidcUserService = spy(new CustomOidcUserService(userJdbcService, userService, avatarService, restTemplate, true, false));
         
         // Create existing user with password
         userJdbcService.createUser(new User()
@@ -224,7 +228,7 @@ public class CustomOidcUserServiceTest {
     @Test
     void testLoadUser_AvatarDownloadFailure() throws MalformedURLException {
         // Given
-        customOidcUserService = spy(new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, false));
+        customOidcUserService = spy(new CustomOidcUserService(userJdbcService, userService, avatarService, restTemplate, true, false));
         OidcUserRequest oidcUserRequest = createOidcUserRequest();
         OidcUser mockOidcUser = createMockOidcUser();
         
@@ -248,7 +252,7 @@ public class CustomOidcUserServiceTest {
     @Test
     void testLoadUser_NoAvatarUrl() throws MalformedURLException {
         // Given
-        customOidcUserService = spy(new CustomOidcUserService(userJdbcService, avatarService, restTemplate, true, false));
+        customOidcUserService = spy(new CustomOidcUserService(userJdbcService, userService, avatarService, restTemplate, true, false));
         OidcUserRequest oidcUserRequest = createOidcUserRequestWithoutAvatar();
         OidcUser mockOidcUser = createMockOidcUserWithoutAvatar();
         

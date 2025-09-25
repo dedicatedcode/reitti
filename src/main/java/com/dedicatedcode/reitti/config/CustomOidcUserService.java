@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.model.security.ExternalUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.AvatarService;
+import com.dedicatedcode.reitti.service.UserService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,17 +26,20 @@ public class CustomOidcUserService extends OidcUserService {
 
     private static final Logger log = LogManager.getLogger(CustomOidcUserService.class);
     private final UserJdbcService userJdbcService;
+    private final UserService userService;
     private final AvatarService avatarService;
     private final boolean registrationEnabled;
     private final boolean localLoginDisabled;
     private final RestTemplate restTemplate;
 
     public CustomOidcUserService(UserJdbcService userJdbcService,
+                                 UserService userService,
                                  AvatarService avatarService,
                                  RestTemplate restTemplate,
                                  @Value("${reitti.security.oidc.registration.enabled}") boolean registrationEnabled,
                                  @Value("${reitti.security.local-login.disable:false}") boolean localLoginDisabled) {
         this.userJdbcService = userJdbcService;
+        this.userService = userService;
         this.avatarService = avatarService;
         this.restTemplate = restTemplate;
         this.registrationEnabled = registrationEnabled;
@@ -95,15 +99,8 @@ public class CustomOidcUserService extends OidcUserService {
             
             return new ExternalUser(updatedUser, oidcUser);
         } else if (registrationEnabled) {
-            User user = new User()
-                    .withUsername(preferredUsername)
-                    .withExternalId(oidcUserId)
-                    .withDisplayName(displayName)
-                    .withProfileUrl(profileUrl)
-                    .withPassword("");
+            User user = this.userService.createNewUser(preferredUsername, displayName, oidcUserId, profileUrl);
 
-            user = this.userJdbcService.createUser(user);
-            
             if (avatarUrl != null && !avatarUrl.trim().isEmpty()) {
                 downloadAndSaveAvatar(user.getId(), avatarUrl);
             }
@@ -114,7 +111,7 @@ public class CustomOidcUserService extends OidcUserService {
         }
     }
 
-    // Made package local to allow mocking this out in testing. Do not touch!
+    // Made this package-local to allow mocking this out in testing. Do not touch!
     OidcUser getDefaultUser(OidcUserRequest userRequest) {
         return super.loadUser(userRequest);
     }
