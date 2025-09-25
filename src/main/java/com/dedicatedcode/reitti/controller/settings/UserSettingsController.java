@@ -8,6 +8,7 @@ import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.AvatarService;
+import com.dedicatedcode.reitti.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,6 +39,7 @@ import static com.dedicatedcode.reitti.model.Role.ADMIN;
 public class UserSettingsController {
 
     private final UserJdbcService userJdbcService;
+    private final UserService userService;
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final MessageSource messageSource;
     private final LocaleResolver localeResolver;
@@ -57,7 +59,7 @@ public class UserSettingsController {
         "avatar_man.jpg", "avatar_woman.jpg", "avatar_boy.jpg", "avatar_girl.jpg"
     );
 
-    public UserSettingsController(UserJdbcService userJdbcService,
+    public UserSettingsController(UserJdbcService userJdbcService, UserService userService,
                                   UserSettingsJdbcService userSettingsJdbcService,
                                   MessageSource messageSource,
                                   LocaleResolver localeResolver,
@@ -67,6 +69,7 @@ public class UserSettingsController {
                                   @Value("${reitti.security.oidc.enabled:false}") boolean oidcEnabled,
                                   @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.userJdbcService = userJdbcService;
+        this.userService = userService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.messageSource = messageSource;
         this.localeResolver = localeResolver;
@@ -168,8 +171,8 @@ public class UserSettingsController {
                              @RequestParam(required = false) String displayName,
                              @RequestParam(required = false)  String password,
                              @RequestParam(defaultValue = "USER") Role role,
-                             @RequestParam String preferred_language,
-                             @RequestParam(defaultValue = "METRIC") String unit_system,
+                             @RequestParam(name = "preferred_language") String preferredLanguage,
+                             @RequestParam(name = "unit_system", defaultValue = "METRIC") String unitSystem,
                              @RequestParam(defaultValue = "false") boolean preferColoredMap,
                              @RequestParam(required = false) Double homeLatitude,
                              @RequestParam(required = false) Double homeLongitude,
@@ -191,23 +194,17 @@ public class UserSettingsController {
         }
         try {
             if (StringUtils.hasText(username) && StringUtils.hasText(displayName) && StringUtils.hasText(password)) {
-                User createdUser = userJdbcService.createUser(new User(username, displayName)
-                        .withPassword(passwordEncoder.encode(password))
-                        .withRole(role));
 
-                UnitSystem unitSystem = UnitSystem.valueOf(unit_system);
-                UserSettings userSettings = new UserSettings(createdUser.getId(),
+                User createdUser = this.userService.createNewUser(username,
+                        displayName,
+                        password,
+                        role, UnitSystem.valueOf(unitSystem),
                         preferColoredMap,
-                        preferred_language,
-                        unitSystem,
+                        preferredLanguage,
                         homeLatitude,
                         homeLongitude,
-                        StringUtils.hasText(timezoneOverride) ? ZoneId.of(timezoneOverride) : null,
-                        timeDisplayMode,
-                        null,
-                        null);
-                userSettingsJdbcService.save(userSettings);
-                
+                        timezoneOverride,
+                        timeDisplayMode);
                 // Handle avatar - prioritize custom upload over default
                 if (avatar != null && !avatar.isEmpty()) {
                     handleAvatarUpload(avatar, createdUser.getId(), model);

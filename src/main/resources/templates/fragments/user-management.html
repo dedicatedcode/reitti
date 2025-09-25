@@ -303,6 +303,12 @@
                     th:text="#{form.cancel}">Cancel</button>
         </div>
     </form>
+    <script th:inline="javascript">
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeHomeLocationMap();
+
+        })
+    </script>
 </div>
 
 </body>
