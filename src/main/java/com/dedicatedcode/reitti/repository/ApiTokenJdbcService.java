@@ -176,4 +176,8 @@ public class ApiTokenJdbcService {
         this.jdbcTemplate.update("INSERT INTO api_token_usages(token_id, at, endpoint, ip) SELECT id, now(), ?, ? FROM api_tokens WHERE token = ?",
                 requestPath, remoteIp, token);
     }
+
+    public void deleteForUser(User user) {
+        this.jdbcTemplate.update("DELETE FROM api_tokens WHERE user_id = ?", user.getId());
+    }
 }

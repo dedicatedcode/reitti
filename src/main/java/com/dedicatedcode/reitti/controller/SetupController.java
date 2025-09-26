@@ -28,7 +28,7 @@ public class SetupController {
     public String setupPage(Model model) {
         User adminUser = getAdminUserWithEmptyPassword();
         if (adminUser == null) {
-            return "redirect:/login"; // Setup already complete                                                                                                                                                                                                                     
+            return "redirect:/login";
         }
 
         model.addAttribute("user", adminUser);
