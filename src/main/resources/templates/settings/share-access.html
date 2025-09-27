@@ -69,7 +69,7 @@
                             <td th:text="${token.lastUsed != null ? #temporals.format(token.lastUsed, 'yyyy-MM-dd HH:mm') : #messages.msg('magic.links.never.used')}"></td>
                             <td>
                                 <button class="btn btn-danger"
-                                        th:attr="hx-post=@{/settings/magic-links/{id}/delete(id=${token.id})}, hx-confirm=#{magic.links.delete.confirm}"
+                                        th:attr="hx-post=@{/settings/share-access/magic-links/{id}/delete(id=${token.id})}, hx-confirm=#{magic.links.delete.confirm}"
                                         hx-target="#magic-links"
                                         hx-swap="innerHTML"
                                         th:text="#{form.delete}">Delete
@@ -81,7 +81,7 @@
                 </div>
 
                 <div class="settings-card">
-                    <form hx-post="/settings/magic-links" hx-target="#magic-links" hx-swap="innerHTML"
+                    <form hx-post="/settings/share-access/magic-links" hx-target="#magic-links" hx-swap="innerHTML"
                           class="magic-link-form"
                           style="margin-bottom: 20px;">
                         <div class="form-group">

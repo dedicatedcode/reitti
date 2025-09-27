@@ -22,18 +22,18 @@ import java.util.List;
 import java.util.UUID;
 
 @Controller
-@RequestMapping("/settings/magic-links")
-public class MagicLinkController {
+@RequestMapping("/settings/share-access")
+public class ShareAccessController {
 
     private final MagicLinkJdbcService magicLinkJdbcService;
     private final MessageSource messageSource;
     private final PasswordEncoder passwordEncoder;
     private final boolean dataManagementEnabled;
 
-    public MagicLinkController(MagicLinkJdbcService magicLinkJdbcService,
-                               MessageSource messageSource,
-                               PasswordEncoder passwordEncoder,
-                               @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
+    public ShareAccessController(MagicLinkJdbcService magicLinkJdbcService,
+                                 MessageSource messageSource,
+                                 PasswordEncoder passwordEncoder,
+                                 @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.magicLinkJdbcService = magicLinkJdbcService;
         this.messageSource = messageSource;
         this.passwordEncoder = passwordEncoder;
@@ -48,10 +48,10 @@ public class MagicLinkController {
         model.addAttribute("activeSection", "sharing");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
-        return "settings/magic-links";
+        return "settings/share-access";
     }
 
-    @PostMapping
+    @PostMapping("/magic-links")
     public String createMagicLink(@AuthenticationPrincipal User user,
                                   @RequestParam String name,
                                   @RequestParam MagicLinkAccessLevel accessLevel,
@@ -73,7 +73,7 @@ public class MagicLinkController {
                     List<MagicLinkToken> tokens = magicLinkJdbcService.findByUser(user);
                     model.addAttribute("tokens", tokens);
                     model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
-                    return "settings/magic-links :: magic-links-content";
+                    return "settings/share-access :: magic-links-content";
                 }
             }
 
@@ -85,7 +85,6 @@ public class MagicLinkController {
             String baseUrl = getBaseUrl(request);
             String magicLinkUrl = baseUrl + "/access?mt=" + rawToken;
 
-            // Show the raw token once
             model.addAttribute("newTokenName", name);
             model.addAttribute("magicLinkUrl", magicLinkUrl);
 
@@ -93,7 +92,7 @@ public class MagicLinkController {
             model.addAttribute("tokens", tokens);
             model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
 
-            return "settings/magic-links :: magic-links-content";
+            return "settings/share-access :: magic-links-content";
 
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("magic.links.create.error", e.getMessage()));
@@ -102,11 +101,11 @@ public class MagicLinkController {
             model.addAttribute("tokens", tokens);
             model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
             
-            return "settings/magic-links :: magic-links-content";
+            return "settings/share-access :: magic-links-content";
         }
     }
 
-    @PostMapping("/{id}/delete")
+    @PostMapping("/magic-links/{id}/delete")
     public String deleteMagicLink(@PathVariable long id,
                                   @AuthenticationPrincipal User user,
                                   Model model) {
@@ -121,7 +120,7 @@ public class MagicLinkController {
         model.addAttribute("tokens", tokens);
         model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
 
-        return "settings/magic-links :: magic-links-content";
+        return "settings/share-access :: magic-links-content";
     }
 
     private String getBaseUrl(HttpServletRequest request) {
