@@ -163,6 +163,7 @@ public class UserSettingsController {
         model.addAttribute("users", users);
         model.addAttribute("currentUsername", authentication.getName());
         model.addAttribute("isAdmin", true);
+        model.addAttribute("addUserAvailable", !localLoginDisabled);
 
         // Return the users-list fragment
         return "fragments/user-management :: users-list";
@@ -226,6 +227,7 @@ public class UserSettingsController {
         model.addAttribute("users", users);
         model.addAttribute("currentUsername", authentication.getName());
         model.addAttribute("isAdmin", true);
+        model.addAttribute("addUserAvailable", !localLoginDisabled);
 
         // Return the users-list fragment
         return "fragments/user-management :: users-list";
@@ -323,6 +325,7 @@ public class UserSettingsController {
             model.addAttribute("users", users);
             model.addAttribute("currentUsername", isCurrentUser ? username : currentUsername);
             model.addAttribute("isAdmin", true);
+            model.addAttribute("addUserAvailable", !localLoginDisabled);
             return "fragments/user-management :: users-list";
         } else {
             // For regular users, return their updated form
