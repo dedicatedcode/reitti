@@ -546,6 +546,17 @@ button:hover {
     max-width: 800px;
 }
 
+.user-sharing-btn {
+    text-align: center;
+    justify-content: flex-start;
+    padding: 8px 24px;
+    background-color: var(--color-background-dark-light);
+    color: var(--color-text-white);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
 .language-btn {
     display: flex;
     align-items: center;
@@ -561,6 +572,7 @@ button:hover {
     min-height: 60px;
 }
 
+.user-sharing-btn:hover,
 .language-btn:hover {
     background-color: var(--color-background-dark);
     border-color: var(--color-highlight);
@@ -568,6 +580,9 @@ button:hover {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
+.user-sharing-btn.active,
+.language-btn.active,
+.user-sharing-btn:has(input[type="radio"]:checked),
 .language-btn:has(input[type="radio"]:checked) {
     background-color: var(--color-highlight);
     color: var(--color-background-dark);
@@ -576,20 +591,10 @@ button:hover {
     box-shadow: 0 4px 12px rgba(245, 222, 179, 0.4);
 }
 
+.language-btn.active:hover,
+.user-sharing-btn.active:hover,
+.user-sharing-btn:has(input[type="radio"]:checked):hover,
 .language-btn:has(input[type="radio"]:checked):hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(245, 222, 179, 0.5);
-}
-
-.language-btn.active {
-    background-color: var(--color-highlight);
-    color: var(--color-background-dark);
-    border-color: var(--color-highlight);
-    font-weight: bold;
-    box-shadow: 0 4px 12px rgba(245, 222, 179, 0.4);
-}
-
-.language-btn.active:hover {
     transform: translateY(-1px);
     box-shadow: 0 6px 16px rgba(245, 222, 179, 0.5);
 }

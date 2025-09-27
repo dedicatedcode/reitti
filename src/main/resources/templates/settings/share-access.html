@@ -158,7 +158,7 @@
                             <div class="user-sharing-selection">
                                 <div class="language-buttons">
                                     <div th:each="user : ${availableUsers}" class="user-sharing-button-wrapper">
-                                        <label class="btn language-btn user-sharing-btn" 
+                                        <label class="btn user-sharing-btn"
                                                th:classappend="${sharedUserIds.contains(user.id)} ? 'selected' : ''">
                                             <input type="checkbox" 
                                                    th:name="'sharedUserIds'"
