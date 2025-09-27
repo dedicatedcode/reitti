@@ -56,6 +56,16 @@ public class ShareAccessController {
         model.addAttribute("activeSection", "sharing");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+        
+        // Add user sharing data
+        List<User> availableUsers = userJdbcService.getAllUsers().stream()
+                .filter(u -> !u.getId().equals(user.getId())) // Exclude current user
+                .collect(java.util.stream.Collectors.toList());
+        java.util.Set<Long> sharedUserIds = userSharingJdbcService.getSharedUserIds(user.getId());
+        
+        model.addAttribute("availableUsers", availableUsers);
+        model.addAttribute("sharedUserIds", sharedUserIds);
+        
         return "settings/share-access";
     }
 
@@ -146,6 +156,35 @@ public class ShareAccessController {
 
         url.append(contextPath);
         return url.toString();
+    }
+
+    @PostMapping("/users")
+    public String updateUserSharing(@AuthenticationPrincipal User user,
+                                   @RequestParam(value = "sharedUserIds", required = false) List<Long> sharedUserIds,
+                                   Model model) {
+        try {
+            if (sharedUserIds == null) {
+                sharedUserIds = java.util.Collections.emptyList();
+            }
+            
+            // Update user sharing relationships
+            userSharingJdbcService.updateSharedUsers(user.getId(), new java.util.HashSet<>(sharedUserIds));
+            
+            model.addAttribute("shareSuccessMessage", getMessage("share-with.updated.success"));
+        } catch (Exception e) {
+            model.addAttribute("shareErrorMessage", getMessage("share-with.update.error", e.getMessage()));
+        }
+
+        // Reload data for the fragment
+        List<User> availableUsers = userJdbcService.getAllUsers().stream()
+                .filter(u -> !u.getId().equals(user.getId())) // Exclude current user
+                .collect(java.util.stream.Collectors.toList());
+        java.util.Set<Long> currentSharedUserIds = userSharingJdbcService.getSharedUserIds(user.getId());
+        
+        model.addAttribute("availableUsers", availableUsers);
+        model.addAttribute("sharedUserIds", currentSharedUserIds);
+
+        return "settings/share-access :: share-with-content";
     }
 
     private String getMessage(String key, Object... args) {

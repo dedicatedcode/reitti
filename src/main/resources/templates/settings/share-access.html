@@ -139,11 +139,61 @@
             <details>
                 <summary th:text="#{share-with.title}">Share with other Users</summary>
                 <div id="share-with" th:fragment="share-with-content">
-                    <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
-                        <span th:text="${successMessage}">Magic link created successfully</span>
+                    <div th:if="${shareSuccessMessage}" class="alert alert-success" style="display: block;">
+                        <span th:text="${shareSuccessMessage}">Sharing updated successfully</span>
                     </div>
-                    <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
-                        <span th:text="${errorMessage}">Error message</span>
+                    <div th:if="${shareErrorMessage}" class="alert alert-danger" style="display: block;">
+                        <span th:text="${shareErrorMessage}">Error message</span>
+                    </div>
+
+                    <div class="settings-card" th:if="${availableUsers.isEmpty()}">
+                        <p th:text="#{share-with.no.users}">No other users found to share with.</p>
+                    </div>
+
+                    <div class="settings-card" th:if="${!availableUsers.isEmpty()}">
+                        <h3 th:text="#{share-with.users.title}">Share with Users</h3>
+                        <p th:text="#{share-with.users.description}">Select users you want to share your location data with. They will be able to view your timeline and location history.</p>
+                        
+                        <form hx-post="/settings/share-access/users" hx-target="#share-with" hx-swap="innerHTML">
+                            <div class="user-sharing-list">
+                                <div th:each="user : ${availableUsers}" class="user-sharing-item">
+                                    <div class="user-info">
+                                        <strong th:text="${user.displayName ?: user.username}">User Display Name</strong>
+                                        <span th:if="${user.displayName}" th:text="'(' + ${user.username} + ')'" class="username-hint">(username)</span>
+                                    </div>
+                                    <div class="sharing-controls">
+                                        <label class="checkbox-container">
+                                            <input type="checkbox" 
+                                                   th:name="'sharedUserIds'"
+                                                   th:value="${user.id}"
+                                                   th:checked="${sharedUserIds.contains(user.id)}"
+                                                   onchange="this.form.requestSubmit()">
+                                            <span class="checkmark"></span>
+                                            <span th:text="#{share-with.enable}">Share</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3 th:text="#{share-with.info.title}">About User Sharing</h3>
+                        <p th:text="#{share-with.info.description}">When you share your data with other users, they will be able to view your location timeline and history alongside their own data. This is useful for families or teams who want to coordinate and share location information.</p>
+
+                        <h4 th:text="#{share-with.info.permissions.title}">What They Can See</h4>
+                        <ul>
+                            <li th:text="#{share-with.info.permissions.timeline}">Your complete location timeline and history</li>
+                            <li th:text="#{share-with.info.permissions.places}">Your significant places and visits</li>
+                            <li th:text="#{share-with.info.permissions.trips}">Your trips and movement patterns</li>
+                        </ul>
+
+                        <h4 th:text="#{share-with.info.privacy.title}">Privacy Notes</h4>
+                        <ul>
+                            <li th:text="#{share-with.info.privacy.mutual}">Sharing is not mutual - they need to separately share their data with you</li>
+                            <li th:text="#{share-with.info.privacy.revoke}">You can revoke access at any time by unchecking the user</li>
+                            <li th:text="#{share-with.info.privacy.immediate}">Changes take effect immediately</li>
+                        </ul>
                     </div>
                 </div>
             </details>
