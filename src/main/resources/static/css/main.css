@@ -1699,3 +1699,8 @@ button:disabled {
     opacity: 0;
     pointer-events: none;
 }
+
+
+details > div {
+    padding: 16px;
+}
