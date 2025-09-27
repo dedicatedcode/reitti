@@ -5,6 +5,8 @@ import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.MagicLinkToken;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.MagicLinkJdbcService;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
@@ -26,15 +28,21 @@ import java.util.UUID;
 public class ShareAccessController {
 
     private final MagicLinkJdbcService magicLinkJdbcService;
+    private final UserJdbcService userJdbcService;
+    private final UserSharingJdbcService userSharingJdbcService;
     private final MessageSource messageSource;
     private final PasswordEncoder passwordEncoder;
     private final boolean dataManagementEnabled;
 
     public ShareAccessController(MagicLinkJdbcService magicLinkJdbcService,
+                                 UserJdbcService userJdbcService,
+                                 UserSharingJdbcService userSharingJdbcService,
                                  MessageSource messageSource,
                                  PasswordEncoder passwordEncoder,
                                  @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.magicLinkJdbcService = magicLinkJdbcService;
+        this.userJdbcService = userJdbcService;
+        this.userSharingJdbcService = userSharingJdbcService;
         this.messageSource = messageSource;
         this.passwordEncoder = passwordEncoder;
         this.dataManagementEnabled = dataManagementEnabled;
