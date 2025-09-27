@@ -9,7 +9,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -27,9 +29,7 @@ public class UserSharingJdbcService {
     @Transactional(readOnly = true)
     public Set<Long> getSharedUserIds(Long sharingUserId) {
         String sql = "SELECT shared_with_user_id FROM user_sharing WHERE sharing_user_id = ?";
-        return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getLong("shared_with_user_id"), sharingUserId)
-                .stream()
-                .collect(Collectors.toSet());
+        return new HashSet<>(jdbcTemplate.query(sql, (rs, rowNum) -> rs.getLong("shared_with_user_id"), sharingUserId));
     }
 
     @Transactional(readOnly = true)
@@ -45,33 +45,28 @@ public class UserSharingJdbcService {
     }
 
     public void updateSharedUsers(Long sharingUserId, Set<Long> sharedUserIds) {
-        // First, get current shared users
         Set<Long> currentSharedUsers = getSharedUserIds(sharingUserId);
         
-        // Find users to add (in new set but not in current)
         Set<Long> usersToAdd = sharedUserIds.stream()
                 .filter(id -> !currentSharedUsers.contains(id))
                 .collect(Collectors.toSet());
         
-        // Find users to remove (in current but not in new set)
         Set<Long> usersToRemove = currentSharedUsers.stream()
                 .filter(id -> !sharedUserIds.contains(id))
                 .collect(Collectors.toSet());
         
-        // Add new sharing relationships
         for (Long userId : usersToAdd) {
             createSharing(sharingUserId, userId);
         }
         
-        // Remove old sharing relationships
         for (Long userId : usersToRemove) {
             removeSharing(sharingUserId, userId);
         }
     }
 
     private void createSharing(Long sharingUserId, Long sharedWithUserId) {
-        String sql = "INSERT INTO user_sharing (sharing_user_id, shared_with_user_id, created_at, version) VALUES (?, ?, ?, 1)";
-        jdbcTemplate.update(sql, sharingUserId, sharedWithUserId, Instant.now());
+        String sql = "INSERT INTO user_sharing (sharing_user_id, shared_with_user_id, created_at, version) VALUES (?, ?, now(), 1)";
+        jdbcTemplate.update(sql, sharingUserId, sharedWithUserId);
     }
 
     private void removeSharing(Long sharingUserId, Long sharedWithUserId) {
@@ -80,7 +75,6 @@ public class UserSharingJdbcService {
     }
 
     public void deleteAllSharingForUser(Long userId) {
-        // Remove all sharing relationships where this user is either the sharer or the shared-with user
         String sql1 = "DELETE FROM user_sharing WHERE sharing_user_id = ?";
         String sql2 = "DELETE FROM user_sharing WHERE shared_with_user_id = ?";
         jdbcTemplate.update(sql1, userId);

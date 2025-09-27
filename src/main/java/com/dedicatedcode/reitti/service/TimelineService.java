@@ -90,7 +90,6 @@ public class TimelineService {
     private List<TimelineEntry> buildTimelineEntries(User user, String previewId, List<ProcessedVisit> processedVisits, List<Trip> trips, ZoneId timezone, LocalDate selectedDate, UserSettings userSettings) throws JsonProcessingException {
         List<TimelineEntry> entries = new ArrayList<>();
 
-        // Add processed visits to timeline
         for (ProcessedVisit visit : processedVisits) {
             SignificantPlace place = visit.getPlace();
             if (place != null) {
@@ -149,7 +148,6 @@ public class TimelineService {
             entries.add(entry);
         }
 
-        // Sort timeline entries by start time
         entries.sort(Comparator.comparing(TimelineEntry::getStartTime));
 
         return entries;

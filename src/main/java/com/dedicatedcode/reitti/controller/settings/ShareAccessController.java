@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller.settings;
 
+import com.dedicatedcode.reitti.dto.UserDto;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.MagicLinkToken;
@@ -7,6 +8,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.MagicLinkJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
+import com.dedicatedcode.reitti.service.AvatarService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
@@ -21,6 +23,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Controller
@@ -30,19 +33,21 @@ public class ShareAccessController {
     private final MagicLinkJdbcService magicLinkJdbcService;
     private final UserJdbcService userJdbcService;
     private final UserSharingJdbcService userSharingJdbcService;
+    private final AvatarService avatarService;
     private final MessageSource messageSource;
     private final PasswordEncoder passwordEncoder;
     private final boolean dataManagementEnabled;
 
     public ShareAccessController(MagicLinkJdbcService magicLinkJdbcService,
                                  UserJdbcService userJdbcService,
-                                 UserSharingJdbcService userSharingJdbcService,
+                                 UserSharingJdbcService userSharingJdbcService, AvatarService avatarService,
                                  MessageSource messageSource,
                                  PasswordEncoder passwordEncoder,
                                  @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.magicLinkJdbcService = magicLinkJdbcService;
         this.userJdbcService = userJdbcService;
         this.userSharingJdbcService = userSharingJdbcService;
+        this.avatarService = avatarService;
         this.messageSource = messageSource;
         this.passwordEncoder = passwordEncoder;
         this.dataManagementEnabled = dataManagementEnabled;
@@ -56,18 +61,16 @@ public class ShareAccessController {
         model.addAttribute("activeSection", "sharing");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
-        
-        // Add user sharing data
-        List<User> availableUsers = userJdbcService.getAllUsers().stream()
-                .filter(u -> !u.getId().equals(user.getId())) // Exclude current user
-                .collect(java.util.stream.Collectors.toList());
-        java.util.Set<Long> sharedUserIds = userSharingJdbcService.getSharedUserIds(user.getId());
-        
+
+        List<UserDto> availableUsers = loadAvailableUsers(user);
+        Set<Long> sharedUserIds = userSharingJdbcService.getSharedUserIds(user.getId());
+
         model.addAttribute("availableUsers", availableUsers);
         model.addAttribute("sharedUserIds", sharedUserIds);
-        
+
         return "settings/share-access";
     }
+
 
     @PostMapping("/magic-links")
     public String createMagicLink(@AuthenticationPrincipal User user,
@@ -167,7 +170,6 @@ public class ShareAccessController {
                 sharedUserIds = java.util.Collections.emptyList();
             }
             
-            // Update user sharing relationships
             userSharingJdbcService.updateSharedUsers(user.getId(), new java.util.HashSet<>(sharedUserIds));
             
             model.addAttribute("shareSuccessMessage", getMessage("share-with.updated.success"));
@@ -175,12 +177,9 @@ public class ShareAccessController {
             model.addAttribute("shareErrorMessage", getMessage("share-with.update.error", e.getMessage()));
         }
 
-        // Reload data for the fragment
-        List<User> availableUsers = userJdbcService.getAllUsers().stream()
-                .filter(u -> !u.getId().equals(user.getId())) // Exclude current user
-                .collect(java.util.stream.Collectors.toList());
-        java.util.Set<Long> currentSharedUserIds = userSharingJdbcService.getSharedUserIds(user.getId());
-        
+        List<UserDto> availableUsers = loadAvailableUsers(user);
+        Set<Long> currentSharedUserIds = userSharingJdbcService.getSharedUserIds(user.getId());
+
         model.addAttribute("availableUsers", availableUsers);
         model.addAttribute("sharedUserIds", currentSharedUserIds);
 
@@ -189,5 +188,15 @@ public class ShareAccessController {
 
     private String getMessage(String key, Object... args) {
         return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
+    }
+
+    private List<UserDto> loadAvailableUsers(User user) {
+        return userJdbcService.getAllUsers().stream()
+                .filter(u -> !u.getId().equals(user.getId()))
+                .map(u -> {
+                    String currentUserAvatarUrl = this.avatarService.getInfo(u.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", u.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", u.getId()));
+                    String currentUserInitials = this.avatarService.generateInitials(u.getDisplayName());
+                    return new UserDto(u.getId(), u.getUsername(), u.getDisplayName(), currentUserAvatarUrl, currentUserInitials);
+                }).toList();
     }
 }

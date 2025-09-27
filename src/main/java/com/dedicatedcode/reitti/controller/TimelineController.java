@@ -8,6 +8,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
+import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
 import com.dedicatedcode.reitti.service.AvatarService;
 import com.dedicatedcode.reitti.service.TimelineService;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
@@ -15,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -37,6 +37,7 @@ public class TimelineController {
 
     private final AvatarService avatarService;
     private final ReittiIntegrationService reittiIntegrationService;
+    private final UserSharingJdbcService userSharingJdbcService;
     private final TimelineService timelineService;
     private final UserSettingsJdbcService userSettingsJdbcService;
 
@@ -44,13 +45,14 @@ public class TimelineController {
     public TimelineController(SignificantPlaceJdbcService placeService,
                               UserJdbcService userJdbcService,
                               AvatarService avatarService,
-                              ReittiIntegrationService reittiIntegrationService,
+                              ReittiIntegrationService reittiIntegrationService, UserSharingJdbcService userSharingJdbcService,
                               TimelineService timelineService,
                               UserSettingsJdbcService userSettingsJdbcService) {
         this.placeService = placeService;
         this.userJdbcService = userJdbcService;
         this.avatarService = avatarService;
         this.reittiIntegrationService = reittiIntegrationService;
+        this.userSharingJdbcService = userSharingJdbcService;
         this.timelineService = timelineService;
         this.userSettingsJdbcService = userSettingsJdbcService;
     }
@@ -147,16 +149,15 @@ public class TimelineController {
         // Add current user data first
         List<TimelineEntry> currentUserEntries = this.timelineService.buildTimelineEntries(user, userTimezone, selectedDate, startOfDay, endOfDay);
 
-        String currentUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", user.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", user.getId()));
         String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", user.getId(), date, timezone);
+        String currentUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", user.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", user.getId()));
         String currentUserInitials = this.avatarService.generateInitials(user.getDisplayName());
         allUsersData.add(new UserTimelineData(user.getId() + "", user.getUsername(), currentUserInitials, currentUserAvatarUrl, null, currentUserEntries, currentUserRawLocationPointsUrl));
 
-        //Only add this if were are a regular User
         if (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN")) {
             allUsersData.addAll(this.reittiIntegrationService.getTimelineData(user, selectedDate, userTimezone));
+            allUsersData.addAll(handleSharedUserData(user, selectedDate, userTimezone, startOfDay, endOfDay));
         }
-        // Create timeline data record
         TimelineData timelineData = new TimelineData(allUsersData.stream().filter(Objects::nonNull).toList());
 
         model.addAttribute("timelineData", timelineData);
@@ -165,5 +166,26 @@ public class TimelineController {
         model.addAttribute("timezone", timezone);
         model.addAttribute("timeDisplayMode", userSettingsJdbcService.getOrCreateDefaultSettings(user.getId()).getTimeDisplayMode());
         return "fragments/timeline :: timeline-content";
+    }
+
+    private List<UserTimelineData> handleSharedUserData(User user, LocalDate selectedDate, ZoneId userTimezone, Instant startOfDay, Instant endOfDay) {
+        return this.userSharingJdbcService.findBySharedWithUser(user.getId()).stream()
+                .map(sharedUser -> this.userJdbcService.findById(sharedUser.getSharingUserId()).orElse(null))
+                .filter(Objects::nonNull)
+                .sorted((u1, u2) -> u1.getDisplayName().compareToIgnoreCase(u2.getDisplayName()))
+                .map(u -> {
+                    List<TimelineEntry> userTimelineEntries = this.timelineService.buildTimelineEntries(u, userTimezone, selectedDate, startOfDay, endOfDay);
+                    String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", u.getId(), selectedDate, userTimezone.getId());
+                    String currentUserAvatarUrl = this.avatarService.getInfo(u.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", u.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", u.getId()));
+                    String currentUserInitials = this.avatarService.generateInitials(u.getDisplayName());
+
+                    return new UserTimelineData(u.getId() + "",
+                            u.getDisplayName(),
+                            currentUserInitials,
+                            currentUserAvatarUrl,
+                            "#e3e3e3",
+                            userTimelineEntries,
+                            currentUserRawLocationPointsUrl);
+                }).toList();
     }
 }
