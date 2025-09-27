@@ -129,6 +129,7 @@ public class UserSettingsController {
         model.addAttribute("users", users);
         model.addAttribute("currentUsername", currentUser.getUsername());
         model.addAttribute("isAdmin", true);
+        model.addAttribute("addUserAvailable", !localLoginDisabled);
         return "fragments/user-management :: users-list";
     }
 

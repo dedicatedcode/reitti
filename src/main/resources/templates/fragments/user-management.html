@@ -19,7 +19,7 @@
     <div class="settings-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h3 th:text="#{users.existing}">Existing Users</h3>
-            <button th:if="${isAdmin}" class="btn"
+            <button th:if="${isAdmin && addUserAvailable}" class="btn"
                     hx-get="/settings/user-form"
                     hx-target="#user-management"
                     hx-swap="innerHTML"
