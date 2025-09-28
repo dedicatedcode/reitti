@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{settings.title}">Settings - Reitti</title>
+    <link rel="icon" th:href="@{/img/logo.svg}">
+    <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
+    <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/lineicons.css">
+    <script src="/js/htmx.min.js"></script>
+</head>
+<body class="settings-page">
+<div class="settings-container">
+    <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
+    <div class="settings-content-area">
+        <h2 th:text="#{share-access.title}">Share Access</h2>
+        <div class="settings-section active">
+            <details>
+                <summary th:text="#{magic.links.title}">Magic Links</summary>
+                <div id="magic-links" th:fragment="magic-links-content">
+
+                    <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+                        <span th:text="${successMessage}">Magic link created successfully</span>
+                    </div>
+                    <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+                        <span th:text="${errorMessage}">Error message</span>
+                    </div>
+
+                    <!-- Show new token once after creation -->
+                    <div th:if="${newTokenName}" class="settings-card">
+                        <h3 th:text="#{magic.links.new.token.title}">🔗 New Magic Link Created</h3>
+                        <p th:text="#{magic.links.new.token.description}">Your magic link has been created successfully.
+                            Copy the link below and save it securely - it will not be shown again!</p>
+                        <div>
+                            <span th:text="#{magic.links.new.token.name}">Link Name:</span>
+                            <strong th:text="${newTokenName}">Token Name</strong>
+                        </div>
+                        <div style="margin: 15px 0;">
+                            <span th:text="#{magic.links.new.token.url}">Magic Link URL:</span>
+                            <span><a th:href="${magicLinkUrl}" th:text="${magicLinkUrl}">magic-link-url</a></span>
+                        </div>
+                        <p th:text="#{magic.links.new.token.warning}">⚠️ Save this link now - you won't be able to see it again!</p>
+                    </div>
+
+                    <div class="settings-card" th:if="${tokens.isEmpty()}">
+                        <p th:text="#{magic.links.no.tokens}">No magic links found. Create one to get started.</p>
+                    </div>
+
+                    <div class="settings-card" th:if="${!tokens.isEmpty()}">
+                        <table>
+                            <thead>
+                            <tr>
+                                <th th:text="#{magic.links.table.name}">Name</th>
+                                <th th:text="#{magic.links.table.access.level}">Access Level</th>
+                                <th th:text="#{magic.links.table.created}">Created</th>
+                                <th th:text="#{magic.links.table.expiry}">Expires</th>
+                                <th th:text="#{magic.links.table.last.used}">Last Used</th>
+                                <th th:text="#{magic.links.table.actions}">Actions</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="token : ${tokens}">
+                                <td th:text="${token.name}">Token Name</td>
+                                <td>
+                                    <span th:text="#{${'magic.links.access.level.' + token.accessLevel.name().toLowerCase()}}">Access Level</span>
+                                </td>
+                                <td th:text="${#temporals.format(token.createdAt, 'yyyy-MM-dd HH:mm')}"></td>
+                                <td th:text="${token.expiryDate != null ? #temporals.format(token.expiryDate, 'yyyy-MM-dd HH:mm') : #messages.msg('magic.links.never.expires')}"></td>
+                                <td th:text="${token.lastUsed != null ? #temporals.format(token.lastUsed, 'yyyy-MM-dd HH:mm') : #messages.msg('magic.links.never.used')}"></td>
+                                <td>
+                                    <button class="btn btn-danger"
+                                            th:attr="hx-post=@{/settings/share-access/magic-links/{id}/delete(id=${token.id})}, hx-confirm=#{magic.links.delete.confirm}"
+                                            hx-target="#magic-links"
+                                            hx-swap="innerHTML"
+                                            th:text="#{form.delete}">Delete
+                                    </button>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="settings-card">
+                        <form hx-post="/settings/share-access/magic-links" hx-target="#magic-links" hx-swap="innerHTML"
+                              class="magic-link-form"
+                              style="margin-bottom: 20px;">
+                            <div class="form-group">
+                                <label for="magicLinkName" th:text="#{magic.links.name.label}">Link Name</label>
+                                <input type="text" id="magicLinkName" name="name" required
+                                       th:placeholder="#{magic.links.name.placeholder}">
+                            </div>
+                            <div class="form-group">
+                                <label for="accessLevel" th:text="#{magic.links.access.level.label}">Access Level</label>
+                                <select id="accessLevel" name="accessLevel" class="form-select" required>
+                                    <option th:each="level : ${accessLevels}"
+                                            th:value="${level.name()}"
+                                            th:text="#{${'magic.links.access.level.' + level.name().toLowerCase()}}">Access
+                                        Level
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="expiryDate" th:text="#{magic.links.expiry.date.label}">Expiry Date</label>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <input type="date" id="expiryDate" name="expiryDate" style="flex: 1;">
+                                    <button type="button" class="btn btn-secondary"
+                                            onclick="document.getElementById('expiryDate').value=''"
+                                            th:text="#{form.clear}">Clear
+                                    </button>
+                                </div>
+                                <small th:text="#{magic.links.expiry.date.help}">Leave empty for permanent access (link
+                                    never expires)</small>
+                            </div>
+                            <button type="submit" class="btn" th:text="#{form.create}">Create Magic Link</button>
+                        </form>
+                    </div>
+                    <div class="settings-card">
+                        <h3 th:text="#{magic.links.info.title}">About Magic Links</h3>
+                        <p th:text="#{magic.links.info.description}">Magic links allow you to share your location data with others without requiring them to create an account. Anyone with the link can access your data according to the permissions you set.</p>
+
+                        <h4 th:text="#{magic.links.info.security.title}">Security Considerations</h4>
+                        <ul>
+                            <li th:text="#{magic.links.info.security.point1}">Anyone with the link can access your data, treat it like a password</li>
+                            <li th:text="#{magic.links.info.security.point2}">Links cannot be recovered if lost, you'll need to create a new one</li>
+                            <li th:text="#{magic.links.info.security.point3}">Set expiry dates for temporary sharing to limit access duration</li>
+                            <li th:text="#{magic.links.info.security.point4}">Delete links immediately when no longer needed</li>
+                            <li th:text="#{magic.links.info.security.point5}">Monitor the 'Last Used' column to track access</li>
+                        </ul>
+
+                        <h4 th:text="#{magic.links.info.access.levels.title}">Access Levels</h4>
+                        <ul>
+                            <li><strong th:text="#{magic.links.access.level.full_access}">Full Access</strong>: <span th:text="#{magic.links.info.access.full.description}">Complete access to all your location data and history</span></li>
+                            <li><strong th:text="#{magic.links.access.level.only_live}">Live Data Only</strong>: <span th:text="#{magic.links.info.access.live.description}">Access only to current/recent location data</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </details>
+            <details>
+                <summary th:text="#{share-with.title}">Share with other Users</summary>
+                <div id="share-with" th:fragment="share-with-content">
+                    <div th:if="${shareSuccessMessage}" class="alert alert-success" style="display: block;">
+                        <span th:text="${shareSuccessMessage}">Sharing updated successfully</span>
+                    </div>
+                    <div th:if="${shareErrorMessage}" class="alert alert-danger" style="display: block;">
+                        <span th:text="${shareErrorMessage}">Error message</span>
+                    </div>
+
+                    <div class="settings-card" th:if="${availableUsers.isEmpty()}">
+                        <p th:text="#{share-with.no.users}">No other users found to share with.</p>
+                    </div>
+
+                    <div class="settings-card" th:if="${!availableUsers.isEmpty()}">
+                        <p th:text="#{share-with.users.description}">Select users you want to share your location data with. They will be able to view your timeline and location history.</p>
+                        
+                        <form hx-post="/settings/share-access/users" hx-target="#share-with" hx-swap="innerHTML">
+                            <div class="user-sharing-selection">
+                                <div class="language-buttons">
+                                    <div th:each="user : ${availableUsers}" class="user-sharing-button-wrapper">
+                                        <label class="btn user-sharing-btn"
+                                               th:classappend="${sharedUserIds.contains(user.id())} ? 'active' : ''">
+                                            <input type="checkbox" 
+                                                   th:name="'sharedUserIds'"
+                                                   th:value="${user.id()}"
+                                                   th:checked="${sharedUserIds.contains(user.id())}"
+                                                   onchange="this.form.requestSubmit()"
+                                                   style="display: none;">
+                                            <div class="user-sharing-content">
+                                                <img th:src="${user.avatarUrl()}"
+                                                     th:alt="${user.avatarFallback()}"
+                                                     class="avatar">
+                                                <div class="user-info">
+                                                    <span class="user-display-name" th:text="${user.displayName() ?: user.username()}">User Display Name</span>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="settings-card">
+                        <h3 th:text="#{share-with.info.title}">About User Sharing</h3>
+                        <p th:text="#{share-with.info.description}">When you share your data with other users, they will be able to view your location timeline and history alongside their own data. This is useful for families or teams who want to coordinate and share location information.</p>
+
+                        <h4 th:text="#{share-with.info.permissions.title}">What They Can See</h4>
+                        <ul>
+                            <li th:text="#{share-with.info.permissions.timeline}">Your complete location timeline and history</li>
+                            <li th:text="#{share-with.info.permissions.places}">Your significant places and visits</li>
+                            <li th:text="#{share-with.info.permissions.trips}">Your trips and movement patterns</li>
+                        </ul>
+
+                        <h4 th:text="#{share-with.info.privacy.title}">Privacy Notes</h4>
+                        <ul>
+                            <li th:text="#{share-with.info.privacy.mutual}">Sharing is not mutual, they need to separately share their data with you</li>
+                            <li th:text="#{share-with.info.privacy.revoke}">You can revoke access at any time by unchecking the user</li>
+                            <li th:text="#{share-with.info.privacy.immediate}">Changes take effect immediately</li>
+                        </ul>
+                    </div>
+
+                    <div class="settings-card" th:if="${!sharedWithMeUsers.isEmpty()}">
+                        <h3 th:text="#{shared-with-me.title}">Users Sharing with Me</h3>
+                        <p th:text="#{shared-with-me.description}">These users have shared their location data with you. You can customize the color used to display their data on your timeline.</p>
+                        
+                        <table class="shared-users-table">
+                            <thead>
+                                <tr>
+                                    <th th:text="#{shared-with-me.table.user}">User</th>
+                                    <th th:text="#{shared-with-me.table.color}">Color</th>
+                                    <th th:text="#{shared-with-me.table.shared.since}">Shared Since</th>
+                                    <th th:text="#{shared-with-me.table.actions}">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="sharing : ${sharedWithMeUsers}">
+                                    <td>
+                                        <div class="user-info-row" style="display: flex; align-items: center; gap: 10px;">
+                                            <img th:src="${sharing.sharingUser().avatarUrl()}"
+                                                 th:alt="${sharing.sharingUser().avatarFallback()}"
+                                                 class="avatar small">
+                                            <div class="user-details">
+                                                <span class="user-display-name" th:text="${sharing.sharingUser().displayName() ?: sharing.sharingUser().username()}">User Display Name</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="color-picker-container">
+                                            <input type="color" 
+                                                   th:value="${sharing.color()}"
+                                                   class="color-picker"
+                                                   th:attr="data-sharing-id=${sharing.id()}"
+                                                   onchange="updateSharingColor(this)">
+                                            <div class="color-preview" th:style="'background-color: ' + ${sharing.color()}"></div>
+                                        </div>
+                                    </td>
+                                    <td th:text="${#temporals.format(sharing.createdAt(), 'yyyy-MM-dd HH:mm')}">2024-01-01 12:00</td>
+                                    <td>
+                                        <button class="btn btn-danger btn-small"
+                                                th:attr="hx-post=@{/settings/share-access/shared-with-me/{id}/dismiss(id=${sharing.id()})}, hx-confirm=#{shared-with-me.dismiss.confirm}"
+                                                hx-target="#share-with"
+                                                hx-swap="innerHTML"
+                                                th:text="#{shared-with-me.dismiss}">Dismiss
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </details>
+        </div>
+    </div>
+</div>
+<script>
+function updateSharingColor(colorInput) {
+    const sharingId = colorInput.getAttribute('data-sharing-id');
+    const color = colorInput.value;
+    
+    fetch(`/settings/share-access/shared-with-me/${sharingId}/color`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `color=${encodeURIComponent(color)}`
+    })
+    .then(response => response.text())
+    .then(result => {
+        if (result === 'success') {
+            // Update the color preview
+            const colorPreview = colorInput.parentElement.querySelector('.color-preview');
+            if (colorPreview) {
+                colorPreview.style.backgroundColor = color;
+            }
+        } else {
+            alert('Failed to update color');
+        }
+    })
+    .catch(error => {
+        console.error('Error updating color:', error);
+        alert('Failed to update color');
+    });
+}
+</script>
+</body>
