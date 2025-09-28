@@ -7,13 +7,15 @@ public class UserSharing {
     private final Long sharingUserId;
     private final Long sharedWithUserId;
     private final Instant createdAt;
+    private final String color;
     private final Long version;
 
-    public UserSharing(Long id, Long sharingUserId, Long sharedWithUserId, Instant createdAt, Long version) {
+    public UserSharing(Long id, Long sharingUserId, Long sharedWithUserId, Instant createdAt, String color, Long version) {
         this.id = id;
         this.sharingUserId = sharingUserId;
         this.sharedWithUserId = sharedWithUserId;
         this.createdAt = createdAt;
+        this.color = color;
         this.version = version;
     }
 
@@ -27,6 +29,10 @@ public class UserSharing {
 
     public Long getSharedWithUserId() {
         return sharedWithUserId;
+    }
+
+    public String getColor() {
+        return color;
     }
 
     public Instant getCreatedAt() {
@@ -53,4 +59,5 @@ public class UserSharing {
     public int hashCode() {
         return java.util.Objects.hash(id, sharingUserId, sharedWithUserId, createdAt, version);
     }
+
 }

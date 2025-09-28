@@ -34,60 +34,39 @@ public class UserSharingJdbcService {
 
     @Transactional(readOnly = true)
     public List<UserSharing> findBySharingUser(Long sharingUserId) {
-        String sql = "SELECT id, sharing_user_id, shared_with_user_id, created_at, version FROM user_sharing WHERE sharing_user_id = ?";
+        String sql = "SELECT id, sharing_user_id, shared_with_user_id, created_at, color, version FROM user_sharing WHERE sharing_user_id = ?";
         return jdbcTemplate.query(sql, this::mapRowToUserSharing, sharingUserId);
     }
 
     @Transactional(readOnly = true)
     public List<UserSharing> findBySharedWithUser(Long sharedWithUserId) {
-        String sql = "SELECT id, sharing_user_id, shared_with_user_id, created_at, version FROM user_sharing WHERE shared_with_user_id = ?";
+        String sql = "SELECT id, sharing_user_id, shared_with_user_id, created_at, color, version FROM user_sharing WHERE shared_with_user_id = ?";
         return jdbcTemplate.query(sql, this::mapRowToUserSharing, sharedWithUserId);
     }
 
-    public void updateSharedUsers(Long sharingUserId, Set<Long> sharedUserIds) {
-        Set<Long> currentSharedUsers = getSharedUserIds(sharingUserId);
-        
-        Set<Long> usersToAdd = sharedUserIds.stream()
-                .filter(id -> !currentSharedUsers.contains(id))
-                .collect(Collectors.toSet());
-        
-        Set<Long> usersToRemove = currentSharedUsers.stream()
-                .filter(id -> !sharedUserIds.contains(id))
-                .collect(Collectors.toSet());
-        
-        for (Long userId : usersToAdd) {
-            createSharing(sharingUserId, userId);
-        }
-        
-        for (Long userId : usersToRemove) {
-            removeSharing(sharingUserId, userId);
+    private void createSharing(Long sharingUserId, Long sharedWithUserId, String color) {
+        String sql = "INSERT INTO user_sharing (sharing_user_id, shared_with_user_id, created_at, color, version) VALUES (?, ?, now(), ?, 1)";
+        jdbcTemplate.update(sql, sharingUserId, sharedWithUserId, color);
+    }
+
+    public void create(User user, Set<UserSharing> toCreate) {
+        for (UserSharing userSharing : toCreate) {
+            createSharing(user.getId(), userSharing.getSharedWithUserId(), userSharing.getColor());
         }
     }
-
-    private void createSharing(Long sharingUserId, Long sharedWithUserId) {
-        String sql = "INSERT INTO user_sharing (sharing_user_id, shared_with_user_id, created_at, version) VALUES (?, ?, now(), 1)";
-        jdbcTemplate.update(sql, sharingUserId, sharedWithUserId);
-    }
-
-    private void removeSharing(Long sharingUserId, Long sharedWithUserId) {
-        String sql = "DELETE FROM user_sharing WHERE sharing_user_id = ? AND shared_with_user_id = ?";
-        jdbcTemplate.update(sql, sharingUserId, sharedWithUserId);
-    }
-
-    public void deleteAllSharingForUser(Long userId) {
-        String sql1 = "DELETE FROM user_sharing WHERE sharing_user_id = ?";
-        String sql2 = "DELETE FROM user_sharing WHERE shared_with_user_id = ?";
-        jdbcTemplate.update(sql1, userId);
-        jdbcTemplate.update(sql2, userId);
-    }
-
     private UserSharing mapRowToUserSharing(ResultSet rs, int rowNum) throws SQLException {
         return new UserSharing(
                 rs.getLong("id"),
                 rs.getLong("sharing_user_id"),
                 rs.getLong("shared_with_user_id"),
                 rs.getTimestamp("created_at").toInstant(),
+                rs.getString("color"),
                 rs.getLong("version")
         );
     }
+
+    public void delete(Set<UserSharing> toDelete) {
+        this.jdbcTemplate.batchUpdate("DELETE FROM user_sharing WHERE id = ?", toDelete.stream().map(userSharing -> new Object[]{userSharing.getId()}).collect(Collectors.toList()));
+    }
+
 }

@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.MagicLinkToken;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.model.security.UserSharing;
 import com.dedicatedcode.reitti.repository.MagicLinkJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
@@ -22,9 +23,11 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/settings/share-access")
@@ -169,9 +172,17 @@ public class ShareAccessController {
             if (sharedUserIds == null) {
                 sharedUserIds = java.util.Collections.emptyList();
             }
-            
-            userSharingJdbcService.updateSharedUsers(user.getId(), new java.util.HashSet<>(sharedUserIds));
-            
+
+            List<UserSharing> bySharingUser = this.userSharingJdbcService.findBySharingUser(user.getId());
+            List<Long> finalSharedUserIds = sharedUserIds;
+
+            Set<UserSharing> toDelete = bySharingUser.stream().filter(s -> !finalSharedUserIds.contains(s.getSharedWithUserId())).collect(Collectors.toSet());
+            Set<UserSharing> toCreate = sharedUserIds.stream().filter(id -> bySharingUser.stream()
+                    .noneMatch(s -> s.getSharedWithUserId().equals(id)))
+                    .map(s -> new UserSharing(null, user.getId(), s, null, "#e3e3e3", null))
+                    .collect(Collectors.toSet());
+            this.userSharingJdbcService.delete(toDelete);
+            this.userSharingJdbcService.create(user, toCreate);
             model.addAttribute("shareSuccessMessage", getMessage("share-with.updated.success"));
         } catch (Exception e) {
             model.addAttribute("shareErrorMessage", getMessage("share-with.update.error", e.getMessage()));
