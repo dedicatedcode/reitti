@@ -214,11 +214,14 @@
                             <tbody>
                                 <tr th:each="sharing : ${sharedWithMeUsers}">
                                     <td>
-                                        <div class="user-info-row">
+                                        <div class="user-info-row" style="display: flex; align-items: center; gap: 10px;">
                                             <img th:src="${sharing.sharingUser().avatarUrl()}"
                                                  th:alt="${sharing.sharingUser().avatarFallback()}"
                                                  class="avatar small">
-                                            <span class="user-display-name" th:text="${sharing.sharingUser().displayName() ?: sharing.sharingUser().username()}">User Display Name</span>
+                                            <div class="user-details">
+                                                <span class="user-display-name" th:text="${sharing.sharingUser().displayName() ?: sharing.sharingUser().username()}">User Display Name</span>
+                                                <span th:if="${sharing.sharingUser().displayName()}" class="user-username" th:text="'@' + ${sharing.sharingUser().username()}">@username</span>
+                                            </div>
                                         </div>
                                     </td>
                                     <td>
