@@ -24,9 +24,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 @Controller
 @RequestMapping("/timeline")
@@ -170,22 +168,26 @@ public class TimelineController {
 
     private List<UserTimelineData> handleSharedUserData(User user, LocalDate selectedDate, ZoneId userTimezone, Instant startOfDay, Instant endOfDay) {
         return this.userSharingJdbcService.findBySharedWithUser(user.getId()).stream()
-                .map(sharedUser -> this.userJdbcService.findById(sharedUser.getSharingUserId()).orElse(null))
-                .filter(Objects::nonNull)
-                .sorted((u1, u2) -> u1.getDisplayName().compareToIgnoreCase(u2.getDisplayName()))
                 .map(u -> {
-                    List<TimelineEntry> userTimelineEntries = this.timelineService.buildTimelineEntries(u, userTimezone, selectedDate, startOfDay, endOfDay);
-                    String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", u.getId(), selectedDate, userTimezone.getId());
-                    String currentUserAvatarUrl = this.avatarService.getInfo(u.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", u.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", u.getId()));
-                    String currentUserInitials = this.avatarService.generateInitials(u.getDisplayName());
+                    Optional<User> sharedWithUserOpt = this.userJdbcService.findById(u.getSharingUserId());
+                    return sharedWithUserOpt.map(sharedWithUser -> {
+                        List<TimelineEntry> userTimelineEntries = this.timelineService.buildTimelineEntries(sharedWithUser, userTimezone, selectedDate, startOfDay, endOfDay);
+                        String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", sharedWithUser.getId(), selectedDate, userTimezone.getId());
+                        String currentUserAvatarUrl = this.avatarService.getInfo(sharedWithUser.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", sharedWithUser.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", sharedWithUser.getId()));
+                        String currentUserInitials = this.avatarService.generateInitials(sharedWithUser.getDisplayName());
 
-                    return new UserTimelineData(u.getId() + "",
-                            u.getDisplayName(),
-                            currentUserInitials,
-                            currentUserAvatarUrl,
-                            "#e3e3e3",
-                            userTimelineEntries,
-                            currentUserRawLocationPointsUrl);
-                }).toList();
+                        return new UserTimelineData(sharedWithUser.getId() + "",
+                                sharedWithUser.getDisplayName(),
+                                currentUserInitials,
+                                currentUserAvatarUrl,
+                                u.getColor(),
+                                userTimelineEntries,
+                                currentUserRawLocationPointsUrl);
+                    });
+                })
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .sorted(Comparator.comparing(UserTimelineData::displayName))
+                .toList();
     }
 }
