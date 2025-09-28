@@ -220,7 +220,6 @@
                                                  class="avatar small">
                                             <div class="user-details">
                                                 <span class="user-display-name" th:text="${sharing.sharingUser().displayName() ?: sharing.sharingUser().username()}">User Display Name</span>
-                                                <span th:if="${sharing.sharingUser().displayName()}" class="user-username" th:text="'@' + ${sharing.sharingUser().username()}">@username</span>
                                             </div>
                                         </div>
                                     </td>

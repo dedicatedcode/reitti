@@ -1063,7 +1063,6 @@ input[type=file]::file-selector-button:hover {
 
 .settings-container {
     display: flex;
-    height: 100%;
 }
 
 .settings-page .settings-nav {
@@ -1446,6 +1445,11 @@ button:disabled {
     transition: border-color 0.2s, box-shadow 0.2s;
     display: inline-block;
     position: relative;
+}
+
+.avatar.small {
+    width: 32px;
+    height: 32px;
 }
 
 .avatar::before {
