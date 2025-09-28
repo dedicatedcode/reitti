@@ -179,7 +179,7 @@ public class ShareAccessController {
             Set<UserSharing> toDelete = bySharingUser.stream().filter(s -> !finalSharedUserIds.contains(s.getSharedWithUserId())).collect(Collectors.toSet());
             Set<UserSharing> toCreate = sharedUserIds.stream().filter(id -> bySharingUser.stream()
                     .noneMatch(s -> s.getSharedWithUserId().equals(id)))
-                    .map(s -> new UserSharing(null, user.getId(), s, null, "#e3e3e3", null))
+                    .map(s -> new UserSharing(null, user.getId(), s, null, generateColorForUser(user.getId()), null))
                     .collect(Collectors.toSet());
             this.userSharingJdbcService.delete(toDelete);
             this.userSharingJdbcService.create(user, toCreate);
@@ -209,5 +209,18 @@ public class ShareAccessController {
                     String currentUserInitials = this.avatarService.generateInitials(u.getDisplayName());
                     return new UserDto(u.getId(), u.getUsername(), u.getDisplayName(), currentUserAvatarUrl, currentUserInitials);
                 }).toList();
+    }
+
+    private String generateColorForUser(Long userId) {
+        // Predefined set of colors for user sharing
+        String[] colors = {
+            "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7",
+            "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9",
+            "#F8C471", "#82E0AA", "#F1948A", "#85C1E9", "#D7BDE2"
+        };
+        
+        // Use userId as seed for consistent color selection
+        int colorIndex = Math.abs(userId.hashCode()) % colors.length;
+        return colors[colorIndex];
     }
 }
