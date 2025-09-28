@@ -19,7 +19,7 @@
         <p th:text="#{integrations.immich.description}">Immich is a self-hosted photo and video backup solution. Connect
             your Immich instance to show photos taken at specific locations and dates on your timeline map.</p>
 
-        <form hx-post="/settings/immich-integration" hx-target="#photos-section" hx-swap="innerHTML" class="immich-form"
+        <form hx-post="/settings/integrations/immich-integration" hx-target="#photos-section" hx-swap="innerHTML" class="immich-form"
               style="margin-top: 20px;" autocomplete="off">
             <div class="form-group">
                 <label for="serverUrl" th:text="#{integrations.immich.server.url}">Server URL</label>

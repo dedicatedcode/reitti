@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.repository.UserJdbcService;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -13,9 +14,12 @@ import java.io.IOException;
 public class SetupFilter implements Filter {
 
     private final UserJdbcService userService;
+    private final boolean localLoginDisabled;
 
-    public SetupFilter(UserJdbcService userService) {
+    public SetupFilter(UserJdbcService userService,
+                       @Value("${reitti.security.local-login.disable:false}") boolean localLoginDisabled) {
         this.userService = userService;
+        this.localLoginDisabled = localLoginDisabled;
     }
 
     @Override
@@ -39,7 +43,7 @@ public class SetupFilter implements Filter {
         }
 
         // Check if admin has empty password
-        if (hasAdminWithEmptyPassword()) {
+        if (hasAdminWithEmptyPassword() && (!localLoginDisabled)) {
             httpResponse.sendRedirect("/setup");
             return;
         }

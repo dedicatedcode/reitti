@@ -108,4 +108,8 @@ public class UserSettingsJdbcService {
             this.jdbcTemplate.update("UPDATE user_settings SET latest_data = GREATEST(latest_data, ?) WHERE user_id = ?", Timestamp.from(instant), user.getId());
         });
     }
+
+    public void deleteFor(User user) {
+        this.jdbcTemplate.update("DELETE FROM user_settings WHERE user_id = ?", user.getId());
+    }
 }

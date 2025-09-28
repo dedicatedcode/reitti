@@ -132,4 +132,8 @@ public class SignificantPlaceJdbcService {
         return jdbcTemplate.query(sql, significantPlaceRowMapper);
 
     }
+
+    public void deleteForUser(User user) {
+        this.jdbcTemplate.update("DELETE FROM significant_places WHERE user_id = ?", user.getId());
+    }
 }

@@ -6,11 +6,10 @@ import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
-import com.dedicatedcode.reitti.repository.UserJdbcService;
-import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
-import com.dedicatedcode.reitti.repository.VisitDetectionParametersJdbcService;
+import com.dedicatedcode.reitti.repository.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.ZoneId;
@@ -20,12 +19,24 @@ public class UserService {
     private final UserJdbcService userJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final VisitDetectionParametersJdbcService visitDetectionParametersJdbcService;
+    private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final VisitJdbcService visitJdbcService;
+    private final SignificantPlaceJdbcService significantPlaceJdbcService;
+    private final ProcessedVisitJdbcService processedVisitJdbcService;
+    private final GeocodingResponseJdbcService geocodingResponseJdbcService;
+    private final ApiTokenJdbcService apiTokenJdbcService;
     private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserJdbcService userJdbcService, UserSettingsJdbcService userSettingsJdbcService, VisitDetectionParametersJdbcService visitDetectionParametersJdbcService, PasswordEncoder passwordEncoder) {
+    public UserService(UserJdbcService userJdbcService, UserSettingsJdbcService userSettingsJdbcService, VisitDetectionParametersJdbcService visitDetectionParametersJdbcService, RawLocationPointJdbcService rawLocationPointJdbcService, VisitJdbcService visitJdbcService, SignificantPlaceJdbcService significantPlaceJdbcService, ProcessedVisitJdbcService processedVisitJdbcService, GeocodingResponseJdbcService geocodingResponseJdbcService, ApiTokenJdbcService apiTokenJdbcService, PasswordEncoder passwordEncoder) {
         this.userJdbcService = userJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.visitDetectionParametersJdbcService = visitDetectionParametersJdbcService;
+        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.visitJdbcService = visitJdbcService;
+        this.significantPlaceJdbcService = significantPlaceJdbcService;
+        this.processedVisitJdbcService = processedVisitJdbcService;
+        this.geocodingResponseJdbcService = geocodingResponseJdbcService;
+        this.apiTokenJdbcService = apiTokenJdbcService;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -84,5 +95,18 @@ public class UserService {
         );
     }
 
-
+    @Transactional
+    public void deleteUser(User user) {
+        this.visitDetectionParametersJdbcService.findAllConfigurationsForUser(user).forEach(detectionParameter -> this.visitDetectionParametersJdbcService.delete(detectionParameter.getId()));
+        this.userSettingsJdbcService.deleteFor(user);
+        this.geocodingResponseJdbcService.deleteAllForUser(user);
+        this.processedVisitJdbcService.deleteAllForUser(user);
+        this.significantPlaceJdbcService.deleteForUser(user);
+        this.significantPlaceJdbcService.deleteForUser(user);
+        this.visitJdbcService.deleteAllForUser(user);
+        this.rawLocationPointJdbcService.deleteAllForUser(user);
+        this.rawLocationPointJdbcService.deleteAllForUser(user);
+        this.apiTokenJdbcService.deleteForUser(user);
+        this.userJdbcService.deleteUser(user.getId());
+    }
 }

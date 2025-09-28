@@ -149,7 +149,8 @@ public class UserSettingsController {
             model.addAttribute("errorMessage", getMessage("message.error.user.self.delete"));
         } else {
             try {
-                userJdbcService.deleteUser(userId);
+                User user = userJdbcService.findById(userId).orElseThrow();
+                userService.deleteUser(user);
                 model.addAttribute("successMessage", getMessage("message.success.user.deleted"));
             } catch (Exception e) {
                 model.addAttribute("errorMessage", getMessage("message.error.user.deletion", e.getMessage()));

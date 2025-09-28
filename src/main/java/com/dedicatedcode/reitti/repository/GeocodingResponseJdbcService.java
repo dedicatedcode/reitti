@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.geocoding.GeocodingResponse;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
+import com.dedicatedcode.reitti.model.security.User;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -45,7 +46,11 @@ public class GeocodingResponseJdbcService {
             """;
         return jdbcTemplate.query(sql, new GeocodingResponseRowMapper(), significantPlace.getId());
     }
-    
+
+    public void deleteAllForUser(User user) {
+        this.jdbcTemplate.update("DELETE FROM geocoding_response WHERE significant_place_id IN (SELECT id FROM significant_places WHERE user_id = ?)", user.getId());
+    }
+
     private static class GeocodingResponseRowMapper implements RowMapper<GeocodingResponse> {
         @Override
         public GeocodingResponse mapRow(ResultSet rs, int rowNum) throws SQLException {
