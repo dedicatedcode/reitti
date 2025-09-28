@@ -67,9 +67,11 @@ public class ShareAccessController {
 
         List<UserDto> availableUsers = loadAvailableUsers(user);
         Set<Long> sharedUserIds = userSharingJdbcService.getSharedUserIds(user.getId());
+        List<UserSharingDto> sharedWithMeUsers = loadSharedWithMeUsers(user);
 
         model.addAttribute("availableUsers", availableUsers);
         model.addAttribute("sharedUserIds", sharedUserIds);
+        model.addAttribute("sharedWithMeUsers", sharedWithMeUsers);
 
         return "settings/share-access";
     }
@@ -190,9 +192,11 @@ public class ShareAccessController {
 
         List<UserDto> availableUsers = loadAvailableUsers(user);
         Set<Long> currentSharedUserIds = userSharingJdbcService.getSharedUserIds(user.getId());
+        List<UserSharingDto> sharedWithMeUsers = loadSharedWithMeUsers(user);
 
         model.addAttribute("availableUsers", availableUsers);
         model.addAttribute("sharedUserIds", currentSharedUserIds);
+        model.addAttribute("sharedWithMeUsers", sharedWithMeUsers);
 
         return "settings/share-access :: share-with-content";
     }
@@ -211,6 +215,58 @@ public class ShareAccessController {
                 }).toList();
     }
 
+    @PostMapping("/shared-with-me/{id}/dismiss")
+    public String dismissSharedAccess(@PathVariable Long id,
+                                     @AuthenticationPrincipal User user,
+                                     Model model) {
+        try {
+            userSharingJdbcService.dismissSharedAccess(id, user.getId());
+            model.addAttribute("shareSuccessMessage", getMessage("shared-with-me.dismissed.success"));
+        } catch (Exception e) {
+            model.addAttribute("shareErrorMessage", getMessage("shared-with-me.dismiss.error", e.getMessage()));
+        }
+
+        // Reload data for the fragment
+        List<UserDto> availableUsers = loadAvailableUsers(user);
+        Set<Long> currentSharedUserIds = userSharingJdbcService.getSharedUserIds(user.getId());
+        List<UserSharingDto> sharedWithMeUsers = loadSharedWithMeUsers(user);
+
+        model.addAttribute("availableUsers", availableUsers);
+        model.addAttribute("sharedUserIds", currentSharedUserIds);
+        model.addAttribute("sharedWithMeUsers", sharedWithMeUsers);
+
+        return "settings/share-access :: share-with-content";
+    }
+
+    @PostMapping("/shared-with-me/{id}/color")
+    @ResponseBody
+    public String updateSharingColor(@PathVariable Long id,
+                                   @RequestParam String color,
+                                   @AuthenticationPrincipal User user) {
+        try {
+            userSharingJdbcService.updateSharingColor(id, user.getId(), color);
+            return "success";
+        } catch (Exception e) {
+            return "error";
+        }
+    }
+
+    private List<UserSharingDto> loadSharedWithMeUsers(User user) {
+        return userSharingJdbcService.findBySharedWithUser(user.getId()).stream()
+                .map(sharing -> {
+                    User sharingUser = userJdbcService.findById(sharing.getSharingUserId())
+                            .orElseThrow(() -> new RuntimeException("User not found: " + sharing.getSharingUserId()));
+                    String avatarUrl = avatarService.getInfo(sharingUser.getId())
+                            .map(avatarInfo -> String.format("/avatars/%d?ts=%s", sharingUser.getId(), avatarInfo.updatedAt()))
+                            .orElse(String.format("/avatars/%d", sharingUser.getId()));
+                    String avatarFallback = avatarService.generateInitials(sharingUser.getDisplayName());
+                    UserDto sharingUserDto = new UserDto(sharingUser.getId(), sharingUser.getUsername(), 
+                            sharingUser.getDisplayName(), avatarUrl, avatarFallback);
+                    return new UserSharingDto(sharing.getId(), sharingUserDto, sharing.getColor(), sharing.getCreatedAt());
+                })
+                .collect(java.util.stream.Collectors.toList());
+    }
+
     private String generateColorForUser(Long userId) {
         // Predefined set of colors for user sharing
         String[] colors = {
@@ -223,4 +279,6 @@ public class ShareAccessController {
         int colorIndex = Math.abs(userId.hashCode()) % colors.length;
         return colors[colorIndex];
     }
+
+    public record UserSharingDto(Long id, UserDto sharingUser, String color, java.time.Instant createdAt) {}
 }

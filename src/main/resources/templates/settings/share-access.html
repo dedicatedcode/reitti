@@ -197,9 +197,90 @@
                             <li th:text="#{share-with.info.privacy.immediate}">Changes take effect immediately</li>
                         </ul>
                     </div>
+
+                    <div class="settings-card" th:if="${!sharedWithMeUsers.isEmpty()}">
+                        <h3 th:text="#{shared-with-me.title}">Users Sharing with Me</h3>
+                        <p th:text="#{shared-with-me.description}">These users have shared their location data with you. You can customize the color used to display their data on your timeline.</p>
+                        
+                        <table class="shared-users-table">
+                            <thead>
+                                <tr>
+                                    <th th:text="#{shared-with-me.table.user}">User</th>
+                                    <th th:text="#{shared-with-me.table.color}">Color</th>
+                                    <th th:text="#{shared-with-me.table.shared.since}">Shared Since</th>
+                                    <th th:text="#{shared-with-me.table.actions}">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="sharing : ${sharedWithMeUsers}">
+                                    <td>
+                                        <div class="user-info-row">
+                                            <img th:src="${sharing.sharingUser().avatarUrl()}"
+                                                 th:alt="${sharing.sharingUser().avatarFallback()}"
+                                                 class="avatar small">
+                                            <div class="user-details">
+                                                <span class="user-display-name" th:text="${sharing.sharingUser().displayName() ?: sharing.sharingUser().username()}">User Display Name</span>
+                                                <span th:if="${sharing.sharingUser().displayName()}" class="user-username" th:text="'@' + ${sharing.sharingUser().username()}">@username</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="color-picker-container">
+                                            <input type="color" 
+                                                   th:value="${sharing.color()}"
+                                                   class="color-picker"
+                                                   th:attr="data-sharing-id=${sharing.id()}"
+                                                   onchange="updateSharingColor(this)">
+                                            <div class="color-preview" th:style="'background-color: ' + ${sharing.color()}"></div>
+                                        </div>
+                                    </td>
+                                    <td th:text="${#temporals.format(sharing.createdAt(), 'yyyy-MM-dd HH:mm')}">2024-01-01 12:00</td>
+                                    <td>
+                                        <button class="btn btn-danger btn-small"
+                                                th:attr="hx-post=@{/settings/share-access/shared-with-me/{id}/dismiss(id=${sharing.id()})}, hx-confirm=#{shared-with-me.dismiss.confirm}"
+                                                hx-target="#share-with"
+                                                hx-swap="innerHTML"
+                                                th:text="#{shared-with-me.dismiss}">Dismiss
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </details>
         </div>
     </div>
 </div>
+<script>
+function updateSharingColor(colorInput) {
+    const sharingId = colorInput.getAttribute('data-sharing-id');
+    const color = colorInput.value;
+    
+    fetch(`/settings/share-access/shared-with-me/${sharingId}/color`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `color=${encodeURIComponent(color)}`
+    })
+    .then(response => response.text())
+    .then(result => {
+        if (result === 'success') {
+            // Update the color preview
+            const colorPreview = colorInput.parentElement.querySelector('.color-preview');
+            if (colorPreview) {
+                colorPreview.style.backgroundColor = color;
+            }
+        } else {
+            alert('Failed to update color');
+            // Optionally reload the page or revert the color
+        }
+    })
+    .catch(error => {
+        console.error('Error updating color:', error);
+        alert('Failed to update color');
+    });
+}
+</script>
 </body>
