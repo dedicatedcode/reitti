@@ -69,4 +69,22 @@ public class UserSharingJdbcService {
         this.jdbcTemplate.batchUpdate("DELETE FROM user_sharing WHERE id = ?", toDelete.stream().map(userSharing -> new Object[]{userSharing.getId()}).collect(Collectors.toList()));
     }
 
+    public void dismissSharedAccess(Long sharingId, Long sharedWithUserId) {
+        // Verify that the sharing belongs to the user before deleting
+        String sql = "DELETE FROM user_sharing WHERE id = ? AND shared_with_user_id = ?";
+        int rowsAffected = jdbcTemplate.update(sql, sharingId, sharedWithUserId);
+        if (rowsAffected == 0) {
+            throw new IllegalArgumentException("Sharing not found or access denied");
+        }
+    }
+
+    public void updateSharingColor(Long sharingId, Long sharedWithUserId, String color) {
+        // Verify that the sharing belongs to the user before updating
+        String sql = "UPDATE user_sharing SET color = ?, version = version + 1 WHERE id = ? AND shared_with_user_id = ?";
+        int rowsAffected = jdbcTemplate.update(sql, color, sharingId, sharedWithUserId);
+        if (rowsAffected == 0) {
+            throw new IllegalArgumentException("Sharing not found or access denied");
+        }
+    }
+
 }
