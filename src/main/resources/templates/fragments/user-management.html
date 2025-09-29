@@ -157,6 +157,38 @@
             <input type="hidden" id="removeAvatarFlag" name="removeAvatar" value="false">
         </div>
         <div class="separator"></div>
+        
+        <div class="form-group">
+            <h3 th:text="#{users.custom.css.label}">Custom CSS</h3>
+            <p class="form-description" th:text="#{users.custom.css.description}">Upload a custom CSS file to personalize your interface. This will override default styles.</p>
+            
+            <!-- Current CSS file display -->
+            <div th:if="${userId != null && hasCustomCss}" class="current-css">
+                <div class="css-file-info">
+                    <span class="css-file-icon">📄</span>
+                    <span th:text="#{users.custom.css.current}">Custom CSS file uploaded</span>
+                    <button type="button" 
+                            class="btn btn-danger css-remove-btn"
+                            onclick="removeCurrentCss()"
+                            th:text="#{users.custom.css.delete}">Remove CSS</button>
+                </div>
+            </div>
+            
+            <!-- CSS file upload -->
+            <div class="css-upload-section">
+                <div class="css-input-row">
+                    <input type="file" id="customCss" name="customCss" accept=".css,text/css">
+                </div>
+                <small th:text="#{users.custom.css.requirements}">Max 1MB. CSS files only (.css extension required).</small>
+            </div>
+            
+            <div th:if="${cssError}" class="alert alert-danger" style="display: block;">
+                <span th:text="${cssError}">CSS error message</span>
+            </div>
+            
+            <input type="hidden" id="removeCssFlag" name="removeCss" value="false">
+        </div>
+        <div class="separator"></div>
 
         <div class="form-group">
             <h3 th:text="#{language.title}">Preferred Language</h3>
@@ -306,8 +338,14 @@
     <script th:inline="javascript">
         document.addEventListener('DOMContentLoaded', () => {
             initializeHomeLocationMap();
-
-        })
+        });
+        
+        function removeCurrentCss() {
+            if (confirm('Are you sure you want to remove the current custom CSS file?')) {
+                document.getElementById('removeCssFlag').value = 'true';
+                document.querySelector('.current-css').style.display = 'none';
+            }
+        }
     </script>
 </div>
 

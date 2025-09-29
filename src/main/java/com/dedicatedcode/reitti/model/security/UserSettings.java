@@ -17,10 +17,11 @@ public class UserSettings {
     private final Double homeLongitude;
     private final ZoneId timeZoneOverride;
     private final TimeDisplayMode timeDisplayMode;
+    private final String customCss;
     private final Instant latestData;
     private final Long version;
 
-    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, UnitSystem unitSystem, Double homeLatitude, Double homeLongitude, ZoneId timeZoneOverride, TimeDisplayMode timeDisplayMode, Instant latestData, Long version) {
+    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, UnitSystem unitSystem, Double homeLatitude, Double homeLongitude, ZoneId timeZoneOverride, TimeDisplayMode timeDisplayMode, String customCss, Instant latestData, Long version) {
         this.userId = userId;
         this.preferColoredMap = preferColoredMap;
         this.selectedLanguage = selectedLanguage;
@@ -29,12 +30,13 @@ public class UserSettings {
         this.homeLongitude = homeLongitude;
         this.timeZoneOverride = timeZoneOverride;
         this.timeDisplayMode = timeDisplayMode;
+        this.customCss = customCss;
         this.latestData = latestData;
         this.version = version;
     }
 
     public static UserSettings defaultSettings(Long userId) {
-        return new UserSettings(userId, false, "en", UnitSystem.METRIC, null, null, null, TimeDisplayMode.DEFAULT, null, null);
+        return new UserSettings(userId, false, "en", UnitSystem.METRIC, null, null, null, TimeDisplayMode.DEFAULT, null, null, null);
     }
     public Long getUserId() {
         return userId;
@@ -76,6 +78,10 @@ public class UserSettings {
         return timeZoneOverride;
     }
 
+    public String getCustomCss() {
+        return customCss;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -87,12 +93,16 @@ public class UserSettings {
                 Objects.equals(unitSystem, that.unitSystem) &&
                 Objects.equals(homeLatitude, that.homeLatitude) &&
                 Objects.equals(homeLongitude, that.homeLongitude) &&
+                Objects.equals(timeZoneOverride, that.timeZoneOverride) &&
+                Objects.equals(timeDisplayMode, that.timeDisplayMode) &&
+                Objects.equals(customCss, that.customCss) &&
+                Objects.equals(latestData, that.latestData) &&
                 Objects.equals(version, that.version);
     }
     
     @Override
     public int hashCode() {
-        return Objects.hash(userId, preferColoredMap, selectedLanguage, unitSystem, homeLatitude, homeLongitude, version);
+        return Objects.hash(userId, preferColoredMap, selectedLanguage, unitSystem, homeLatitude, homeLongitude, timeZoneOverride, timeDisplayMode, customCss, latestData, version);
     }
     
     @Override
@@ -104,6 +114,9 @@ public class UserSettings {
                 ", unitSystem=" + unitSystem +
                 ", homeLatitude=" + homeLatitude +
                 ", homeLongitude=" + homeLongitude +
+                ", timeZoneOverride=" + timeZoneOverride +
+                ", timeDisplayMode=" + timeDisplayMode +
+                ", customCss=" + (customCss != null ? "[" + customCss.length() + " chars]" : "null") +
                 ", latestData=" + latestData +
                 ", version=" + version +
                 '}';

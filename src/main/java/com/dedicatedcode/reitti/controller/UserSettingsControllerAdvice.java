@@ -41,7 +41,17 @@ public class UserSettingsControllerAdvice {
 
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
             // Return default settings for anonymous users
-            return new UserSettingsDTO(false, "en", Instant.now(), UnitSystem.METRIC, DEFAULT_HOME_LATITUDE, DEFAULT_HOME_LONGITUDE, tilesCustomizationProvider.getTilesConfiguration(), UserSettingsDTO.UIMode.FULL, TimeDisplayMode.DEFAULT, null);
+            return new UserSettingsDTO(false,
+                    "en",
+                    Instant.now(),
+                    UnitSystem.METRIC,
+                    DEFAULT_HOME_LATITUDE,
+                    DEFAULT_HOME_LONGITUDE,
+                    tilesCustomizationProvider.getTilesConfiguration(),
+                    UserSettingsDTO.UIMode.FULL,
+                    TimeDisplayMode.DEFAULT,
+                    null,
+                    null);
         }
         
         String username = authentication.getName();
@@ -59,10 +69,21 @@ public class UserSettingsControllerAdvice {
                     tilesCustomizationProvider.getTilesConfiguration(),
                     uiMode,
                     dbSettings.getTimeDisplayMode(),
-                    dbSettings.getTimeZoneOverride());
+                    dbSettings.getTimeZoneOverride(),
+                    dbSettings.getCustomCss() !=null ? "/user-css/" + user.getId() : null);
         }
         // Fallback for authenticated users not found in database
-        return new UserSettingsDTO(false, "en", Instant.now(), UnitSystem.METRIC, DEFAULT_HOME_LATITUDE, DEFAULT_HOME_LONGITUDE, tilesCustomizationProvider.getTilesConfiguration(), uiMode, TimeDisplayMode.DEFAULT, null);
+        return new UserSettingsDTO(false,
+                "en",
+                Instant.now(),
+                UnitSystem.METRIC,
+                DEFAULT_HOME_LATITUDE,
+                DEFAULT_HOME_LONGITUDE,
+                tilesCustomizationProvider.getTilesConfiguration(),
+                uiMode,
+                TimeDisplayMode.DEFAULT,
+                null,
+                null);
     }
 
     private UserSettingsDTO.UIMode mapUserToUiMode(Authentication authentication) {

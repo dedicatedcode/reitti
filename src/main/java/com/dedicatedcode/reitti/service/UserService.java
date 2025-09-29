@@ -78,6 +78,7 @@ public class UserService {
                 StringUtils.hasText(timezoneOverride) ? ZoneId.of(timezoneOverride) : null,
                 timeDisplayMode,
                 null,
+                null,
                 null);
 
 

@@ -39,6 +39,7 @@ public class UserSettingsJdbcService {
                 rs.getDouble("home_lng"),
                 rs.getString("time_zone_override") != null ? ZoneId.of(rs.getString("time_zone_override")) : null,
                 TimeDisplayMode.valueOf(rs.getString("time_display_mode")),
+                rs.getString("custom_css"),
                 newestData != null ? newestData.toInstant() : null,
                 rs.getLong("version"));
     };
@@ -59,7 +60,7 @@ public class UserSettingsJdbcService {
     public UserSettings save(UserSettings userSettings) {
         if (userSettings.getVersion() == null) {
             // Insert new settings
-            this.jdbcTemplate.update("INSERT INTO user_settings (user_id, prefer_colored_map, selected_language, unit_system, home_lat, home_lng, time_zone_override, time_display_mode, latest_data, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+            this.jdbcTemplate.update("INSERT INTO user_settings (user_id, prefer_colored_map, selected_language, unit_system, home_lat, home_lng, time_zone_override, time_display_mode, custom_css, latest_data, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
                     userSettings.getUserId(),
                     userSettings.isPreferColoredMap(),
                     userSettings.getSelectedLanguage(),
@@ -68,6 +69,7 @@ public class UserSettingsJdbcService {
                     userSettings.getHomeLongitude(),
                     userSettings.getTimeZoneOverride() != null ? userSettings.getTimeZoneOverride().getId() : null,
                     userSettings.getTimeDisplayMode().name(),
+                    userSettings.getCustomCss(),
                     userSettings.getLatestData() != null ? Timestamp.from(userSettings.getLatestData()) : null);
 
             return new UserSettings(userSettings.getUserId(),
@@ -78,11 +80,12 @@ public class UserSettingsJdbcService {
                     userSettings.getHomeLongitude(),
                     userSettings.getTimeZoneOverride(),
                     userSettings.getTimeDisplayMode(),
+                    userSettings.getCustomCss(),
                     userSettings.getLatestData(), 1L);
         } else {
             // Update existing settings
             jdbcTemplate.update(
-                    "UPDATE user_settings SET prefer_colored_map = ?, selected_language = ?, unit_system = ?, home_lat = ?, home_lng = ?, time_zone_override = ?, time_display_mode = ?, latest_data = GREATEST(latest_data, ?), version = version + 1 WHERE user_id = ?",
+                    "UPDATE user_settings SET prefer_colored_map = ?, selected_language = ?, unit_system = ?, home_lat = ?, home_lng = ?, time_zone_override = ?, time_display_mode = ?, custom_css = ?, latest_data = GREATEST(latest_data, ?), version = version + 1 WHERE user_id = ?",
                     userSettings.isPreferColoredMap(),
                     userSettings.getSelectedLanguage(),
                     userSettings.getUnitSystem().name(),
@@ -90,6 +93,7 @@ public class UserSettingsJdbcService {
                     userSettings.getHomeLongitude(),
                     userSettings.getTimeZoneOverride() != null ? userSettings.getTimeZoneOverride().getId() : null,
                     userSettings.getTimeDisplayMode().name(),
+                    userSettings.getCustomCss(),
                     userSettings.getLatestData() != null ? Timestamp.from(userSettings.getLatestData()) : null,
                     userSettings.getUserId()
             );
