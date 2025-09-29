@@ -16,7 +16,8 @@ public record UserSettingsDTO(
         TilesCustomizationDTO tiles,
         UIMode uiMode,
         TimeDisplayMode displayMode,
-        ZoneId timezoneOverride
+        ZoneId timezoneOverride,
+        String customCssUrl
 ) {
 
     public enum UIMode {

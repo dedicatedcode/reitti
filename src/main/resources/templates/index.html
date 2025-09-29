@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/css/photo-client.css">
     <link rel="stylesheet" href="/css/inline-edit.css">
     <link rel="stylesheet" href="/css/avatar-marker.css">
+    <link th:if="${userSettings.customCssUrl}" rel="stylesheet" th:href="${userSettings.customCssUrl}">
     <script src="/js/HumanizeDuration.js"></script>
     <script src="/js/horizontal-date-picker.js"></script>
     <script src="/js/timeline-scroll-indicator.js"></script>
