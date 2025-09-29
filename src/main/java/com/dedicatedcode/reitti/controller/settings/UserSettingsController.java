@@ -58,6 +58,10 @@ public class UserSettingsController {
     private static final List<String> DEFAULT_AVATARS = Arrays.asList(
         "avatar_man.jpg", "avatar_woman.jpg", "avatar_boy.jpg", "avatar_girl.jpg"
     );
+    
+    // CSS file constraints
+    private static final long MAX_CSS_SIZE = 1024 * 1024; // 1MB
+    private static final String ALLOWED_CSS_CONTENT_TYPE = "text/css";
 
     public UserSettingsController(UserJdbcService userJdbcService, UserService userService,
                                   UserSettingsJdbcService userSettingsJdbcService,
@@ -116,6 +120,7 @@ public class UserSettingsController {
             model.addAttribute("homeLongitude", userSettings.getHomeLongitude());
             model.addAttribute("unitSystems", UnitSystem.values());
             model.addAttribute("hasAvatar", this.avatarService.getInfo(currentUser.getId()).isPresent());
+            model.addAttribute("hasCustomCss", StringUtils.hasText(userSettings.getCustomCss()));
             model.addAttribute("defaultAvatars", DEFAULT_AVATARS);
             model.addAttribute("isAdmin", false);
             model.addAttribute("timeZoneOverride", userSettings.getTimeZoneOverride());
@@ -183,6 +188,7 @@ public class UserSettingsController {
                              @RequestParam(name = "time_display_mode", defaultValue = "DEFAULT") TimeDisplayMode timeDisplayMode,
                              @RequestParam(required = false) MultipartFile avatar,
                              @RequestParam(required = false) String defaultAvatar,
+                             @RequestParam(required = false) MultipartFile customCss,
                              Authentication authentication,
                              Model model) {
         
@@ -213,6 +219,30 @@ public class UserSettingsController {
                     handleAvatarUpload(avatar, createdUser.getId(), model);
                 } else if (StringUtils.hasText(defaultAvatar)) {
                     handleDefaultAvatarSelection(defaultAvatar, createdUser.getId(), model);
+                }
+                
+                // Handle custom CSS upload
+                if (customCss != null && !customCss.isEmpty()) {
+                    String cssContent = handleCssUpload(customCss, model);
+                    if (cssContent != null) {
+                        // Update user settings with CSS content
+                        UserSettings existingSettings = userSettingsJdbcService.findByUserId(createdUser.getId())
+                                .orElse(UserSettings.defaultSettings(createdUser.getId()));
+                        UserSettings updatedSettings = new UserSettings(
+                                existingSettings.getUserId(),
+                                existingSettings.isPreferColoredMap(),
+                                existingSettings.getSelectedLanguage(),
+                                existingSettings.getUnitSystem(),
+                                existingSettings.getHomeLatitude(),
+                                existingSettings.getHomeLongitude(),
+                                existingSettings.getTimeZoneOverride(),
+                                existingSettings.getTimeDisplayMode(),
+                                cssContent,
+                                existingSettings.getLatestData(),
+                                existingSettings.getVersion()
+                        );
+                        userSettingsJdbcService.save(updatedSettings);
+                    }
                 }
                 
                 model.addAttribute("successMessage", getMessage("message.success.user.created"));
@@ -249,6 +279,8 @@ public class UserSettingsController {
                              @RequestParam(name = "time_display_mode", defaultValue = "DEFAULT") TimeDisplayMode timeDisplayMode,
                              @RequestParam(required = false) String defaultAvatar,
                              @RequestParam(required = false) String removeAvatar,
+                             @RequestParam(required = false) MultipartFile customCss,
+                             @RequestParam(required = false) String removeCss,
                              Authentication authentication,
                              HttpServletRequest request,
                              HttpServletResponse response,
@@ -288,8 +320,19 @@ public class UserSettingsController {
             UserSettings existingSettings = userSettingsJdbcService.findByUserId(userId)
                 .orElse(UserSettings.defaultSettings(userId));
             
+            // Handle custom CSS operations
+            String cssContent = existingSettings.getCustomCss();
+            if ("true".equals(removeCss)) {
+                cssContent = null;
+            } else if (customCss != null && !customCss.isEmpty()) {
+                String uploadedCss = handleCssUpload(customCss, model);
+                if (uploadedCss != null) {
+                    cssContent = uploadedCss;
+                }
+            }
+            
             UnitSystem unitSystem = UnitSystem.valueOf(unit_system);
-            UserSettings updatedSettings = new UserSettings(userId, preferColoredMap, preferred_language, unitSystem, homeLatitude, homeLongitude, StringUtils.hasText(timezoneOverride) ? ZoneId.of(timezoneOverride) : null, timeDisplayMode, existingSettings.getLatestData(), existingSettings.getVersion());
+            UserSettings updatedSettings = new UserSettings(userId, preferColoredMap, preferred_language, unitSystem, homeLatitude, homeLongitude, StringUtils.hasText(timezoneOverride) ? ZoneId.of(timezoneOverride) : null, timeDisplayMode, cssContent, existingSettings.getLatestData(), existingSettings.getVersion());
             userSettingsJdbcService.save(updatedSettings);
             
             // Handle avatar operations
@@ -388,10 +431,14 @@ public class UserSettingsController {
         model.addAttribute("unitSystems", UnitSystem.values());
         model.addAttribute("availableTimezones", ZoneId.getAvailableZoneIds().stream().sorted());
         model.addAttribute("availableTimeDisplayModes", TimeDisplayMode.values());
-        // Check if user has avatar
+        // Check if user has avatar and custom CSS
         if (userId != null) {
             boolean hasAvatar = this.avatarService.getInfo(userId).isPresent();
             model.addAttribute("hasAvatar", hasAvatar);
+            
+            UserSettings userSettings = userSettingsJdbcService.findByUserId(userId).orElse(null);
+            boolean hasCustomCss = userSettings != null && StringUtils.hasText(userSettings.getCustomCss());
+            model.addAttribute("hasCustomCss", hasCustomCss);
         }
         
         // Add default avatars to model
@@ -461,5 +508,39 @@ public class UserSettingsController {
         } catch (IOException e) {
             model.addAttribute("avatarError", "Error processing default avatar: " + e.getMessage());
         }
+    }
+    
+    private String handleCssUpload(MultipartFile cssFile, Model model) {
+        if (cssFile != null && !cssFile.isEmpty()) {
+            try {
+                // Validate file size
+                if (cssFile.getSize() > MAX_CSS_SIZE) {
+                    model.addAttribute("cssError", "CSS file too large. Maximum size is 1MB.");
+                    return null;
+                }
+                
+                // Validate content type
+                String contentType = cssFile.getContentType();
+                if (contentType == null || !ALLOWED_CSS_CONTENT_TYPE.equals(contentType)) {
+                    model.addAttribute("cssError", "Invalid file type. Only CSS files are allowed.");
+                    return null;
+                }
+                
+                // Validate file extension
+                String originalFilename = cssFile.getOriginalFilename();
+                if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".css")) {
+                    model.addAttribute("cssError", "File must have .css extension.");
+                    return null;
+                }
+                
+                // Return CSS content as string
+                return new String(cssFile.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                
+            } catch (IOException e) {
+                model.addAttribute("cssError", "Error processing CSS file: " + e.getMessage());
+                return null;
+            }
+        }
+        return null;
     }
 }
