@@ -25,19 +25,12 @@
     src: url('/fonts/fraunces-v37-latin_latin-ext_vietnamese-900.woff2') format('woff2'); /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
 }
 
-
-
 :root {
     --color-highlight: #F5DEB3FF;
     --color-background-dark: #3b3b3b;
     --color-background-dark-light: #5c5c5c;
     --color-text-white: #e3e3e3;
-}
-
-input:focus {
-    outline: 0;
-    /* some people use shadows too */
-    box-shadow: none;
+    --serif-font: "Fraunces";
 }
 
 body {
@@ -46,6 +39,87 @@ body {
     padding: 0;
     height: 100vh;
 }
+
+/* Main navigation */
+.navbar {
+    display: inline-flex;
+    align-items: baseline;
+    padding: 8px;
+    border-bottom: 1px black;
+    margin-left: 2rem;
+    pointer-events: auto;
+    position: sticky;
+    font-size: 1.4rem;
+}
+
+.navbar i {
+    font-size: 1.4rem;
+}
+
+.navbar .nav-link {
+    color: white;
+    text-decoration: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.navbar .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+
+header {
+    position: absolute;
+    top: 0;
+    left: 40%;
+    z-index: 10;
+    background: rgba(59, 59, 59, 0.62);
+    backdrop-filter: blur(10px);
+    color: white;
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+/* Map */
+
+#map {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.leaflet-container .visit-popup {
+    white-space: preserve-breaks;
+    width: 14rem;
+    font-family: var(--serif-font);
+    font-size: 0.8rem;
+    line-height: 1.5rem;
+    border-radius: 8px;
+    padding: 8px;
+    background: #3b3b3bbf;
+    color: white;
+}
+
+.leaflet-container .visit-popup .visit-title {
+    font-size: 1.4rem;
+    color: var(--color-highlight);
+}
+
+.leaflet-container .visit-popup .visit-description {
+    margin-top: 4px;
+    font-weight: bold;
+}
+
+/* Elements */
 
 .btn.btn-block {
     width: 100%;
@@ -64,48 +138,22 @@ body {
 fieldset {
     margin-bottom: 16px;
     border-radius: 4px;
-    border-color: wheat;
+    border-color: var(--color-highlight);
 }
 
 legend {
     font-weight: bold;
-    color: wheat;
+    color: var(--color-highlight);
 }
 
-.alert {
-    padding: 10px 15px;
-    margin-bottom: 15px;
-    border-radius: 4px;
-    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
-    border: 1px solid;
-    color: wheat;
+details > div {
+    padding: 16px;
 }
 
-.alert-success {
-    border-color: #e5ffeb;
-    background: #2c4828;
-}
-
-.alert-danger {
-    border-color: #ff3434;
-    background: #995353;
-}
-
-.alert-warning {
-    background: #5c4c2f;
-    border-color: #ffd38b;
-}
-
-.alert-info {
-}
-
-.user-row.selected {
-    background-color: var(--color-highlight);
-    color: var(--color-background-dark);
-}
-
-.form-group {
-    margin-bottom: 15px;
+input:focus {
+    outline: 0;
+    /* some people use shadows too */
+    box-shadow: none;
 }
 
 label {
@@ -137,8 +185,6 @@ label {
     border-top-left-radius: 0;
 }
 
-
-
 .toggle-buttons .btn.active {
     background: var(--color-background-dark-light);
     box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
@@ -162,7 +208,7 @@ select {
     background-position: right 8px center;
     background-size: 16px;
     padding-right: 32px;
-    font-family: "Fraunces";
+    font-family: var(--serif-font);
 }
 
 select option {
@@ -197,6 +243,44 @@ tr:hover {
     background-color: var(--color-background-dark-light);
 }
 
+
+/* Alerts */
+.alert {
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
+    border: 1px solid;
+    color: var(--color-highlight);
+}
+
+.alert-success {
+    border-color: #e5ffeb;
+    background: #2c4828;
+}
+
+.alert-danger {
+    border-color: #ff3434;
+    background: #995353;
+}
+
+.alert-warning {
+    background: #5c4c2f;
+    border-color: #ffd38b;
+}
+
+.alert-info {
+}
+
+
+.user-row.selected {
+    background-color: var(--color-highlight);
+    color: var(--color-background-dark);
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
 .queue-status {
     display: flex;
     gap: 20px;
@@ -337,48 +421,7 @@ tr:hover {
     gap: 10px;
 }
 
-header {
-    position: absolute;
-    top: 0;
-    left: 40%;
-    z-index: 10;
-    background: rgba(59, 59, 59, 0.62);
-    backdrop-filter: blur(10px);
-    color: white;
-    padding: 0 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 60px;
-    border-bottom-left-radius: 10px;
-    border-bottom-right-radius: 10px;
-}
 
-nav {
-    display: flex;
-    gap: 20px;
-}
-
-.nav-link {
-    color: white;
-    text-decoration: none;
-    padding: 5px 10px;
-    border-radius: 4px;
-    transition: background-color 0.2s;
-}
-
-.nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-}
-
-#map {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-}
 
 .timeline::-webkit-scrollbar {
     display: none;
@@ -420,13 +463,13 @@ nav {
 }
 
 .timeline-entry .entry-description {
-    font-family: "Fraunces";
+    font-family: var(--serif-font);
     font-size: 3rem;
     transition: font-size 0.5s ease-in-out;
 }
 
 .timeline-entry.active .entry-description {
-    font-family: "Fraunces";
+    font-family: var(--serif-font);
     font-size: 5rem;
     transition: font-size 0.5s ease-in-out;
     position: relative;
@@ -447,7 +490,7 @@ nav {
 
 button {
     background-color: transparent;
-    color: wheat;
+    color: var(--color-highlight);
     border: none;
     padding: 8px 12px;
     border-radius: 4px;
@@ -458,34 +501,23 @@ button:hover {
     background-color: #959595;
 }
 
-.timeline-header {
-    display: inline-flex;
-    align-items: baseline;
-    padding: 8px;
-    border-bottom: 1px black;
-    margin-left: 2rem;
-    pointer-events: auto;
-    position: sticky;
-    font-size: 1.4rem;
-}
-
 .date-item.selected {
     background-color: unset;
-    color: wheat;
+    color: var(--color-highlight);
     transform: scale(1.05);
     box-shadow: unset;
 }
 
 .month-item.selected {
     background-color: var(--color-highlight);
-    color: wheat;
+    color: var(--color-highlight);
     font-weight: bolder;
     background: unset;
 }
 
 .year-item.selected {
     background-color: var(--color-highlight);
-    color: wheat;
+    color: var(--color-highlight);
     font-weight: bolder;
     background: unset;
 }
@@ -517,7 +549,7 @@ button:hover {
 
 .horizontal-date-picker {
     position: fixed;
-    font-family: "Fraunces";
+    font-family: var(--serif-font);
     bottom: 0;
     left: 0;
     width: 100%;
@@ -687,17 +719,6 @@ input[type=file]::file-selector-button:hover {
     background-color: var(--color-background-dark-light);
 }
 
-.visit-popup {
-    white-space: preserve-breaks;
-    width: 14rem;
-    font-family: "Fraunces";
-    font-size: 0.8rem;
-    line-height: 1.5rem;
-    border-radius: 8px;
-    padding: 8px;
-    background: #3b3b3bbf;
-    color: white;
-}
 
 /* Timeline Scroll Indicator Styles */
 .timeline-scroll-indicator {
@@ -979,7 +1000,7 @@ input[type=file]::file-selector-button:hover {
     }
 
     .timeline-entry.active {
-        color: wheat;
+        color: var(--color-highlight);
         padding: 1rem 2rem 0 1.3rem;
     }
 
@@ -1063,6 +1084,7 @@ input[type=file]::file-selector-button:hover {
 
 .settings-container {
     display: flex;
+    min-height: 100%;
 }
 
 .settings-page .settings-nav {
@@ -1397,7 +1419,7 @@ button:disabled {
 
 
 .user-header.active .avatar {
-    border: 2px solid wheat;
+    border: 2px solid var(--color-highlight);
     box-shadow: 0 8px 25px rgba(245, 222, 179, 0.3);
 }
 
@@ -1432,7 +1454,7 @@ button:disabled {
 }
 
 .default-avatar-option input:checked + .avatar {
-    border: 2px solid wheat;
+    border: 2px solid var(--color-highlight);
     box-shadow: 0 8px 25px rgba(245, 222, 179, 0.3);
 }
 
@@ -1548,17 +1570,6 @@ button:disabled {
     border: 1px solid #ddd;
     border-radius: 4px;
     margin-top: 10px;
-}
-
-@media (max-width: 768px) {
-    .home-location-inputs {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .coordinate-input {
-        min-width: unset;
-    }
 }
 
 #message-container {
@@ -1710,6 +1721,15 @@ button:disabled {
 }
 
 
-details > div {
-    padding: 16px;
+
+
+@media (max-width: 768px) {
+    .home-location-inputs {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .coordinate-input {
+        min-width: unset;
+    }
 }
