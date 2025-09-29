@@ -43,14 +43,14 @@
 </div>
 
 <div class="timeline">
-    <div class="timeline-header">
+    <div class="navbar">
         <span><img class="logo" th:src="@{/img/logo.svg}" alt="reitti logo" title="reitti" src="/img/logo.svg"></span>
         <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/statistics" class="nav-link" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
         <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/settings" class="nav-link" th:title="#{nav.settings.tooltip}"><i class="lni lni-gear-1"></i></a>
         <a type="button" class="nav-link" id="auto-update-btn" onclick="toggleAutoUpdate()" title="Auto Update"><i class="lni lni-play"></i></a>
         <a type="button" class="nav-link" onclick="toggleFullscreen()" title="Toggle Fullscreen"><i class="lni lni-arrow-all-direction"></i></a>
         <form th:action="@{/logout}" method="post" >
-            <button type="submit" class="nav-link" style="font-size: 1.4rem;" th:title="#{nav.logout.tooltip}"><i
+            <button type="submit" class="nav-link" th:title="#{nav.logout.tooltip}"><i
                     class="lni lni-exit"></i>
             </button>
         </form>
@@ -434,8 +434,8 @@
                         const visitText = visitCount === 1 ? 'visit' : 'visits';
 
                         let tooltip = L.tooltip([lat, lng], {
-                            content: `<div style="font-size: 1.4rem; color: wheat">${place.name}</div>
-                             <div style="margin-top: 4px; font-weight: bold;">
+                            content: `<div class="visit-title">${place.name}</div>
+                             <div class="visit-description">
                                  ${visitCount} ${visitText} - Total: ${totalDurationText}
                              </div>`,
                             className: 'visit-popup',
@@ -676,9 +676,7 @@
             <div class="avatar-marker">
                 <img src="${userData.avatarUrl}" 
                      alt="${userData.avatarFallback}" 
-                     class="avatar-marker-img"
-                     onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                <div class="avatar-marker-fallback" style="display: none;">${userData.avatarFallback}</div>
+                     class="avatar-marker-img">
             </div>
         `;
         
