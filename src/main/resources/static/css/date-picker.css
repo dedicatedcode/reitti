@@ -39,6 +39,7 @@
     min-width: 80px;
     user-select: none;
     scroll-snap-align: center;
+    position: relative;
 }
 
 .date-item:hover {
@@ -50,6 +51,32 @@
     color: white;
     transform: scale(1.05);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.date-item.selected::before {
+    content: '\f023';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2rem;
+    color: rgba(255, 255, 255, 0.9);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.date-item.selected:hover::before {
+    opacity: 1;
+}
+
+.date-item.selected:hover .day-name,
+.date-item.selected:hover .day-number,
+.date-item.selected:hover .month-year-name {
+    opacity: 0.2;
 }
 
 .date-item.unavailable {
@@ -133,12 +160,18 @@
     font-size: 0.8rem;
     opacity: 0.8;
     display: block;
+    transition: opacity 0.3s ease;
+    position: relative;
+    z-index: 0;
 }
 
 .date-item .day-number {
     font-size: 1.2rem;
     font-weight: bold;
     display: block;
+    transition: opacity 0.3s ease;
+    position: relative;
+    z-index: 0;
 }
 
 .date-item .month-name {
@@ -151,6 +184,9 @@
     display: block;
     font-weight: bold;
     margin-top: 2px;
+    transition: opacity 0.3s ease;
+    position: relative;
+    z-index: 0;
 }
 
 .date-nav-button {
@@ -393,5 +429,9 @@
         right: 5px;
         padding: 4px 8px;
         font-size: 0.75rem;
+    }
+    
+    .date-item.selected::before {
+        font-size: 1.5rem;
     }
 }
