@@ -54,8 +54,8 @@
 }
 
 .date-item.selected::before {
-    content: '\f023';
-    font-family: 'Font Awesome 5 Free';
+    content: "\eb46";
+    font: normal normal normal 1em/1 'Lineicons';;
     font-weight: 900;
     position: absolute;
     top: 50%;
@@ -92,7 +92,7 @@
 /* Range mode styles */
 .date-item.range-start,
 .date-item.range-end {
-    background-color: #cc92255e;
+    background-color: rgba(117, 117, 117, 0.67);
     color: white;
     transform: scale(1.05);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
@@ -124,7 +124,7 @@
 }
 
 .date-item.in-range {
-    background-color: rgba(253, 220, 161, 0.52);
+    background-color: rgba(117, 117, 117, 0.67);
     color: white;
 }
 
