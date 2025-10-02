@@ -46,7 +46,7 @@
 }
 
 .date-item.selected {
-    background-color: #4a89dc;
+    background-color: #fddca1;
     color: white;
     transform: scale(1.05);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
@@ -65,7 +65,7 @@
 /* Range mode styles */
 .date-item.range-start,
 .date-item.range-end {
-    background-color: #4a89dc;
+    background-color: #cc92255e;
     color: white;
     transform: scale(1.05);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
@@ -75,11 +75,11 @@
 .date-item.range-start::after {
     content: 'Start';
     position: absolute;
-    bottom: -18px;
+    bottom: 3px;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 0.65rem;
-    color: #4a89dc;
+    font-size: 0.8rem;
+    color: wheat;
     font-weight: bold;
     white-space: nowrap;
 }
@@ -87,22 +87,22 @@
 .date-item.range-end::after {
     content: 'End';
     position: absolute;
-    bottom: -18px;
+    bottom: 3px;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 0.65rem;
-    color: #4a89dc;
+    font-size: 0.8rem;
+    color: #fddca1;
     font-weight: bold;
     white-space: nowrap;
 }
 
 .date-item.in-range {
-    background-color: rgba(74, 137, 220, 0.3);
+    background-color: rgba(253, 220, 161, 0.52);
     color: white;
 }
 
 .date-item.in-range:hover {
-    background-color: rgba(74, 137, 220, 0.5);
+    background-color: rgba(253, 220, 161, 0.75);
 }
 
 /* Clear range button */
@@ -311,6 +311,60 @@
     background-color: rgba(74, 137, 220, 0.8);
     padding: 2px 6px;
     border-radius: 10px;
+}
+
+.date-item.selected {
+    background-color: unset;
+    color: var(--color-highlight);
+    transform: scale(1.05);
+    box-shadow: unset;
+}
+
+.month-item.selected {
+    background-color: var(--color-highlight);
+    color: var(--color-highlight);
+    font-weight: bolder;
+    background: unset;
+}
+
+.year-item.selected {
+    background-color: var(--color-highlight);
+    color: var(--color-highlight);
+    font-weight: bolder;
+    background: unset;
+}
+
+.today-button {
+    background-color: unset;
+}
+
+.date-item {
+    padding: unset;
+    margin: unset;
+    border-radius: 0;
+}
+
+.date-item.selected:hover {
+    border-bottom: 0;
+}
+
+.date-item .day-name,
+.date-item .day-number {
+    font-size: 2rem;
+    font-weight: lighter;
+}
+
+.horizontal-date-picker {
+    position: fixed;
+    font-family: var(--serif-font);
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: rgba(59, 59, 59, 0.68);
+    backdrop-filter: blur(10px);
+    padding: 10px 0;
+    z-index: 50;
+    box-shadow: unset;
 }
 
 @media (max-width: 768px) {
