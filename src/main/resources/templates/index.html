@@ -58,7 +58,7 @@
     <div class="timeline-container"
          hx-get="/timeline/content/range"
          hx-trigger="load, dateChanged from:body"
-         hx-vals='js:getTimelineParams()'
+         hx-vals="js:{startDate: getTimelineParams().startDate, endDate: getTimelineParams().endDate, timezone: getTimelineParams().timezone}"
          hx-indicator="#loading-indicator">
         <div id="loading-indicator" class="timeline-entry" th:text="#{timeline.loading}">Loading...</div>
     </div>
@@ -141,7 +141,6 @@
 
     function getTimelineParams() {
         const timezone = getUserTimezone();
-        
         if (currentDateRange && currentDateRange.startDate && currentDateRange.endDate) {
             // Range mode - use actual range
             return {
