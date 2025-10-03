@@ -56,9 +56,9 @@
         </form>
     </div>
     <div class="timeline-container"
-         hx-get="/timeline/content"
+         hx-get="/timeline/content/range"
          hx-trigger="load, dateChanged from:body"
-         hx-vals='js:{"date": getSelectedDate(), "timezone": getUserTimezone()}'
+         hx-vals="js:{startDate: getTimelineParams().startDate, endDate: getTimelineParams().endDate, timezone: getTimelineParams().timezone}"
          hx-indicator="#loading-indicator">
         <div id="loading-indicator" class="timeline-entry" th:text="#{timeline.loading}">Loading...</div>
     </div>
@@ -114,6 +114,12 @@
     let firstEventTime = null;
     let reconnectTimeoutId = null;
 
+    // Store current date range selection
+    let currentDateRange = null;
+    
+    // Store current zoom level
+    let currentZoomLevel = null;
+
     // Initialize the map
     const map = L.map('map', {zoomControl: false, attributionControl: false}).setView([window.userSettings.homeLatitude, window.userSettings.homeLongitude], 12);
 
@@ -133,6 +139,26 @@
             return window.userSettings.timezoneOverride;
         } else {
             return Intl.DateTimeFormat().resolvedOptions().timeZone;
+        }
+    }
+
+    function getTimelineParams() {
+        const timezone = getUserTimezone();
+        if (currentDateRange && currentDateRange.startDate && currentDateRange.endDate) {
+            // Range mode - use actual range
+            return {
+                startDate: currentDateRange.startDate,
+                endDate: currentDateRange.endDate,
+                timezone: timezone
+            };
+        } else {
+            // Single date mode - use same date for both start and end
+            const selectedDate = getSelectedDate();
+            return {
+                startDate: selectedDate,
+                endDate: selectedDate,
+                timezone: timezone
+            };
         }
     }
 
@@ -214,10 +240,87 @@
         map.on('moveend zoomend', () => {
             photoClient.onMapMoveEnd();
         });
+        
+        // Listen for zoom end events to reload raw location points
+        map.on('zoomend', () => {
+            const newZoomLevel = Math.round(map.getZoom());
+            
+            // Only reload if zoom level actually changed
+            if (currentZoomLevel !== null && currentZoomLevel !== newZoomLevel) {
+                console.log('Zoom level changed from', currentZoomLevel, 'to', newZoomLevel, '- reloading raw location points');
+                currentZoomLevel = newZoomLevel;
+                reloadRawLocationPoints();
+            } else if (currentZoomLevel === null) {
+                currentZoomLevel = newZoomLevel;
+            }
+        });
 
-        function loadTimelineData(date) {
-            // Load photos for the selected date
-            photoClient.updatePhotosForDate(date, getUserTimezone());
+        function reloadRawLocationPoints() {
+
+            // Reload raw location points with new zoom level
+            const timelineContainer = document.querySelectorAll('.user-timeline-section');
+            let bounds = L.latLngBounds();
+            const fetchPromises = [];
+
+            for (let i = 0; i < timelineContainer.length; i++) {
+                const element = timelineContainer[i];
+                const rawLocationPointsUrl = element?.dataset.rawLocationPointsUrl;
+                const color = element?.dataset.baseColor;
+                if (rawLocationPointsUrl) {
+                    // Get current zoom level
+                    const currentZoom = Math.round(map.getZoom());
+                    
+                    // Append zoom parameter to URL
+                    const urlWithZoom = rawLocationPointsUrl + (rawLocationPointsUrl.includes('?') ? '&' : '?') + 'zoom=' + currentZoom;
+                    
+                    // Create fetch promise for raw location points with index to maintain order
+                    const fetchPromise = fetch(urlWithZoom).then(response => {
+                        if (!response.ok) {
+                            console.warn('Could not fetch raw location points');
+                            return { points: [], index: i, color: color };
+                        }
+                        return response.json();
+                    }).then(rawPointsData => {
+                        return { ...rawPointsData, index: i, color: color };
+                    }).catch(error => {
+                        console.warn('Error fetching raw location points:', error);
+                        return { points: [], index: i, color: color };
+                    });
+                    
+                    fetchPromises.push(fetchPromise);
+                }
+            }
+
+            // Wait for all fetch operations to complete, then update map in correct order
+            Promise.all(fetchPromises).then(results => {
+                for (const path of rawPointPaths) {
+                    path.remove();
+                }
+                rawPointPaths.length = 0;
+
+                results.sort((a, b) => a.index - b.index);
+                
+                // Process results in order
+                results.forEach(result => {
+                    const fetchBounds = updateMapWithRawPoints(result, result.color);
+                    if (fetchBounds.isValid()) {
+                        bounds.extend(fetchBounds);
+                    }
+                });
+            });
+        }
+
+        function loadTimelineData(startDate, endDate) {
+            // Load photos for the selected date or date range
+            if (startDate && endDate && startDate !== endDate) {
+                // Range mode
+                photoClient.updatePhotosForRange(startDate, endDate, getUserTimezone());
+            } else {
+                // Single date mode
+                const date = startDate || getSelectedDate();
+                photoClient.updatePhotosForRange(date, date, getUserTimezone());
+            }
+            
             // Remove pulsating markers when loading new data
             removePulsatingMarkers();
             // Get raw location points URL from timeline container
@@ -234,8 +337,14 @@
                 const rawLocationPointsUrl = element?.dataset.rawLocationPointsUrl;
                 const color = element?.dataset.baseColor;
                 if (rawLocationPointsUrl) {
+                    // Get current zoom level
+                    const currentZoom = Math.round(map.getZoom());
+                    
+                    // Append zoom parameter to URL
+                    const urlWithZoom = rawLocationPointsUrl + (rawLocationPointsUrl.includes('?') ? '&' : '?') + 'zoom=' + currentZoom;
+                    
                     // Create fetch promise for raw location points with index to maintain order
-                    const fetchPromise = fetch(rawLocationPointsUrl).then(response => {
+                    const fetchPromise = fetch(urlWithZoom).then(response => {
                         if (!response.ok) {
                             console.warn('Could not fetch raw location points');
                             return { points: [], index: i, color: color };
@@ -245,7 +354,7 @@
                         return { ...rawPointsData, index: i, color: color };
                     }).catch(error => {
                         console.warn('Error fetching raw location points:', error);
-                        return { points: [], index: i, color: color }; // Return empty data with index on error
+                        return { points: [], index: i, color: color };
                     });
                     
                     fetchPromises.push(fetchPromise);
@@ -329,7 +438,8 @@
         document.body.addEventListener('htmx:afterSwap', function(event) {
             if (event.detail.target.classList.contains('timeline-container')) {
                 // Timeline content has been updated, update map markers
-                loadTimelineData(getSelectedDate())
+                const params = getTimelineParams();
+                loadTimelineData(params.startDate, params.endDate);
                 updateMapFromTimeline();
                 // Initialize scroll indicator after timeline is updated
                 if (window.timelineScrollIndicator) {
@@ -514,7 +624,7 @@
 
         // Load initial timeline data via HTMX (will be triggered by the hx-trigger="load")
         // Also load photos and raw points for the initial date
-        loadTimelineData(formattedDate);
+        loadTimelineData(formattedDate, formattedDate);
 
         // Parse the initial date properly to ensure correct date picker initialization
         let dateToUse = new Date();
@@ -529,22 +639,39 @@
         window.horizontalDatePicker = new HorizontalDatePicker({
             container: document.getElementById('horizontal-date-picker-container'),
             selectedDate: dateToUse,
-            showNavButtons: false, // Show navigation buttons
-            daysToShow: 21, // Show more days
-            showMonthRow: true, // Enable month selection row
-            showYearRow: true, // Enable year selection row
-            yearsToShow: 5, // Show 5 years in the year row
-            allowFutureDates: false, // Disable selection of future dates
-            showTodayButton: true, // Show the Today button
-            // No min/max date for infinite scrolling
+            showNavButtons: false,
+            daysToShow: 21,
+            showMonthRow: true,
+            showYearRow: true,
+            yearsToShow: 5,
+            allowFutureDates: false,
+            showTodayButton: true,
             onDateSelect: (date, formattedDate, isManualSelected) => {
                 // Update URL
                 updateUrlWithDate(formattedDate);
+                // Clear any existing date range
+                currentDateRange = null;
                 // Trigger HTMX reload of timeline
                 document.body.dispatchEvent(new CustomEvent('dateChanged'));
                 if (isManualSelected) {
                     disableAutoUpdate();
                 }
+            },
+            onDateRangeSelect: (startDate, endDate, formattedStartDate, formattedEndDate) => {
+                // Store the date range
+                currentDateRange = {
+                    startDate: formattedStartDate,
+                    endDate: formattedEndDate
+                };
+                // Update URL to show range
+                const url = new URL(window.location);
+                url.searchParams.set('startDate', formattedStartDate);
+                url.searchParams.set('endDate', formattedEndDate);
+                url.searchParams.delete('date');
+                window.history.pushState({}, '', url);
+                // Trigger HTMX reload of timeline
+                document.body.dispatchEvent(new CustomEvent('dateChanged'));
+                disableAutoUpdate();
             }
         });
     });

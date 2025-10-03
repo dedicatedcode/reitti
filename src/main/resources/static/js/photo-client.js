@@ -2,20 +2,13 @@ class PhotoClient {
     constructor(map) {
         this.map = map;
         this.photoMarkers = [];
-        this.currentDate = null;
         this.photos = [];
     }
 
-    /**
-     * Update photos for the selected date
-     * @param {string} date - Date in YYYY-MM-DD format
-     * @param timezone
-     */
-    async updatePhotosForDate(date, timezone) {
-        this.currentDate = date;
-        
+    async updatePhotosForRange(start, end, timezone) {
+
         try {
-            const response = await fetch(`/api/v1/photos/day/${date}?timezone=${timezone}`);
+            const response = await fetch(`/api/v1/photos/range?timezone=${timezone}&startDate=${start}&endDate=${end}`);
             if (!response.ok) {
                 console.warn('Could not fetch photos for date:', date);
                 this.photos = [];
@@ -30,14 +23,6 @@ class PhotoClient {
         this.updatePhotoMarkers();
     }
 
-    /**
-     * Clear all photos (when date is deselected)
-     */
-    clearPhotos() {
-        this.currentDate = null;
-        this.photos = [];
-        this.clearPhotoMarkers();
-    }
 
     /**
      * Update photo markers based on current map bounds
@@ -442,11 +427,8 @@ class PhotoClient {
         this.photoMarkers = [];
     }
 
-    /**
-     * Handle map move/zoom events to update visible photos
-     */
     onMapMoveEnd() {
-        if (this.currentDate && this.photos.length > 0) {
+        if (this.photos.length > 0) {
             this.updatePhotoMarkers();
         }
     }

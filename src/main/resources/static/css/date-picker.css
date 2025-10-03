@@ -39,17 +39,41 @@
     min-width: 80px;
     user-select: none;
     scroll-snap-align: center;
+    position: relative;
 }
 
-.date-item:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-}
 
 .date-item.selected {
-    background-color: #4a89dc;
+    background-color: #fddca1;
     color: white;
     transform: scale(1.05);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.date-item.selected::before {
+    content: "\eb47";
+    font-family: 'Lineicons';
+    font-weight: 900;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2rem;
+    color: rgba(255, 255, 255, 0.9);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.date-item.selected:hover::before {
+    opacity: 1;
+}
+
+.date-item.selected:hover .day-name,
+.date-item.selected:hover .day-number,
+.date-item.selected:hover .month-year-name {
+    opacity: 0.2;
 }
 
 .date-item.unavailable {
@@ -62,16 +86,134 @@
     transform: none;
 }
 
+/* Range mode styles */
+.date-item.range-start,
+.date-item.range-end {
+    background-color: rgba(117, 117, 117, 0.67);
+    color: white;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+.date-item.range-start::before,
+.date-item.range-end::before {
+    content: "\ec2a";
+    font-family: 'Lineicons';
+    font-weight: 900;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2rem;
+    color: rgba(255, 255, 255, 0.9);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.date-item.range-start:hover::before,
+.date-item.range-end:hover::before {
+    opacity: 1;
+}
+
+.date-item.range-start:hover .day-name,
+.date-item.range-start:hover .day-number,
+.date-item.range-end:hover .day-name,
+.date-item.range-end:hover .day-number {
+    opacity: 0.2;
+}
+
+.date-item.range-start::after {
+    content: 'Start';
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.8rem;
+    color: wheat;
+    font-weight: bold;
+    white-space: nowrap;
+    transition: opacity 0.3s ease;
+}
+
+.date-item.range-start:hover::after {
+    opacity: 0.2;
+}
+
+.date-item.range-end::after {
+    content: 'End';
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.8rem;
+    color: #fddca1;
+    font-weight: bold;
+    white-space: nowrap;
+    transition: opacity 0.3s ease;
+}
+
+.date-item.range-end:hover::after {
+    opacity: 0.2;
+}
+
+.date-item.in-range {
+    background-color: rgba(117, 117, 117, 0.67);
+    color: white;
+}
+
+.date-item.in-range:hover {
+    background-color: rgba(253, 220, 161, 0.75);
+}
+
+/* Range preview on hover */
+.date-item.range-preview {
+    background-color: rgba(117, 117, 117, 0.4);
+    color: white;
+}
+
+/* Clear range button */
+.clear-range-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(220, 74, 74, 0.8);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    z-index: 52;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.3s ease;
+}
+
+.clear-range-button:hover {
+    background-color: rgba(220, 74, 74, 1);
+    transform: scale(1.05);
+}
+
 .date-item .day-name {
     font-size: 0.8rem;
     opacity: 0.8;
     display: block;
+    transition: opacity 0.3s ease;
+    position: relative;
+    z-index: 0;
 }
 
 .date-item .day-number {
     font-size: 1.2rem;
     font-weight: bold;
     display: block;
+    transition: opacity 0.3s ease;
+    position: relative;
+    z-index: 0;
 }
 
 .date-item .month-name {
@@ -84,6 +226,9 @@
     display: block;
     font-weight: bold;
     margin-top: 2px;
+    transition: opacity 0.3s ease;
+    position: relative;
+    z-index: 0;
 }
 
 .date-nav-button {
@@ -246,6 +391,64 @@
     border-radius: 10px;
 }
 
+.date-item.selected {
+    background-color: unset;
+    color: var(--color-highlight);
+    transform: scale(1.05);
+    box-shadow: unset;
+}
+
+.month-item.selected {
+    background-color: var(--color-highlight);
+    color: var(--color-highlight);
+    font-weight: bolder;
+    background: unset;
+}
+
+.year-item.selected {
+    background-color: var(--color-highlight);
+    color: var(--color-highlight);
+    font-weight: bolder;
+    background: unset;
+}
+
+.today-button {
+    background-color: unset;
+}
+
+.date-item {
+    padding: unset;
+    margin: unset;
+    border-radius: 0;
+}
+
+.date-item.selected:hover {
+    border-bottom: 0;
+}
+
+.date-item .day-name,
+.date-item .day-number {
+    font-size: 2rem;
+    font-weight: lighter;
+}
+
+.horizontal-date-picker {
+    position: fixed;
+    font-family: var(--serif-font);
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: rgba(59, 59, 59, 0.68);
+    backdrop-filter: blur(10px);
+    padding: 10px 0;
+    z-index: 50;
+    box-shadow: unset;
+}
+
+.date-item:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
 @media (max-width: 768px) {
     .date-item {
         min-width: 60px;
@@ -266,4 +469,21 @@
         justify-content: center;
         position: initial;
     }
+    
+    .clear-range-button {
+        top: 5px;
+        right: 5px;
+        padding: 4px 8px;
+        font-size: 0.75rem;
+    }
+    
+    .date-item.selected::before {
+        font-size: 1.5rem;
+    }
+    
+    .date-item.range-start::before,
+    .date-item.range-end::before {
+        font-size: 1.5rem;
+    }
+
 }

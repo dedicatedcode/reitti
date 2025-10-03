@@ -25,14 +25,15 @@ public class PhotoApiController {
         this.immichIntegrationService = immichIntegrationService;
         this.restTemplate = restTemplate;
     }
-    
-    @GetMapping("/day/{date}")
-    public ResponseEntity<List<PhotoResponse>> getPhotosForDay(
-            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+
+    @GetMapping("/range")
+    public ResponseEntity<List<PhotoResponse>> getPhotosForRange(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false, defaultValue = "UTC") String timezone,
             @AuthenticationPrincipal User user) {
         
-        List<PhotoResponse> photos = immichIntegrationService.searchPhotosForDay(user, date, timezone);
+        List<PhotoResponse> photos = immichIntegrationService.searchPhotosForRange(user, startDate, endDate, timezone);
         return ResponseEntity.ok(photos);
     }
     
