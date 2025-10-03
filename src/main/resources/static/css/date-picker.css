@@ -42,9 +42,6 @@
     position: relative;
 }
 
-.date-item:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-}
 
 .date-item.selected {
     background-color: #fddca1;
@@ -448,6 +445,10 @@
     box-shadow: unset;
 }
 
+.date-item:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
 @media (max-width: 768px) {
     .date-item {
         min-width: 60px;
@@ -484,4 +485,5 @@
     .date-item.range-end::before {
         font-size: 1.5rem;
     }
+
 }
