@@ -687,9 +687,9 @@ class HorizontalDatePicker {
         // Update all date items to show the complete range
         this.updateDateItemsForRange();
         
-        // Call the onDateRangeSelect callback with range information
-        if (typeof this.options.onDateRangeSelect === 'function') {
-            if (this.rangeEndDate && this.rangeStartDate) {
+        // Call the onDateRangeSelect callback with range information only if both dates are set
+        if (this.rangeStartDate && this.rangeEndDate) {
+            if (typeof this.options.onDateRangeSelect === 'function') {
                 this.options.onDateRangeSelect(
                     this.rangeStartDate,
                     this.rangeEndDate,
@@ -697,6 +697,20 @@ class HorizontalDatePicker {
                     this.formatDate(this.rangeEndDate)
                 );
             }
+            
+            // Dispatch custom event
+            const event = new CustomEvent('dateSelected', {
+                detail: {
+                    date: this.rangeStartDate,
+                    formattedDate: this.formatDate(this.rangeStartDate),
+                    isRange: true,
+                    rangeStart: this.rangeStartDate,
+                    rangeEnd: this.rangeEndDate,
+                    formattedRangeStart: this.formatDate(this.rangeStartDate),
+                    formattedRangeEnd: this.formatDate(this.rangeEndDate)
+                }
+            });
+            this.element.dispatchEvent(event);
         }
 
         console.log('Range selected:', this.rangeStartDate, 'to', this.rangeEndDate);
