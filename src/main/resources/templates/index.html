@@ -56,9 +56,9 @@
         </form>
     </div>
     <div class="timeline-container"
-         hx-get="/timeline/content"
+         hx-get="/timeline/content/range"
          hx-trigger="load, dateChanged from:body"
-         hx-vals='js:{"date": getSelectedDate(), "timezone": getUserTimezone()}'
+         hx-vals='js:getTimelineParams()'
          hx-indicator="#loading-indicator">
         <div id="loading-indicator" class="timeline-entry" th:text="#{timeline.loading}">Loading...</div>
     </div>
@@ -114,6 +114,9 @@
     let firstEventTime = null;
     let reconnectTimeoutId = null;
 
+    // Store current date range selection
+    let currentDateRange = null;
+
     // Initialize the map
     const map = L.map('map', {zoomControl: false, attributionControl: false}).setView([window.userSettings.homeLatitude, window.userSettings.homeLongitude], 12);
 
@@ -133,6 +136,27 @@
             return window.userSettings.timezoneOverride;
         } else {
             return Intl.DateTimeFormat().resolvedOptions().timeZone;
+        }
+    }
+
+    function getTimelineParams() {
+        const timezone = getUserTimezone();
+        
+        if (currentDateRange && currentDateRange.startDate && currentDateRange.endDate) {
+            // Range mode - use actual range
+            return {
+                startDate: currentDateRange.startDate,
+                endDate: currentDateRange.endDate,
+                timezone: timezone
+            };
+        } else {
+            // Single date mode - use same date for both start and end
+            const selectedDate = getSelectedDate();
+            return {
+                startDate: selectedDate,
+                endDate: selectedDate,
+                timezone: timezone
+            };
         }
     }
 
@@ -540,11 +564,29 @@
             onDateSelect: (date, formattedDate, isManualSelected) => {
                 // Update URL
                 updateUrlWithDate(formattedDate);
+                // Clear any existing date range
+                currentDateRange = null;
                 // Trigger HTMX reload of timeline
                 document.body.dispatchEvent(new CustomEvent('dateChanged'));
                 if (isManualSelected) {
                     disableAutoUpdate();
                 }
+            },
+            onDateRangeSelect: (startDate, endDate, formattedStartDate, formattedEndDate) => {
+                // Store the date range
+                currentDateRange = {
+                    startDate: formattedStartDate,
+                    endDate: formattedEndDate
+                };
+                // Update URL to show range
+                const url = new URL(window.location);
+                url.searchParams.set('startDate', formattedStartDate);
+                url.searchParams.set('endDate', formattedEndDate);
+                url.searchParams.delete('date');
+                window.history.pushState({}, '', url);
+                // Trigger HTMX reload of timeline
+                document.body.dispatchEvent(new CustomEvent('dateChanged'));
+                disableAutoUpdate();
             }
         });
     });
