@@ -174,14 +174,14 @@ class HorizontalDatePicker {
         // Add hover listener for range preview
         this.dateContainer.addEventListener('mouseover', (e) => {
             const dateItem = e.target.closest('.date-item');
-            if (dateItem && this.rangeMode && this.rangeStartDate && !this.rangeEndDate) {
+            if (dateItem && this.rangeMode && this.rangeStartDate) {
                 this.showRangePreview(dateItem);
             }
         });
         
         this.dateContainer.addEventListener('mouseout', (e) => {
             const dateItem = e.target.closest('.date-item');
-            if (dateItem && this.rangeMode && this.rangeStartDate && !this.rangeEndDate) {
+            if (dateItem && this.rangeMode && this.rangeStartDate) {
                 this.clearRangePreview();
             }
         });
@@ -747,8 +747,9 @@ class HorizontalDatePicker {
     showRangePreview(dateItem) {
         const hoveredDate = this.parseDate(dateItem.dataset.date);
         
-        // Don't show preview if hovering over the start date
-        if (this.isSameDay(hoveredDate, this.rangeStartDate)) {
+        // Don't show preview if hovering over the start date or end date
+        if (this.isSameDay(hoveredDate, this.rangeStartDate) || 
+            (this.rangeEndDate && this.isSameDay(hoveredDate, this.rangeEndDate))) {
             return;
         }
         
@@ -770,8 +771,10 @@ class HorizontalDatePicker {
         dateItems.forEach(item => {
             const date = this.parseDate(item.dataset.date);
             
+            // Don't apply preview to start/end dates
             if (this.isDateInRange(date, previewStart, previewEnd) && 
-                !this.isSameDay(date, this.rangeStartDate)) {
+                !this.isSameDay(date, this.rangeStartDate) &&
+                !(this.rangeEndDate && this.isSameDay(date, this.rangeEndDate))) {
                 item.classList.add('range-preview');
             }
         });
