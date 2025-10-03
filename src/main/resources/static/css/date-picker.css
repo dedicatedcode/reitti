@@ -159,19 +159,14 @@
     opacity: 0.2;
 }
 
+.date-item.range-preview,
 .date-item.in-range {
-    background-color: rgba(117, 117, 117, 0.67);
+    background-color: rgba(117, 82, 0, 0.49);
     color: white;
 }
 
 .date-item.in-range:hover {
     background-color: rgba(253, 220, 161, 0.75);
-}
-
-/* Range preview on hover */
-.date-item.range-preview {
-    background-color: rgba(117, 117, 117, 0.4);
-    color: white;
 }
 
 /* Clear range button */
