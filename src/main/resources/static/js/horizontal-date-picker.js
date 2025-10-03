@@ -645,11 +645,11 @@ class HorizontalDatePicker {
     
     // Select range end date
     selectRangeEnd(dateItem) {
-        const endDate = this.parseDate(dateItem.dataset.date);
+        const clickedDate = this.parseDate(dateItem.dataset.date);
         
         // Check if date is within min/max range
-        if ((this.options.minDate && endDate < new Date(this.options.minDate)) || 
-            (this.options.maxDate && endDate > new Date(this.options.maxDate))) {
+        if ((this.options.minDate && clickedDate < new Date(this.options.minDate)) || 
+            (this.options.maxDate && clickedDate > new Date(this.options.maxDate))) {
             this.flashInvalidSelection(dateItem);
             return;
         }
@@ -658,23 +658,27 @@ class HorizontalDatePicker {
         if (!this.options.allowFutureDates) {
             const today = new Date();
             today.setHours(23, 59, 59, 59);
-            if (endDate > today) {
+            if (clickedDate > today) {
                 this.flashInvalidSelection(dateItem);
                 return;
             }
         }
         
-        // Ensure end date is after start date
-        if (endDate < this.rangeStartDate) {
-            // Swap dates if end is before start
-            this.rangeEndDate = this.rangeStartDate;
-            this.rangeStartDate = endDate;
-        } else if (this.isSameDay(endDate, this.rangeStartDate)) {
-            // If clicking the same date, exit range mode
+        // Determine behavior based on where the clicked date is relative to the current range
+        if (clickedDate < this.rangeStartDate) {
+            // Clicking before the start: move the start date
+            this.rangeStartDate = clickedDate;
+            // Keep the end date as is (if it exists)
+        } else if (this.rangeEndDate && this.isDateInRange(clickedDate, this.rangeStartDate, this.rangeEndDate)) {
+            // Clicking inside the range: move the end date
+            this.rangeEndDate = clickedDate;
+        } else if (this.isSameDay(clickedDate, this.rangeStartDate)) {
+            // Clicking on the start date: exit range mode
             this.exitRangeMode();
             return;
         } else {
-            this.rangeEndDate = endDate;
+            // Clicking after the start (or after the current end): move the end date
+            this.rangeEndDate = clickedDate;
         }
         
         // Clear any preview
@@ -756,12 +760,19 @@ class HorizontalDatePicker {
         // Clear any existing preview
         this.clearRangePreview();
         
-        // Determine the preview range
+        // Determine the preview range based on where the hovered date is
         let previewStart, previewEnd;
+        
         if (hoveredDate < this.rangeStartDate) {
+            // Hovering before start: preview shows new start to current end (or current start if no end)
             previewStart = hoveredDate;
-            previewEnd = this.rangeStartDate;
+            previewEnd = this.rangeEndDate || this.rangeStartDate;
+        } else if (this.rangeEndDate && hoveredDate <= this.rangeEndDate) {
+            // Hovering inside the range: preview shows start to hovered date
+            previewStart = this.rangeStartDate;
+            previewEnd = hoveredDate;
         } else {
+            // Hovering after start (or after end): preview shows start to hovered date
             previewStart = this.rangeStartDate;
             previewEnd = hoveredDate;
         }
