@@ -213,18 +213,8 @@ public class TimelineController {
         allUsersData.add(new UserTimelineData(user.getId() + "", user.getUsername(), currentUserInitials, currentUserAvatarUrl, null, currentUserEntries, currentUserRawLocationPointsUrl));
 
         if (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN")) {
-            // For integrations and shared users, we'll iterate through each day in the range
-            // This is a simplified approach - you may want to optimize this for large date ranges
-            LocalDate currentDate = selectedStartDate;
-            while (!currentDate.isAfter(selectedEndDate)) {
-                allUsersData.addAll(this.reittiIntegrationService.getTimelineData(user, currentDate, userTimezone));
-                
-                Instant dayStart = currentDate.atStartOfDay(userTimezone).toInstant();
-                Instant dayEnd = currentDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
-                allUsersData.addAll(handleSharedUserData(user, currentDate, userTimezone, dayStart, dayEnd));
-                
-                currentDate = currentDate.plusDays(1);
-            }
+            allUsersData.addAll(this.reittiIntegrationService.getTimelineDataRange(user, selectedStartDate, selectedEndDate, userTimezone));
+            allUsersData.addAll(handleSharedUserDataRange(user, selectedStartDate, selectedEndDate, userTimezone));
         }
         
         TimelineData timelineData = new TimelineData(allUsersData.stream().filter(Objects::nonNull).toList());
@@ -246,6 +236,34 @@ public class TimelineController {
                     return sharedWithUserOpt.map(sharedWithUser -> {
                         List<TimelineEntry> userTimelineEntries = this.timelineService.buildTimelineEntries(sharedWithUser, userTimezone, selectedDate, startOfDay, endOfDay);
                         String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", sharedWithUser.getId(), selectedDate, userTimezone.getId());
+                        String currentUserAvatarUrl = this.avatarService.getInfo(sharedWithUser.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", sharedWithUser.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", sharedWithUser.getId()));
+                        String currentUserInitials = this.avatarService.generateInitials(sharedWithUser.getDisplayName());
+
+                        return new UserTimelineData(sharedWithUser.getId() + "",
+                                sharedWithUser.getDisplayName(),
+                                currentUserInitials,
+                                currentUserAvatarUrl,
+                                u.getColor(),
+                                userTimelineEntries,
+                                currentUserRawLocationPointsUrl);
+                    });
+                })
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .sorted(Comparator.comparing(UserTimelineData::displayName))
+                .toList();
+    }
+
+    private List<UserTimelineData> handleSharedUserDataRange(User user, LocalDate startDate, LocalDate endDate, ZoneId userTimezone) {
+        return this.userSharingJdbcService.findBySharedWithUser(user.getId()).stream()
+                .map(u -> {
+                    Optional<User> sharedWithUserOpt = this.userJdbcService.findById(u.getSharingUserId());
+                    return sharedWithUserOpt.map(sharedWithUser -> {
+                        Instant startOfRange = startDate.atStartOfDay(userTimezone).toInstant();
+                        Instant endOfRange = endDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
+                        
+                        List<TimelineEntry> userTimelineEntries = this.timelineService.buildTimelineEntries(sharedWithUser, userTimezone, startDate, startOfRange, endOfRange);
+                        String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
                         String currentUserAvatarUrl = this.avatarService.getInfo(sharedWithUser.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", sharedWithUser.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", sharedWithUser.getId()));
                         String currentUserInitials = this.avatarService.generateInitials(sharedWithUser.getDisplayName());
 
