@@ -622,7 +622,7 @@ class HorizontalDatePicker {
     enterRangeMode(dateItem) {
         this.rangeMode = true;
         this.rangeStartDate = this.parseDate(dateItem.dataset.date);
-        this.rangeEndDate = null;
+        this.rangeEndDate = this.parseDate(dateItem.dataset.date);
         
         // Show clear range button
         this.clearRangeButton.style.display = 'flex';
