@@ -99,6 +99,35 @@
     position: relative;
 }
 
+.date-item.range-start::before,
+.date-item.range-end::before {
+    content: "\eb47";
+    font: normal normal normal 1em/1 'Lineicons';
+    font-weight: 900;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2rem;
+    color: rgba(255, 255, 255, 0.9);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.date-item.range-start:hover::before,
+.date-item.range-end:hover::before {
+    opacity: 1;
+}
+
+.date-item.range-start:hover .day-name,
+.date-item.range-start:hover .day-number,
+.date-item.range-end:hover .day-name,
+.date-item.range-end:hover .day-number {
+    opacity: 0.2;
+}
+
 .date-item.range-start::after {
     content: 'Start';
     position: absolute;
@@ -109,6 +138,11 @@
     color: wheat;
     font-weight: bold;
     white-space: nowrap;
+    transition: opacity 0.3s ease;
+}
+
+.date-item.range-start:hover::after {
+    opacity: 0.2;
 }
 
 .date-item.range-end::after {
@@ -121,6 +155,11 @@
     color: #fddca1;
     font-weight: bold;
     white-space: nowrap;
+    transition: opacity 0.3s ease;
+}
+
+.date-item.range-end:hover::after {
+    opacity: 0.2;
 }
 
 .date-item.in-range {
@@ -432,6 +471,11 @@
     }
     
     .date-item.selected::before {
+        font-size: 1.5rem;
+    }
+    
+    .date-item.range-start::before,
+    .date-item.range-end::before {
         font-size: 1.5rem;
     }
 }

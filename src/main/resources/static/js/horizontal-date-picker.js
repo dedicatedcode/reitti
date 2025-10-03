@@ -145,6 +145,14 @@ class HorizontalDatePicker {
                 }
                 
                 if (this.rangeMode) {
+                    // Check if clicking on range start or end date to exit range mode
+                    const clickedDate = this.parseDate(dateItem.dataset.date);
+                    if ((this.rangeStartDate && this.isSameDay(clickedDate, this.rangeStartDate)) ||
+                        (this.rangeEndDate && this.isSameDay(clickedDate, this.rangeEndDate))) {
+                        this.exitRangeMode();
+                        return;
+                    }
+                    
                     // In range mode, select the end date
                     this.selectRangeEnd(dateItem);
                     return;
@@ -260,6 +268,14 @@ class HorizontalDatePicker {
                     }
                     
                     if (this.rangeMode) {
+                        // Check if tapping on range start or end date to exit range mode
+                        const tappedDate = this.parseDate(dateItem.dataset.date);
+                        if ((this.rangeStartDate && this.isSameDay(tappedDate, this.rangeStartDate)) ||
+                            (this.rangeEndDate && this.isSameDay(tappedDate, this.rangeEndDate))) {
+                            this.exitRangeMode();
+                            return;
+                        }
+                        
                         // In range mode, select the end date
                         this.selectRangeEnd(dateItem);
                         return;
