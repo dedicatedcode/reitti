@@ -30,6 +30,9 @@ class HorizontalDatePicker {
         this.rangeStartDate = null;
         this.rangeEndDate = null;
         
+        // Track original month/year for hover restoration
+        this.originalSelectedDate = null;
+        
         this.init();
     }
     
@@ -174,8 +177,13 @@ class HorizontalDatePicker {
         // Add hover listener for range preview
         this.dateContainer.addEventListener('mouseover', (e) => {
             const dateItem = e.target.closest('.date-item');
-            if (dateItem && this.rangeMode && this.rangeStartDate) {
-                this.showRangePreview(dateItem);
+            if (dateItem) {
+                if (this.rangeMode && this.rangeStartDate) {
+                    this.showRangePreview(dateItem);
+                }
+                
+                // Update month row for hovered date
+                this.updateMonthRowForHoveredDate(dateItem);
             }
         });
         
@@ -184,6 +192,11 @@ class HorizontalDatePicker {
             if (dateItem && this.rangeMode && this.rangeStartDate) {
                 this.clearRangePreview();
             }
+        });
+        
+        // Restore original month row when mouse leaves the date container
+        this.dateContainer.addEventListener('mouseleave', () => {
+            this.restoreOriginalMonthRow();
         });
         
         // Clear range button
@@ -861,6 +874,89 @@ class HorizontalDatePicker {
                 }
             }
         });
+    }
+    
+    // Update month row for hovered date
+    updateMonthRowForHoveredDate(dateItem) {
+        if (!this.options.showMonthRow) return;
+        
+        const hoveredDate = this.parseDate(dateItem.dataset.date);
+        const hoveredYear = hoveredDate.getFullYear();
+        const hoveredMonth = hoveredDate.getMonth();
+        
+        // Store the original selected date if not already stored
+        if (!this.originalSelectedDate) {
+            this.originalSelectedDate = new Date(this.options.selectedDate);
+        }
+        
+        // Check if the hovered date is in a different month or year
+        const selectedYear = this.options.selectedDate.getFullYear();
+        const selectedMonth = this.options.selectedDate.getMonth();
+        
+        if (hoveredYear !== selectedYear || hoveredMonth !== selectedMonth) {
+            // Update year items
+            const yearItems = this.monthRowContainer.querySelectorAll('.year-item');
+            yearItems.forEach(item => {
+                const itemYear = parseInt(item.dataset.year);
+                item.classList.remove('selected');
+                
+                if (itemYear === hoveredYear) {
+                    item.classList.add('selected');
+                }
+            });
+            
+            // Update month items
+            const monthItems = this.monthRowContainer.querySelectorAll('.month-item');
+            monthItems.forEach(item => {
+                const itemYear = parseInt(item.dataset.year);
+                const itemMonth = parseInt(item.dataset.month);
+                item.classList.remove('selected');
+                
+                if (itemYear === hoveredYear && itemMonth === hoveredMonth) {
+                    item.classList.add('selected');
+                    
+                    // Scroll to the hovered month
+                    item.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
+            });
+        }
+    }
+    
+    // Restore original month row
+    restoreOriginalMonthRow() {
+        if (!this.options.showMonthRow || !this.originalSelectedDate) return;
+        
+        const originalYear = this.originalSelectedDate.getFullYear();
+        const originalMonth = this.originalSelectedDate.getMonth();
+        
+        // Restore year items
+        const yearItems = this.monthRowContainer.querySelectorAll('.year-item');
+        yearItems.forEach(item => {
+            const itemYear = parseInt(item.dataset.year);
+            item.classList.remove('selected');
+            
+            if (itemYear === originalYear) {
+                item.classList.add('selected');
+            }
+        });
+        
+        // Restore month items
+        const monthItems = this.monthRowContainer.querySelectorAll('.month-item');
+        monthItems.forEach(item => {
+            const itemYear = parseInt(item.dataset.year);
+            const itemMonth = parseInt(item.dataset.month);
+            item.classList.remove('selected');
+            
+            if (itemYear === originalYear && itemMonth === originalMonth) {
+                item.classList.add('selected');
+                
+                // Scroll back to the original month
+                item.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+        });
+        
+        // Clear the stored original date
+        this.originalSelectedDate = null;
     }
     
     // Check if a date is in a range
