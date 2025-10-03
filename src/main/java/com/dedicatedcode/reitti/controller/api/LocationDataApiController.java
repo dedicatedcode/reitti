@@ -96,7 +96,7 @@ public class LocationDataApiController {
                         return p;
                     })
                     .toList();
-
+            //sample the points with the visvalingam-whyatt algotithm AI!
             return ResponseEntity.ok(Map.of("points", points));
             
         } catch (DateTimeParseException e) {
