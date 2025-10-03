@@ -310,9 +310,17 @@
             });
         }
 
-        function loadTimelineData(date) {
-            // Load photos for the selected date
-            photoClient.updatePhotosForDate(date, getUserTimezone());
+        function loadTimelineData(startDate, endDate) {
+            // Load photos for the selected date or date range
+            if (startDate && endDate && startDate !== endDate) {
+                // Range mode
+                photoClient.updatePhotosForDateRange(startDate, endDate, getUserTimezone());
+            } else {
+                // Single date mode
+                const date = startDate || getSelectedDate();
+                photoClient.updatePhotosForDate(date, getUserTimezone());
+            }
+            
             // Remove pulsating markers when loading new data
             removePulsatingMarkers();
             // Get raw location points URL from timeline container
@@ -430,7 +438,8 @@
         document.body.addEventListener('htmx:afterSwap', function(event) {
             if (event.detail.target.classList.contains('timeline-container')) {
                 // Timeline content has been updated, update map markers
-                loadTimelineData(getSelectedDate())
+                const params = getTimelineParams();
+                loadTimelineData(params.startDate, params.endDate);
                 updateMapFromTimeline();
                 // Initialize scroll indicator after timeline is updated
                 if (window.timelineScrollIndicator) {
@@ -615,7 +624,7 @@
 
         // Load initial timeline data via HTMX (will be triggered by the hx-trigger="load")
         // Also load photos and raw points for the initial date
-        loadTimelineData(formattedDate);
+        loadTimelineData(formattedDate, formattedDate);
 
         // Parse the initial date properly to ensure correct date picker initialization
         let dateToUse = new Date();

@@ -36,6 +36,17 @@ public class PhotoApiController {
         return ResponseEntity.ok(photos);
     }
     
+    @GetMapping("/range")
+    public ResponseEntity<List<PhotoResponse>> getPhotosForRange(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false, defaultValue = "UTC") String timezone,
+            @AuthenticationPrincipal User user) {
+        
+        List<PhotoResponse> photos = immichIntegrationService.searchPhotosForRange(user, startDate, endDate, timezone);
+        return ResponseEntity.ok(photos);
+    }
+    
     @GetMapping("/proxy/{assetId}/thumbnail")
     public ResponseEntity<byte[]> getPhotoThumbnail(
             @PathVariable String assetId,
