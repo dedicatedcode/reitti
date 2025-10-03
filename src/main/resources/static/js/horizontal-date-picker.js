@@ -9,6 +9,7 @@ class HorizontalDatePicker {
             daysToShow: 15,
             daysBeforeToday: 7,
             onDateSelect: null,
+            onDateRangeSelect: null,
             selectedDate: new Date(),
             showNavButtons: true, // Option to show/hide navigation buttons
             minDate: null, // Minimum selectable date
@@ -23,6 +24,14 @@ class HorizontalDatePicker {
         
         // Track the last valid date for reverting invalid selections
         this.lastValidDate = new Date(this.options.selectedDate);
+        
+        // Range mode properties
+        this.rangeMode = false;
+        this.rangeStartDate = null;
+        this.rangeEndDate = null;
+        
+        // Track original month/year for hover restoration
+        this.originalSelectedDate = null;
         
         this.init();
     }
@@ -81,6 +90,13 @@ class HorizontalDatePicker {
             this.element.appendChild(this.nextButton);
         }
         
+        // Create clear range button (initially hidden)
+        this.clearRangeButton = document.createElement('button');
+        this.clearRangeButton.className = 'clear-range-button';
+        this.clearRangeButton.innerHTML = '<i class="fas fa-times"></i> Clear Range';
+        this.clearRangeButton.style.display = 'none';
+        this.element.appendChild(this.clearRangeButton);
+        
         // Append date container
         this.element.appendChild(this.dateContainer);
         
@@ -125,8 +141,24 @@ class HorizontalDatePicker {
             const dateItem = e.target.closest('.date-item');
             if (dateItem) {
                 // Check if this date is already selected
-                if (dateItem.classList.contains('selected')) {
-                    return; // Do nothing if clicking on already selected date
+                if (dateItem.classList.contains('selected') && !this.rangeMode) {
+                    // Clicking on selected date enters range mode
+                    this.enterRangeMode(dateItem);
+                    return;
+                }
+                
+                if (this.rangeMode) {
+                    // Check if clicking on range start or end date to exit range mode
+                    const clickedDate = this.parseDate(dateItem.dataset.date);
+                    if ((this.rangeStartDate && this.isSameDay(clickedDate, this.rangeStartDate)) ||
+                        (this.rangeEndDate && this.isSameDay(clickedDate, this.rangeEndDate))) {
+                        this.exitRangeMode();
+                        return;
+                    }
+                    
+                    // In range mode, select the end date
+                    this.selectRangeEnd(dateItem);
+                    return;
                 }
             
                 // Prevent auto-selection from interfering with manual clicks
@@ -140,6 +172,36 @@ class HorizontalDatePicker {
                     this._isManualSelection = false;
                 }, 500);
             }
+        });
+        
+        // Add hover listener for range preview
+        this.dateContainer.addEventListener('mouseover', (e) => {
+            const dateItem = e.target.closest('.date-item');
+            if (dateItem) {
+                if (this.rangeMode && this.rangeStartDate) {
+                    this.showRangePreview(dateItem);
+                }
+                
+                // Update month row for hovered date
+                this.updateMonthRowForHoveredDate(dateItem);
+            }
+        });
+        
+        this.dateContainer.addEventListener('mouseout', (e) => {
+            const dateItem = e.target.closest('.date-item');
+            if (dateItem && this.rangeMode && this.rangeStartDate) {
+                this.clearRangePreview();
+            }
+        });
+        
+        // Restore original month row when mouse leaves the date container
+        this.dateContainer.addEventListener('mouseleave', () => {
+            this.restoreOriginalMonthRow();
+        });
+        
+        // Clear range button
+        this.clearRangeButton.addEventListener('click', () => {
+            this.exitRangeMode();
         });
         
         // Navigation buttons (if enabled)
@@ -227,8 +289,24 @@ class HorizontalDatePicker {
                 
                 if (dateItem) {
                     // Check if this date is already selected
-                    if (dateItem.classList.contains('selected')) {
-                        return; // Do nothing if tapping on already selected date
+                    if (dateItem.classList.contains('selected') && !this.rangeMode) {
+                        // Clicking on selected date enters range mode
+                        this.enterRangeMode(dateItem);
+                        return;
+                    }
+                    
+                    if (this.rangeMode) {
+                        // Check if tapping on range start or end date to exit range mode
+                        const tappedDate = this.parseDate(dateItem.dataset.date);
+                        if ((this.rangeStartDate && this.isSameDay(tappedDate, this.rangeStartDate)) ||
+                            (this.rangeEndDate && this.isSameDay(tappedDate, this.rangeEndDate))) {
+                            this.exitRangeMode();
+                            return;
+                        }
+                        
+                        // In range mode, select the end date
+                        this.selectRangeEnd(dateItem);
+                        return;
                     }
                     
                     // Prevent auto-selection from interfering with manual taps
@@ -390,8 +468,26 @@ class HorizontalDatePicker {
             dateItem.classList.add('unavailable');
         }
         
-        // Check if this date is selected
-        if (this.isSameDay(date, this.options.selectedDate)) {
+        // Check if this date is in a range
+        if (this.rangeMode && this.rangeStartDate && this.rangeEndDate) {
+            if (this.isDateInRange(date, this.rangeStartDate, this.rangeEndDate)) {
+                dateItem.classList.add('in-range');
+            }
+            if (this.isSameDay(date, this.rangeStartDate)) {
+                dateItem.classList.add('range-start');
+            }
+            if (this.isSameDay(date, this.rangeEndDate)) {
+                dateItem.classList.add('range-end');
+            }
+        } else if (this.rangeMode && this.rangeStartDate && !this.rangeEndDate) {
+            // Only start date is selected
+            if (this.isSameDay(date, this.rangeStartDate)) {
+                dateItem.classList.add('range-start');
+            }
+        }
+        
+        // Check if this date is selected (for non-range mode)
+        if (!this.rangeMode && this.isSameDay(date, this.options.selectedDate)) {
             dateItem.classList.add('selected');
             this.selectedElement = dateItem;
         }
@@ -417,8 +513,8 @@ class HorizontalDatePicker {
             dateItem.appendChild(monthName);
         }
         
-        // Add month and year for selected date
-        if (this.isSameDay(date, this.options.selectedDate)) {
+        // Add month and year for selected date (only in non-range mode)
+        if (!this.rangeMode && this.isSameDay(date, this.options.selectedDate)) {
             const monthYearName = document.createElement('span');
             monthYearName.className = 'month-year-name';
             monthYearName.textContent = `${this.getMonthName(date)} ${date.getFullYear()}`;
@@ -525,11 +621,351 @@ class HorizontalDatePicker {
             const event = new CustomEvent('dateSelected', {
                 detail: {
                     date: dateToSelect,
-                    formattedDate: dateItem.dataset.date
+                    formattedDate: dateItem.dataset.date,
+                    isRange: false,
+                    rangeStart: null,
+                    rangeEnd: null
                 }
             });
             this.element.dispatchEvent(event);
         }
+    }
+    
+    // Enter range mode
+    enterRangeMode(dateItem) {
+        this.rangeMode = true;
+        this.rangeStartDate = this.parseDate(dateItem.dataset.date);
+        this.rangeEndDate = this.parseDate(dateItem.dataset.date);
+        
+        // Show clear range button
+        this.clearRangeButton.style.display = 'flex';
+        
+        // Update all date items to show range mode
+        this.updateDateItemsForRange();
+        
+        // Add visual feedback
+        dateItem.classList.add('range-start');
+        dateItem.classList.remove('selected');
+        
+        // Remove month-year-name from the start date
+        const monthYearEl = dateItem.querySelector('.month-year-name');
+        if (monthYearEl) {
+            dateItem.removeChild(monthYearEl);
+        }
+        
+        console.log('Entered range mode, start date:', this.rangeStartDate);
+    }
+    
+    // Select range end date
+    selectRangeEnd(dateItem) {
+        const clickedDate = this.parseDate(dateItem.dataset.date);
+        
+        // Check if date is within min/max range
+        if ((this.options.minDate && clickedDate < new Date(this.options.minDate)) || 
+            (this.options.maxDate && clickedDate > new Date(this.options.maxDate))) {
+            this.flashInvalidSelection(dateItem);
+            return;
+        }
+        
+        // Check if future dates are allowed
+        if (!this.options.allowFutureDates) {
+            const today = new Date();
+            today.setHours(23, 59, 59, 59);
+            if (clickedDate > today) {
+                this.flashInvalidSelection(dateItem);
+                return;
+            }
+        }
+        
+        // Determine behavior based on where the clicked date is relative to the current range
+        if (clickedDate < this.rangeStartDate) {
+            // Clicking before the start: move the start date
+            this.rangeStartDate = clickedDate;
+            // Keep the end date as is (if it exists)
+        } else if (this.rangeEndDate && this.isDateInRange(clickedDate, this.rangeStartDate, this.rangeEndDate)) {
+            // Clicking inside the range: move the end date
+            this.rangeEndDate = clickedDate;
+        } else if (this.isSameDay(clickedDate, this.rangeStartDate)) {
+            // Clicking on the start date: exit range mode
+            this.exitRangeMode();
+            return;
+        } else {
+            // Clicking after the start (or after the current end): move the end date
+            this.rangeEndDate = clickedDate;
+        }
+        
+        // Clear any preview
+        this.clearRangePreview();
+        
+        // Update all date items to show the complete range
+        this.updateDateItemsForRange();
+        
+        // Call the onDateRangeSelect callback with range information only if both dates are set
+        if (this.rangeStartDate && this.rangeEndDate) {
+            if (typeof this.options.onDateRangeSelect === 'function') {
+                this.options.onDateRangeSelect(
+                    this.rangeStartDate,
+                    this.rangeEndDate,
+                    this.formatDate(this.rangeStartDate),
+                    this.formatDate(this.rangeEndDate)
+                );
+            }
+            
+            // Dispatch custom event
+            const event = new CustomEvent('dateSelected', {
+                detail: {
+                    date: this.rangeStartDate,
+                    formattedDate: this.formatDate(this.rangeStartDate),
+                    isRange: true,
+                    rangeStart: this.rangeStartDate,
+                    rangeEnd: this.rangeEndDate,
+                    formattedRangeStart: this.formatDate(this.rangeStartDate),
+                    formattedRangeEnd: this.formatDate(this.rangeEndDate)
+                }
+            });
+            this.element.dispatchEvent(event);
+        }
+
+        console.log('Range selected:', this.rangeStartDate, 'to', this.rangeEndDate);
+    }
+    
+    // Exit range mode
+    exitRangeMode() {
+        this.rangeMode = false;
+        const lastStartDate = this.rangeStartDate;
+        this.rangeStartDate = null;
+        this.rangeEndDate = null;
+        
+        // Hide clear range button
+        this.clearRangeButton.style.display = 'none';
+        
+        // Clear any preview
+        this.clearRangePreview();
+        
+        // Update all date items to remove range styling
+        this.updateDateItemsForRange();
+        
+        // Restore the original selected date
+        if (lastStartDate) {
+            this.options.selectedDate = lastStartDate;
+            const dateItems = this.dateContainer.querySelectorAll('.date-item');
+            const formattedDate = this.formatDate(lastStartDate);
+            
+            for (const item of dateItems) {
+                if (item.dataset.date === formattedDate) {
+                    this.selectDateItem(item, true);
+                    break;
+                }
+            }
+        }
+        
+        console.log('Exited range mode');
+    }
+    
+    // Show range preview on hover
+    showRangePreview(dateItem) {
+        const hoveredDate = this.parseDate(dateItem.dataset.date);
+        
+        // Don't show preview if hovering over the start date or end date
+        if (this.isSameDay(hoveredDate, this.rangeStartDate) || 
+            (this.rangeEndDate && this.isSameDay(hoveredDate, this.rangeEndDate))) {
+            return;
+        }
+        
+        // Clear any existing preview
+        this.clearRangePreview();
+        
+        // Determine the preview range based on where the hovered date is
+        let previewStart, previewEnd;
+        
+        if (hoveredDate < this.rangeStartDate) {
+            // Hovering before start: preview shows new start to current end (or current start if no end)
+            previewStart = hoveredDate;
+            previewEnd = this.rangeEndDate || this.rangeStartDate;
+        } else if (this.rangeEndDate && hoveredDate <= this.rangeEndDate) {
+            // Hovering inside the range: preview shows start to hovered date
+            previewStart = this.rangeStartDate;
+            previewEnd = hoveredDate;
+        } else {
+            // Hovering after start (or after end): preview shows start to hovered date
+            previewStart = this.rangeStartDate;
+            previewEnd = hoveredDate;
+        }
+        
+        // Apply preview styling to dates in the range
+        const dateItems = this.dateContainer.querySelectorAll('.date-item');
+        dateItems.forEach(item => {
+            const date = this.parseDate(item.dataset.date);
+            
+            // Don't apply preview to start/end dates
+            if (this.isDateInRange(date, previewStart, previewEnd) && 
+                !this.isSameDay(date, this.rangeStartDate) &&
+                !(this.rangeEndDate && this.isSameDay(date, this.rangeEndDate))) {
+                item.classList.add('range-preview');
+            }
+        });
+    }
+    
+    // Clear range preview
+    clearRangePreview() {
+        const dateItems = this.dateContainer.querySelectorAll('.date-item');
+        dateItems.forEach(item => {
+            item.classList.remove('range-preview');
+        });
+    }
+    
+    // Update all date items to reflect range mode
+    updateDateItemsForRange() {
+        const dateItems = this.dateContainer.querySelectorAll('.date-item');
+        
+        dateItems.forEach(item => {
+            const date = this.parseDate(item.dataset.date);
+            
+            // Remove all range-related classes
+            item.classList.remove('in-range', 'range-start', 'range-end', 'selected', 'range-preview');
+            
+            // Remove month-year-name if it exists
+            const monthYearEl = item.querySelector('.month-year-name');
+            if (monthYearEl) {
+                item.removeChild(monthYearEl);
+            }
+            
+            // Restore month-name for first day of month
+            if (date.getDate() === 1 && !item.querySelector('.month-name')) {
+                const monthName = document.createElement('span');
+                monthName.className = 'month-name';
+                monthName.textContent = this.getMonthName(date);
+                item.appendChild(monthName);
+            }
+            
+            if (this.rangeMode) {
+                if (this.rangeStartDate && this.isSameDay(date, this.rangeStartDate)) {
+                    item.classList.add('range-start');
+                }
+                
+                if (this.rangeEndDate) {
+                    if (this.isSameDay(date, this.rangeEndDate)) {
+                        item.classList.add('range-end');
+                    }
+                    
+                    if (this.isDateInRange(date, this.rangeStartDate, this.rangeEndDate)) {
+                        item.classList.add('in-range');
+                    }
+                }
+            } else {
+                // Restore selected state for non-range mode
+                if (this.isSameDay(date, this.options.selectedDate)) {
+                    item.classList.add('selected');
+                    this.selectedElement = item;
+                    
+                    // Remove month-name to avoid duplication
+                    const monthNameEl = item.querySelector('.month-name');
+                    if (monthNameEl) {
+                        item.removeChild(monthNameEl);
+                    }
+                    
+                    // Add month-year-name
+                    if (!item.querySelector('.month-year-name')) {
+                        const monthYearName = document.createElement('span');
+                        monthYearName.className = 'month-year-name';
+                        monthYearName.textContent = `${this.getMonthName(date)} ${date.getFullYear()}`;
+                        item.appendChild(monthYearName);
+                    }
+                }
+            }
+        });
+    }
+
+    // Update month row for hovered date
+    updateMonthRowForHoveredDate(dateItem) {
+        if (!this.options.showMonthRow) return;
+
+        const hoveredDate = this.parseDate(dateItem.dataset.date);
+        const hoveredYear = hoveredDate.getFullYear();
+        const hoveredMonth = hoveredDate.getMonth();
+
+        // Store the original selected date if not already stored
+        if (!this.originalSelectedDate) {
+            this.originalSelectedDate = new Date(this.options.selectedDate);
+        }
+
+        // Check if the hovered date is in a different month or year
+        const selectedYear = this.options.selectedDate.getFullYear();
+        const selectedMonth = this.options.selectedDate.getMonth();
+
+        // Update year items
+        const yearItems = this.monthRowContainer.querySelectorAll('.year-item');
+        yearItems.forEach(item => {
+            const itemYear = parseInt(item.dataset.year);
+            item.classList.remove('selected');
+
+            if (itemYear === hoveredYear) {
+                item.classList.add('selected');
+            }
+        });
+
+        // Update month items
+        const monthItems = this.monthRowContainer.querySelectorAll('.month-item');
+        monthItems.forEach(item => {
+            const itemYear = parseInt(item.dataset.year);
+            const itemMonth = parseInt(item.dataset.month);
+            item.classList.remove('selected');
+
+            if (itemYear === hoveredYear && itemMonth === hoveredMonth) {
+                item.classList.add('selected');
+
+                // Scroll to the hovered month
+                item.scrollIntoView({behavior: 'smooth', block: 'nearest', inline: 'center'});
+            }
+        });
+    }
+    
+    // Restore original month row
+    restoreOriginalMonthRow() {
+        if (!this.options.showMonthRow || !this.originalSelectedDate) return;
+        
+        const originalYear = this.originalSelectedDate.getFullYear();
+        const originalMonth = this.originalSelectedDate.getMonth();
+        
+        // Restore year items
+        const yearItems = this.monthRowContainer.querySelectorAll('.year-item');
+        yearItems.forEach(item => {
+            const itemYear = parseInt(item.dataset.year);
+            item.classList.remove('selected');
+            
+            if (itemYear === originalYear) {
+                item.classList.add('selected');
+            }
+        });
+        
+        // Restore month items
+        const monthItems = this.monthRowContainer.querySelectorAll('.month-item');
+        monthItems.forEach(item => {
+            const itemYear = parseInt(item.dataset.year);
+            const itemMonth = parseInt(item.dataset.month);
+            item.classList.remove('selected');
+            
+            if (itemYear === originalYear && itemMonth === originalMonth) {
+                item.classList.add('selected');
+                
+                // Scroll back to the original month
+                item.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+        });
+        
+        // Clear the stored original date
+        this.originalSelectedDate = null;
+    }
+    
+    // Check if a date is in a range
+    isDateInRange(date, startDate, endDate) {
+        if (!startDate || !endDate) return false;
+        
+        const dateTime = date.getTime();
+        const startTime = startDate.getTime();
+        const endTime = endDate.getTime();
+        
+        return dateTime >= startTime && dateTime <= endTime;
     }
     
     navigateDates(offset) {
@@ -969,7 +1405,10 @@ class HorizontalDatePicker {
         const event = new CustomEvent('dateSelected', {
             detail: {
                 date: exactSelectedDate,
-                formattedDate: formattedDate
+                formattedDate: formattedDate,
+                isRange: false,
+                rangeStart: null,
+                rangeEnd: null
             }
         });
         this.element.dispatchEvent(event);
@@ -1069,7 +1508,10 @@ class HorizontalDatePicker {
         const event = new CustomEvent('dateSelected', {
             detail: {
                 date: exactSelectedDate,
-                formattedDate: formattedDate
+                formattedDate: formattedDate,
+                isRange: false,
+                rangeStart: null,
+                rangeEnd: null
             }
         });
         this.element.dispatchEvent(event);
@@ -1193,7 +1635,10 @@ class HorizontalDatePicker {
             const event = new CustomEvent('dateSelected', {
                 detail: {
                     date: newDate,
-                    formattedDate: formattedDate
+                    formattedDate: formattedDate,
+                    isRange: false,
+                    rangeStart: null,
+                    rangeEnd: null
                 }
             });
             this.element.dispatchEvent(event);
@@ -1226,7 +1671,10 @@ class HorizontalDatePicker {
         const event = new CustomEvent('dateSelected', {
             detail: {
                 date: today,
-                formattedDate: formattedDate
+                formattedDate: formattedDate,
+                isRange: false,
+                rangeStart: null,
+                rangeEnd: null
             }
         });
         this.element.dispatchEvent(event);

@@ -51,9 +51,9 @@ public class LocationDataIngestPipeline {
         User user = userOpt.get();
         List<LocationDataRequest.LocationPoint> points = event.getPoints();
         List<LocationDataRequest.LocationPoint> filtered = this.geoPointAnomalyFilter.filterAnomalies(points);
-        rawLocationPointJdbcService.bulkInsert(user, filtered);
+        int updatedRows = rawLocationPointJdbcService.bulkInsert(user, filtered);
         userSettingsJdbcService.updateNewestData(user, filtered);
         userNotificationService.newRawLocationData(user, filtered);
-        logger.info("Finished storing points [{}] for user [{}] in [{}]ms. Filtered out [{}] points.", filtered.size(), event.getUsername(), System.currentTimeMillis() - start, points.size() - filtered.size());
+        logger.info("Finished storing points [{}] for user [{}] in [{}]ms. Filtered out [{}] points before database and [{}] after database.", filtered.size(), event.getUsername(), System.currentTimeMillis() - start, points.size() - filtered.size(), filtered.size() - updatedRows);
     }
 }

@@ -61,16 +61,34 @@ public class ReittiIntegrationApiController {
 
     @GetMapping("/timeline")
     public List<TimelineEntry> getTimeline(@AuthenticationPrincipal User user,
-                                           @RequestParam String date,
+                                           @RequestParam(required = false) String date,
+                                           @RequestParam(required = false) String startDate,
+                                           @RequestParam(required = false) String endDate,
                                            @RequestParam(required = false, defaultValue = "UTC") String timezone) {
 
-        LocalDate selectedDate = LocalDate.parse(date);
         ZoneId userTimezone = ZoneId.of(timezone);
 
-        Instant startOfDay = selectedDate.atStartOfDay(userTimezone).toInstant();
-        Instant endOfDay = selectedDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
+        // Support both single date and date range
+        if (startDate != null && endDate != null) {
+            // Date range mode
+            LocalDate selectedStartDate = LocalDate.parse(startDate);
+            LocalDate selectedEndDate = LocalDate.parse(endDate);
 
-        return this.timelineService.buildTimelineEntries(user, userTimezone, selectedDate, startOfDay, endOfDay);
+            Instant startOfRange = selectedStartDate.atStartOfDay(userTimezone).toInstant();
+            Instant endOfRange = selectedEndDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
+
+            return this.timelineService.buildTimelineEntries(user, userTimezone, selectedStartDate, startOfRange, endOfRange);
+        } else if (date != null) {
+            // Single date mode (backward compatibility)
+            LocalDate selectedDate = LocalDate.parse(date);
+
+            Instant startOfDay = selectedDate.atStartOfDay(userTimezone).toInstant();
+            Instant endOfDay = selectedDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
+
+            return this.timelineService.buildTimelineEntries(user, userTimezone, selectedDate, startOfDay, endOfDay);
+        } else {
+            throw new IllegalArgumentException("Either 'date' or both 'startDate' and 'endDate' must be provided");
+        }
     }
 
     @PostMapping("/subscribe")

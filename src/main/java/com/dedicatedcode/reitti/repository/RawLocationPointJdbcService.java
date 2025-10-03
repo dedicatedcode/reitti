@@ -15,6 +15,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -178,9 +179,9 @@ public class RawLocationPointJdbcService {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM raw_location_points WHERE user_id = ?", Long.class, user.getId());
     }
 
-    public void bulkInsert(User user, List<LocationDataRequest.LocationPoint> points) {
+    public int bulkInsert(User user, List<LocationDataRequest.LocationPoint> points) {
         if (points.isEmpty()) {
-            return;
+            return -1;
         }
         
         String sql = "INSERT INTO raw_location_points (user_id, timestamp, accuracy_meters, geom, processed) " +
@@ -197,7 +198,8 @@ public class RawLocationPointJdbcService {
                     geometryFactory.createPoint(new Coordinate(point.getLongitude(), point.getLatitude())).toString()
             });
         }
-        jdbcTemplate.batchUpdate(sql, batchArgs);
+        int[] ints = jdbcTemplate.batchUpdate(sql, batchArgs);
+        return Arrays.stream(ints).sum();
     }
 
     public void bulkUpdateProcessedStatus(List<RawLocationPoint> points) {
