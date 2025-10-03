@@ -171,6 +171,12 @@
     background-color: rgba(253, 220, 161, 0.75);
 }
 
+/* Range preview on hover */
+.date-item.range-preview {
+    background-color: rgba(117, 117, 117, 0.4);
+    color: white;
+}
+
 /* Clear range button */
 .clear-range-button {
     position: absolute;

@@ -171,6 +171,21 @@ class HorizontalDatePicker {
             }
         });
         
+        // Add hover listener for range preview
+        this.dateContainer.addEventListener('mouseover', (e) => {
+            const dateItem = e.target.closest('.date-item');
+            if (dateItem && this.rangeMode && this.rangeStartDate && !this.rangeEndDate) {
+                this.showRangePreview(dateItem);
+            }
+        });
+        
+        this.dateContainer.addEventListener('mouseout', (e) => {
+            const dateItem = e.target.closest('.date-item');
+            if (dateItem && this.rangeMode && this.rangeStartDate && !this.rangeEndDate) {
+                this.clearRangePreview();
+            }
+        });
+        
         // Clear range button
         this.clearRangeButton.addEventListener('click', () => {
             this.exitRangeMode();
@@ -662,6 +677,9 @@ class HorizontalDatePicker {
             this.rangeEndDate = endDate;
         }
         
+        // Clear any preview
+        this.clearRangePreview();
+        
         // Update all date items to show the complete range
         this.updateDateItemsForRange();
         
@@ -702,6 +720,9 @@ class HorizontalDatePicker {
         // Hide clear range button
         this.clearRangeButton.style.display = 'none';
         
+        // Clear any preview
+        this.clearRangePreview();
+        
         // Update all date items to remove range styling
         this.updateDateItemsForRange();
         
@@ -722,6 +743,48 @@ class HorizontalDatePicker {
         console.log('Exited range mode');
     }
     
+    // Show range preview on hover
+    showRangePreview(dateItem) {
+        const hoveredDate = this.parseDate(dateItem.dataset.date);
+        
+        // Don't show preview if hovering over the start date
+        if (this.isSameDay(hoveredDate, this.rangeStartDate)) {
+            return;
+        }
+        
+        // Clear any existing preview
+        this.clearRangePreview();
+        
+        // Determine the preview range
+        let previewStart, previewEnd;
+        if (hoveredDate < this.rangeStartDate) {
+            previewStart = hoveredDate;
+            previewEnd = this.rangeStartDate;
+        } else {
+            previewStart = this.rangeStartDate;
+            previewEnd = hoveredDate;
+        }
+        
+        // Apply preview styling to dates in the range
+        const dateItems = this.dateContainer.querySelectorAll('.date-item');
+        dateItems.forEach(item => {
+            const date = this.parseDate(item.dataset.date);
+            
+            if (this.isDateInRange(date, previewStart, previewEnd) && 
+                !this.isSameDay(date, this.rangeStartDate)) {
+                item.classList.add('range-preview');
+            }
+        });
+    }
+    
+    // Clear range preview
+    clearRangePreview() {
+        const dateItems = this.dateContainer.querySelectorAll('.date-item');
+        dateItems.forEach(item => {
+            item.classList.remove('range-preview');
+        });
+    }
+    
     // Update all date items to reflect range mode
     updateDateItemsForRange() {
         const dateItems = this.dateContainer.querySelectorAll('.date-item');
@@ -730,7 +793,7 @@ class HorizontalDatePicker {
             const date = this.parseDate(item.dataset.date);
             
             // Remove all range-related classes
-            item.classList.remove('in-range', 'range-start', 'range-end', 'selected');
+            item.classList.remove('in-range', 'range-start', 'range-end', 'selected', 'range-preview');
             
             // Remove month-year-name if it exists
             const monthYearEl = item.querySelector('.month-year-name');
