@@ -256,11 +256,6 @@
         });
 
         function reloadRawLocationPoints() {
-            // Remove existing raw point paths
-            for (const path of rawPointPaths) {
-                path.remove();
-            }
-            rawPointPaths.length = 0;
 
             // Reload raw location points with new zoom level
             const timelineContainer = document.querySelectorAll('.user-timeline-section');
@@ -298,7 +293,11 @@
 
             // Wait for all fetch operations to complete, then update map in correct order
             Promise.all(fetchPromises).then(results => {
-                // Sort results by original index to maintain order
+                for (const path of rawPointPaths) {
+                    path.remove();
+                }
+                rawPointPaths.length = 0;
+
                 results.sort((a, b) => a.index - b.index);
                 
                 // Process results in order

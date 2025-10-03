@@ -51,7 +51,7 @@
 }
 
 .date-item.selected::before {
-    content: "\eb46";
+    content: "\eb47";
     font-family: 'Lineicons';
     font-weight: 900;
     position: absolute;
@@ -98,7 +98,7 @@
 
 .date-item.range-start::before,
 .date-item.range-end::before {
-    content: "\eb47";
+    content: "\ec2a";
     font-family: 'Lineicons';
     font-weight: 900;
     position: absolute;
