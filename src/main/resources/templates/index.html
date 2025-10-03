@@ -116,6 +116,9 @@
 
     // Store current date range selection
     let currentDateRange = null;
+    
+    // Store current zoom level
+    let currentZoomLevel = null;
 
     // Initialize the map
     const map = L.map('map', {zoomControl: false, attributionControl: false}).setView([window.userSettings.homeLatitude, window.userSettings.homeLongitude], 12);
@@ -237,6 +240,76 @@
         map.on('moveend zoomend', () => {
             photoClient.onMapMoveEnd();
         });
+        
+        // Listen for zoom end events to reload raw location points
+        map.on('zoomend', () => {
+            const newZoomLevel = Math.round(map.getZoom());
+            
+            // Only reload if zoom level actually changed
+            if (currentZoomLevel !== null && currentZoomLevel !== newZoomLevel) {
+                console.log('Zoom level changed from', currentZoomLevel, 'to', newZoomLevel, '- reloading raw location points');
+                currentZoomLevel = newZoomLevel;
+                reloadRawLocationPoints();
+            } else if (currentZoomLevel === null) {
+                currentZoomLevel = newZoomLevel;
+            }
+        });
+
+        function reloadRawLocationPoints() {
+            // Remove existing raw point paths
+            for (const path of rawPointPaths) {
+                path.remove();
+            }
+            rawPointPaths.length = 0;
+
+            // Reload raw location points with new zoom level
+            const timelineContainer = document.querySelectorAll('.user-timeline-section');
+            let bounds = L.latLngBounds();
+            const fetchPromises = [];
+
+            for (let i = 0; i < timelineContainer.length; i++) {
+                const element = timelineContainer[i];
+                const rawLocationPointsUrl = element?.dataset.rawLocationPointsUrl;
+                const color = element?.dataset.baseColor;
+                if (rawLocationPointsUrl) {
+                    // Get current zoom level
+                    const currentZoom = Math.round(map.getZoom());
+                    
+                    // Append zoom parameter to URL
+                    const urlWithZoom = rawLocationPointsUrl + (rawLocationPointsUrl.includes('?') ? '&' : '?') + 'zoom=' + currentZoom;
+                    
+                    // Create fetch promise for raw location points with index to maintain order
+                    const fetchPromise = fetch(urlWithZoom).then(response => {
+                        if (!response.ok) {
+                            console.warn('Could not fetch raw location points');
+                            return { points: [], index: i, color: color };
+                        }
+                        return response.json();
+                    }).then(rawPointsData => {
+                        return { ...rawPointsData, index: i, color: color };
+                    }).catch(error => {
+                        console.warn('Error fetching raw location points:', error);
+                        return { points: [], index: i, color: color };
+                    });
+                    
+                    fetchPromises.push(fetchPromise);
+                }
+            }
+
+            // Wait for all fetch operations to complete, then update map in correct order
+            Promise.all(fetchPromises).then(results => {
+                // Sort results by original index to maintain order
+                results.sort((a, b) => a.index - b.index);
+                
+                // Process results in order
+                results.forEach(result => {
+                    const fetchBounds = updateMapWithRawPoints(result, result.color);
+                    if (fetchBounds.isValid()) {
+                        bounds.extend(fetchBounds);
+                    }
+                });
+            });
+        }
 
         function loadTimelineData(date) {
             // Load photos for the selected date
@@ -257,8 +330,14 @@
                 const rawLocationPointsUrl = element?.dataset.rawLocationPointsUrl;
                 const color = element?.dataset.baseColor;
                 if (rawLocationPointsUrl) {
+                    // Get current zoom level
+                    const currentZoom = Math.round(map.getZoom());
+                    
+                    // Append zoom parameter to URL
+                    const urlWithZoom = rawLocationPointsUrl + (rawLocationPointsUrl.includes('?') ? '&' : '?') + 'zoom=' + currentZoom;
+                    
                     // Create fetch promise for raw location points with index to maintain order
-                    const fetchPromise = fetch(rawLocationPointsUrl).then(response => {
+                    const fetchPromise = fetch(urlWithZoom).then(response => {
                         if (!response.ok) {
                             console.warn('Could not fetch raw location points');
                             return { points: [], index: i, color: color };
@@ -268,7 +347,7 @@
                         return { ...rawPointsData, index: i, color: color };
                     }).catch(error => {
                         console.warn('Error fetching raw location points:', error);
-                        return { points: [], index: i, color: color }; // Return empty data with index on error
+                        return { points: [], index: i, color: color };
                     });
                     
                     fetchPromises.push(fetchPromise);
@@ -552,14 +631,13 @@
         window.horizontalDatePicker = new HorizontalDatePicker({
             container: document.getElementById('horizontal-date-picker-container'),
             selectedDate: dateToUse,
-            showNavButtons: false, // Show navigation buttons
-            daysToShow: 21, // Show more days
-            showMonthRow: true, // Enable month selection row
-            showYearRow: true, // Enable year selection row
-            yearsToShow: 5, // Show 5 years in the year row
-            allowFutureDates: false, // Disable selection of future dates
-            showTodayButton: true, // Show the Today button
-            // No min/max date for infinite scrolling
+            showNavButtons: false,
+            daysToShow: 21,
+            showMonthRow: true,
+            showYearRow: true,
+            yearsToShow: 5,
+            allowFutureDates: false,
+            showTodayButton: true,
             onDateSelect: (date, formattedDate, isManualSelected) => {
                 // Update URL
                 updateUrlWithDate(formattedDate);
