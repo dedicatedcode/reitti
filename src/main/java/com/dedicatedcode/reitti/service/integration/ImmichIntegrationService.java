@@ -97,7 +97,7 @@ public class ImmichIntegrationService {
         }
     }
     
-    public List<PhotoResponse> searchPhotosForDay(User user, LocalDate date, String timezone) {
+    public List<PhotoResponse> searchPhotosForRange(User user, LocalDate start, LocalDate end, String timezone) {
         Optional<ImmichIntegration> integrationOpt = getIntegrationForUser(user);
         
         if (integrationOpt.isEmpty() || !integrationOpt.get().isEnabled()) {
@@ -113,8 +113,8 @@ public class ImmichIntegrationService {
 
             ZoneId userTimezone = ZoneId.of(timezone);
             // Convert LocalDate to start and end Instant for the selected date in user's timezone
-            Instant startOfDay = date.atStartOfDay(userTimezone).toInstant();
-            Instant endOfDay = date.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
+            Instant startOfDay = start.atStartOfDay(userTimezone).toInstant();
+            Instant endOfDay = end.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
 
             ImmichSearchRequest searchRequest = new ImmichSearchRequest(DateTimeFormatter.ISO_INSTANT.format(startOfDay), DateTimeFormatter.ISO_INSTANT.format(endOfDay));
             
