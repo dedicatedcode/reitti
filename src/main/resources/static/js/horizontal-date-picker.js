@@ -9,6 +9,7 @@ class HorizontalDatePicker {
             daysToShow: 15,
             daysBeforeToday: 7,
             onDateSelect: null,
+            onDateRangeSelect: null,
             selectedDate: new Date(),
             showNavButtons: true, // Option to show/hide navigation buttons
             minDate: null, // Minimum selectable date
@@ -569,7 +570,7 @@ class HorizontalDatePicker {
         // For manual selections, call the callback immediately
         if (isManualSelection) {
             if (typeof this.options.onDateSelect === 'function') {
-                this.options.onDateSelect(dateToSelect, dateItem.dataset.date, true, null);
+                this.options.onDateSelect(dateToSelect, dateItem.dataset.date, true);
             }
             
             // Dispatch custom event
@@ -648,18 +649,13 @@ class HorizontalDatePicker {
         // Update all date items to show the complete range
         this.updateDateItemsForRange();
         
-        // Call the callback with range information
-        if (typeof this.options.onDateSelect === 'function') {
-            this.options.onDateSelect(
-                this.rangeStartDate, 
-                this.formatDate(this.rangeStartDate), 
-                true,
-                {
-                    startDate: this.rangeStartDate,
-                    endDate: this.rangeEndDate,
-                    formattedStartDate: this.formatDate(this.rangeStartDate),
-                    formattedEndDate: this.formatDate(this.rangeEndDate)
-                }
+        // Call the onDateRangeSelect callback with range information
+        if (typeof this.options.onDateRangeSelect === 'function') {
+            this.options.onDateRangeSelect(
+                this.rangeStartDate,
+                this.rangeEndDate,
+                this.formatDate(this.rangeStartDate),
+                this.formatDate(this.rangeEndDate)
             );
         }
         
@@ -1213,7 +1209,7 @@ class HorizontalDatePicker {
         // Call onDateSelect callback if provided
         const formattedDate = this.formatDate(exactSelectedDate);
         if (typeof this.options.onDateSelect === 'function') {
-            this.options.onDateSelect(exactSelectedDate, formattedDate, false, null);
+            this.options.onDateSelect(exactSelectedDate, formattedDate, false);
         }
         
         // Dispatch custom event
@@ -1316,7 +1312,7 @@ class HorizontalDatePicker {
         // Call onDateSelect callback if provided
         const formattedDate = this.formatDate(exactSelectedDate);
         if (typeof this.options.onDateSelect === 'function') {
-            this.options.onDateSelect(exactSelectedDate, formattedDate, false, null);
+            this.options.onDateSelect(exactSelectedDate, formattedDate, false);
         }
         
         // Dispatch custom event
@@ -1443,7 +1439,7 @@ class HorizontalDatePicker {
             }
 
             if (typeof this.options.onDateSelect === 'function') {
-                this.options.onDateSelect(today, formattedDate, false, null);
+                this.options.onDateSelect(today, formattedDate, false);
             }
             // Center the selected date
             this.scrollToSelectedDate(false);
@@ -1479,7 +1475,7 @@ class HorizontalDatePicker {
         // Call onDateSelect callback
         const formattedDate = this.formatDate(today);
         if (typeof this.options.onDateSelect === 'function') {
-            this.options.onDateSelect(today, formattedDate, true, null);
+            this.options.onDateSelect(today, formattedDate, true);
         }
         
         // Dispatch custom event
