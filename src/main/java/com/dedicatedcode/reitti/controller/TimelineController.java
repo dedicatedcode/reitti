@@ -62,6 +62,13 @@ public class TimelineController {
         return getTimelineContent(date, timezone, principal, model, null);
     }
 
+    @GetMapping("/content/range")
+    public String getTimelineContentRange(@RequestParam String startDate,
+                                          @RequestParam String endDate,
+                                          @RequestParam(required = false, defaultValue = "UTC") String timezone,
+                                          Authentication principal, Model model) {
+        return getTimelineContentRange(startDate, endDate, timezone, principal, model, null);
+    }
 
     @GetMapping("/places/edit-form/{id}")
     public String getPlaceEditForm(@PathVariable Long id,
@@ -162,6 +169,72 @@ public class TimelineController {
         model.addAttribute("selectedPlaceId", selectedPlaceId);
         model.addAttribute("data", selectedDate);
         model.addAttribute("timezone", timezone);
+        model.addAttribute("timeDisplayMode", userSettingsJdbcService.getOrCreateDefaultSettings(user.getId()).getTimeDisplayMode());
+        return "fragments/timeline :: timeline-content";
+    }
+
+    private String getTimelineContentRange(String startDate,
+                                           String endDate,
+                                           String timezone,
+                                           Authentication principal, Model model,
+                                           Long selectedPlaceId) {
+
+        List<String> authorities = principal.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
+
+        LocalDate selectedStartDate = LocalDate.parse(startDate);
+        LocalDate selectedEndDate = LocalDate.parse(endDate);
+        ZoneId userTimezone = ZoneId.of(timezone);
+        LocalDate now = LocalDate.now(userTimezone);
+
+        // Check if any date in the range is not today
+        if (!selectedStartDate.isEqual(now) || !selectedEndDate.isEqual(now)) {
+            if (!authorities.contains("ROLE_USER") && !authorities.contains("ROLE_ADMIN") && !authorities.contains("ROLE_MAGIC_LINK_FULL_ACCESS")) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+            }
+        }
+
+        // Find the user by username
+        User user = userJdbcService.findByUsername(principal.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        // Convert LocalDate to start and end Instant for the date range in user's timezone
+        Instant startOfRange = selectedStartDate.atStartOfDay(userTimezone).toInstant();
+        Instant endOfRange = selectedEndDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
+
+        // Build timeline data for current user and connected users
+        List<UserTimelineData> allUsersData = new ArrayList<>();
+
+        // Add current user data first - for range, we'll use the start date for the timeline service
+        List<TimelineEntry> currentUserEntries = this.timelineService.buildTimelineEntries(user, userTimezone, selectedStartDate, startOfRange, endOfRange);
+
+        String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), startDate, endDate, timezone);
+        String currentUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", user.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", user.getId()));
+        String currentUserInitials = this.avatarService.generateInitials(user.getDisplayName());
+        allUsersData.add(new UserTimelineData(user.getId() + "", user.getUsername(), currentUserInitials, currentUserAvatarUrl, null, currentUserEntries, currentUserRawLocationPointsUrl));
+
+        if (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN")) {
+            // For integrations and shared users, we'll iterate through each day in the range
+            // This is a simplified approach - you may want to optimize this for large date ranges
+            LocalDate currentDate = selectedStartDate;
+            while (!currentDate.isAfter(selectedEndDate)) {
+                allUsersData.addAll(this.reittiIntegrationService.getTimelineData(user, currentDate, userTimezone));
+                
+                Instant dayStart = currentDate.atStartOfDay(userTimezone).toInstant();
+                Instant dayEnd = currentDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
+                allUsersData.addAll(handleSharedUserData(user, currentDate, userTimezone, dayStart, dayEnd));
+                
+                currentDate = currentDate.plusDays(1);
+            }
+        }
+        
+        TimelineData timelineData = new TimelineData(allUsersData.stream().filter(Objects::nonNull).toList());
+
+        model.addAttribute("timelineData", timelineData);
+        model.addAttribute("selectedPlaceId", selectedPlaceId);
+        model.addAttribute("startDate", selectedStartDate);
+        model.addAttribute("endDate", selectedEndDate);
+        model.addAttribute("timezone", timezone);
+        model.addAttribute("isRange", true);
         model.addAttribute("timeDisplayMode", userSettingsJdbcService.getOrCreateDefaultSettings(user.getId()).getTimeDisplayMode());
         return "fragments/timeline :: timeline-content";
     }
