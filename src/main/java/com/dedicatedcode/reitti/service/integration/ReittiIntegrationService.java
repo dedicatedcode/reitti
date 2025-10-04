@@ -142,7 +142,7 @@ public class ReittiIntegrationService {
         }
     }
 
-    public List<LocationDataRequest.LocationPoint> getRawLocationData(User user, Long integrationId, String dateStr, String timezone) {
+    public List<LocationDataRequest.LocationPoint> getRawLocationData(User user, Long integrationId, String startDate, String endDate, Integer zoom, String timezone) {
         return this.jdbcService
                 .findByIdAndUser(integrationId,user)
                 .stream().filter(integration -> integration.isEnabled() && VALID_INTEGRATION_STATUS.contains(integration.getStatus()))
@@ -155,62 +155,17 @@ public class ReittiIntegrationService {
                         HttpEntity<String> entity = new HttpEntity<>(headers);
 
                         String rawLocationDataUrl = integration.getUrl().endsWith("/") ?
-                                integration.getUrl() + "api/v1/raw-location-points?date={date}&timezone={timezone}" :
-                                integration.getUrl() + "/api/v1/raw-location-points?date={date}&timezone={timezone}";
+                                integration.getUrl() + "api/v1/raw-location-points?startDate={startDate}&endDate={endDate}&timezone={timezone}&zoom={zoom}" :
+                                integration.getUrl() + "/api/v1/raw-location-points?startDate={startDate}&endDate={endDate}&timezone={timezone}&zoom={zoom}";
                         ResponseEntity<Map> remoteResponse = restTemplate.exchange(
                                 rawLocationDataUrl,
                                 HttpMethod.GET,
                                 entity,
                                 Map.class,
-                                dateStr,
-                                timezone
-                        );
-
-                        if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null && remoteResponse.getBody().containsKey("points")) {
-                            update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
-                            return (List<LocationDataRequest.LocationPoint>) remoteResponse.getBody().get("points");
-                        } else if (remoteResponse.getStatusCode().is4xxClientError()) {
-                            throw new RequestFailedException(rawLocationDataUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
-                        } else {
-                            throw new RequestTemporaryFailedException(rawLocationDataUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
-                        }
-                    } catch (RequestFailedException e) {
-                        log.error("couldn't fetch user info for [{}]", integration, e);
-                        update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
-                    } catch (RequestTemporaryFailedException e) {
-                        log.warn("couldn't temporarily fetch user info for [{}]", integration, e);
-                        update(integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
-                    }
-                    return null;
-                })
-                .filter(Objects::nonNull)
-                .findFirst().orElse(Collections.emptyList());
-
-    }
-
-    public List<LocationDataRequest.LocationPoint> getRawLocationDataRange(User user, Long integrationId, String startDateStr, String endDateStr, String timezone) {
-        return this.jdbcService
-                .findByIdAndUser(integrationId,user)
-                .stream().filter(integration -> integration.isEnabled() && VALID_INTEGRATION_STATUS.contains(integration.getStatus()))
-                .map(integration -> {
-
-                    log.debug("Fetching raw location data range for [{}] from {} to {}", integration, startDateStr, endDateStr);
-                    try {
-                        HttpHeaders headers = new HttpHeaders();
-                        headers.set("X-API-TOKEN", integration.getToken());
-                        HttpEntity<String> entity = new HttpEntity<>(headers);
-
-                        String rawLocationDataUrl = integration.getUrl().endsWith("/") ?
-                                integration.getUrl() + "api/v1/raw-location-points?startDate={startDate}&endDate={endDate}&timezone={timezone}" :
-                                integration.getUrl() + "/api/v1/raw-location-points?startDate={startDate}&endDate={endDate}&timezone={timezone}";
-                        ResponseEntity<Map> remoteResponse = restTemplate.exchange(
-                                rawLocationDataUrl,
-                                HttpMethod.GET,
-                                entity,
-                                Map.class,
-                                startDateStr,
-                                endDateStr,
-                                timezone
+                                startDate,
+                                endDate,
+                                timezone,
+                                zoom
                         );
 
                         if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null && remoteResponse.getBody().containsKey("points")) {
