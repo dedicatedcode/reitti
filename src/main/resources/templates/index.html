@@ -646,16 +646,13 @@
             yearsToShow: 5,
             allowFutureDates: false,
             showTodayButton: true,
-            onDateSelect: (date, formattedDate, isManualSelected) => {
+            onDateSelect: (date, formattedDate) => {
                 // Update URL
                 updateUrlWithDate(formattedDate);
                 // Clear any existing date range
                 currentDateRange = null;
                 // Trigger HTMX reload of timeline
                 document.body.dispatchEvent(new CustomEvent('dateChanged'));
-                if (isManualSelected) {
-                    disableAutoUpdate();
-                }
             },
             onDateRangeSelect: (startDate, endDate, formattedStartDate, formattedEndDate) => {
                 // Store the date range
@@ -671,7 +668,6 @@
                 window.history.pushState({}, '', url);
                 // Trigger HTMX reload of timeline
                 document.body.dispatchEvent(new CustomEvent('dateChanged'));
-                disableAutoUpdate();
             }
         });
     });
@@ -768,6 +764,10 @@
         const icon = btn.querySelector('i');
         icon.className = 'lni lni-play';
         btn.title = 'Auto Update';
+        if (window.horizontalDatePicker) {
+            window.horizontalDatePicker.exitRangeMode();
+            window.horizontalDatePicker.setDate(getSelectedDate());
+        }
     }
 
     function startAutoUpdateTimer() {
