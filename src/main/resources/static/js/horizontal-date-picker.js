@@ -553,14 +553,6 @@ class HorizontalDatePicker {
             return;
         }
 
-        // If this is a manual selection and auto-update mode is active, disable it
-        if (isManualSelection && window.autoUpdateMode) {
-            console.log('Manual date selection detected, disabling auto-update mode');
-            if (typeof window.disableAutoUpdate === 'function') {
-                window.disableAutoUpdate();
-            }
-        }
-        
         // Clear any existing selection
         if (this.selectedElement) {
             this.selectedElement.classList.remove('selected');
@@ -710,20 +702,6 @@ class HorizontalDatePicker {
                     this.formatDate(this.rangeEndDate)
                 );
             }
-            
-            // Dispatch custom event
-            const event = new CustomEvent('dateSelected', {
-                detail: {
-                    date: this.rangeStartDate,
-                    formattedDate: this.formatDate(this.rangeStartDate),
-                    isRange: true,
-                    rangeStart: this.rangeStartDate,
-                    rangeEnd: this.rangeEndDate,
-                    formattedRangeStart: this.formatDate(this.rangeStartDate),
-                    formattedRangeEnd: this.formatDate(this.rangeEndDate)
-                }
-            });
-            this.element.dispatchEvent(event);
         }
 
         console.log('Range selected:', this.rangeStartDate, 'to', this.rangeEndDate);
@@ -1329,14 +1307,6 @@ class HorizontalDatePicker {
             return;
         }
 
-        // If auto-update mode is active, disable it for manual month selection
-        if (window.autoUpdateMode) {
-            console.log('Manual month selection detected, disabling auto-update mode');
-            if (typeof window.disableAutoUpdate === 'function') {
-                window.disableAutoUpdate();
-            }
-        }
-
         // Get the current day from the selected date
         const currentDay = this.options.selectedDate.getDate();
         
@@ -1427,14 +1397,6 @@ class HorizontalDatePicker {
                 }
             }
             return;
-        }
-
-        // If auto-update mode is active, disable it for manual year selection
-        if (window.autoUpdateMode) {
-            console.log('Manual year selection detected, disabling auto-update mode');
-            if (typeof window.disableAutoUpdate === 'function') {
-                window.disableAutoUpdate();
-            }
         }
 
         // Get the current month and day from the selected date
@@ -1575,7 +1537,6 @@ class HorizontalDatePicker {
     // Public methods
     setDate(date) {
         const newDate = new Date(date);
-        
         // Check if date is within min/max range, but only if they are set
         if ((this.options.minDate && newDate < new Date(this.options.minDate)) || 
             (this.options.maxDate && newDate > new Date(this.options.maxDate))) {

@@ -2,7 +2,6 @@ package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
-import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.*;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -53,8 +52,10 @@ public class ReittiIntegrationController {
     @ResponseBody
     public ResponseEntity<?> getRawLocationPoints(@AuthenticationPrincipal User user,
                                                   @PathVariable Long integrationId,
-                                                  @RequestParam("date") String dateStr,
-                                                  @RequestParam(required = false, defaultValue = "UTC") String timezone) {
-        return ResponseEntity.ok(Map.of("points", reittiIntegrationService.getRawLocationData(user, integrationId, dateStr, timezone)));
+                                                  @RequestParam String startDate,
+                                                  @RequestParam String endDate,
+                                                  @RequestParam(required = false, defaultValue = "UTC") String timezone,
+                                                  @RequestParam(required = false) Integer zoom) {
+        return ResponseEntity.ok(Map.of("points", reittiIntegrationService.getRawLocationData(user, integrationId, startDate, endDate, zoom, timezone)));
     }
 }
