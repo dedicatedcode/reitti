@@ -147,6 +147,28 @@
                                     </div>
 
                                     <div class="form-group">
+                                        <label for="recorderAuthUsername" th:text="#{integrations.owntracks.recorder.auth.username}">Authentication Username</label>
+                                        <input type="text"
+                                               id="recorderAuthUsername"
+                                               name="authUsername"
+                                               autocomplete="off"
+                                               th:placeholder="#{integrations.owntracks.recorder.auth.username.placeholder}"
+                                               th:value="${ownTracksRecorderIntegration?.authUsername}">
+                                        <small th:text="#{integrations.owntracks.recorder.auth.optional}">Leave empty if no authentication is needed</small>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="recorderAuthPassword" th:text="#{integrations.owntracks.recorder.auth.password}">Authentication Password</label>
+                                        <input type="password"
+                                               id="recorderAuthPassword"
+                                               name="authPassword"
+                                               autocomplete="off"
+                                               th:placeholder="#{integrations.owntracks.recorder.auth.password.placeholder}"
+                                               th:value="${ownTracksRecorderIntegration?.authPassword}">
+                                        <small th:text="#{integrations.owntracks.recorder.auth.optional}">Leave empty if no authentication is needed</small>
+                                    </div>
+
+                                    <div class="form-group">
                                         <label for="recorderUsername" th:text="#{integrations.owntracks.recorder.username}">Username</label>
                                         <input type="text"
                                                id="recorderUsername"
@@ -201,6 +223,8 @@
                                         const baseUrl = document.getElementById('recorderBaseUrl').value;
                                         const username = document.getElementById('recorderUsername').value;
                                         const deviceId = document.getElementById('recorderDeviceId').value;
+                                        const authUsername = document.getElementById('recorderAuthUsername').value;
+                                        const authPassword = document.getElementById('recorderAuthPassword').value;
                                         const resultDiv = document.getElementById('recorder-connection-test-result');
 
                                         if (!baseUrl || !username || !deviceId) {
@@ -220,7 +244,9 @@
                                             body: new URLSearchParams({
                                                 baseUrl: baseUrl,
                                                 username: username,
-                                                deviceId: deviceId
+                                                deviceId: deviceId,
+                                                authUsername: authUsername,
+                                                authPassword: authPassword
                                             })
                                         })
                                             .then(response => response.json())
