@@ -11,12 +11,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -179,8 +180,8 @@ public class OwnTracksRecorderIntegrationService {
             
             logger.debug("Testing OwnTracks Recorder connection to: {}", testUrl);
 
-            //if authUsername and authPassword is not empty or null, add basic auth to the request AI!
-            ResponseEntity<String> response = restTemplate.getForEntity(testUrl, String.class);
+            HttpEntity<String> entity = createHttpEntityWithAuth(authUsername, authPassword);
+            ResponseEntity<String> response = restTemplate.exchange(testUrl, HttpMethod.GET, entity, String.class);
 
             HttpStatus statusCode = (HttpStatus) response.getStatusCode();
             boolean isSuccessful = statusCode.is2xxSuccessful() || 
@@ -272,20 +273,21 @@ public class OwnTracksRecorderIntegrationService {
             LocalDateTime fromDate = fromTime.atOffset(ZoneOffset.UTC).toLocalDateTime();
             String fromDateString = fromDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
             apiUrl = String.format("%s/api/0/locations?user=%s&device=%s&from=%s&limit=500", integration.getBaseUrl(), integration.getUsername(), integration.getDeviceId(), fromDateString);
-            return fetchData(apiUrl);
+            return fetchData(apiUrl, integration);
         } catch (Exception e) {
             logger.error("Failed to fetch location data from OwnTracks Recorder: {}", e.getMessage());
             return Collections.emptyList();
         }
     }
 
-    private List<OwntracksLocationRequest> fetchData(String apiUrl) {
+    private List<OwntracksLocationRequest> fetchData(String apiUrl, OwnTracksRecorderIntegration integration) {
         logger.info("Fetching location data from: {}", apiUrl);
 
+        HttpEntity<String> entity = createHttpEntityWithAuth(integration.getAuthUsername(), integration.getAuthPassword());
         ResponseEntity<OwntracksRecorderResponse> response = restTemplate.exchange(
                 apiUrl,
                 HttpMethod.GET,
-                null,
+                entity,
                 new ParameterizedTypeReference<>() {}
         );
 
@@ -307,10 +309,11 @@ public class OwnTracksRecorderIntegrationService {
             
             logger.debug("Fetching available recs from: {}", recsUrl);
             
+            HttpEntity<String> entity = createHttpEntityWithAuth(integration.getAuthUsername(), integration.getAuthPassword());
             ResponseEntity<OwntracksRecsResponse> response = restTemplate.exchange(
                     recsUrl,
                     HttpMethod.GET,
-                    null,
+                    entity,
                     new ParameterizedTypeReference<>() {}
             );
             
@@ -354,11 +357,25 @@ public class OwnTracksRecorderIntegrationService {
                                         fromDateString, 
                                         toDateString);
             
-            return fetchData(apiUrl);
+            return fetchData(apiUrl, integration);
         } catch (Exception e) {
             logger.error("Failed to fetch location data for month {}: {}", month, e.getMessage());
             return Collections.emptyList();
         }
+    }
+
+    private HttpEntity<String> createHttpEntityWithAuth(String authUsername, String authPassword) {
+        HttpHeaders headers = new HttpHeaders();
+        
+        if (authUsername != null && !authUsername.trim().isEmpty() && 
+            authPassword != null && !authPassword.trim().isEmpty()) {
+            String auth = authUsername + ":" + authPassword;
+            byte[] encodedAuth = Base64.getEncoder().encode(auth.getBytes(StandardCharsets.UTF_8));
+            String authHeader = "Basic " + new String(encodedAuth);
+            headers.set("Authorization", authHeader);
+        }
+        
+        return new HttpEntity<>(headers);
     }
 
     private static class OwntracksRecsResponse {
