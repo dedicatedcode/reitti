@@ -48,7 +48,7 @@ public class OwnTracksRecorderIntegrationJdbcService {
     }
 
     public OwnTracksRecorderIntegration save(User user, OwnTracksRecorderIntegration integration) {
-        String sql = "INSERT INTO owntracks_recorder_integration (base_url, username, device_id, enabled, auth_username, auth_password, last_successful_fetch, user_id, version) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO owntracks_recorder_integration (base_url, username, device_id, enabled, auth_username, auth_password, last_successful_fetch, user_id, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
@@ -56,9 +56,9 @@ public class OwnTracksRecorderIntegrationJdbcService {
             ps.setString(1, integration.getBaseUrl());
             ps.setString(2, integration.getUsername());
             ps.setString(3, integration.getDeviceId());
-            ps.setString(4, integration.getAuthUsername());
-            ps.setString(5, integration.getAuthPassword());
-            ps.setBoolean(6, integration.isEnabled());
+            ps.setBoolean(4, integration.isEnabled());
+            ps.setString(5, integration.getAuthUsername());
+            ps.setString(6, integration.getAuthPassword());
             if (integration.getLastSuccessfulFetch() != null) {
                 ps.setTimestamp(7, java.sql.Timestamp.from(integration.getLastSuccessfulFetch()));
             } else {
