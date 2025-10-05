@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.repository;
 
-import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.security.User;
@@ -106,8 +106,8 @@ public class UserSettingsJdbcService {
         return findByUserId(userId).orElseGet(() -> save(UserSettings.defaultSettings(userId)));
     }
     
-    public void updateNewestData(User user, List<LocationDataRequest.LocationPoint> filtered) {
-        filtered.stream().map(LocationDataRequest.LocationPoint::getTimestamp).max(Comparator.naturalOrder()).ifPresent(timestamp -> {
+    public void updateNewestData(User user, List<LocationPoint> filtered) {
+        filtered.stream().map(LocationPoint::getTimestamp).max(Comparator.naturalOrder()).ifPresent(timestamp -> {
             Instant instant = ZonedDateTime.parse(timestamp).toInstant();
             this.jdbcTemplate.update("UPDATE user_settings SET latest_data = GREATEST(latest_data, ?) WHERE user_id = ?", Timestamp.from(instant), user.getId());
         });

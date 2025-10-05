@@ -267,6 +267,10 @@
                 currentZoomLevel = newZoomLevel;
             }
         });
+        // Listen for zoom end events to reload raw location points
+        map.on('moveend', () => {
+            reloadRawLocationPoints();
+        });
 
         function reloadRawLocationPoints() {
 
@@ -417,36 +421,39 @@
         function updateMapWithRawPoints(rawPointsData, color) {
             const bounds = L.latLngBounds();
 
-            const rawPointsPath = L.geodesic([], {
-                color: color == null ? '#f1ba63' : color,
-                weight: 6,
-                opacity: 0.9,
-                lineJoin: 'round',
-                lineCap: 'round',
-                steps: 2
-            });
+            if (rawPointsData && rawPointsData.segments && rawPointsData.segments.length > 0) {
 
-            if (rawPointsData && rawPointsData.points && rawPointsData.points.length > 0) {
-                const rawPointsCoords = rawPointsData.points.map(point => [point.latitude, point.longitude]);
-                bounds.extend(rawPointsCoords)
-                rawPointsPath.setLatLngs(rawPointsCoords);
-                rawPointsPath.addTo(map);
-                rawPointPaths.push(rawPointsPath)
-                
-                // Add avatar marker for the latest point if in auto-update mode and today is selected
-                if (autoUpdateMode && isSelectedDateToday() && rawPointsData.points.length > 0) {
-                    const latestPoint = rawPointsData.points[rawPointsData.points.length - 1];
-                    // Find the corresponding timeline section to get user data
-                    const timelineContainers = document.querySelectorAll('.user-timeline-section');
-                    const timelineSection = timelineContainers[rawPointsData.index];
-                    if (timelineSection) {
-                        const userData = {
-                            avatarUrl: timelineSection.dataset.userAvatarUrl,
-                            avatarFallback: timelineSection.dataset.avatarFallback,
-                            displayName: timelineSection.dataset.displayName
-                        };
-                        addAvatarMarker(latestPoint.latitude, latestPoint.longitude, userData);
-                    }
+                for (const segment of rawPointsData.segments) {
+                    const rawPointsPath = L.geodesic([], {
+                        color: color == null ? '#f1ba63' : color,
+                        weight: 6,
+                        opacity: 0.9,
+                        lineJoin: 'round',
+                        lineCap: 'round',
+                        steps: 2
+                    });
+                    const rawPointsCoords = segment.points.map(point => [point.latitude, point.longitude]);
+                    bounds.extend(rawPointsCoords)
+                    rawPointsPath.setLatLngs(rawPointsCoords);
+                    rawPointsPath.addTo(map);
+                    rawPointPaths.push(rawPointsPath)
+                }
+            }
+
+
+            // Add avatar marker for the latest point if in auto-update mode and today is selected
+            if (autoUpdateMode && isSelectedDateToday() && rawPointsData.latest) {
+                const latestPoint = rawPointsData.latest;
+                // Find the corresponding timeline section to get user data
+                const timelineContainers = document.querySelectorAll('.user-timeline-section');
+                const timelineSection = timelineContainers[rawPointsData.index];
+                if (timelineSection) {
+                    const userData = {
+                        avatarUrl: timelineSection.dataset.userAvatarUrl,
+                        avatarFallback: timelineSection.dataset.avatarFallback,
+                        displayName: timelineSection.dataset.displayName
+                    };
+                    addAvatarMarker(latestPoint.latitude, latestPoint.longitude, userData);
                 }
             }
 

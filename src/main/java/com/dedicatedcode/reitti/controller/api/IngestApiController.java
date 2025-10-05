@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.controller.api;
 
-import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
@@ -59,7 +59,7 @@ public class IngestApiController {
         
         try {
             // Convert an Owntracks format to our LocationPoint format
-            LocationDataRequest.LocationPoint locationPoint = request.toLocationPoint();
+            LocationPoint locationPoint = request.toLocationPoint();
 
             if (locationPoint.getTimestamp() == null) {
                 logger.warn("Ignoring location point [{}] because timestamp is null", locationPoint);

@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.service.importer;
 
-import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ImportBatchProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
@@ -45,7 +45,7 @@ public class GeoJsonImporter {
             }
 
             String type = rootNode.get("type").asText();
-            List<LocationDataRequest.LocationPoint> batch = new ArrayList<>(batchProcessor.getBatchSize());
+            List<LocationPoint> batch = new ArrayList<>(batchProcessor.getBatchSize());
 
             switch (type) {
                 case "FeatureCollection" -> {
@@ -56,7 +56,7 @@ public class GeoJsonImporter {
 
                     JsonNode features = rootNode.get("features");
                     for (JsonNode feature : features) {
-                        LocationDataRequest.LocationPoint point = convertGeoJsonFeature(feature);
+                        LocationPoint point = convertGeoJsonFeature(feature);
                         if (point != null) {
                             batch.add(point);
                             processedCount.incrementAndGet();
@@ -70,7 +70,7 @@ public class GeoJsonImporter {
                 }
                 case "Feature" -> {
                     // Process single Feature
-                    LocationDataRequest.LocationPoint point = convertGeoJsonFeature(rootNode);
+                    LocationPoint point = convertGeoJsonFeature(rootNode);
                     if (point != null) {
                         batch.add(point);
                         processedCount.incrementAndGet();
@@ -78,7 +78,7 @@ public class GeoJsonImporter {
                 }
                 case "Point" -> {
                     // Process single Point geometry
-                    LocationDataRequest.LocationPoint point = convertGeoJsonGeometry(rootNode, null);
+                    LocationPoint point = convertGeoJsonGeometry(rootNode, null);
                     if (point != null) {
                         batch.add(point);
                         processedCount.incrementAndGet();
@@ -114,7 +114,7 @@ public class GeoJsonImporter {
     /**
      * Converts a GeoJSON Feature to our LocationPoint format
      */
-    private LocationDataRequest.LocationPoint convertGeoJsonFeature(JsonNode feature) {
+    private LocationPoint convertGeoJsonFeature(JsonNode feature) {
         if (!feature.has("geometry")) {
             return null;
         }
@@ -128,7 +128,7 @@ public class GeoJsonImporter {
     /**
      * Converts a GeoJSON geometry (Point) to our LocationPoint format
      */
-    private LocationDataRequest.LocationPoint convertGeoJsonGeometry(JsonNode geometry, JsonNode properties) {
+    private LocationPoint convertGeoJsonGeometry(JsonNode geometry, JsonNode properties) {
         if (!geometry.has("type") || !"Point".equals(geometry.get("type").asText())) {
             return null; // Only support Point geometries for location data
         }
@@ -142,7 +142,7 @@ public class GeoJsonImporter {
             return null;
         }
 
-        LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
+        LocationPoint point = new LocationPoint();
 
         // GeoJSON coordinates are [longitude, latitude]
         double longitude = coordinates.get(0).asDouble();

@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.service.importer;
 
-import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ImportBatchProcessor;
@@ -31,7 +31,7 @@ public abstract class BaseGoogleTimelineImporter {
         this.parametersService = parametersService;
     }
 
-    protected int handleVisit(User user, ZonedDateTime startTime, ZonedDateTime endTime, LatLng latLng, List<LocationDataRequest.LocationPoint> batch) {
+    protected int handleVisit(User user, ZonedDateTime startTime, ZonedDateTime endTime, LatLng latLng, List<LocationPoint> batch) {
         DetectionParameter detectionParameter = parametersService.getCurrentConfiguration(user, startTime.toInstant());
 
         logger.info("Found visit at [{}] from start [{}] to end [{}]. Will insert at least [{}] synthetic geo locations.", latLng, startTime, endTime, detectionParameter.getVisitDetection().getMinimumAdjacentPoints());
@@ -55,8 +55,8 @@ public abstract class BaseGoogleTimelineImporter {
         return count + 1;
     }
 
-    protected void createAndScheduleLocationPoint(LatLng latLng, ZonedDateTime timestamp, User user, List<LocationDataRequest.LocationPoint> batch) {
-        LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
+    protected void createAndScheduleLocationPoint(LatLng latLng, ZonedDateTime timestamp, User user, List<LocationPoint> batch) {
+        LocationPoint point = new LocationPoint();
         point.setLatitude(latLng.latitude);
         point.setLongitude(latLng.longitude);
         point.setTimestamp(timestamp.withNano(0).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));

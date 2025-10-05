@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.event;
 
-import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -10,13 +10,13 @@ import java.util.List;
 
 public class LocationDataEvent implements Serializable {
     private final String username;
-    private final List<LocationDataRequest.LocationPoint> points;
+    private final List<LocationPoint> points;
     private final Instant receivedAt;
 
     @JsonCreator
     public LocationDataEvent(
             @JsonProperty("username") String username,
-            @JsonProperty("points") List<LocationDataRequest.LocationPoint> points) {
+            @JsonProperty("points") List<LocationPoint> points) {
         this.username = username;
         this.points = points;
         this.receivedAt = Instant.now();
@@ -26,7 +26,7 @@ public class LocationDataEvent implements Serializable {
         return username;
     }
 
-    public List<LocationDataRequest.LocationPoint> getPoints() {
+    public List<LocationPoint> getPoints() {
         return points;
     }
 

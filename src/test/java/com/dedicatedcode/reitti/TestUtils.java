@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti;
 
-import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import de.siegmar.fastcsv.reader.CsvReader;
 import org.locationtech.jts.geom.Coordinate;
@@ -76,7 +76,7 @@ public class TestUtils {
         }
     }
 
-    public static List<LocationDataRequest.LocationPoint> readFromTableOutput(String path) {
+    public static List<LocationPoint> readFromTableOutput(String path) {
         try {
             InputStream inputStream = TestUtils.class.getResourceAsStream(path);
             if (inputStream == null) {
@@ -100,7 +100,7 @@ public class TestUtils {
                                     double longitude = Double.parseDouble(pointParts[0]);
                                     double latitude = Double.parseDouble(pointParts[1]);
 
-                                    LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
+                                    LocationPoint point = new LocationPoint();
                                     point.setLatitude(latitude);
                                     point.setLongitude(longitude);
                                     point.setTimestamp(timestamp);
