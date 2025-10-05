@@ -17,8 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
@@ -170,30 +168,26 @@ public class OwnTracksRecorderIntegrationService {
     }
 
     public boolean testConnection(String baseUrl, String username, String authUsername, String authPassword, String deviceId) {
-        try {
-            String normalizedBaseUrl = baseUrl.trim();
-            if (normalizedBaseUrl.endsWith("/")) {
-                normalizedBaseUrl = normalizedBaseUrl.substring(0, normalizedBaseUrl.length() - 1);
-            }
-
-            String testUrl = normalizedBaseUrl + "/api/0/locations?user=%s&device=%s".formatted(username, deviceId);
-            
-            logger.debug("Testing OwnTracks Recorder connection to: {}", testUrl);
-
-            HttpEntity<String> entity = createHttpEntityWithAuth(authUsername, authPassword);
-            ResponseEntity<String> response = restTemplate.exchange(testUrl, HttpMethod.GET, entity, String.class);
-
-            HttpStatus statusCode = (HttpStatus) response.getStatusCode();
-            boolean isSuccessful = statusCode.is2xxSuccessful() || 
-                                 statusCode == HttpStatus.UNAUTHORIZED || 
-                                 statusCode == HttpStatus.FORBIDDEN;
-            
-            logger.debug("OwnTracks Recorder connection test result: {} (status: {})", isSuccessful, statusCode);
-            return isSuccessful;
-        } catch (Exception e) {
-            logger.warn("Failed to test OwnTracks Recorder connection to {}: {}", baseUrl, e.getMessage());
-            return false;
+        String normalizedBaseUrl = baseUrl.trim();
+        if (normalizedBaseUrl.endsWith("/")) {
+            normalizedBaseUrl = normalizedBaseUrl.substring(0, normalizedBaseUrl.length() - 1);
         }
+
+        String testUrl = normalizedBaseUrl + "/api/0/locations?user=%s&device=%s".formatted(username, deviceId);
+
+        logger.debug("Testing OwnTracks Recorder connection to: {}", testUrl);
+
+        HttpEntity<String> entity = createHttpEntityWithAuth(authUsername, authPassword);
+        ResponseEntity<String> response = restTemplate.exchange(testUrl, HttpMethod.GET, entity, String.class);
+
+        HttpStatus statusCode = (HttpStatus) response.getStatusCode();
+        boolean isSuccessful = statusCode.is2xxSuccessful() ||
+                statusCode == HttpStatus.UNAUTHORIZED ||
+                statusCode == HttpStatus.FORBIDDEN;
+
+        logger.debug("OwnTracks Recorder connection test result: {} (status: {})", isSuccessful, statusCode);
+        return isSuccessful;
+
     }
 
     public void deleteIntegration(User user) {

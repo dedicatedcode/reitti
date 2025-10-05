@@ -192,6 +192,8 @@ public class IntegrationsSettingsController {
                                                    @RequestParam String username,
                                                    @RequestParam String deviceId,
                                                    @RequestParam(defaultValue = "false") boolean enabled,
+                                                   @RequestParam String authUsername,
+                                                   @RequestParam String authPassword,
                                                    @AuthenticationPrincipal User currentUser,
                                                    Model model) {
 
@@ -206,7 +208,7 @@ public class IntegrationsSettingsController {
 
         try {
             OwnTracksRecorderIntegration integration = ownTracksRecorderIntegrationService.saveIntegration(
-                    currentUser, baseUrl, username, deviceId, enabled);
+                    currentUser, baseUrl, username, authUsername, authPassword, deviceId, enabled);
 
             model.addAttribute("successMessage", getMessage("integrations.owntracks.recorder.config.saved"));
             model.addAttribute("ownTracksRecorderIntegration", integration);
@@ -215,7 +217,7 @@ public class IntegrationsSettingsController {
             model.addAttribute("errorMessage", getMessage("integrations.owntracks.recorder.config.error", e.getMessage()));
 
             // Re-populate form with submitted values for error case
-            OwnTracksRecorderIntegration tempIntegration = new OwnTracksRecorderIntegration(baseUrl, username, deviceId, enabled);
+            OwnTracksRecorderIntegration tempIntegration = new OwnTracksRecorderIntegration(baseUrl, username, deviceId, enabled, authUsername, authPassword);
             model.addAttribute("ownTracksRecorderIntegration", tempIntegration);
             model.addAttribute("hasRecorderIntegration", enabled);
         }
@@ -231,11 +233,13 @@ public class IntegrationsSettingsController {
     @ResponseBody
     public Map<String, Object> testOwnTracksRecorderConnection(@RequestParam String baseUrl,
                                                                @RequestParam String username,
-                                                               @RequestParam String deviceId) {
+                                                               @RequestParam String deviceId,
+                                                               @RequestParam String authUsername,
+                                                               @RequestParam String authPassword) {
         Map<String, Object> response = new HashMap<>();
 
         try {
-            boolean connectionSuccessful = ownTracksRecorderIntegrationService.testConnection(baseUrl, username, deviceId);
+            boolean connectionSuccessful = ownTracksRecorderIntegrationService.testConnection(baseUrl, username, authUsername, authPassword, deviceId);
 
             if (connectionSuccessful) {
                 response.put("success", true);

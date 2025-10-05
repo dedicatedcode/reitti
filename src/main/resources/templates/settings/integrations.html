@@ -145,6 +145,26 @@
                                                th:placeholder="#{integrations.owntracks.recorder.base.url.placeholder}"
                                                th:value="${ownTracksRecorderIntegration?.baseUrl}">
                                     </div>
+                                    <div class="form-group">
+                                        <label for="recorderUsername" th:text="#{integrations.owntracks.recorder.username}">Username</label>
+                                        <input type="text"
+                                               id="recorderUsername"
+                                               name="username"
+                                               required
+                                               autocomplete="off"
+                                               th:placeholder="#{integrations.owntracks.recorder.username.placeholder}"
+                                               th:value="${ownTracksRecorderIntegration?.username}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="recorderDeviceId" th:text="#{integrations.owntracks.recorder.device.id}">Device ID</label>
+                                        <input type="text"
+                                               id="recorderDeviceId"
+                                               name="deviceId"
+                                               required
+                                               autocomplete="off"
+                                               th:placeholder="#{integrations.owntracks.recorder.device.id.placeholder}"
+                                               th:value="${ownTracksRecorderIntegration?.deviceId}">
+                                    </div>
 
                                     <div class="form-group">
                                         <label for="recorderAuthUsername" th:text="#{integrations.owntracks.recorder.auth.username}">Authentication Username</label>
@@ -166,28 +186,6 @@
                                                th:placeholder="#{integrations.owntracks.recorder.auth.password.placeholder}"
                                                th:value="${ownTracksRecorderIntegration?.authPassword}">
                                         <small th:text="#{integrations.owntracks.recorder.auth.optional}">Leave empty if no authentication is needed</small>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="recorderUsername" th:text="#{integrations.owntracks.recorder.username}">Username</label>
-                                        <input type="text"
-                                               id="recorderUsername"
-                                               name="username"
-                                               required
-                                               autocomplete="off"
-                                               th:placeholder="#{integrations.owntracks.recorder.username.placeholder}"
-                                               th:value="${ownTracksRecorderIntegration?.username}">
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="recorderDeviceId" th:text="#{integrations.owntracks.recorder.device.id}">Device ID</label>
-                                        <input type="text"
-                                               id="recorderDeviceId"
-                                               name="deviceId"
-                                               required
-                                               autocomplete="off"
-                                               th:placeholder="#{integrations.owntracks.recorder.device.id.placeholder}"
-                                               th:value="${ownTracksRecorderIntegration?.deviceId}">
                                     </div>
 
                                     <div class="form-group">
