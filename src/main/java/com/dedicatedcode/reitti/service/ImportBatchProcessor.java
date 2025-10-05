@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
-import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.security.User;
@@ -38,7 +38,7 @@ public class ImportBatchProcessor {
         this.pendingTriggers = new ConcurrentHashMap<>();
     }
     
-    public void sendToQueue(User user, List<LocationDataRequest.LocationPoint> batch) {
+    public void sendToQueue(User user, List<LocationPoint> batch) {
         LocationDataEvent event = new LocationDataEvent(
                 user.getUsername(),
                 new ArrayList<>(batch)

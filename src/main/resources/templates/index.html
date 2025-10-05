@@ -162,6 +162,23 @@
         }
     }
 
+    function getBoundingBoxParams() {
+        const bounds = map.getBounds();
+        const southWest = bounds.getSouthWest();
+        const northEast = bounds.getNorthEast();
+        
+        // Calculate buffer as 20% of the current viewport size
+        const latBuffer = (northEast.lat - southWest.lat) * 0.2;
+        const lngBuffer = (northEast.lng - southWest.lng) * 0.2;
+        
+        return {
+            minLat: southWest.lat - latBuffer,
+            minLng: southWest.lng - lngBuffer,
+            maxLat: northEast.lat + latBuffer,
+            maxLng: northEast.lng + lngBuffer
+        };
+    }
+
     function selectUser(userHeader) {
         // Remove active class from all user headers
         document.querySelectorAll('.user-header').forEach(header => {
@@ -254,6 +271,10 @@
                 currentZoomLevel = newZoomLevel;
             }
         });
+        // Listen for zoom end events to reload raw location points
+        map.on('moveend', () => {
+            reloadRawLocationPoints();
+        });
 
         function reloadRawLocationPoints() {
 
@@ -270,11 +291,20 @@
                     // Get current zoom level
                     const currentZoom = Math.round(map.getZoom());
                     
-                    // Append zoom parameter to URL
-                    const urlWithZoom = rawLocationPointsUrl + (rawLocationPointsUrl.includes('?') ? '&' : '?') + 'zoom=' + currentZoom;
+                    // Get bounding box parameters
+                    const bbox = getBoundingBoxParams();
+                    
+                    // Build URL with zoom and bounding box parameters
+                    const separator = rawLocationPointsUrl.includes('?') ? '&' : '?';
+                    const urlWithParams = rawLocationPointsUrl + separator + 
+                        'zoom=' + currentZoom +
+                        '&minLat=' + bbox.minLat +
+                        '&minLng=' + bbox.minLng +
+                        '&maxLat=' + bbox.maxLat +
+                        '&maxLng=' + bbox.maxLng;
                     
                     // Create fetch promise for raw location points with index to maintain order
-                    const fetchPromise = fetch(urlWithZoom).then(response => {
+                    const fetchPromise = fetch(urlWithParams).then(response => {
                         if (!response.ok) {
                             console.warn('Could not fetch raw location points');
                             return { points: [], index: i, color: color };
@@ -340,11 +370,20 @@
                     // Get current zoom level
                     const currentZoom = Math.round(map.getZoom());
                     
-                    // Append zoom parameter to URL
-                    const urlWithZoom = rawLocationPointsUrl + (rawLocationPointsUrl.includes('?') ? '&' : '?') + 'zoom=' + currentZoom;
+                    // Get bounding box parameters
+                    const bbox = getBoundingBoxParams();
+                    
+                    // Build URL with zoom and bounding box parameters
+                    const separator = rawLocationPointsUrl.includes('?') ? '&' : '?';
+                    const urlWithParams = rawLocationPointsUrl + separator + 
+                        'zoom=' + currentZoom +
+                        '&minLat=' + bbox.minLat +
+                        '&minLng=' + bbox.minLng +
+                        '&maxLat=' + bbox.maxLat +
+                        '&maxLng=' + bbox.maxLng;
                     
                     // Create fetch promise for raw location points with index to maintain order
-                    const fetchPromise = fetch(urlWithZoom).then(response => {
+                    const fetchPromise = fetch(urlWithParams).then(response => {
                         if (!response.ok) {
                             console.warn('Could not fetch raw location points');
                             return { points: [], index: i, color: color };
@@ -386,36 +425,39 @@
         function updateMapWithRawPoints(rawPointsData, color) {
             const bounds = L.latLngBounds();
 
-            const rawPointsPath = L.geodesic([], {
-                color: color == null ? '#f1ba63' : color,
-                weight: 6,
-                opacity: 0.9,
-                lineJoin: 'round',
-                lineCap: 'round',
-                steps: 2
-            });
+            if (rawPointsData && rawPointsData.segments && rawPointsData.segments.length > 0) {
 
-            if (rawPointsData && rawPointsData.points && rawPointsData.points.length > 0) {
-                const rawPointsCoords = rawPointsData.points.map(point => [point.latitude, point.longitude]);
-                bounds.extend(rawPointsCoords)
-                rawPointsPath.setLatLngs(rawPointsCoords);
-                rawPointsPath.addTo(map);
-                rawPointPaths.push(rawPointsPath)
-                
-                // Add avatar marker for the latest point if in auto-update mode and today is selected
-                if (autoUpdateMode && isSelectedDateToday() && rawPointsData.points.length > 0) {
-                    const latestPoint = rawPointsData.points[rawPointsData.points.length - 1];
-                    // Find the corresponding timeline section to get user data
-                    const timelineContainers = document.querySelectorAll('.user-timeline-section');
-                    const timelineSection = timelineContainers[rawPointsData.index];
-                    if (timelineSection) {
-                        const userData = {
-                            avatarUrl: timelineSection.dataset.userAvatarUrl,
-                            avatarFallback: timelineSection.dataset.avatarFallback,
-                            displayName: timelineSection.dataset.displayName
-                        };
-                        addAvatarMarker(latestPoint.latitude, latestPoint.longitude, userData);
-                    }
+                for (const segment of rawPointsData.segments) {
+                    const rawPointsPath = L.geodesic([], {
+                        color: color == null ? '#f1ba63' : color,
+                        weight: 6,
+                        opacity: 0.9,
+                        lineJoin: 'round',
+                        lineCap: 'round',
+                        steps: 2
+                    });
+                    const rawPointsCoords = segment.points.map(point => [point.latitude, point.longitude]);
+                    bounds.extend(rawPointsCoords)
+                    rawPointsPath.setLatLngs(rawPointsCoords);
+                    rawPointsPath.addTo(map);
+                    rawPointPaths.push(rawPointsPath)
+                }
+            }
+
+
+            // Add avatar marker for the latest point if in auto-update mode and today is selected
+            if (autoUpdateMode && isSelectedDateToday() && rawPointsData.latest) {
+                const latestPoint = rawPointsData.latest;
+                // Find the corresponding timeline section to get user data
+                const timelineContainers = document.querySelectorAll('.user-timeline-section');
+                const timelineSection = timelineContainers[rawPointsData.index];
+                if (timelineSection) {
+                    const userData = {
+                        avatarUrl: timelineSection.dataset.userAvatarUrl,
+                        avatarFallback: timelineSection.dataset.avatarFallback,
+                        displayName: timelineSection.dataset.displayName
+                    };
+                    addAvatarMarker(latestPoint.latitude, latestPoint.longitude, userData);
                 }
             }
 

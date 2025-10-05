@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.service;
 
-import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import org.slf4j.Logger;
 import org.springframework.stereotype.Service;
 
@@ -17,7 +17,7 @@ public class LocationPointsSimplificationService {
      * @param zoom   The current map zoom level (null means no simplification)
      * @return Simplified list of points
      */
-    public List<LocationDataRequest.LocationPoint> simplifyPoints(List<LocationDataRequest.LocationPoint> points, Integer zoom) {
+    public List<LocationPoint> simplifyPoints(List<LocationPoint> points, Integer zoom) {
         // If zoom is not provided or points are too few, return original
         if (zoom == null || points.size() <= 2) {
             return points;
@@ -68,7 +68,7 @@ public class LocationPointsSimplificationService {
     /**
      * Visvalingam-Whyatt algorithm implementation for polyline simplification
      */
-    private List<LocationDataRequest.LocationPoint> visvalingamWhyatt(List<LocationDataRequest.LocationPoint> points, int targetCount) {
+    private List<LocationPoint> visvalingamWhyatt(List<LocationPoint> points, int targetCount) {
         if (points.size() <= targetCount) {
             return points;
         }
@@ -109,7 +109,7 @@ public class LocationPointsSimplificationService {
         }
 
         // Build the result list with remaining points
-        List<LocationDataRequest.LocationPoint> result = new ArrayList<>();
+        List<LocationPoint> result = new ArrayList<>();
         for (int i = 0; i < points.size(); i++) {
             if (!removedIndices.contains(i)) {
                 result.add(points.get(i));
@@ -123,7 +123,7 @@ public class LocationPointsSimplificationService {
      * Update neighboring triangles after removing a point
      */
     private void updateNeighboringTriangles(PriorityQueue<Triangle> heap, Triangle removed,
-                                            Set<Integer> removedIndices, List<LocationDataRequest.LocationPoint> points) {
+                                            Set<Integer> removedIndices, List<LocationPoint> points) {
         // Find the previous and next non-removed points
         int prevIndex = removed.leftIndex;
         while (prevIndex > 0 && removedIndices.contains(prevIndex)) {
@@ -156,7 +156,7 @@ public class LocationPointsSimplificationService {
         final int rightIndex;
         final double area;
 
-        Triangle(int leftIndex, int centerIndex, int rightIndex, List<LocationDataRequest.LocationPoint> points) {
+        Triangle(int leftIndex, int centerIndex, int rightIndex, List<LocationPoint> points) {
             this.leftIndex = leftIndex;
             this.centerIndex = centerIndex;
             this.rightIndex = rightIndex;
@@ -170,9 +170,9 @@ public class LocationPointsSimplificationService {
         /**
          * Calculate the area of a triangle formed by three points using the cross product
          */
-        private static double calculateTriangleArea(LocationDataRequest.LocationPoint p1,
-                                                    LocationDataRequest.LocationPoint p2,
-                                                    LocationDataRequest.LocationPoint p3) {
+        private static double calculateTriangleArea(LocationPoint p1,
+                                                    LocationPoint p2,
+                                                    LocationPoint p3) {
             // Using the cross product formula for triangle area
             // Area = 0.5 * |x1(y2 - y3) + x2(y3 - y1) + x3(y1 - y2)|
             double area = Math.abs(

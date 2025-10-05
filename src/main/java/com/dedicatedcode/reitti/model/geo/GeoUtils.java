@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.model.geo;
 
-import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -32,7 +32,7 @@ public final class GeoUtils {
                 p2.latitude(), p2.longitude());
     }
 
-    public static double distanceInMeters(LocationDataRequest.LocationPoint p1, LocationDataRequest.LocationPoint p2) {
+    public static double distanceInMeters(LocationPoint p1, LocationPoint p2) {
         return distanceInMeters(
                 p1.getLatitude(), p1.getLongitude(),
                 p2.getLatitude(), p2.getLongitude());

@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.service.importer;
 
-import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ImportBatchProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
@@ -44,7 +44,7 @@ public class GoogleRecordsImporter {
             JsonFactory factory = objectMapper.getFactory();
             JsonParser parser = factory.createParser(inputStream);
             
-            List<LocationDataRequest.LocationPoint> batch = new ArrayList<>(batchProcessor.getBatchSize());
+            List<LocationPoint> batch = new ArrayList<>(batchProcessor.getBatchSize());
             boolean foundData = false;
             
             // Look for "locations" array (old Records.json format)
@@ -89,7 +89,7 @@ public class GoogleRecordsImporter {
     /**
      * Processes the Records.json format with "locations" array
      */
-    private int processLocationsArray(JsonParser parser, List<LocationDataRequest.LocationPoint> batch, User user) throws IOException {
+    private int processLocationsArray(JsonParser parser, List<LocationPoint> batch, User user) throws IOException {
         int processedCount = 0;
         
         // Move to the array
@@ -106,7 +106,7 @@ public class GoogleRecordsImporter {
                 JsonNode locationNode = objectMapper.readTree(parser);
                 
                 try {
-                    LocationDataRequest.LocationPoint point = convertGoogleRecordsLocation(locationNode);
+                    LocationPoint point = convertGoogleRecordsLocation(locationNode);
                     if (point != null) {
                         batch.add(point);
                         processedCount++;
@@ -128,7 +128,7 @@ public class GoogleRecordsImporter {
     /**
      * Converts a Google Records location entry to our LocationPoint format
      */
-    private LocationDataRequest.LocationPoint convertGoogleRecordsLocation(JsonNode locationNode) {
+    private LocationPoint convertGoogleRecordsLocation(JsonNode locationNode) {
         // Check if we have the required fields
         if (!locationNode.has("latitudeE7") ||
                 !locationNode.has("longitudeE7") ||
@@ -136,7 +136,7 @@ public class GoogleRecordsImporter {
             return null;
         }
 
-        LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
+        LocationPoint point = new LocationPoint();
 
         // Convert latitudeE7 and longitudeE7 to standard decimal format
         // Google stores these as integers with 7 decimal places of precision

@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.service.processing;
 
-import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
@@ -49,8 +49,8 @@ public class LocationDataIngestPipeline {
         }
 
         User user = userOpt.get();
-        List<LocationDataRequest.LocationPoint> points = event.getPoints();
-        List<LocationDataRequest.LocationPoint> filtered = this.geoPointAnomalyFilter.filterAnomalies(points);
+        List<LocationPoint> points = event.getPoints();
+        List<LocationPoint> filtered = this.geoPointAnomalyFilter.filterAnomalies(points);
         int updatedRows = rawLocationPointJdbcService.bulkInsert(user, filtered);
         userSettingsJdbcService.updateNewestData(user, filtered);
         userNotificationService.newRawLocationData(user, filtered);
