@@ -8,19 +8,23 @@ public class OwnTracksRecorderIntegration {
     private final String baseUrl;
     private final String username;
     private final String deviceId;
+    private final String authUsername;
+    private final String authPassword;
     private final boolean enabled;
     private final Instant lastSuccessfulFetch;
     private final Long version;
 
-    public OwnTracksRecorderIntegration(String baseUrl, String username, String deviceId, boolean enabled) {
-        this(null, baseUrl, username, deviceId, enabled, null, null);
+    public OwnTracksRecorderIntegration(String baseUrl, String username, String deviceId, boolean enabled, String authUsername, String authPassword) {
+        this(null, baseUrl, username, deviceId, authPassword, authUsername, enabled, null, null);
     }
 
-    public OwnTracksRecorderIntegration(Long id, String baseUrl, String username, String deviceId, boolean enabled, Instant lastSuccessfulFetch, Long version) {
+    public OwnTracksRecorderIntegration(Long id, String baseUrl, String username, String deviceId, String authUsername, String authPassword, boolean enabled, Instant lastSuccessfulFetch, Long version) {
         this.id = id;
         this.baseUrl = baseUrl;
         this.username = username;
         this.deviceId = deviceId;
+        this.authUsername = authUsername;
+        this.authPassword = authPassword;
         this.enabled = enabled;
         this.lastSuccessfulFetch = lastSuccessfulFetch;
         this.version = version;
@@ -42,6 +46,14 @@ public class OwnTracksRecorderIntegration {
         return deviceId;
     }
 
+    public String getAuthUsername() {
+        return authUsername;
+    }
+
+    public String getAuthPassword() {
+        return authPassword;
+    }
+
     public boolean isEnabled() {
         return enabled;
     }
@@ -55,18 +67,18 @@ public class OwnTracksRecorderIntegration {
     }
 
     public OwnTracksRecorderIntegration withEnabled(boolean enabled) {
-        return new OwnTracksRecorderIntegration(this.id, this.baseUrl, this.username, this.deviceId, enabled, this.lastSuccessfulFetch, this.version);
+        return new OwnTracksRecorderIntegration(this.id, this.baseUrl, this.username, this.deviceId, this.authUsername, this.authPassword, enabled, this.lastSuccessfulFetch, this.version);
     }
 
     public OwnTracksRecorderIntegration withId(Long id) {
-        return new OwnTracksRecorderIntegration(id, this.baseUrl, this.username, this.deviceId, this.enabled, this.lastSuccessfulFetch, this.version);
+        return new OwnTracksRecorderIntegration(id, this.baseUrl, this.username, this.deviceId, this.authUsername, this.authPassword, this.enabled, this.lastSuccessfulFetch, this.version);
     }
 
     public OwnTracksRecorderIntegration withVersion(Long version) {
-        return new OwnTracksRecorderIntegration(this.id, this.baseUrl, this.username, this.deviceId, this.enabled, this.lastSuccessfulFetch, version);
+        return new OwnTracksRecorderIntegration(this.id, this.baseUrl, this.username, this.deviceId, this.authUsername, this.authPassword, this.enabled, this.lastSuccessfulFetch, version);
     }
 
     public OwnTracksRecorderIntegration withLastSuccessfulFetch(Instant lastSuccessfulFetch) {
-        return new OwnTracksRecorderIntegration(this.id, this.baseUrl, this.username, this.deviceId, this.enabled, lastSuccessfulFetch, this.version);
+        return new OwnTracksRecorderIntegration(this.id, this.baseUrl, this.username, this.deviceId, this.authUsername, this.authPassword, this.enabled, lastSuccessfulFetch, this.version);
     }
 }
