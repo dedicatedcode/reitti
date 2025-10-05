@@ -123,7 +123,7 @@ public class OwnTracksRecorderIntegrationService {
         return jdbcService.findByUser(user);
     }
 
-    public OwnTracksRecorderIntegration saveIntegration(User user, String baseUrl, String username, String deviceId, boolean enabled) {
+    public OwnTracksRecorderIntegration saveIntegration(User user, String baseUrl, String username, String authUsername, String authPassword, String deviceId, boolean enabled) {
         // Validate inputs
         if (baseUrl == null || baseUrl.trim().isEmpty()) {
             throw new IllegalArgumentException("Base URL cannot be empty");
@@ -150,23 +150,25 @@ public class OwnTracksRecorderIntegrationService {
                     normalizedBaseUrl,
                     username.trim(),
                     deviceId.trim(),
+                    authUsername,
+                    authPassword,
                     enabled,
-                    existing.getLastSuccessfulFetch(),
-                    existing.getVersion()
-            );
+                    existing.getLastSuccessfulFetch(), existing.getVersion());
             return jdbcService.update(updated);
         } else {
             OwnTracksRecorderIntegration newIntegration = new OwnTracksRecorderIntegration(
                     normalizedBaseUrl,
                     username.trim(),
                     deviceId.trim(),
-                    enabled
+                    enabled,
+                    authUsername,
+                    authPassword
             );
             return jdbcService.save(user, newIntegration);
         }
     }
 
-    public boolean testConnection(String baseUrl, String username, String deviceId) {
+    public boolean testConnection(String baseUrl, String username, String authUsername, String authPassword, String deviceId) {
         try {
             String normalizedBaseUrl = baseUrl.trim();
             if (normalizedBaseUrl.endsWith("/")) {
@@ -176,7 +178,8 @@ public class OwnTracksRecorderIntegrationService {
             String testUrl = normalizedBaseUrl + "/api/0/locations?user=%s&device=%s".formatted(username, deviceId);
             
             logger.debug("Testing OwnTracks Recorder connection to: {}", testUrl);
-            
+
+            //if authUsername and authPassword is not empty or null, add basic auth to the request AI!
             ResponseEntity<String> response = restTemplate.getForEntity(testUrl, String.class);
 
             HttpStatus statusCode = (HttpStatus) response.getStatusCode();
