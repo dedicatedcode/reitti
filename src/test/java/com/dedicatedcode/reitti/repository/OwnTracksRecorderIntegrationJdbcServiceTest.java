@@ -2,8 +2,8 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
-import com.dedicatedcode.reitti.model.integration.OwnTracksRecorderIntegration;
 import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.integration.OwnTracksRecorderIntegration;
 import com.dedicatedcode.reitti.model.security.User;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -38,7 +38,7 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
 
     @AfterEach
     void tearDown() {
-        this.service.findByUser(this.testingService.admin()).ifPresent(ownTracksRecorderIntegration -> {this.service.delete(ownTracksRecorderIntegration);});
+        this.service.findByUser(this.testingService.admin()).ifPresent(ownTracksRecorderIntegration -> this.service.delete(ownTracksRecorderIntegration));
     }
 
     @Test
@@ -47,7 +47,9 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "http://localhost:8083",
                 "testuser",
                 "device123",
-                true
+                true,
+                null,
+                null
         );
 
         OwnTracksRecorderIntegration saved = service.save(this.testingService.admin(), integration);
@@ -69,10 +71,10 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "http://localhost:8083",
                 "testuser",
                 "device123",
+                null,
+                null,
                 true,
-                now,
-                null
-        );
+                now, null);
 
         OwnTracksRecorderIntegration saved = service.save(this.testingService.admin(), integration);
 
@@ -86,7 +88,9 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "http://localhost:8083",
                 "testuser",
                 "device123",
-                true
+                true,
+                null,
+                null
         );
         service.save(this.testingService.admin(), integration);
 
@@ -107,7 +111,9 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "http://localhost:8083",
                 "testuser",
                 "device123",
-                true
+                true,
+                null,
+                null
         );
         OwnTracksRecorderIntegration saved = service.save(this.testingService.admin(), integration);
 
@@ -117,10 +123,10 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "http://localhost:8084",
                 "newuser",
                 "device456",
+                null,
+                null,
                 false,
-                Instant.now(),
-                saved.getVersion()
-        );
+                Instant.now(), saved.getVersion());
 
         OwnTracksRecorderIntegration result = service.update(updated);
 
@@ -140,7 +146,9 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "http://localhost:8083",
                 "testuser",
                 "device123",
-                true
+                true,
+                null,
+                null
         );
         OwnTracksRecorderIntegration saved = service.save(this.testingService.admin(), integration);
 
@@ -150,10 +158,10 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "http://localhost:8084",
                 "newuser",
                 "device456",
-                false,
                 null,
-                999L // Wrong version
-        );
+                null,
+                false,  // Wrong version
+                null, 999L);
 
         assertThatThrownBy(() -> service.update(updated))
                 .isInstanceOf(RuntimeException.class)
@@ -167,7 +175,9 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "http://localhost:8083",
                 "testuser",
                 "device123",
-                true
+                true,
+                null,
+                null
         );
         OwnTracksRecorderIntegration saved = service.save(this.testingService.admin(), integration);
 
@@ -186,7 +196,9 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "http://localhost:8083",
                 "testuser",
                 "device123",
-                true
+                true,
+                null,
+                null
         );
         service.save(this.testingService.admin(), integration);
 

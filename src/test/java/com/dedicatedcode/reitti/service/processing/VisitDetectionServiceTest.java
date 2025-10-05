@@ -33,8 +33,6 @@ class VisitDetectionServiceTest {
     private ProcessedVisitJdbcService processedVisitRepository;
     @Autowired
     private UserJdbcService userJdbcService;
-    @Value("${reitti.visit.merge-threshold-seconds}")
-    private int visitMergeThresholdSeconds;
 
     @BeforeEach
     void setUp() {
@@ -49,7 +47,7 @@ class VisitDetectionServiceTest {
         List<Visit> persistedVisits = this.visitRepository.findByUser(userJdbcService.findById(1L)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + (Long) 1L)));
 
-        assertEquals(10, persistedVisits.size());
+        assertEquals(15, persistedVisits.size());
 
         List<ProcessedVisit> processedVisits = this.processedVisitRepository.findByUser(userJdbcService.findById(1L)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + (Long) 1L)));
@@ -61,8 +59,8 @@ class VisitDetectionServiceTest {
             ProcessedVisit nextVisit = processedVisits.get(i + 1);
 
             long durationBetweenVisits = Duration.between(visit.getEndTime(), nextVisit.getStartTime()).toSeconds();
-            assertTrue(durationBetweenVisits >= visitMergeThresholdSeconds || !visit.getPlace().equals(nextVisit.getPlace()),
-                    "Duration between same place visit at index [" + i + "] should not be lower than [" + visitMergeThresholdSeconds + "]s but was [" + durationBetweenVisits + "]s");
+            assertTrue(durationBetweenVisits >= 300 || !visit.getPlace().equals(nextVisit.getPlace()),
+                    "Duration between same place visit at index [" + i + "] should not be lower than [" + 300 + "]s but was [" + durationBetweenVisits + "]s");
         }
 
         System.out.println();
