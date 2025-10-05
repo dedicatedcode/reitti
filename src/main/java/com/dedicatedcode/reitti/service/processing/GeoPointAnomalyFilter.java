@@ -1,13 +1,12 @@
 package com.dedicatedcode.reitti.service.processing;
 
-import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.geo.GeoUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -28,12 +27,12 @@ public class GeoPointAnomalyFilter {
     /**
      * Main filtering method that removes anomalous geopoints
      */
-    public List<LocationDataRequest.LocationPoint> filterAnomalies(List<LocationDataRequest.LocationPoint> points) {
+    public List<LocationPoint> filterAnomalies(List<LocationPoint> points) {
         if (points == null || points.isEmpty()) {
             return new ArrayList<>();
         }
 
-        Set<LocationDataRequest.LocationPoint> detectedAnomalies = new HashSet<>();
+        Set<LocationPoint> detectedAnomalies = new HashSet<>();
 
         // Apply multiple detection methods
         detectedAnomalies.addAll(detectAccuracyAnomalies(points));
@@ -50,10 +49,10 @@ public class GeoPointAnomalyFilter {
     /**
      * Detect points with poor accuracy
      */
-    private Set<LocationDataRequest.LocationPoint> detectAccuracyAnomalies(List<LocationDataRequest.LocationPoint> points) {
-        Set<LocationDataRequest.LocationPoint> anomalies = new HashSet<>();
+    private Set<LocationPoint> detectAccuracyAnomalies(List<LocationPoint> points) {
+        Set<LocationPoint> anomalies = new HashSet<>();
 
-        for (LocationDataRequest.LocationPoint point : points) {
+        for (LocationPoint point : points) {
             if (point.getAccuracyMeters() > config.maxAccuracyMeters) {
                 anomalies.add(point);
             }
@@ -65,12 +64,12 @@ public class GeoPointAnomalyFilter {
     /**
      * Detect impossible speeds between consecutive points
      */
-    private Set<LocationDataRequest.LocationPoint> detectSpeedAnomalies(List<LocationDataRequest.LocationPoint> points) {
-        Set<LocationDataRequest.LocationPoint> anomalies = new HashSet<>();
+    private Set<LocationPoint> detectSpeedAnomalies(List<LocationPoint> points) {
+        Set<LocationPoint> anomalies = new HashSet<>();
 
         for (int i = 1; i < points.size(); i++) {
-            LocationDataRequest.LocationPoint prev = points.get(i - 1);
-            LocationDataRequest.LocationPoint curr = points.get(i);
+            LocationPoint prev = points.get(i - 1);
+            LocationPoint curr = points.get(i);
 
             if (prev.getTimestamp() != null && curr.getTimestamp() != null) {
                 double distance = GeoUtils.distanceInMeters(prev, curr);
@@ -104,12 +103,12 @@ public class GeoPointAnomalyFilter {
     /**
      * Detect large distance jumps between consecutive points
      */
-    private Set<LocationDataRequest.LocationPoint> detectDistanceJumpAnomalies(List<LocationDataRequest.LocationPoint> points) {
-        Set<LocationDataRequest.LocationPoint> anomalies = new HashSet<>();
+    private Set<LocationPoint> detectDistanceJumpAnomalies(List<LocationPoint> points) {
+        Set<LocationPoint> anomalies = new HashSet<>();
 
         for (int i = 1; i < points.size(); i++) {
-            LocationDataRequest.LocationPoint prev = points.get(i - 1);
-            LocationDataRequest.LocationPoint curr = points.get(i);
+            LocationPoint prev = points.get(i - 1);
+            LocationPoint curr = points.get(i);
 
             double distance = GeoUtils.distanceInMeters(prev, curr);
             double maxDistance = isEdgePoint(i, points.size()) ?
@@ -138,17 +137,17 @@ public class GeoPointAnomalyFilter {
     /**
      * Detect sudden direction changes that might indicate errors
      */
-    private Set<LocationDataRequest.LocationPoint> detectDirectionAnomalies(List<LocationDataRequest.LocationPoint> points) {
-        Set<LocationDataRequest.LocationPoint> anomalies = new HashSet<>();
+    private Set<LocationPoint> detectDirectionAnomalies(List<LocationPoint> points) {
+        Set<LocationPoint> anomalies = new HashSet<>();
 
         if (points.size() < 3) {
             return anomalies;
         }
 
         for (int i = 1; i < points.size() - 1; i++) {
-            LocationDataRequest.LocationPoint prev = points.get(i - 1);
-            LocationDataRequest.LocationPoint curr = points.get(i);
-            LocationDataRequest.LocationPoint next = points.get(i + 1);
+            LocationPoint prev = points.get(i - 1);
+            LocationPoint curr = points.get(i);
+            LocationPoint next = points.get(i + 1);
 
             // Calculate bearings
             double bearing1 = calculateBearing(prev, curr);
@@ -179,7 +178,7 @@ public class GeoPointAnomalyFilter {
     /**
      * Handle edge cases specially - first and last points
      */
-    private LocationDataRequest.LocationPoint selectWorsePoint(LocationDataRequest.LocationPoint p1, LocationDataRequest.LocationPoint p2, List<LocationDataRequest.LocationPoint> allPoints, int currentIndex) {
+    private LocationPoint selectWorsePoint(LocationPoint p1, LocationPoint p2, List<LocationPoint> allPoints, int currentIndex) {
         // For edge points, compare against multiple criteria
         double accuracyScore1 = p1.getAccuracyMeters();
         double accuracyScore2 = p2.getAccuracyMeters();
@@ -187,7 +186,7 @@ public class GeoPointAnomalyFilter {
         // If we have enough points, check consistency with neighbors
         if (currentIndex == 1 && allPoints.size() > 2) {
             // First edge: check consistency with second next point
-            LocationDataRequest.LocationPoint next = allPoints.get(currentIndex + 1);
+            LocationPoint next = allPoints.get(currentIndex + 1);
             double dist1Next = GeoUtils.distanceInMeters(p1, next);
             double dist2Next = GeoUtils.distanceInMeters(p2, next);
 
@@ -199,7 +198,7 @@ public class GeoPointAnomalyFilter {
 
         if (currentIndex == allPoints.size() - 1 && allPoints.size() > 2) {
             // Last edge: check consistency with second previous point
-            LocationDataRequest.LocationPoint prevPrev = allPoints.get(currentIndex - 2);
+            LocationPoint prevPrev = allPoints.get(currentIndex - 2);
             double prevPrevDist1 = GeoUtils.distanceInMeters(prevPrev, p1);
             double prevPrevDist2 = GeoUtils.distanceInMeters(prevPrev, p2);
 
@@ -217,7 +216,7 @@ public class GeoPointAnomalyFilter {
         return index == 0 || index == totalSize - 1;
     }
 
-    private double calculateBearing(LocationDataRequest.LocationPoint from, LocationDataRequest.LocationPoint to) {
+    private double calculateBearing(LocationPoint from, LocationPoint to) {
         double lat1 = Math.toRadians(from.getLatitude());
         double lat2 = Math.toRadians(to.getLatitude());
         double deltaLng = Math.toRadians(to.getLongitude() - from.getLongitude());

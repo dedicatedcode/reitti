@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.repository;
 
-import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.ClusteredPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -55,7 +56,7 @@ public class RawLocationPointJdbcService {
                 user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
     }
 
-    public List<RawLocationPoint> findByUserAndDateRange(User user, java.time.LocalDateTime startTime, java.time.LocalDateTime endTime) {
+    public List<RawLocationPoint> findByUserAndDateRange(User user, LocalDateTime startTime, LocalDateTime endTime) {
         String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.version " +
                 "FROM raw_location_points rlp " +
                 "WHERE rlp.user_id = ? AND rlp.timestamp BETWEEN ? AND ? " +
@@ -174,12 +175,70 @@ public class RawLocationPointJdbcService {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM raw_location_points", Long.class);
     }
 
+    public List<RawLocationPoint> findPointsInBoxWithNeighbors(
+            User user,
+            Instant startTime,
+            Instant endTime,
+            double minLat,
+            double maxLat,
+            double minLon,
+            double maxLon) {
+
+        String sql = """
+            WITH all_points AS (
+                SELECT
+                    id,
+                    user_id,
+                    timestamp,
+                    geom,
+                    accuracy_meters,
+                    processed,
+                    version,
+                    ST_Within(geom, ST_MakeEnvelope(?, ?, ?, ?, 4326)) as in_box,
+                    LAG(ST_Within(geom, ST_MakeEnvelope(?, ?, ?, ?, 4326)))
+                        OVER (ORDER BY timestamp) as prev_in_box,
+                    LEAD(ST_Within(geom, ST_MakeEnvelope(?, ?, ?, ?, 4326)))
+                        OVER (ORDER BY timestamp) as next_in_box
+                FROM raw_location_points
+                WHERE user_id = ?
+                  AND timestamp BETWEEN ? AND ?
+            )
+            SELECT
+                id,
+                user_id,
+                timestamp,
+                ST_AsText(geom) as geom,
+                accuracy_meters,
+                processed,
+                version
+            FROM all_points
+            WHERE in_box = true
+               OR prev_in_box = true
+               OR next_in_box = true
+            ORDER BY timestamp
+            """;
+
+        return jdbcTemplate.query(
+                sql,
+                rawLocationPointRowMapper,
+                // ST_MakeEnvelope params for in_box
+                minLon, minLat, maxLon, maxLat,
+                // ST_MakeEnvelope params for prev_in_box
+                minLon, minLat, maxLon, maxLat,
+                // ST_MakeEnvelope params for next_in_box
+                minLon, minLat, maxLon, maxLat,
+                // WHERE clause params
+                user.getId(),
+                Timestamp.from(startTime),
+                Timestamp.from(endTime)
+        );
+    }
 
     public long countByUser(User user) {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM raw_location_points WHERE user_id = ?", Long.class, user.getId());
     }
 
-    public int bulkInsert(User user, List<LocationDataRequest.LocationPoint> points) {
+    public int bulkInsert(User user, List<LocationPoint> points) {
         if (points.isEmpty()) {
             return -1;
         }
@@ -188,7 +247,7 @@ public class RawLocationPointJdbcService {
                 "VALUES (?, ?, ?, CAST(? AS geometry), false) ON CONFLICT DO NOTHING;";
 
         List<Object[]> batchArgs = new ArrayList<>();
-        for (LocationDataRequest.LocationPoint point : points) {
+        for (LocationPoint point : points) {
             ZonedDateTime parse = ZonedDateTime.parse(point.getTimestamp());
             Timestamp timestamp = Timestamp.from(parse.toInstant());
             batchArgs.add(new Object[]{

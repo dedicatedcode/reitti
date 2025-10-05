@@ -1,8 +1,8 @@
 package com.dedicatedcode.reitti.controller.api;
 
-import com.dedicatedcode.reitti.dto.LocationDataRequest;
+import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.dto.RawLocationDataResponse;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
-import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
@@ -40,14 +40,27 @@ public class LocationDataApiController {
         this.userJdbcService = userJdbcService;
     }
 
+    private static LocationPoint toLocationPoint(RawLocationPoint point) {
+        LocationPoint p = new LocationPoint();
+        p.setLatitude(point.getLatitude());
+        p.setLongitude(point.getLongitude());
+        p.setAccuracyMeters(point.getAccuracyMeters());
+        p.setTimestamp(point.getTimestamp().toString());
+        return p;
+    }
+
     @GetMapping("/raw-location-points")
     public ResponseEntity<?> getRawLocationPointsForCurrentUser(@AuthenticationPrincipal User user,
                                                                 @RequestParam(required = false) String date,
                                                                 @RequestParam(required = false) String startDate,
                                                                 @RequestParam(required = false) String endDate,
                                                                 @RequestParam(required = false, defaultValue = "UTC") String timezone,
-                                                                @RequestParam(required = false) Integer zoom) {
-        return this.getRawLocationPoints(user.getId(), date, startDate, endDate, timezone, zoom);
+                                                                @RequestParam(required = false) Integer zoom,
+                                                                @RequestParam(required = false) Double minLat,
+                                                                @RequestParam(required = false) Double maxLat,
+                                                                @RequestParam(required = false) Double minLng,
+                                                                @RequestParam(required = false) Double maxLng) {
+        return this.getRawLocationPoints(user.getId(), date, startDate, endDate, timezone, zoom,  minLat, maxLat, minLng, maxLng);
     }
 
     @GetMapping("/raw-location-points/{userId}")
@@ -56,7 +69,11 @@ public class LocationDataApiController {
                                                   @RequestParam(required = false) String startDate,
                                                   @RequestParam(required = false) String endDate,
                                                   @RequestParam(required = false, defaultValue = "UTC") String timezone,
-                                                  @RequestParam(required = false) Integer zoom) {
+                                                  @RequestParam(required = false) Integer zoom,
+                                                  @RequestParam(required = false) Double minLat,
+                                                  @RequestParam(required = false) Double maxLat,
+                                                  @RequestParam(required = false) Double minLng,
+                                                  @RequestParam(required = false) Double maxLng) {
         try {
             ZoneId userTimezone = ZoneId.of(timezone);
             Instant startOfRange;
@@ -85,24 +102,18 @@ public class LocationDataApiController {
             // Get the user from the repository by userId
             User user = userJdbcService.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-            
-            // Get raw location points for the user and date range
-            List<LocationDataRequest.LocationPoint> points = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, startOfRange, endOfRange).stream()
-                .filter(point -> !point.getTimestamp().isBefore(startOfRange) && point.getTimestamp().isBefore(endOfRange))
-                .sorted(Comparator.comparing(RawLocationPoint::getTimestamp))
-                    .map(point -> {
-                        LocationDataRequest.LocationPoint p = new LocationDataRequest.LocationPoint();
-                        p.setLatitude(point.getLatitude());
-                        p.setLongitude(point.getLongitude());
-                        p.setAccuracyMeters(point.getAccuracyMeters());
-                        p.setTimestamp(point.getTimestamp().toString());
-                        return p;
-                    })
-                    .toList();
 
-            List<LocationDataRequest.LocationPoint> simplifiedPoints = simplificationService.simplifyPoints(points, zoom);
+            List<RawLocationPoint> pointsInBoxWithNeighbors = this.rawLocationPointJdbcService.findPointsInBoxWithNeighbors(user, startOfRange, endOfRange, minLat, maxLat, minLng, maxLng);
+            List<List<LocationPoint>> segments = extractPathSegments(pointsInBoxWithNeighbors, minLat, maxLat, minLng, maxLng);
 
-            return ResponseEntity.ok(Map.of("points", simplifiedPoints));
+
+            List<RawLocationDataResponse.Segment> result = segments.stream().map(s -> {
+                List<LocationPoint> simplifiedPoints = simplificationService.simplifyPoints(s, zoom);
+                return new RawLocationDataResponse.Segment(simplifiedPoints);
+            }).toList();
+
+            Optional<RawLocationPoint> latest = this.rawLocationPointJdbcService.findLatest(user);
+            return ResponseEntity.ok(new RawLocationDataResponse(result, latest.map(LocationDataApiController::toLocationPoint).orElse(null)));
             
         } catch (DateTimeParseException e) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -132,7 +143,7 @@ public class LocationDataApiController {
             
             RawLocationPoint latestPoint = latest.get();
             
-            LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
+            LocationPoint point = new LocationPoint();
             point.setLatitude(latestPoint.getLatitude());
             point.setLongitude(latestPoint.getLongitude());
             point.setAccuracyMeters(latestPoint.getAccuracyMeters());
@@ -149,4 +160,47 @@ public class LocationDataApiController {
                 .body(Map.of("error", "Error fetching latest location: " + e.getMessage()));
         }
     }
+
+
+    private List<List<LocationPoint>> extractPathSegments(List<RawLocationPoint> points, Double minLat, Double maxLat, Double minLng, Double maxLng) {
+        List<List<LocationPoint>> segments = new ArrayList<>();
+        List<LocationPoint> currentPath = new ArrayList<>();
+        int consecutiveOutside = 0;
+
+        for (RawLocationPoint point : points) {
+            boolean inBox = isPointInBox(point, minLat, maxLat, minLng, maxLng);
+
+            if (inBox) {
+                currentPath.add(toLocationPoint(point));
+                consecutiveOutside = 0;
+            } else {
+                consecutiveOutside++;
+                currentPath.add(toLocationPoint(point));
+
+                if (consecutiveOutside == 2) {
+                    currentPath.removeLast();
+
+                    if (currentPath.size() >= 2) {
+                        segments.add(new ArrayList<>(currentPath));
+                    }
+                    currentPath.clear();
+                    consecutiveOutside = 0;
+                }
+            }
+        }
+
+        if (currentPath.size() >= 2) {
+            segments.add(new ArrayList<>(currentPath));
+        }
+
+        return segments;
+    }
+
+    private boolean isPointInBox(RawLocationPoint point, Double minLat, Double maxLat, Double minLng, Double maxLng) {
+        return point.getLatitude() >= minLat &&
+                point.getLatitude() <= maxLat &&
+                point.getLongitude() >= minLng &&
+                point.getLongitude() <= maxLng;
+    }
+
 }

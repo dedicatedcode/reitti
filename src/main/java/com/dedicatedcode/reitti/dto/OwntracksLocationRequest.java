@@ -125,8 +125,8 @@ public class OwntracksLocationRequest {
     /**
      * Converts to a LocationPoint for processing
      */
-    public LocationDataRequest.LocationPoint toLocationPoint() {
-        LocationDataRequest.LocationPoint point = new LocationDataRequest.LocationPoint();
+    public LocationPoint toLocationPoint() {
+        LocationPoint point = new LocationPoint();
         point.setLatitude(latitude);
         point.setLongitude(longitude);
         

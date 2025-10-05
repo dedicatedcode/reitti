@@ -142,7 +142,7 @@ public class ReittiIntegrationService {
         }
     }
 
-    public List<LocationDataRequest.LocationPoint> getRawLocationData(User user, Long integrationId, String startDate, String endDate, Integer zoom, String timezone) {
+    public List<LocationPoint> getRawLocationData(User user, Long integrationId, String startDate, String endDate, Integer zoom, String timezone) {
         return this.jdbcService
                 .findByIdAndUser(integrationId,user)
                 .stream().filter(integration -> integration.isEnabled() && VALID_INTEGRATION_STATUS.contains(integration.getStatus()))
@@ -170,7 +170,7 @@ public class ReittiIntegrationService {
 
                         if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null && remoteResponse.getBody().containsKey("points")) {
                             update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
-                            return (List<LocationDataRequest.LocationPoint>) remoteResponse.getBody().get("points");
+                            return (List<LocationPoint>) remoteResponse.getBody().get("points");
                         } else if (remoteResponse.getStatusCode().is4xxClientError()) {
                             throw new RequestFailedException(rawLocationDataUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
                         } else {
