@@ -103,10 +103,13 @@ public class LocationDataApiController {
             User user = userJdbcService.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-            List<RawLocationPoint> pointsInBoxWithNeighbors = this.rawLocationPointJdbcService.findPointsInBoxWithNeighbors(user, startOfRange, endOfRange, minLat, maxLat, minLng, maxLng);
+            List<RawLocationPoint> pointsInBoxWithNeighbors;
+            if (minLat == null || maxLat == null || minLng == null || maxLng == null) {
+                pointsInBoxWithNeighbors = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, startOfRange,endOfRange);
+            } else {
+                pointsInBoxWithNeighbors = this.rawLocationPointJdbcService.findPointsInBoxWithNeighbors(user, startOfRange, endOfRange, minLat, maxLat, minLng, maxLng);
+            }
             List<List<LocationPoint>> segments = extractPathSegments(pointsInBoxWithNeighbors, minLat, maxLat, minLng, maxLng);
-
-
             List<RawLocationDataResponse.Segment> result = segments.stream().map(s -> {
                 List<LocationPoint> simplifiedPoints = simplificationService.simplifyPoints(s, zoom);
                 return new RawLocationDataResponse.Segment(simplifiedPoints);
@@ -197,6 +200,9 @@ public class LocationDataApiController {
     }
 
     private boolean isPointInBox(RawLocationPoint point, Double minLat, Double maxLat, Double minLng, Double maxLng) {
+        if (minLat == null || maxLat == null || minLng == null || maxLng == null) {
+            return true;
+        }
         return point.getLatitude() >= minLat &&
                 point.getLatitude() <= maxLat &&
                 point.getLongitude() >= minLng &&
