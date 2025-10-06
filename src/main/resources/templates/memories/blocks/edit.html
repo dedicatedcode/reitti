@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Block - Reitti</title>
+    <link rel="icon" th:href="@{/img/logo.svg}">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/memories.css">
+    <link rel="stylesheet" href="/css/lineicons.css">
+</head>
+<body>
+<div class="memories-page">
+    <div class="navbar">
+        <a th:href="@{/memories/{id}(id=${memoryId})}" class="nav-link"><i class="lni lni-arrow-left"></i> Back to Memory</a>
+        <span class="navbar-title">Edit Block</span>
+    </div>
+
+    <div class="memory-form-container">
+        <div th:if="${block.blockType.name() == 'TEXT'}" class="memory-form">
+            <h2>Edit Text Block</h2>
+            <form th:action="@{/memories/{memoryId}/blocks/{blockId}/text(memoryId=${memoryId}, blockId=${block.id})}" method="post">
+                <div class="form-group">
+                    <label for="headline">Headline</label>
+                    <input type="text" id="headline" name="headline" class="form-control" 
+                           th:value="${textBlock?.headline}" placeholder="Enter headline">
+                </div>
+
+                <div class="form-group">
+                    <label for="content">Content</label>
+                    <textarea id="content" name="content" class="form-control" rows="10" 
+                              placeholder="Enter content" th:text="${textBlock?.content}"></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <a th:href="@{/memories/{id}(id=${memoryId})}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+
+        <div th:if="${block.blockType.name() == 'IMAGE_GALLERY'}" class="memory-form">
+            <h2>Edit Image Gallery</h2>
+            
+            <div class="images-list" th:if="${images != null && !images.isEmpty()}">
+                <div th:each="image : ${images}" class="image-item">
+                    <img th:src="${image.imageUrl}" alt="Gallery image" class="gallery-thumbnail">
+                    <input type="text" th:value="${image.caption}" class="form-control" placeholder="Caption">
+                    <form th:action="@{/memories/{memoryId}/blocks/{blockId}/images/{imageId}(memoryId=${memoryId}, blockId=${block.id}, imageId=${image.id})}" 
+                          method="post" style="display: inline;">
+                        <input type="hidden" name="_method" value="DELETE">
+                        <button type="submit" class="btn-icon danger" onclick="return confirm('Delete this image?')">
+                            <i class="lni lni-trash"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <form th:action="@{/memories/{memoryId}/blocks/{blockId}/images(memoryId=${memoryId}, blockId=${block.id})}" method="post">
+                <div class="form-group">
+                    <label for="imageUrl">Add Image URL</label>
+                    <input type="url" id="imageUrl" name="imageUrl" class="form-control" 
+                           placeholder="https://example.com/image.jpg" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="caption">Caption</label>
+                    <input type="text" id="caption" name="caption" class="form-control" 
+                           placeholder="Image caption (optional)">
+                </div>
+
+                <div class="form-actions">
+                    <a th:href="@{/memories/{id}(id=${memoryId})}" class="btn btn-secondary">Back to Memory</a>
+                    <button type="submit" class="btn btn-primary">Add Image</button>
+                </div>
+            </form>
+        </div>
+
+        <div th:if="${block.blockType.name() == 'VISIT'}" class="memory-form">
+            <h2>Visit Block</h2>
+            <p>Visit blocks are automatically populated from your timeline data.</p>
+            <div class="form-actions">
+                <a th:href="@{/memories/{id}(id=${memoryId})}" class="btn btn-secondary">Back to Memory</a>
+            </div>
+        </div>
+
+        <div th:if="${block.blockType.name() == 'TRIP'}" class="memory-form">
+            <h2>Trip Block</h2>
+            <p>Trip blocks are automatically populated from your timeline data.</p>
+            <div class="form-actions">
+                <a th:href="@{/memories/{id}(id=${memoryId})}" class="btn btn-secondary">Back to Memory</a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

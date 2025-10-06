@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Memory - Reitti</title>
+    <link rel="icon" th:href="@{/img/logo.svg}">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/memories.css">
+    <link rel="stylesheet" href="/css/lineicons.css">
+</head>
+<body>
+<div class="memories-page">
+    <div class="navbar">
+        <a href="/memories" class="nav-link"><i class="lni lni-arrow-left"></i> Back to Memories</a>
+        <span class="navbar-title">New Memory</span>
+    </div>
+
+    <div class="memory-form-container">
+        <form th:action="@{/memories}" method="post" class="memory-form">
+            <div class="form-group">
+                <label for="title">Title *</label>
+                <input type="text" id="title" name="title" required class="form-control" placeholder="Give your memory a title">
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" class="form-control" rows="4" placeholder="Add a description (optional)"></textarea>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="startDate">Start Date *</label>
+                    <input type="date" id="startDate" name="startDate" required class="form-control" 
+                           th:value="${startDate}">
+                </div>
+
+                <div class="form-group">
+                    <label for="endDate">End Date *</label>
+                    <input type="date" id="endDate" name="endDate" required class="form-control" 
+                           th:value="${endDate}">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Header Type *</label>
+                <div class="radio-group">
+                    <label class="radio-label">
+                        <input type="radio" name="headerType" value="MAP" checked>
+                        <span><i class="lni lni-map"></i> Map</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="headerType" value="IMAGE">
+                        <span><i class="lni lni-image"></i> Image</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group" id="imageUrlGroup" style="display: none;">
+                <label for="headerImageUrl">Header Image URL</label>
+                <input type="url" id="headerImageUrl" name="headerImageUrl" class="form-control" placeholder="https://example.com/image.jpg">
+            </div>
+
+            <div class="form-actions">
+                <a href="/memories" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Create Memory</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Show/hide image URL field based on header type selection
+    document.querySelectorAll('input[name="headerType"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const imageUrlGroup = document.getElementById('imageUrlGroup');
+            if (this.value === 'IMAGE') {
+                imageUrlGroup.style.display = 'block';
+            } else {
+                imageUrlGroup.style.display = 'none';
+            }
+        });
+    });
+</script>
+</body>
+</html>

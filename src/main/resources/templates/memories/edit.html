@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Memory - Reitti</title>
+    <link rel="icon" th:href="@{/img/logo.svg}">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/memories.css">
+    <link rel="stylesheet" href="/css/lineicons.css">
+</head>
+<body>
+<div class="memories-page">
+    <div class="navbar">
+        <a th:href="@{/memories/{id}(id=${memory.id})}" class="nav-link"><i class="lni lni-arrow-left"></i> Back to Memory</a>
+        <span class="navbar-title">Edit Memory</span>
+    </div>
+
+    <div class="memory-form-container">
+        <form th:action="@{/memories/{id}(id=${memory.id})}" method="post" class="memory-form">
+            <input type="hidden" name="version" th:value="${memory.version}">
+            
+            <div class="form-group">
+                <label for="title">Title *</label>
+                <input type="text" id="title" name="title" required class="form-control" 
+                       th:value="${memory.title}" placeholder="Give your memory a title">
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" class="form-control" rows="4" 
+                          placeholder="Add a description (optional)" th:text="${memory.description}"></textarea>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="startDate">Start Date *</label>
+                    <input type="date" id="startDate" name="startDate" required class="form-control" 
+                           th:value="${memory.startDate}">
+                </div>
+
+                <div class="form-group">
+                    <label for="endDate">End Date *</label>
+                    <input type="date" id="endDate" name="endDate" required class="form-control" 
+                           th:value="${memory.endDate}">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Header Type *</label>
+                <div class="radio-group">
+                    <label class="radio-label">
+                        <input type="radio" name="headerType" value="MAP" 
+                               th:checked="${memory.headerType.name() == 'MAP'}">
+                        <span><i class="lni lni-map"></i> Map</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="headerType" value="IMAGE" 
+                               th:checked="${memory.headerType.name() == 'IMAGE'}">
+                        <span><i class="lni lni-image"></i> Image</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group" id="imageUrlGroup" 
+                 th:style="${memory.headerType.name() == 'IMAGE'} ? 'display: block;' : 'display: none;'">
+                <label for="headerImageUrl">Header Image URL</label>
+                <input type="url" id="headerImageUrl" name="headerImageUrl" class="form-control" 
+                       th:value="${memory.headerImageUrl}" placeholder="https://example.com/image.jpg">
+            </div>
+
+            <div class="form-actions">
+                <a th:href="@{/memories/{id}(id=${memory.id})}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Show/hide image URL field based on header type selection
+    document.querySelectorAll('input[name="headerType"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const imageUrlGroup = document.getElementById('imageUrlGroup');
+            if (this.value === 'IMAGE') {
+                imageUrlGroup.style.display = 'block';
+            } else {
+                imageUrlGroup.style.display = 'none';
+            }
+        });
+    });
+</script>
+</body>
+</html>

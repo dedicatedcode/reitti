@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memories - Reitti</title>
+    <link rel="icon" th:href="@{/img/logo.svg}">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/memories.css">
+    <link rel="stylesheet" href="/css/lineicons.css">
+    <script src="/js/htmx.min.js"></script>
+</head>
+<body>
+<div class="memories-page">
+    <div class="navbar">
+        <a href="/" class="nav-link"><i class="lni lni-arrow-left"></i> Back to Timeline</a>
+        <span class="navbar-title">Memories</span>
+        <a href="/memories/new" class="nav-link primary"><i class="lni lni-plus"></i> New Memory</a>
+    </div>
+
+    <div class="memories-container">
+        <div th:if="${memories.isEmpty()}" class="empty-state">
+            <i class="lni lni-image"></i>
+            <h2>No memories yet</h2>
+            <p>Create your first memory by selecting a date range on the timeline</p>
+            <a href="/memories/new" class="btn btn-primary">Create Memory</a>
+        </div>
+
+        <div class="memories-grid">
+            <div th:each="memory : ${memories}" class="memory-card">
+                <a th:href="@{/memories/{id}(id=${memory.id})}" class="memory-card-link">
+                    <div class="memory-header" th:if="${memory.headerType.name() == 'IMAGE' && memory.headerImageUrl != null}">
+                        <img th:src="${memory.headerImageUrl}" th:alt="${memory.title}" class="memory-header-image">
+                    </div>
+                    <div class="memory-header map-header" th:if="${memory.headerType.name() == 'MAP'}">
+                        <div class="map-placeholder">
+                            <i class="lni lni-map"></i>
+                        </div>
+                    </div>
+                    <div class="memory-content">
+                        <h3 class="memory-title" th:text="${memory.title}">Memory Title</h3>
+                        <p class="memory-date-range">
+                            <i class="lni lni-calendar"></i>
+                            <span th:text="${#temporals.format(memory.startDate, 'MMM d, yyyy')}">Start Date</span>
+                            <span th:if="${memory.startDate != memory.endDate}">
+                                - <span th:text="${#temporals.format(memory.endDate, 'MMM d, yyyy')}">End Date</span>
+                            </span>
+                        </p>
+                        <p class="memory-description" th:if="${memory.description != null && !memory.description.isEmpty()}" 
+                           th:text="${memory.description}">Description</p>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
