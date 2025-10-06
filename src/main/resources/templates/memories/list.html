@@ -10,15 +10,22 @@
     <link rel="stylesheet" href="/css/lineicons.css">
     <script src="/js/htmx.min.js"></script>
 </head>
-<body>
-<div class="memories-page">
-    <div class="navbar">
-        <a href="/" class="nav-link"><i class="lni lni-arrow-left"></i> Back to Timeline</a>
-        <span class="navbar-title">Memories</span>
-        <a href="/memories/new" class="nav-link primary"><i class="lni lni-plus"></i> New Memory</a>
-    </div>
-
-    <div class="memories-container">
+<body class="memories-page">
+<div class="settings-container">
+    <nav class="settings-nav">
+        <div class="settings-header">
+            <a href="/" class="back-link">
+                <i class="lni lni-arrow-left"></i>
+                <span>Back to Timeline</span>
+            </a>
+            <h1>Memories</h1>
+        </div>
+        <a href="/memories/new" class="settings-nav-item">
+            <i class="lni lni-plus"></i> New Memory
+        </a>
+    </nav>
+    
+    <div class="settings-content-area">
         <div th:if="${memories.isEmpty()}" class="empty-state">
             <i class="lni lni-image"></i>
             <h2>No memories yet</h2>
@@ -26,7 +33,7 @@
             <a href="/memories/new" class="btn btn-primary">Create Memory</a>
         </div>
 
-        <div class="memories-grid">
+        <div class="memories-grid" th:unless="${memories.isEmpty()}">
             <div th:each="memory : ${memories}" class="memory-card">
                 <a th:href="@{/memories/{id}(id=${memory.id})}" class="memory-card-link">
                     <div class="memory-header" th:if="${memory.headerType.name() == 'IMAGE' && memory.headerImageUrl != null}">

@@ -9,14 +9,19 @@
     <link rel="stylesheet" href="/css/memories.css">
     <link rel="stylesheet" href="/css/lineicons.css">
 </head>
-<body>
-<div class="memories-page">
-    <div class="navbar">
-        <a th:href="@{/memories/{id}(id=${memory.id})}" class="nav-link"><i class="lni lni-arrow-left"></i> Back to Memory</a>
-        <span class="navbar-title">Edit Memory</span>
-    </div>
-
-    <div class="memory-form-container">
+<body class="memories-page">
+<div class="settings-container">
+    <nav class="settings-nav">
+        <div class="settings-header">
+            <a th:href="@{/memories/{id}(id=${memory.id})}" class="back-link">
+                <i class="lni lni-arrow-left"></i>
+                <span>Back to Memory</span>
+            </a>
+            <h1>Edit Memory</h1>
+        </div>
+    </nav>
+    
+    <div class="settings-content-area">
         <form th:action="@{/memories/{id}(id=${memory.id})}" method="post" class="memory-form">
             <input type="hidden" name="version" th:value="${memory.version}">
             

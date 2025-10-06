@@ -13,85 +13,91 @@
     <script src="/js/leaflet.js"></script>
     <script src="/js/leaflet.geodesic.2.7.2.js"></script>
 </head>
-<body>
-<div class="memory-view-page">
-    <div class="navbar">
-        <a href="/memories" class="nav-link"><i class="lni lni-arrow-left"></i> Back to Memories</a>
-        <span class="navbar-title" th:text="${memory.title}">Memory Title</span>
-        <div class="navbar-actions">
-            <a th:href="@{/memories/{id}/edit(id=${memory.id})}" class="nav-link"><i class="lni lni-pencil"></i> Edit</a>
-            <form th:action="@{/memories/{id}(id=${memory.id})}" method="post" style="display: inline;">
-                <input type="hidden" name="_method" value="DELETE">
-                <button type="submit" class="nav-link danger" onclick="return confirm('Are you sure you want to delete this memory?')">
-                    <i class="lni lni-trash"></i> Delete
-                </button>
-            </form>
+<body class="memories-page">
+<div class="settings-container">
+    <nav class="settings-nav">
+        <div class="settings-header">
+            <a href="/memories" class="back-link">
+                <i class="lni lni-arrow-left"></i>
+                <span>Back to Memories</span>
+            </a>
+            <h1 th:text="${memory.title}">Memory Title</h1>
         </div>
-    </div>
-
-    <div class="memory-header-section" th:if="${memory.headerType.name() == 'IMAGE' && memory.headerImageUrl != null}">
-        <img th:src="${memory.headerImageUrl}" th:alt="${memory.title}" class="memory-header-image-large">
-    </div>
-
-    <div class="memory-header-section map-header-section" th:if="${memory.headerType.name() == 'MAP'}">
-        <div id="memory-map" class="memory-map"></div>
-    </div>
-
-    <div class="memory-details">
-        <h1 class="memory-title-large" th:text="${memory.title}">Memory Title</h1>
-        <p class="memory-date-range-large">
-            <i class="lni lni-calendar"></i>
-            <span th:text="${#temporals.format(memory.startDate, 'MMMM d, yyyy')}">Start Date</span>
-            <span th:if="${memory.startDate != memory.endDate}">
-                - <span th:text="${#temporals.format(memory.endDate, 'MMMM d, yyyy')}">End Date</span>
-            </span>
-        </p>
-        <p class="memory-description-large" th:if="${memory.description != null && !memory.description.isEmpty()}" 
-           th:text="${memory.description}">Description</p>
-    </div>
-
-    <div class="memory-blocks-container">
-        <div class="blocks-header">
-            <h2>Blocks</h2>
-            <button class="btn btn-primary" onclick="showAddBlockModal()"><i class="lni lni-plus"></i> Add Block</button>
+        <a th:href="@{/memories/{id}/edit(id=${memory.id})}" class="settings-nav-item">
+            <i class="lni lni-pencil"></i> Edit
+        </a>
+        <form th:action="@{/memories/{id}(id=${memory.id})}" method="post" style="margin: 0;">
+            <input type="hidden" name="_method" value="DELETE">
+            <button type="submit" class="settings-nav-item" style="width: 100%; text-align: left;" onclick="return confirm('Are you sure you want to delete this memory?')">
+                <i class="lni lni-trash"></i> Delete
+            </button>
+        </form>
+    </nav>
+    
+    <div class="settings-content-area">
+        <div class="memory-header-section" th:if="${memory.headerType.name() == 'IMAGE' && memory.headerImageUrl != null}">
+            <img th:src="${memory.headerImageUrl}" th:alt="${memory.title}" class="memory-header-image-large">
         </div>
 
-        <div th:if="${blocks.isEmpty()}" class="empty-blocks">
-            <i class="lni lni-layers"></i>
-            <p>No blocks yet. Add your first block to start building your memory.</p>
+        <div class="memory-header-section map-header-section" th:if="${memory.headerType.name() == 'MAP'}">
+            <div id="memory-map" class="memory-map"></div>
         </div>
 
-        <div class="blocks-list" id="blocksList">
-            <div th:each="block : ${blocks}" class="memory-block" th:attr="data-block-id=${block.id}, data-block-type=${block.blockType.name()}">
-                <div class="block-header">
-                    <span class="block-type-badge" th:text="${block.blockType.name()}">BLOCK TYPE</span>
-                    <div class="block-actions">
-                        <button class="btn-icon" th:onclick="'editBlock(' + ${block.id} + ')'"><i class="lni lni-pencil"></i></button>
-                        <form th:action="@{/memories/{memoryId}/blocks/{blockId}(memoryId=${memory.id}, blockId=${block.id})}" 
-                              method="post" style="display: inline;">
-                            <input type="hidden" name="_method" value="DELETE">
-                            <button type="submit" class="btn-icon danger" onclick="return confirm('Delete this block?')">
-                                <i class="lni lni-trash"></i>
-                            </button>
-                        </form>
+        <div class="memory-details">
+            <p class="memory-date-range-large">
+                <i class="lni lni-calendar"></i>
+                <span th:text="${#temporals.format(memory.startDate, 'MMMM d, yyyy')}">Start Date</span>
+                <span th:if="${memory.startDate != memory.endDate}">
+                    - <span th:text="${#temporals.format(memory.endDate, 'MMMM d, yyyy')}">End Date</span>
+                </span>
+            </p>
+            <p class="memory-description-large" th:if="${memory.description != null && !memory.description.isEmpty()}" 
+               th:text="${memory.description}">Description</p>
+        </div>
+
+        <div class="memory-blocks-container">
+            <div class="blocks-header">
+                <h2>Blocks</h2>
+                <button class="btn btn-primary" onclick="showAddBlockModal()"><i class="lni lni-plus"></i> Add Block</button>
+            </div>
+
+            <div th:if="${blocks.isEmpty()}" class="empty-blocks">
+                <i class="lni lni-layers"></i>
+                <p>No blocks yet. Add your first block to start building your memory.</p>
+            </div>
+
+            <div class="blocks-list" id="blocksList">
+                <div th:each="block : ${blocks}" class="memory-block" th:attr="data-block-id=${block.id}, data-block-type=${block.blockType.name()}">
+                    <div class="block-header">
+                        <span class="block-type-badge" th:text="${block.blockType.name()}">BLOCK TYPE</span>
+                        <div class="block-actions">
+                            <button class="btn-icon" th:onclick="'editBlock(' + ${block.id} + ')'"><i class="lni lni-pencil"></i></button>
+                            <form th:action="@{/memories/{memoryId}/blocks/{blockId}(memoryId=${memory.id}, blockId=${block.id})}" 
+                                  method="post" style="display: inline;">
+                                <input type="hidden" name="_method" value="DELETE">
+                                <button type="submit" class="btn-icon danger" onclick="return confirm('Delete this block?')">
+                                    <i class="lni lni-trash"></i>
+                                </button>
+                            </form>
+                        </div>
                     </div>
-                </div>
-                <div class="block-content">
-                    <div th:if="${block.blockType.name() == 'TEXT'}" class="text-block">
-                        <h3>Text Block</h3>
-                        <p>Content will be loaded here</p>
-                    </div>
-                    <div th:if="${block.blockType.name() == 'VISIT'}" class="visit-block">
-                        <i class="lni lni-map-marker"></i>
-                        <p>Visit block</p>
-                    </div>
-                    <div th:if="${block.blockType.name() == 'TRIP'}" class="trip-block">
-                        <i class="lni lni-direction"></i>
-                        <p>Trip block</p>
-                    </div>
-                    <div th:if="${block.blockType.name() == 'IMAGE_GALLERY'}" class="gallery-block">
-                        <i class="lni lni-gallery"></i>
-                        <p>Image gallery</p>
+                    <div class="block-content">
+                        <div th:if="${block.blockType.name() == 'TEXT'}" class="text-block">
+                            <h3>Text Block</h3>
+                            <p>Content will be loaded here</p>
+                        </div>
+                        <div th:if="${block.blockType.name() == 'VISIT'}" class="visit-block">
+                            <i class="lni lni-map-marker"></i>
+                            <p>Visit block</p>
+                        </div>
+                        <div th:if="${block.blockType.name() == 'TRIP'}" class="trip-block">
+                            <i class="lni lni-direction"></i>
+                            <p>Trip block</p>
+                        </div>
+                        <div th:if="${block.blockType.name() == 'IMAGE_GALLERY'}" class="gallery-block">
+                            <i class="lni lni-gallery"></i>
+                            <p>Image gallery</p>
+                        </div>
                     </div>
                 </div>
             </div>
