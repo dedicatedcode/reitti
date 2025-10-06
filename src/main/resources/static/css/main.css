@@ -1661,8 +1661,50 @@ button:disabled {
     pointer-events: none;
 }
 
+/* Create Memory FAB */
+.create-memory-fab {
+    position: fixed;
+    bottom: 320px;
+    right: 2rem;
+    z-index: 999;
+    animation: slideInUp 0.3s ease-out;
+}
 
+.fab-button {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    background-color: #ff6c00;
+    color: white;
+    border-radius: 50px;
+    text-decoration: none;
+    box-shadow: 0 4px 12px rgba(255, 108, 0, 0.4);
+    transition: all 0.3s ease;
+    font-weight: 600;
+    font-size: 1rem;
+}
 
+.fab-button:hover {
+    background-color: #e66100;
+    box-shadow: 0 6px 16px rgba(255, 108, 0, 0.5);
+    transform: translateY(-2px);
+}
+
+.fab-button i {
+    font-size: 1.2rem;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 
 @media (max-width: 768px) {
     .home-location-inputs {
@@ -1672,5 +1714,22 @@ button:disabled {
 
     .coordinate-input {
         min-width: unset;
+    }
+    
+    .create-memory-fab {
+        bottom: 280px;
+        right: 1rem;
+    }
+    
+    .fab-button span {
+        display: none;
+    }
+    
+    .fab-button {
+        width: 56px;
+        height: 56px;
+        padding: 0;
+        justify-content: center;
+        border-radius: 50%;
     }
 }
