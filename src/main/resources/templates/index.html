@@ -45,6 +45,7 @@
 <div class="timeline">
     <div class="navbar">
         <span><img class="logo" th:src="@{/img/logo.svg}" alt="reitti logo" title="reitti" src="/img/logo.svg"></span>
+        <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/memories" class="nav-link" th:title="#{nav.memories}"><i class="lni lni-image"></i></a>
         <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/statistics" class="nav-link" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
         <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/settings" class="nav-link" th:title="#{nav.settings.tooltip}"><i class="lni lni-gear-1"></i></a>
         <a type="button" class="nav-link" id="auto-update-btn" onclick="toggleAutoUpdate()" title="Auto Update"><i class="lni lni-play"></i></a>
@@ -66,6 +67,14 @@
 
 <!-- Horizontal date picker will be initialized here -->
 <div id="horizontal-date-picker-container"></div>
+
+<!-- Create Memory Button (shown when date range is selected) -->
+<div id="create-memory-button" class="create-memory-fab" style="display: none;">
+    <a href="#" onclick="createMemoryFromRange(event)" class="fab-button" title="Create Memory from Selection">
+        <i class="lni lni-plus"></i>
+        <span>Create Memory</span>
+    </a>
+</div>
 
 <script th:inline="javascript">
     // Locale object for JavaScript
@@ -210,6 +219,13 @@
     };
 
     let pulsatingMarkers = [];
+
+    function createMemoryFromRange(event) {
+        event.preventDefault();
+        if (currentDateRange && currentDateRange.startDate && currentDateRange.endDate) {
+            window.location.href = `/memories/new?startDate=${currentDateRange.startDate}&endDate=${currentDateRange.endDate}`;
+        }
+    }
 
     document.addEventListener('DOMContentLoaded', function () {
         // Check if date is in URL parameters
@@ -693,6 +709,8 @@
                 updateUrlWithDate(formattedDate);
                 // Clear any existing date range
                 currentDateRange = null;
+                // Hide create memory button
+                document.getElementById('create-memory-button').style.display = 'none';
                 // Trigger HTMX reload of timeline
                 document.body.dispatchEvent(new CustomEvent('dateChanged'));
             },
@@ -702,6 +720,8 @@
                     startDate: formattedStartDate,
                     endDate: formattedEndDate
                 };
+                // Show create memory button
+                document.getElementById('create-memory-button').style.display = 'flex';
                 // Update URL to show range
                 const url = new URL(window.location);
                 url.searchParams.set('startDate', formattedStartDate);
@@ -1004,9 +1024,11 @@
     function hideUIElements() {
         const timeline = document.querySelector('.timeline');
         const datePicker = document.getElementById('horizontal-date-picker-container');
+        const createMemoryBtn = document.getElementById('create-memory-button');
         
         timeline.classList.add('hidden');
         datePicker.classList.add('hidden');
+        createMemoryBtn.style.display = 'none';
     }
 
     function showUIElements() {
