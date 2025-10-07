@@ -250,22 +250,20 @@
         
         // Initialize raw location loader
         rawLocationLoader = new RawLocationLoader(map, window.userSettings);
-        
+
         // Initialize raw location loader with user configurations
         initializeRawLocationLoader();
-        
+
         // Listen for map move/zoom events to update photo markers
         map.on('moveend zoomend', () => {
             photoClient.onMapMoveEnd();
         });
 
         function loadTimelineData(startDate, endDate) {
-            // Load photos for the selected date or date range
             if (startDate && endDate && startDate !== endDate) {
                 // Range mode
                 photoClient.updatePhotosForRange(startDate, endDate, getUserTimezone());
             } else {
-                // Single date mode
                 const date = startDate || getSelectedDate();
                 photoClient.updatePhotosForRange(date, date, getUserTimezone());
             }
@@ -289,7 +287,7 @@
         function initializeRawLocationLoader() {
             const userConfigs = [];
             const timelineContainers = document.querySelectorAll('.user-timeline-section');
-            
+
             timelineContainers.forEach(container => {
                 const config = {
                     url: container.dataset.rawLocationPointsUrl,
@@ -300,7 +298,7 @@
                 };
                 userConfigs.push(config);
             });
-            
+
             rawLocationLoader.init(userConfigs);
         }
 
@@ -309,7 +307,7 @@
             if (event.detail.target.classList.contains('timeline-container')) {
                 // Re-initialize raw location loader with updated user configurations
                 initializeRawLocationLoader();
-                
+
                 // Timeline content has been updated, update map markers
                 const params = getTimelineParams();
                 loadTimelineData(params.startDate, params.endDate);
@@ -628,7 +626,7 @@
             eventSource = null;
         }
         
-        
+
         // Remove pulsating markers when auto-update is disabled
         rawLocationLoader.removePulsatingMarkers();
         
@@ -804,7 +802,7 @@
         const timeline = document.querySelector('.timeline');
         const datePicker = document.getElementById('horizontal-date-picker-container');
         const createMemoryBtn = document.getElementById('create-memory-button');
-        
+
         timeline.classList.add('hidden');
         datePicker.classList.add('hidden');
         createMemoryBtn.style.display = 'none';
