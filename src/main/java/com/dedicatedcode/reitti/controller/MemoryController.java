@@ -296,4 +296,66 @@ public class MemoryController {
         };
     }
 
+    @PostMapping("/{id}/blocks/text")
+    public String createTextBlock(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long id,
+            @RequestParam(required = false) String headline,
+            @RequestParam(required = false) String content) {
+        
+        Memory memory = memoryService.getMemoryById(user, id)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        
+        MemoryBlock block = memoryService.addBlock(id, BlockType.TEXT);
+        memoryService.addTextBlock(block.getId(), headline, content);
+        
+        return "redirect:/memories/" + id;
+    }
+
+    @PostMapping("/{id}/blocks/visit")
+    public String createVisitBlock(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long id,
+            @RequestParam Long visitId) {
+        
+        Memory memory = memoryService.getMemoryById(user, id)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        
+        MemoryBlock block = memoryService.addBlock(id, BlockType.VISIT);
+        memoryService.addVisitBlock(block.getId(), visitId);
+        
+        return "redirect:/memories/" + id;
+    }
+
+    @PostMapping("/{id}/blocks/trip")
+    public String createTripBlock(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long id,
+            @RequestParam Long tripId) {
+        
+        Memory memory = memoryService.getMemoryById(user, id)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        
+        MemoryBlock block = memoryService.addBlock(id, BlockType.TRIP);
+        memoryService.addTripBlock(block.getId(), tripId);
+        
+        return "redirect:/memories/" + id;
+    }
+
+    @PostMapping("/{id}/blocks/image-gallery")
+    public String createImageGalleryBlock(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long id,
+            @RequestParam String imageUrl,
+            @RequestParam(required = false) String caption) {
+        
+        Memory memory = memoryService.getMemoryById(user, id)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        
+        MemoryBlock block = memoryService.addBlock(id, BlockType.IMAGE_GALLERY);
+        memoryService.addImageToGallery(block.getId(), imageUrl, caption);
+        
+        return "redirect:/memories/" + id;
+    }
+
 }

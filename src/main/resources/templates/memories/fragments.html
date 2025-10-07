@@ -61,8 +61,7 @@
 <!-- Text block form -->
 <div th:fragment="text-block-form" class="block-form">
     <h3>Add Text Block</h3>
-    <form th:action="@{/memories/{id}/blocks(id=${memoryId})}" method="post" hx-target="body" hx-swap="innerHTML">
-        <input type="hidden" name="blockType" value="TEXT">
+    <form th:action="@{/memories/{id}/blocks/text(id=${memoryId})}" method="post" hx-target="body" hx-swap="innerHTML">
         
         <div class="form-group">
             <label for="headline">Headline</label>
@@ -88,8 +87,7 @@
 <!-- Visit block form -->
 <div th:fragment="visit-block-form" class="block-form">
     <h3>Add Visit Block</h3>
-    <form th:action="@{/memories/{id}/blocks(id=${memoryId})}" method="post" hx-target="body" hx-swap="innerHTML">
-        <input type="hidden" name="blockType" value="VISIT">
+    <form th:action="@{/memories/{id}/blocks/visit(id=${memoryId})}" method="post" hx-target="body" hx-swap="innerHTML">
         
         <div class="form-group">
             <label for="visitId">Select Visit</label>
@@ -113,8 +111,7 @@
 <!-- Trip block form -->
 <div th:fragment="trip-block-form" class="block-form">
     <h3>Add Trip Block</h3>
-    <form th:action="@{/memories/{id}/blocks(id=${memoryId})}" method="post" hx-target="body" hx-swap="innerHTML">
-        <input type="hidden" name="blockType" value="TRIP">
+    <form th:action="@{/memories/{id}/blocks/trip(id=${memoryId})}" method="post" hx-target="body" hx-swap="innerHTML">
         
         <div class="form-group">
             <label for="tripId">Select Trip</label>
@@ -138,7 +135,7 @@
 <!-- Image gallery block form -->
 <div th:fragment="image-gallery-block-form" class="block-form">
     <h3>Add Image Gallery Block</h3>
-    <form th:action="@{/memories/{id}/blocks/{blockId}/images(id=${memoryId}, blockId='new')}" method="post" hx-target="body" hx-swap="innerHTML">
+    <form th:action="@{/memories/{id}/blocks/image-gallery(id=${memoryId})}" method="post" hx-target="body" hx-swap="innerHTML">
         
         <div class="form-group">
             <label for="imageUrl">Image URL</label>
