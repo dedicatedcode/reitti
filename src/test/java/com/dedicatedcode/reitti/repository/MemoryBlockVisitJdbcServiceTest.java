@@ -45,7 +45,7 @@ class MemoryBlockVisitJdbcServiceTest {
         jdbcTemplate.update("DELETE FROM memory_block_visit");
         jdbcTemplate.update("DELETE FROM memory_block");
         jdbcTemplate.update("DELETE FROM memory");
-        jdbcTemplate.update("DELETE FROM visit");
+        jdbcTemplate.update("DELETE FROM visits");
 
         testUser = testingService.randomUser();
 
