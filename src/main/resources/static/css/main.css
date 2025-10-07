@@ -190,7 +190,7 @@ label {
     box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
 }
 
-input[type="text"], input[type="password"], input[type="url"], input[type="number"], input[type="date"], select {
+input[type="text"], input[type="password"], input[type="url"], input[type="number"], input[type="date"], select, textarea {
     width: 100%;
     padding: 8px;
     border: 1px solid #ddd;
@@ -198,6 +198,20 @@ input[type="text"], input[type="password"], input[type="url"], input[type="numbe
     box-sizing: border-box;
     background-color: var(--color-background-dark-light);
     color: var(--color-text-white);
+}
+
+
+select:active,
+textarea:active,
+input:active,
+select:focus,
+textarea:focus,
+input:focus {
+    border-color: var(--color-highlight);
+}
+
+textarea:focus-visible {
+    outline: none;
 }
 
 

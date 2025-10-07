@@ -1,27 +1,33 @@
-<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Memory - Reitti</title>
+    <title>Memories - Reitti</title>
     <link rel="icon" th:href="@{/img/logo.svg}">
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/memories.css">
-    <link rel="stylesheet" href="/css/lineicons.css">
+    <link rel="stylesheet" th:href="@{/css/main.css}" href="../../static/css/main.css">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}" href="../../static/css/lineicons.css">
+    <script src="/js/htmx.min.js"></script>
 </head>
 <body class="memories-page">
 <div class="settings-container">
-    <nav class="settings-nav">
-        <div class="settings-header">
-            <a th:href="@{/memories/{id}(id=${memory.id})}" class="back-link">
-                <i class="lni lni-arrow-left"></i>
-                <span>Back to Memory</span>
-            </a>
-            <h1>Edit Memory</h1>
+    <div class="settings-nav">
+        <div class="navbar">
+            <a th:href="@{/}" href="../index.html"><img class="logo" th:src="@{/img/logo.svg}"
+                                                        src="../../static/img/logo.svg" alt="reitti logo"
+                                                        title="reitti"></a>
+            <a href="/" class="nav-link" th:title="#{nav.timeline}"><i class="lni lni-route-1"></i></a>
+            <a href="/statistics" class="nav-link" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
+            <form th:action="@{/logout}" method="post">
+                <button type="submit" class="nav-link" style="font-size: 1.4rem;" th:title="#{nav.logout.tooltip}"><i
+                        class="lni lni-exit"></i>
+                </button>
+            </form>
         </div>
-    </nav>
-    
-    <div class="settings-content-area">
+    </div>
+
+    <div class="settings-content-area" th:fragment="edit-memory">
+        <span th:if="${error}" th:text="#{${error}}">Error message</span>
+
         <form th:action="@{/memories/{id}(id=${memory.id})}" method="post" class="memory-form">
             <input type="hidden" name="version" th:value="${memory.version}">
             

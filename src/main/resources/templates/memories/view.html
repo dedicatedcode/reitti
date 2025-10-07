@@ -15,44 +15,34 @@
 </head>
 <body class="memories-page">
 <div class="settings-container">
-    <nav class="settings-nav">
-        <div class="settings-header">
-            <a href="/memories" class="back-link">
-                <i class="lni lni-arrow-left"></i>
-                <span>Back to Memories</span>
-            </a>
-            <h1 th:text="${memory.title}">Memory Title</h1>
-        </div>
-        <a th:href="@{/memories/{id}/edit(id=${memory.id})}" class="settings-nav-item">
-            <i class="lni lni-pencil"></i> Edit
-        </a>
-        <form th:action="@{/memories/{id}(id=${memory.id})}" method="post" style="margin: 0;">
-            <input type="hidden" name="_method" value="DELETE">
-            <button type="submit" class="settings-nav-item" style="width: 100%; text-align: left;" onclick="return confirm('Are you sure you want to delete this memory?')">
-                <i class="lni lni-trash"></i> Delete
-            </button>
-        </form>
-    </nav>
-    
     <div class="settings-content-area">
-        <div class="memory-header-section" th:if="${memory.headerType.name() == 'IMAGE' && memory.headerImageUrl != null}">
-            <img th:src="${memory.headerImageUrl}" th:alt="${memory.title}" class="memory-header-image-large">
-        </div>
+        <div class="memory-header">
+            <div class="memory-header-section" th:if="${memory.headerType.name() == 'IMAGE' && memory.headerImageUrl != null}">
+                <img th:src="${memory.headerImageUrl}" th:alt="${memory.title}" class="memory-header-image-large">
+            </div>
 
-        <div class="memory-header-section map-header-section" th:if="${memory.headerType.name() == 'MAP'}">
-            <div id="memory-map" class="memory-map"></div>
-        </div>
+            <div class="memory-header-section map-header-section" th:if="${memory.headerType.name() == 'MAP'}">
+                <div id="memory-map" class="memory-map"></div>
+            </div>
 
-        <div class="memory-details">
-            <p class="memory-date-range-large">
-                <i class="lni lni-calendar"></i>
-                <span th:text="${#temporals.format(memory.startDate, 'MMMM d, yyyy')}">Start Date</span>
-                <span th:if="${memory.startDate != memory.endDate}">
-                    - <span th:text="${#temporals.format(memory.endDate, 'MMMM d, yyyy')}">End Date</span>
-                </span>
-            </p>
-            <p class="memory-description-large" th:if="${memory.description != null && !memory.description.isEmpty()}" 
-               th:text="${memory.description}">Description</p>
+            <div class="memory-details">
+                <h1 class="memory-date-range-large">
+                    <span th:text="${memory.title}">Title</span>
+                </h1>
+                <p class="memory-description-large" th:if="${memory.description != null && !memory.description.isEmpty()}"
+                   th:text="${memory.description}">Description</p>
+            </div>
+            <div class="memory-details">
+                <p class="memory-date-range-large">
+                    <i class="lni lni-calendar"></i>
+                    <span th:text="${#temporals.format(memory.startDate, 'MMMM d, yyyy')}">Start Date</span>
+                    <span th:if="${memory.startDate != memory.endDate}">
+                        - <span th:text="${#temporals.format(memory.endDate, 'MMMM d, yyyy')}">End Date</span>
+                    </span>
+                </p>
+                <p class="memory-description-large" th:if="${memory.description != null && !memory.description.isEmpty()}"
+                   th:text="${memory.description}">Description</p>
+            </div>
         </div>
 
         <div class="memory-blocks-container">

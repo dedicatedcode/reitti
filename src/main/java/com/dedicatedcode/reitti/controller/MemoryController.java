@@ -64,7 +64,7 @@ public class MemoryController {
             @RequestParam HeaderType headerType,
             @RequestParam(required = false) String headerImageUrl,
             Model model) {
-        
+
         // Validate required fields
         if (title == null || title.trim().isEmpty()) {
             model.addAttribute("error", "memory.validation.title.required");
@@ -160,7 +160,7 @@ public class MemoryController {
         Memory memory = memoryService.getMemoryById(user, id)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         model.addAttribute("memory", memory);
-        return "memories/edit";
+        return "memories/edit :: edit-memory";
     }
 
     @PostMapping("/{id}")
