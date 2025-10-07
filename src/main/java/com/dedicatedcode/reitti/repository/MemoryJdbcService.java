@@ -60,7 +60,7 @@ public class MemoryJdbcService {
             return ps;
         }, keyHolder);
 
-        Long id = keyHolder.getKeyAs(Long.class);
+        Long id = (Long) keyHolder.getKeys().get("id");
         return memory.withId(id);
     }
 
@@ -103,7 +103,7 @@ public class MemoryJdbcService {
                 id,
                 user.getId()
         );
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
     public List<Memory> findAllByUser(User user) {
@@ -118,7 +118,7 @@ public class MemoryJdbcService {
         return jdbcTemplate.query(
                 "SELECT * FROM memory " +
                 "WHERE user_id = ? " +
-                "AND (start_date <= ? AND end_date >= ?) " +
+                "AND (end_date <= ? AND start_date >= ?) " +
                 "ORDER BY start_date DESC",
                 MEMORY_ROW_MAPPER,
                 user.getId(),

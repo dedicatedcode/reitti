@@ -46,7 +46,7 @@ public class MemoryBlockJdbcService {
             return ps;
         }, keyHolder);
 
-        Long id = keyHolder.getKeyAs(Long.class);
+        Long id = (Long) keyHolder.getKeys().get("id");
         return block.withId(id);
     }
 

@@ -45,7 +45,7 @@ public class MemoryBlockImageGalleryJdbcService {
             return ps;
         }, keyHolder);
 
-        Long id = keyHolder.getKeyAs(Long.class);
+        Long id = (Long) keyHolder.getKeys().get("id");
         return image.withId(id);
     }
 

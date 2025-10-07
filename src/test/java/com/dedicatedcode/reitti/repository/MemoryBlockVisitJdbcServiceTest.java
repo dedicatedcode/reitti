@@ -51,8 +51,8 @@ class MemoryBlockVisitJdbcServiceTest {
         jdbcTemplate.update("DELETE FROM memory_block_visit");
         jdbcTemplate.update("DELETE FROM memory_block");
         jdbcTemplate.update("DELETE FROM memory");
-        jdbcTemplate.update("DELETE FROM processed_visit");
-        jdbcTemplate.update("DELETE FROM significant_place");
+        jdbcTemplate.update("DELETE FROM processed_visits");
+        jdbcTemplate.update("DELETE FROM significant_places");
 
         testUser = testingService.randomUser();
 
@@ -71,7 +71,7 @@ class MemoryBlockVisitJdbcServiceTest {
         testBlock = memoryBlockJdbcService.create(block);
 
         // Create a test significant place
-        SignificantPlace place = significantPlaceJdbcService.create(testUser, 60.1699, 24.9384, "Test Place");
+        SignificantPlace place = significantPlaceJdbcService.create(testUser, SignificantPlace.create(60.1699, 24.9384));
 
         // Create a test processed visit
         ProcessedVisit processedVisit = new ProcessedVisit(
@@ -81,7 +81,7 @@ class MemoryBlockVisitJdbcServiceTest {
                 3600L
         );
 
-        ProcessedVisit createdVisit = processedVisitJdbcService.save(testUser, processedVisit);
+        ProcessedVisit createdVisit = processedVisitJdbcService.create(testUser, processedVisit);
         testProcessedVisitId = createdVisit.getId();
     }
 
