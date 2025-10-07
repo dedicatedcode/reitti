@@ -269,7 +269,7 @@
             }
             
             // Load raw location data using the loader
-            rawLocationLoader.loadForDateRange(startDate, endDate, autoUpdateMode);
+            rawLocationLoader.loadForDateRange(startDate, endDate, autoUpdateMode, false);
         }
 
         const selectedPath = L.geodesic([], {
@@ -493,8 +493,6 @@
             }
         });
 
-        // Load initial timeline data via HTMX (will be triggered by the hx-trigger="load")
-        // Also load photos and raw points for the initial date
         loadTimelineData(formattedDate, formattedDate);
 
         // Parse the initial date properly to ensure correct date picker initialization

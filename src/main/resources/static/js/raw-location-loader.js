@@ -74,7 +74,7 @@ class RawLocationLoader {
     /**
      * Load raw location data for a specific date range
      */
-    loadForDateRange(startDate, endDate, autoUpdateMode = false) {
+    loadForDateRange(startDate, endDate, autoUpdateMode = false, withBounds = true) {
         // Remove pulsating markers when loading new data
         this.removePulsatingMarkers();
         
@@ -95,12 +95,15 @@ class RawLocationLoader {
                 
                 // Build URL with zoom and bounding box parameters
                 const separator = config.url.includes('?') ? '&' : '?';
-                const urlWithParams = config.url + separator + 
-                    'zoom=' + currentZoom +
-                    '&minLat=' + bbox.minLat +
-                    '&minLng=' + bbox.minLng +
-                    '&maxLat=' + bbox.maxLat +
-                    '&maxLng=' + bbox.maxLng;
+                let urlWithParams = config.url + separator +
+                    'zoom=' + currentZoom;
+                if (withBounds) {
+                    urlWithParams +=
+                        '&minLat=' + bbox.minLat +
+                        '&minLng=' + bbox.minLng +
+                        '&maxLat=' + bbox.maxLat +
+                        '&maxLng=' + bbox.maxLng;
+                }
                 
                 // Create fetch promise for raw location points with index to maintain order
                 const fetchPromise = fetch(urlWithParams).then(response => {
