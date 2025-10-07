@@ -266,8 +266,6 @@ public class MemoryController {
             @AuthenticationPrincipal User user,
             @PathVariable Long id,
             Model model) {
-        Memory memory = memoryService.getMemoryById(user, id)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         model.addAttribute("memoryId", id);
         return "memories/fragments :: block-type-selection";
     }
