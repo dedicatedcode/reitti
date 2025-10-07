@@ -34,12 +34,19 @@ public class MemoryController {
     public String viewMemory(
             @AuthenticationPrincipal User user,
             @PathVariable Long id,
-            Model model) {
+            Model model,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         Memory memory = memoryService.getMemoryById(user, id)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        List<MemoryBlock> blocks = memoryService.getBlocksForMemory(id);
         
         model.addAttribute("memory", memory);
+        
+        if (hxRequest != null) {
+            // Return just the memory header fragment for htmx requests
+            return "memories/view :: memory-header";
+        }
+        
+        List<MemoryBlock> blocks = memoryService.getBlocksForMemory(id);
         model.addAttribute("blocks", blocks);
         return "memories/view";
     }
@@ -173,22 +180,61 @@ public class MemoryController {
             @RequestParam String endDate,
             @RequestParam HeaderType headerType,
             @RequestParam(required = false) String headerImageUrl,
-            @RequestParam Long version) {
+            @RequestParam Long version,
+            Model model,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         
         Memory memory = memoryService.getMemoryById(user, id)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
-        Memory updated = memory
-                .withTitle(title)
-                .withDescription(description)
-                .withStartDate(LocalDate.parse(startDate))
-                .withEndDate(LocalDate.parse(endDate))
-                .withHeaderType(headerType)
-                .withHeaderImageUrl(headerImageUrl)
-                .withVersion(version);
+        // Add validation similar to create method
+        if (title == null || title.trim().isEmpty()) {
+            model.addAttribute("error", "memory.validation.title.required");
+            model.addAttribute("memory", memory);
+            return "memories/edit :: edit-memory";
+        }
         
-        memoryService.updateMemory(user, updated);
-        return "redirect:/memories/" + id;
+        try {
+            LocalDate start = LocalDate.parse(startDate);
+            LocalDate end = LocalDate.parse(endDate);
+            LocalDate today = LocalDate.now();
+            
+            if (start.isAfter(today) || end.isAfter(today)) {
+                model.addAttribute("error", "memory.validation.date.future");
+                model.addAttribute("memory", memory);
+                return "memories/edit :: edit-memory";
+            }
+            
+            if (end.isBefore(start)) {
+                model.addAttribute("error", "memory.validation.end.date.before.start");
+                model.addAttribute("memory", memory);
+                return "memories/edit :: edit-memory";
+            }
+            
+            Memory updated = memory
+                    .withTitle(title.trim())
+                    .withDescription(description != null ? description.trim() : null)
+                    .withStartDate(start)
+                    .withEndDate(end)
+                    .withHeaderType(headerType)
+                    .withHeaderImageUrl(headerImageUrl)
+                    .withVersion(version);
+            
+            Memory savedMemory = memoryService.updateMemory(user, updated);
+            model.addAttribute("memory", savedMemory);
+            
+            if (hxRequest != null) {
+                // Return the updated memory header for htmx requests
+                return "memories/view :: memory-header";
+            }
+            
+            return "redirect:/memories/" + id;
+            
+        } catch (Exception e) {
+            model.addAttribute("error", "memory.validation.start.date.required");
+            model.addAttribute("memory", memory);
+            return "memories/edit :: edit-memory";
+        }
     }
 
     @DeleteMapping("/{id}")
