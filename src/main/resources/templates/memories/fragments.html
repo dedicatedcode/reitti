@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+
+<!-- Block type selection fragment -->
+<div th:fragment="block-type-selection" class="block-type-selection">
+    <h3>Select Block Type</h3>
+    <div class="block-type-grid">
+        <button type="button" 
+                class="block-type-option"
+                th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='TEXT')}"
+                hx-target=".memory-blocks-container"
+                hx-swap="beforeend">
+            <i class="lni lni-text-format"></i>
+            <span>Text Block</span>
+            <p>Add text content with headlines and paragraphs</p>
+        </button>
+        
+        <button type="button" 
+                class="block-type-option"
+                th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='VISIT')}"
+                hx-target=".memory-blocks-container"
+                hx-swap="beforeend">
+            <i class="lni lni-map-marker"></i>
+            <span>Visit Block</span>
+            <p>Add a location you visited during this memory</p>
+        </button>
+        
+        <button type="button" 
+                class="block-type-option"
+                th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='TRIP')}"
+                hx-target=".memory-blocks-container"
+                hx-swap="beforeend">
+            <i class="lni lni-direction"></i>
+            <span>Trip Block</span>
+            <p>Add a journey or route from this memory</p>
+        </button>
+        
+        <button type="button" 
+                class="block-type-option"
+                th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='IMAGE_GALLERY')}"
+                hx-target=".memory-blocks-container"
+                hx-swap="beforeend">
+            <i class="lni lni-gallery"></i>
+            <span>Image Gallery</span>
+            <p>Add a collection of photos from this memory</p>
+        </button>
+    </div>
+    
+    <div class="form-actions">
+        <button type="button" 
+                class="btn btn-secondary"
+                hx-get="/memories/fragments/empty"
+                hx-target=".blocks-add-area"
+                hx-swap="innerHTML">Cancel</button>
+    </div>
+</div>
+
+<!-- Empty fragment for clearing content -->
+<div th:fragment="empty"></div>
+
+</body>
+</html>

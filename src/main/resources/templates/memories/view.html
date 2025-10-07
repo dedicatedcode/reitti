@@ -56,8 +56,16 @@
         <div class="memory-blocks-container">
             <div class="blocks-header">
                 <h2>Blocks</h2>
-                <button class="btn btn-primary" onclick="showAddBlockModal()"><i class="lni lni-plus"></i> Add Block</button>
+                <button type="button" 
+                        class="btn btn-primary"
+                        th:attr="hx-get=@{/memories/{id}/blocks/select-type(id=${memory.id})}"
+                        hx-target=".blocks-add-area"
+                        hx-swap="innerHTML">
+                    <i class="lni lni-plus"></i> Add Block
+                </button>
             </div>
+
+            <div class="blocks-add-area"></div>
 
             <div th:if="${blocks.isEmpty()}" class="empty-blocks">
                 <i class="lni lni-layers"></i>
@@ -103,31 +111,6 @@
     </div>
 </div>
 
-<div id="addBlockModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Add Block</h2>
-            <button class="modal-close" onclick="closeAddBlockModal()">&times;</button>
-        </div>
-        <form th:action="@{/memories/{id}/blocks(id=${memory.id})}" method="post">
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Block Type</label>
-                    <select name="blockType" class="form-control" required>
-                        <option value="TEXT">Text</option>
-                        <option value="VISIT">Visit</option>
-                        <option value="TRIP">Trip</option>
-                        <option value="IMAGE_GALLERY">Image Gallery</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeAddBlockModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Add Block</button>
-            </div>
-        </form>
-    </div>
-</div>
 
 <script th:inline="javascript">
     const memory = /*[[${memory}]]*/ {};
@@ -147,24 +130,8 @@
         // TODO: Load and display path data for the memory date range
     }
 
-    function showAddBlockModal() {
-        document.getElementById('addBlockModal').style.display = 'flex';
-    }
-
-    function closeAddBlockModal() {
-        document.getElementById('addBlockModal').style.display = 'none';
-    }
-
     function editBlock(blockId) {
         window.location.href = '/memories/' + memory.id + '/blocks/' + blockId + '/edit';
-    }
-
-    // Close modal when clicking outside
-    window.onclick = function(event) {
-        const modal = document.getElementById('addBlockModal');
-        if (event.target === modal) {
-            closeAddBlockModal();
-        }
     }
 </script>
 </body>

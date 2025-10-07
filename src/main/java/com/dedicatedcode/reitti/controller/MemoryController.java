@@ -259,4 +259,20 @@ public class MemoryController {
         memoryService.deleteMemory(user, id);
         return "redirect:/memories";
     }
+
+    @GetMapping("/{id}/blocks/select-type")
+    public String selectBlockType(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long id,
+            Model model) {
+        Memory memory = memoryService.getMemoryById(user, id)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        model.addAttribute("memoryId", id);
+        return "memories/fragments :: block-type-selection";
+    }
+
+    @GetMapping("/fragments/empty")
+    public String emptyFragment() {
+        return "memories/fragments :: empty";
+    }
 }
