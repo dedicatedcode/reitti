@@ -71,7 +71,8 @@ public class MemoryController {
             @RequestParam String endDate,
             @RequestParam HeaderType headerType,
             @RequestParam(required = false) String headerImageUrl,
-            Model model) {
+            Model model,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
 
         // Validate required fields
         if (title == null || title.trim().isEmpty()) {
@@ -146,6 +147,14 @@ public class MemoryController {
             );
             
             Memory created = memoryService.createMemory(user, memory);
+            
+            if (hxRequest != null) {
+                // For htmx requests, return to the memories list
+                List<Memory> memories = memoryService.getMemoriesForUser(user);
+                model.addAttribute("memories", memories);
+                return "memories/list :: settings-content-area";
+            }
+            
             return "redirect:/memories/" + created.getId();
             
         } catch (Exception e) {

@@ -27,7 +27,7 @@
             <span th:text="#{${error}}">Error message</span>
         </div>
         
-        <form th:action="@{/memories}" method="post" class="memory-form">
+        <form th:action="@{/memories}" method="post" class="memory-form" hx-target=".settings-content-area" hx-swap="innerHTML">
             <div class="form-group">
                 <label for="title">Title *</label>
                 <input type="text" id="title" name="title" required class="form-control" placeholder="Give your memory a title" th:value="${title}">
