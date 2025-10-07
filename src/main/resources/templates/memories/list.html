@@ -22,9 +22,6 @@
                 </button>
             </form>
         </div>
-        <a href="/memories/new" class="settings-nav-item">
-            <i class="lni lni-plus"></i> New Memory
-        </a>
     </div>
     
     <div class="settings-content-area">
@@ -32,7 +29,7 @@
             <i class="lni lni-image"></i>
             <h2>No memories yet</h2>
             <p>Create your first memory by selecting a date range on the timeline</p>
-            <a href="/memories/new" class="btn btn-primary">Create Memory</a>
+            <button hx-get="/memories/new" hx-target=".settings-content-area" class="btn btn-primary">Create Memory</button>
         </div>
 
         <div class="memories-grid" th:unless="${memories.isEmpty()}">
