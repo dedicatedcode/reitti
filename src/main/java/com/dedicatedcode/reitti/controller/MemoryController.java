@@ -169,15 +169,17 @@ public class MemoryController {
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         model.addAttribute("memory", memory);
         
-        // Set cancel endpoint based on context
+        // Set cancel endpoint and form target based on context
         if (hxRequest != null) {
             // If called via htmx from view page, cancel should return header fragment
             model.addAttribute("cancelEndpoint", "/memories/" + id);
             model.addAttribute("cancelTarget", ".memory-header");
+            model.addAttribute("formTarget", ".memory-header");
         } else {
             // If called directly, cancel should go to list
             model.addAttribute("cancelEndpoint", "/memories");
             model.addAttribute("cancelTarget", ".settings-content-area");
+            model.addAttribute("formTarget", ".settings-content-area");
         }
         
         return "memories/edit :: edit-memory";

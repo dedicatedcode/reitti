@@ -31,7 +31,7 @@
             <span th:text="#{${error}}">Error message</span>
         </div>
 
-        <form th:action="@{/memories/{id}(id=${memory.id})}" method="post" class="memory-form" hx-target=".memory-header" hx-swap="innerHTML">
+        <form th:action="@{/memories/{id}(id=${memory.id})}" method="post" class="memory-form" th:attr="hx-target=${formTarget}" hx-swap="innerHTML">
             <input type="hidden" name="version" th:value="${memory.version}">
             
             <div class="form-group">
