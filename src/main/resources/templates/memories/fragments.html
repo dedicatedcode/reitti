@@ -138,8 +138,7 @@
 <!-- Image gallery block form -->
 <div th:fragment="image-gallery-block-form" class="block-form">
     <h3>Add Image Gallery Block</h3>
-    <form th:action="@{/memories/{id}/blocks(id=${memoryId})}" method="post" hx-target="body" hx-swap="innerHTML">
-        <input type="hidden" name="blockType" value="IMAGE_GALLERY">
+    <form th:action="@{/memories/{id}/blocks/{blockId}/images(id=${memoryId}, blockId='new')}" method="post" hx-target="body" hx-swap="innerHTML">
         
         <div class="form-group">
             <label for="imageUrl">Image URL</label>
