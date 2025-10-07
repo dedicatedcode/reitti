@@ -64,11 +64,6 @@
                     </div>
                     <div style="display: flex; gap: 10px; margin-top: 15px;">
                         <a th:href="@{/memories/{id}(id=${memory.id})}" class="btn btn-block">View Memory</a>
-                        <button type="button" 
-                                class="btn btn-secondary"
-                                th:attr="hx-get=@{/memories/{id}/edit(id=${memory.id})}"
-                                hx-target=".settings-content-area"
-                                hx-swap="innerHTML">Edit</button>
                     </div>
                 </div>
             </div>
