@@ -21,7 +21,7 @@
         </div>
     </nav>
     
-    <div class="settings-content-area">
+    <div th:fragment="new-memory" class="settings-content-area">
         <form th:action="@{/memories}" method="post" class="memory-form">
             <div class="form-group">
                 <label for="title">Title *</label>

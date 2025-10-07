@@ -51,7 +51,7 @@ public class MemoryController {
             Model model) {
         model.addAttribute("startDate", startDate);
         model.addAttribute("endDate", endDate);
-        return "memories/new";
+        return "memories/new :: new-memory";
     }
 
     @PostMapping
