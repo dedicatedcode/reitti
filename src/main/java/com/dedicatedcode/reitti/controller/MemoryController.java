@@ -62,19 +62,94 @@ public class MemoryController {
             @RequestParam String startDate,
             @RequestParam String endDate,
             @RequestParam HeaderType headerType,
-            @RequestParam(required = false) String headerImageUrl) {
+            @RequestParam(required = false) String headerImageUrl,
+            Model model) {
         
-        Memory memory = new Memory(
-                title,
-                description,
-                LocalDate.parse(startDate),
-                LocalDate.parse(endDate),
-                headerType,
-                headerImageUrl
-        );
+        // Validate required fields
+        if (title == null || title.trim().isEmpty()) {
+            model.addAttribute("error", "memory.validation.title.required");
+            model.addAttribute("title", title);
+            model.addAttribute("description", description);
+            model.addAttribute("startDate", startDate);
+            model.addAttribute("endDate", endDate);
+            model.addAttribute("headerType", headerType);
+            model.addAttribute("headerImageUrl", headerImageUrl);
+            return "memories/new :: new-memory";
+        }
         
-        Memory created = memoryService.createMemory(user, memory);
-        return "redirect:/memories/" + created.getId();
+        if (startDate == null || startDate.trim().isEmpty()) {
+            model.addAttribute("error", "memory.validation.start.date.required");
+            model.addAttribute("title", title);
+            model.addAttribute("description", description);
+            model.addAttribute("startDate", startDate);
+            model.addAttribute("endDate", endDate);
+            model.addAttribute("headerType", headerType);
+            model.addAttribute("headerImageUrl", headerImageUrl);
+            return "memories/new :: new-memory";
+        }
+        
+        if (endDate == null || endDate.trim().isEmpty()) {
+            model.addAttribute("error", "memory.validation.end.date.required");
+            model.addAttribute("title", title);
+            model.addAttribute("description", description);
+            model.addAttribute("startDate", startDate);
+            model.addAttribute("endDate", endDate);
+            model.addAttribute("headerType", headerType);
+            model.addAttribute("headerImageUrl", headerImageUrl);
+            return "memories/new :: new-memory";
+        }
+        
+        try {
+            LocalDate start = LocalDate.parse(startDate);
+            LocalDate end = LocalDate.parse(endDate);
+            LocalDate today = LocalDate.now();
+            
+            // Validate dates are not in the future
+            if (start.isAfter(today) || end.isAfter(today)) {
+                model.addAttribute("error", "memory.validation.date.future");
+                model.addAttribute("title", title);
+                model.addAttribute("description", description);
+                model.addAttribute("startDate", startDate);
+                model.addAttribute("endDate", endDate);
+                model.addAttribute("headerType", headerType);
+                model.addAttribute("headerImageUrl", headerImageUrl);
+                return "memories/new :: new-memory";
+            }
+            
+            // Validate end date is not before start date
+            if (end.isBefore(start)) {
+                model.addAttribute("error", "memory.validation.end.date.before.start");
+                model.addAttribute("title", title);
+                model.addAttribute("description", description);
+                model.addAttribute("startDate", startDate);
+                model.addAttribute("endDate", endDate);
+                model.addAttribute("headerType", headerType);
+                model.addAttribute("headerImageUrl", headerImageUrl);
+                return "memories/new :: new-memory";
+            }
+            
+            Memory memory = new Memory(
+                    title.trim(),
+                    description != null ? description.trim() : null,
+                    start,
+                    end,
+                    headerType,
+                    headerImageUrl
+            );
+            
+            Memory created = memoryService.createMemory(user, memory);
+            return "redirect:/memories/" + created.getId();
+            
+        } catch (Exception e) {
+            model.addAttribute("error", "memory.validation.start.date.required");
+            model.addAttribute("title", title);
+            model.addAttribute("description", description);
+            model.addAttribute("startDate", startDate);
+            model.addAttribute("endDate", endDate);
+            model.addAttribute("headerType", headerType);
+            model.addAttribute("headerImageUrl", headerImageUrl);
+            return "memories/new :: new-memory";
+        }
     }
 
     @GetMapping("/{id}/edit")
