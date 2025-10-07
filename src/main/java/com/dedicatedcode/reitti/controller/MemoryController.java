@@ -276,4 +276,76 @@ public class MemoryController {
     public String emptyFragment() {
         return "memories/fragments :: empty";
     }
+
+    @GetMapping("/{id}/blocks/new")
+    public String newBlockForm(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long id,
+            @RequestParam String type,
+            Model model) {
+        Memory memory = memoryService.getMemoryById(user, id)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        
+        model.addAttribute("memoryId", id);
+        model.addAttribute("blockType", type);
+        
+        return switch (type) {
+            case "TEXT" -> "memories/fragments :: text-block-form";
+            case "VISIT" -> "memories/fragments :: visit-block-form";
+            case "TRIP" -> "memories/fragments :: trip-block-form";
+            case "IMAGE_GALLERY" -> "memories/fragments :: image-gallery-block-form";
+            default -> throw new IllegalArgumentException("Unknown block type: " + type);
+        };
+    }
+
+    @PostMapping("/{id}/blocks")
+    public String createBlock(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long id,
+            @RequestParam String blockType,
+            @RequestParam(required = false) String headline,
+            @RequestParam(required = false) String content,
+            @RequestParam(required = false) Long visitId,
+            @RequestParam(required = false) Long tripId,
+            @RequestParam(required = false) String imageUrl,
+            @RequestParam(required = false) String caption,
+            Model model) {
+        
+        Memory memory = memoryService.getMemoryById(user, id)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        
+        // Create the block
+        MemoryBlock block = memoryService.addBlock(id, BlockType.valueOf(blockType));
+        
+        // Add type-specific content
+        switch (blockType) {
+            case "TEXT" -> {
+                if (headline != null || content != null) {
+                    memoryService.addTextBlock(block.getId(), headline, content);
+                }
+            }
+            case "VISIT" -> {
+                if (visitId != null) {
+                    memoryService.addVisitBlock(block.getId(), visitId);
+                }
+            }
+            case "TRIP" -> {
+                if (tripId != null) {
+                    memoryService.addTripBlock(block.getId(), tripId);
+                }
+            }
+            case "IMAGE_GALLERY" -> {
+                if (imageUrl != null) {
+                    memoryService.addImageToGallery(block.getId(), imageUrl, caption);
+                }
+            }
+        }
+        
+        // Reload the memory view
+        List<MemoryBlock> blocks = memoryService.getBlocksForMemory(id);
+        model.addAttribute("memory", memory);
+        model.addAttribute("blocks", blocks);
+        
+        return "memories/view";
+    }
 }

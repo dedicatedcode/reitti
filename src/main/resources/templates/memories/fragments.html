@@ -12,8 +12,8 @@
         <button type="button" 
                 class="block-type-option"
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='TEXT')}"
-                hx-target=".block-type-grid"
-                hx-swap="beforeend">
+                hx-target=".blocks-add-area"
+                hx-swap="innerHTML">
             <span>Text Block</span>
             <p>Add text content with headlines and paragraphs</p>
         </button>
@@ -21,8 +21,8 @@
         <button type="button" 
                 class="block-type-option"
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='VISIT')}"
-                hx-target=".block-type-grid"
-                hx-swap="beforeend">
+                hx-target=".blocks-add-area"
+                hx-swap="innerHTML">
             <span>Visit Block</span>
             <p>Add a location you visited during this memory</p>
         </button>
@@ -30,8 +30,8 @@
         <button type="button" 
                 class="block-type-option"
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='TRIP')}"
-                hx-target=".block-type-grid"
-                hx-swap="beforeend">
+                hx-target=".blocks-add-area"
+                hx-swap="innerHTML">
             <span>Trip Block</span>
             <p>Add a journey or route from this memory</p>
         </button>
@@ -39,8 +39,8 @@
         <button type="button" 
                 class="block-type-option"
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='IMAGE_GALLERY')}"
-                hx-target=".block-type-grid"
-                hx-swap="beforeend">
+                hx-target=".blocks-add-area"
+                hx-swap="innerHTML">
             <span>Image Gallery</span>
             <p>Add a collection of photos from this memory</p>
         </button>
@@ -57,6 +57,110 @@
 
 <!-- Empty fragment for clearing content -->
 <div th:fragment="empty"></div>
+
+<!-- Text block form -->
+<div th:fragment="text-block-form" class="block-form">
+    <h3>Add Text Block</h3>
+    <form th:action="@{/memories/{id}/blocks(id=${memoryId})}" method="post" hx-target="body" hx-swap="innerHTML">
+        <input type="hidden" name="blockType" value="TEXT">
+        
+        <div class="form-group">
+            <label for="headline">Headline</label>
+            <input type="text" id="headline" name="headline" class="form-control" placeholder="Enter headline">
+        </div>
+        
+        <div class="form-group">
+            <label for="content">Content</label>
+            <textarea id="content" name="content" class="form-control" rows="6" placeholder="Enter your text content"></textarea>
+        </div>
+        
+        <div class="form-actions">
+            <button type="button" 
+                    class="btn btn-secondary"
+                    hx-get="/memories/fragments/empty"
+                    hx-target=".blocks-add-area"
+                    hx-swap="innerHTML">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Block</button>
+        </div>
+    </form>
+</div>
+
+<!-- Visit block form -->
+<div th:fragment="visit-block-form" class="block-form">
+    <h3>Add Visit Block</h3>
+    <form th:action="@{/memories/{id}/blocks(id=${memoryId})}" method="post" hx-target="body" hx-swap="innerHTML">
+        <input type="hidden" name="blockType" value="VISIT">
+        
+        <div class="form-group">
+            <label for="visitId">Select Visit</label>
+            <select id="visitId" name="visitId" class="form-control" required>
+                <option value="">Choose a visit...</option>
+                <!-- TODO: Load visits from the memory date range -->
+            </select>
+        </div>
+        
+        <div class="form-actions">
+            <button type="button" 
+                    class="btn btn-secondary"
+                    hx-get="/memories/fragments/empty"
+                    hx-target=".blocks-add-area"
+                    hx-swap="innerHTML">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Block</button>
+        </div>
+    </form>
+</div>
+
+<!-- Trip block form -->
+<div th:fragment="trip-block-form" class="block-form">
+    <h3>Add Trip Block</h3>
+    <form th:action="@{/memories/{id}/blocks(id=${memoryId})}" method="post" hx-target="body" hx-swap="innerHTML">
+        <input type="hidden" name="blockType" value="TRIP">
+        
+        <div class="form-group">
+            <label for="tripId">Select Trip</label>
+            <select id="tripId" name="tripId" class="form-control" required>
+                <option value="">Choose a trip...</option>
+                <!-- TODO: Load trips from the memory date range -->
+            </select>
+        </div>
+        
+        <div class="form-actions">
+            <button type="button" 
+                    class="btn btn-secondary"
+                    hx-get="/memories/fragments/empty"
+                    hx-target=".blocks-add-area"
+                    hx-swap="innerHTML">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Block</button>
+        </div>
+    </form>
+</div>
+
+<!-- Image gallery block form -->
+<div th:fragment="image-gallery-block-form" class="block-form">
+    <h3>Add Image Gallery Block</h3>
+    <form th:action="@{/memories/{id}/blocks(id=${memoryId})}" method="post" hx-target="body" hx-swap="innerHTML">
+        <input type="hidden" name="blockType" value="IMAGE_GALLERY">
+        
+        <div class="form-group">
+            <label for="imageUrl">Image URL</label>
+            <input type="url" id="imageUrl" name="imageUrl" class="form-control" placeholder="https://example.com/image.jpg" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="caption">Caption</label>
+            <input type="text" id="caption" name="caption" class="form-control" placeholder="Enter image caption">
+        </div>
+        
+        <div class="form-actions">
+            <button type="button" 
+                    class="btn btn-secondary"
+                    hx-get="/memories/fragments/empty"
+                    hx-target=".blocks-add-area"
+                    hx-swap="innerHTML">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Block</button>
+        </div>
+    </form>
+</div>
 
 <!-- Memory block fragment -->
 <div th:fragment="memory-block" class="memory-block" th:attr="data-block-id=${block.id}, data-block-type=${block.blockType.name()}">
