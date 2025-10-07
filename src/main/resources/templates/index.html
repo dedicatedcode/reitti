@@ -172,22 +172,6 @@
         }
     }
 
-    function getBoundingBoxParams() {
-        const bounds = map.getBounds();
-        const southWest = bounds.getSouthWest();
-        const northEast = bounds.getNorthEast();
-        
-        // Calculate buffer as 20% of the current viewport size
-        const latBuffer = (northEast.lat - southWest.lat) * 0.2;
-        const lngBuffer = (northEast.lng - southWest.lng) * 0.2;
-        
-        return {
-            minLat: southWest.lat - latBuffer,
-            minLng: southWest.lng - lngBuffer,
-            maxLat: northEast.lat + latBuffer,
-            maxLng: northEast.lng + lngBuffer
-        };
-    }
 
     function selectUser(userHeader) {
         // Remove active class from all user headers
