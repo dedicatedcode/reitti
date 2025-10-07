@@ -5,9 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="${memory.title} + ' - Reitti'">Memory - Reitti</title>
     <link rel="icon" th:href="@{/img/logo.svg}">
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/memories.css">
-    <link rel="stylesheet" href="/css/lineicons.css">
+    <link rel="stylesheet" th:href="@{/css/main.css}" href="../../static/css/main.css">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}" href="../../static/css/lineicons.css">
     <link rel="stylesheet" href="/css/leaflet.css">
     <script src="/js/htmx.min.js"></script>
     <script src="/js/leaflet.js"></script>
@@ -22,8 +21,7 @@
                         class="btn btn-secondary"
                         th:attr="hx-get=@{/memories/{id}/edit(id=${memory.id})}"
                         hx-target=".memory-header"
-                        hx-swap="innerHTML">
-                    <i class="lni lni-pencil"></i> Edit
+                        hx-swap="innerHTML">Edit
                 </button>
             </div>
             
