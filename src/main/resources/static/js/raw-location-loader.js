@@ -8,6 +8,7 @@ class RawLocationLoader {
         this.rawPointPaths = [];
         this.pulsatingMarkers = [];
         this.currentZoomLevel = null;
+        this.userConfigs = [];
         
         // Configuration for map bounds fitting
         this.fitToBoundsConfig = {
@@ -18,6 +19,15 @@ class RawLocationLoader {
         
         // Listen for map events
         this.setupMapEventListeners();
+    }
+    
+    /**
+     * Initialize with user configurations
+     * @param {Array} userConfigs - Array of user configuration objects
+     * Each config should contain: { url, color, avatarUrl, avatarFallback, displayName }
+     */
+    init(userConfigs) {
+        this.userConfigs = userConfigs || [];
     }
     
     setupMapEventListeners() {
@@ -71,16 +81,12 @@ class RawLocationLoader {
         // Clear existing paths
         this.clearPaths();
         
-        // Get raw location points URL from timeline container
-        const timelineContainer = document.querySelectorAll('.user-timeline-section');
         let bounds = L.latLngBounds();
         const fetchPromises = [];
 
-        for (let i = 0; i < timelineContainer.length; i++) {
-            const element = timelineContainer[i];
-            const rawLocationPointsUrl = element?.dataset.rawLocationPointsUrl;
-            const color = element?.dataset.baseColor;
-            if (rawLocationPointsUrl) {
+        for (let i = 0; i < this.userConfigs.length; i++) {
+            const config = this.userConfigs[i];
+            if (config.url) {
                 // Get current zoom level
                 const currentZoom = Math.round(this.map.getZoom());
                 
@@ -88,8 +94,8 @@ class RawLocationLoader {
                 const bbox = this.getBoundingBoxParams();
                 
                 // Build URL with zoom and bounding box parameters
-                const separator = rawLocationPointsUrl.includes('?') ? '&' : '?';
-                const urlWithParams = rawLocationPointsUrl + separator + 
+                const separator = config.url.includes('?') ? '&' : '?';
+                const urlWithParams = config.url + separator + 
                     'zoom=' + currentZoom +
                     '&minLat=' + bbox.minLat +
                     '&minLng=' + bbox.minLng +
@@ -100,14 +106,14 @@ class RawLocationLoader {
                 const fetchPromise = fetch(urlWithParams).then(response => {
                     if (!response.ok) {
                         console.warn('Could not fetch raw location points');
-                        return { points: [], index: i, color: color };
+                        return { points: [], index: i, config: config };
                     }
                     return response.json();
                 }).then(rawPointsData => {
-                    return { ...rawPointsData, index: i, color: color };
+                    return { ...rawPointsData, index: i, config: config };
                 }).catch(error => {
                     console.warn('Error fetching raw location points:', error);
-                    return { points: [], index: i, color: color };
+                    return { points: [], index: i, config: config };
                 });
                 
                 fetchPromises.push(fetchPromise);
@@ -121,7 +127,7 @@ class RawLocationLoader {
             
             // Process results in order
             results.forEach(result => {
-                const fetchBounds = this.updateMapWithRawPoints(result, result.color, autoUpdateMode);
+                const fetchBounds = this.updateMapWithRawPoints(result, result.config.color, autoUpdateMode);
                 if (fetchBounds.isValid()) {
                     bounds.extend(fetchBounds);
                 }
@@ -139,16 +145,12 @@ class RawLocationLoader {
      * Reload raw location points for the current map view
      */
     reloadForCurrentView() {
-        // Reload raw location points with new zoom level
-        const timelineContainer = document.querySelectorAll('.user-timeline-section');
         let bounds = L.latLngBounds();
         const fetchPromises = [];
 
-        for (let i = 0; i < timelineContainer.length; i++) {
-            const element = timelineContainer[i];
-            const rawLocationPointsUrl = element?.dataset.rawLocationPointsUrl;
-            const color = element?.dataset.baseColor;
-            if (rawLocationPointsUrl) {
+        for (let i = 0; i < this.userConfigs.length; i++) {
+            const config = this.userConfigs[i];
+            if (config.url) {
                 // Get current zoom level
                 const currentZoom = Math.round(this.map.getZoom());
                 
@@ -156,8 +158,8 @@ class RawLocationLoader {
                 const bbox = this.getBoundingBoxParams();
                 
                 // Build URL with zoom and bounding box parameters
-                const separator = rawLocationPointsUrl.includes('?') ? '&' : '?';
-                const urlWithParams = rawLocationPointsUrl + separator + 
+                const separator = config.url.includes('?') ? '&' : '?';
+                const urlWithParams = config.url + separator + 
                     'zoom=' + currentZoom +
                     '&minLat=' + bbox.minLat +
                     '&minLng=' + bbox.minLng +
@@ -168,14 +170,14 @@ class RawLocationLoader {
                 const fetchPromise = fetch(urlWithParams).then(response => {
                     if (!response.ok) {
                         console.warn('Could not fetch raw location points');
-                        return { points: [], index: i, color: color };
+                        return { points: [], index: i, config: config };
                     }
                     return response.json();
                 }).then(rawPointsData => {
-                    return { ...rawPointsData, index: i, color: color };
+                    return { ...rawPointsData, index: i, config: config };
                 }).catch(error => {
                     console.warn('Error fetching raw location points:', error);
-                    return { points: [], index: i, color: color };
+                    return { points: [], index: i, config: config };
                 });
                 
                 fetchPromises.push(fetchPromise);
@@ -190,7 +192,7 @@ class RawLocationLoader {
             
             // Process results in order
             results.forEach(result => {
-                const fetchBounds = this.updateMapWithRawPoints(result, result.color);
+                const fetchBounds = this.updateMapWithRawPoints(result, result.config.color);
                 if (fetchBounds.isValid()) {
                     bounds.extend(fetchBounds);
                 }
@@ -225,14 +227,12 @@ class RawLocationLoader {
         // Add avatar marker for the latest point if in auto-update mode and today is selected
         if (autoUpdateMode && this.isSelectedDateToday() && rawPointsData.latest) {
             const latestPoint = rawPointsData.latest;
-            // Find the corresponding timeline section to get user data
-            const timelineContainers = document.querySelectorAll('.user-timeline-section');
-            const timelineSection = timelineContainers[rawPointsData.index];
-            if (timelineSection) {
+            const config = rawPointsData.config;
+            if (config) {
                 const userData = {
-                    avatarUrl: timelineSection.dataset.userAvatarUrl,
-                    avatarFallback: timelineSection.dataset.avatarFallback,
-                    displayName: timelineSection.dataset.displayName
+                    avatarUrl: config.avatarUrl,
+                    avatarFallback: config.avatarFallback,
+                    displayName: config.displayName
                 };
                 this.addAvatarMarker(latestPoint.latitude, latestPoint.longitude, userData);
             }

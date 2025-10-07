@@ -251,6 +251,9 @@
         // Initialize raw location loader
         rawLocationLoader = new RawLocationLoader(map, window.userSettings);
         
+        // Initialize raw location loader with user configurations
+        initializeRawLocationLoader();
+        
         // Listen for map move/zoom events to update photo markers
         map.on('moveend zoomend', () => {
             photoClient.onMapMoveEnd();
@@ -282,9 +285,31 @@
         });
 
 
+        // Function to initialize raw location loader with user configurations
+        function initializeRawLocationLoader() {
+            const userConfigs = [];
+            const timelineContainers = document.querySelectorAll('.user-timeline-section');
+            
+            timelineContainers.forEach(container => {
+                const config = {
+                    url: container.dataset.rawLocationPointsUrl,
+                    color: container.dataset.baseColor,
+                    avatarUrl: container.dataset.userAvatarUrl,
+                    avatarFallback: container.dataset.avatarFallback,
+                    displayName: container.dataset.displayName
+                };
+                userConfigs.push(config);
+            });
+            
+            rawLocationLoader.init(userConfigs);
+        }
+
         // Add HTMX event handlers for timeline updates
         document.body.addEventListener('htmx:afterSwap', function(event) {
             if (event.detail.target.classList.contains('timeline-container')) {
+                // Re-initialize raw location loader with updated user configurations
+                initializeRawLocationLoader();
+                
                 // Timeline content has been updated, update map markers
                 const params = getTimelineParams();
                 loadTimelineData(params.startDate, params.endDate);
