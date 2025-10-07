@@ -25,11 +25,15 @@
     </div>
     
     <div class="settings-content-area">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2>Memories</h2>
+            <button hx-get="/memories/new" hx-target=".settings-content-area" class="btn btn-primary">Create Memory</button>
+        </div>
+
         <div th:if="${memories.isEmpty()}" class="empty-state">
             <i class="lni lni-image"></i>
             <h2>No memories yet</h2>
             <p>Create your first memory by selecting a date range on the timeline</p>
-            <button hx-get="/memories/new" hx-target=".settings-content-area" class="btn btn-primary">Create Memory</button>
         </div>
 
         <div class="places-grid" th:unless="${memories.isEmpty()}">
@@ -60,6 +64,11 @@
                     </div>
                     <div style="display: flex; gap: 10px; margin-top: 15px;">
                         <a th:href="@{/memories/{id}(id=${memory.id})}" class="btn btn-block">View Memory</a>
+                        <button type="button" 
+                                class="btn btn-secondary"
+                                th:attr="hx-get=@{/memories/{id}/edit(id=${memory.id})}"
+                                hx-target=".settings-content-area"
+                                hx-swap="innerHTML">Edit</button>
                     </div>
                 </div>
             </div>
