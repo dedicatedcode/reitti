@@ -2,6 +2,8 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
+import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
+import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.memory.*;
 import com.dedicatedcode.reitti.model.security.User;
 import org.junit.jupiter.api.BeforeEach;
@@ -9,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -27,7 +30,10 @@ class MemoryBlockVisitJdbcServiceTest {
     private MemoryJdbcService memoryJdbcService;
 
     @Autowired
-    private VisitJdbcService visitJdbcService;
+    private ProcessedVisitJdbcService processedVisitJdbcService;
+
+    @Autowired
+    private SignificantPlaceJdbcService significantPlaceJdbcService;
 
     @Autowired
     private TestingService testingService;
@@ -38,14 +44,15 @@ class MemoryBlockVisitJdbcServiceTest {
     private User testUser;
     private Memory testMemory;
     private MemoryBlock testBlock;
-    private Long testVisitId;
+    private Long testProcessedVisitId;
 
     @BeforeEach
     void setUp() {
         jdbcTemplate.update("DELETE FROM memory_block_visit");
         jdbcTemplate.update("DELETE FROM memory_block");
         jdbcTemplate.update("DELETE FROM memory");
-        jdbcTemplate.update("DELETE FROM visits");
+        jdbcTemplate.update("DELETE FROM processed_visit");
+        jdbcTemplate.update("DELETE FROM significant_place");
 
         testUser = testingService.randomUser();
 
@@ -63,48 +70,46 @@ class MemoryBlockVisitJdbcServiceTest {
         MemoryBlock block = new MemoryBlock(testMemory.getId(), BlockType.VISIT, 0);
         testBlock = memoryBlockJdbcService.create(block);
 
-        // Create a test visit
-        jdbcTemplate.update(
-                "INSERT INTO visit (user_id, longitude, latitude, start_time, end_time, duration_seconds, processed, version) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                testUser.getId(), 24.9384, 60.1699,
-                java.sql.Timestamp.from(java.time.Instant.now()),
-                java.sql.Timestamp.from(java.time.Instant.now().plusSeconds(3600)),
-                3600L, false, 1L
+        // Create a test significant place
+        SignificantPlace place = significantPlaceJdbcService.create(testUser, 60.1699, 24.9384, "Test Place");
+
+        // Create a test processed visit
+        ProcessedVisit processedVisit = new ProcessedVisit(
+                place,
+                Instant.now(),
+                Instant.now().plusSeconds(3600),
+                3600L
         );
 
-        testVisitId = jdbcTemplate.queryForObject(
-                "SELECT id FROM visit WHERE user_id = ?",
-                Long.class,
-                testUser.getId()
-        );
+        ProcessedVisit createdVisit = processedVisitJdbcService.save(testUser, processedVisit);
+        testProcessedVisitId = createdVisit.getId();
     }
 
     @Test
     void testCreateVisitBlock() {
-        MemoryBlockVisit visitBlock = new MemoryBlockVisit(testBlock.getId(), testVisitId);
+        MemoryBlockVisit visitBlock = new MemoryBlockVisit(testBlock.getId(), testProcessedVisitId);
 
         MemoryBlockVisit created = memoryBlockVisitJdbcService.create(visitBlock);
 
         assertEquals(testBlock.getId(), created.getBlockId());
-        assertEquals(testVisitId, created.getVisitId());
+        assertEquals(testProcessedVisitId, created.getProcessedVisitId());
     }
 
     @Test
     void testFindByBlockId() {
-        MemoryBlockVisit visitBlock = new MemoryBlockVisit(testBlock.getId(), testVisitId);
+        MemoryBlockVisit visitBlock = new MemoryBlockVisit(testBlock.getId(), testProcessedVisitId);
         memoryBlockVisitJdbcService.create(visitBlock);
 
         Optional<MemoryBlockVisit> found = memoryBlockVisitJdbcService.findByBlockId(testBlock.getId());
 
         assertTrue(found.isPresent());
         assertEquals(testBlock.getId(), found.get().getBlockId());
-        assertEquals(testVisitId, found.get().getVisitId());
+        assertEquals(testProcessedVisitId, found.get().getProcessedVisitId());
     }
 
     @Test
     void testDeleteVisitBlock() {
-        MemoryBlockVisit visitBlock = new MemoryBlockVisit(testBlock.getId(), testVisitId);
+        MemoryBlockVisit visitBlock = new MemoryBlockVisit(testBlock.getId(), testProcessedVisitId);
         memoryBlockVisitJdbcService.create(visitBlock);
 
         memoryBlockVisitJdbcService.delete(testBlock.getId());

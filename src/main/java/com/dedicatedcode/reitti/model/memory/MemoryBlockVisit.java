@@ -5,19 +5,19 @@ import java.io.Serializable;
 public class MemoryBlockVisit implements Serializable {
     
     private final Long blockId;
-    private final Long visitId;
+    private final Long processedVisitId;
 
-    public MemoryBlockVisit(Long blockId, Long visitId) {
+    public MemoryBlockVisit(Long blockId, Long processedVisitId) {
         this.blockId = blockId;
-        this.visitId = visitId;
+        this.processedVisitId = processedVisitId;
     }
 
     public Long getBlockId() {
         return blockId;
     }
 
-    public Long getVisitId() {
-        return visitId;
+    public Long getProcessedVisitId() {
+        return processedVisitId;
     }
 
     @Override
@@ -28,13 +28,13 @@ public class MemoryBlockVisit implements Serializable {
         MemoryBlockVisit that = (MemoryBlockVisit) o;
 
         if (blockId != null ? !blockId.equals(that.blockId) : that.blockId != null) return false;
-        return visitId != null ? visitId.equals(that.visitId) : that.visitId == null;
+        return processedVisitId != null ? processedVisitId.equals(that.processedVisitId) : that.processedVisitId == null;
     }
 
     @Override
     public int hashCode() {
         int result = blockId != null ? blockId.hashCode() : 0;
-        result = 31 * result + (visitId != null ? visitId.hashCode() : 0);
+        result = 31 * result + (processedVisitId != null ? processedVisitId.hashCode() : 0);
         return result;
     }
 
@@ -42,7 +42,7 @@ public class MemoryBlockVisit implements Serializable {
     public String toString() {
         return "MemoryBlockVisit{" +
                 "blockId=" + blockId +
-                ", visitId=" + visitId +
+                ", processedVisitId=" + processedVisitId +
                 '}';
     }
 }

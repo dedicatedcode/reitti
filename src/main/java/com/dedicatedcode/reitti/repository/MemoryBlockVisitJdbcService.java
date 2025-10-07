@@ -19,14 +19,14 @@ public class MemoryBlockVisitJdbcService {
 
     private static final RowMapper<MemoryBlockVisit> MEMORY_BLOCK_VISIT_ROW_MAPPER = (rs, rowNum) -> new MemoryBlockVisit(
             rs.getLong("block_id"),
-            rs.getLong("visit_id")
+            rs.getLong("processed_visit_id")
     );
 
     public MemoryBlockVisit create(MemoryBlockVisit blockVisit) {
         jdbcTemplate.update(
-                "INSERT INTO memory_block_visit (block_id, visit_id) VALUES (?, ?)",
+                "INSERT INTO memory_block_visit (block_id, processed_visit_id) VALUES (?, ?)",
                 blockVisit.getBlockId(),
-                blockVisit.getVisitId()
+                blockVisit.getProcessedVisitId()
         );
         return blockVisit;
     }
