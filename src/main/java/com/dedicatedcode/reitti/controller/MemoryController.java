@@ -286,13 +286,8 @@ public class MemoryController {
         Memory memory = memoryService.getMemoryById(user, id)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
-        // Get existing blocks to determine position
-        List<MemoryBlock> existingBlocks = memoryService.getBlocksForMemory(id);
-        int nextPosition = existingBlocks.size();
-        
-        // Create new block
-        MemoryBlock newBlock = new MemoryBlock(id, BlockType.valueOf(type), nextPosition);
-        MemoryBlock createdBlock = memoryService.createBlock(user, newBlock);
+        // Create new block using the service method
+        MemoryBlock createdBlock = memoryService.addBlock(id, BlockType.valueOf(type));
         
         model.addAttribute("block", createdBlock);
         model.addAttribute("memory", memory);
