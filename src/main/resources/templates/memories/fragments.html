@@ -12,8 +12,9 @@
         <button type="button" 
                 class="block-type-option"
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='TEXT')}"
-                hx-target=".memory-blocks-container"
-                hx-swap="beforeend">
+                hx-target=".blocks-list"
+                hx-swap="beforeend"
+                hx-on:click="document.querySelector('.blocks-add-area').innerHTML = ''">
             <span>Text Block</span>
             <p>Add text content with headlines and paragraphs</p>
         </button>
@@ -21,8 +22,9 @@
         <button type="button" 
                 class="block-type-option"
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='VISIT')}"
-                hx-target=".memory-blocks-container"
-                hx-swap="beforeend">
+                hx-target=".blocks-list"
+                hx-swap="beforeend"
+                hx-on:click="document.querySelector('.blocks-add-area').innerHTML = ''">
             <span>Visit Block</span>
             <p>Add a location you visited during this memory</p>
         </button>
@@ -30,8 +32,9 @@
         <button type="button" 
                 class="block-type-option"
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='TRIP')}"
-                hx-target=".memory-blocks-container"
-                hx-swap="beforeend">
+                hx-target=".blocks-list"
+                hx-swap="beforeend"
+                hx-on:click="document.querySelector('.blocks-add-area').innerHTML = ''">
             <span>Trip Block</span>
             <p>Add a journey or route from this memory</p>
         </button>
@@ -39,8 +42,9 @@
         <button type="button" 
                 class="block-type-option"
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='IMAGE_GALLERY')}"
-                hx-target=".memory-blocks-container"
-                hx-swap="beforeend">
+                hx-target=".blocks-list"
+                hx-swap="beforeend"
+                hx-on:click="document.querySelector('.blocks-add-area').innerHTML = ''">
             <span>Image Gallery</span>
             <p>Add a collection of photos from this memory</p>
         </button>
@@ -57,6 +61,41 @@
 
 <!-- Empty fragment for clearing content -->
 <div th:fragment="empty"></div>
+
+<!-- Memory block fragment -->
+<div th:fragment="memory-block" class="memory-block" th:attr="data-block-id=${block.id}, data-block-type=${block.blockType.name()}">
+    <div class="block-header">
+        <span class="block-type-badge" th:text="${block.blockType.name()}">BLOCK TYPE</span>
+        <div class="block-actions">
+            <button class="btn-icon" th:onclick="'editBlock(' + ${block.id} + ')'"><i class="lni lni-pencil"></i></button>
+            <form th:action="@{/memories/{memoryId}/blocks/{blockId}(memoryId=${memory.id}, blockId=${block.id})}" 
+                  method="post" style="display: inline;">
+                <input type="hidden" name="_method" value="DELETE">
+                <button type="submit" class="btn-icon danger" onclick="return confirm('Delete this block?')">
+                    <i class="lni lni-trash"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+    <div class="block-content">
+        <div th:if="${block.blockType.name() == 'TEXT'}" class="text-block">
+            <h3>Text Block</h3>
+            <p>Content will be loaded here</p>
+        </div>
+        <div th:if="${block.blockType.name() == 'VISIT'}" class="visit-block">
+            <i class="lni lni-map-marker"></i>
+            <p>Visit block</p>
+        </div>
+        <div th:if="${block.blockType.name() == 'TRIP'}" class="trip-block">
+            <i class="lni lni-direction"></i>
+            <p>Trip block</p>
+        </div>
+        <div th:if="${block.blockType.name() == 'IMAGE_GALLERY'}" class="gallery-block">
+            <i class="lni lni-gallery"></i>
+            <p>Image gallery</p>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>
