@@ -20,45 +20,6 @@ public class MemoryBlockController {
         this.memoryService = memoryService;
     }
 
-    @PostMapping
-    public String addBlock(
-            @AuthenticationPrincipal User user,
-            @PathVariable Long memoryId,
-            @RequestParam BlockType blockType,
-            @RequestParam(required = false) Long visitId,
-            @RequestParam(required = false) Long tripId,
-            @RequestParam(required = false) String headline,
-            @RequestParam(required = false) String content,
-            Model model) {
-        
-        // Verify user owns the memory
-        memoryService.getMemoryById(user, memoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
-        MemoryBlock block = memoryService.addBlock(memoryId, blockType);
-        
-        switch (blockType) {
-            case VISIT:
-                if (visitId != null) {
-                    memoryService.addVisitBlock(block.getId(), visitId);
-                }
-                break;
-            case TRIP:
-                if (tripId != null) {
-                    memoryService.addTripBlock(block.getId(), tripId);
-                }
-                break;
-            case TEXT:
-                memoryService.addTextBlock(block.getId(), headline, content);
-                break;
-            case IMAGE_GALLERY:
-                // Gallery is created empty, images added separately
-                break;
-        }
-        
-        return "redirect:/memories/" + memoryId;
-    }
-
     @DeleteMapping("/{blockId}")
     public String deleteBlock(
             @AuthenticationPrincipal User user,

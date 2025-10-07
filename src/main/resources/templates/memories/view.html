@@ -77,15 +77,14 @@
                     <div class="block-header">
                         <span class="block-type-badge" th:text="${block.blockType.name()}">BLOCK TYPE</span>
                         <div class="block-actions">
-                            <button class="btn-icon" th:onclick="'editBlock(' + ${block.id} + ')'"><i class="lni lni-pencil"></i></button>
+                            <button class="btn " th:onclick="'editBlock(' + ${block.id} + ')'"><i class="lni lni-pencil-1"></i></button>
                             <button type="button" 
-                                    class="btn-icon danger" 
+                                    class="btn btn-danger"
                                     th:attr="hx-delete=@{/memories/{memoryId}/blocks/{blockId}(memoryId=${memory.id}, blockId=${block.id})}"
                                     hx-target="body"
                                     hx-swap="innerHTML"
-                                    hx-confirm="Delete this block?"
-                                    onclick="return confirm('Delete this block?')">
-                                <i class="lni lni-trash"></i>
+                                    hx-confirm="Delete this block?">
+                                <i class="lni lni-trash-3"></i>
                             </button>
                         </div>
                     </div>
