@@ -163,10 +163,23 @@ public class MemoryController {
     public String editMemoryForm(
             @AuthenticationPrincipal User user,
             @PathVariable Long id,
-            Model model) {
+            Model model,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         Memory memory = memoryService.getMemoryById(user, id)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         model.addAttribute("memory", memory);
+        
+        // Set cancel endpoint based on context
+        if (hxRequest != null) {
+            // If called via htmx from view page, cancel should return header fragment
+            model.addAttribute("cancelEndpoint", "/memories/" + id);
+            model.addAttribute("cancelTarget", ".memory-header");
+        } else {
+            // If called directly, cancel should go to list
+            model.addAttribute("cancelEndpoint", "/memories");
+            model.addAttribute("cancelTarget", ".settings-content-area");
+        }
+        
         return "memories/edit :: edit-memory";
     }
 
