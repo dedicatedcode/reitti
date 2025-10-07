@@ -167,8 +167,8 @@
                 <button type="button" 
                         class="btn-icon danger" 
                         th:attr="hx-delete=@{/memories/{memoryId}/blocks/{blockId}(memoryId=${memory.id}, blockId=${block.id})}"
-                        hx-target="body"
-                        hx-swap="innerHTML"
+                        hx-target="closest .memory-block"
+                        hx-swap="outerHTML"
                         hx-confirm="Delete this block?"
                         onclick="return confirm('Delete this block?')">
                     <i class="lni lni-trash"></i>

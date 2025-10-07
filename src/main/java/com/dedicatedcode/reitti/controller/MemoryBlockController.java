@@ -24,13 +24,20 @@ public class MemoryBlockController {
     public String deleteBlock(
             @AuthenticationPrincipal User user,
             @PathVariable Long memoryId,
-            @PathVariable Long blockId) {
+            @PathVariable Long blockId,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         
         // Verify user owns the memory
         memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
         memoryService.deleteBlock(blockId);
+        
+        if (hxRequest != null) {
+            // For htmx requests, return empty content to remove the block
+            return "memories/fragments :: empty";
+        }
+        
         return "redirect:/memories/" + memoryId;
     }
 
