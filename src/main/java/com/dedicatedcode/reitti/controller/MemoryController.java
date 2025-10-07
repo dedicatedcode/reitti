@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller;
 
+import com.dedicatedcode.reitti.model.memory.BlockType;
 import com.dedicatedcode.reitti.model.memory.HeaderType;
 import com.dedicatedcode.reitti.model.memory.Memory;
 import com.dedicatedcode.reitti.model.memory.MemoryBlock;
