@@ -178,4 +178,70 @@ public class MemoryBlockController {
         memoryService.reorderBlocks(memoryId, blockIds);
         return "redirect:/memories/" + memoryId;
     }
+
+    @PostMapping("/text")
+    public String createTextBlock(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long memoryId,
+            @RequestParam(required = false) String headline,
+            @RequestParam(required = false) String content) {
+        
+        // Verify user owns the memory
+        memoryService.getMemoryById(user, memoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        
+        MemoryBlock block = memoryService.addBlock(memoryId, BlockType.TEXT);
+        memoryService.addTextBlock(block.getId(), headline, content);
+        
+        return "redirect:/memories/" + memoryId;
+    }
+
+    @PostMapping("/visit")
+    public String createVisitBlock(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long memoryId,
+            @RequestParam Long visitId) {
+        
+        // Verify user owns the memory
+        memoryService.getMemoryById(user, memoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        
+        MemoryBlock block = memoryService.addBlock(memoryId, BlockType.VISIT);
+        memoryService.addVisitBlock(block.getId(), visitId);
+        
+        return "redirect:/memories/" + memoryId;
+    }
+
+    @PostMapping("/trip")
+    public String createTripBlock(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long memoryId,
+            @RequestParam Long tripId) {
+        
+        // Verify user owns the memory
+        memoryService.getMemoryById(user, memoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        
+        MemoryBlock block = memoryService.addBlock(memoryId, BlockType.TRIP);
+        memoryService.addTripBlock(block.getId(), tripId);
+        
+        return "redirect:/memories/" + memoryId;
+    }
+
+    @PostMapping("/image-gallery")
+    public String createImageGalleryBlock(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long memoryId,
+            @RequestParam String imageUrl,
+            @RequestParam(required = false) String caption) {
+        
+        // Verify user owns the memory
+        memoryService.getMemoryById(user, memoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        
+        MemoryBlock block = memoryService.addBlock(memoryId, BlockType.IMAGE_GALLERY);
+        memoryService.addImageToGallery(block.getId(), imageUrl, caption);
+        
+        return "redirect:/memories/" + memoryId;
+    }
 }
