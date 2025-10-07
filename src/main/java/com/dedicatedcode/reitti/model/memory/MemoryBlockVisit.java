@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.model.memory;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 public class MemoryBlockVisit implements Serializable {
     
@@ -27,8 +28,8 @@ public class MemoryBlockVisit implements Serializable {
 
         MemoryBlockVisit that = (MemoryBlockVisit) o;
 
-        if (blockId != null ? !blockId.equals(that.blockId) : that.blockId != null) return false;
-        return processedVisitId != null ? processedVisitId.equals(that.processedVisitId) : that.processedVisitId == null;
+        if (!Objects.equals(blockId, that.blockId)) return false;
+        return Objects.equals(processedVisitId, that.processedVisitId);
     }
 
     @Override
