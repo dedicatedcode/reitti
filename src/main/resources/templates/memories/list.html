@@ -32,30 +32,36 @@
             <button hx-get="/memories/new" hx-target=".settings-content-area" class="btn btn-primary">Create Memory</button>
         </div>
 
-        <div class="memories-grid" th:unless="${memories.isEmpty()}">
-            <div th:each="memory : ${memories}" class="memory-card">
-                <a th:href="@{/memories/{id}(id=${memory.id})}" class="memory-card-link">
+        <div class="places-grid" th:unless="${memories.isEmpty()}">
+            <div th:each="memory : ${memories}" class="place-stats-card">
+                <div class="place-map-container">
                     <div class="memory-header" th:if="${memory.headerType.name() == 'IMAGE' && memory.headerImageUrl != null}">
-                        <img th:src="${memory.headerImageUrl}" th:alt="${memory.title}" class="memory-header-image">
+                        <img th:src="${memory.headerImageUrl}" th:alt="${memory.title}" class="memory-header-image" style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px;">
                     </div>
                     <div class="memory-header map-header" th:if="${memory.headerType.name() == 'MAP'}">
-                        <div class="map-placeholder">
-                            <i class="lni lni-map"></i>
+                        <div class="map-placeholder" style="height: 200px; display: flex; align-items: center; justify-content: center; background-color: rgba(255,255,255,0.1); border-radius: 8px;">
+                            <i class="lni lni-map" style="font-size: 3rem; opacity: 0.5;"></i>
                         </div>
                     </div>
-                    <div class="memory-content">
-                        <h3 class="memory-title" th:text="${memory.title}">Memory Title</h3>
-                        <p class="memory-date-range">
-                            <i class="lni lni-calendar"></i>
+                </div>
+                <div class="place-details text-align-left">
+                    <div class="place-info">
+                        <h3 style="margin: 0 0 10px 0; font-size: 1.2rem;" th:text="${memory.title}">Memory Title</h3>
+                        <div style="margin-bottom: 8px;">
+                            <i class="lni lni-calendar" style="margin-right: 5px;"></i>
                             <span th:text="${#temporals.format(memory.startDate, 'MMM d, yyyy')}">Start Date</span>
                             <span th:if="${memory.startDate != memory.endDate}">
                                 - <span th:text="${#temporals.format(memory.endDate, 'MMM d, yyyy')}">End Date</span>
                             </span>
-                        </p>
-                        <p class="memory-description" th:if="${memory.description != null && !memory.description.isEmpty()}" 
-                           th:text="${memory.description}">Description</p>
+                        </div>
+                        <div th:if="${memory.description != null && !memory.description.isEmpty()}" 
+                             style="opacity: 0.8; font-size: 0.9rem; line-height: 1.4;" 
+                             th:text="${memory.description}">Description</div>
                     </div>
-                </a>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <a th:href="@{/memories/{id}(id=${memory.id})}" class="btn btn-block">View Memory</a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
