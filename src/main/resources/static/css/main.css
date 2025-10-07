@@ -488,6 +488,7 @@ tr:hover {
     height: initial;
 }
 
+a.btn,
 button {
     background-color: transparent;
     color: var(--color-highlight);
@@ -495,8 +496,10 @@ button {
     padding: 8px 12px;
     border-radius: 4px;
     cursor: pointer;
+    text-decoration: none;
 }
 
+a.btn:hover,
 button:hover {
     background-color: #959595;
 }
@@ -1134,6 +1137,7 @@ input[type=file]::file-selector-button:hover {
     }
 }
 
+a.btn:disabled,
 button:disabled {
     background: #9b9b9b;
     cursor: not-allowed;
@@ -1733,3 +1737,43 @@ button:disabled {
         border-radius: 50%;
     }
 }
+
+
+/* Memories */
+.memories-page {
+        background-color: var(--color-background-dark);
+        color: var(--color-text-white);
+        min-height: 100vh;
+        font-family: "Fraunces", serif;
+        font-weight: normal;
+}
+
+
+.memories-page .settings-nav-item {
+    display: block;
+    text-decoration: none;
+    padding: 15px 25px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    border-bottom: none;
+    transition: all 0.2s ease;
+    color: var(--color-text-white);
+}
+
+.memories-page .settings-nav-item:hover {
+    background-color: var(--color-background-dark);
+    border-left-color: var(--color-highlight);
+}
+
+.memories-page .settings-nav-item.active {
+    border-bottom: none;
+    font-weight: bold;
+    color: var(--color-highlight);
+}
+
+
+.memories-page a.btn,
+.memories-page .btn {
+    border: 1px solid;
+}
+

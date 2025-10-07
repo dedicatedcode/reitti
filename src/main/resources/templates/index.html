@@ -45,7 +45,7 @@
 <div class="timeline">
     <div class="navbar">
         <span><img class="logo" th:src="@{/img/logo.svg}" alt="reitti logo" title="reitti" src="/img/logo.svg"></span>
-        <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/memories" class="nav-link" th:title="#{nav.memories}"><i class="lni lni-image"></i></a>
+        <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/memories" class="nav-link" th:title="#{nav.memories}"><i class="lni lni-agenda"></i></a>
         <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/statistics" class="nav-link" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
         <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/settings" class="nav-link" th:title="#{nav.settings.tooltip}"><i class="lni lni-gear-1"></i></a>
         <a type="button" class="nav-link" id="auto-update-btn" onclick="toggleAutoUpdate()" title="Auto Update"><i class="lni lni-play"></i></a>
