@@ -276,22 +276,4 @@ public class MemoryController {
     public String emptyFragment() {
         return "memories/fragments :: empty";
     }
-
-    @GetMapping("/{id}/blocks/new")
-    public String createBlock(
-            @AuthenticationPrincipal User user,
-            @PathVariable Long id,
-            @RequestParam String type,
-            Model model) {
-        Memory memory = memoryService.getMemoryById(user, id)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
-        // Create new block using the service method
-        MemoryBlock createdBlock = memoryService.addBlock(id, BlockType.valueOf(type));
-        
-        model.addAttribute("block", createdBlock);
-        model.addAttribute("memory", memory);
-        
-        return "memories/fragments :: memory-block";
-    }
 }

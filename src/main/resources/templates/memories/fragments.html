@@ -12,9 +12,8 @@
         <button type="button" 
                 class="block-type-option"
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='TEXT')}"
-                hx-target=".blocks-list"
-                hx-swap="beforeend"
-                hx-on:click="document.querySelector('.blocks-add-area').innerHTML = ''">
+                hx-target=".block-type-grid"
+                hx-swap="beforeend">
             <span>Text Block</span>
             <p>Add text content with headlines and paragraphs</p>
         </button>
@@ -22,9 +21,8 @@
         <button type="button" 
                 class="block-type-option"
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='VISIT')}"
-                hx-target=".blocks-list"
-                hx-swap="beforeend"
-                hx-on:click="document.querySelector('.blocks-add-area').innerHTML = ''">
+                hx-target=".block-type-grid"
+                hx-swap="beforeend">
             <span>Visit Block</span>
             <p>Add a location you visited during this memory</p>
         </button>
@@ -32,9 +30,8 @@
         <button type="button" 
                 class="block-type-option"
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='TRIP')}"
-                hx-target=".blocks-list"
-                hx-swap="beforeend"
-                hx-on:click="document.querySelector('.blocks-add-area').innerHTML = ''">
+                hx-target=".block-type-grid"
+                hx-swap="beforeend">
             <span>Trip Block</span>
             <p>Add a journey or route from this memory</p>
         </button>
@@ -42,9 +39,8 @@
         <button type="button" 
                 class="block-type-option"
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='IMAGE_GALLERY')}"
-                hx-target=".blocks-list"
-                hx-swap="beforeend"
-                hx-on:click="document.querySelector('.blocks-add-area').innerHTML = ''">
+                hx-target=".block-type-grid"
+                hx-swap="beforeend">
             <span>Image Gallery</span>
             <p>Add a collection of photos from this memory</p>
         </button>
