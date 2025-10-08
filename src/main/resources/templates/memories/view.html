@@ -119,47 +119,67 @@
     (function () {
         const memory = /*[[${memory}]]*/ {};
         const rawLocationUrl = /*[[${rawLocationUrl}]]*/ '';
+        let memoryMap = null;
+        let rawLocationLoader = null;
 
-        // Initialize map if header type is MAP
-        if (memory.headerType === 'MAP') {
-            const map = L.map('memory-map', {
-                zoomControl: false,
-                attributionControl: false,
-                boxZoom: false,
-                doubleClickZoom: false,
-                dragging: false,
-                keyboard: false,
-                scrollWheelZoom: false,
-                tap: false,
-                touchZoom: false
-            }).setView([51.505, -0.09], 13);
+        function initializeMemoryMap() {
+            // Only initialize if header type is MAP and map container exists
+            if (memory.headerType === 'MAP' && document.getElementById('memory-map')) {
+                // Remove existing map if it exists
+                if (memoryMap) {
+                    memoryMap.remove();
+                }
 
-            L.tileLayer.grayscale('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
+                memoryMap = L.map('memory-map', {
+                    zoomControl: false,
+                    attributionControl: false,
+                    boxZoom: false,
+                    doubleClickZoom: false,
+                    dragging: false,
+                    keyboard: false,
+                    scrollWheelZoom: false,
+                    tap: false,
+                    touchZoom: false
+                }).setView([51.505, -0.09], 13);
 
-            // Initialize raw location loader for the memory
-            if (rawLocationUrl) {
-                const rawLocationLoader = new RawLocationLoader(map, {});
-                const userConfigs = [{
-                    url: rawLocationUrl,
-                    color: '#f1ba63',
-                    avatarUrl: null,
-                    avatarFallback: null,
-                    displayName: 'Memory Location Data'
-                }];
-                rawLocationLoader.init(userConfigs);
+                L.tileLayer.grayscale('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(memoryMap);
 
-                // Load location data for the memory date range without bounds filtering
-                rawLocationLoader.loadForDateRange(
-                    memory.startDate,
-                    memory.endDate,
-                    false, // autoUpdateMode
-                    false  // withBounds - don't filter by current map bounds
-                );
+                // Initialize raw location loader for the memory
+                if (rawLocationUrl) {
+                    rawLocationLoader = new RawLocationLoader(memoryMap, {});
+                    const userConfigs = [{
+                        url: rawLocationUrl,
+                        color: '#f1ba63',
+                        avatarUrl: null,
+                        avatarFallback: null,
+                        displayName: 'Memory Location Data'
+                    }];
+                    rawLocationLoader.init(userConfigs);
+
+                    // Load location data for the memory date range without bounds filtering
+                    rawLocationLoader.loadForDateRange(
+                        memory.startDate,
+                        memory.endDate,
+                        false, // autoUpdateMode
+                        false  // withBounds - don't filter by current map bounds
+                    );
+                }
             }
         }
+
+        // Initialize map on page load
+        initializeMemoryMap();
+
+        // Listen for htmx events to reinitialize map when header is updated
+        document.body.addEventListener('htmx:afterSwap', function(event) {
+            if (event.detail.target.classList.contains('memory-header')) {
+                // Small delay to ensure DOM is updated
+                setTimeout(initializeMemoryMap, 100);
+            }
+        });
 
     })();
 </script>
