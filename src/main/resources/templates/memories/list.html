@@ -10,6 +10,18 @@
     <script src="/js/htmx.min.js"></script>
 </head>
 <body class="memories-page">
+<script th:inline="javascript">
+    // User settings for timezone handling
+    window.userSettings = /*[[${userSettings}]]*/ {};
+
+    function getUserTimezone() {
+        if (window.userSettings.timeZoneOverride) {
+            return window.userSettings.timeZoneOverride;
+        } else {
+            return Intl.DateTimeFormat().resolvedOptions().timeZone;
+        }
+    }
+</script>
 <div class="settings-container">
     <div class="settings-nav">
         <div class="navbar">
@@ -63,7 +75,10 @@
                              th:text="${memory.description}">Description</div>
                     </div>
                     <div style="display: flex; gap: 10px; margin-top: 15px;">
-                        <a th:href="@{/memories/{id}(id=${memory.id})}" class="btn btn-block">View Memory</a>
+                        <a th:href="@{/memories/{id}(id=${memory.id})}" 
+                           hx-get th:attr="hx-get=@{/memories/{id}(id=${memory.id})}"
+                           hx-vals="js:{timezone: getUserTimezone()}"
+                           class="btn btn-block">View Memory</a>
                     </div>
                 </div>
             </div>

@@ -31,6 +31,8 @@ public class MemoryController {
     public String listMemories(@AuthenticationPrincipal User user, Model model) {
         List<Memory> memories = memoryService.getMemoriesForUser(user);
         model.addAttribute("memories", memories);
+        // Add user settings for timezone handling
+        model.addAttribute("userSettings", user.getSettings());
         return "memories/list";
     }
 
@@ -56,6 +58,9 @@ public class MemoryController {
         String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + startDateLocal + "&endDate=" + endDateLocal;
         model.addAttribute("rawLocationUrl", rawLocationUrl);
         
+        // Add user settings for timezone handling
+        model.addAttribute("userSettings", user.getSettings());
+        
         return "memories/view";
     }
 
@@ -67,6 +72,8 @@ public class MemoryController {
             Model model) {
         model.addAttribute("startDate", startDate);
         model.addAttribute("endDate", endDate);
+        // Add user settings for timezone handling
+        model.addAttribute("userSettings", user.getSettings());
         return "memories/new :: new-memory";
     }
 
