@@ -78,6 +78,7 @@
                         <a th:href="@{/memories/{id}(id=${memory.id})}" 
                            hx-get th:attr="hx-get=@{/memories/{id}(id=${memory.id})}"
                            hx-vals="js:{timezone: getUserTimezone()}"
+                           hx-target="body"
                            class="btn btn-block">View Memory</a>
                     </div>
                 </div>
