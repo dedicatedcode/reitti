@@ -49,6 +49,9 @@ public class MemoryController {
         String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + memory.getStartDate() + "&endDate=" + memory.getEndDate();
         model.addAttribute("rawLocationUrl", rawLocationUrl);
         
+        // Add user settings for timezone handling
+        model.addAttribute("userSettings", user.getSettings());
+        
         return "memories/view";
     }
 
@@ -178,6 +181,9 @@ public class MemoryController {
         model.addAttribute("cancelTarget", ".memory-header");
         model.addAttribute("formTarget", ".memory-header");
         
+        // Add user settings for timezone handling
+        model.addAttribute("userSettings", user.getSettings());
+        
         return "memories/edit :: edit-memory";
     }
 
@@ -192,6 +198,7 @@ public class MemoryController {
             @RequestParam HeaderType headerType,
             @RequestParam(required = false) String headerImageUrl,
             @RequestParam Long version,
+            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             Model model) {
         
         Memory memory = memoryService.getMemoryById(user, id)

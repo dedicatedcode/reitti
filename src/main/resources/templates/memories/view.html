@@ -127,6 +127,17 @@
         const rawLocationUrl = /*[[${rawLocationUrl}]]*/ '';
         let memoryMap = null;
         let rawLocationLoader = null;
+        
+        // User settings for timezone handling
+        window.userSettings = /*[[${userSettings}]]*/ {};
+
+        function getUserTimezone() {
+            if (window.userSettings.timezoneOverride) {
+                return window.userSettings.timezoneOverride;
+            } else {
+                return Intl.DateTimeFormat().resolvedOptions().timeZone;
+            }
+        }
 
         function initializeMemoryMap() {
             // Only initialize if header type is MAP and map container exists
