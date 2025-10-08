@@ -193,8 +193,25 @@
         // Listen for htmx events to reinitialize map when header is updated
         document.body.addEventListener('htmx:afterSwap', function(event) {
             if (event.detail.target.classList.contains('memory-header')) {
-                // Small delay to ensure DOM is updated
-                setTimeout(initializeMemoryMap, 100);
+                if (rawLocationUrl) {
+                    rawLocationLoader = new RawLocationLoader(memoryMap, {});
+                    const userConfigs = [{
+                        url: rawLocationUrl,
+                        color: '#f1ba63',
+                        avatarUrl: null,
+                        avatarFallback: null,
+                        displayName: 'Memory Location Data'
+                    }];
+                    rawLocationLoader.init(userConfigs);
+
+                    // Load location data for the memory date range without bounds filtering
+                    rawLocationLoader.loadForDateRange(
+                        memory.startDate,
+                        memory.endDate,
+                        false, // autoUpdateMode
+                        false  // withBounds - don't filter by current map bounds
+                    );
+                }
             }
         });
 
