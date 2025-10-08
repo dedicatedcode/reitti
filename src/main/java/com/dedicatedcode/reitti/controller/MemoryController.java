@@ -35,23 +35,17 @@ public class MemoryController {
     public String viewMemory(
             @AuthenticationPrincipal User user,
             @PathVariable Long id,
-            Model model,
-            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
+            Model model) {
         Memory memory = memoryService.getMemoryById(user, id)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
         model.addAttribute("memory", memory);
-        
-        if (hxRequest != null) {
-            // Return just the memory header fragment for htmx requests
-            return "memories/view :: memory-header";
-        }
-        
+
         List<MemoryBlock> blocks = memoryService.getBlocksForMemory(id);
         model.addAttribute("blocks", blocks);
         
         // Add raw location points URL for the memory date range
-        String rawLocationUrl = "/api/raw-location-points?startDate=" + memory.getStartDate() + "&endDate=" + memory.getEndDate();
+        String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + memory.getStartDate() + "&endDate=" + memory.getEndDate();
         model.addAttribute("rawLocationUrl", rawLocationUrl);
         
         return "memories/view";

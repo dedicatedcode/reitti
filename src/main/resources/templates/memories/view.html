@@ -11,13 +11,14 @@
     <script src="/js/htmx.min.js"></script>
     <script src="/js/leaflet.js"></script>
     <script src="/js/leaflet.geodesic.2.7.2.js"></script>
+    <script src="/js/TileLayer.Grayscale.js"></script>
     <script src="/js/raw-location-loader.js"></script>
 </head>
 <body class="memories-page">
 <div class="settings-container">
     <div class="settings-content-area">
         <div class="memory-header" th:fragment="memory-header">
-            <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+            <div class="action-bar">
                 <button type="button" 
                         class="btn btn-secondary"
                         th:attr="hx-get=@{/memories/{id}/edit(id=${memory.id})}"
@@ -25,7 +26,7 @@
                         hx-swap="innerHTML">Edit
                 </button>
             </div>
-            
+
             <div class="memory-header-section" th:if="${memory.headerType.name() == 'IMAGE' && memory.headerImageUrl != null}">
                 <img th:src="${memory.headerImageUrl}" th:alt="${memory.title}" class="memory-header-image-large">
             </div>
@@ -40,8 +41,6 @@
                 </h1>
                 <p class="memory-description-large" th:if="${memory.description != null && !memory.description.isEmpty()}"
                    th:text="${memory.description}">Description</p>
-            </div>
-            <div class="memory-details">
                 <p class="memory-date-range-large">
                     <i class="lni lni-calendar"></i>
                     <span th:text="${#temporals.format(memory.startDate, 'MMMM d, yyyy')}">Start Date</span>
@@ -49,6 +48,8 @@
                         - <span th:text="${#temporals.format(memory.endDate, 'MMMM d, yyyy')}">End Date</span>
                     </span>
                 </p>
+            </div>
+            <div class="memory-details">
                 <p class="memory-description-large" th:if="${memory.description != null && !memory.description.isEmpty()}"
                    th:text="${memory.description}">Description</p>
             </div>
@@ -115,42 +116,52 @@
 
 
 <script th:inline="javascript">
-    const memory = /*[[${memory}]]*/ {};
-    const rawLocationUrl = /*[[${rawLocationUrl}]]*/ '';
-    
-    // Initialize map if header type is MAP
-    if (memory.headerType === 'MAP') {
-        const map = L.map('memory-map', {
-            zoomControl: true,
-            attributionControl: false
-        }).setView([51.505, -0.09], 13);
+    (function () {
+        const memory = /*[[${memory}]]*/ {};
+        const rawLocationUrl = /*[[${rawLocationUrl}]]*/ '';
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+        // Initialize map if header type is MAP
+        if (memory.headerType === 'MAP') {
+            const map = L.map('memory-map', {
+                zoomControl: false,
+                attributionControl: false,
+                boxZoom: false,
+                doubleClickZoom: false,
+                dragging: false,
+                keyboard: false,
+                scrollWheelZoom: false,
+                tap: false,
+                touchZoom: false
+            }).setView([51.505, -0.09], 13);
 
-        // Initialize raw location loader for the memory
-        if (rawLocationUrl) {
-            const rawLocationLoader = new RawLocationLoader(map, {});
-            const userConfigs = [{
-                url: rawLocationUrl,
-                color: '#f1ba63',
-                avatarUrl: null,
-                avatarFallback: null,
-                displayName: 'Memory Location Data'
-            }];
-            rawLocationLoader.init(userConfigs);
-            
-            // Load location data for the memory date range without bounds filtering
-            rawLocationLoader.loadForDateRange(
-                memory.startDate, 
-                memory.endDate, 
-                false, // autoUpdateMode
-                false  // withBounds - don't filter by current map bounds
-            );
+            L.tileLayer.grayscale('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Initialize raw location loader for the memory
+            if (rawLocationUrl) {
+                const rawLocationLoader = new RawLocationLoader(map, {});
+                const userConfigs = [{
+                    url: rawLocationUrl,
+                    color: '#f1ba63',
+                    avatarUrl: null,
+                    avatarFallback: null,
+                    displayName: 'Memory Location Data'
+                }];
+                rawLocationLoader.init(userConfigs);
+
+                // Load location data for the memory date range without bounds filtering
+                rawLocationLoader.loadForDateRange(
+                    memory.startDate,
+                    memory.endDate,
+                    false, // autoUpdateMode
+                    false  // withBounds - don't filter by current map bounds
+                );
+            }
         }
-    }
+
+    })();
 </script>
 </body>
 </html>
