@@ -1785,6 +1785,10 @@ button:disabled {
     color: var(--color-highlight);
 }
 
+.memories-page .memory-details {
+    text-align: center;
+    font-family: var(--serif-font);
+}
 
 .memories-page a.btn,
 .memories-page .btn {

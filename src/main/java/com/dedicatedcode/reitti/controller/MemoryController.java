@@ -177,8 +177,7 @@ public class MemoryController {
         Memory memory = memoryService.getMemoryById(user, id)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         model.addAttribute("memory", memory);
-        
-        
+
         model.addAttribute("cancelEndpoint", "/memories/" + id);
         model.addAttribute("cancelTarget", ".memory-header");
         model.addAttribute("formTarget", ".memory-header");
@@ -291,9 +290,7 @@ public class MemoryController {
             @PathVariable Long id,
             @RequestParam String type,
             Model model) {
-        Memory memory = memoryService.getMemoryById(user, id)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
+
         model.addAttribute("memoryId", id);
         model.addAttribute("blockType", type);
         
