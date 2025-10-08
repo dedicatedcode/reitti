@@ -11,8 +11,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 @Controller
@@ -49,9 +51,6 @@ public class MemoryController {
         String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + memory.getStartDate() + "&endDate=" + memory.getEndDate();
         model.addAttribute("rawLocationUrl", rawLocationUrl);
         
-        // Add user settings for timezone handling
-        model.addAttribute("userSettings", user.getSettings());
-        
         return "memories/view";
     }
 
@@ -63,8 +62,6 @@ public class MemoryController {
             Model model) {
         model.addAttribute("startDate", startDate);
         model.addAttribute("endDate", endDate);
-        // Add user settings for timezone handling
-        model.addAttribute("userSettings", user.getSettings());
         return "memories/new :: new-memory";
     }
 
@@ -73,8 +70,8 @@ public class MemoryController {
             @AuthenticationPrincipal User user,
             @RequestParam String title,
             @RequestParam(required = false) String description,
-            @RequestParam String startDate,
-            @RequestParam String endDate,
+            @RequestParam LocalDate startDate,
+            @RequestParam LocalDate endDate,
             @RequestParam HeaderType headerType,
             @RequestParam(required = false) String headerImageUrl,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
@@ -92,32 +89,10 @@ public class MemoryController {
             return "memories/new :: new-memory";
         }
         
-        if (startDate == null || startDate.trim().isEmpty()) {
-            model.addAttribute("error", "memory.validation.start.date.required");
-            model.addAttribute("title", title);
-            model.addAttribute("description", description);
-            model.addAttribute("startDate", startDate);
-            model.addAttribute("endDate", endDate);
-            model.addAttribute("headerType", headerType);
-            model.addAttribute("headerImageUrl", headerImageUrl);
-            return "memories/new :: new-memory";
-        }
-        
-        if (endDate == null || endDate.trim().isEmpty()) {
-            model.addAttribute("error", "memory.validation.end.date.required");
-            model.addAttribute("title", title);
-            model.addAttribute("description", description);
-            model.addAttribute("startDate", startDate);
-            model.addAttribute("endDate", endDate);
-            model.addAttribute("headerType", headerType);
-            model.addAttribute("headerImageUrl", headerImageUrl);
-            return "memories/new :: new-memory";
-        }
-        
         try {
-            LocalDate start = LocalDate.parse(startDate);
-            LocalDate end = LocalDate.parse(endDate);
-            LocalDate today = LocalDate.now();
+            Instant start = ZonedDateTime.of(startDate.atStartOfDay(), timezone).toInstant();
+            Instant end = ZonedDateTime.of(endDate.plusDays(1).atStartOfDay().minusNanos(1), timezone).toInstant();
+            Instant today = Instant.now();
             
             // Validate dates are not in the future
             if (start.isAfter(today) || end.isAfter(today)) {
@@ -181,9 +156,6 @@ public class MemoryController {
         model.addAttribute("cancelTarget", ".memory-header");
         model.addAttribute("formTarget", ".memory-header");
         
-        // Add user settings for timezone handling
-        model.addAttribute("userSettings", user.getSettings());
-        
         return "memories/edit :: edit-memory";
     }
 
@@ -193,8 +165,8 @@ public class MemoryController {
             @PathVariable Long id,
             @RequestParam String title,
             @RequestParam(required = false) String description,
-            @RequestParam String startDate,
-            @RequestParam String endDate,
+            @RequestParam LocalDate startDate,
+            @RequestParam LocalDate endDate,
             @RequestParam HeaderType headerType,
             @RequestParam(required = false) String headerImageUrl,
             @RequestParam Long version,
@@ -216,9 +188,9 @@ public class MemoryController {
         }
         
         try {
-            LocalDate start = LocalDate.parse(startDate);
-            LocalDate end = LocalDate.parse(endDate);
-            LocalDate today = LocalDate.now();
+            Instant start = ZonedDateTime.of(startDate.atStartOfDay(), timezone).toInstant();
+            Instant end = ZonedDateTime.of(endDate.plusDays(1).atStartOfDay().minusNanos(1), timezone).toInstant();
+            Instant today = Instant.now();
             
             if (start.isAfter(today) || end.isAfter(today)) {
                 model.addAttribute("error", "memory.validation.date.future");
@@ -292,13 +264,8 @@ public class MemoryController {
             @AuthenticationPrincipal User user,
             @PathVariable Long id,
             Model model) {
-        Memory memory = memoryService.getMemoryById(user, id)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
-        // Trigger recalculation for the memory
+        memoryService.getMemoryById(user, id).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         memoryService.recalculateMemory(user, id);
-        
-        // Redirect back to the memory view
         return "redirect:/memories/" + id;
     }
 
