@@ -11,6 +11,7 @@
     <script src="/js/htmx.min.js"></script>
     <script src="/js/leaflet.js"></script>
     <script src="/js/leaflet.geodesic.2.7.2.js"></script>
+    <script src="/js/raw-location-loader.js"></script>
 </head>
 <body class="memories-page">
 <div class="settings-container">
@@ -115,6 +116,7 @@
 
 <script th:inline="javascript">
     const memory = /*[[${memory}]]*/ {};
+    const rawLocationUrl = /*[[${rawLocationUrl}]]*/ '';
     
     // Initialize map if header type is MAP
     if (memory.headerType === 'MAP') {
@@ -128,7 +130,26 @@
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-
+        // Initialize raw location loader for the memory
+        if (rawLocationUrl) {
+            const rawLocationLoader = new RawLocationLoader(map, {});
+            const userConfigs = [{
+                url: rawLocationUrl,
+                color: '#f1ba63',
+                avatarUrl: null,
+                avatarFallback: null,
+                displayName: 'Memory Location Data'
+            }];
+            rawLocationLoader.init(userConfigs);
+            
+            // Load location data for the memory date range without bounds filtering
+            rawLocationLoader.loadForDateRange(
+                memory.startDate, 
+                memory.endDate, 
+                false, // autoUpdateMode
+                false  // withBounds - don't filter by current map bounds
+            );
+        }
     }
 </script>
 </body>

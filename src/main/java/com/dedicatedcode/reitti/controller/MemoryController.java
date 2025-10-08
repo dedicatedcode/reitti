@@ -49,6 +49,11 @@ public class MemoryController {
         
         List<MemoryBlock> blocks = memoryService.getBlocksForMemory(id);
         model.addAttribute("blocks", blocks);
+        
+        // Add raw location points URL for the memory date range
+        String rawLocationUrl = "/api/raw-location-points?startDate=" + memory.getStartDate() + "&endDate=" + memory.getEndDate();
+        model.addAttribute("rawLocationUrl", rawLocationUrl);
+        
         return "memories/view";
     }
 
