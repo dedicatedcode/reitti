@@ -79,7 +79,7 @@
                         hx-disabled-elt="this">
                     <span th:text="#{memory.form.create}">Create Memory</span>
                     <span id="create-spinner" class="htmx-indicator">
-                        <i class="lni lni-spinner-arrow"></i>
+                        <i class="lni lni-spinner-2-sacle lni-is-spinning"></i>
                         <span th:text="#{memory.form.creating}">Creating...</span>
                     </span>
                 </button>
@@ -87,23 +87,6 @@
         </form>
     </div>
 </div>
-
-<style>
-    .htmx-indicator {
-        display: none;
-    }
-    .htmx-request .htmx-indicator {
-        display: inline;
-    }
-    .htmx-request .htmx-indicator i {
-        animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-    }
-</style>
-
 <script>
     // Show/hide image URL field based on header type selection
     document.querySelectorAll('input[name="headerType"]').forEach(radio => {

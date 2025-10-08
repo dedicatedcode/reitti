@@ -48,10 +48,7 @@
                         - <span th:text="${#temporals.format(memory.endDate, 'MMMM d, yyyy')}">End Date</span>
                     </span>
                 </p>
-            </div>
-            <div class="memory-details">
-                <p class="memory-description-large" th:if="${memory.description != null && !memory.description.isEmpty()}"
-                   th:text="${memory.description}">Description</p>
+
             </div>
         </div>
 
