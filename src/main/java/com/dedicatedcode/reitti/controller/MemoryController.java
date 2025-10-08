@@ -48,7 +48,7 @@ public class MemoryController {
         model.addAttribute("blocks", blocks);
         
         // Add raw location points URL for the memory date range
-        String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + memory.getStartDate() + "&endDate=" + memory.getEndDate();
+        String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + LocalDate.ofInstant(memory.getStartDate(), ZoneId.of("UTC")) + "&endDate=" + LocalDate.ofInstant(memory.getEndDate(), ZoneId.of("UTC"));
         model.addAttribute("rawLocationUrl", rawLocationUrl);
         
         return "memories/view";
@@ -155,7 +155,8 @@ public class MemoryController {
         model.addAttribute("cancelEndpoint", "/memories/" + id);
         model.addAttribute("cancelTarget", ".memory-header");
         model.addAttribute("formTarget", ".memory-header");
-        
+        model.addAttribute("startDate", memory.getStartDate().atZone(ZoneId.of("UTC")).toLocalDate());
+        model.addAttribute("endDate",  memory.getEndDate().atZone(ZoneId.of("UTC")).toLocalDate());
         return "memories/edit :: edit-memory";
     }
 
