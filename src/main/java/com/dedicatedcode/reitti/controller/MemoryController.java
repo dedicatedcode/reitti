@@ -173,24 +173,15 @@ public class MemoryController {
     public String editMemoryForm(
             @AuthenticationPrincipal User user,
             @PathVariable Long id,
-            Model model,
-            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
+            Model model) {
         Memory memory = memoryService.getMemoryById(user, id)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         model.addAttribute("memory", memory);
         
-        // Set cancel endpoint and form target based on context
-        if (hxRequest != null) {
-            // If called via htmx from view page, cancel should return header fragment
-            model.addAttribute("cancelEndpoint", "/memories/" + id);
-            model.addAttribute("cancelTarget", ".memory-header");
-            model.addAttribute("formTarget", ".memory-header");
-        } else {
-            // If called directly, cancel should go to list
-            model.addAttribute("cancelEndpoint", "/memories");
-            model.addAttribute("cancelTarget", ".settings-content-area");
-            model.addAttribute("formTarget", ".settings-content-area");
-        }
+        // Always set htmx-specific attributes since edit form is only accessed via htmx
+        model.addAttribute("cancelEndpoint", "/memories/" + id);
+        model.addAttribute("cancelTarget", ".memory-header");
+        model.addAttribute("formTarget", ".memory-header");
         
         return "memories/edit :: edit-memory";
     }
@@ -216,16 +207,10 @@ public class MemoryController {
         if (title == null || title.trim().isEmpty()) {
             model.addAttribute("error", "memory.validation.title.required");
             model.addAttribute("memory", memory);
-            // Set cancel endpoint and form target based on context
-            if (hxRequest != null) {
-                model.addAttribute("cancelEndpoint", "/memories/" + id);
-                model.addAttribute("cancelTarget", ".memory-header");
-                model.addAttribute("formTarget", ".memory-header");
-            } else {
-                model.addAttribute("cancelEndpoint", "/memories");
-                model.addAttribute("cancelTarget", ".settings-content-area");
-                model.addAttribute("formTarget", ".settings-content-area");
-            }
+            // Always set htmx-specific attributes since edit form is only accessed via htmx
+            model.addAttribute("cancelEndpoint", "/memories/" + id);
+            model.addAttribute("cancelTarget", ".memory-header");
+            model.addAttribute("formTarget", ".memory-header");
             return "memories/edit :: edit-memory";
         }
         
@@ -237,32 +222,20 @@ public class MemoryController {
             if (start.isAfter(today) || end.isAfter(today)) {
                 model.addAttribute("error", "memory.validation.date.future");
                 model.addAttribute("memory", memory);
-                // Set cancel endpoint and form target based on context
-                if (hxRequest != null) {
-                    model.addAttribute("cancelEndpoint", "/memories/" + id);
-                    model.addAttribute("cancelTarget", ".memory-header");
-                    model.addAttribute("formTarget", ".memory-header");
-                } else {
-                    model.addAttribute("cancelEndpoint", "/memories");
-                    model.addAttribute("cancelTarget", ".settings-content-area");
-                    model.addAttribute("formTarget", ".settings-content-area");
-                }
+                // Always set htmx-specific attributes since edit form is only accessed via htmx
+                model.addAttribute("cancelEndpoint", "/memories/" + id);
+                model.addAttribute("cancelTarget", ".memory-header");
+                model.addAttribute("formTarget", ".memory-header");
                 return "memories/edit :: edit-memory";
             }
             
             if (end.isBefore(start)) {
                 model.addAttribute("error", "memory.validation.end.date.before.start");
                 model.addAttribute("memory", memory);
-                // Set cancel endpoint and form target based on context
-                if (hxRequest != null) {
-                    model.addAttribute("cancelEndpoint", "/memories/" + id);
-                    model.addAttribute("cancelTarget", ".memory-header");
-                    model.addAttribute("formTarget", ".memory-header");
-                } else {
-                    model.addAttribute("cancelEndpoint", "/memories");
-                    model.addAttribute("cancelTarget", ".settings-content-area");
-                    model.addAttribute("formTarget", ".settings-content-area");
-                }
+                // Always set htmx-specific attributes since edit form is only accessed via htmx
+                model.addAttribute("cancelEndpoint", "/memories/" + id);
+                model.addAttribute("cancelTarget", ".memory-header");
+                model.addAttribute("formTarget", ".memory-header");
                 return "memories/edit :: edit-memory";
             }
             
@@ -288,16 +261,10 @@ public class MemoryController {
         } catch (Exception e) {
             model.addAttribute("error", "memory.validation.start.date.required");
             model.addAttribute("memory", memory);
-            // Set cancel endpoint and form target based on context
-            if (hxRequest != null) {
-                model.addAttribute("cancelEndpoint", "/memories/" + id);
-                model.addAttribute("cancelTarget", ".memory-header");
-                model.addAttribute("formTarget", ".memory-header");
-            } else {
-                model.addAttribute("cancelEndpoint", "/memories");
-                model.addAttribute("cancelTarget", ".settings-content-area");
-                model.addAttribute("formTarget", ".settings-content-area");
-            }
+            // Always set htmx-specific attributes since edit form is only accessed via htmx
+            model.addAttribute("cancelEndpoint", "/memories/" + id);
+            model.addAttribute("cancelTarget", ".memory-header");
+            model.addAttribute("formTarget", ".memory-header");
             return "memories/edit :: edit-memory";
         }
     }
