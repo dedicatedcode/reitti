@@ -283,6 +283,21 @@ public class MemoryController {
         return "memories/fragments :: empty";
     }
 
+    @PostMapping("/{id}/recalculate")
+    public String recalculateMemory(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long id,
+            Model model) {
+        Memory memory = memoryService.getMemoryById(user, id)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        
+        // Trigger recalculation for the memory
+        memoryService.recalculateMemory(user, id);
+        
+        // Redirect back to the memory view
+        return "redirect:/memories/" + id;
+    }
+
     @GetMapping("/{id}/blocks/new")
     public String newBlockForm(
             @AuthenticationPrincipal User user,

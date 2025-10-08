@@ -26,6 +26,14 @@
                         hx-swap="innerHTML"
                         th:text="#{memory.view.edit}">Edit
                 </button>
+                <button type="button" 
+                        class="btn btn-primary"
+                        th:attr="hx-post=@{/memories/{id}/recalculate(id=${memory.id})}"
+                        hx-target="body"
+                        hx-swap="innerHTML"
+                        hx-confirm="Recalculate this memory? This will update all location data."
+                        th:text="#{memory.view.recalculate}">Recalculate
+                </button>
             </div>
 
             <div class="memory-header-section" th:if="${memory.headerType.name() == 'IMAGE' && memory.headerImageUrl != null}">
