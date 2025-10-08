@@ -21,6 +21,12 @@
             return Intl.DateTimeFormat().resolvedOptions().timeZone;
         }
     }
+
+    function navigateToMemoryWithTimezone(event, memoryId) {
+        event.preventDefault();
+        const timezone = encodeURIComponent(getUserTimezone());
+        window.location.href = `/memories/${memoryId}?timezone=${timezone}`;
+    }
 </script>
 <div class="settings-container">
     <div class="settings-nav">
@@ -76,10 +82,9 @@
                     </div>
                     <div style="display: flex; gap: 10px; margin-top: 15px;">
                         <a th:href="@{/memories/{id}(id=${memory.id})}" 
-                           hx-get th:attr="hx-get=@{/memories/{id}(id=${memory.id})}"
-                           hx-vals="js:{timezone: getUserTimezone()}"
-                           hx-target="body"
-                           class="btn btn-block">View Memory</a>
+                           class="btn btn-block memory-link"
+                           th:attr="data-memory-id=${memory.id}"
+                           onclick="navigateToMemoryWithTimezone(event, this.dataset.memoryId)">View Memory</a>
                     </div>
                 </div>
             </div>
