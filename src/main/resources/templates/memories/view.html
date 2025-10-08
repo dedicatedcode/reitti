@@ -132,8 +132,8 @@
         window.userSettings = /*[[${userSettings}]]*/ {};
 
         function getUserTimezone() {
-            if (window.userSettings.timezoneOverride) {
-                return window.userSettings.timezoneOverride;
+            if (window.userSettings.timeZoneOverride) {
+                return window.userSettings.timeZoneOverride;
             } else {
                 return Intl.DateTimeFormat().resolvedOptions().timeZone;
             }

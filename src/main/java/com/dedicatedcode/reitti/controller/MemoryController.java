@@ -47,8 +47,20 @@ public class MemoryController {
         List<MemoryBlock> blocks = memoryService.getBlocksForMemory(id);
         model.addAttribute("blocks", blocks);
         
-        // Add raw location points URL for the memory date range
-        String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + LocalDate.ofInstant(memory.getStartDate(), ZoneId.of("UTC")) + "&endDate=" + LocalDate.ofInstant(memory.getEndDate(), ZoneId.of("UTC"));
+        // Add user settings for timezone handling
+        model.addAttribute("userSettings", user.getSettings());
+        
+        // Get user timezone for date conversion
+        ZoneId userTimezone = user.getSettings().getTimeZoneOverride() != null 
+            ? user.getSettings().getTimeZoneOverride() 
+            : ZoneId.systemDefault();
+        
+        // Convert Instant dates to local timezone ISO format
+        String startDateLocal = memory.getStartDate().atZone(userTimezone).toLocalDate().toString();
+        String endDateLocal = memory.getEndDate().atZone(userTimezone).toLocalDate().toString();
+        
+        // Add raw location points URL for the memory date range with local timezone dates
+        String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + startDateLocal + "&endDate=" + endDateLocal;
         model.addAttribute("rawLocationUrl", rawLocationUrl);
         
         return "memories/view";
