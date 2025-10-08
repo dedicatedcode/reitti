@@ -53,11 +53,14 @@ public class MemoryController {
 
     @GetMapping("/new")
     public String newMemoryForm(
+            @AuthenticationPrincipal User user,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             Model model) {
         model.addAttribute("startDate", startDate);
         model.addAttribute("endDate", endDate);
+        // Add user settings for timezone handling
+        model.addAttribute("userSettings", user.getSettings());
         return "memories/new :: new-memory";
     }
 
@@ -70,6 +73,7 @@ public class MemoryController {
             @RequestParam String endDate,
             @RequestParam HeaderType headerType,
             @RequestParam(required = false) String headerImageUrl,
+            @RequestParam(required = false) String timezone,
             Model model,
             @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
 
