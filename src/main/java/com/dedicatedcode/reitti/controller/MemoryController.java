@@ -216,6 +216,16 @@ public class MemoryController {
         if (title == null || title.trim().isEmpty()) {
             model.addAttribute("error", "memory.validation.title.required");
             model.addAttribute("memory", memory);
+            // Set cancel endpoint and form target based on context
+            if (hxRequest != null) {
+                model.addAttribute("cancelEndpoint", "/memories/" + id);
+                model.addAttribute("cancelTarget", ".memory-header");
+                model.addAttribute("formTarget", ".memory-header");
+            } else {
+                model.addAttribute("cancelEndpoint", "/memories");
+                model.addAttribute("cancelTarget", ".settings-content-area");
+                model.addAttribute("formTarget", ".settings-content-area");
+            }
             return "memories/edit :: edit-memory";
         }
         
@@ -227,12 +237,32 @@ public class MemoryController {
             if (start.isAfter(today) || end.isAfter(today)) {
                 model.addAttribute("error", "memory.validation.date.future");
                 model.addAttribute("memory", memory);
+                // Set cancel endpoint and form target based on context
+                if (hxRequest != null) {
+                    model.addAttribute("cancelEndpoint", "/memories/" + id);
+                    model.addAttribute("cancelTarget", ".memory-header");
+                    model.addAttribute("formTarget", ".memory-header");
+                } else {
+                    model.addAttribute("cancelEndpoint", "/memories");
+                    model.addAttribute("cancelTarget", ".settings-content-area");
+                    model.addAttribute("formTarget", ".settings-content-area");
+                }
                 return "memories/edit :: edit-memory";
             }
             
             if (end.isBefore(start)) {
                 model.addAttribute("error", "memory.validation.end.date.before.start");
                 model.addAttribute("memory", memory);
+                // Set cancel endpoint and form target based on context
+                if (hxRequest != null) {
+                    model.addAttribute("cancelEndpoint", "/memories/" + id);
+                    model.addAttribute("cancelTarget", ".memory-header");
+                    model.addAttribute("formTarget", ".memory-header");
+                } else {
+                    model.addAttribute("cancelEndpoint", "/memories");
+                    model.addAttribute("cancelTarget", ".settings-content-area");
+                    model.addAttribute("formTarget", ".settings-content-area");
+                }
                 return "memories/edit :: edit-memory";
             }
             
@@ -258,6 +288,16 @@ public class MemoryController {
         } catch (Exception e) {
             model.addAttribute("error", "memory.validation.start.date.required");
             model.addAttribute("memory", memory);
+            // Set cancel endpoint and form target based on context
+            if (hxRequest != null) {
+                model.addAttribute("cancelEndpoint", "/memories/" + id);
+                model.addAttribute("cancelTarget", ".memory-header");
+                model.addAttribute("formTarget", ".memory-header");
+            } else {
+                model.addAttribute("cancelEndpoint", "/memories");
+                model.addAttribute("cancelTarget", ".settings-content-area");
+                model.addAttribute("formTarget", ".settings-content-area");
+            }
             return "memories/edit :: edit-memory";
         }
     }
