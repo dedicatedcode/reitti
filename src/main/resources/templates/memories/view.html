@@ -23,7 +23,8 @@
                         class="btn btn-secondary"
                         th:attr="hx-get=@{/memories/{id}/edit(id=${memory.id})}"
                         hx-target=".memory-header"
-                        hx-swap="innerHTML">Edit
+                        hx-swap="innerHTML"
+                        th:text="#{memory.view.edit}">Edit
                 </button>
             </div>
 
@@ -54,13 +55,13 @@
 
         <div class="memory-blocks-container">
             <div class="blocks-header">
-                <h2>Blocks</h2>
+                <h2 th:text="#{memory.view.blocks.title}">Blocks</h2>
                 <button type="button" 
                         class="btn btn-primary"
                         th:attr="hx-get=@{/memories/{id}/blocks/select-type(id=${memory.id})}"
                         hx-target=".blocks-add-area"
                         hx-swap="innerHTML">
-                    <i class="lni lni-plus"></i> Add Block
+                    <i class="lni lni-plus"></i> <span th:text="#{memory.view.add.block}">Add Block</span>
                 </button>
             </div>
 
@@ -68,7 +69,7 @@
 
             <div th:if="${blocks.isEmpty()}" class="empty-blocks">
                 <i class="lni lni-layers"></i>
-                <p>No blocks yet. Add your first block to start building your memory.</p>
+                <p th:text="#{memory.view.no.blocks}">No blocks yet. Add your first block to start building your memory.</p>
             </div>
 
             <div class="blocks-list" id="blocksList">
@@ -89,20 +90,20 @@
                     </div>
                     <div class="block-content">
                         <div th:if="${block.blockType.name() == 'TEXT'}" class="text-block">
-                            <h3>Text Block</h3>
-                            <p>Content will be loaded here</p>
+                            <h3 th:text="#{memory.view.block.text.title}">Text Block</h3>
+                            <p th:text="#{memory.view.block.text.content}">Content will be loaded here</p>
                         </div>
                         <div th:if="${block.blockType.name() == 'VISIT'}" class="visit-block">
                             <i class="lni lni-map-marker"></i>
-                            <p>Visit block</p>
+                            <p th:text="#{memory.view.block.visit.content}">Visit block</p>
                         </div>
                         <div th:if="${block.blockType.name() == 'TRIP'}" class="trip-block">
                             <i class="lni lni-direction"></i>
-                            <p>Trip block</p>
+                            <p th:text="#{memory.view.block.trip.content}">Trip block</p>
                         </div>
                         <div th:if="${block.blockType.name() == 'IMAGE_GALLERY'}" class="gallery-block">
                             <i class="lni lni-gallery"></i>
-                            <p>Image gallery</p>
+                            <p th:text="#{memory.view.block.gallery.content}">Image gallery</p>
                         </div>
                     </div>
                 </div>
