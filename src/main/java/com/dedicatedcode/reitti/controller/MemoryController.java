@@ -178,7 +178,7 @@ public class MemoryController {
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         model.addAttribute("memory", memory);
         
-        // Always set htmx-specific attributes since edit form is only accessed via htmx
+        
         model.addAttribute("cancelEndpoint", "/memories/" + id);
         model.addAttribute("cancelTarget", ".memory-header");
         model.addAttribute("formTarget", ".memory-header");
@@ -197,8 +197,7 @@ public class MemoryController {
             @RequestParam HeaderType headerType,
             @RequestParam(required = false) String headerImageUrl,
             @RequestParam Long version,
-            Model model,
-            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
+            Model model) {
         
         Memory memory = memoryService.getMemoryById(user, id)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
@@ -207,7 +206,7 @@ public class MemoryController {
         if (title == null || title.trim().isEmpty()) {
             model.addAttribute("error", "memory.validation.title.required");
             model.addAttribute("memory", memory);
-            // Always set htmx-specific attributes since edit form is only accessed via htmx
+            
             model.addAttribute("cancelEndpoint", "/memories/" + id);
             model.addAttribute("cancelTarget", ".memory-header");
             model.addAttribute("formTarget", ".memory-header");
@@ -222,7 +221,7 @@ public class MemoryController {
             if (start.isAfter(today) || end.isAfter(today)) {
                 model.addAttribute("error", "memory.validation.date.future");
                 model.addAttribute("memory", memory);
-                // Always set htmx-specific attributes since edit form is only accessed via htmx
+                
                 model.addAttribute("cancelEndpoint", "/memories/" + id);
                 model.addAttribute("cancelTarget", ".memory-header");
                 model.addAttribute("formTarget", ".memory-header");
@@ -232,7 +231,7 @@ public class MemoryController {
             if (end.isBefore(start)) {
                 model.addAttribute("error", "memory.validation.end.date.before.start");
                 model.addAttribute("memory", memory);
-                // Always set htmx-specific attributes since edit form is only accessed via htmx
+                
                 model.addAttribute("cancelEndpoint", "/memories/" + id);
                 model.addAttribute("cancelTarget", ".memory-header");
                 model.addAttribute("formTarget", ".memory-header");
@@ -251,17 +250,12 @@ public class MemoryController {
             Memory savedMemory = memoryService.updateMemory(user, updated);
             model.addAttribute("memory", savedMemory);
             
-            if (hxRequest != null) {
-                // Return the updated memory header for htmx requests
-                return "memories/view :: memory-header";
-            }
-            
-            return "redirect:/memories/" + id;
-            
+            return "memories/view :: memory-header";
+
         } catch (Exception e) {
             model.addAttribute("error", "memory.validation.start.date.required");
             model.addAttribute("memory", memory);
-            // Always set htmx-specific attributes since edit form is only accessed via htmx
+            
             model.addAttribute("cancelEndpoint", "/memories/" + id);
             model.addAttribute("cancelTarget", ".memory-header");
             model.addAttribute("formTarget", ".memory-header");
