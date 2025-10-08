@@ -24,6 +24,7 @@
                         th:attr="hx-get=@{/memories/{id}/edit(id=${memory.id})}"
                         hx-target=".memory-header"
                         hx-swap="innerHTML"
+                        hx-vals="js:{timezone: getUserTimezone()}"
                         th:text="#{memory.view.edit}">Edit
                 </button>
                 <button type="button" 
@@ -31,6 +32,7 @@
                         th:attr="hx-post=@{/memories/{id}/recalculate(id=${memory.id})}"
                         hx-target="body"
                         hx-swap="innerHTML"
+                        hx-vals="js:{timezone: getUserTimezone()}"
                         hx-confirm="Recalculate this memory? This will update all location data."
                         th:text="#{memory.view.recalculate}">Recalculate
                 </button>
