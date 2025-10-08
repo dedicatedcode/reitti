@@ -12,6 +12,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 @Controller
@@ -73,9 +74,8 @@ public class MemoryController {
             @RequestParam String endDate,
             @RequestParam HeaderType headerType,
             @RequestParam(required = false) String headerImageUrl,
-            @RequestParam(required = false) String timezone,
-            Model model,
-            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
+            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+            Model model) {
 
         // Validate required fields
         if (title == null || title.trim().isEmpty()) {
@@ -150,13 +150,6 @@ public class MemoryController {
             );
             
             Memory created = memoryService.createMemory(user, memory);
-            
-            if (hxRequest != null) {
-                // For htmx requests, return to the memories list
-                List<Memory> memories = memoryService.getMemoriesForUser(user);
-                model.addAttribute("memories", memories);
-                return "memories/list :: settings-content-area";
-            }
             
             return "redirect:/memories/" + created.getId();
             
