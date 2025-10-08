@@ -76,15 +76,14 @@ public class ProcessingPipelineTrigger {
     }
 
     private void handleDataForUser(User user, String previewId) {
-        int offset = 0;
         int totalProcessed = 0;
         
         while (true) {
             List<RawLocationPoint> currentBatch;
             if (previewId == null) {
-                currentBatch = rawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestampWithLimit(user, BATCH_SIZE, offset);
+                currentBatch = rawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestampWithLimit(user, BATCH_SIZE, 0);
             } else {
-                currentBatch = previewRawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestampWithLimit(user, previewId, BATCH_SIZE, offset);
+                currentBatch = previewRawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestampWithLimit(user, previewId, BATCH_SIZE, 0);
             }
             
             if (currentBatch.isEmpty()) {
@@ -108,7 +107,6 @@ public class ProcessingPipelineTrigger {
                             new LocationProcessEvent(user.getUsername(), earliest, latest, previewId));
             
             totalProcessed += currentBatch.size();
-            offset += BATCH_SIZE;
         }
         
         log.debug("Processed [{}] unprocessed points for user [{}]", totalProcessed, user.getId());
