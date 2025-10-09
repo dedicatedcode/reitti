@@ -3,10 +3,7 @@ package com.dedicatedcode.reitti.service;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.Trip;
-import com.dedicatedcode.reitti.model.memory.BlockType;
-import com.dedicatedcode.reitti.model.memory.Memory;
-import com.dedicatedcode.reitti.model.memory.MemoryBlock;
-import com.dedicatedcode.reitti.model.memory.MemoryBlockPart;
+import com.dedicatedcode.reitti.model.memory.*;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
@@ -17,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -73,29 +71,169 @@ public class MemoryBlockGenerationService {
         
         log.info("Created {} clusters from visits", clusters.size());
         
-        // Generate memory blocks from clusters
-        List<MemoryBlock> blocks = new ArrayList<>();
-        int position = 0;
+        // Generate memory block parts from clusters
+        List<MemoryBlockPart> blockParts = new ArrayList<>();
         
-        for (VisitCluster cluster : clusters) {
-            // Create a VISIT block for the cluster
-            MemoryBlock visitBlock = new MemoryBlock(memory.getId(), BlockType.VISIT, position++);
-            blocks.add(visitBlock);
-            
-            // If there are trips between clusters, add TRIP blocks
-            // This would require more sophisticated logic to match trips to visit sequences
+        // Add introduction text block
+        if (!clusters.isEmpty()) {
+            String introText = generateIntroductionText(memory, clusters, accommodation);
+            MemoryBlockText introBlock = new MemoryBlockText(null, "Your Journey", introText);
+            blockParts.add(introBlock);
         }
         
-        // Add significant trips as separate blocks
+        // Process each cluster
+        for (int i = 0; i < clusters.size(); i++) {
+            VisitCluster cluster = clusters.get(i);
+            
+            // Add a text block describing the cluster
+            String clusterHeadline = generateClusterHeadline(cluster, i + 1);
+            String clusterDescription = generateClusterDescription(cluster);
+            MemoryBlockText clusterTextBlock = new MemoryBlockText(null, clusterHeadline, clusterDescription);
+            blockParts.add(clusterTextBlock);
+            
+            // Add visit blocks for each visit in the cluster
+            for (ScoredVisit scoredVisit : cluster.getVisits()) {
+                MemoryBlockVisit visitBlock = new MemoryBlockVisit(null, scoredVisit.getVisit().getId());
+                blockParts.add(visitBlock);
+            }
+            
+            // Add trip block if there's a significant trip to the next cluster
+            if (i < clusters.size() - 1) {
+                VisitCluster nextCluster = clusters.get(i + 1);
+                Optional<Trip> tripBetween = findTripBetweenClusters(allTripsInRange, cluster, nextCluster);
+                if (tripBetween.isPresent()) {
+                    MemoryBlockTrip tripBlock = new MemoryBlockTrip(null, tripBetween.get().getId());
+                    blockParts.add(tripBlock);
+                }
+            }
+        }
+        
+        // Add any significant standalone trips that weren't captured between clusters
         List<Trip> significantTrips = filterSignificantTrips(allTripsInRange);
         for (Trip trip : significantTrips) {
-            MemoryBlock tripBlock = new MemoryBlock(memory.getId(), BlockType.TRIP, position++);
-            blocks.add(tripBlock);
+            // Check if this trip was already added between clusters
+            boolean alreadyAdded = blockParts.stream()
+                .filter(part -> part instanceof MemoryBlockTrip)
+                .map(part -> ((MemoryBlockTrip) part).getTripId())
+                .anyMatch(tripId -> tripId.equals(trip.getId()));
+            
+            if (!alreadyAdded) {
+                MemoryBlockTrip tripBlock = new MemoryBlockTrip(null, trip.getId());
+                blockParts.add(tripBlock);
+            }
         }
         
-        log.info("Generated {} memory blocks", blocks.size());
+        log.info("Generated {} memory block parts", blockParts.size());
         
-        return blocks;
+        return blockParts;
+    }
+    
+    /**
+     * Generate an introduction text for the memory
+     */
+    private String generateIntroductionText(Memory memory, List<VisitCluster> clusters, ProcessedVisit accommodation) {
+        StringBuilder intro = new StringBuilder();
+        
+        long totalDays = Duration.between(memory.getStartDate(), memory.getEndDate()).toDays() + 1;
+        int totalVisits = clusters.stream().mapToInt(c -> c.getVisits().size()).sum();
+        
+        intro.append("Your ").append(totalDays).append("-day journey");
+        
+        if (accommodation != null) {
+            intro.append(" based in ").append(accommodation.getPlace().getName());
+        }
+        
+        intro.append(" included ").append(totalVisits).append(" memorable visit");
+        if (totalVisits != 1) {
+            intro.append("s");
+        }
+        
+        intro.append(" across ").append(clusters.size()).append(" location");
+        if (clusters.size() != 1) {
+            intro.append("s");
+        }
+        
+        intro.append(".");
+        
+        return intro.toString();
+    }
+    
+    /**
+     * Generate a headline for a visit cluster
+     */
+    private String generateClusterHeadline(VisitCluster cluster, int clusterNumber) {
+        ScoredVisit topVisit = cluster.getHighestScoredVisit();
+        if (topVisit != null && topVisit.getVisit().getPlace().getName() != null) {
+            return topVisit.getVisit().getPlace().getName();
+        }
+        return "Location " + clusterNumber;
+    }
+    
+    /**
+     * Generate a description for a visit cluster
+     */
+    private String generateClusterDescription(VisitCluster cluster) {
+        StringBuilder description = new StringBuilder();
+        
+        Instant startTime = cluster.getStartTime();
+        Instant endTime = cluster.getEndTime();
+        
+        if (startTime != null && endTime != null) {
+            long durationHours = Duration.between(startTime, endTime).toHours();
+            long durationMinutes = Duration.between(startTime, endTime).toMinutes() % 60;
+            
+            description.append("Spent ");
+            if (durationHours > 0) {
+                description.append(durationHours).append(" hour");
+                if (durationHours != 1) {
+                    description.append("s");
+                }
+            }
+            if (durationMinutes > 0) {
+                if (durationHours > 0) {
+                    description.append(" and ");
+                }
+                description.append(durationMinutes).append(" minute");
+                if (durationMinutes != 1) {
+                    description.append("s");
+                }
+            }
+            description.append(" exploring this area");
+            
+            if (cluster.getVisits().size() > 1) {
+                description.append(", visiting ").append(cluster.getVisits().size()).append(" places");
+            }
+            
+            description.append(".");
+        }
+        
+        return description.toString();
+    }
+    
+    /**
+     * Find a trip that connects two clusters
+     */
+    private Optional<Trip> findTripBetweenClusters(List<Trip> allTrips, VisitCluster fromCluster, VisitCluster toCluster) {
+        Instant fromEnd = fromCluster.getEndTime();
+        Instant toStart = toCluster.getStartTime();
+        
+        if (fromEnd == null || toStart == null) {
+            return Optional.empty();
+        }
+        
+        return allTrips.stream()
+            .filter(trip -> {
+                Instant tripStart = trip.getStartTime();
+                Instant tripEnd = trip.getEndTime();
+                
+                if (tripStart == null || tripEnd == null) {
+                    return false;
+                }
+                
+                // Trip should start after the first cluster ends and end before the second cluster starts
+                return !tripStart.isBefore(fromEnd) && !tripEnd.isAfter(toStart);
+            })
+            .findFirst();
     }
     
     /**
