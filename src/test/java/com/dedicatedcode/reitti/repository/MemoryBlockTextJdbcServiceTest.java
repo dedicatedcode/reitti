@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -47,8 +48,8 @@ class MemoryBlockTextJdbcServiceTest {
         Memory memory = new Memory(
                 "Test Memory",
                 "Description",
-                LocalDate.of(2024, 1, 1),
-                LocalDate.of(2024, 1, 7),
+                LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
+                LocalDate.of(2024, 1, 7).atStartOfDay().toInstant(ZoneOffset.UTC),
                 HeaderType.MAP,
                 null
         );

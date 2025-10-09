@@ -147,7 +147,7 @@ class RawLocationLoader {
     /**
      * Reload raw location points for the current map view
      */
-    reloadForCurrentView() {
+    reloadForCurrentView(withBounds = true) {
         let bounds = L.latLngBounds();
         const fetchPromises = [];
 
@@ -163,11 +163,7 @@ class RawLocationLoader {
                 // Build URL with zoom and bounding box parameters
                 const separator = config.url.includes('?') ? '&' : '?';
                 const urlWithParams = config.url + separator + 
-                    'zoom=' + currentZoom +
-                    '&minLat=' + bbox.minLat +
-                    '&minLng=' + bbox.minLng +
-                    '&maxLat=' + bbox.maxLat +
-                    '&maxLng=' + bbox.maxLng;
+                    'zoom=' + currentZoom + (withBounds ? ('&minLat=' + bbox.minLat +'&minLng=' + bbox.minLng +'&maxLat=' + bbox.maxLat +'&maxLng=' + bbox.maxLng) : '');
                 
                 // Create fetch promise for raw location points with index to maintain order
                 const fetchPromise = fetch(urlWithParams).then(response => {

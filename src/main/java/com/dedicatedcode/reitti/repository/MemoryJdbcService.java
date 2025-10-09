@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -29,8 +30,8 @@ public class MemoryJdbcService {
             rs.getLong("id"),
             rs.getString("title"),
             rs.getString("description"),
-            rs.getObject("start_date", LocalDate.class),
-            rs.getObject("end_date", LocalDate.class),
+            rs.getTimestamp("start_date").toInstant(),
+            rs.getTimestamp("end_date").toInstant(),
             HeaderType.valueOf(rs.getString("header_type")),
             rs.getString("header_image_url"),
             rs.getTimestamp("created_at").toInstant(),
@@ -50,8 +51,8 @@ public class MemoryJdbcService {
             ps.setLong(1, user.getId());
             ps.setString(2, memory.getTitle());
             ps.setString(3, memory.getDescription());
-            ps.setObject(4, memory.getStartDate());
-            ps.setObject(5, memory.getEndDate());
+            ps.setObject(4, Timestamp.from(memory.getStartDate()));
+            ps.setObject(5, Timestamp.from(memory.getEndDate()));
             ps.setString(6, memory.getHeaderType().name());
             ps.setString(7, memory.getHeaderImageUrl());
             ps.setTimestamp(8, Timestamp.from(memory.getCreatedAt()));
@@ -71,8 +72,8 @@ public class MemoryJdbcService {
                 "WHERE id = ? AND user_id = ? AND version = ?",
                 memory.getTitle(),
                 memory.getDescription(),
-                memory.getStartDate(),
-                memory.getEndDate(),
+                Timestamp.from(memory.getStartDate()),
+                Timestamp.from(memory.getEndDate()),
                 memory.getHeaderType().name(),
                 memory.getHeaderImageUrl(),
                 Timestamp.from(memory.getUpdatedAt()),
@@ -114,7 +115,7 @@ public class MemoryJdbcService {
         );
     }
 
-    public List<Memory> findByDateRange(User user, LocalDate startDate, LocalDate endDate) {
+    public List<Memory> findByDateRange(User user, Instant startDate, Instant endDate) {
         return jdbcTemplate.query(
                 "SELECT * FROM memory " +
                 "WHERE user_id = ? " +

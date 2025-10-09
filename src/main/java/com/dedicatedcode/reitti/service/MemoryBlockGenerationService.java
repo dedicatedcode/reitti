@@ -22,32 +22,30 @@ public class MemoryBlockGenerationService {
         this.tripJdbcService = tripJdbcService;
     }
 
-    public List<MemoryBlock> generate(User user, Memory memory, ZoneId timeZone) {
+    public List<MemoryBlock> generate(User user, Memory memory) {
         Instant startDate = memory.getStartDate();
         Instant endDate = memory.getEndDate();
 
         List<ProcessedVisit> allVisitsInRange = this.processedVisitJdbcService.findByUserAndTimeOverlap(user, startDate, endDate);
         
         // Find accommodation by analyzing visits that occur during sleeping hours (22:00 - 06:00)
-        ProcessedVisit accommodation = findAccommodation(allVisitsInRange, timeZone);
+        ProcessedVisit accommodation = findAccommodation(allVisitsInRange);
         
         // TODO: Generate memory blocks based on visits and trips
         // For now, return empty list until block generation logic is implemented
         return List.of();
     }
     
-    private ProcessedVisit findAccommodation(List<ProcessedVisit> visits, ZoneId timeZone) {
-        // Map to track total duration spent at each place during sleeping hours
+    private ProcessedVisit findAccommodation(List<ProcessedVisit> visits) {
         var sleepingHoursDuration = new java.util.HashMap<Long, Long>();
         
         for (ProcessedVisit visit : visits) {
-            long durationInSleepingHours = calculateSleepingHoursDuration(visit, timeZone);
+            long durationInSleepingHours = calculateSleepingHoursDuration(visit);
             if (durationInSleepingHours > 0) {
                 sleepingHoursDuration.merge(visit.getPlace().getId(), durationInSleepingHours, Long::sum);
             }
         }
         
-        // Find the place with the most time spent during sleeping hours
         return sleepingHoursDuration.entrySet().stream()
             .max(java.util.Map.Entry.comparingByValue())
             .flatMap(entry -> visits.stream()
@@ -56,23 +54,20 @@ public class MemoryBlockGenerationService {
             .orElse(null);
     }
     
-    private long calculateSleepingHoursDuration(ProcessedVisit visit, ZoneId timeZone) {
-        // Convert UTC times to local timezone
+    private long calculateSleepingHoursDuration(ProcessedVisit visit) {
+        ZoneId timeZone = visit.getPlace().getTimezone();
         var startLocal = visit.getStartTime().atZone(timeZone);
         var endLocal = visit.getEndTime().atZone(timeZone);
         
         long totalSleepingDuration = 0;
         
-        // Iterate through each day of the visit
         var currentDay = startLocal.toLocalDate();
         var lastDay = endLocal.toLocalDate();
         
         while (!currentDay.isAfter(lastDay)) {
-            // Define sleeping hours for this day (22:00 to 06:00 next day)
             var sleepStart = currentDay.atTime(22, 0).atZone(timeZone);
             var sleepEnd = currentDay.plusDays(1).atTime(6, 0).atZone(timeZone);
             
-            // Find overlap between visit and sleeping hours
             var overlapStart = sleepStart.isAfter(startLocal) ? sleepStart : startLocal;
             var overlapEnd = sleepEnd.isBefore(endLocal) ? sleepEnd : endLocal;
             

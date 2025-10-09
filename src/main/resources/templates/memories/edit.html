@@ -32,7 +32,7 @@
             <span th:text="#{${error}}">Error message</span>
         </div>
 
-        <form th:attr="hx-post=@{/memories/{id}(id=${memory.id})}" method="post" class="memory-form" hx-swap="outerHTML" hx-target=".memory-header">
+        <form th:attr="hx-post=@{/memories/{id}(id=${memory.id})}" hx-vals="js:{timezone: getUserTimezone()}" method="post" class="memory-form" hx-swap="outerHTML" hx-target=".memory-header">
             <input type="hidden" name="version" th:value="${memory.version}">
             <div class="form-group">
                 <label for="title">Title *</label>
@@ -50,13 +50,13 @@
                 <div class="form-group">
                     <label for="startDate">Start Date *</label>
                     <input type="date" id="startDate" name="startDate" required class="form-control" 
-                           th:value="${memory.startDate}">
+                           th:value="${startDate}">
                 </div>
 
                 <div class="form-group">
                     <label for="endDate">End Date *</label>
                     <input type="date" id="endDate" name="endDate" required class="form-control" 
-                           th:value="${memory.endDate}">
+                           th:value="${endDate}">
                 </div>
             </div>
 
@@ -96,6 +96,17 @@
 </div>
 
 <script>
+
+    // User settings for timezone handling
+    window.userSettings = /*[[${userSettings}]]*/ {};
+
+    function getUserTimezone() {
+        if (window.userSettings.timeZoneOverride) {
+            return window.userSettings.timeZoneOverride;
+        } else {
+            return Intl.DateTimeFormat().resolvedOptions().timeZone;
+        }
+    }
     // Show/hide image URL field based on header type selection
     document.querySelectorAll('input[name="headerType"]').forEach(radio => {
         radio.addEventListener('change', function() {

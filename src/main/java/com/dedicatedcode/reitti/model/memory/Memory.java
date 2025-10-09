@@ -9,19 +9,19 @@ public class Memory implements Serializable {
     private final Long id;
     private final String title;
     private final String description;
-    private final LocalDate startDate;
-    private final LocalDate endDate;
+    private final Instant startDate;
+    private final Instant endDate;
     private final HeaderType headerType;
     private final String headerImageUrl;
     private final Instant createdAt;
     private final Instant updatedAt;
     private final Long version;
 
-    public Memory(String title, String description, LocalDate startDate, LocalDate endDate, HeaderType headerType, String headerImageUrl) {
+    public Memory(String title, String description, Instant startDate, Instant endDate, HeaderType headerType, String headerImageUrl) {
         this(null, title, description, startDate, endDate, headerType, headerImageUrl, Instant.now(), Instant.now(), 1L);
     }
 
-    public Memory(Long id, String title, String description, LocalDate startDate, LocalDate endDate, HeaderType headerType, String headerImageUrl, Instant createdAt, Instant updatedAt, Long version) {
+    public Memory(Long id, String title, String description, Instant startDate, Instant endDate, HeaderType headerType, String headerImageUrl, Instant createdAt, Instant updatedAt, Long version) {
         this.id = id;
         this.title = title;
         this.description = description;
@@ -46,11 +46,11 @@ public class Memory implements Serializable {
         return description;
     }
 
-    public LocalDate getStartDate() {
+    public Instant getStartDate() {
         return startDate;
     }
 
-    public LocalDate getEndDate() {
+    public Instant getEndDate() {
         return endDate;
     }
 
@@ -86,11 +86,11 @@ public class Memory implements Serializable {
         return new Memory(this.id, this.title, description, this.startDate, this.endDate, this.headerType, this.headerImageUrl, this.createdAt, Instant.now(), this.version);
     }
 
-    public Memory withStartDate(LocalDate startDate) {
+    public Memory withStartDate(Instant startDate) {
         return new Memory(this.id, this.title, this.description, startDate, this.endDate, this.headerType, this.headerImageUrl, this.createdAt, Instant.now(), this.version);
     }
 
-    public Memory withEndDate(LocalDate endDate) {
+    public Memory withEndDate(Instant endDate) {
         return new Memory(this.id, this.title, this.description, this.startDate, endDate, this.headerType, this.headerImageUrl, this.createdAt, Instant.now(), this.version);
     }
 

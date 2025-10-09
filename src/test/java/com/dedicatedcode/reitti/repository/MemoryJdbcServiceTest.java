@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,8 +42,8 @@ class MemoryJdbcServiceTest {
         Memory memory = new Memory(
                 "Test Memory",
                 "Test Description",
-                LocalDate.of(2024, 1, 1),
-                LocalDate.of(2024, 1, 7),
+                LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
+                LocalDate.of(2024, 1, 7).atStartOfDay().toInstant(ZoneOffset.UTC),
                 HeaderType.MAP,
                 null
         );
@@ -66,8 +67,8 @@ class MemoryJdbcServiceTest {
         Memory memory = new Memory(
                 "Image Memory",
                 "Description",
-                LocalDate.of(2024, 2, 1),
-                LocalDate.of(2024, 2, 5),
+                LocalDate.of(2024, 2, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
+                LocalDate.of(2024, 2, 5).atStartOfDay().toInstant(ZoneOffset.UTC),
                 HeaderType.IMAGE,
                 "https://example.com/image.jpg"
         );
@@ -84,8 +85,8 @@ class MemoryJdbcServiceTest {
         Memory memory = new Memory(
                 "Original Title",
                 "Original Description",
-                LocalDate.of(2024, 1, 1),
-                LocalDate.of(2024, 1, 7),
+                LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
+                LocalDate.of(2024, 1, 7).atStartOfDay().toInstant(ZoneOffset.UTC),
                 HeaderType.MAP,
                 null
         );
@@ -112,8 +113,8 @@ class MemoryJdbcServiceTest {
         Memory memory = new Memory(
                 "Test Memory",
                 "Description",
-                LocalDate.of(2024, 1, 1),
-                LocalDate.of(2024, 1, 7),
+                LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
+                LocalDate.of(2024, 1, 7).atStartOfDay().toInstant(ZoneOffset.UTC),
                 HeaderType.MAP,
                 null
         );
@@ -131,8 +132,8 @@ class MemoryJdbcServiceTest {
         Memory memory = new Memory(
                 "Test Memory",
                 "Description",
-                LocalDate.of(2024, 1, 1),
-                LocalDate.of(2024, 1, 7),
+                LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
+                LocalDate.of(2024, 1, 7).atStartOfDay().toInstant(ZoneOffset.UTC),
                 HeaderType.MAP,
                 null
         );
@@ -149,8 +150,8 @@ class MemoryJdbcServiceTest {
         Memory memory = new Memory(
                 "Test Memory",
                 "Description",
-                LocalDate.of(2024, 1, 1),
-                LocalDate.of(2024, 1, 7),
+                LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
+                LocalDate.of(2024, 1, 7).atStartOfDay().toInstant(ZoneOffset.UTC),
                 HeaderType.MAP,
                 null
         );
@@ -170,8 +171,8 @@ class MemoryJdbcServiceTest {
         Memory memory = new Memory(
                 "Test Memory",
                 "Description",
-                LocalDate.of(2024, 1, 1),
-                LocalDate.of(2024, 1, 7),
+                LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
+                LocalDate.of(2024, 1, 7).atStartOfDay().toInstant(ZoneOffset.UTC),
                 HeaderType.MAP,
                 null
         );
@@ -187,8 +188,8 @@ class MemoryJdbcServiceTest {
         Memory memory1 = new Memory(
                 "Memory 1",
                 "Description 1",
-                LocalDate.of(2024, 1, 1),
-                LocalDate.of(2024, 1, 7),
+                LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
+                LocalDate.of(2024, 1, 7).atStartOfDay().toInstant(ZoneOffset.UTC),
                 HeaderType.MAP,
                 null
         );
@@ -196,8 +197,8 @@ class MemoryJdbcServiceTest {
         Memory memory2 = new Memory(
                 "Memory 2",
                 "Description 2",
-                LocalDate.of(2024, 2, 1),
-                LocalDate.of(2024, 2, 7),
+                LocalDate.of(2024, 2, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
+                LocalDate.of(2024, 2, 7).atStartOfDay().toInstant(ZoneOffset.UTC),
                 HeaderType.IMAGE,
                 "https://example.com/image.jpg"
         );
@@ -215,8 +216,8 @@ class MemoryJdbcServiceTest {
         Memory memory1 = new Memory(
                 "January Memory",
                 "Description",
-                LocalDate.of(2024, 1, 1),
-                LocalDate.of(2024, 1, 7),
+                LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
+                LocalDate.of(2024, 1, 7).atStartOfDay().toInstant(ZoneOffset.UTC),
                 HeaderType.MAP,
                 null
         );
@@ -224,8 +225,8 @@ class MemoryJdbcServiceTest {
         Memory memory2 = new Memory(
                 "February Memory",
                 "Description",
-                LocalDate.of(2024, 2, 1),
-                LocalDate.of(2024, 2, 7),
+                LocalDate.of(2024, 2, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
+                LocalDate.of(2024, 2, 7).atStartOfDay().toInstant(ZoneOffset.UTC),
                 HeaderType.MAP,
                 null
         );
@@ -233,8 +234,8 @@ class MemoryJdbcServiceTest {
         Memory memory3 = new Memory(
                 "March Memory",
                 "Description",
-                LocalDate.of(2024, 3, 1),
-                LocalDate.of(2024, 3, 7),
+                LocalDate.of(2024, 3, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
+                LocalDate.of(2024, 3, 7).atStartOfDay().toInstant(ZoneOffset.UTC),
                 HeaderType.MAP,
                 null
         );
@@ -245,8 +246,8 @@ class MemoryJdbcServiceTest {
 
         List<Memory> memories = memoryJdbcService.findByDateRange(
                 testUser,
-                LocalDate.of(2024, 1, 15),
-                LocalDate.of(2024, 2, 15)
+                LocalDate.of(2024, 1, 15).atStartOfDay().toInstant(ZoneOffset.UTC),
+                LocalDate.of(2024, 2, 15).atStartOfDay().toInstant(ZoneOffset.UTC)
         );
 
         assertEquals(2, memories.size());
@@ -259,8 +260,8 @@ class MemoryJdbcServiceTest {
         Memory memory = new Memory(
                 "Long Memory",
                 "Description",
-                LocalDate.of(2024, 1, 1),
-                LocalDate.of(2024, 3, 31),
+                LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
+                LocalDate.of(2024, 3, 31).atStartOfDay().toInstant(ZoneOffset.UTC),
                 HeaderType.MAP,
                 null
         );
@@ -269,8 +270,8 @@ class MemoryJdbcServiceTest {
 
         List<Memory> memories = memoryJdbcService.findByDateRange(
                 testUser,
-                LocalDate.of(2024, 2, 1),
-                LocalDate.of(2024, 2, 28)
+                LocalDate.of(2024, 2, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
+                LocalDate.of(2024, 2, 28).atStartOfDay().toInstant(ZoneOffset.UTC)
         );
 
         assertEquals(1, memories.size());
