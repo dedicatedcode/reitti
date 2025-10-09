@@ -22,7 +22,7 @@ public class MemoryBlockGenerationService {
     private static final Logger log = LoggerFactory.getLogger(MemoryBlockGenerationService.class);
     
     // Step 1: Filtering thresholds
-    private static final long MIN_VISIT_DURATION_SECONDS = 6000; // 10 minutes
+    private static final long MIN_VISIT_DURATION_SECONDS = 600; // 10 minutes
     
     // Step 3: Scoring weights
     private static final double WEIGHT_DURATION = 1.0;
@@ -32,7 +32,7 @@ public class MemoryBlockGenerationService {
     
     // Step 4: Clustering parameters
     private static final long CLUSTER_TIME_THRESHOLD_SECONDS = 7200; // 2 hours
-    private static final double CLUSTER_DISTANCE_THRESHOLD_METERS = 1000; // 500 meters
+    private static final double CLUSTER_DISTANCE_THRESHOLD_METERS = 500; // 500 meters
     
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final TripJdbcService tripJdbcService;
@@ -50,31 +50,38 @@ public class MemoryBlockGenerationService {
         List<Trip> allTripsInRange = this.tripJdbcService.findByUserAndTimeOverlap(user, startDate, endDate);
         
         // Step 1: Data Pre-processing & Filtering
-        Optional<ProcessedVisit> accommodation = findAccommodation(allVisitsInRange);
+        ProcessedVisit accommodation = findAccommodation(allVisitsInRange);
         
         // Find first and last accommodation visits
-        Instant firstAccommodationArrival = accommodation.flatMap(p -> allVisitsInRange.stream()
-                        .filter(visit -> visit.getPlace().getId().equals(p.getPlace().getId()))
-                        .min(Comparator.comparing(ProcessedVisit::getStartTime)))
-                        .map(ProcessedVisit::getStartTime).orElse(null);
-        Instant lastAccommodationDeparture = accommodation.flatMap(p -> allVisitsInRange.stream()
-                        .filter(visit -> visit.getPlace().getId().equals(p.getPlace().getId()))
-                        .max(Comparator.comparing(ProcessedVisit::getStartTime)))
-                        .map(ProcessedVisit::getStartTime).orElse(null);
+        Instant firstAccommodationArrival = null;
+        Instant lastAccommodationDeparture = null;
         
-        List<ProcessedVisit> filteredVisits = filterVisits(allVisitsInRange, accommodation.orElse(null));
+        if (accommodation != null) {
+            Long accommodationPlaceId = accommodation.getPlace().getId();
+            List<ProcessedVisit> accommodationVisits = allVisitsInRange.stream()
+                .filter(visit -> visit.getPlace().getId().equals(accommodationPlaceId))
+                .sorted(Comparator.comparing(ProcessedVisit::getStartTime))
+                .collect(Collectors.toList());
+            
+            if (!accommodationVisits.isEmpty()) {
+                firstAccommodationArrival = accommodationVisits.get(0).getStartTime();
+                lastAccommodationDeparture = accommodationVisits.get(accommodationVisits.size() - 1).getEndTime();
+            }
+        }
+        
+        List<ProcessedVisit> filteredVisits = filterVisits(allVisitsInRange, accommodation);
         
         log.info("Found {} visits after filtering (accommodation: {})", filteredVisits.size(), 
-                accommodation.isPresent() ? accommodation.get().getPlace().getName() : "none");
+                accommodation != null ? accommodation.getPlace().getName() : "none");
         
         // Step 3: Scoring & Identifying "Interesting" Visits
-        List<ScoredVisit> scoredVisits = scoreVisits(filteredVisits, accommodation.orElse(null));
+        List<ScoredVisit> scoredVisits = scoreVisits(filteredVisits, accommodation);
         
         // Sort by score descending
         scoredVisits.sort(Comparator.comparingDouble(ScoredVisit::getScore).reversed());
         
         log.info("Scored {} visits, top score: {}", scoredVisits.size(), 
-                scoredVisits.isEmpty() ? 0 : scoredVisits.getFirst().getScore());
+                scoredVisits.isEmpty() ? 0 : scoredVisits.get(0).getScore());
         
         // Step 4: Clustering & Creating a Narrative
         List<VisitCluster> clusters = clusterVisits(scoredVisits);
@@ -86,7 +93,7 @@ public class MemoryBlockGenerationService {
         
         // Add introduction text block
         if (!clusters.isEmpty()) {
-            String introText = generateIntroductionText(memory, clusters, accommodation.orElse(null));
+            String introText = generateIntroductionText(memory, clusters, accommodation);
             MemoryBlockText introBlock = new MemoryBlockText(null, "Your Journey", introText);
             blockParts.add(introBlock);
         }
@@ -97,18 +104,18 @@ public class MemoryBlockGenerationService {
                 .filter(trip -> trip.getEndTime() != null && !trip.getEndTime().isAfter(firstAccommodationArrival))
                 .filter(trip -> trip.getStartTime() != null && !trip.getStartTime().isBefore(startDate))
                 .sorted(Comparator.comparing(Trip::getStartTime))
-                .toList();
+                .collect(Collectors.toList());
             
             if (!tripsToAccommodation.isEmpty()) {
                 MemoryBlockText travelToText = new MemoryBlockText(
-                    null,
-                        "Journey to " + accommodation.get().getPlace().getName(),
+                    null, 
+                    "Journey to " + (accommodation != null ? accommodation.getPlace().getName() : "Destination"),
                     "Your journey began with travel to your accommodation."
                 );
                 blockParts.add(travelToText);
                 
                 for (Trip trip : tripsToAccommodation) {
-                    MemoryBlockTrip tripBlock = new MemoryBlockTrip(null, trip.getId());
+                    MemoryBlockTrip tripBlock = convertTripToBlock(trip);
                     blockParts.add(tripBlock);
                 }
             }
@@ -126,7 +133,7 @@ public class MemoryBlockGenerationService {
             
             // Add visit blocks for each visit in the cluster
             for (ScoredVisit scoredVisit : cluster.getVisits()) {
-                MemoryBlockVisit visitBlock = new MemoryBlockVisit(null, scoredVisit.getVisit().getId());
+                MemoryBlockVisit visitBlock = convertVisitToBlock(scoredVisit.getVisit());
                 blockParts.add(visitBlock);
             }
             
@@ -135,7 +142,7 @@ public class MemoryBlockGenerationService {
                 VisitCluster nextCluster = clusters.get(i + 1);
                 Optional<Trip> tripBetween = findTripBetweenClusters(allTripsInRange, cluster, nextCluster);
                 if (tripBetween.isPresent()) {
-                    MemoryBlockTrip tripBlock = new MemoryBlockTrip(null, tripBetween.get().getId());
+                    MemoryBlockTrip tripBlock = convertTripToBlock(tripBetween.get());
                     blockParts.add(tripBlock);
                 }
             }
@@ -147,18 +154,18 @@ public class MemoryBlockGenerationService {
                 .filter(trip -> trip.getStartTime() != null && !trip.getStartTime().isBefore(lastAccommodationDeparture))
                 .filter(trip -> trip.getEndTime() != null && !trip.getEndTime().isAfter(endDate))
                 .sorted(Comparator.comparing(Trip::getStartTime))
-                .toList();
+                .collect(Collectors.toList());
             
             if (!tripsFromAccommodation.isEmpty()) {
                 MemoryBlockText travelFromText = new MemoryBlockText(
                     null, 
                     "Journey Home",
-                    "Your journey concluded with travel back home from " + (accommodation.isPresent() ? accommodation.get().getPlace().getName() : "your accommodation") + "."
+                    "Your journey concluded with travel back home from " + (accommodation != null ? accommodation.getPlace().getName() : "your accommodation") + "."
                 );
                 blockParts.add(travelFromText);
                 
                 for (Trip trip : tripsFromAccommodation) {
-                    MemoryBlockTrip tripBlock = new MemoryBlockTrip(null, trip.getId());
+                    MemoryBlockTrip tripBlock = convertTripToBlock(trip);
                     blockParts.add(tripBlock);
                 }
             }
@@ -170,8 +177,8 @@ public class MemoryBlockGenerationService {
             // Check if this trip was already added
             boolean alreadyAdded = blockParts.stream()
                 .filter(part -> part instanceof MemoryBlockTrip)
-                .map(part -> ((MemoryBlockTrip) part).getTripId())
-                .anyMatch(tripId -> tripId.equals(trip.getId()));
+                .map(part -> ((MemoryBlockTrip) part).getOriginalTripId())
+                .anyMatch(tripId -> tripId != null && tripId.equals(trip.getId()));
             
             if (!alreadyAdded) {
                 // Only add if it's within the main journey period (between first arrival and last departure)
@@ -179,7 +186,7 @@ public class MemoryBlockGenerationService {
                     if (trip.getStartTime() != null && 
                         !trip.getStartTime().isBefore(firstAccommodationArrival) && 
                         !trip.getStartTime().isAfter(lastAccommodationDeparture)) {
-                        MemoryBlockTrip tripBlock = new MemoryBlockTrip(null, trip.getId());
+                        MemoryBlockTrip tripBlock = convertTripToBlock(trip);
                         blockParts.add(tripBlock);
                     }
                 }
@@ -189,6 +196,64 @@ public class MemoryBlockGenerationService {
         log.info("Generated {} memory block parts", blockParts.size());
         
         return blockParts;
+    }
+    
+    /**
+     * Convert a ProcessedVisit to a MemoryBlockVisit with embedded data
+     */
+    private MemoryBlockVisit convertVisitToBlock(ProcessedVisit visit) {
+        return new MemoryBlockVisit(
+            null, // blockId will be set when saved
+            visit.getId(),
+            visit.getPlace().getName(),
+            visit.getPlace().getAddress(),
+            visit.getPlace().getLatitudeCentroid(),
+            visit.getPlace().getLongitudeCentroid(),
+            visit.getStartTime(),
+            visit.getEndTime(),
+            visit.getDurationSeconds()
+        );
+    }
+    
+    /**
+     * Convert a Trip to a MemoryBlockTrip with embedded data
+     */
+    private MemoryBlockTrip convertTripToBlock(Trip trip) {
+        String startPlaceName = null;
+        Double startLat = null;
+        Double startLon = null;
+        String endPlaceName = null;
+        Double endLat = null;
+        Double endLon = null;
+        
+        if (trip.getStartVisit() != null && trip.getStartVisit().getPlace() != null) {
+            startPlaceName = trip.getStartVisit().getPlace().getName();
+            startLat = trip.getStartVisit().getPlace().getLatitudeCentroid();
+            startLon = trip.getStartVisit().getPlace().getLongitudeCentroid();
+        }
+        
+        if (trip.getEndVisit() != null && trip.getEndVisit().getPlace() != null) {
+            endPlaceName = trip.getEndVisit().getPlace().getName();
+            endLat = trip.getEndVisit().getPlace().getLatitudeCentroid();
+            endLon = trip.getEndVisit().getPlace().getLongitudeCentroid();
+        }
+        
+        return new MemoryBlockTrip(
+            null, // blockId will be set when saved
+            trip.getId(),
+            trip.getStartTime(),
+            trip.getEndTime(),
+            trip.getDurationSeconds(),
+            trip.getEstimatedDistanceMeters(),
+            trip.getTravelledDistanceMeters(),
+            trip.getTransportModeInferred(),
+            startPlaceName,
+            startLat,
+            startLon,
+            endPlaceName,
+            endLat,
+            endLon
+        );
     }
     
     /**
@@ -302,7 +367,7 @@ public class MemoryBlockGenerationService {
     /**
      * Step 1: Find accommodation by analyzing visits during sleeping hours (22:00 - 06:00)
      */
-    private Optional<ProcessedVisit> findAccommodation(List<ProcessedVisit> visits) {
+    private ProcessedVisit findAccommodation(List<ProcessedVisit> visits) {
         Map<Long, Long> sleepingHoursDuration = new HashMap<>();
         
         for (ProcessedVisit visit : visits) {
@@ -316,7 +381,8 @@ public class MemoryBlockGenerationService {
             .max(Map.Entry.comparingByValue())
             .flatMap(entry -> visits.stream()
                 .filter(visit -> visit.getPlace().getId().equals(entry.getKey()))
-                .findFirst());
+                .findFirst())
+            .orElse(null);
     }
     
     private long calculateSleepingHoursDuration(ProcessedVisit visit) {
@@ -359,12 +425,16 @@ public class MemoryBlockGenerationService {
         return visits.stream()
             .filter(visit -> {
                 // Remove accommodation stays
-                if (visit.getPlace().getId().equals(accommodationPlaceId)) {
+                if (accommodationPlaceId != null && visit.getPlace().getId().equals(accommodationPlaceId)) {
                     return false;
                 }
                 
                 // Remove very short visits
-                return visit.getDurationSeconds() >= MIN_VISIT_DURATION_SECONDS;
+                if (visit.getDurationSeconds() < MIN_VISIT_DURATION_SECONDS) {
+                    return false;
+                }
+                
+                return true;
             })
             .collect(Collectors.toList());
     }
@@ -517,7 +587,13 @@ public class MemoryBlockGenerationService {
                 if (trip.getDurationSeconds() != null && trip.getDurationSeconds() > 1800) {
                     return true;
                 }
-                return trip.getEstimatedDistanceMeters() != null && trip.getEstimatedDistanceMeters() > 5000;
+                
+                // Include trips longer than 5km
+                if (trip.getEstimatedDistanceMeters() != null && trip.getEstimatedDistanceMeters() > 5000) {
+                    return true;
+                }
+                
+                return false;
             })
             .collect(Collectors.toList());
     }

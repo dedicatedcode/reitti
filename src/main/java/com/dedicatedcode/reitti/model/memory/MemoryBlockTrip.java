@@ -1,23 +1,99 @@
 package com.dedicatedcode.reitti.model.memory;
 
 import java.io.Serializable;
+import java.time.Instant;
 
 public class MemoryBlockTrip implements MemoryBlockPart, Serializable {
     
     private final Long blockId;
-    private final Long tripId;
+    private final Long originalTripId;
+    private final Instant startTime;
+    private final Instant endTime;
+    private final Long durationSeconds;
+    private final Double estimatedDistanceMeters;
+    private final Double travelledDistanceMeters;
+    private final String transportModeInferred;
+    private final String startPlaceName;
+    private final Double startLatitude;
+    private final Double startLongitude;
+    private final String endPlaceName;
+    private final Double endLatitude;
+    private final Double endLongitude;
 
-    public MemoryBlockTrip(Long blockId, Long tripId) {
+    public MemoryBlockTrip(Long blockId, Long originalTripId, Instant startTime, Instant endTime, 
+                          Long durationSeconds, Double estimatedDistanceMeters, Double travelledDistanceMeters,
+                          String transportModeInferred, String startPlaceName, Double startLatitude, 
+                          Double startLongitude, String endPlaceName, Double endLatitude, Double endLongitude) {
         this.blockId = blockId;
-        this.tripId = tripId;
+        this.originalTripId = originalTripId;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.durationSeconds = durationSeconds;
+        this.estimatedDistanceMeters = estimatedDistanceMeters;
+        this.travelledDistanceMeters = travelledDistanceMeters;
+        this.transportModeInferred = transportModeInferred;
+        this.startPlaceName = startPlaceName;
+        this.startLatitude = startLatitude;
+        this.startLongitude = startLongitude;
+        this.endPlaceName = endPlaceName;
+        this.endLatitude = endLatitude;
+        this.endLongitude = endLongitude;
     }
 
     public Long getBlockId() {
         return blockId;
     }
 
-    public Long getTripId() {
-        return tripId;
+    public Long getOriginalTripId() {
+        return originalTripId;
+    }
+
+    public Instant getStartTime() {
+        return startTime;
+    }
+
+    public Instant getEndTime() {
+        return endTime;
+    }
+
+    public Long getDurationSeconds() {
+        return durationSeconds;
+    }
+
+    public Double getEstimatedDistanceMeters() {
+        return estimatedDistanceMeters;
+    }
+
+    public Double getTravelledDistanceMeters() {
+        return travelledDistanceMeters;
+    }
+
+    public String getTransportModeInferred() {
+        return transportModeInferred;
+    }
+
+    public String getStartPlaceName() {
+        return startPlaceName;
+    }
+
+    public Double getStartLatitude() {
+        return startLatitude;
+    }
+
+    public Double getStartLongitude() {
+        return startLongitude;
+    }
+
+    public String getEndPlaceName() {
+        return endPlaceName;
+    }
+
+    public Double getEndLatitude() {
+        return endLatitude;
+    }
+
+    public Double getEndLongitude() {
+        return endLongitude;
     }
 
     @Override
@@ -32,22 +108,22 @@ public class MemoryBlockTrip implements MemoryBlockPart, Serializable {
 
         MemoryBlockTrip that = (MemoryBlockTrip) o;
 
-        if (blockId != null ? !blockId.equals(that.blockId) : that.blockId != null) return false;
-        return tripId != null ? tripId.equals(that.tripId) : that.tripId == null;
+        return blockId != null ? blockId.equals(that.blockId) : that.blockId == null;
     }
 
     @Override
     public int hashCode() {
-        int result = blockId != null ? blockId.hashCode() : 0;
-        result = 31 * result + (tripId != null ? tripId.hashCode() : 0);
-        return result;
+        return blockId != null ? blockId.hashCode() : 0;
     }
 
     @Override
     public String toString() {
         return "MemoryBlockTrip{" +
                 "blockId=" + blockId +
-                ", tripId=" + tripId +
+                ", originalTripId=" + originalTripId +
+                ", startTime=" + startTime +
+                ", endTime=" + endTime +
+                ", durationSeconds=" + durationSeconds +
                 '}';
     }
 }

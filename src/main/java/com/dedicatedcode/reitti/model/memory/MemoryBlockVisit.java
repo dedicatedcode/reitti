@@ -1,24 +1,68 @@
 package com.dedicatedcode.reitti.model.memory;
 
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.Objects;
 
 public class MemoryBlockVisit implements MemoryBlockPart, Serializable {
     
     private final Long blockId;
-    private final Long processedVisitId;
+    private final Long originalProcessedVisitId;
+    private final String placeName;
+    private final String placeAddress;
+    private final Double latitude;
+    private final Double longitude;
+    private final Instant startTime;
+    private final Instant endTime;
+    private final Long durationSeconds;
 
-    public MemoryBlockVisit(Long blockId, Long processedVisitId) {
+    public MemoryBlockVisit(Long blockId, Long originalProcessedVisitId, String placeName, String placeAddress, 
+                           Double latitude, Double longitude, Instant startTime, Instant endTime, Long durationSeconds) {
         this.blockId = blockId;
-        this.processedVisitId = processedVisitId;
+        this.originalProcessedVisitId = originalProcessedVisitId;
+        this.placeName = placeName;
+        this.placeAddress = placeAddress;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.durationSeconds = durationSeconds;
     }
 
     public Long getBlockId() {
         return blockId;
     }
 
-    public Long getProcessedVisitId() {
-        return processedVisitId;
+    public Long getOriginalProcessedVisitId() {
+        return originalProcessedVisitId;
+    }
+
+    public String getPlaceName() {
+        return placeName;
+    }
+
+    public String getPlaceAddress() {
+        return placeAddress;
+    }
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public Instant getStartTime() {
+        return startTime;
+    }
+
+    public Instant getEndTime() {
+        return endTime;
+    }
+
+    public Long getDurationSeconds() {
+        return durationSeconds;
     }
 
     @Override
@@ -33,22 +77,22 @@ public class MemoryBlockVisit implements MemoryBlockPart, Serializable {
 
         MemoryBlockVisit that = (MemoryBlockVisit) o;
 
-        if (!Objects.equals(blockId, that.blockId)) return false;
-        return Objects.equals(processedVisitId, that.processedVisitId);
+        return Objects.equals(blockId, that.blockId);
     }
 
     @Override
     public int hashCode() {
-        int result = blockId != null ? blockId.hashCode() : 0;
-        result = 31 * result + (processedVisitId != null ? processedVisitId.hashCode() : 0);
-        return result;
+        return blockId != null ? blockId.hashCode() : 0;
     }
 
     @Override
     public String toString() {
         return "MemoryBlockVisit{" +
                 "blockId=" + blockId +
-                ", processedVisitId=" + processedVisitId +
+                ", originalProcessedVisitId=" + originalProcessedVisitId +
+                ", placeName='" + placeName + '\'' +
+                ", startTime=" + startTime +
+                ", endTime=" + endTime +
                 '}';
     }
 }
