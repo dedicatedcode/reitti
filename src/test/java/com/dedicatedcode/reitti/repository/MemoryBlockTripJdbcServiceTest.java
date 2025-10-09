@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
+import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.memory.*;
 import com.dedicatedcode.reitti.model.security.User;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,7 +50,9 @@ class MemoryBlockTripJdbcServiceTest {
     private User testUser;
     private Memory testMemory;
     private MemoryBlock testBlock;
-    private Long testTripId;
+    private Trip testTrip;
+    private ProcessedVisit startVisit;
+    private ProcessedVisit endVisit;
 
     @BeforeEach
     void setUp() {
@@ -76,55 +79,110 @@ class MemoryBlockTripJdbcServiceTest {
         MemoryBlock block = new MemoryBlock(testMemory.getId(), BlockType.TRIP, 0);
         testBlock = memoryBlockJdbcService.create(block);
 
-
         Instant now = Instant.now();
         SignificantPlace startPlace = this.significantPlaceJdbcService.create(testUser, SignificantPlace.create(60.1699, 24.9384));
         SignificantPlace endPlace = this.significantPlaceJdbcService.create(testUser, SignificantPlace.create(61.1700, 25.9385));
 
-        ProcessedVisit startVisit = this.processedVisitJdbcService.create(testUser, new ProcessedVisit(startPlace, now, now.plus(20, ChronoUnit.MINUTES), 20*60L));
-        ProcessedVisit endVisit = this.processedVisitJdbcService.create(testUser, new ProcessedVisit(endPlace, now.plus(3600, ChronoUnit.SECONDS), now.plus(80, ChronoUnit.MINUTES), 20*60L));
-        // Create a test tri
-        jdbcTemplate.update(
-                "INSERT INTO trips (user_id, start_time, end_time, duration_seconds, estimated_distance_meters, travelled_distance_meters, transport_mode_inferred, version, start_visit_id, end_visit_id) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                testUser.getId(),
-                java.sql.Timestamp.from(startVisit.getEndTime()),
-                java.sql.Timestamp.from(endVisit.getStartTime()),
-                3600L, 5000.0, 5100.0, "WALKING", 1L, startVisit.getId(), endVisit.getId()
-        );
-
-        testTripId = jdbcTemplate.queryForObject(
-                "SELECT id FROM trips WHERE user_id = ?",
-                Long.class,
-                testUser.getId()
-        );
+        startVisit = this.processedVisitJdbcService.create(testUser, new ProcessedVisit(startPlace, now, now.plus(20, ChronoUnit.MINUTES), 20*60L));
+        endVisit = this.processedVisitJdbcService.create(testUser, new ProcessedVisit(endPlace, now.plus(3600, ChronoUnit.SECONDS), now.plus(80, ChronoUnit.MINUTES), 20*60L));
+        
+        testTrip = tripJdbcService.create(testUser, startVisit, endVisit, 3600L, 5000.0, 5100.0, "WALKING");
     }
 
     @Test
     void testCreateTripBlock() {
-        MemoryBlockTrip tripBlock = new MemoryBlockTrip(testBlock.getId(), testTripId);
+        MemoryBlockTrip tripBlock = new MemoryBlockTrip(
+                testBlock.getId(),
+                testTrip.getId(),
+                testTrip.getStartTime(),
+                testTrip.getEndTime(),
+                testTrip.getDurationSeconds(),
+                testTrip.getEstimatedDistanceMeters(),
+                testTrip.getTravelledDistanceMeters(),
+                testTrip.getTransportModeInferred(),
+                testTrip.getStartVisit().getPlace().getName(),
+                testTrip.getStartVisit().getPlace().getLatitudeCentroid(),
+                testTrip.getStartVisit().getPlace().getLongitudeCentroid(),
+                testTrip.getEndVisit().getPlace().getName(),
+                testTrip.getEndVisit().getPlace().getLatitudeCentroid(),
+                testTrip.getEndVisit().getPlace().getLongitudeCentroid()
+        );
 
         MemoryBlockTrip created = memoryBlockTripJdbcService.create(tripBlock);
 
         assertEquals(testBlock.getId(), created.getBlockId());
-        assertEquals(testTripId, created.getTripId());
+        assertEquals(testTrip.getId(), created.getOriginalTripId());
+        assertEquals(testTrip.getStartTime(), created.getStartTime());
+        assertEquals(testTrip.getEndTime(), created.getEndTime());
+        assertEquals(testTrip.getDurationSeconds(), created.getDurationSeconds());
+        assertEquals(testTrip.getEstimatedDistanceMeters(), created.getEstimatedDistanceMeters());
+        assertEquals(testTrip.getTravelledDistanceMeters(), created.getTravelledDistanceMeters());
+        assertEquals(testTrip.getTransportModeInferred(), created.getTransportModeInferred());
+        assertEquals(testTrip.getStartVisit().getPlace().getName(), created.getStartPlaceName());
+        assertEquals(testTrip.getStartVisit().getPlace().getLatitudeCentroid(), created.getStartLatitude());
+        assertEquals(testTrip.getStartVisit().getPlace().getLongitudeCentroid(), created.getStartLongitude());
+        assertEquals(testTrip.getEndVisit().getPlace().getName(), created.getEndPlaceName());
+        assertEquals(testTrip.getEndVisit().getPlace().getLatitudeCentroid(), created.getEndLatitude());
+        assertEquals(testTrip.getEndVisit().getPlace().getLongitudeCentroid(), created.getEndLongitude());
     }
 
     @Test
     void testFindByBlockId() {
-        MemoryBlockTrip tripBlock = new MemoryBlockTrip(testBlock.getId(), testTripId);
+        MemoryBlockTrip tripBlock = new MemoryBlockTrip(
+                testBlock.getId(),
+                testTrip.getId(),
+                testTrip.getStartTime(),
+                testTrip.getEndTime(),
+                testTrip.getDurationSeconds(),
+                testTrip.getEstimatedDistanceMeters(),
+                testTrip.getTravelledDistanceMeters(),
+                testTrip.getTransportModeInferred(),
+                testTrip.getStartVisit().getPlace().getName(),
+                testTrip.getStartVisit().getPlace().getLatitudeCentroid(),
+                testTrip.getStartVisit().getPlace().getLongitudeCentroid(),
+                testTrip.getEndVisit().getPlace().getName(),
+                testTrip.getEndVisit().getPlace().getLatitudeCentroid(),
+                testTrip.getEndVisit().getPlace().getLongitudeCentroid()
+        );
         memoryBlockTripJdbcService.create(tripBlock);
 
         Optional<MemoryBlockTrip> found = memoryBlockTripJdbcService.findByBlockId(testBlock.getId());
 
         assertTrue(found.isPresent());
         assertEquals(testBlock.getId(), found.get().getBlockId());
-        assertEquals(testTripId, found.get().getTripId());
+        assertEquals(testTrip.getId(), found.get().getOriginalTripId());
+        assertEquals(testTrip.getStartTime(), found.get().getStartTime());
+        assertEquals(testTrip.getEndTime(), found.get().getEndTime());
+        assertEquals(testTrip.getDurationSeconds(), found.get().getDurationSeconds());
+        assertEquals(testTrip.getEstimatedDistanceMeters(), found.get().getEstimatedDistanceMeters());
+        assertEquals(testTrip.getTravelledDistanceMeters(), found.get().getTravelledDistanceMeters());
+        assertEquals(testTrip.getTransportModeInferred(), found.get().getTransportModeInferred());
+        assertEquals(testTrip.getStartVisit().getPlace().getName(), found.get().getStartPlaceName());
+        assertEquals(testTrip.getStartVisit().getPlace().getLatitudeCentroid(), found.get().getStartLatitude());
+        assertEquals(testTrip.getStartVisit().getPlace().getLongitudeCentroid(), found.get().getStartLongitude());
+        assertEquals(testTrip.getEndVisit().getPlace().getName(), found.get().getEndPlaceName());
+        assertEquals(testTrip.getEndVisit().getPlace().getLatitudeCentroid(), found.get().getEndLatitude());
+        assertEquals(testTrip.getEndVisit().getPlace().getLongitudeCentroid(), found.get().getEndLongitude());
     }
 
     @Test
     void testDeleteTripBlock() {
-        MemoryBlockTrip tripBlock = new MemoryBlockTrip(testBlock.getId(), testTripId);
+        MemoryBlockTrip tripBlock = new MemoryBlockTrip(
+                testBlock.getId(),
+                testTrip.getId(),
+                testTrip.getStartTime(),
+                testTrip.getEndTime(),
+                testTrip.getDurationSeconds(),
+                testTrip.getEstimatedDistanceMeters(),
+                testTrip.getTravelledDistanceMeters(),
+                testTrip.getTransportModeInferred(),
+                testTrip.getStartVisit().getPlace().getName(),
+                testTrip.getStartVisit().getPlace().getLatitudeCentroid(),
+                testTrip.getStartVisit().getPlace().getLongitudeCentroid(),
+                testTrip.getEndVisit().getPlace().getName(),
+                testTrip.getEndVisit().getPlace().getLatitudeCentroid(),
+                testTrip.getEndVisit().getPlace().getLongitudeCentroid()
+        );
         memoryBlockTripJdbcService.create(tripBlock);
 
         memoryBlockTripJdbcService.delete(testBlock.getId());
