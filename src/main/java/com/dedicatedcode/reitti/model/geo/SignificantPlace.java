@@ -151,6 +151,17 @@ public class SignificantPlace implements Serializable {
         CHURCH("lni-church", "place.type.church"),
         CINEMA("lni-camera", "place.type.cinema"),
         CAFE("lni-coffee-cup", "place.type.cafe"),
+        MUSEUM("lni-museum", "place.type.museum"),
+        LANDMARK("lni-landmark", "place.type.landmark"),
+        TOURIST_ATTRACTION("lni-map", "place.type.tourist_attraction"),
+        HISTORIC_SITE("lni-history", "place.type.historic_site"),
+        MONUMENT("lni-monument", "place.type.monument"),
+        SHOPPING_MALL("lni-shopping-basket", "place.type.shopping_mall"),
+        MARKET("lni-store", "place.type.market"),
+        GALLERY("lni-gallery", "place.type.gallery"),
+        THEATER("lni-theater", "place.type.theater"),
+        GROCERY_STORE("lni-cart", "place.type.grocery_store"),
+        ATM("lni-money-location", "place.type.atm"),
         OTHER("lni-map-marker", "place.type.other");
 
         private final String iconClass;
