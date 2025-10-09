@@ -99,16 +99,67 @@
                     </div>
                     <div class="block-content">
                         <div th:if="${block.type.name() == 'TEXT'}" class="text-block">
-                            <h3 th:text="#{memory.view.block.text.title}">Text Block</h3>
-                            <p th:text="#{memory.view.block.text.content}">Content will be loaded here</p>
+                            <h3 th:text="${block.headline}">Text Block</h3>
+                            <p th:text="${block.content}">Content will be loaded here</p>
                         </div>
                         <div th:if="${block.type.name() == 'VISIT'}" class="visit-block">
-                            <i class="lni lni-map-marker"></i>
-                            <p th:text="#{memory.view.block.visit.content}">Visit block</p>
+                            <div class="visit-header">
+                                <i class="lni lni-map-marker"></i>
+                                <h3 th:text="${block.placeName != null ? block.placeName : 'Unknown Location'}">Place Name</h3>
+                            </div>
+                            <p th:if="${block.placeAddress != null}" class="visit-address" th:text="${block.placeAddress}">Address</p>
+                            <div class="visit-details">
+                                <div class="visit-time">
+                                    <i class="lni lni-timer"></i>
+                                    <span th:text="${#temporals.format(block.startTime, 'MMM d, yyyy HH:mm')}">Start Time</span>
+                                    <span> - </span>
+                                    <span th:text="${#temporals.format(block.endTime, 'HH:mm')}">End Time</span>
+                                </div>
+                                <div class="visit-duration" th:if="${block.durationSeconds != null}">
+                                    <i class="lni lni-hourglass"></i>
+                                    <span th:text="${#numbers.formatDecimal(block.durationSeconds / 3600.0, 1, 1)} + ' hours'">Duration</span>
+                                </div>
+                            </div>
+                            <div class="visit-coordinates" th:if="${block.latitude != null && block.longitude != null}">
+                                <small th:text="${#numbers.formatDecimal(block.latitude, 1, 6)} + ', ' + ${#numbers.formatDecimal(block.longitude, 1, 6)}">Coordinates</small>
+                            </div>
                         </div>
                         <div th:if="${block.type.name() == 'TRIP'}" class="trip-block">
-                            <i class="lni lni-direction"></i>
-                            <p th:text="#{memory.view.block.trip.content}">Trip block</p>
+                            <div class="trip-header">
+                                <i class="lni lni-direction"></i>
+                                <h3>Trip</h3>
+                            </div>
+                            <div class="trip-route">
+                                <div class="trip-location">
+                                    <i class="lni lni-map-marker"></i>
+                                    <span th:text="${block.startPlaceName != null ? block.startPlaceName : 'Start Location'}">Start</span>
+                                </div>
+                                <div class="trip-arrow">→</div>
+                                <div class="trip-location">
+                                    <i class="lni lni-map-marker"></i>
+                                    <span th:text="${block.endPlaceName != null ? block.endPlaceName : 'End Location'}">End</span>
+                                </div>
+                            </div>
+                            <div class="trip-details">
+                                <div class="trip-time">
+                                    <i class="lni lni-timer"></i>
+                                    <span th:text="${#temporals.format(block.startTime, 'MMM d, yyyy HH:mm')}">Start Time</span>
+                                    <span> - </span>
+                                    <span th:text="${#temporals.format(block.endTime, 'HH:mm')}">End Time</span>
+                                </div>
+                                <div class="trip-duration" th:if="${block.durationSeconds != null}">
+                                    <i class="lni lni-hourglass"></i>
+                                    <span th:text="${#numbers.formatDecimal(block.durationSeconds / 3600.0, 1, 1)} + ' hours'">Duration</span>
+                                </div>
+                                <div class="trip-distance" th:if="${block.estimatedDistanceMeters != null}">
+                                    <i class="lni lni-ruler"></i>
+                                    <span th:text="${#numbers.formatDecimal(block.estimatedDistanceMeters / 1000.0, 1, 1)} + ' km'">Distance</span>
+                                </div>
+                                <div class="trip-mode" th:if="${block.transportModeInferred != null}">
+                                    <i class="lni lni-car"></i>
+                                    <span th:text="${block.transportModeInferred}">Transport Mode</span>
+                                </div>
+                            </div>
                         </div>
                         <div th:if="${block.type.name() == 'IMAGE_GALLERY'}" class="gallery-block">
                             <i class="lni lni-gallery"></i>
