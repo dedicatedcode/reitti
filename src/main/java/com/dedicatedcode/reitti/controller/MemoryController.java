@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.model.memory.HeaderType;
 import com.dedicatedcode.reitti.model.memory.Memory;
-import com.dedicatedcode.reitti.model.memory.MemoryBlock;
+import com.dedicatedcode.reitti.model.memory.MemoryBlockPart;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.MemoryService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -44,7 +44,7 @@ public class MemoryController {
         
         model.addAttribute("memory", memory);
 
-        List<MemoryBlock> blocks = memoryService.getBlocksForMemory(id);
+        List<MemoryBlockPart> blocks = memoryService.getBlockPartsForMemory(id);
         model.addAttribute("blocks", blocks);
         
         // Convert Instant dates to local timezone ISO format
