@@ -42,6 +42,11 @@ public class MemoryBlockImageGallery implements MemoryBlockPart, Serializable {
         return position;
     }
 
+    @Override
+    public BlockType getType() {
+        return BlockType.IMAGE_GALLERY;
+    }
+
     public MemoryBlockImageGallery withId(Long id) {
         return new MemoryBlockImageGallery(id, this.blockId, this.imageUrl, this.caption, this.position);
     }

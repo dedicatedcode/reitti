@@ -26,6 +26,11 @@ public class MemoryBlockText implements MemoryBlockPart, Serializable {
         return content;
     }
 
+    @Override
+    public BlockType getType() {
+        return BlockType.TEXT;
+    }
+
     public MemoryBlockText withHeadline(String headline) {
         return new MemoryBlockText(this.blockId, headline, this.content);
     }

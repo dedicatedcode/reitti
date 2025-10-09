@@ -173,9 +173,10 @@ public class MemoryBlockController {
         // Verify user owns the memory
         memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
+
+
         MemoryBlock block = memoryService.addBlock(memoryId, BlockType.VISIT);
-        memoryService.addVisitBlock(block.getId(), visitId);
+        memoryService.addVisitBlock(user, block.getId(), visitId);
         
         return "redirect:/memories/" + memoryId;
     }
@@ -191,7 +192,7 @@ public class MemoryBlockController {
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
         MemoryBlock block = memoryService.addBlock(memoryId, BlockType.TRIP);
-        memoryService.addTripBlock(block.getId(), tripId);
+        memoryService.addTripBlock(user, block.getId(), tripId);
         
         return "redirect:/memories/" + memoryId;
     }

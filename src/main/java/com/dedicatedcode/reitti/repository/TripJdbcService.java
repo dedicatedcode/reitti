@@ -54,6 +54,13 @@ public class TripJdbcService {
         return jdbcTemplate.query(sql, TRIP_ROW_MAPPER, user.getId());
     }
 
+    public Optional<Trip> findByUserAndId(User user, Long id) {
+        String sql = "SELECT t.*" +
+                "FROM trips t " +
+                "WHERE t.user_id = ? AND id = ?";
+        return jdbcTemplate.query(sql, TRIP_ROW_MAPPER, user.getId(), id).stream().findFirst();
+    }
+
     public List<Trip> findByUserAndTimeOverlap(User user, Instant startTime, Instant endTime) {
         String sql = "SELECT t.* " +
                 "FROM trips t " +

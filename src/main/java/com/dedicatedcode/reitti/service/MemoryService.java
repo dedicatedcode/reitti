@@ -1,5 +1,7 @@
 package com.dedicatedcode.reitti.service;
 
+import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
+import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.memory.*;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
@@ -23,6 +25,8 @@ public class MemoryService {
     private final MemoryBlockTextJdbcService memoryBlockTextJdbcService;
     private final MemoryBlockImageGalleryJdbcService memoryBlockImageGalleryJdbcService;
     private final MemoryBlockGenerationService blockGenerationService;
+    private final ProcessedVisitJdbcService processedVisitJdbcService;
+    private final TripJdbcService tripJdbcService;
 
     public MemoryService(
             MemoryJdbcService memoryJdbcService,
@@ -30,8 +34,10 @@ public class MemoryService {
             MemoryBlockVisitJdbcService memoryBlockVisitJdbcService,
             MemoryBlockTripJdbcService memoryBlockTripJdbcService,
             MemoryBlockTextJdbcService memoryBlockTextJdbcService,
-            MemoryBlockImageGalleryJdbcService memoryBlockImageGalleryJdbcService, 
-            MemoryBlockGenerationService blockGenerationService) {
+            MemoryBlockImageGalleryJdbcService memoryBlockImageGalleryJdbcService,
+            MemoryBlockGenerationService blockGenerationService,
+            ProcessedVisitJdbcService processedVisitJdbcService,
+            TripJdbcService tripJdbcService) {
         this.memoryJdbcService = memoryJdbcService;
         this.memoryBlockJdbcService = memoryBlockJdbcService;
         this.memoryBlockVisitJdbcService = memoryBlockVisitJdbcService;
@@ -39,6 +45,8 @@ public class MemoryService {
         this.memoryBlockTextJdbcService = memoryBlockTextJdbcService;
         this.memoryBlockImageGalleryJdbcService = memoryBlockImageGalleryJdbcService;
         this.blockGenerationService = blockGenerationService;
+        this.processedVisitJdbcService = processedVisitJdbcService;
+        this.tripJdbcService = tripJdbcService;
     }
 
     @Transactional
@@ -119,17 +127,18 @@ public class MemoryService {
     }
 
     @Transactional
-    public MemoryBlockVisit addVisitBlock(Long blockId, MemoryBlockVisit visitBlock) {
+    public MemoryBlockVisit addVisitBlock(User user, Long blockId, Long visitId) {
+        ProcessedVisit visit = this.processedVisitJdbcService.findByUserAndId(user, visitId).orElseThrow(() -> new IllegalArgumentException("Visit not found"));
         MemoryBlockVisit blockWithId = new MemoryBlockVisit(
             blockId,
-            visitBlock.getOriginalProcessedVisitId(),
-            visitBlock.getPlaceName(),
-            visitBlock.getPlaceAddress(),
-            visitBlock.getLatitude(),
-            visitBlock.getLongitude(),
-            visitBlock.getStartTime(),
-            visitBlock.getEndTime(),
-            visitBlock.getDurationSeconds()
+                visit.getId(),
+                visit.getPlace().getName(),
+                visit.getPlace().getAddress(),
+                visit.getPlace().getLatitudeCentroid(),
+                visit.getPlace().getLongitudeCentroid(),
+                visit.getStartTime(),
+                visit.getEndTime(),
+                visit.getDurationSeconds()
         );
         return memoryBlockVisitJdbcService.create(blockWithId);
     }
@@ -139,22 +148,23 @@ public class MemoryService {
     }
 
     @Transactional
-    public MemoryBlockTrip addTripBlock(Long blockId, MemoryBlockTrip tripBlock) {
+    public MemoryBlockTrip addTripBlock(User user, Long blockId, Long tripId) {
+        Trip trip = this.tripJdbcService.findByUserAndId(user, tripId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
         MemoryBlockTrip blockWithId = new MemoryBlockTrip(
             blockId,
-            tripBlock.getOriginalTripId(),
-            tripBlock.getStartTime(),
-            tripBlock.getEndTime(),
-            tripBlock.getDurationSeconds(),
-            tripBlock.getEstimatedDistanceMeters(),
-            tripBlock.getTravelledDistanceMeters(),
-            tripBlock.getTransportModeInferred(),
-            tripBlock.getStartPlaceName(),
-            tripBlock.getStartLatitude(),
-            tripBlock.getStartLongitude(),
-            tripBlock.getEndPlaceName(),
-            tripBlock.getEndLatitude(),
-            tripBlock.getEndLongitude()
+                trip.getId(),
+                trip.getStartTime(),
+                trip.getEndTime(),
+                trip.getDurationSeconds(),
+                trip.getEstimatedDistanceMeters(),
+                trip.getTravelledDistanceMeters(),
+                trip.getTransportModeInferred(),
+                trip.getStartVisit().getPlace().getName(),
+                trip.getStartVisit().getPlace().getLatitudeCentroid(),
+                trip.getStartVisit().getPlace().getLongitudeCentroid(),
+                trip.getEndVisit().getPlace().getName(),
+                trip.getEndVisit().getPlace().getLatitudeCentroid(),
+                trip.getEndVisit().getPlace().getLongitudeCentroid()
         );
         return memoryBlockTripJdbcService.create(blockWithId);
     }
