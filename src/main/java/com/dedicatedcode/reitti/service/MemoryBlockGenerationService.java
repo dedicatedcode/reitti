@@ -52,6 +52,24 @@ public class MemoryBlockGenerationService {
         
         // Step 1: Data Pre-processing & Filtering
         ProcessedVisit accommodation = findAccommodation(allVisitsInRange);
+        
+        // Find first and last accommodation visits
+        Instant firstAccommodationArrival = null;
+        Instant lastAccommodationDeparture = null;
+        
+        if (accommodation != null) {
+            Long accommodationPlaceId = accommodation.getPlace().getId();
+            List<ProcessedVisit> accommodationVisits = allVisitsInRange.stream()
+                .filter(visit -> visit.getPlace().getId().equals(accommodationPlaceId))
+                .sorted(Comparator.comparing(ProcessedVisit::getStartTime))
+                .collect(Collectors.toList());
+            
+            if (!accommodationVisits.isEmpty()) {
+                firstAccommodationArrival = accommodationVisits.get(0).getStartTime();
+                lastAccommodationDeparture = accommodationVisits.get(accommodationVisits.size() - 1).getEndTime();
+            }
+        }
+        
         List<ProcessedVisit> filteredVisits = filterVisits(allVisitsInRange, accommodation);
         
         log.info("Found {} visits after filtering (accommodation: {})", filteredVisits.size(), 
@@ -81,6 +99,29 @@ public class MemoryBlockGenerationService {
             blockParts.add(introBlock);
         }
         
+        // Add travel to accommodation section
+        if (firstAccommodationArrival != null) {
+            List<Trip> tripsToAccommodation = allTripsInRange.stream()
+                .filter(trip -> trip.getEndTime() != null && !trip.getEndTime().isAfter(firstAccommodationArrival))
+                .filter(trip -> trip.getStartTime() != null && !trip.getStartTime().isBefore(startDate))
+                .sorted(Comparator.comparing(Trip::getStartTime))
+                .collect(Collectors.toList());
+            
+            if (!tripsToAccommodation.isEmpty()) {
+                MemoryBlockText travelToText = new MemoryBlockText(
+                    null, 
+                    "Journey to " + (accommodation != null ? accommodation.getPlace().getName() : "Destination"),
+                    "Your journey began with travel to your accommodation."
+                );
+                blockParts.add(travelToText);
+                
+                for (Trip trip : tripsToAccommodation) {
+                    MemoryBlockTrip tripBlock = new MemoryBlockTrip(null, trip.getId());
+                    blockParts.add(tripBlock);
+                }
+            }
+        }
+        
         // Process each cluster
         for (int i = 0; i < clusters.size(); i++) {
             VisitCluster cluster = clusters.get(i);
@@ -108,18 +149,48 @@ public class MemoryBlockGenerationService {
             }
         }
         
-        // Add any significant standalone trips that weren't captured between clusters
+        // Add travel from accommodation section
+        if (lastAccommodationDeparture != null) {
+            List<Trip> tripsFromAccommodation = allTripsInRange.stream()
+                .filter(trip -> trip.getStartTime() != null && !trip.getStartTime().isBefore(lastAccommodationDeparture))
+                .filter(trip -> trip.getEndTime() != null && !trip.getEndTime().isAfter(endDate))
+                .sorted(Comparator.comparing(Trip::getStartTime))
+                .collect(Collectors.toList());
+            
+            if (!tripsFromAccommodation.isEmpty()) {
+                MemoryBlockText travelFromText = new MemoryBlockText(
+                    null, 
+                    "Journey Home",
+                    "Your journey concluded with travel back home from " + (accommodation != null ? accommodation.getPlace().getName() : "your accommodation") + "."
+                );
+                blockParts.add(travelFromText);
+                
+                for (Trip trip : tripsFromAccommodation) {
+                    MemoryBlockTrip tripBlock = new MemoryBlockTrip(null, trip.getId());
+                    blockParts.add(tripBlock);
+                }
+            }
+        }
+        
+        // Add any significant standalone trips that weren't captured
         List<Trip> significantTrips = filterSignificantTrips(allTripsInRange);
         for (Trip trip : significantTrips) {
-            // Check if this trip was already added between clusters
+            // Check if this trip was already added
             boolean alreadyAdded = blockParts.stream()
                 .filter(part -> part instanceof MemoryBlockTrip)
                 .map(part -> ((MemoryBlockTrip) part).getTripId())
                 .anyMatch(tripId -> tripId.equals(trip.getId()));
             
             if (!alreadyAdded) {
-                MemoryBlockTrip tripBlock = new MemoryBlockTrip(null, trip.getId());
-                blockParts.add(tripBlock);
+                // Only add if it's within the main journey period (between first arrival and last departure)
+                if (firstAccommodationArrival != null && lastAccommodationDeparture != null) {
+                    if (trip.getStartTime() != null && 
+                        !trip.getStartTime().isBefore(firstAccommodationArrival) && 
+                        !trip.getStartTime().isAfter(lastAccommodationDeparture)) {
+                        MemoryBlockTrip tripBlock = new MemoryBlockTrip(null, trip.getId());
+                        blockParts.add(tripBlock);
+                    }
+                }
             }
         }
         
