@@ -229,29 +229,38 @@ public class MemoryBlockGenerationService {
             return 0.3;
         }
         
-        String type = placeType.name().toLowerCase();
-        
         // High interest categories
-        if (type.contains("museum") || type.contains("landmark") || type.contains("park") ||
-            type.contains("tourist") || type.contains("historic") || type.contains("monument") ||
-            type.contains("attraction")) {
-            return 1.0;
+        switch (placeType) {
+            case MUSEUM:
+            case LANDMARK:
+            case PARK:
+            case TOURIST_ATTRACTION:
+            case HISTORIC_SITE:
+            case MONUMENT:
+                return 1.0;
+            
+            // Medium interest categories
+            case RESTAURANT:
+            case CAFE:
+            case SHOPPING_MALL:
+            case MARKET:
+            case GALLERY:
+            case THEATER:
+            case CINEMA:
+                return 0.6;
+            
+            // Low interest categories
+            case GROCERY_STORE:
+            case PHARMACY:
+            case GAS_STATION:
+            case ATM:
+            case BANK:
+                return 0.2;
+            
+            // Default medium-low for all other types
+            default:
+                return 0.4;
         }
-        
-        // Medium interest categories
-        if (type.contains("restaurant") || type.contains("cafe") || type.contains("shopping") ||
-            type.contains("market") || type.contains("gallery") || type.contains("theater")) {
-            return 0.6;
-        }
-        
-        // Low interest categories
-        if (type.contains("grocery") || type.contains("pharmacy") || type.contains("gas") ||
-            type.contains("station") || type.contains("atm") || type.contains("bank")) {
-            return 0.2;
-        }
-        
-        // Default medium-low
-        return 0.4;
     }
     
     /**
