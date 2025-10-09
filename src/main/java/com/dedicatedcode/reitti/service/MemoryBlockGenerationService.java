@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.memory.BlockType;
 import com.dedicatedcode.reitti.model.memory.Memory;
 import com.dedicatedcode.reitti.model.memory.MemoryBlock;
+import com.dedicatedcode.reitti.model.memory.MemoryBlockPart;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
@@ -44,7 +45,7 @@ public class MemoryBlockGenerationService {
         this.tripJdbcService = tripJdbcService;
     }
 
-    public List<MemoryBlock> generate(User user, Memory memory) {
+    public List<MemoryBlockPart> generate(User user, Memory memory) {
         Instant startDate = memory.getStartDate();
         Instant endDate = memory.getEndDate();
 
@@ -230,37 +231,15 @@ public class MemoryBlockGenerationService {
         }
         
         // High interest categories
-        switch (placeType) {
-            case MUSEUM:
-            case LANDMARK:
-            case PARK:
-            case TOURIST_ATTRACTION:
-            case HISTORIC_SITE:
-            case MONUMENT:
-                return 1.0;
-            
+        return switch (placeType) {
+            case MUSEUM, LANDMARK, PARK, TOURIST_ATTRACTION, HISTORIC_SITE, MONUMENT -> 1.0;
             // Medium interest categories
-            case RESTAURANT:
-            case CAFE:
-            case SHOPPING_MALL:
-            case MARKET:
-            case GALLERY:
-            case THEATER:
-            case CINEMA:
-                return 0.6;
-            
+            case RESTAURANT, CAFE, SHOPPING_MALL, MARKET, GALLERY, THEATER, CINEMA -> 0.6;
             // Low interest categories
-            case GROCERY_STORE:
-            case PHARMACY:
-            case GAS_STATION:
-            case ATM:
-            case BANK:
-                return 0.2;
-            
+            case GROCERY_STORE, PHARMACY, GAS_STATION, ATM, BANK -> 0.2;
             // Default medium-low for all other types
-            default:
-                return 0.4;
-        }
+            default -> 0.4;
+        };
     }
     
     /**
