@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.model.memory;
 
 import java.io.Serializable;
 
-public class MemoryBlockImageGallery implements Serializable {
+public class MemoryBlockImageGallery implements MemoryBlockPart, Serializable {
     
     private final Long id;
     private final Long blockId;

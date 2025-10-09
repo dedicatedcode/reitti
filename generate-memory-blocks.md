@@ -7,7 +7,7 @@ The goal here is to remove data points that are not actual, intentional visits.
     Filter by Duration: Remove very short visits. Stops under 10-15 minutes are often just traffic lights, brief errands (like an ATM), or GPS drift. Set a minimum duration threshold to focus on meaningful stays.
 
     Consolidate Micro-Visits: If your app generates multiple separate "visits" for wandering around a single large area (e.g., a park or a market), you may need to merge these into one continuous visit before proceeding.
-
+ 
 ## Step 2: Data Enrichment with Context 🗺️
 
 Raw coordinates are not useful for a travel log. You need to understand what these places are.

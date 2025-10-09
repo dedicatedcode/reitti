@@ -3,7 +3,7 @@ package com.dedicatedcode.reitti.model.memory;
 import java.io.Serializable;
 import java.util.Objects;
 
-public class MemoryBlockVisit implements Serializable {
+public class MemoryBlockVisit implements MemoryBlockPart, Serializable {
     
     private final Long blockId;
     private final Long processedVisitId;

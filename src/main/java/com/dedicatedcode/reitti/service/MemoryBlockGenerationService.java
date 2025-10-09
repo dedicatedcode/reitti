@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -51,38 +50,31 @@ public class MemoryBlockGenerationService {
         List<Trip> allTripsInRange = this.tripJdbcService.findByUserAndTimeOverlap(user, startDate, endDate);
         
         // Step 1: Data Pre-processing & Filtering
-        ProcessedVisit accommodation = findAccommodation(allVisitsInRange);
+        Optional<ProcessedVisit> accommodation = findAccommodation(allVisitsInRange);
         
         // Find first and last accommodation visits
-        Instant firstAccommodationArrival = null;
-        Instant lastAccommodationDeparture = null;
+        Instant firstAccommodationArrival = accommodation.flatMap(p -> allVisitsInRange.stream()
+                .filter(visit -> visit.getPlace().getId().equals(p.getPlace().getId()))
+                .min(Comparator.comparing(ProcessedVisit::getStartTime)))
+                .map(ProcessedVisit::getStartTime).orElse(null);
+        Instant lastAccommodationDeparture = accommodation.flatMap(p -> allVisitsInRange.stream()
+                        .filter(visit -> visit.getPlace().getId().equals(p.getPlace().getId()))
+                        .max(Comparator.comparing(ProcessedVisit::getStartTime)))
+                .map(ProcessedVisit::getStartTime).orElse(null);
         
-        if (accommodation != null) {
-            Long accommodationPlaceId = accommodation.getPlace().getId();
-            List<ProcessedVisit> accommodationVisits = allVisitsInRange.stream()
-                .filter(visit -> visit.getPlace().getId().equals(accommodationPlaceId))
-                .sorted(Comparator.comparing(ProcessedVisit::getStartTime))
-                .collect(Collectors.toList());
-            
-            if (!accommodationVisits.isEmpty()) {
-                firstAccommodationArrival = accommodationVisits.get(0).getStartTime();
-                lastAccommodationDeparture = accommodationVisits.get(accommodationVisits.size() - 1).getEndTime();
-            }
-        }
-        
-        List<ProcessedVisit> filteredVisits = filterVisits(allVisitsInRange, accommodation);
+        List<ProcessedVisit> filteredVisits = filterVisits(allVisitsInRange, accommodation.orElse(null));
         
         log.info("Found {} visits after filtering (accommodation: {})", filteredVisits.size(), 
-                accommodation != null ? accommodation.getPlace().getName() : "none");
+                accommodation.isPresent() ? accommodation.get().getPlace().getName() : "none");
         
         // Step 3: Scoring & Identifying "Interesting" Visits
-        List<ScoredVisit> scoredVisits = scoreVisits(filteredVisits, accommodation);
+        List<ScoredVisit> scoredVisits = scoreVisits(filteredVisits, accommodation.orElse(null));
         
         // Sort by score descending
         scoredVisits.sort(Comparator.comparingDouble(ScoredVisit::getScore).reversed());
         
         log.info("Scored {} visits, top score: {}", scoredVisits.size(), 
-                scoredVisits.isEmpty() ? 0 : scoredVisits.get(0).getScore());
+                scoredVisits.isEmpty() ? 0 : scoredVisits.getFirst().getScore());
         
         // Step 4: Clustering & Creating a Narrative
         List<VisitCluster> clusters = clusterVisits(scoredVisits);
@@ -94,7 +86,7 @@ public class MemoryBlockGenerationService {
         
         // Add introduction text block
         if (!clusters.isEmpty()) {
-            String introText = generateIntroductionText(memory, clusters, accommodation);
+            String introText = generateIntroductionText(memory, clusters, accommodation.orElse(null));
             MemoryBlockText introBlock = new MemoryBlockText(null, "Your Journey", introText);
             blockParts.add(introBlock);
         }
@@ -105,12 +97,12 @@ public class MemoryBlockGenerationService {
                 .filter(trip -> trip.getEndTime() != null && !trip.getEndTime().isAfter(firstAccommodationArrival))
                 .filter(trip -> trip.getStartTime() != null && !trip.getStartTime().isBefore(startDate))
                 .sorted(Comparator.comparing(Trip::getStartTime))
-                .collect(Collectors.toList());
+                .toList();
             
             if (!tripsToAccommodation.isEmpty()) {
                 MemoryBlockText travelToText = new MemoryBlockText(
-                    null, 
-                    "Journey to " + (accommodation != null ? accommodation.getPlace().getName() : "Destination"),
+                    null,
+                        "Journey to " + accommodation.get().getPlace().getName(),
                     "Your journey began with travel to your accommodation."
                 );
                 blockParts.add(travelToText);
@@ -155,13 +147,13 @@ public class MemoryBlockGenerationService {
                 .filter(trip -> trip.getStartTime() != null && !trip.getStartTime().isBefore(lastAccommodationDeparture))
                 .filter(trip -> trip.getEndTime() != null && !trip.getEndTime().isAfter(endDate))
                 .sorted(Comparator.comparing(Trip::getStartTime))
-                .collect(Collectors.toList());
+                .toList();
             
             if (!tripsFromAccommodation.isEmpty()) {
                 MemoryBlockText travelFromText = new MemoryBlockText(
                     null, 
                     "Journey Home",
-                    "Your journey concluded with travel back home from " + (accommodation != null ? accommodation.getPlace().getName() : "your accommodation") + "."
+                    "Your journey concluded with travel back home from " + (accommodation.isPresent() ? accommodation.get().getPlace().getName() : "your accommodation") + "."
                 );
                 blockParts.add(travelFromText);
                 
@@ -310,7 +302,7 @@ public class MemoryBlockGenerationService {
     /**
      * Step 1: Find accommodation by analyzing visits during sleeping hours (22:00 - 06:00)
      */
-    private ProcessedVisit findAccommodation(List<ProcessedVisit> visits) {
+    private Optional<ProcessedVisit> findAccommodation(List<ProcessedVisit> visits) {
         Map<Long, Long> sleepingHoursDuration = new HashMap<>();
         
         for (ProcessedVisit visit : visits) {
@@ -324,8 +316,7 @@ public class MemoryBlockGenerationService {
             .max(Map.Entry.comparingByValue())
             .flatMap(entry -> visits.stream()
                 .filter(visit -> visit.getPlace().getId().equals(entry.getKey()))
-                .findFirst())
-            .orElse(null);
+                .findFirst());
     }
     
     private long calculateSleepingHoursDuration(ProcessedVisit visit) {
@@ -368,16 +359,12 @@ public class MemoryBlockGenerationService {
         return visits.stream()
             .filter(visit -> {
                 // Remove accommodation stays
-                if (accommodationPlaceId != null && visit.getPlace().getId().equals(accommodationPlaceId)) {
+                if (visit.getPlace().getId().equals(accommodationPlaceId)) {
                     return false;
                 }
                 
                 // Remove very short visits
-                if (visit.getDurationSeconds() < MIN_VISIT_DURATION_SECONDS) {
-                    return false;
-                }
-                
-                return true;
+                return visit.getDurationSeconds() >= MIN_VISIT_DURATION_SECONDS;
             })
             .collect(Collectors.toList());
     }
