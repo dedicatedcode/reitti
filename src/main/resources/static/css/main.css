@@ -121,6 +121,9 @@ header {
 
 /* Elements */
 
+.btn {
+    background-color: var(--color-background-dark);
+}
 .btn.btn-block {
     width: 100%;
 }
@@ -1852,6 +1855,42 @@ button:disabled {
     margin: var(--memories-header-height) auto;
     width: 100%;
     max-width: 1280px;
+}
+
+.memories-page .memory-block {
+    position: relative;
+}
+.memories-page .memory-block .block-actions {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    z-index: 500;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.memories-page .memory-block:hover .block-actions {
+    opacity: 1;
+}
+
+.memories-page .visit-block .block-header {
+    position: relative;
+}
+
+.memories-page .block-header .visit-map {
+    height: 200px;
+}
+
+.memories-page .block-header .visit-title {
+    position: absolute;
+    bottom: 0;
+    text-align: center;
+    font-family: var(--serif-font);
+    color: #fbe7c3;
+    font-size: 2em;
+    text-shadow: -1px -1px 9px wheat, 1px -1px 9px #6f560d, -1px 1px 5px #24201c, 1px 1px 0 #171414;
+    z-index: 500;
+    right: 10px;
 }
 
 .block-type-selection {

@@ -85,8 +85,9 @@ class MemoryBlockTripJdbcServiceTest {
 
         startVisit = this.processedVisitJdbcService.create(testUser, new ProcessedVisit(startPlace, now, now.plus(20, ChronoUnit.MINUTES), 20*60L));
         endVisit = this.processedVisitJdbcService.create(testUser, new ProcessedVisit(endPlace, now.plus(3600, ChronoUnit.SECONDS), now.plus(80, ChronoUnit.MINUTES), 20*60L));
-        
-        testTrip = tripJdbcService.create(testUser, startVisit, endVisit, 3600L, 5000.0, 5100.0, "WALKING");
+
+        Trip car = new Trip(startVisit.getEndTime(), endVisit.getStartTime(), 1000L, 100.0, 150.0, "WALKING", startVisit, endVisit);
+        testTrip = tripJdbcService.create(testUser, car);
     }
 
     @Test
