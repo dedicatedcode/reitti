@@ -224,12 +224,12 @@ public class MemoryBlockGenerationService {
     /**
      * Get category weight based on place type
      */
-    private double getCategoryWeight(String placeType) {
+    private double getCategoryWeight(SignificantPlace.PlaceType placeType) {
         if (placeType == null) {
             return 0.3;
         }
         
-        String type = placeType.toLowerCase();
+        String type = placeType.name().toLowerCase();
         
         // High interest categories
         if (type.contains("museum") || type.contains("landmark") || type.contains("park") ||
