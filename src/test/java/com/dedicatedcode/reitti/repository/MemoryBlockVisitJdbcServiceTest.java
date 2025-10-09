@@ -45,7 +45,7 @@ class MemoryBlockVisitJdbcServiceTest {
     private User testUser;
     private Memory testMemory;
     private MemoryBlock testBlock;
-    private Long testProcessedVisitId;
+    private ProcessedVisit testProcessedVisit;
 
     @BeforeEach
     void setUp() {
@@ -82,35 +82,78 @@ class MemoryBlockVisitJdbcServiceTest {
                 3600L
         );
 
-        ProcessedVisit createdVisit = processedVisitJdbcService.create(testUser, processedVisit);
-        testProcessedVisitId = createdVisit.getId();
+        testProcessedVisit = processedVisitJdbcService.create(testUser, processedVisit);
     }
 
     @Test
     void testCreateVisitBlock() {
-        MemoryBlockVisit visitBlock = new MemoryBlockVisit(testBlock.getId(), testProcessedVisitId);
+        MemoryBlockVisit visitBlock = new MemoryBlockVisit(
+                testBlock.getId(),
+                testProcessedVisit.getId(),
+                testProcessedVisit.getPlace().getName(),
+                testProcessedVisit.getPlace().getAddress(),
+                testProcessedVisit.getPlace().getLatitudeCentroid(),
+                testProcessedVisit.getPlace().getLongitudeCentroid(),
+                testProcessedVisit.getStartTime(),
+                testProcessedVisit.getEndTime(),
+                testProcessedVisit.getDurationSeconds()
+        );
 
         MemoryBlockVisit created = memoryBlockVisitJdbcService.create(visitBlock);
 
         assertEquals(testBlock.getId(), created.getBlockId());
-        assertEquals(testProcessedVisitId, created.getProcessedVisitId());
+        assertEquals(testProcessedVisit.getId(), created.getOriginalProcessedVisitId());
+        assertEquals(testProcessedVisit.getPlace().getName(), created.getPlaceName());
+        assertEquals(testProcessedVisit.getPlace().getAddress(), created.getPlaceAddress());
+        assertEquals(testProcessedVisit.getPlace().getLatitudeCentroid(), created.getLatitude());
+        assertEquals(testProcessedVisit.getPlace().getLongitudeCentroid(), created.getLongitude());
+        assertEquals(testProcessedVisit.getStartTime(), created.getStartTime());
+        assertEquals(testProcessedVisit.getEndTime(), created.getEndTime());
+        assertEquals(testProcessedVisit.getDurationSeconds(), created.getDurationSeconds());
     }
 
     @Test
     void testFindByBlockId() {
-        MemoryBlockVisit visitBlock = new MemoryBlockVisit(testBlock.getId(), testProcessedVisitId);
+        MemoryBlockVisit visitBlock = new MemoryBlockVisit(
+                testBlock.getId(),
+                testProcessedVisit.getId(),
+                testProcessedVisit.getPlace().getName(),
+                testProcessedVisit.getPlace().getAddress(),
+                testProcessedVisit.getPlace().getLatitudeCentroid(),
+                testProcessedVisit.getPlace().getLongitudeCentroid(),
+                testProcessedVisit.getStartTime(),
+                testProcessedVisit.getEndTime(),
+                testProcessedVisit.getDurationSeconds()
+        );
         memoryBlockVisitJdbcService.create(visitBlock);
 
         Optional<MemoryBlockVisit> found = memoryBlockVisitJdbcService.findByBlockId(testBlock.getId());
 
         assertTrue(found.isPresent());
         assertEquals(testBlock.getId(), found.get().getBlockId());
-        assertEquals(testProcessedVisitId, found.get().getProcessedVisitId());
+        assertEquals(testProcessedVisit.getId(), found.get().getOriginalProcessedVisitId());
+        assertEquals(testProcessedVisit.getPlace().getName(), found.get().getPlaceName());
+        assertEquals(testProcessedVisit.getPlace().getAddress(), found.get().getPlaceAddress());
+        assertEquals(testProcessedVisit.getPlace().getLatitudeCentroid(), found.get().getLatitude());
+        assertEquals(testProcessedVisit.getPlace().getLongitudeCentroid(), found.get().getLongitude());
+        assertEquals(testProcessedVisit.getStartTime(), found.get().getStartTime());
+        assertEquals(testProcessedVisit.getEndTime(), found.get().getEndTime());
+        assertEquals(testProcessedVisit.getDurationSeconds(), found.get().getDurationSeconds());
     }
 
     @Test
     void testDeleteVisitBlock() {
-        MemoryBlockVisit visitBlock = new MemoryBlockVisit(testBlock.getId(), testProcessedVisitId);
+        MemoryBlockVisit visitBlock = new MemoryBlockVisit(
+                testBlock.getId(),
+                testProcessedVisit.getId(),
+                testProcessedVisit.getPlace().getName(),
+                testProcessedVisit.getPlace().getAddress(),
+                testProcessedVisit.getPlace().getLatitudeCentroid(),
+                testProcessedVisit.getPlace().getLongitudeCentroid(),
+                testProcessedVisit.getStartTime(),
+                testProcessedVisit.getEndTime(),
+                testProcessedVisit.getDurationSeconds()
+        );
         memoryBlockVisitJdbcService.create(visitBlock);
 
         memoryBlockVisitJdbcService.delete(testBlock.getId());
