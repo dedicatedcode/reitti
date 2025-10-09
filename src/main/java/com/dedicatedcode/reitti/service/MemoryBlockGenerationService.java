@@ -22,7 +22,7 @@ public class MemoryBlockGenerationService {
     private static final Logger log = LoggerFactory.getLogger(MemoryBlockGenerationService.class);
     
     // Step 1: Filtering thresholds
-    private static final long MIN_VISIT_DURATION_SECONDS = 600; // 10 minutes
+    private static final long MIN_VISIT_DURATION_SECONDS = 6000; // 10 minutes
     
     // Step 3: Scoring weights
     private static final double WEIGHT_DURATION = 1.0;
@@ -32,7 +32,7 @@ public class MemoryBlockGenerationService {
     
     // Step 4: Clustering parameters
     private static final long CLUSTER_TIME_THRESHOLD_SECONDS = 7200; // 2 hours
-    private static final double CLUSTER_DISTANCE_THRESHOLD_METERS = 500; // 500 meters
+    private static final double CLUSTER_DISTANCE_THRESHOLD_METERS = 1000; // 500 meters
     
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final TripJdbcService tripJdbcService;
@@ -54,13 +54,13 @@ public class MemoryBlockGenerationService {
         
         // Find first and last accommodation visits
         Instant firstAccommodationArrival = accommodation.flatMap(p -> allVisitsInRange.stream()
-                .filter(visit -> visit.getPlace().getId().equals(p.getPlace().getId()))
-                .min(Comparator.comparing(ProcessedVisit::getStartTime)))
-                .map(ProcessedVisit::getStartTime).orElse(null);
+                        .filter(visit -> visit.getPlace().getId().equals(p.getPlace().getId()))
+                        .min(Comparator.comparing(ProcessedVisit::getStartTime)))
+                        .map(ProcessedVisit::getStartTime).orElse(null);
         Instant lastAccommodationDeparture = accommodation.flatMap(p -> allVisitsInRange.stream()
                         .filter(visit -> visit.getPlace().getId().equals(p.getPlace().getId()))
                         .max(Comparator.comparing(ProcessedVisit::getStartTime)))
-                .map(ProcessedVisit::getStartTime).orElse(null);
+                        .map(ProcessedVisit::getStartTime).orElse(null);
         
         List<ProcessedVisit> filteredVisits = filterVisits(allVisitsInRange, accommodation.orElse(null));
         
@@ -517,13 +517,7 @@ public class MemoryBlockGenerationService {
                 if (trip.getDurationSeconds() != null && trip.getDurationSeconds() > 1800) {
                     return true;
                 }
-                
-                // Include trips longer than 5km
-                if (trip.getEstimatedDistanceMeters() != null && trip.getEstimatedDistanceMeters() > 5000) {
-                    return true;
-                }
-                
-                return false;
+                return trip.getEstimatedDistanceMeters() != null && trip.getEstimatedDistanceMeters() > 5000;
             })
             .collect(Collectors.toList());
     }

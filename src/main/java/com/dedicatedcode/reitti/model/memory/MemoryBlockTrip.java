@@ -21,6 +21,11 @@ public class MemoryBlockTrip implements MemoryBlockPart, Serializable {
     }
 
     @Override
+    public BlockType getType() {
+        return BlockType.TRIP;
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
