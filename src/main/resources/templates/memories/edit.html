@@ -84,10 +84,8 @@
             </div>
 
             <div class="form-actions">
-                <button type="button" 
-                        class="btn btn-secondary"
-                        th:attr="hx-get=${cancelEndpoint}, hx-target=${cancelTarget}"
-                        hx-swap="innerHTML">Cancel</button>
+                <a class="btn btn-secondary"
+                        th:href="@{/memories/{id}(id=${memory.id})}">Cancel</a>
                 <button type="submit" class="btn btn-primary">Save Changes</button>
             </div>
         </form>

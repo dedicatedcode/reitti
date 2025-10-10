@@ -19,6 +19,10 @@
     <div class="settings-content-area">
         <div class="memory-header" th:fragment="memory-header">
             <div class="action-bar">
+                <a  class="btn btn-secondary"
+                        th:href="@{/memories}"
+                        th:text="#{memory.view.back}">back
+                </a>
                 <button type="button" 
                         class="btn btn-secondary"
                         th:attr="hx-get=@{/memories/{id}/edit(id=${memory.id})}"
@@ -149,15 +153,15 @@
                                 <h3>Trip</h3>
                             </div>
                             <div class="trip-route">
-                                <div class="trip-location">
+                                <span class="trip-location">
                                     <i class="lni lni-map-marker"></i>
                                     <span th:text="${block.startPlaceName != null ? block.startPlaceName : 'Start Location'}">Start</span>
-                                </div>
-                                <div class="trip-arrow">→</div>
-                                <div class="trip-location">
+                                </span>
+                                <span class="trip-arrow">→</span>
+                                <span class="trip-location">
                                     <i class="lni lni-map-marker"></i>
                                     <span th:text="${block.endPlaceName != null ? block.endPlaceName : 'End Location'}">End</span>
-                                </div>
+                                </span>
                             </div>
                             <div class="trip-details">
                                 <div class="trip-time">
@@ -204,9 +208,9 @@
 
 
 <script th:inline="javascript">
-
     // User settings for timezone handling
     window.userSettings = /*[[${userSettings}]]*/ {};
+
     function getUserTimezone() {
         if (window.userSettings.timeZoneOverride) {
             return window.userSettings.timeZoneOverride;
@@ -214,82 +218,85 @@
             return Intl.DateTimeFormat().resolvedOptions().timeZone;
         }
     }
-        const memory = /*[[${memory}]]*/ {};
-        const rawLocationUrl = /*[[${rawLocationUrl}]]*/ '';
-        let rawLocationLoader = null;
-        let memoryMap = null;
+
+    const memory = /*[[${memory}]]*/ {};
+    const rawLocationUrl = /*[[${rawLocationUrl}]]*/ '';
+    let rawLocationLoader = null;
+    let memoryMap = null;
 
 
-        function initializeMemoryMap() {
-            // Only initialize if header type is MAP and map container exists
-            if (memory.headerType === 'MAP' && document.getElementById('memory-map')) {
-                if (memoryMap && typeof memoryMap.getContainer === 'function') {
-                    memoryMap.remove();
-                }
+    function initializeMemoryMap() {
+        // Only initialize if header type is MAP and map container exists
+        if (memory.headerType === 'MAP' && document.getElementById('memory-map')) {
+            if (memoryMap && typeof memoryMap.getContainer === 'function') {
+                memoryMap.remove();
+            }
 
-                memoryMap = L.map('memory-map', {
-                    zoomControl: false,
-                    attributionControl: false,
-                    boxZoom: false,
-                    doubleClickZoom: false,
-                    dragging: false,
-                    keyboard: false,
-                    scrollWheelZoom: false,
-                    tap: false,
-                    touchZoom: false
-                }).setView([51.505, -0.09], 13);
+            memoryMap = L.map('memory-map', {
+                zoomControl: false,
+                attributionControl: false,
+                boxZoom: false,
+                doubleClickZoom: false,
+                dragging: false,
+                keyboard: false,
+                scrollWheelZoom: false,
+                tap: false,
+                touchZoom: false
+            }).setView([51.505, -0.09], 13);
 
-                L.tileLayer.grayscale('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19,
-                    attribution: '© OpenStreetMap contributors'
-                }).addTo(memoryMap);
+            L.tileLayer.grayscale('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(memoryMap);
+            if (rawLocationLoader === null) {
+                rawLocationLoader = new RawLocationLoader(memoryMap, window.userSettings);
+            }
+            // Initialize raw location loader for the memory
+            if (rawLocationUrl && rawLocationLoader !== null) {
+                const userConfigs = [{
+                    url: rawLocationUrl,
+                    color: '#f1ba63',
+                    avatarUrl: null,
+                    avatarFallback: null,
+                    displayName: 'Memory Location Data'
+                }];
+                rawLocationLoader.init(userConfigs);
 
-                // Initialize raw location loader for the memory
-                if (rawLocationUrl) {
-                    rawLocationLoader = new RawLocationLoader(memoryMap, {});
-                    const userConfigs = [{
-                        url: rawLocationUrl,
-                        color: '#f1ba63',
-                        avatarUrl: null,
-                        avatarFallback: null,
-                        displayName: 'Memory Location Data'
-                    }];
-                    rawLocationLoader.init(userConfigs);
-
-                    // Load location data for the memory date range without bounds filtering
-                    rawLocationLoader.loadForDateRange(
-                        memory.startDate,
-                        memory.endDate,
-                        false, // autoUpdateMode
-                        false  // withBounds - don't filter by current map bounds
-                    );
-                }
+                // Load location data for the memory date range without bounds filtering
+                rawLocationLoader.loadForDateRange(
+                    memory.startDate,
+                    memory.endDate,
+                    false, // autoUpdateMode
+                    false  // withBounds - don't filter by current map bounds
+                );
             }
         }
+    }
 
-        // Initialize map on page load
-        initializeMemoryMap();
+    // Initialize map on page load
+    initializeMemoryMap();
 
-        // Listen for htmx events to reinitialize map when header is updated
-        document.body.addEventListener('htmx:afterSwap', function(event) {
-            console.log('htmx:afterSwap', event);
-            if (event.detail.target.classList.contains('memory-header')) {
-                initializeMemoryMap()
+    // Listen for htmx events to reinitialize map when header is updated
+    document.body.addEventListener('htmx:afterSwap', function (event) {
+        if (event.detail.target.classList.contains('memory-header')) {
+            initializeMemoryMap()
 
-                if (rawLocationUrl) {
+            if (rawLocationUrl) {
+                if (rawLocationLoader === null) {
                     rawLocationLoader = new RawLocationLoader(memoryMap, {});
-                    const userConfigs = [{
-                        url: rawLocationUrl,
-                        color: '#f1ba63',
-                        avatarUrl: null,
-                        avatarFallback: null,
-                        displayName: 'Memory Location Data'
-                    }];
-                    rawLocationLoader.init(userConfigs);
-                    rawLocationLoader.reloadForCurrentView(false);
                 }
+                const userConfigs = [{
+                    url: rawLocationUrl,
+                    color: '#f1ba63',
+                    avatarUrl: null,
+                    avatarFallback: null,
+                    displayName: 'Memory Location Data'
+                }];
+                rawLocationLoader.init(userConfigs);
+                rawLocationLoader.reloadForCurrentView(false);
             }
-        });
+        }
+    });
 </script>
 </body>
 </html>

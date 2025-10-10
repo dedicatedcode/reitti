@@ -1822,6 +1822,7 @@ button:disabled {
     justify-content: flex-end;
 }
 
+.memories-page .memory-header a,
 .memories-page .memory-header button {
     background-color: var(--color-background-dark);
 }
@@ -1852,7 +1853,7 @@ button:disabled {
 
 .memories-page .memory-blocks-container {
     padding: 30px;
-    margin: var(--memories-header-height) auto;
+    margin: var(--memories-header-height) auto 0;
     width: 100%;
     max-width: 1280px;
 }
