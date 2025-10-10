@@ -122,7 +122,6 @@
                                             });
                                         }
                                         tileLayer.addTo(visitMap);
-                                        console.log(blockId)
                                     })();
                                 </script>
                                 <h3 class="visit-title" th:text="${block.placeName != null ? block.placeName : 'Unknown Location'}">Place Name</h3>
@@ -208,7 +207,6 @@
 
     // User settings for timezone handling
     window.userSettings = /*[[${userSettings}]]*/ {};
-
     function getUserTimezone() {
         if (window.userSettings.timeZoneOverride) {
             return window.userSettings.timeZoneOverride;
@@ -216,17 +214,16 @@
             return Intl.DateTimeFormat().resolvedOptions().timeZone;
         }
     }
-    (function () {
         const memory = /*[[${memory}]]*/ {};
         const rawLocationUrl = /*[[${rawLocationUrl}]]*/ '';
-        let memoryMap = null;
         let rawLocationLoader = null;
+        let memoryMap = null;
 
 
         function initializeMemoryMap() {
             // Only initialize if header type is MAP and map container exists
             if (memory.headerType === 'MAP' && document.getElementById('memory-map')) {
-                if (memoryMap) {
+                if (memoryMap && typeof memoryMap.getContainer === 'function') {
                     memoryMap.remove();
                 }
 
@@ -275,8 +272,10 @@
 
         // Listen for htmx events to reinitialize map when header is updated
         document.body.addEventListener('htmx:afterSwap', function(event) {
-            initializeMemoryMap()
+            console.log('htmx:afterSwap', event);
             if (event.detail.target.classList.contains('memory-header')) {
+                initializeMemoryMap()
+
                 if (rawLocationUrl) {
                     rawLocationLoader = new RawLocationLoader(memoryMap, {});
                     const userConfigs = [{
@@ -291,8 +290,6 @@
                 }
             }
         });
-
-    })();
 </script>
 </body>
 </html>
