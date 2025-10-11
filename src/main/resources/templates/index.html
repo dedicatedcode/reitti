@@ -365,8 +365,6 @@
                 const color = element?.dataset.baseColor;
                 if (rawLocationPointsUrl) {
                     const currentZoom = Math.round(map.getZoom());
-                    const bbox = getBoundingBoxParams();
-                    
                     const separator = rawLocationPointsUrl.includes('?') ? '&' : '?';
                     const urlWithParams = rawLocationPointsUrl + separator + 
                         'zoom=' + currentZoom;
@@ -431,6 +429,7 @@
 
             // Add avatar marker for the latest point if in auto-update mode and today is selected
             if (autoUpdateMode && isSelectedDateToday() && rawPointsData.latest) {
+                removePulsatingMarkers();
                 const latestPoint = rawPointsData.latest;
                 // Find the corresponding timeline section to get user data
                 const timelineContainers = document.querySelectorAll('.user-timeline-section');
@@ -854,9 +853,7 @@
 
     function removePulsatingMarkers() {
         pulsatingMarkers.forEach(marker => {
-            if (marker) {
-                map.removeLayer(marker);
-            }
+            map.removeLayer(marker);
         });
         pulsatingMarkers = [];
     }
