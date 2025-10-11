@@ -277,6 +277,7 @@
         });
 
         function reloadRawLocationPoints() {
+            removePulsatingMarkers();
 
             // Reload raw location points with new zoom level
             const timelineContainer = document.querySelectorAll('.user-timeline-section');
@@ -327,6 +328,7 @@
                     path.remove();
                 }
                 rawPointPaths.length = 0;
+
 
                 results.sort((a, b) => a.index - b.index);
                 
@@ -429,7 +431,6 @@
 
             // Add avatar marker for the latest point if in auto-update mode and today is selected
             if (autoUpdateMode && isSelectedDateToday() && rawPointsData.latest) {
-                removePulsatingMarkers();
                 const latestPoint = rawPointsData.latest;
                 // Find the corresponding timeline section to get user data
                 const timelineContainers = document.querySelectorAll('.user-timeline-section');

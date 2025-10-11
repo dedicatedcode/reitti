@@ -43,6 +43,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/login", "/access", "/error").permitAll()
                         .requestMatchers("/settings/**").hasAnyRole(Role.ADMIN.name(), Role.USER.name())
+                        .requestMatchers("/api/v1/photos/**").hasAnyRole(Role.ADMIN.name(), Role.USER.name(), "MAGIC_LINK_FULL_ACCESS", "MAGIC_LINK_ONLY_LIVE_WITH_PHOTOS")
                         .requestMatchers("/css/**", "/js/**", "/images/**", "/img/**", "/error/magic-link/**", "/setup/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/api/v1/reitti-integration/notify/**").permitAll()
