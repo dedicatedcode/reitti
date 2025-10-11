@@ -92,7 +92,7 @@ public class UserSettingsControllerAdvice {
             return UserSettingsDTO.UIMode.FULL;
         } else if (grantedRoles.contains("ROLE_MAGIC_LINK_FULL_ACCESS")) {
             return UserSettingsDTO.UIMode.SHARED_FULL;
-        } else if (grantedRoles.contains("ROLE_MAGIC_LINK_ONLY_LIVE")) {
+        } else if (grantedRoles.contains("ROLE_MAGIC_LINK_ONLY_LIVE") || grantedRoles.contains("ROLE_MAGIC_LINK_ONLY_LIVE_WITH_PHOTOS")) {
             return UserSettingsDTO.UIMode.SHARED_LIVE_MODE_ONLY;
         } else {
             throw new IllegalStateException("Invalid user authentication mode detected [" + grantedRoles + "]");
