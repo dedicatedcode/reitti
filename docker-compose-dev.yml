@@ -66,6 +66,12 @@ services:
       - "8083:8083"
     volumes:
       - ot-recorder-data:/store
+  llm:
+    image: ollama/ollama
+    ports:
+      - 11434:11434
+    command:
+      - serve
 volumes:
   postgis-data:
   redis-data:

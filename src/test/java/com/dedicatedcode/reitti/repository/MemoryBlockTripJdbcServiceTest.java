@@ -94,7 +94,6 @@ class MemoryBlockTripJdbcServiceTest {
     void testCreateTripBlock() {
         MemoryBlockTrip tripBlock = new MemoryBlockTrip(
                 testBlock.getId(),
-                testTrip.getId(),
                 testTrip.getStartTime(),
                 testTrip.getEndTime(),
                 testTrip.getDurationSeconds(),
@@ -112,7 +111,6 @@ class MemoryBlockTripJdbcServiceTest {
         MemoryBlockTrip created = memoryBlockTripJdbcService.create(tripBlock);
 
         assertEquals(testBlock.getId(), created.getBlockId());
-        assertEquals(testTrip.getId(), created.getOriginalTripId());
         assertEquals(testTrip.getStartTime(), created.getStartTime());
         assertEquals(testTrip.getEndTime(), created.getEndTime());
         assertEquals(testTrip.getDurationSeconds(), created.getDurationSeconds());
@@ -131,7 +129,6 @@ class MemoryBlockTripJdbcServiceTest {
     void testFindByBlockId() {
         MemoryBlockTrip tripBlock = new MemoryBlockTrip(
                 testBlock.getId(),
-                testTrip.getId(),
                 testTrip.getStartTime(),
                 testTrip.getEndTime(),
                 testTrip.getDurationSeconds(),
@@ -151,7 +148,6 @@ class MemoryBlockTripJdbcServiceTest {
 
         assertTrue(found.isPresent());
         assertEquals(testBlock.getId(), found.get().getBlockId());
-        assertEquals(testTrip.getId(), found.get().getOriginalTripId());
         assertEquals(testTrip.getStartTime(), found.get().getStartTime());
         assertEquals(testTrip.getEndTime(), found.get().getEndTime());
         assertEquals(testTrip.getDurationSeconds(), found.get().getDurationSeconds());
@@ -170,7 +166,6 @@ class MemoryBlockTripJdbcServiceTest {
     void testDeleteTripBlock() {
         MemoryBlockTrip tripBlock = new MemoryBlockTrip(
                 testBlock.getId(),
-                testTrip.getId(),
                 testTrip.getStartTime(),
                 testTrip.getEndTime(),
                 testTrip.getDurationSeconds(),

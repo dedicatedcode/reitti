@@ -19,11 +19,6 @@ public class MemoryBlockTripJdbcService {
     }
 
     private static final RowMapper<MemoryBlockTrip> MEMORY_BLOCK_TRIP_ROW_MAPPER = (rs, rowNum) -> {
-        Long originalId = rs.getLong("original_trip_id");
-        if (rs.wasNull()) {
-            originalId = null;
-        }
-        
         Double estimatedDistance = rs.getDouble("estimated_distance_meters");
         if (rs.wasNull()) {
             estimatedDistance = null;
@@ -56,7 +51,6 @@ public class MemoryBlockTripJdbcService {
         
         return new MemoryBlockTrip(
             rs.getLong("block_id"),
-            originalId,
             rs.getTimestamp("start_time").toInstant(),
             rs.getTimestamp("end_time").toInstant(),
             rs.getLong("duration_seconds"),
@@ -74,12 +68,11 @@ public class MemoryBlockTripJdbcService {
 
     public MemoryBlockTrip create(MemoryBlockTrip blockTrip) {
         jdbcTemplate.update(
-                "INSERT INTO memory_block_trip (block_id, original_trip_id, start_time, end_time, " +
+                "INSERT INTO memory_block_trip (block_id, start_time, end_time, " +
                 "duration_seconds, estimated_distance_meters, travelled_distance_meters, transport_mode_inferred, " +
                 "start_place_name, start_latitude, start_longitude, end_place_name, end_latitude, end_longitude) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 blockTrip.getBlockId(),
-                blockTrip.getOriginalTripId(),
                 Timestamp.from(blockTrip.getStartTime()),
                 Timestamp.from(blockTrip.getEndTime()),
                 blockTrip.getDurationSeconds(),

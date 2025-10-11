@@ -152,7 +152,6 @@ public class MemoryService {
         Trip trip = this.tripJdbcService.findByUserAndId(user, tripId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
         MemoryBlockTrip blockWithId = new MemoryBlockTrip(
             blockId,
-                trip.getId(),
                 trip.getStartTime(),
                 trip.getEndTime(),
                 trip.getDurationSeconds(),
@@ -248,7 +247,6 @@ public class MemoryService {
                 MemoryBlock memoryBlock = addBlock(memoryId, BlockType.TRIP);
                 memoryBlockTripJdbcService.create(new MemoryBlockTrip(
                     memoryBlock.getId(),
-                    tripBlock.getOriginalTripId(),
                     tripBlock.getStartTime(),
                     tripBlock.getEndTime(),
                     tripBlock.getDurationSeconds(),

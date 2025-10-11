@@ -6,7 +6,6 @@ import java.time.Instant;
 public class MemoryBlockTrip implements MemoryBlockPart, Serializable {
     
     private final Long blockId;
-    private final Long originalTripId;
     private final Instant startTime;
     private final Instant endTime;
     private final Long durationSeconds;
@@ -20,12 +19,11 @@ public class MemoryBlockTrip implements MemoryBlockPart, Serializable {
     private final Double endLatitude;
     private final Double endLongitude;
 
-    public MemoryBlockTrip(Long blockId, Long originalTripId, Instant startTime, Instant endTime, 
-                          Long durationSeconds, Double estimatedDistanceMeters, Double travelledDistanceMeters,
-                          String transportModeInferred, String startPlaceName, Double startLatitude, 
-                          Double startLongitude, String endPlaceName, Double endLatitude, Double endLongitude) {
+    public MemoryBlockTrip(Long blockId, Instant startTime, Instant endTime,
+                           Long durationSeconds, Double estimatedDistanceMeters, Double travelledDistanceMeters,
+                           String transportModeInferred, String startPlaceName, Double startLatitude,
+                           Double startLongitude, String endPlaceName, Double endLatitude, Double endLongitude) {
         this.blockId = blockId;
-        this.originalTripId = originalTripId;
         this.startTime = startTime;
         this.endTime = endTime;
         this.durationSeconds = durationSeconds;
@@ -42,10 +40,6 @@ public class MemoryBlockTrip implements MemoryBlockPart, Serializable {
 
     public Long getBlockId() {
         return blockId;
-    }
-
-    public Long getOriginalTripId() {
-        return originalTripId;
     }
 
     public Instant getStartTime() {
@@ -120,7 +114,6 @@ public class MemoryBlockTrip implements MemoryBlockPart, Serializable {
     public String toString() {
         return "MemoryBlockTrip{" +
                 "blockId=" + blockId +
-                ", originalTripId=" + originalTripId +
                 ", startTime=" + startTime +
                 ", endTime=" + endTime +
                 ", durationSeconds=" + durationSeconds +

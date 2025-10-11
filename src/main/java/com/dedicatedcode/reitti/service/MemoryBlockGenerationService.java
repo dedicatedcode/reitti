@@ -32,7 +32,7 @@ public class MemoryBlockGenerationService {
     
     // Step 4: Clustering parameters
     private static final long CLUSTER_TIME_THRESHOLD_SECONDS = 7200; // 2 hours
-    private static final double CLUSTER_DISTANCE_THRESHOLD_METERS = 500; // 500 meters
+    private static final double CLUSTER_DISTANCE_THRESHOLD_METERS = 1000; // 500 meters
     
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final TripJdbcService tripJdbcService;
@@ -166,25 +166,15 @@ public class MemoryBlockGenerationService {
         // Add any significant standalone trips that weren't captured
         List<Trip> significantTrips = filterSignificantTrips(allTripsInRange);
         for (Trip trip : significantTrips) {
-            // Check if this trip was already added
-            boolean alreadyAdded = blockParts.stream()
-                .filter(part -> part instanceof MemoryBlockTrip)
-                .map(part -> ((MemoryBlockTrip) part).getOriginalTripId())
-                .anyMatch(tripId -> tripId != null && tripId.equals(trip.getId()));
-            
-            if (!alreadyAdded) {
-                // Only add if it's within the main journey period (between first arrival and last departure)
-                if (firstAccommodationArrival != null && lastAccommodationDeparture != null) {
-                    if (trip.getStartTime() != null && 
-                        !trip.getStartTime().isBefore(firstAccommodationArrival) && 
+            if (firstAccommodationArrival != null && lastAccommodationDeparture != null) {
+                if (trip.getStartTime() != null &&
+                        !trip.getStartTime().isBefore(firstAccommodationArrival) &&
                         !trip.getStartTime().isAfter(lastAccommodationDeparture)) {
-                        MemoryBlockTrip tripBlock = convertTripToBlock(trip);
-                        blockParts.add(tripBlock);
-                    }
+                    MemoryBlockTrip tripBlock = convertTripToBlock(trip);
+                    blockParts.add(tripBlock);
                 }
             }
         }
-        
         log.info("Generated {} memory block parts", blockParts.size());
         
         return blockParts;
@@ -232,8 +222,7 @@ public class MemoryBlockGenerationService {
         
         return new MemoryBlockTrip(
             null, // blockId will be set when saved
-            trip.getId(),
-            trip.getStartTime(),
+                trip.getStartTime(),
             trip.getEndTime(),
             trip.getDurationSeconds(),
             trip.getEstimatedDistanceMeters(),
@@ -578,13 +567,7 @@ public class MemoryBlockGenerationService {
                 if (trip.getDurationSeconds() != null && trip.getDurationSeconds() > 1800) {
                     return true;
                 }
-                
-                // Include trips longer than 5km
-                if (trip.getEstimatedDistanceMeters() != null && trip.getEstimatedDistanceMeters() > 5000) {
-                    return true;
-                }
-                
-                return false;
+                return trip.getEstimatedDistanceMeters() != null && trip.getEstimatedDistanceMeters() > 5000;
             })
             .collect(Collectors.toList());
     }
