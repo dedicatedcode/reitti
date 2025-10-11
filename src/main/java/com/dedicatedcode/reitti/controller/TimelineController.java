@@ -55,13 +55,6 @@ public class TimelineController {
         this.userSettingsJdbcService = userSettingsJdbcService;
     }
 
-    @GetMapping("/content")
-    public String getTimelineContent(@RequestParam String date,
-                                     @RequestParam(required = false, defaultValue = "UTC") String timezone,
-                                     Authentication principal, Model model) {
-        return getTimelineContent(date, timezone, principal, model, null);
-    }
-
     @GetMapping("/content/range")
     public String getTimelineContentRange(@RequestParam String startDate,
                                           @RequestParam String endDate,
@@ -205,9 +198,14 @@ public class TimelineController {
         List<UserTimelineData> allUsersData = new ArrayList<>();
 
         // Add current user data first - for range, we'll use the start date for the timeline service
-        List<TimelineEntry> currentUserEntries = this.timelineService.buildTimelineEntries(user, userTimezone, selectedStartDate, startOfRange, endOfRange);
+        List<TimelineEntry> currentUserEntries;
+        if (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN") || authorities.contains("ROLE_MAGIC_LINK_FULL_ACCESS")) {
+            currentUserEntries = this.timelineService.buildTimelineEntries(user, userTimezone, selectedStartDate, startOfRange, endOfRange);
+        } else {
+            currentUserEntries = Collections.emptyList();
+        }
 
-        String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), startDate, endDate, timezone);
+        String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), selectedStartDate, selectedEndDate, timezone);
         String currentUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", user.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", user.getId()));
         String currentUserInitials = this.avatarService.generateInitials(user.getDisplayName());
         allUsersData.add(new UserTimelineData(user.getId() + "", user.getUsername(), currentUserInitials, currentUserAvatarUrl, null, currentUserEntries, currentUserRawLocationPointsUrl));

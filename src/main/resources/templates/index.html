@@ -277,6 +277,7 @@
         });
 
         function reloadRawLocationPoints() {
+            removePulsatingMarkers();
 
             // Reload raw location points with new zoom level
             const timelineContainer = document.querySelectorAll('.user-timeline-section');
@@ -328,6 +329,7 @@
                 }
                 rawPointPaths.length = 0;
 
+
                 results.sort((a, b) => a.index - b.index);
                 
                 // Process results in order
@@ -365,8 +367,6 @@
                 const color = element?.dataset.baseColor;
                 if (rawLocationPointsUrl) {
                     const currentZoom = Math.round(map.getZoom());
-                    const bbox = getBoundingBoxParams();
-                    
                     const separator = rawLocationPointsUrl.includes('?') ? '&' : '?';
                     const urlWithParams = rawLocationPointsUrl + separator + 
                         'zoom=' + currentZoom;
@@ -854,9 +854,7 @@
 
     function removePulsatingMarkers() {
         pulsatingMarkers.forEach(marker => {
-            if (marker) {
-                map.removeLayer(marker);
-            }
+            map.removeLayer(marker);
         });
         pulsatingMarkers = [];
     }
