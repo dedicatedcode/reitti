@@ -202,6 +202,7 @@
                                     const blockId =  /*[[${'map_cluster_' + block.blockId}]]*/  'map_cluster_99';
                                     const trips =  /*[[${block.trips}]]*/  [];
                                     const rawLocationUrl =  /*[[${block.rawLocationPointsUrl}]]*/  '';
+                                    const combinedStartTime =  /*[[${block.combinedStartTime}]]*/  null;
 
                                     // Initialize map
                                     const clusterMap = L.map(blockId, {
@@ -269,7 +270,8 @@
                                             const startLat = startTrip.startVisit.place.latitudeCentroid;
                                             const startLon = startTrip.startVisit.place.longitudeCentroid;
                                             const startName = startTrip.startVisit.place.name;
-                                            L.marker([startLat, startLon], {icon: startIcon}).addTo(clusterMap).bindPopup('Start: ' + startName);
+                                            const startTimeFormatted = combinedStartTime ? new Date(combinedStartTime).toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'}) : 'unknown';
+                                            L.marker([startLat, startLon], {icon: startIcon}).addTo(clusterMap).bindPopup('Start: ' + startName + '<br>Departed at: ' + startTimeFormatted);
                                             bounds.push([startLat, startLon]);
                                         }
 
@@ -280,8 +282,8 @@
                                                 const lat = trip.endVisit.place.latitudeCentroid;
                                                 const lon = trip.endVisit.place.longitudeCentroid;
                                                 const name = trip.endVisit.place.name;
-                                                const duration = trip.durationSeconds ? humanizeDuration(trip.durationSeconds * 1000, {units: ["h", "m"], round: true}) : 'unknown';
-                                                L.marker([lat, lon], {icon: stopIcon}).addTo(clusterMap).bindPopup('Stop: ' + name + '<br>Time to arrive: ' + duration);
+                                                const arrivedAfter = combinedStartTime && trip.endTime ? humanizeDuration((new Date(trip.endTime) - new Date(combinedStartTime)) / 1000) : 'unknown';
+                                                L.marker([lat, lon], {icon: stopIcon}).addTo(clusterMap).bindPopup('Stop: ' + name + '<br>Arrived after: ' + arrivedAfter);
                                                 bounds.push([lat, lon]);
                                             }
                                         }
@@ -292,7 +294,8 @@
                                             const endLat = endTrip.endVisit.place.latitudeCentroid;
                                             const endLon = endTrip.endVisit.place.longitudeCentroid;
                                             const endName = endTrip.endVisit.place.name;
-                                            L.marker([endLat, endLon], {icon: endIcon}).addTo(clusterMap).bindPopup('End: ' + endName);
+                                            const arrivedAfter = combinedStartTime && endTrip.endTime ? humanizeDuration((new Date(endTrip.endTime) - new Date(combinedStartTime)) / 1000) : 'unknown';
+                                            L.marker([endLat, endLon], {icon: endIcon}).addTo(clusterMap).bindPopup('End: ' + endName + '<br>Arrived after: ' + arrivedAfter);
                                             bounds.push([endLat, endLon]);
                                         }
                                     }
@@ -324,7 +327,9 @@
                                         <span th:text="${trip.startVisit != null && trip.startVisit.place != null ? trip.startVisit.place.name : 'Start'}">Start</span>
                                         <span> → </span>
                                         <span th:text="${trip.endVisit != null && trip.endVisit.place != null ? trip.endVisit.place.name : 'End'}">End</span>
-                                        <span th:if="${trip.durationSeconds != null}" th:text="' (' + ${trip.durationSeconds >= 3600 ? #numbers.formatDecimal(trip.durationSeconds / 3600.0, 1, 1) + ' hours' : #numbers.formatDecimal(trip.durationSeconds / 60.0, 0, 0) + ' minutes'} + ')'">Duration</span>
+                                        <th:block th:with="elapsedSeconds=${T(java.time.Duration).between(block.combinedStartTime, trip.startTime).getSeconds()}">
+                                            <span th:if="${elapsedSeconds != null}" th:text="' (arrived after ' + ${elapsedSeconds >= 3600 ? #numbers.formatDecimal(elapsedSeconds / 3600.0, 1, 1) + ' hours' : #numbers.formatDecimal(elapsedSeconds / 60.0, 0, 0) + ' minutes'} + ')'">Duration</span>
+                                        </th:block>
                                     </li>
                                 </ul>
                             </div>
