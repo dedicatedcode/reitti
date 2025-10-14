@@ -23,7 +23,6 @@ CREATE INDEX idx_memory_block_visit_start_time ON memory_block_visit(start_time)
 -- Recreate memory_block_trip with embedded data
 CREATE TABLE memory_block_trip (
     block_id BIGINT PRIMARY KEY REFERENCES memory_block(id) ON DELETE CASCADE,
-    original_trip_id BIGINT REFERENCES trips(id) ON DELETE SET NULL,
     start_time TIMESTAMP WITH TIME ZONE NOT NULL,
     end_time TIMESTAMP WITH TIME ZONE NOT NULL,
     duration_seconds BIGINT NOT NULL,
@@ -38,5 +37,4 @@ CREATE TABLE memory_block_trip (
     end_longitude DOUBLE PRECISION
 );
 
-CREATE INDEX idx_memory_block_trip_original_id ON memory_block_trip(original_trip_id);
 CREATE INDEX idx_memory_block_trip_start_time ON memory_block_trip(start_time);
