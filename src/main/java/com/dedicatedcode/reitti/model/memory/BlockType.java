@@ -4,5 +4,6 @@ public enum BlockType {
     VISIT,
     TRIP,
     TEXT,
-    IMAGE_GALLERY
+    IMAGE_GALLERY,
+    CLUSTER
 }
