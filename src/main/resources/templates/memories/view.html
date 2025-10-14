@@ -13,6 +13,7 @@
     <script src="/js/leaflet.geodesic.2.7.2.js"></script>
     <script src="/js/TileLayer.Grayscale.js"></script>
     <script src="/js/raw-location-loader.js"></script>
+    <script src="/js/HumanizeDuration.js"></script>
 </head>
 <body class="memories-page">
 <div class="settings-container">
@@ -279,7 +280,7 @@
                                                 const lat = trip.endVisit.place.latitudeCentroid;
                                                 const lon = trip.endVisit.place.longitudeCentroid;
                                                 const name = trip.endVisit.place.name;
-                                                const duration = trip.durationSeconds ? humanizeDuration(trip.durationSeconds) : 'unknown';
+                                                const duration = trip.durationSeconds ? humanizeDuration(trip.durationSeconds * 1000, {units: ["h", "m"], round: true}) : 'unknown';
                                                 L.marker([lat, lon], {icon: stopIcon}).addTo(clusterMap).bindPopup('Stop: ' + name + '<br>Time to arrive: ' + duration);
                                                 bounds.push([lat, lon]);
                                             }
