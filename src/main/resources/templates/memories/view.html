@@ -248,6 +248,28 @@
                                         clusterRawLocationLoader.loadForDateRange(false, false);
                                     }
 
+                                    // Define SVG icons for markers
+                                    const startIcon = L.divIcon({
+                                        className: 'custom-marker',
+                                        html: '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="8" fill="green" stroke="white" stroke-width="2"/><path d="M10 5 L15 10 L10 15 L5 10 Z" fill="white"/></svg>',
+                                        iconSize: [20, 20],
+                                        iconAnchor: [10, 10]
+                                    });
+
+                                    const stopIcon = L.divIcon({
+                                        className: 'custom-marker',
+                                        html: '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="8" fill="red" stroke="white" stroke-width="2"/><rect x="8" y="8" width="4" height="4" fill="white"/></svg>',
+                                        iconSize: [20, 20],
+                                        iconAnchor: [10, 10]
+                                    });
+
+                                    const endIcon = L.divIcon({
+                                        className: 'custom-marker',
+                                        html: '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="8" fill="blue" stroke="white" stroke-width="2"/><circle cx="10" cy="10" r="4" fill="white"/></svg>',
+                                        iconSize: [20, 20],
+                                        iconAnchor: [10, 10]
+                                    });
+
                                     // Add markers for start, stops, and end
                                     let bounds = [];
                                     if (trips.length > 0) {
@@ -257,7 +279,7 @@
                                             const startLat = startTrip.startVisit.place.latitudeCentroid;
                                             const startLon = startTrip.startVisit.place.longitudeCentroid;
                                             const startName = startTrip.startVisit.place.name;
-                                            L.marker([startLat, startLon]).addTo(clusterMap).bindPopup('Start: ' + startName);
+                                            L.marker([startLat, startLon], {icon: startIcon}).addTo(clusterMap).bindPopup('Start: ' + startName);
                                             bounds.push([startLat, startLon]);
                                         }
 
@@ -269,7 +291,7 @@
                                                 const lon = trip.endVisit.place.longitudeCentroid;
                                                 const name = trip.endVisit.place.name;
                                                 const duration = trip.durationSeconds ? (trip.durationSeconds / 3600.0).toFixed(1) + ' hours' : 'unknown';
-                                                L.marker([lat, lon]).addTo(clusterMap).bindPopup('Stop: ' + name + '<br>Time to arrive: ' + duration);
+                                                L.marker([lat, lon], {icon: stopIcon}).addTo(clusterMap).bindPopup('Stop: ' + name + '<br>Time to arrive: ' + duration);
                                                 bounds.push([lat, lon]);
                                             }
                                         }
@@ -280,9 +302,16 @@
                                             const endLat = endTrip.endVisit.place.latitudeCentroid;
                                             const endLon = endTrip.endVisit.place.longitudeCentroid;
                                             const endName = endTrip.endVisit.place.name;
-                                            L.marker([endLat, endLon]).addTo(clusterMap).bindPopup('End: ' + endName);
+                                            L.marker([endLat, endLon], {icon: endIcon}).addTo(clusterMap).bindPopup('End: ' + endName);
                                             bounds.push([endLat, endLon]);
                                         }
+                                    }
+
+                                    // Fit map to bounds if markers exist
+                                    if (bounds.length > 0) {
+                                        clusterMap.fitBounds(bounds, {padding: [10, 10]});
+                                    } else {
+                                        clusterMap.setView([51.505, -0.09], 13);
                                     }
                                 })();
                             </script>
