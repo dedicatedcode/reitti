@@ -97,26 +97,17 @@ public class MemoryBlockGenerationService {
                 .filter(trip -> trip.getStartTime() != null && !trip.getStartTime().isBefore(startDate))
                 .sorted(Comparator.comparing(Trip::getStartTime))
                 .toList();
-            
-            if (!tripsToAccommodation.isEmpty()) {
-                MemoryBlockText travelToText = new MemoryBlockText(
-                    null, 
-                    "Journey to " + accommodation.map(a -> a.getPlace().getName()).orElse("Destination"),
-                    "Your journey began with travel to your accommodation."
-                );
-                blockParts.add(travelToText);
-                
-                for (Trip trip : tripsToAccommodation) {
-                    MemoryBlockTrip tripBlock = convertTripToBlock(trip);
-                    blockParts.add(tripBlock);
-                }
-            }
+
+                MemoryClusterBlock clusterBlock = convertToClusterBlock(tripsToAccommodation, accommodation.get());
+                blockParts.add(clusterBlock);
         }
         
         // Process each cluster
         for (int i = 0; i < clusters.size(); i++) {
             VisitCluster cluster = clusters.get(i);
-            
+
+            // if cluster visits are before accomodation, skip this loop AI!
+
             // Add a text block describing the cluster
             String clusterHeadline = generateClusterHeadline(cluster, i + 1);
             String clusterDescription = generateClusterDescription(cluster);
@@ -179,7 +170,13 @@ public class MemoryBlockGenerationService {
         
         return blockParts;
     }
-    
+
+    private MemoryClusterBlock convertToClusterBlock(List<Trip> tripsToAccommodation, ProcessedVisit accommodation) {
+        return new MemoryClusterBlock(null, tripsToAccommodation.stream().map(Trip::getId).toList(),
+                "Journey to " + accommodation.getPlace().getName(),
+                "Your journey began with travel to your accommodation.");
+    }
+
     /**
      * Convert a ProcessedVisit to a MemoryBlockVisit with embedded data
      */
