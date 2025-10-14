@@ -106,7 +106,9 @@ public class MemoryBlockGenerationService {
         for (int i = 0; i < clusters.size(); i++) {
             VisitCluster cluster = clusters.get(i);
 
-            // if cluster visits are before accomodation, skip this loop AI!
+            if (firstAccommodationArrival != null && cluster.getStartTime() != null && cluster.getStartTime().isBefore(firstAccommodationArrival)) {
+                continue;
+            }
 
             // Add a text block describing the cluster
             String clusterHeadline = generateClusterHeadline(cluster, i + 1);
