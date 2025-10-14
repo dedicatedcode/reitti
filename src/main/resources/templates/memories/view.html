@@ -188,6 +188,36 @@
                             <i class="lni lni-gallery"></i>
                             <p th:text="#{memory.view.block.gallery.content}">Image gallery</p>
                         </div>
+                        <div th:if="${block.type.name() == 'CLUSTER'}" class="cluster-block">
+                            <div class="cluster-header">
+                                <i class="lni lni-layers"></i>
+                                <h3 th:text="${block.title}">Cluster Title</h3>
+                            </div>
+                            <p th:if="${block.description != null}" class="cluster-description" th:text="${block.description}">Description</p>
+                            <div class="cluster-summary" th:if="${block.combinedStartTime != null && block.combinedEndTime != null}">
+                                <div class="cluster-time">
+                                    <i class="lni lni-timer"></i>
+                                    <span th:text="${#temporals.format(block.combinedStartTime, 'MMM d, yyyy HH:mm')}">Start Time</span>
+                                    <span> - </span>
+                                    <span th:text="${#temporals.format(block.combinedEndTime, 'HH:mm')}">End Time</span>
+                                </div>
+                                <div class="cluster-duration" th:if="${block.combinedDurationSeconds != null}">
+                                    <i class="lni lni-hourglass"></i>
+                                    <span th:text="${#numbers.formatDecimal(block.combinedDurationSeconds / 3600.0, 1, 1)} + ' hours'">Total Duration</span>
+                                </div>
+                            </div>
+                            <div class="cluster-trips" th:if="${!block.trips.isEmpty()}">
+                                <h4>Trips in this Journey:</h4>
+                                <ul>
+                                    <li th:each="trip : ${block.trips}" class="trip-item">
+                                        <span th:text="${trip.startVisit != null && trip.startVisit.place != null ? trip.startVisit.place.name : 'Start'}">Start</span>
+                                        <span> → </span>
+                                        <span th:text="${trip.endVisit != null && trip.endVisit.place != null ? trip.endVisit.place.name : 'End'}">End</span>
+                                        <span th:if="${trip.durationSeconds != null}" th:text="' (' + ${#numbers.formatDecimal(trip.durationSeconds / 3600.0, 1, 1)} + ' hours)'">Duration</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                     <div class="block-actions">
                         <button class="btn " th:onclick="'editBlock(' + ${block.blockId} + ')'"><i class="lni lni-pencil-1"></i></button>

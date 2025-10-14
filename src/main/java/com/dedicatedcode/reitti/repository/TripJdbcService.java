@@ -12,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -46,6 +47,15 @@ public class TripJdbcService {
             );
         }
     };
+
+    public List<Trip> findByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        String sql = "SELECT t.* FROM trips t WHERE t.id IN (" + placeholders + ")";
+        return jdbcTemplate.query(sql, TRIP_ROW_MAPPER, ids.toArray());
+    }
 
     public List<Trip> findByUser(User user) {
         String sql = "SELECT t.*" +

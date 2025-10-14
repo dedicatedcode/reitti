@@ -1,5 +1,7 @@
 package com.dedicatedcode.reitti.model.memory;
 
+import com.dedicatedcode.reitti.model.geo.Trip;
+
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.List;
@@ -8,7 +10,7 @@ import java.util.Objects;
 public class MemoryClusterBlock implements MemoryBlockPart, Serializable {
 
     private final Long blockId;
-    private final List<Long> tripIds; // IDs of MemoryBlockTrip instances in this cluster/journey
+    private final List<Long> tripIds; // IDs of Trip instances in this cluster/journey
     private final String title;
     private final String description;
 
@@ -41,63 +43,63 @@ public class MemoryClusterBlock implements MemoryBlockPart, Serializable {
 
     /**
      * Gets the earliest start time from all trips in the cluster.
-     * @param trips List of MemoryBlockTrip objects (loaded by IDs).
+     * @param trips List of Trip objects (loaded by IDs).
      * @return Earliest start time, or null if no trips.
      */
-    public Instant getCombinedStartTime(List<MemoryBlockTrip> trips) {
+    public Instant getCombinedStartTime(List<Trip> trips) {
         if (trips == null || trips.isEmpty()) return null;
         return trips.stream()
-                .map(MemoryBlockTrip::getStartTime)
+                .map(Trip::getStartTime)
                 .min(Instant::compareTo)
                 .orElse(null);
     }
 
     /**
      * Gets the latest end time from all trips in the cluster.
-     * @param trips List of MemoryBlockTrip objects (loaded by IDs).
+     * @param trips List of Trip objects (loaded by IDs).
      * @return Latest end time, or null if no trips.
      */
-    public Instant getCombinedEndTime(List<MemoryBlockTrip> trips) {
+    public Instant getCombinedEndTime(List<Trip> trips) {
         if (trips == null || trips.isEmpty()) return null;
         return trips.stream()
-                .map(MemoryBlockTrip::getEndTime)
+                .map(Trip::getEndTime)
                 .max(Instant::compareTo)
                 .orElse(null);
     }
 
     /**
      * Gets the total duration in seconds from all trips in the cluster.
-     * @param trips List of MemoryBlockTrip objects (loaded by IDs).
+     * @param trips List of Trip objects (loaded by IDs).
      * @return Total duration, or 0 if no trips.
      */
-    public Long getCombinedDurationSeconds(List<MemoryBlockTrip> trips) {
+    public Long getCombinedDurationSeconds(List<Trip> trips) {
         if (trips == null || trips.isEmpty()) return 0L;
         return trips.stream()
-                .mapToLong(MemoryBlockTrip::getDurationSeconds)
+                .mapToLong(Trip::getDurationSeconds)
                 .sum();
     }
 
     /**
      * Gets a list of start locations (place names) from all trips in the cluster.
-     * @param trips List of MemoryBlockTrip objects (loaded by IDs).
+     * @param trips List of Trip objects (loaded by IDs).
      * @return List of start place names, or empty list if no trips.
      */
-    public List<String> getCombinedStartPlaces(List<MemoryBlockTrip> trips) {
+    public List<String> getCombinedStartPlaces(List<Trip> trips) {
         if (trips == null || trips.isEmpty()) return List.of();
         return trips.stream()
-                .map(MemoryBlockTrip::getStartPlaceName)
+                .map(trip -> trip.getStartVisit() != null && trip.getStartVisit().getPlace() != null ? trip.getStartVisit().getPlace().getName() : null)
                 .toList();
     }
 
     /**
      * Gets a list of end locations (place names) from all trips in the cluster.
-     * @param trips List of MemoryBlockTrip objects (loaded by IDs).
+     * @param trips List of Trip objects (loaded by IDs).
      * @return List of end place names, or empty list if no trips.
      */
-    public List<String> getCombinedEndPlaces(List<MemoryBlockTrip> trips) {
+    public List<String> getCombinedEndPlaces(List<Trip> trips) {
         if (trips == null || trips.isEmpty()) return List.of();
         return trips.stream()
-                .map(MemoryBlockTrip::getEndPlaceName)
+                .map(trip -> trip.getEndVisit() != null && trip.getEndVisit().getPlace() != null ? trip.getEndVisit().getPlace().getName() : null)
                 .toList();
     }
 

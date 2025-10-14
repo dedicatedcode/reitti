@@ -116,6 +116,15 @@ public class MemoryService {
                     List<MemoryBlockImageGallery> galleryImages = memoryBlockImageGalleryJdbcService.findByBlockId(block.getId());
                     blockParts.addAll(galleryImages);
                     break;
+                case CLUSTER:
+                    // Load the cluster block and associated trips
+                    Optional<MemoryClusterBlock> clusterBlockOpt = memoryClusterBlockRepository.findByBlockId(block.getId());
+                    if (clusterBlockOpt.isPresent()) {
+                        MemoryClusterBlock clusterBlock = clusterBlockOpt.get();
+                        List<Trip> trips = tripJdbcService.findByIds(clusterBlock.getTripIds());
+                        blockParts.add(new MemoryClusterBlockDTO(clusterBlock, trips));
+                    }
+                    break;
             }
         }
         
