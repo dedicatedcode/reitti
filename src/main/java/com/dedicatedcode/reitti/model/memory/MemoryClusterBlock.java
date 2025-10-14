@@ -9,10 +9,14 @@ public class MemoryClusterBlock implements MemoryBlockPart, Serializable {
 
     private final Long blockId;
     private final List<Long> tripIds; // IDs of MemoryBlockTrip instances in this cluster/journey
+    private final String title;
+    private final String description;
 
-    public MemoryClusterBlock(Long blockId, List<Long> tripIds) {
+    public MemoryClusterBlock(Long blockId, List<Long> tripIds, String title, String description) {
         this.blockId = blockId;
         this.tripIds = tripIds != null ? List.copyOf(tripIds) : List.of(); // Immutable copy
+        this.title = title;
+        this.description = description;
     }
 
     public Long getBlockId() {
@@ -21,6 +25,14 @@ public class MemoryClusterBlock implements MemoryBlockPart, Serializable {
 
     public List<Long> getTripIds() {
         return tripIds;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getDescription() {
+        return description;
     }
 
     // Aggregation methods for combined journey data (computed from trips)
@@ -114,6 +126,8 @@ public class MemoryClusterBlock implements MemoryBlockPart, Serializable {
         return "MemoryClusterBlock{" +
                 "blockId=" + blockId +
                 ", tripIds=" + tripIds +
+                ", title='" + title + '\'' +
+                ", description='" + description + '\'' +
                 '}';
     }
 }

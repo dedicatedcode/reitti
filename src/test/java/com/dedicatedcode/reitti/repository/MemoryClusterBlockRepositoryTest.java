@@ -31,7 +31,7 @@ public class MemoryClusterBlockRepositoryTest {
     public void testSaveAndFindByBlockId() {
         // Given
         List<Long> tripIds = List.of(1L, 2L, 3L);
-        MemoryClusterBlock cluster = new MemoryClusterBlock(100L, tripIds);
+        MemoryClusterBlock cluster = new MemoryClusterBlock(100L, tripIds, "Journey to Airport", "A trip from home to the airport");
 
         // When
         repository.save(cluster);
@@ -41,13 +41,15 @@ public class MemoryClusterBlockRepositoryTest {
         assertThat(found).isPresent();
         assertThat(found.get().getBlockId()).isEqualTo(100L);
         assertThat(found.get().getTripIds()).isEqualTo(tripIds);
+        assertThat(found.get().getTitle()).isEqualTo("Journey to Airport");
+        assertThat(found.get().getDescription()).isEqualTo("A trip from home to the airport");
     }
 
     @Test
     public void testDeleteByBlockId() {
         // Given
         List<Long> tripIds = List.of(4L, 5L);
-        MemoryClusterBlock cluster = new MemoryClusterBlock(101L, tripIds);
+        MemoryClusterBlock cluster = new MemoryClusterBlock(101L, tripIds, "Another Journey", "Description");
         repository.save(cluster);
 
         // When

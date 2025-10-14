@@ -24,18 +24,18 @@ public class MemoryClusterBlockRepository {
     }
 
     public void save(MemoryClusterBlock cluster) {
-        String sql = "INSERT INTO memory_block_cluster (block_id, trip_ids) VALUES (?, ?::jsonb) " +
-                     "ON CONFLICT (block_id) DO UPDATE SET trip_ids = EXCLUDED.trip_ids";
+        String sql = "INSERT INTO memory_block_cluster (block_id, trip_ids, title, description) VALUES (?, ?::jsonb, ?, ?) " +
+                     "ON CONFLICT (block_id) DO UPDATE SET trip_ids = EXCLUDED.trip_ids, title = EXCLUDED.title, description = EXCLUDED.description";
         try {
             String tripIdsJson = objectMapper.writeValueAsString(cluster.getTripIds());
-            jdbcTemplate.update(sql, cluster.getBlockId(), tripIdsJson);
+            jdbcTemplate.update(sql, cluster.getBlockId(), tripIdsJson, cluster.getTitle(), cluster.getDescription());
         } catch (Exception e) {
             throw new RuntimeException("Failed to save MemoryClusterBlock", e);
         }
     }
 
     public Optional<MemoryClusterBlock> findByBlockId(Long blockId) {
-        String sql = "SELECT block_id, trip_ids FROM memory_block_cluster WHERE block_id = ?";
+        String sql = "SELECT block_id, trip_ids, title, description FROM memory_block_cluster WHERE block_id = ?";
         List<MemoryClusterBlock> results = jdbcTemplate.query(sql, new MemoryClusterBlockRowMapper(), blockId);
         return results.stream().findFirst();
     }
@@ -56,7 +56,9 @@ public class MemoryClusterBlockRepository {
             } catch (Exception e) {
                 throw new SQLException("Failed to parse trip_ids JSON", e);
             }
-            return new MemoryClusterBlock(blockId, tripIds);
+            String title = rs.getString("title");
+            String description = rs.getString("description");
+            return new MemoryClusterBlock(blockId, tripIds, title, description);
         }
     }
 }
