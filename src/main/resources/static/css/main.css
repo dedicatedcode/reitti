@@ -1879,7 +1879,10 @@ button:disabled {
     position: relative;
 }
 
-.memories-page .cluster-block  .cluster-map,
+.memories-page .cluster-block  .cluster-map {
+    height: 550px;
+}
+
 .memories-page .visit-block  .visit-map {
     height: 200px;
 }
