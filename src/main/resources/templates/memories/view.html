@@ -239,29 +239,7 @@
                                         clusterRawLocationLoader.loadForDateRange(false, false);
                                     }
 
-                                    // Define SVG icons for markers
-                                    const startIcon = L.divIcon({
-                                        className: 'custom-marker',
-                                        html: '<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="8" fill="green" stroke="white" stroke-width="2"/><path d="M10 5 L15 10 L10 15 L5 10 Z" fill="white"/></svg>',
-                                        iconSize: [40, 40],
-                                        iconAnchor: [10, 10]
-                                    });
-
-                                    const stopIcon = L.divIcon({
-                                        className: 'custom-marker',
-                                        html: '<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="8" fill="red" stroke="white" stroke-width="2"/><rect x="8" y="8" width="4" height="4" fill="white"/></svg>',
-                                        iconSize: [40, 40],
-                                        iconAnchor: [10, 10]
-                                    });
-
-                                    const endIcon = L.divIcon({
-                                        className: 'custom-marker',
-                                        html: '<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="8" fill="blue" stroke="white" stroke-width="2"/><circle cx="10" cy="10" r="4" fill="white"/></svg>',
-                                        iconSize: [40, 40],
-                                        iconAnchor: [10, 10]
-                                    });
-
-                                    // Add markers for start, stops, and end
+                                    // Add markers for start, stops, and end using default filled circle markers
                                     let bounds = [];
                                     if (trips.length > 0) {
                                         // Start marker
@@ -271,7 +249,7 @@
                                             const startLon = startTrip.startVisit.place.longitudeCentroid;
                                             const startName = startTrip.startVisit.place.name;
                                             const startTimeFormatted = combinedStartTime ? new Date(combinedStartTime).toLocaleTimeString() : 'unknown';
-                                            L.marker([startLat, startLon], {icon: startIcon}).addTo(clusterMap).bindPopup('Start: ' + startName + '<br>Departed at: ' + startTimeFormatted);
+                                            L.marker([startLat, startLon]).addTo(clusterMap).bindPopup('Start: ' + startName + '<br>Departed at: ' + startTimeFormatted);
                                             bounds.push([startLat, startLon]);
                                         }
 
@@ -283,7 +261,7 @@
                                                 const lon = trip.endVisit.place.longitudeCentroid;
                                                 const name = trip.endVisit.place.name;
                                                 const arrivedAfter = combinedStartTime && trip.endTime ? humanizeDuration((new Date(trip.endTime) - new Date(combinedStartTime)),{units: ["h", "m"], round: true}) : 'unknown';
-                                                L.marker([lat, lon], {icon: stopIcon}).addTo(clusterMap).bindPopup('Stop: ' + name + '<br>Arrived after: ' + arrivedAfter);
+                                                L.marker([lat, lon]).addTo(clusterMap).bindPopup('Stop: ' + name + '<br>Arrived after: ' + arrivedAfter);
                                                 bounds.push([lat, lon]);
                                             }
                                         }
@@ -295,7 +273,7 @@
                                             const endLon = endTrip.endVisit.place.longitudeCentroid;
                                             const endName = endTrip.endVisit.place.name;
                                             const arrivedAfter = combinedStartTime && endTrip.endTime ? humanizeDuration((new Date(endTrip.endTime) - new Date(combinedStartTime)),{units: ["h", "m"], round: true}) : 'unknown';
-                                            L.marker([endLat, endLon], {icon: endIcon}).addTo(clusterMap).bindPopup('End: ' + endName + '<br>Arrived after: ' + arrivedAfter);
+                                            L.marker([endLat, endLon]).addTo(clusterMap).bindPopup('End: ' + endName + '<br>Arrived after: ' + arrivedAfter);
                                             bounds.push([endLat, endLon]);
                                         }
                                     }
