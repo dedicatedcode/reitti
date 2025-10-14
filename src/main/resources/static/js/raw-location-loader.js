@@ -74,7 +74,7 @@ class RawLocationLoader {
     /**
      * Load raw location data for a specific date range
      */
-    loadForDateRange(startDate, endDate, autoUpdateMode = false, withBounds = true) {
+    loadForDateRange(autoUpdateMode = false, withBounds = true) {
         // Remove pulsating markers when loading new data
         this.removePulsatingMarkers();
         
@@ -97,7 +97,7 @@ class RawLocationLoader {
                 const separator = config.url.includes('?') ? '&' : '?';
                 let urlWithParams = config.url + separator +
                     'zoom=' + currentZoom;
-                if (withBounds) {
+                if (config.respectBounds && withBounds) {
                     urlWithParams +=
                         '&minLat=' + bbox.minLat +
                         '&minLng=' + bbox.minLng +
@@ -139,6 +139,8 @@ class RawLocationLoader {
             // Update map bounds after all fetch operations are complete
             if (bounds.isValid()) {
                 window.originalBounds = bounds;
+
+                //this triggers the eventlistener for mapmove or zoom, and this reloads then the url again. We oly want to load that once AI!
                 this.map.fitBounds(bounds, this.fitToBoundsConfig);
             }
         });
@@ -163,7 +165,7 @@ class RawLocationLoader {
                 // Build URL with zoom and bounding box parameters
                 const separator = config.url.includes('?') ? '&' : '?';
                 const urlWithParams = config.url + separator + 
-                    'zoom=' + currentZoom + (withBounds ? ('&minLat=' + bbox.minLat +'&minLng=' + bbox.minLng +'&maxLat=' + bbox.maxLat +'&maxLng=' + bbox.maxLng) : '');
+                    'zoom=' + currentZoom + (config.respectBounds && withBounds ? ('&minLat=' + bbox.minLat +'&minLng=' + bbox.minLng +'&maxLat=' + bbox.maxLat +'&maxLng=' + bbox.maxLng) : '');
                 
                 // Create fetch promise for raw location points with index to maintain order
                 const fetchPromise = fetch(urlWithParams).then(response => {
