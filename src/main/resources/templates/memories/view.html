@@ -140,7 +140,7 @@
                                 </div>
                                 <div class="visit-duration" th:if="${block.durationSeconds != null}">
                                     <i class="lni lni-hourglass"></i>
-                                    <span th:text="${#numbers.formatDecimal(block.durationSeconds / 3600.0, 1, 1)} + ' hours'">Duration</span>
+                                    <span th:text="${block.durationSeconds >= 3600 ? #numbers.formatDecimal(block.durationSeconds / 3600.0, 1, 1) + ' hours' : #numbers.formatDecimal(block.durationSeconds / 60.0, 0, 0) + ' minutes'}">Duration</span>
                                 </div>
                             </div>
                             <div class="visit-coordinates" th:if="${block.latitude != null && block.longitude != null}">
@@ -172,7 +172,7 @@
                                 </div>
                                 <div class="trip-duration" th:if="${block.durationSeconds != null}">
                                     <i class="lni lni-hourglass"></i>
-                                    <span th:text="${#numbers.formatDecimal(block.durationSeconds / 3600.0, 1, 1)} + ' hours'">Duration</span>
+                                    <span th:text="${block.durationSeconds >= 3600 ? #numbers.formatDecimal(block.durationSeconds / 3600.0, 1, 1) + ' hours' : #numbers.formatDecimal(block.durationSeconds / 60.0, 0, 0) + ' minutes'}">Duration</span>
                                 </div>
                                 <div class="trip-distance" th:if="${block.estimatedDistanceMeters != null}">
                                     <i class="lni lni-ruler"></i>
@@ -279,7 +279,7 @@
                                                 const lat = trip.endVisit.place.latitudeCentroid;
                                                 const lon = trip.endVisit.place.longitudeCentroid;
                                                 const name = trip.endVisit.place.name;
-                                                const duration = trip.durationSeconds ? (trip.durationSeconds / 3600.0).toFixed(1) + ' hours' : 'unknown';
+                                                const duration = trip.durationSeconds ? humanizeDuration(trip.durationSeconds) : 'unknown';
                                                 L.marker([lat, lon], {icon: stopIcon}).addTo(clusterMap).bindPopup('Stop: ' + name + '<br>Time to arrive: ' + duration);
                                                 bounds.push([lat, lon]);
                                             }
@@ -313,7 +313,7 @@
                                 </div>
                                 <div class="cluster-duration" th:if="${block.combinedDurationSeconds != null}">
                                     <i class="lni lni-hourglass"></i>
-                                    <span th:text="${#numbers.formatDecimal(block.combinedDurationSeconds / 3600.0, 1, 1)} + ' hours'">Total Duration</span>
+                                    <span th:text="${block.combinedDurationSeconds >= 3600 ? #numbers.formatDecimal(block.combinedDurationSeconds / 3600.0, 1, 1) + ' hours' : #numbers.formatDecimal(block.combinedDurationSeconds / 60.0, 0, 0) + ' minutes'}">Total Duration</span>
                                 </div>
                             </div>
                             <div class="cluster-trips" th:if="${!block.trips.isEmpty()}">
@@ -323,7 +323,7 @@
                                         <span th:text="${trip.startVisit != null && trip.startVisit.place != null ? trip.startVisit.place.name : 'Start'}">Start</span>
                                         <span> → </span>
                                         <span th:text="${trip.endVisit != null && trip.endVisit.place != null ? trip.endVisit.place.name : 'End'}">End</span>
-                                        <span th:if="${trip.durationSeconds != null}" th:text="' (' + ${#numbers.formatDecimal(trip.durationSeconds / 3600.0, 1, 1)} + ' hours)'">Duration</span>
+                                        <span th:if="${trip.durationSeconds != null}" th:text="' (' + ${trip.durationSeconds >= 3600 ? #numbers.formatDecimal(trip.durationSeconds / 3600.0, 1, 1) + ' hours' : #numbers.formatDecimal(trip.durationSeconds / 60.0, 0, 0) + ' minutes'} + ')'">Duration</span>
                                     </li>
                                 </ul>
                             </div>
@@ -356,6 +356,17 @@
             return window.userSettings.timeZoneOverride;
         } else {
             return Intl.DateTimeFormat().resolvedOptions().timeZone;
+        }
+    }
+
+    function humanizeDuration(seconds) {
+        if (!seconds || seconds <= 0) return 'unknown';
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        if (hours > 0) {
+            return hours + 'h ' + minutes + 'm';
+        } else {
+            return minutes + 'm';
         }
     }
 
