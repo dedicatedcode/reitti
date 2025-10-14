@@ -11,10 +11,12 @@ public class MemoryClusterBlockDTO implements MemoryBlockPart, Serializable {
 
     private final MemoryClusterBlock clusterBlock;
     private final List<Trip> trips;
+    private final String rawLocationPointsUrl;
 
-    public MemoryClusterBlockDTO(MemoryClusterBlock clusterBlock, List<Trip> trips) {
+    public MemoryClusterBlockDTO(MemoryClusterBlock clusterBlock, List<Trip> trips, String rawLocationPointsUrl) {
         this.clusterBlock = clusterBlock;
         this.trips = trips != null ? List.copyOf(trips) : List.of();
+        this.rawLocationPointsUrl = rawLocationPointsUrl;
     }
 
     public MemoryClusterBlock getClusterBlock() {

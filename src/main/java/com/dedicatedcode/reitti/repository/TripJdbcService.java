@@ -48,13 +48,13 @@ public class TripJdbcService {
         }
     };
 
-    public List<Trip> findByIds(List<Long> ids) {
+    public List<Trip> findByIds(User user, List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return List.of();
         }
         String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
-        String sql = "SELECT t.* FROM trips t WHERE t.id IN (" + placeholders + ")";
-        return jdbcTemplate.query(sql, TRIP_ROW_MAPPER, ids.toArray());
+        String sql = "SELECT t.* FROM trips t WHERE t.user_id = ? AND t.id IN (" + placeholders + ")";
+        return jdbcTemplate.query(sql, TRIP_ROW_MAPPER, user.getId(), ids.toArray());
     }
 
     public List<Trip> findByUser(User user) {

@@ -45,14 +45,12 @@ public class MemoryController {
         
         model.addAttribute("memory", memory);
 
-        List<MemoryBlockPart> blocks = memoryService.getBlockPartsForMemory(id);
+        List<MemoryBlockPart> blocks = memoryService.getBlockPartsForMemory(user, id);
         model.addAttribute("blocks", blocks);
         
-        // Convert Instant dates to local timezone ISO format
         String startDateLocal = memory.getStartDate().atZone(timezone).toLocalDate().toString();
         String endDateLocal = memory.getEndDate().atZone(timezone).toLocalDate().toString();
         
-        // Add raw location points URL for the memory date range with local timezone dates
         String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + startDateLocal + "&endDate=" + endDateLocal;
         model.addAttribute("rawLocationUrl", rawLocationUrl);
         

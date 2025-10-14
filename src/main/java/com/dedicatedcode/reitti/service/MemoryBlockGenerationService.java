@@ -89,7 +89,9 @@ public class MemoryBlockGenerationService {
             MemoryBlockText introBlock = new MemoryBlockText(null, "Your Journey", introText);
             blockParts.add(introBlock);
         }
-        
+
+        ScoredVisit startVisit = clusters.getFirst().getHighestScoredVisit();
+        blockParts.add(convertVisitToBlock(startVisit.getVisit()));
         // Add travel to accommodation section
         if (firstAccommodationArrival != null) {
             List<Trip> tripsToAccommodation = allTripsInRange.stream()
@@ -101,12 +103,15 @@ public class MemoryBlockGenerationService {
                 MemoryClusterBlock clusterBlock = convertToClusterBlock(tripsToAccommodation, accommodation.get());
                 blockParts.add(clusterBlock);
         }
-        
+
+
+        accommodation.ifPresent(a -> blockParts.add(convertVisitToBlock(a)));
+
         // Process each cluster
         for (int i = 0; i < clusters.size(); i++) {
             VisitCluster cluster = clusters.get(i);
 
-            if (firstAccommodationArrival != null && cluster.getStartTime() != null && cluster.getStartTime().isBefore(firstAccommodationArrival)) {
+            if (firstAccommodationArrival != null && cluster.getEndTime() != null && cluster.getEndTime().isBefore(firstAccommodationArrival)) {
                 continue;
             }
 
