@@ -9,6 +9,7 @@ class RawLocationLoader {
         this.pulsatingMarkers = [];
         this.currentZoomLevel = null;
         this.userConfigs = [];
+        this.isFittingBounds = false;
         
         // Configuration for map bounds fitting
         this.fitToBoundsConfig = {
@@ -33,6 +34,7 @@ class RawLocationLoader {
     setupMapEventListeners() {
         // Listen for zoom end events to reload raw location points
         this.map.on('zoomend', () => {
+            if (this.isFittingBounds) return;
             const newZoomLevel = Math.round(this.map.getZoom());
             
             // Only reload if zoom level actually changed
@@ -47,6 +49,7 @@ class RawLocationLoader {
         
         // Listen for move end events to reload raw location points
         this.map.on('moveend', () => {
+            if (this.isFittingBounds) return;
             this.reloadForCurrentView();
         });
     }
@@ -140,8 +143,9 @@ class RawLocationLoader {
             if (bounds.isValid()) {
                 window.originalBounds = bounds;
 
-                //this triggers the eventlistener for mapmove or zoom, and this reloads then the url again. We oly want to load that once AI!
+                this.isFittingBounds = true;
                 this.map.fitBounds(bounds, this.fitToBoundsConfig);
+                this.isFittingBounds = false;
             }
         });
     }
