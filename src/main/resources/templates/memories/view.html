@@ -194,6 +194,104 @@
                                 <h3 th:text="${block.title}">Cluster Title</h3>
                             </div>
                             <p th:if="${block.description != null}" class="cluster-description" th:text="${block.description}">Description</p>
+                            <div class="cluster-map" th:id="${'map_cluster_' + block.blockId}"></div>
+                            <script th:inline="javascript">
+                                (function() {
+                                    const userSettings =  /*[[${userSettings}]]*/  {};
+                                    const blockId =  /*[[${'map_cluster_' + block.blockId}]]*/  'map_cluster_99';
+                                    const trips =  /*[[${block.trips}]]*/  [];
+                                    const rawLocationUrl =  /*[[${block.rawLocationPointsUrl}]]*/  '';
+                                    const combinedStartTime =  /*[[${block.combinedStartTime}]]*/  null;
+                                    const combinedEndTime =  /*[[${block.combinedEndTime}]]*/  null;
+
+                                    // Initialize map
+                                    const clusterMap = L.map(blockId, {
+                                        zoomControl: false,
+                                        attributionControl: false,
+                                        boxZoom: false,
+                                        doubleClickZoom: false,
+                                        dragging: false,
+                                        keyboard: false,
+                                        scrollWheelZoom: false,
+                                        tap: false,
+                                        touchZoom: false
+                                    });
+
+                                    let tileLayer;
+                                    if (userSettings.preferColoredMap) {
+                                        tileLayer = L.tileLayer(userSettings.tiles.service, {
+                                            maxZoom: 19,
+                                            attribution: userSettings.tiles.attribution
+                                        });
+                                    } else {
+                                        tileLayer = L.tileLayer.grayscale(userSettings.tiles.service, {
+                                            maxZoom: 19,
+                                            attribution: userSettings.tiles.attribution
+                                        });
+                                    }
+                                    tileLayer.addTo(clusterMap);
+
+                                    // Create a new RawLocationLoader instance for this cluster map
+                                    let clusterRawLocationLoader = new RawLocationLoader(clusterMap, userSettings);
+
+                                    // Load raw location data for the cluster's time range
+                                    if (rawLocationUrl && combinedStartTime && combinedEndTime) {
+                                        const userConfigs = [{
+                                            url: rawLocationUrl,
+                                            color: '#f1ba63',
+                                            avatarUrl: null,
+                                            avatarFallback: null,
+                                            displayName: 'Cluster Path'
+                                        }];
+                                        clusterRawLocationLoader.init(userConfigs);
+                                        clusterRawLocationLoader.loadForDateRange(combinedStartTime, combinedEndTime, false, false);
+                                    }
+
+                                    // Add markers for start, stops, and end
+                                    let bounds = [];
+                                    if (trips.length > 0) {
+                                        // Start marker
+                                        const startTrip = trips[0];
+                                        if (startTrip.startVisit && startTrip.startVisit.place) {
+                                            const startLat = startTrip.startVisit.place.latitudeCentroid;
+                                            const startLon = startTrip.startVisit.place.longitudeCentroid;
+                                            const startName = startTrip.startVisit.place.name;
+                                            L.marker([startLat, startLon]).addTo(clusterMap).bindPopup('Start: ' + startName);
+                                            bounds.push([startLat, startLon]);
+                                        }
+
+                                        // Intermediate stops (end of each trip except last)
+                                        for (let i = 0; i < trips.length - 1; i++) {
+                                            const trip = trips[i];
+                                            if (trip.endVisit && trip.endVisit.place) {
+                                                const lat = trip.endVisit.place.latitudeCentroid;
+                                                const lon = trip.endVisit.place.longitudeCentroid;
+                                                const name = trip.endVisit.place.name;
+                                                const duration = trip.durationSeconds ? (trip.durationSeconds / 3600.0).toFixed(1) + ' hours' : 'unknown';
+                                                L.marker([lat, lon]).addTo(clusterMap).bindPopup('Stop: ' + name + '<br>Time to arrive: ' + duration);
+                                                bounds.push([lat, lon]);
+                                            }
+                                        }
+
+                                        // End marker
+                                        const endTrip = trips[trips.length - 1];
+                                        if (endTrip.endVisit && endTrip.endVisit.place) {
+                                            const endLat = endTrip.endVisit.place.latitudeCentroid;
+                                            const endLon = endTrip.endVisit.place.longitudeCentroid;
+                                            const endName = endTrip.endVisit.place.name;
+                                            L.marker([endLat, endLon]).addTo(clusterMap).bindPopup('End: ' + endName);
+                                            bounds.push([endLat, endLon]);
+                                        }
+                                    }
+
+                                    // Fit map to bounds if markers exist
+                                    if (bounds.length > 0) {
+                                        clusterMap.fitBounds(bounds, {padding: [10, 10]});
+                                    } else {
+                                        clusterMap.setView([51.505, -0.09], 13);
+                                    }
+                                })();
+                            </script>
                             <div class="cluster-summary" th:if="${block.combinedStartTime != null && block.combinedEndTime != null}">
                                 <div class="cluster-time">
                                     <i class="lni lni-timer"></i>
