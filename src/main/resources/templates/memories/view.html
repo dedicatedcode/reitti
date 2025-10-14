@@ -201,21 +201,11 @@
                                     const blockId =  /*[[${'map_cluster_' + block.blockId}]]*/  'map_cluster_99';
                                     const trips =  /*[[${block.trips}]]*/  [];
                                     const rawLocationUrl =  /*[[${block.rawLocationPointsUrl}]]*/  '';
-                                    const combinedStartTime =  /*[[${block.combinedStartTime}]]*/  null;
-                                    const combinedEndTime =  /*[[${block.combinedEndTime}]]*/  null;
 
                                     // Initialize map
                                     const clusterMap = L.map(blockId, {
-                                        zoomControl: false,
                                         attributionControl: false,
-                                        boxZoom: false,
-                                        doubleClickZoom: false,
-                                        dragging: false,
-                                        keyboard: false,
-                                        scrollWheelZoom: false,
-                                        tap: false,
-                                        touchZoom: false
-                                    }).setView([50,50], 15);
+                                    }).setView([50,50], 19);
 
                                     let tileLayer;
                                     if (userSettings.preferColoredMap) {
@@ -231,11 +221,10 @@
                                     }
                                     tileLayer.addTo(clusterMap);
 
-                                    // Create a new RawLocationLoader instance for this cluster map
                                     let clusterRawLocationLoader = new RawLocationLoader(clusterMap, userSettings);
 
                                     // Load raw location data for the cluster's time range
-                                    if (rawLocationUrl && combinedStartTime && combinedEndTime) {
+                                    if (rawLocationUrl) {
                                         const userConfigs = [{
                                             respectBounds: false,
                                             url: rawLocationUrl,
