@@ -54,7 +54,12 @@ public class TripJdbcService {
         }
         String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
         String sql = "SELECT t.* FROM trips t WHERE t.user_id = ? AND t.id IN (" + placeholders + ")";
-        return jdbcTemplate.query(sql, TRIP_ROW_MAPPER, user.getId(), ids.toArray());
+        Object[] params = new Object[ids.size() + 1];
+        params[0] = user.getId();
+        for (int i = 0; i < ids.size(); i++) {
+            params[i + 1] = ids.get(i);
+        }
+        return jdbcTemplate.query(sql, TRIP_ROW_MAPPER, params);
     }
 
     public List<Trip> findByUser(User user) {

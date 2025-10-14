@@ -2,7 +2,7 @@
  * RawLocationLoader - Handles loading and displaying raw location data on the map
  */
 class RawLocationLoader {
-    constructor(map, userSettings) {
+    constructor(map, userSettings, fitToBoundsConfig = null) {
         this.map = map;
         this.userSettings = userSettings;
         this.rawPointPaths = [];
@@ -10,14 +10,8 @@ class RawLocationLoader {
         this.currentZoomLevel = null;
         this.userConfigs = [];
         this.isFittingBounds = false;
-        
         // Configuration for map bounds fitting
-        this.fitToBoundsConfig = {
-            paddingTopLeft: [100,0],
-            paddingBottomRight: [100, 300],
-            zoomSnap: 0.1
-        };
-        
+        this.fitToBoundsConfig = fitToBoundsConfig || {};
         // Listen for map events
         this.setupMapEventListeners();
     }

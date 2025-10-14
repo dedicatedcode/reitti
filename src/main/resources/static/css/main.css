@@ -1874,11 +1874,13 @@ button:disabled {
     opacity: 1;
 }
 
+.memories-page .cluster-block .block-header,
 .memories-page .visit-block .block-header {
     position: relative;
 }
 
-.memories-page .block-header .visit-map {
+.memories-page .cluster-block  .cluster-map,
+.memories-page .visit-block  .visit-map {
     height: 200px;
 }
 

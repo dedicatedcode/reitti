@@ -189,7 +189,7 @@
                             <p th:text="#{memory.view.block.gallery.content}">Image gallery</p>
                         </div>
                         <div th:if="${block.type.name() == 'CLUSTER'}" class="cluster-block">
-                            <div class="cluster-header">
+                            <div class="block-header">
                                 <i class="lni lni-layers"></i>
                                 <h3 th:text="${block.title}">Cluster Title</h3>
                             </div>
@@ -215,7 +215,7 @@
                                         scrollWheelZoom: false,
                                         tap: false,
                                         touchZoom: false
-                                    });
+                                    }).setView([50,50], 15);
 
                                     let tileLayer;
                                     if (userSettings.preferColoredMap) {
@@ -237,6 +237,7 @@
                                     // Load raw location data for the cluster's time range
                                     if (rawLocationUrl && combinedStartTime && combinedEndTime) {
                                         const userConfigs = [{
+                                            respectBounds: false,
                                             url: rawLocationUrl,
                                             color: '#f1ba63',
                                             avatarUrl: null,
@@ -244,7 +245,7 @@
                                             displayName: 'Cluster Path'
                                         }];
                                         clusterRawLocationLoader.init(userConfigs);
-                                        clusterRawLocationLoader.loadForDateRange(combinedStartTime, combinedEndTime, false, false);
+                                        clusterRawLocationLoader.loadForDateRange(false, false);
                                     }
 
                                     // Add markers for start, stops, and end
@@ -282,13 +283,6 @@
                                             L.marker([endLat, endLon]).addTo(clusterMap).bindPopup('End: ' + endName);
                                             bounds.push([endLat, endLon]);
                                         }
-                                    }
-
-                                    // Fit map to bounds if markers exist
-                                    if (bounds.length > 0) {
-                                        clusterMap.fitBounds(bounds, {padding: [10, 10]});
-                                    } else {
-                                        clusterMap.setView([51.505, -0.09], 13);
                                     }
                                 })();
                             </script>

@@ -56,7 +56,7 @@ public class LocationDataApiController {
         return p;
     }
 
-    @GetMapping("/raw-location-points/trips/")
+    @GetMapping("/raw-location-points/trips")
     public ResponseEntity<?> getRawLocationPointsTrips(@AuthenticationPrincipal User user,
                                                        @RequestParam List<Long> trips,
                                                        @RequestParam(required = false) Integer zoom,
@@ -73,10 +73,11 @@ public class LocationDataApiController {
             tmp.addAll(segments);
         }
         Optional<RawLocationPoint> latest = this.rawLocationPointJdbcService.findLatest(user);
-        return ResponseEntity.ok(new RawLocationDataResponse(tmp.stream().map(s -> {
+        RawLocationDataResponse result = new RawLocationDataResponse(tmp.stream().map(s -> {
             List<LocationPoint> simplifiedPoints = simplificationService.simplifyPoints(s, zoom);
             return new RawLocationDataResponse.Segment(simplifiedPoints);
-        }).toList(), latest.map(LocationDataApiController::toLocationPoint).orElse(null)));
+        }).toList(), latest.map(LocationDataApiController::toLocationPoint).orElse(null));
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/raw-location-points")

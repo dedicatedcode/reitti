@@ -249,7 +249,11 @@
         const photoClient = new PhotoClient(map);
         
         // Initialize raw location loader
-        rawLocationLoader = new RawLocationLoader(map, window.userSettings);
+        rawLocationLoader = new RawLocationLoader(map, window.userSettings, {
+            paddingTopLeft: [100,0],
+            paddingBottomRight: [100, 300],
+            zoomSnap: 0.1
+        });
 
         // Initialize raw location loader with user configurations
         initializeRawLocationLoader();
@@ -269,7 +273,7 @@
             }
             
             // Load raw location data using the loader
-            rawLocationLoader.loadForDateRange(startDate, endDate, autoUpdateMode, false);
+            rawLocationLoader.loadForDateRange(autoUpdateMode, false);
         }
 
         const selectedPath = L.geodesic([], {
@@ -290,6 +294,7 @@
 
             timelineContainers.forEach(container => {
                 const config = {
+                    respectBounds: true,
                     url: container.dataset.rawLocationPointsUrl,
                     color: container.dataset.baseColor,
                     avatarUrl: container.dataset.userAvatarUrl,

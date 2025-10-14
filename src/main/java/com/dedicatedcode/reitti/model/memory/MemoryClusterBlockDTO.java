@@ -65,6 +65,10 @@ public class MemoryClusterBlockDTO implements MemoryBlockPart, Serializable {
         return clusterBlock.getCombinedEndPlaces(trips);
     }
 
+    public String getRawLocationPointsUrl() {
+        return rawLocationPointsUrl;
+    }
+
     @Override
     public BlockType getType() {
         return BlockType.CLUSTER;
