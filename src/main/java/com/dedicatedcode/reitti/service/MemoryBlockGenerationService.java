@@ -150,8 +150,7 @@ public class MemoryBlockGenerationService {
                 MemoryBlockText travelFromText = new MemoryBlockText(
                     null, 
                     "Journey Home",
-                    "Your journey concluded with travel back home from " + accommodation.map(a -> a.getPlace().getName()).orElse("your accommodation") + "."
-                );
+                    "Your journey concluded with travel back home from " + accommodation.map(a -> a.getPlace().getName()).orElse("your accommodation") + ".");
                 blockParts.add(travelFromText);
                 
                 for (Trip trip : tripsFromAccommodation) {
