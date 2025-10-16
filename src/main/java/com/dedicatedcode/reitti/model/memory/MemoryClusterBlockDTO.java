@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.model.geo.Trip;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -12,11 +13,19 @@ public class MemoryClusterBlockDTO implements MemoryBlockPart, Serializable {
     private final MemoryClusterBlock clusterBlock;
     private final List<Trip> trips;
     private final String rawLocationPointsUrl;
+    private final LocalDateTime adjustedStartTime;
+    private final LocalDateTime adjustedEndTime;
+    private final Long completeDuration;
+    private final Long movingDuration;
 
-    public MemoryClusterBlockDTO(MemoryClusterBlock clusterBlock, List<Trip> trips, String rawLocationPointsUrl) {
+    public MemoryClusterBlockDTO(MemoryClusterBlock clusterBlock, List<Trip> trips, String rawLocationPointsUrl, LocalDateTime adjustedStartTime, LocalDateTime adjustedEndTime, Long completeDuration, Long movingDuration) {
         this.clusterBlock = clusterBlock;
         this.trips = trips != null ? List.copyOf(trips) : List.of();
         this.rawLocationPointsUrl = rawLocationPointsUrl;
+        this.adjustedStartTime = adjustedStartTime;
+        this.adjustedEndTime = adjustedEndTime;
+        this.completeDuration = completeDuration;
+        this.movingDuration = movingDuration;
     }
 
     public MemoryClusterBlock getClusterBlock() {
@@ -32,16 +41,20 @@ public class MemoryClusterBlockDTO implements MemoryBlockPart, Serializable {
         return clusterBlock.getBlockId();
     }
 
-    public List<Long> getTripIds() {
-        return clusterBlock.getTripIds();
-    }
-
     public String getTitle() {
         return clusterBlock.getTitle();
     }
 
     public String getDescription() {
         return clusterBlock.getDescription();
+    }
+
+    public Long getCompleteDuration() {
+        return completeDuration;
+    }
+
+    public Long getMovingDuration() {
+        return movingDuration;
     }
 
     // Combined info methods
@@ -67,6 +80,14 @@ public class MemoryClusterBlockDTO implements MemoryBlockPart, Serializable {
 
     public String getRawLocationPointsUrl() {
         return rawLocationPointsUrl;
+    }
+
+    public LocalDateTime getAdjustedEndTime() {
+        return adjustedEndTime;
+    }
+
+    public LocalDateTime getAdjustedStartTime() {
+        return adjustedStartTime;
     }
 
     @Override

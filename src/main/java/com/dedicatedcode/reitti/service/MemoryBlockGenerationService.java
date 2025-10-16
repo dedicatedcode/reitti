@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -55,7 +56,8 @@ public class MemoryBlockGenerationService {
         
         // Step 1: Data Pre-processing & Filtering
         Optional<ProcessedVisit> accommodation = findAccommodation(allVisitsInRange);
-        
+        Optional<ProcessedVisit> home = findHome(allVisitsInRange);
+
         // Find first and last accommodation visits
         Instant firstAccommodationArrival = accommodation.flatMap(p -> allVisitsInRange.stream()
                         .filter(visit -> visit.getPlace().getId().equals(p.getPlace().getId()))
@@ -88,14 +90,14 @@ public class MemoryBlockGenerationService {
         List<MemoryBlockPart> blockParts = new ArrayList<>();
         
         // Add introduction text block
-        if (!clusters.isEmpty()) {
-            String introText = generateIntroductionText(memory, clusters, accommodation.orElse(null));
+        if (!clusters.isEmpty() && accommodation.isPresent() && home.isPresent() && startDate != null && endDate != null) {
+            String introText = generateIntroductionText(memory, clusters, accommodation.orElse(null), home.orElse(null), startDate, endDate);
             MemoryBlockText introBlock = new MemoryBlockText(null, "Your Journey", introText);
             blockParts.add(introBlock);
         }
 
-        ScoredVisit startVisit = clusters.getFirst().getHighestScoredVisit();
-        blockParts.add(convertVisitToBlock(startVisit.getVisit()));
+//        ScoredVisit startVisit = clusters.getFirst().getHighestScoredVisit();
+//        blockParts.add(convertVisitToBlock(startVisit.getVisit()));
         // Add travel to accommodation section
         if (firstAccommodationArrival != null) {
             List<Trip> tripsToAccommodation = allTripsInRange.stream()
@@ -181,6 +183,16 @@ public class MemoryBlockGenerationService {
         return blockParts;
     }
 
+    private Optional<ProcessedVisit> findHome(List<ProcessedVisit> allVisitsInRange) {
+        if (allVisitsInRange.stream().findFirst().isPresent()) {
+            boolean homeDetected =  allVisitsInRange.stream().findFirst().get().getPlace().equals(allVisitsInRange.getLast().getPlace());
+            if (homeDetected) {
+                return allVisitsInRange.stream().findFirst();
+            }
+        }
+        return Optional.empty();
+    }
+
     private MemoryClusterBlock convertToClusterBlock(List<Trip> tripsToAccommodation, ProcessedVisit accommodation) {
         return new MemoryClusterBlock(null, tripsToAccommodation.stream().map(Trip::getId).toList(),
                 "Journey to " + accommodation.getPlace().getName(),
@@ -247,16 +259,26 @@ public class MemoryBlockGenerationService {
     /**
      * Generate an introduction text for the memory
      */
-    private String generateIntroductionText(Memory memory, List<VisitCluster> clusters, ProcessedVisit accommodation) {
+    private String generateIntroductionText(Memory memory, List<VisitCluster> clusters, ProcessedVisit accommodation, ProcessedVisit homePlace,
+                                            Instant startDate, Instant endDate) {
         long totalDays = Duration.between(memory.getStartDate(), memory.getEndDate()).toDays() + 1;
         int totalVisits = clusters.stream().mapToInt(c -> c.getVisits().size()).sum();
-        
-        String accommodationText = accommodation != null ? " based in " + accommodation.getPlace().getName() : "";
-        String visitPlural = totalVisits != 1 ? "s" : "";
-        String locationPlural = clusters.size() != 1 ? "s" : "";
-        
-        return messageSource.getMessage("memory.journey.introduction", 
-            new Object[]{totalDays, accommodationText, totalVisits, visitPlural, clusters.size(), locationPlural}, 
+        SignificantPlace accommodationPlace = accommodation.getPlace();
+        String country;
+        if (accommodationPlace.getCountryCode() != null) {
+            country = messageSource.getMessage("country." + accommodationPlace.getCountryCode() + ".label", null, accommodation.getPlace().getCountryCode().toLowerCase(), LocaleContextHolder.getLocale());
+        } else {
+            country = messageSource.getMessage("country.unknown.label", null, LocaleContextHolder.getLocale());
+        }
+
+        return messageSource.getMessage("memory.generator.introductory.text",
+                new Object[]{startDate, homePlace.getPlace().getCity(),
+                        totalDays, accommodationPlace.getCity(),
+                        country,
+                        totalVisits,
+                        clusters.size(),
+                        endDate
+                },
             LocaleContextHolder.getLocale());
     }
     

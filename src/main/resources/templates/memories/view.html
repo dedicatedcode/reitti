@@ -68,19 +68,6 @@
         </div>
 
         <div class="memory-blocks-container">
-            <div class="blocks-header">
-                <h2 th:text="#{memory.view.blocks.title}">Blocks</h2>
-                <button type="button" 
-                        class="btn btn-primary"
-                        th:attr="hx-get=@{/memories/{id}/blocks/select-type(id=${memory.id})}"
-                        hx-target=".blocks-add-area"
-                        hx-swap="innerHTML">
-                    <i class="lni lni-plus"></i> <span th:text="#{memory.view.add.block}">Add Block</span>
-                </button>
-            </div>
-
-            <div class="blocks-add-area"></div>
-
             <div th:if="${blocks.isEmpty()}" class="empty-blocks">
                 <i class="lni lni-layers"></i>
                 <p th:text="#{memory.view.no.blocks}">No blocks yet. Add your first block to start building your memory.</p>
@@ -90,7 +77,10 @@
                 <div th:each="block : ${blocks}" class="memory-block" th:attr="data-block-id=${block.blockId}, data-block-type=${block.type.name()}">
                     <div class="block-content">
                         <div th:if="${block.type.name() == 'TEXT'}" class="text-block">
-                            <h3 th:text="${block.headline}">Text Block</h3>
+                            <div class="block-header">
+                                <h3 class="title" th:text="${block.headline}">Text Block</h3>
+
+                            </div>
                             <p th:text="${block.content}">Content will be loaded here</p>
                         </div>
                         <div th:if="${block.type.name() == 'VISIT'}" class="visit-block">
@@ -112,8 +102,12 @@
                                             scrollWheelZoom: false,
                                             tap: false,
                                             touchZoom: false
-                                        }).setView([latitude, longitude], 15);
-
+                                        }).setView([latitude, longitude], 18);
+                                        L.circleMarker([latitude, longitude], {
+                                            color: '#6a6a6a',
+                                            fillColor: '#ff984f',
+                                            fillOpacity: 0.1
+                                        }).addTo(visitMap);
                                         let tileLayer;
                                         if (userSettings.preferColoredMap) {
                                             tileLayer = L.tileLayer(userSettings.tiles.service, {
@@ -191,8 +185,14 @@
                         </div>
                         <div th:if="${block.type.name() == 'CLUSTER'}" class="cluster-block">
                             <div class="block-header">
+                                <div class="time">
+                                    <i class="lni lni-timer"></i>
+                                    <span th:text="${#temporals.format(block.adjustedStartTime, 'MMM d, yyyy HH:mm')}">Start Time</span>
+                                    <span> - </span>
+                                    <span th:text="${#temporals.format(block.adjustedEndTime, 'HH:mm')}">End Time</span>
+                                </div>
                                 <i class="lni lni-layers"></i>
-                                <h3 th:text="${block.title}">Cluster Title</h3>
+                                <div class="title" th:text="${block.title}">Cluster Title</div>
                             </div>
                             <p th:if="${block.description != null}" class="cluster-description" th:text="${block.description}">Description</p>
                             <div class="cluster-map" th:id="${'map_cluster_' + block.blockId}"></div>
@@ -249,7 +249,11 @@
                                             const startLon = startTrip.startVisit.place.longitudeCentroid;
                                             const startName = startTrip.startVisit.place.name;
                                             const startTimeFormatted = combinedStartTime ? new Date(combinedStartTime).toLocaleTimeString() : 'unknown';
-                                            L.marker([startLat, startLon]).addTo(clusterMap).bindPopup('Start: ' + startName + '<br>Departed at: ' + startTimeFormatted);
+                                            L.circleMarker([startLat, startLon], {
+                                                color: '#4a9fdc',
+                                                fillColor: '#59bcff',
+                                                fillOpacity: 0.2
+                                            }).addTo(clusterMap).bindPopup('Start: ' + startName + '<br>Departed at: ' + startTimeFormatted);
                                             bounds.push([startLat, startLon]);
                                         }
 
@@ -261,7 +265,11 @@
                                                 const lon = trip.endVisit.place.longitudeCentroid;
                                                 const name = trip.endVisit.place.name;
                                                 const arrivedAfter = combinedStartTime && trip.endTime ? humanizeDuration((new Date(trip.endTime) - new Date(combinedStartTime)),{units: ["h", "m"], round: true}) : 'unknown';
-                                                L.marker([lat, lon]).addTo(clusterMap).bindPopup('Stop: ' + name + '<br>Arrived after: ' + arrivedAfter);
+                                                L.circleMarker([lat, lon], {
+                                                    color: '#6a6a6a',
+                                                    fillColor: '#ff984f',
+                                                    fillOpacity: 0.1
+                                                }).addTo(clusterMap).bindPopup('Stop: ' + name + '<br>Arrived after: ' + arrivedAfter);
                                                 bounds.push([lat, lon]);
                                             }
                                         }
@@ -273,7 +281,11 @@
                                             const endLon = endTrip.endVisit.place.longitudeCentroid;
                                             const endName = endTrip.endVisit.place.name;
                                             const arrivedAfter = combinedStartTime && endTrip.endTime ? humanizeDuration((new Date(endTrip.endTime) - new Date(combinedStartTime)),{units: ["h", "m"], round: true}) : 'unknown';
-                                            L.marker([endLat, endLon]).addTo(clusterMap).bindPopup('End: ' + endName + '<br>Arrived after: ' + arrivedAfter);
+                                            L.circleMarker([endLat, endLon], {
+                                                color: '#37bd57',
+                                                fillColor: '#55ea7a',
+                                                fillOpacity: 0.2
+                                            }).addTo(clusterMap).bindPopup('End: ' + endName + '<br>Arrived after: ' + arrivedAfter);
                                             bounds.push([endLat, endLon]);
                                         }
                                     }
@@ -287,15 +299,11 @@
                                 })();
                             </script>
                             <div class="cluster-summary" th:if="${block.combinedStartTime != null && block.combinedEndTime != null}">
-                                <div class="cluster-time">
-                                    <i class="lni lni-timer"></i>
-                                    <span th:text="${#temporals.format(block.combinedStartTime, 'MMM d, yyyy HH:mm')}">Start Time</span>
-                                    <span> - </span>
-                                    <span th:text="${#temporals.format(block.combinedEndTime, 'HH:mm')}">End Time</span>
-                                </div>
-                                <div class="cluster-duration" th:if="${block.combinedDurationSeconds != null}">
+
+                                <div class="cluster-duration" th:if="${block.completeDuration != null}">
                                     <i class="lni lni-hourglass"></i>
-                                    <span th:text="${block.combinedDurationSeconds >= 3600 ? #numbers.formatDecimal(block.combinedDurationSeconds / 3600.0, 1, 1) + ' hours' : #numbers.formatDecimal(block.combinedDurationSeconds / 60.0, 0, 0) + ' minutes'}">Total Duration</span>
+                                    <span th:text="
+                                    #{memory.view.block.cluster.duration(${#numbers.formatDecimal(block.completeDuration / 3600.0, 0, 0)},${#numbers.formatDecimal((block.completeDuration % 3600) / 60, 0, 0)},${#numbers.formatDecimal(block.movingDuration / 3600.0, 0, 0)},${#numbers.formatDecimal((block.movingDuration % 3600) / 60, 0, 0)})}">Total Duration</span>
                                 </div>
                             </div>
                             <div class="cluster-trips" th:if="${!block.trips.isEmpty()}">
@@ -325,7 +333,20 @@
                         </button>
                     </div>
                 </div>
+                <div class="memory-block">
+                    <div class="blocks-header">
+                        <button type="button"
+                                class="btn btn-primary"
+                                th:attr="hx-get=@{/memories/{id}/blocks/select-type(id=${memory.id})}"
+                                hx-target=".blocks-add-area"
+                                hx-swap="innerHTML">
+                            <i class="lni lni-plus"></i> <span th:text="#{memory.view.add.block}">Add Block</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="blocks-add-area"></div>
             </div>
+
         </div>
     </div>
 </div>

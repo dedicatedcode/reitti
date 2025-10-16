@@ -45,7 +45,7 @@ public class MemoryController {
         
         model.addAttribute("memory", memory);
 
-        List<MemoryBlockPart> blocks = memoryService.getBlockPartsForMemory(user, id);
+        List<MemoryBlockPart> blocks = memoryService.getBlockPartsForMemory(user, id, timezone);
         model.addAttribute("blocks", blocks);
         
         String startDateLocal = memory.getStartDate().atZone(timezone).toLocalDate().toString();

@@ -1842,6 +1842,11 @@ button:disabled {
     border: 1px solid;
 }
 
+.memories-page .memory-blocks-container {
+    font-family: var(--serif-font);
+    font-size: 1.4em;
+}
+
 .memories-page .memory-map {
     position: absolute;
     height: var(--memories-header-height);
@@ -1874,6 +1879,18 @@ button:disabled {
     opacity: 1;
 }
 
+.memories-page .memory-block .time::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30%;
+    height: 1px;
+    background-color: #ccc;
+    margin-top: 36px;
+}
+
 .memories-page .cluster-block .block-header,
 .memories-page .visit-block .block-header {
     position: relative;
@@ -1881,10 +1898,28 @@ button:disabled {
 
 .memories-page .cluster-block  .cluster-map {
     height: 550px;
+    border-radius: 16px;
+    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.3);
 }
 
 .memories-page .visit-block  .visit-map {
     height: 200px;
+    border-radius: 16px;
+    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.3);
+}
+.memories-page .block-header .time {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 300;
+
+}
+
+.memories-page .block-header .title {
+    margin: 0;
+    font-size: 1.5em;
+    text-align: center;
+    color: var(--color-highlight);
+    text-shadow: -1px -1px 9px wheat, 1px -1px 9px #6f560d, -1px 1px 5px #24201c, 1px 1px 0 #171414;
 }
 
 .memories-page .block-header .visit-title {
@@ -1893,10 +1928,11 @@ button:disabled {
     text-align: center;
     font-family: var(--serif-font);
     color: #fbe7c3;
-    font-size: 2em;
+    font-size: 1.8em;
     text-shadow: -1px -1px 9px wheat, 1px -1px 9px #6f560d, -1px 1px 5px #24201c, 1px 1px 0 #171414;
     z-index: 500;
     right: 10px;
+    font-weight: inherit;
 }
 
 .block-type-selection {

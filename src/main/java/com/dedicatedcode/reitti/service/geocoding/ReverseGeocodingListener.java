@@ -54,7 +54,10 @@ public class ReverseGeocodingListener {
                 } else {
                     place = place.withName(street).withAddress(address);
                 }
-                place = place.withType(placeType).withCountryCode(countryCode);
+                place = place
+                        .withType(placeType)
+                        .withCity(city)
+                        .withCountryCode(countryCode);
 
                 significantPlaceJdbcService.update(place.withGeocoded(true));
                 logger.info("Updated place ID: {} with geocoding data: {}", place.getId(), label);
