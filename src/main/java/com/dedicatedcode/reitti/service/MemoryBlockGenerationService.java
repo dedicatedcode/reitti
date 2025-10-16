@@ -9,6 +9,8 @@ import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -36,10 +38,12 @@ public class MemoryBlockGenerationService {
     
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final TripJdbcService tripJdbcService;
+    private final MessageSource messageSource;
 
-    public MemoryBlockGenerationService(ProcessedVisitJdbcService processedVisitJdbcService, TripJdbcService tripJdbcService) {
+    public MemoryBlockGenerationService(ProcessedVisitJdbcService processedVisitJdbcService, TripJdbcService tripJdbcService, MessageSource messageSource) {
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.tripJdbcService = tripJdbcService;
+        this.messageSource = messageSource;
     }
 
     public List<MemoryBlockPart> generate(User user, Memory memory) {
@@ -244,30 +248,16 @@ public class MemoryBlockGenerationService {
      * Generate an introduction text for the memory
      */
     private String generateIntroductionText(Memory memory, List<VisitCluster> clusters, ProcessedVisit accommodation) {
-        StringBuilder intro = new StringBuilder();
-        
         long totalDays = Duration.between(memory.getStartDate(), memory.getEndDate()).toDays() + 1;
         int totalVisits = clusters.stream().mapToInt(c -> c.getVisits().size()).sum();
         
-        intro.append("Your ").append(totalDays).append("-day journey");
+        String accommodationText = accommodation != null ? " based in " + accommodation.getPlace().getName() : "";
+        String visitPlural = totalVisits != 1 ? "s" : "";
+        String locationPlural = clusters.size() != 1 ? "s" : "";
         
-        if (accommodation != null) {
-            intro.append(" based in ").append(accommodation.getPlace().getName());
-        }
-        
-        intro.append(" included ").append(totalVisits).append(" memorable visit");
-        if (totalVisits != 1) {
-            intro.append("s");
-        }
-        
-        intro.append(" across ").append(clusters.size()).append(" location");
-        if (clusters.size() != 1) {
-            intro.append("s");
-        }
-        
-        intro.append(".");
-        
-        return intro.toString();
+        return messageSource.getMessage("memory.journey.introduction", 
+            new Object[]{totalDays, accommodationText, totalVisits, visitPlural, clusters.size(), locationPlural}, 
+            LocaleContextHolder.getLocale());
     }
     
     /**
