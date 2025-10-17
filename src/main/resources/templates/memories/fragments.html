@@ -322,8 +322,7 @@
     </div>
     <div th:each="photo : ${photos}" 
          class="immich-photo-item"
-         th:attr="data-asset-id=${photo.id}"
-         th:onclick="'toggleImmichPhoto(\'' + ${photo.id} + '\', \'' + ${photo.thumbnailUrl} + '\')'">
+         th:attr="data-asset-id=${photo.id},data-thumbnail-url=${photo.thumbnailUrl}">
         <img th:src="${photo.thumbnailUrl}" th:alt="${photo.fileName}">
         <div class="photo-overlay">
             <i class="lni lni-checkmark-circle"></i>
@@ -333,6 +332,15 @@
     <script th:inline="javascript">
         const totalPages = /*[[${totalPages}]]*/ 0;
         const currentPage = /*[[${currentPage}]]*/ 0;
+        
+        // Attach click handlers to photo items
+        document.querySelectorAll('.immich-photo-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const assetId = this.getAttribute('data-asset-id');
+                const thumbnailUrl = this.getAttribute('data-thumbnail-url');
+                toggleImmichPhoto(assetId, thumbnailUrl);
+            });
+        });
         
         // Update pagination
         const pagination = document.getElementById('immichPagination');
@@ -375,7 +383,7 @@
     <div class="block-header">
         <span class="block-type-badge" th:text="${block.blockType.name()}">BLOCK TYPE</span>
         <div class="block-actions">
-            <button class="btn-icon" th:onclick="'editBlock(' + ${block.id} + ')'"><i class="lni lni-pencil"></i></button>
+            <button class="btn-icon" th:attr="data-block-id=${block.id}"><i class="lni lni-pencil"></i></button>
                 <button type="button" 
                         class="btn-icon danger" 
                         th:attr="hx-delete=@{/memories/{memoryId}/blocks/{blockId}(memoryId=${memory.id}, blockId=${block.id})}"
@@ -405,6 +413,21 @@
             <p>Image gallery</p>
         </div>
     </div>
+    
+    <script>
+        // Attach edit handler
+        document.querySelectorAll('.btn-icon[data-block-id]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const blockId = this.getAttribute('data-block-id');
+                editBlock(blockId);
+            });
+        });
+        
+        function editBlock(blockId) {
+            // Implement edit functionality
+            console.log('Edit block:', blockId);
+        }
+    </script>
 </div>
 
 </body>
