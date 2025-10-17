@@ -8,6 +8,7 @@
     <link rel="stylesheet" th:href="@{/css/main.css}" href="../../static/css/main.css">
     <link rel="stylesheet" th:href="@{/css/lineicons.css}" href="../../static/css/lineicons.css">
     <link rel="stylesheet" th:href="@{/css/gallery-block.css}" href="../../static/css/gallery-block.css">
+    <link rel="stylesheet" th:href="@{/css/photo-client.css}" href="../../static/css/photo-client.css">
     <link rel="stylesheet" href="/css/leaflet.css">
     <script src="/js/htmx.min.js"></script>
     <script src="/js/leaflet.js"></script>
@@ -15,6 +16,7 @@
     <script src="/js/TileLayer.Grayscale.js"></script>
     <script src="/js/raw-location-loader.js"></script>
     <script src="/js/HumanizeDuration.js"></script>
+    <script src="/js/photo-client.js"></script>
 </head>
 <body class="memories-page">
 <div class="settings-container">
@@ -180,8 +182,162 @@
                             </div>
                         </div>
                         <div th:if="${block.type.name() == 'IMAGE_GALLERY'}" class="gallery-block">
-                            <i class="lni lni-gallery"></i>
-                            <p th:text="#{memory.view.block.gallery.content}">Image gallery</p>
+                            <div class="gallery-images-grid" th:id="${'gallery_' + block.blockId}">
+                                <div th:each="image : ${block.images}" 
+                                     class="photo-grid-item gallery-image-item"
+                                     th:attr="data-image-url=${image.imageUrl},data-caption=${image.caption}">
+                                    <div class="photo-loading-spinner"></div>
+                                    <img th:src="${image.imageUrl}" 
+                                         th:alt="${image.caption != null ? image.caption : 'Gallery image'}"
+                                         onload="this.classList.add('loaded'); this.previousElementSibling.style.display='none';"
+                                         onerror="this.style.display='none'; this.previousElementSibling.style.display='none'; this.parentElement.innerHTML='📷';">
+                                </div>
+                            </div>
+                            <script th:inline="javascript">
+                                (function() {
+                                    const blockId = /*[[${block.blockId}]]*/ 0;
+                                    const images = /*[[${block.images}]]*/ [];
+                                    
+                                    const galleryContainer = document.getElementById('gallery_' + blockId);
+                                    const imageElements = galleryContainer.querySelectorAll('.gallery-image-item');
+                                    
+                                    imageElements.forEach((element, index) => {
+                                        element.addEventListener('click', () => {
+                                            showGalleryModal(images, index);
+                                        });
+                                    });
+                                    
+                                    function showGalleryModal(allImages, currentIndex) {
+                                        const modal = document.createElement('div');
+                                        modal.className = 'photo-modal';
+
+                                        const imageContainer = document.createElement('div');
+                                        imageContainer.className = 'photo-modal-container';
+
+                                        const modalSpinner = document.createElement('div');
+                                        modalSpinner.className = 'photo-modal-loading-spinner';
+                                        imageContainer.appendChild(modalSpinner);
+
+                                        const img = document.createElement('img');
+                                        img.src = allImages[currentIndex].imageUrl;
+                                        img.alt = allImages[currentIndex].caption || 'Gallery image';
+
+                                        img.addEventListener('load', () => {
+                                            img.classList.add('loaded');
+                                            if (imageContainer.contains(modalSpinner)) {
+                                                imageContainer.removeChild(modalSpinner);
+                                            }
+                                        });
+
+                                        img.addEventListener('error', () => {
+                                            if (imageContainer.contains(modalSpinner)) {
+                                                imageContainer.removeChild(modalSpinner);
+                                            }
+                                            img.style.display = 'none';
+                                            const errorMsg = document.createElement('div');
+                                            errorMsg.textContent = 'Failed to load image';
+                                            errorMsg.style.color = '#ccc';
+                                            errorMsg.style.fontSize = '18px';
+                                            imageContainer.appendChild(errorMsg);
+                                        });
+
+                                        const closeButton = document.createElement('button');
+                                        closeButton.innerHTML = '<i class="lni lni-close"></i>';
+                                        closeButton.className = 'photo-modal-close-button';
+
+                                        let prevButton, nextButton, counter;
+                                        if (allImages.length > 1) {
+                                            prevButton = document.createElement('button');
+                                            prevButton.innerHTML = '<i class="lni lni-chevron-left"></i>';
+                                            prevButton.className = 'photo-nav-button photo-nav-prev';
+                                            prevButton.disabled = currentIndex === 0;
+
+                                            nextButton = document.createElement('button');
+                                            nextButton.innerHTML = '<i class="lni lni-chevron-left lni-rotate-180"></i>';
+                                            nextButton.className = 'photo-nav-button photo-nav-next';
+                                            nextButton.disabled = currentIndex === allImages.length - 1;
+
+                                            counter = document.createElement('div');
+                                            counter.className = 'photo-counter';
+                                            counter.textContent = `${currentIndex + 1} / ${allImages.length}`;
+                                        }
+
+                                        const showPrevImage = () => {
+                                            if (currentIndex > 0) {
+                                                closeModal();
+                                                showGalleryModal(allImages, currentIndex - 1);
+                                            }
+                                        };
+
+                                        const showNextImage = () => {
+                                            if (currentIndex < allImages.length - 1) {
+                                                closeModal();
+                                                showGalleryModal(allImages, currentIndex + 1);
+                                            }
+                                        };
+
+                                        const handleKeydown = (e) => {
+                                            switch (e.key) {
+                                                case 'Escape':
+                                                    closeModal();
+                                                    break;
+                                                case 'ArrowLeft':
+                                                    e.preventDefault();
+                                                    showPrevImage();
+                                                    break;
+                                                case 'ArrowRight':
+                                                    e.preventDefault();
+                                                    showNextImage();
+                                                    break;
+                                            }
+                                        };
+
+                                        const closeModal = () => {
+                                            document.removeEventListener('keydown', handleKeydown);
+                                            if (document.body.contains(modal)) {
+                                                document.body.removeChild(modal);
+                                            }
+                                        };
+
+                                        closeButton.addEventListener('click', (e) => {
+                                            e.preventDefault();
+                                            closeModal();
+                                        });
+
+                                        modal.addEventListener('click', (e) => {
+                                            if (e.target === modal) {
+                                                closeModal();
+                                            }
+                                        });
+
+                                        if (prevButton) {
+                                            prevButton.addEventListener('click', (e) => {
+                                                e.stopPropagation();
+                                                showPrevImage();
+                                            });
+                                        }
+
+                                        if (nextButton) {
+                                            nextButton.addEventListener('click', (e) => {
+                                                e.stopPropagation();
+                                                showNextImage();
+                                            });
+                                        }
+
+                                        document.addEventListener('keydown', handleKeydown);
+
+                                        imageContainer.appendChild(img);
+                                        imageContainer.appendChild(closeButton);
+                                        
+                                        if (prevButton) imageContainer.appendChild(prevButton);
+                                        if (nextButton) imageContainer.appendChild(nextButton);
+                                        if (counter) imageContainer.appendChild(counter);
+                                        
+                                        modal.appendChild(imageContainer);
+                                        document.body.appendChild(modal);
+                                    }
+                                })();
+                            </script>
                         </div>
                         <div th:if="${block.type.name() == 'CLUSTER'}" class="cluster-block">
                             <div class="block-header">
