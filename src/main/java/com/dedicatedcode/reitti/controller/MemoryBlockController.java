@@ -1,23 +1,38 @@
 package com.dedicatedcode.reitti.controller;
 
+import com.dedicatedcode.reitti.dto.PhotoResponse;
 import com.dedicatedcode.reitti.model.memory.*;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.MemoryService;
+import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Controller
 @RequestMapping("/memories/{memoryId}/blocks")
 public class MemoryBlockController {
 
     private final MemoryService memoryService;
+    private final ImmichIntegrationService immichIntegrationService;
 
-    public MemoryBlockController(MemoryService memoryService) {
+    public MemoryBlockController(MemoryService memoryService, ImmichIntegrationService immichIntegrationService) {
         this.memoryService = memoryService;
+        this.immichIntegrationService = immichIntegrationService;
     }
 
     @DeleteMapping("/{blockId}")
@@ -198,19 +213,119 @@ public class MemoryBlockController {
     }
 
     @PostMapping("/image-gallery")
-    public String createImageGalleryBlock(
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> createImageGalleryBlock(
             @AuthenticationPrincipal User user,
             @PathVariable Long memoryId,
-            @RequestParam String imageUrl,
-            @RequestParam(required = false) String caption) {
+            @RequestBody Map<String, Object> request) {
+        
+        // Verify user owns the memory
+        Memory memory = memoryService.getMemoryById(user, memoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        
+        @SuppressWarnings("unchecked")
+        List<Map<String, String>> images = (List<Map<String, String>>) request.get("images");
+        
+        if (images == null || images.isEmpty()) {
+            throw new IllegalArgumentException("No images provided");
+        }
+        
+        MemoryBlock block = memoryService.addBlock(memoryId, BlockType.IMAGE_GALLERY);
+        
+        for (Map<String, String> image : images) {
+            String type = image.get("type");
+            if ("immich".equals(type)) {
+                String assetId = image.get("assetId");
+                String imageUrl = "/api/v1/photos/immich/proxy/" + assetId + "/original";
+                memoryService.addImageToGallery(block.getId(), imageUrl, null);
+            } else if ("upload".equals(type)) {
+                String url = image.get("url");
+                String name = image.get("name");
+                memoryService.addImageToGallery(block.getId(), url, name);
+            }
+        }
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("blockId", block.getId());
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/upload-image")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> uploadImage(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long memoryId,
+            @RequestParam("file") MultipartFile file) {
         
         // Verify user owns the memory
         memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
-        MemoryBlock block = memoryService.addBlock(memoryId, BlockType.IMAGE_GALLERY);
-        memoryService.addImageToGallery(block.getId(), imageUrl, caption);
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("File is empty");
+        }
         
-        return "redirect:/memories/" + memoryId;
+        try {
+            // Create uploads directory if it doesn't exist
+            Path uploadDir = Paths.get("uploads");
+            if (!Files.exists(uploadDir)) {
+                Files.createDirectories(uploadDir);
+            }
+            
+            // Generate unique filename
+            String originalFilename = file.getOriginalFilename();
+            String extension = "";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            }
+            String filename = UUID.randomUUID().toString() + extension;
+            
+            // Save file
+            Path filePath = uploadDir.resolve(filename);
+            Files.copy(file.getInputStream(), filePath);
+            
+            // Return URL
+            String fileUrl = "/uploads/" + filename;
+            
+            Map<String, String> response = new HashMap<>();
+            response.put("url", fileUrl);
+            response.put("name", originalFilename);
+            return ResponseEntity.ok(response);
+            
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to upload file", e);
+        }
+    }
+
+    @GetMapping("/immich-photos")
+    public String getImmichPhotos(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long memoryId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false, defaultValue = "UTC") String timezone,
+            Model model) {
+        
+        Memory memory = memoryService.getMemoryById(user, memoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        
+        ZoneId zoneId = ZoneId.of(timezone);
+        LocalDate startDate = memory.getStartDate().atZone(zoneId).toLocalDate();
+        LocalDate endDate = memory.getEndDate().atZone(zoneId).toLocalDate();
+        
+        List<PhotoResponse> allPhotos = immichIntegrationService.searchPhotosForRange(user, startDate, endDate, timezone);
+        
+        int pageSize = 6;
+        int totalPages = (int) Math.ceil((double) allPhotos.size() / pageSize);
+        int startIndex = page * pageSize;
+        int endIndex = Math.min(startIndex + pageSize, allPhotos.size());
+        
+        List<PhotoResponse> pagePhotos = allPhotos.subList(startIndex, endIndex);
+        
+        model.addAttribute("photos", pagePhotos);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", totalPages);
+        
+        return "memories/fragments :: immich-photos-grid";
     }
 }

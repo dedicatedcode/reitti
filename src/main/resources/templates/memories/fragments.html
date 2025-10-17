@@ -7,15 +7,15 @@
 
 <!-- Block type selection fragment -->
 <div th:fragment="block-type-selection" class="block-type-selection">
-    <h3>Select Block Type</h3>
+    <h3 th:text="#{memory.block.select.type}">Select Block Type</h3>
     <div class="block-type-grid">
         <button type="button" 
                 class="block-type-option"
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='TEXT')}"
                 hx-target=".blocks-add-area"
                 hx-swap="innerHTML">
-            <span>Text Block</span>
-            <p>Add text content with headlines and paragraphs</p>
+            <span th:text="#{memory.block.type.text}">Text Block</span>
+            <p th:text="#{memory.block.type.text.description}">Add text content with headlines and paragraphs</p>
         </button>
         
         <button type="button" 
@@ -23,8 +23,8 @@
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='VISIT')}"
                 hx-target=".blocks-add-area"
                 hx-swap="innerHTML">
-            <span>Visit Block</span>
-            <p>Add a location you visited during this memory</p>
+            <span th:text="#{memory.block.type.visit}">Visit Block</span>
+            <p th:text="#{memory.block.type.visit.description}">Add a location you visited during this memory</p>
         </button>
         
         <button type="button" 
@@ -32,8 +32,8 @@
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='TRIP')}"
                 hx-target=".blocks-add-area"
                 hx-swap="innerHTML">
-            <span>Trip Block</span>
-            <p>Add a journey or route from this memory</p>
+            <span th:text="#{memory.block.type.trip}">Trip Block</span>
+            <p th:text="#{memory.block.type.trip.description}">Add a journey or route from this memory</p>
         </button>
         
         <button type="button" 
@@ -41,8 +41,8 @@
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='IMAGE_GALLERY')}"
                 hx-target=".blocks-add-area"
                 hx-swap="innerHTML">
-            <span>Image Gallery</span>
-            <p>Add a collection of photos from this memory</p>
+            <span th:text="#{memory.block.type.gallery}">Image Gallery</span>
+            <p th:text="#{memory.block.type.gallery.description}">Add a collection of photos from this memory</p>
         </button>
     </div>
     
@@ -51,7 +51,8 @@
                 class="btn btn-secondary"
                 hx-get="/memories/fragments/empty"
                 hx-target=".blocks-add-area"
-                hx-swap="innerHTML">Cancel</button>
+                hx-swap="innerHTML"
+                th:text="#{memory.block.cancel}">Cancel</button>
     </div>
 </div>
 
@@ -60,17 +61,17 @@
 
 <!-- Text block form -->
 <div th:fragment="text-block-form" class="block-form">
-    <h3>Add Text Block</h3>
+    <h3 th:text="#{memory.block.text.new}">Add Text Block</h3>
     <form th:action="@{/memories/{id}/blocks/text(id=${memoryId})}" method="post" hx-target="body" hx-swap="innerHTML">
         
         <div class="form-group">
-            <label for="headline">Headline</label>
-            <input type="text" id="headline" name="headline" class="form-control" placeholder="Enter headline">
+            <label for="headline" th:text="#{memory.block.text.headline}">Headline</label>
+            <input type="text" id="headline" name="headline" class="form-control" th:placeholder="#{memory.block.text.headline.placeholder}">
         </div>
         
         <div class="form-group">
-            <label for="content">Content</label>
-            <textarea id="content" name="content" class="form-control" rows="6" placeholder="Enter your text content"></textarea>
+            <label for="content" th:text="#{memory.block.text.content}">Content</label>
+            <textarea id="content" name="content" class="form-control" rows="6" th:placeholder="#{memory.block.text.content.placeholder}"></textarea>
         </div>
         
         <div class="form-actions">
@@ -78,22 +79,22 @@
                     class="btn btn-secondary"
                     hx-get="/memories/fragments/empty"
                     hx-target=".blocks-add-area"
-                    hx-swap="innerHTML">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save Block</button>
+                    hx-swap="innerHTML"
+                    th:text="#{memory.block.cancel}">Cancel</button>
+            <button type="submit" class="btn btn-primary" th:text="#{memory.block.create}">Save Block</button>
         </div>
     </form>
 </div>
 
 <!-- Visit block form -->
 <div th:fragment="visit-block-form" class="block-form">
-    <h3>Add Visit Block</h3>
+    <h3 th:text="#{memory.block.visit.new}">Add Visit Block</h3>
     <form th:action="@{/memories/{id}/blocks/visit(id=${memoryId})}" method="post" hx-target="body" hx-swap="innerHTML">
         
         <div class="form-group">
-            <label for="visitId">Select Visit</label>
+            <label for="visitId" th:text="#{memory.block.visit.select}">Select Visit</label>
             <select id="visitId" name="visitId" class="form-control" required>
-                <option value="">Choose a visit...</option>
-                <!-- TODO: Load visits from the memory date range -->
+                <option value="" th:text="#{memory.block.visit.select.placeholder}">Choose a visit...</option>
             </select>
         </div>
         
@@ -102,22 +103,22 @@
                     class="btn btn-secondary"
                     hx-get="/memories/fragments/empty"
                     hx-target=".blocks-add-area"
-                    hx-swap="innerHTML">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save Block</button>
+                    hx-swap="innerHTML"
+                    th:text="#{memory.block.cancel}">Cancel</button>
+            <button type="submit" class="btn btn-primary" th:text="#{memory.block.create}">Save Block</button>
         </div>
     </form>
 </div>
 
 <!-- Trip block form -->
 <div th:fragment="trip-block-form" class="block-form">
-    <h3>Add Trip Block</h3>
+    <h3 th:text="#{memory.block.trip.new}">Add Trip Block</h3>
     <form th:action="@{/memories/{id}/blocks/trip(id=${memoryId})}" method="post" hx-target="body" hx-swap="innerHTML">
         
         <div class="form-group">
-            <label for="tripId">Select Trip</label>
+            <label for="tripId" th:text="#{memory.block.trip.select}">Select Trip</label>
             <select id="tripId" name="tripId" class="form-control" required>
-                <option value="">Choose a trip...</option>
-                <!-- TODO: Load trips from the memory date range -->
+                <option value="" th:text="#{memory.block.trip.select.placeholder}">Choose a trip...</option>
             </select>
         </div>
         
@@ -126,36 +127,247 @@
                     class="btn btn-secondary"
                     hx-get="/memories/fragments/empty"
                     hx-target=".blocks-add-area"
-                    hx-swap="innerHTML">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save Block</button>
+                    hx-swap="innerHTML"
+                    th:text="#{memory.block.cancel}">Cancel</button>
+            <button type="submit" class="btn btn-primary" th:text="#{memory.block.create}">Save Block</button>
         </div>
     </form>
 </div>
 
 <!-- Image gallery block form -->
-<div th:fragment="image-gallery-block-form" class="block-form">
-    <h3>Add Image Gallery Block</h3>
-    <form th:action="@{/memories/{id}/blocks/image-gallery(id=${memoryId})}" method="post" hx-target="body" hx-swap="innerHTML">
-        
-        <div class="form-group">
-            <label for="imageUrl">Image URL</label>
-            <input type="url" id="imageUrl" name="imageUrl" class="form-control" placeholder="https://example.com/image.jpg" required>
+<div th:fragment="image-gallery-block-form" class="block-form gallery-block-form">
+    <h3 th:text="#{memory.block.gallery.new}">New Image Gallery Block</h3>
+    
+    <div class="gallery-panels">
+        <!-- Immich Panel -->
+        <div class="gallery-panel immich-panel" th:if="${immichEnabled}">
+            <h4 th:text="#{memory.block.gallery.immich.title}">Select from Immich</h4>
+            <div class="immich-photos-container">
+                <div class="immich-photos-grid" 
+                     id="immichPhotosGrid"
+                     th:attr="hx-get=@{/memories/{id}/blocks/immich-photos(id=${memoryId},page=0)}"
+                     hx-trigger="load"
+                     hx-swap="innerHTML">
+                    <div class="loading" th:text="#{memory.block.gallery.loading}">Loading photos...</div>
+                </div>
+                <div class="immich-pagination" id="immichPagination"></div>
+            </div>
+            <div class="selected-immich-photos" id="selectedImmichPhotos">
+                <h5 th:text="#{memory.block.gallery.immich.selected}">Selected Photos</h5>
+                <div class="selected-photos-list" id="selectedPhotosList"></div>
+            </div>
         </div>
-        
-        <div class="form-group">
-            <label for="caption">Caption</label>
-            <input type="text" id="caption" name="caption" class="form-control" placeholder="Enter image caption">
+
+        <!-- File Upload Panel -->
+        <div class="gallery-panel upload-panel">
+            <h4 th:text="#{memory.block.gallery.upload.title}">Upload Images</h4>
+            <div class="upload-area">
+                <form id="uploadForm" 
+                      th:attr="hx-post=@{/memories/{id}/blocks/upload-image(id=${memoryId})}"
+                      hx-encoding="multipart/form-data"
+                      hx-target="#uploadedFilesList"
+                      hx-swap="beforeend">
+                    <input type="file" 
+                           id="fileInput" 
+                           name="file" 
+                           accept="image/*" 
+                           class="form-control"
+                           onchange="this.form.dispatchEvent(new Event('submit', {bubbles: true, cancelable: true}))">
+                    <label for="fileInput" class="upload-label">
+                        <i class="lni lni-cloud-upload"></i>
+                        <span th:text="#{memory.block.gallery.upload.choose}">Choose file or drag here</span>
+                    </label>
+                </form>
+            </div>
+            <div class="uploaded-files" id="uploadedFiles">
+                <h5 th:text="#{memory.block.gallery.upload.files}">Uploaded Files</h5>
+                <div class="uploaded-files-list" id="uploadedFilesList"></div>
+            </div>
         </div>
-        
-        <div class="form-actions">
-            <button type="button" 
-                    class="btn btn-secondary"
-                    hx-get="/memories/fragments/empty"
-                    hx-target=".blocks-add-area"
-                    hx-swap="innerHTML">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save Block</button>
+    </div>
+
+    <div class="form-actions">
+        <button type="button" 
+                class="btn btn-primary" 
+                onclick="createGalleryBlock()"
+                th:text="#{memory.block.create}">Create Gallery Block</button>
+        <button type="button"
+                class="btn btn-secondary"
+                th:attr="hx-get=@{/memories/fragments/empty}"
+                hx-target=".blocks-add-area"
+                hx-swap="innerHTML"
+                th:text="#{memory.block.cancel}">Cancel</button>
+    </div>
+
+    <script th:inline="javascript">
+        const memoryId = /*[[${memoryId}]]*/ 0;
+        const selectedImmichPhotos = new Set();
+        const uploadedFiles = [];
+        let currentPage = 0;
+        let totalPages = 0;
+
+        function toggleImmichPhoto(assetId, thumbnailUrl) {
+            if (selectedImmichPhotos.has(assetId)) {
+                selectedImmichPhotos.delete(assetId);
+                document.querySelector(`[data-asset-id="${assetId}"]`).classList.remove('selected');
+                const selectedItem = document.querySelector(`#selected-${assetId}`);
+                if (selectedItem) {
+                    selectedItem.remove();
+                }
+            } else {
+                selectedImmichPhotos.add(assetId);
+                document.querySelector(`[data-asset-id="${assetId}"]`).classList.add('selected');
+                
+                const selectedList = document.getElementById('selectedPhotosList');
+                const photoDiv = document.createElement('div');
+                photoDiv.id = `selected-${assetId}`;
+                photoDiv.className = 'selected-photo-item';
+                photoDiv.innerHTML = `
+                    <img src="${thumbnailUrl}" alt="Selected photo">
+                    <button type="button" class="btn-remove" onclick="toggleImmichPhoto('${assetId}', '${thumbnailUrl}')">
+                        <i class="lni lni-close"></i>
+                    </button>
+                `;
+                selectedList.appendChild(photoDiv);
+            }
+        }
+
+        function removeUploadedFile(index) {
+            uploadedFiles.splice(index, 1);
+            renderUploadedFiles();
+        }
+
+        function renderUploadedFiles() {
+            const list = document.getElementById('uploadedFilesList');
+            list.innerHTML = '';
+            uploadedFiles.forEach((file, index) => {
+                const fileDiv = document.createElement('div');
+                fileDiv.className = 'uploaded-file-item';
+                fileDiv.innerHTML = `
+                    <img src="${file.url}" alt="${file.name}">
+                    <span>${file.name}</span>
+                    <button type="button" class="btn-remove" onclick="removeUploadedFile(${index})">
+                        <i class="lni lni-close"></i>
+                    </button>
+                `;
+                list.appendChild(fileDiv);
+            });
+        }
+
+        function loadImmichPage(page) {
+            currentPage = page;
+            htmx.ajax('GET', `/memories/${memoryId}/blocks/immich-photos?page=${page}`, {
+                target: '#immichPhotosGrid',
+                swap: 'innerHTML'
+            });
+        }
+
+        function createGalleryBlock() {
+            const images = [];
+            
+            // Add selected Immich photos
+            selectedImmichPhotos.forEach(assetId => {
+                images.push({
+                    type: 'immich',
+                    assetId: assetId
+                });
+            });
+            
+            // Add uploaded files
+            uploadedFiles.forEach(file => {
+                images.push({
+                    type: 'upload',
+                    url: file.url,
+                    name: file.name
+                });
+            });
+
+            if (images.length === 0) {
+                alert(/*[[#{memory.block.gallery.error.no.images}]]*/ 'Please select or upload at least one image');
+                return;
+            }
+
+            // Submit the gallery block creation
+            fetch(`/memories/${memoryId}/blocks/image-gallery`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ images: images })
+            }).then(response => {
+                if (response.ok) {
+                    window.location.href = `/memories/${memoryId}`;
+                } else {
+                    alert(/*[[#{memory.block.gallery.error.create}]]*/ 'Failed to create gallery block');
+                }
+            });
+        }
+
+        // Handle file upload response
+        document.body.addEventListener('htmx:afterSwap', function(event) {
+            if (event.detail.target.id === 'uploadedFilesList') {
+                const response = JSON.parse(event.detail.xhr.response);
+                uploadedFiles.push(response);
+                renderUploadedFiles();
+                document.getElementById('fileInput').value = '';
+            }
+        });
+    </script>
+</div>
+
+<!-- Immich photos grid fragment -->
+<div th:fragment="immich-photos-grid">
+    <div th:if="${photos.isEmpty()}" class="no-photos" th:text="#{memory.block.gallery.immich.no.photos}">
+        No photos found for this date range
+    </div>
+    <div th:each="photo : ${photos}" 
+         class="immich-photo-item"
+         th:attr="data-asset-id=${photo.id}"
+         th:onclick="'toggleImmichPhoto(\'' + ${photo.id} + '\', \'' + ${photo.thumbnailUrl} + '\')'">
+        <img th:src="${photo.thumbnailUrl}" th:alt="${photo.fileName}">
+        <div class="photo-overlay">
+            <i class="lni lni-checkmark-circle"></i>
         </div>
-    </form>
+    </div>
+    
+    <script th:inline="javascript">
+        const totalPages = /*[[${totalPages}]]*/ 0;
+        const currentPage = /*[[${currentPage}]]*/ 0;
+        
+        // Update pagination
+        const pagination = document.getElementById('immichPagination');
+        pagination.innerHTML = '';
+        
+        if (totalPages > 1) {
+            const paginationDiv = document.createElement('div');
+            paginationDiv.className = 'pagination-controls';
+            
+            if (currentPage > 0) {
+                const prevBtn = document.createElement('button');
+                prevBtn.type = 'button';
+                prevBtn.className = 'btn btn-secondary';
+                prevBtn.textContent = /*[[#{memory.block.gallery.pagination.previous}]]*/ 'Previous';
+                prevBtn.onclick = () => loadImmichPage(currentPage - 1);
+                paginationDiv.appendChild(prevBtn);
+            }
+            
+            const pageInfo = document.createElement('span');
+            pageInfo.className = 'page-info';
+            pageInfo.textContent = `${currentPage + 1} / ${totalPages}`;
+            paginationDiv.appendChild(pageInfo);
+            
+            if (currentPage < totalPages - 1) {
+                const nextBtn = document.createElement('button');
+                nextBtn.type = 'button';
+                nextBtn.className = 'btn btn-secondary';
+                nextBtn.textContent = /*[[#{memory.block.gallery.pagination.next}]]*/ 'Next';
+                nextBtn.onclick = () => loadImmichPage(currentPage + 1);
+                paginationDiv.appendChild(nextBtn);
+            }
+            
+            pagination.appendChild(paginationDiv);
+        }
+    </script>
 </div>
 
 <!-- Memory block fragment -->

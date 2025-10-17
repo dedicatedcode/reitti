@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.model.memory.Memory;
 import com.dedicatedcode.reitti.model.memory.MemoryBlockPart;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.MemoryService;
+import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -22,9 +23,11 @@ import java.util.List;
 public class MemoryController {
 
     private final MemoryService memoryService;
+    private final ImmichIntegrationService immichIntegrationService;
 
-    public MemoryController(MemoryService memoryService) {
+    public MemoryController(MemoryService memoryService, ImmichIntegrationService immichIntegrationService) {
         this.memoryService = memoryService;
+        this.immichIntegrationService = immichIntegrationService;
     }
 
     @GetMapping
@@ -266,8 +269,19 @@ public class MemoryController {
     @GetMapping("/{id}/blocks/new")
     public String newBlockForm(@AuthenticationPrincipal User user, @PathVariable Long id, @RequestParam String type, Model model) {
 
+        Memory memory = memoryService.getMemoryById(user, id)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+
         model.addAttribute("memoryId", id);
         model.addAttribute("blockType", type);
+        
+        // Check if Immich integration is enabled for image gallery
+        if ("IMAGE_GALLERY".equals(type)) {
+            boolean immichEnabled = immichIntegrationService.getIntegrationForUser(user)
+                    .map(integration -> integration.isEnabled())
+                    .orElse(false);
+            model.addAttribute("immichEnabled", immichEnabled);
+        }
         
         return switch (type) {
             case "TEXT" -> "memories/fragments :: text-block-form";
