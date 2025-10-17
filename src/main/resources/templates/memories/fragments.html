@@ -200,22 +200,27 @@
     </div>
 
     <script th:inline="javascript">
-        const memoryId = /*[[${memoryId}]]*/ 0;
-        const selectedImmichPhotos = new Set();
-        const uploadedFiles = [];
-        let currentPage = 0;
-        let totalPages = 0;
+        // Initialize gallery block state
+        if (typeof window.galleryBlockState === 'undefined') {
+            window.galleryBlockState = {
+                memoryId: /*[[${memoryId}]]*/ 0,
+                selectedImmichPhotos: new Set(),
+                uploadedFiles: [],
+                currentPage: 0,
+                totalPages: 0
+            };
+        }
 
         function toggleImmichPhoto(assetId, thumbnailUrl) {
-            if (selectedImmichPhotos.has(assetId)) {
-                selectedImmichPhotos.delete(assetId);
+            if (window.galleryBlockState.selectedImmichPhotos.has(assetId)) {
+                window.galleryBlockState.selectedImmichPhotos.delete(assetId);
                 document.querySelector(`[data-asset-id="${assetId}"]`).classList.remove('selected');
                 const selectedItem = document.querySelector(`#selected-${assetId}`);
                 if (selectedItem) {
                     selectedItem.remove();
                 }
             } else {
-                selectedImmichPhotos.add(assetId);
+                window.galleryBlockState.selectedImmichPhotos.add(assetId);
                 document.querySelector(`[data-asset-id="${assetId}"]`).classList.add('selected');
                 
                 const selectedList = document.getElementById('selectedPhotosList');
@@ -233,14 +238,14 @@
         }
 
         function removeUploadedFile(index) {
-            uploadedFiles.splice(index, 1);
+            window.galleryBlockState.uploadedFiles.splice(index, 1);
             renderUploadedFiles();
         }
 
         function renderUploadedFiles() {
             const list = document.getElementById('uploadedFilesList');
             list.innerHTML = '';
-            uploadedFiles.forEach((file, index) => {
+            window.galleryBlockState.uploadedFiles.forEach((file, index) => {
                 const fileDiv = document.createElement('div');
                 fileDiv.className = 'uploaded-file-item';
                 fileDiv.innerHTML = `
@@ -255,8 +260,8 @@
         }
 
         function loadImmichPage(page) {
-            currentPage = page;
-            htmx.ajax('GET', `/memories/${memoryId}/blocks/immich-photos?page=${page}`, {
+            window.galleryBlockState.currentPage = page;
+            htmx.ajax('GET', `/memories/${window.galleryBlockState.memoryId}/blocks/immich-photos?page=${page}`, {
                 target: '#immichPhotosGrid',
                 swap: 'innerHTML'
             });
@@ -266,7 +271,7 @@
             const images = [];
             
             // Add selected Immich photos
-            selectedImmichPhotos.forEach(assetId => {
+            window.galleryBlockState.selectedImmichPhotos.forEach(assetId => {
                 images.push({
                     type: 'immich',
                     assetId: assetId
@@ -274,7 +279,7 @@
             });
             
             // Add uploaded files
-            uploadedFiles.forEach(file => {
+            window.galleryBlockState.uploadedFiles.forEach(file => {
                 images.push({
                     type: 'upload',
                     url: file.url,
@@ -288,7 +293,7 @@
             }
 
             // Submit the gallery block creation
-            fetch(`/memories/${memoryId}/blocks/image-gallery`, {
+            fetch(`/memories/${window.galleryBlockState.memoryId}/blocks/image-gallery`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -296,7 +301,7 @@
                 body: JSON.stringify({ images: images })
             }).then(response => {
                 if (response.ok) {
-                    window.location.href = `/memories/${memoryId}`;
+                    window.location.href = `/memories/${window.galleryBlockState.memoryId}`;
                 } else {
                     alert(/*[[#{memory.block.gallery.error.create}]]*/ 'Failed to create gallery block');
                 }
@@ -307,7 +312,7 @@
         document.body.addEventListener('htmx:afterSwap', function(event) {
             if (event.detail.target.id === 'uploadedFilesList') {
                 const response = JSON.parse(event.detail.xhr.response);
-                uploadedFiles.push(response);
+                window.galleryBlockState.uploadedFiles.push(response);
                 renderUploadedFiles();
                 document.getElementById('fileInput').value = '';
             }
@@ -330,51 +335,61 @@
     </div>
     
     <script th:inline="javascript">
-        const totalPages = /*[[${totalPages}]]*/ 0;
-        const currentPage = /*[[${currentPage}]]*/ 0;
-        
-        // Attach click handlers to photo items
-        document.querySelectorAll('.immich-photo-item').forEach(item => {
-            item.addEventListener('click', function() {
-                const assetId = this.getAttribute('data-asset-id');
-                const thumbnailUrl = this.getAttribute('data-thumbnail-url');
-                toggleImmichPhoto(assetId, thumbnailUrl);
+        (function() {
+            const pageTotalPages = /*[[${totalPages}]]*/ 0;
+            const pageCurrentPage = /*[[${currentPage}]]*/ 0;
+            
+            // Update global state
+            if (window.galleryBlockState) {
+                window.galleryBlockState.totalPages = pageTotalPages;
+                window.galleryBlockState.currentPage = pageCurrentPage;
+            }
+            
+            // Attach click handlers to photo items
+            document.querySelectorAll('.immich-photo-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const assetId = this.getAttribute('data-asset-id');
+                    const thumbnailUrl = this.getAttribute('data-thumbnail-url');
+                    toggleImmichPhoto(assetId, thumbnailUrl);
+                });
             });
-        });
-        
-        // Update pagination
-        const pagination = document.getElementById('immichPagination');
-        pagination.innerHTML = '';
-        
-        if (totalPages > 1) {
-            const paginationDiv = document.createElement('div');
-            paginationDiv.className = 'pagination-controls';
             
-            if (currentPage > 0) {
-                const prevBtn = document.createElement('button');
-                prevBtn.type = 'button';
-                prevBtn.className = 'btn btn-secondary';
-                prevBtn.textContent = /*[[#{memory.block.gallery.pagination.previous}]]*/ 'Previous';
-                prevBtn.onclick = () => loadImmichPage(currentPage - 1);
-                paginationDiv.appendChild(prevBtn);
+            // Update pagination
+            const pagination = document.getElementById('immichPagination');
+            if (pagination) {
+                pagination.innerHTML = '';
+                
+                if (pageTotalPages > 1) {
+                    const paginationDiv = document.createElement('div');
+                    paginationDiv.className = 'pagination-controls';
+                    
+                    if (pageCurrentPage > 0) {
+                        const prevBtn = document.createElement('button');
+                        prevBtn.type = 'button';
+                        prevBtn.className = 'btn btn-secondary';
+                        prevBtn.textContent = /*[[#{memory.block.gallery.pagination.previous}]]*/ 'Previous';
+                        prevBtn.onclick = () => loadImmichPage(pageCurrentPage - 1);
+                        paginationDiv.appendChild(prevBtn);
+                    }
+                    
+                    const pageInfo = document.createElement('span');
+                    pageInfo.className = 'page-info';
+                    pageInfo.textContent = `${pageCurrentPage + 1} / ${pageTotalPages}`;
+                    paginationDiv.appendChild(pageInfo);
+                    
+                    if (pageCurrentPage < pageTotalPages - 1) {
+                        const nextBtn = document.createElement('button');
+                        nextBtn.type = 'button';
+                        nextBtn.className = 'btn btn-secondary';
+                        nextBtn.textContent = /*[[#{memory.block.gallery.pagination.next}]]*/ 'Next';
+                        nextBtn.onclick = () => loadImmichPage(pageCurrentPage + 1);
+                        paginationDiv.appendChild(nextBtn);
+                    }
+                    
+                    pagination.appendChild(paginationDiv);
+                }
             }
-            
-            const pageInfo = document.createElement('span');
-            pageInfo.className = 'page-info';
-            pageInfo.textContent = `${currentPage + 1} / ${totalPages}`;
-            paginationDiv.appendChild(pageInfo);
-            
-            if (currentPage < totalPages - 1) {
-                const nextBtn = document.createElement('button');
-                nextBtn.type = 'button';
-                nextBtn.className = 'btn btn-secondary';
-                nextBtn.textContent = /*[[#{memory.block.gallery.pagination.next}]]*/ 'Next';
-                nextBtn.onclick = () => loadImmichPage(currentPage + 1);
-                paginationDiv.appendChild(nextBtn);
-            }
-            
-            pagination.appendChild(paginationDiv);
-        }
+        })();
     </script>
 </div>
 
