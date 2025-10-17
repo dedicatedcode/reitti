@@ -204,7 +204,7 @@
         if (typeof window.galleryBlockState === 'undefined') {
             window.galleryBlockState = {
                 memoryId: /*[[${memoryId}]]*/ 0,
-                selectedImmichPhotos: new Set(),
+                selectedImmichPhotos: new Map(), // Changed to Map to store thumbnailUrl with assetId
                 uploadedFiles: [],
                 currentPage: 0,
                 totalPages: 0
@@ -213,15 +213,28 @@
 
         function toggleImmichPhoto(assetId, thumbnailUrl) {
             if (window.galleryBlockState.selectedImmichPhotos.has(assetId)) {
+                // Deselect
                 window.galleryBlockState.selectedImmichPhotos.delete(assetId);
-                document.querySelector(`[data-asset-id="${assetId}"]`).classList.remove('selected');
+                
+                // Only try to remove class if element exists
+                const photoItem = document.querySelector(`[data-asset-id="${assetId}"]`);
+                if (photoItem) {
+                    photoItem.classList.remove('selected');
+                }
+                
                 const selectedItem = document.querySelector(`#selected-${assetId}`);
                 if (selectedItem) {
                     selectedItem.remove();
                 }
             } else {
-                window.galleryBlockState.selectedImmichPhotos.add(assetId);
-                document.querySelector(`[data-asset-id="${assetId}"]`).classList.add('selected');
+                // Select
+                window.galleryBlockState.selectedImmichPhotos.set(assetId, thumbnailUrl);
+                
+                // Only try to add class if element exists
+                const photoItem = document.querySelector(`[data-asset-id="${assetId}"]`);
+                if (photoItem) {
+                    photoItem.classList.add('selected');
+                }
                 
                 const selectedList = document.getElementById('selectedPhotosList');
                 const photoDiv = document.createElement('div');
@@ -271,7 +284,7 @@
             const images = [];
             
             // Add selected Immich photos
-            window.galleryBlockState.selectedImmichPhotos.forEach(assetId => {
+            window.galleryBlockState.selectedImmichPhotos.forEach((thumbnailUrl, assetId) => {
                 images.push({
                     type: 'immich',
                     assetId: assetId
@@ -345,11 +358,17 @@
                 window.galleryBlockState.currentPage = pageCurrentPage;
             }
             
-            // Attach click handlers to photo items
+            // Attach click handlers to photo items and restore selected state
             document.querySelectorAll('.immich-photo-item').forEach(item => {
+                const assetId = item.getAttribute('data-asset-id');
+                const thumbnailUrl = item.getAttribute('data-thumbnail-url');
+                
+                // Restore selected state if this photo was previously selected
+                if (window.galleryBlockState && window.galleryBlockState.selectedImmichPhotos.has(assetId)) {
+                    item.classList.add('selected');
+                }
+                
                 item.addEventListener('click', function() {
-                    const assetId = this.getAttribute('data-asset-id');
-                    const thumbnailUrl = this.getAttribute('data-thumbnail-url');
                     toggleImmichPhoto(assetId, thumbnailUrl);
                 });
             });
