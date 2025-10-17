@@ -152,10 +152,6 @@
                 </div>
                 <div class="immich-pagination" id="immichPagination"></div>
             </div>
-            <div class="selected-immich-photos" id="selectedImmichPhotos">
-                <h5 th:text="#{memory.block.gallery.immich.selected}">Selected Photos</h5>
-                <div class="selected-photos-list" id="selectedPhotosList"></div>
-            </div>
         </div>
 
         <!-- File Upload Panel -->
@@ -179,11 +175,13 @@
                     </label>
                 </form>
             </div>
-            <div class="uploaded-files" id="uploadedFiles">
-                <h5 th:text="#{memory.block.gallery.upload.files}">Uploaded Files</h5>
-                <div class="uploaded-files-list" id="uploadedFilesList"></div>
-            </div>
         </div>
+    </div>
+
+    <!-- Combined Selected Photos Section -->
+    <div class="selected-photos-section">
+        <h4 th:text="#{memory.block.gallery.selected.title}">Selected Photos</h4>
+        <div class="selected-photos-combined" id="selectedPhotosCombined"></div>
     </div>
 
     <div class="form-actions">
@@ -200,76 +198,72 @@
     </div>
 
     <script th:inline="javascript">
-        // Initialize gallery block state
         if (typeof window.galleryBlockState === 'undefined') {
             window.galleryBlockState = {
                 memoryId: /*[[${memoryId}]]*/ 0,
-                selectedImmichPhotos: new Map(), // Changed to Map to store thumbnailUrl with assetId
+                selectedImmichPhotos: new Map(),
                 uploadedFiles: [],
                 currentPage: 0,
                 totalPages: 0
             };
         }
 
+        function renderCombinedPhotos() {
+            const container = document.getElementById('selectedPhotosCombined');
+            container.innerHTML = '';
+            
+            window.galleryBlockState.selectedImmichPhotos.forEach((thumbnailUrl, assetId) => {
+                const photoDiv = document.createElement('div');
+                photoDiv.className = 'selected-photo-item';
+                photoDiv.setAttribute('data-type', 'immich');
+                photoDiv.setAttribute('data-id', assetId);
+                photoDiv.innerHTML = `
+                    <img src="${thumbnailUrl}" alt="Selected photo">
+                    <button type="button" class="btn-remove" onclick="toggleImmichPhoto('${assetId}', '${thumbnailUrl}')">
+                        <i class="lni lni-close"></i>
+                    </button>
+                `;
+                container.appendChild(photoDiv);
+            });
+            
+            window.galleryBlockState.uploadedFiles.forEach((file, index) => {
+                const photoDiv = document.createElement('div');
+                photoDiv.className = 'selected-photo-item';
+                photoDiv.setAttribute('data-type', 'upload');
+                photoDiv.setAttribute('data-index', index);
+                photoDiv.innerHTML = `
+                    <img src="${file.url}" alt="${file.name}">
+                    <button type="button" class="btn-remove" onclick="removeUploadedFile(${index})">
+                        <i class="lni lni-close"></i>
+                    </button>
+                `;
+                container.appendChild(photoDiv);
+            });
+        }
+
         function toggleImmichPhoto(assetId, thumbnailUrl) {
             if (window.galleryBlockState.selectedImmichPhotos.has(assetId)) {
-                // Deselect
                 window.galleryBlockState.selectedImmichPhotos.delete(assetId);
                 
-                // Only try to remove class if element exists
                 const photoItem = document.querySelector(`[data-asset-id="${assetId}"]`);
                 if (photoItem) {
                     photoItem.classList.remove('selected');
                 }
-                
-                const selectedItem = document.querySelector(`#selected-${assetId}`);
-                if (selectedItem) {
-                    selectedItem.remove();
-                }
             } else {
-                // Select
                 window.galleryBlockState.selectedImmichPhotos.set(assetId, thumbnailUrl);
                 
-                // Only try to add class if element exists
                 const photoItem = document.querySelector(`[data-asset-id="${assetId}"]`);
                 if (photoItem) {
                     photoItem.classList.add('selected');
                 }
-                
-                const selectedList = document.getElementById('selectedPhotosList');
-                const photoDiv = document.createElement('div');
-                photoDiv.id = `selected-${assetId}`;
-                photoDiv.className = 'selected-photo-item';
-                photoDiv.innerHTML = `
-                    <img src="${thumbnailUrl}" alt="Selected photo">
-                    <button type="button" class="btn-remove" onclick="toggleImmichPhoto('${assetId}', '${thumbnailUrl}')">
-                        <i class="lni lni-ban-2"></i>
-                    </button>
-                `;
-                selectedList.appendChild(photoDiv);
             }
+            
+            renderCombinedPhotos();
         }
 
         function removeUploadedFile(index) {
             window.galleryBlockState.uploadedFiles.splice(index, 1);
-            renderUploadedFiles();
-        }
-
-        function renderUploadedFiles() {
-            const list = document.getElementById('uploadedFilesList');
-            list.innerHTML = '';
-            window.galleryBlockState.uploadedFiles.forEach((file, index) => {
-                const fileDiv = document.createElement('div');
-                fileDiv.className = 'uploaded-file-item';
-                fileDiv.innerHTML = `
-                    <img src="${file.url}" alt="${file.name}">
-                    <span>${file.name}</span>
-                    <button type="button" class="btn-remove" onclick="removeUploadedFile(${index})">
-                        <i class="lni lni-ban-2"></i>
-                    </button>
-                `;
-                list.appendChild(fileDiv);
-            });
+            renderCombinedPhotos();
         }
 
         function loadImmichPage(page) {
@@ -283,7 +277,6 @@
         function createGalleryBlock() {
             const images = [];
             
-            // Add selected Immich photos
             window.galleryBlockState.selectedImmichPhotos.forEach((thumbnailUrl, assetId) => {
                 images.push({
                     type: 'immich',
@@ -291,7 +284,6 @@
                 });
             });
             
-            // Add uploaded files
             window.galleryBlockState.uploadedFiles.forEach(file => {
                 images.push({
                     type: 'upload',
@@ -305,7 +297,6 @@
                 return;
             }
 
-            // Submit the gallery block creation
             fetch(`/memories/${window.galleryBlockState.memoryId}/blocks/image-gallery`, {
                 method: 'POST',
                 headers: {
@@ -321,12 +312,11 @@
             });
         }
 
-        // Handle file upload response
         document.body.addEventListener('htmx:afterSwap', function(event) {
             if (event.detail.target.id === 'uploadedFilesList') {
                 const response = JSON.parse(event.detail.xhr.response);
                 window.galleryBlockState.uploadedFiles.push(response);
-                renderUploadedFiles();
+                renderCombinedPhotos();
                 document.getElementById('fileInput').value = '';
             }
         });
@@ -352,18 +342,15 @@
             const pageTotalPages = /*[[${totalPages}]]*/ 0;
             const pageCurrentPage = /*[[${currentPage}]]*/ 0;
             
-            // Update global state
             if (window.galleryBlockState) {
                 window.galleryBlockState.totalPages = pageTotalPages;
                 window.galleryBlockState.currentPage = pageCurrentPage;
             }
             
-            // Attach click handlers to photo items and restore selected state
             document.querySelectorAll('.immich-photo-item').forEach(item => {
                 const assetId = item.getAttribute('data-asset-id');
                 const thumbnailUrl = item.getAttribute('data-thumbnail-url');
                 
-                // Restore selected state if this photo was previously selected
                 if (window.galleryBlockState && window.galleryBlockState.selectedImmichPhotos.has(assetId)) {
                     item.classList.add('selected');
                 }
@@ -373,7 +360,6 @@
                 });
             });
             
-            // Update pagination
             const pagination = document.getElementById('immichPagination');
             if (pagination) {
                 pagination.innerHTML = '';
@@ -449,7 +435,6 @@
     </div>
     
     <script>
-        // Attach edit handler
         document.querySelectorAll('.btn-icon[data-block-id]').forEach(btn => {
             btn.addEventListener('click', function() {
                 const blockId = this.getAttribute('data-block-id');
@@ -458,7 +443,6 @@
         });
         
         function editBlock(blockId) {
-            // Implement edit functionality
             console.log('Edit block:', blockId);
         }
     </script>
