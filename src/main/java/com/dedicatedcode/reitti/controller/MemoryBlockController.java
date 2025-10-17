@@ -14,9 +14,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.HashMap;
@@ -51,7 +48,6 @@ public class MemoryBlockController {
         memoryService.deleteBlock(blockId);
         
         if (hxRequest != null) {
-            // For htmx requests, return empty content to remove the block
             return "memories/fragments :: empty";
         }
         
@@ -65,7 +61,6 @@ public class MemoryBlockController {
             @PathVariable Long blockId,
             Model model) {
         
-        // Verify user owns the memory
         memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
@@ -75,7 +70,6 @@ public class MemoryBlockController {
         model.addAttribute("memoryId", memoryId);
         model.addAttribute("block", block);
         
-        // Load block-specific data
         switch (block.getBlockType()) {
             case VISIT:
                 memoryService.getVisitBlock(blockId).ifPresent(visit -> 
@@ -140,7 +134,6 @@ public class MemoryBlockController {
             @PathVariable Long blockId,
             @PathVariable Long imageId) {
         
-        // Verify user owns the memory
         memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
@@ -154,7 +147,6 @@ public class MemoryBlockController {
             @PathVariable Long memoryId,
             @RequestParam List<Long> blockIds) {
         
-        // Verify user owns the memory
         memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
@@ -169,7 +161,6 @@ public class MemoryBlockController {
             @RequestParam(required = false) String headline,
             @RequestParam(required = false) String content) {
         
-        // Verify user owns the memory
         memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
@@ -185,7 +176,6 @@ public class MemoryBlockController {
             @PathVariable Long memoryId,
             @RequestParam Long visitId) {
         
-        // Verify user owns the memory
         memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
 
@@ -202,7 +192,6 @@ public class MemoryBlockController {
             @PathVariable Long memoryId,
             @RequestParam Long tripId) {
         
-        // Verify user owns the memory
         memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
@@ -256,7 +245,6 @@ public class MemoryBlockController {
             @PathVariable Long memoryId,
             @RequestParam("file") MultipartFile file) {
         
-        // Verify user owns the memory
         memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
@@ -265,18 +253,17 @@ public class MemoryBlockController {
         }
         
         try {
-            // Generate unique filename
             String originalFilename = file.getOriginalFilename();
             String extension = "";
             if (originalFilename != null && originalFilename.contains(".")) {
                 extension = originalFilename.substring(originalFilename.lastIndexOf("."));
             }
-            String filename = UUID.randomUUID() + extension;
-
-            this.s3Storage.store("images/" + filename, file.getInputStream(), file.getSize(), file.getContentType());
+            String filename = UUID.randomUUID().toString() + extension;
+            String key = "memories/" + memoryId + "/" + filename;
             
-            // Return URL
-            String fileUrl = "/api/v1/photos/reitti/" + filename;
+            s3Storage.store(key, file.getInputStream(), file.getSize(), file.getContentType());
+            
+            String fileUrl = "/api/v1/photos/uploaded/" + memoryId + "/" + filename;
             
             Map<String, String> response = new HashMap<>();
             response.put("url", fileUrl);
