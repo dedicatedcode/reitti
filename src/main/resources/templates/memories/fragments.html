@@ -147,7 +147,7 @@
                      id="immichPhotosGrid"
                      th:attr="hx-get=@{/memories/{id}/blocks/immich-photos(id=${memoryId},page=0)}"
                      hx-trigger="load"
-                     hx-swap="innerHTML">
+                     hx-swap="outerHTML">
                     <div class="loading" th:text="#{memory.block.gallery.loading}">Loading photos...</div>
                 </div>
                 <div class="immich-pagination" id="immichPagination"></div>
@@ -230,7 +230,7 @@
                 photoDiv.innerHTML = `
                     <img src="${thumbnailUrl}" alt="Selected photo">
                     <button type="button" class="btn-remove" onclick="toggleImmichPhoto('${assetId}', '${thumbnailUrl}')">
-                        <i class="lni lni-close"></i>
+                        <i class="lni lni-ban-2"></i>
                     </button>
                 `;
                 selectedList.appendChild(photoDiv);
@@ -252,7 +252,7 @@
                     <img src="${file.url}" alt="${file.name}">
                     <span>${file.name}</span>
                     <button type="button" class="btn-remove" onclick="removeUploadedFile(${index})">
-                        <i class="lni lni-close"></i>
+                        <i class="lni lni-ban-2"></i>
                     </button>
                 `;
                 list.appendChild(fileDiv);
@@ -262,8 +262,8 @@
         function loadImmichPage(page) {
             window.galleryBlockState.currentPage = page;
             htmx.ajax('GET', `/memories/${window.galleryBlockState.memoryId}/blocks/immich-photos?page=${page}`, {
-                target: '#immichPhotosGrid',
-                swap: 'innerHTML'
+                target: '.immich-photos-grid',
+                swap: 'outerHTML'
             });
         }
 
@@ -321,7 +321,7 @@
 </div>
 
 <!-- Immich photos grid fragment -->
-<div th:fragment="immich-photos-grid">
+<div class="immich-photos-grid" th:fragment="immich-photos-grid">
     <div th:if="${photos.isEmpty()}" class="no-photos" th:text="#{memory.block.gallery.immich.no.photos}">
         No photos found for this date range
     </div>
@@ -330,7 +330,7 @@
          th:attr="data-asset-id=${photo.id},data-thumbnail-url=${photo.thumbnailUrl}">
         <img th:src="${photo.thumbnailUrl}" th:alt="${photo.fileName}">
         <div class="photo-overlay">
-            <i class="lni lni-checkmark-circle"></i>
+            <i class="lni lni-check-circle-1"></i>
         </div>
     </div>
     

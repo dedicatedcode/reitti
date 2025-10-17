@@ -274,8 +274,7 @@ public class MemoryController {
 
         model.addAttribute("memoryId", id);
         model.addAttribute("blockType", type);
-        
-        // Check if Immich integration is enabled for image gallery
+
         if ("IMAGE_GALLERY".equals(type)) {
             boolean immichEnabled = immichIntegrationService.getIntegrationForUser(user)
                     .map(integration -> integration.isEnabled())
