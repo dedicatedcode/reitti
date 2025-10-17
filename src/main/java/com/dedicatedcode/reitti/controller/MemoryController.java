@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller;
 
+import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.memory.HeaderType;
 import com.dedicatedcode.reitti.model.memory.Memory;
 import com.dedicatedcode.reitti.model.memory.MemoryBlockPart;
@@ -83,7 +84,6 @@ public class MemoryController {
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             Model model) {
 
-        // Validate required fields
         if (title == null || title.trim().isEmpty()) {
             model.addAttribute("error", "memory.validation.title.required");
             model.addAttribute("title", title);
@@ -277,7 +277,7 @@ public class MemoryController {
 
         if ("IMAGE_GALLERY".equals(type)) {
             boolean immichEnabled = immichIntegrationService.getIntegrationForUser(user)
-                    .map(integration -> integration.isEnabled())
+                    .map(ImmichIntegration::isEnabled)
                     .orElse(false);
             model.addAttribute("immichEnabled", immichEnabled);
         }

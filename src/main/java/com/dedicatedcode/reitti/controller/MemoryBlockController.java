@@ -258,12 +258,11 @@ public class MemoryBlockController {
             if (originalFilename != null && originalFilename.contains(".")) {
                 extension = originalFilename.substring(originalFilename.lastIndexOf("."));
             }
-            String filename = UUID.randomUUID().toString() + extension;
-            String key = "memories/" + memoryId + "/" + filename;
+            String filename = UUID.randomUUID() + extension;
+
+            s3Storage.store("images/" + filename, file.getInputStream(), file.getSize(), file.getContentType());
             
-            s3Storage.store(key, file.getInputStream(), file.getSize(), file.getContentType());
-            
-            String fileUrl = "/api/v1/photos/uploaded/" + memoryId + "/" + filename;
+            String fileUrl = "/api/v1/photos/reitti/" + filename;
             
             Map<String, String> response = new HashMap<>();
             response.put("url", fileUrl);
