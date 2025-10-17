@@ -1,45 +1,25 @@
 package com.dedicatedcode.reitti.model.memory;
 
 import java.io.Serializable;
+import java.util.List;
+import java.util.Objects;
 
 public class MemoryBlockImageGallery implements MemoryBlockPart, Serializable {
     
-    private final Long id;
     private final Long blockId;
-    private final String imageUrl;
-    private final String caption;
-    private final Integer position;
+    private final List<GalleryImage> images;
 
-    public MemoryBlockImageGallery(Long blockId, String imageUrl, String caption, Integer position) {
-        this(null, blockId, imageUrl, caption, position);
-    }
-
-    public MemoryBlockImageGallery(Long id, Long blockId, String imageUrl, String caption, Integer position) {
-        this.id = id;
+    public MemoryBlockImageGallery(Long blockId, List<GalleryImage> images) {
         this.blockId = blockId;
-        this.imageUrl = imageUrl;
-        this.caption = caption;
-        this.position = position;
-    }
-
-    public Long getId() {
-        return id;
+        this.images = images != null ? List.copyOf(images) : List.of();
     }
 
     public Long getBlockId() {
         return blockId;
     }
 
-    public String getImageUrl() {
-        return imageUrl;
-    }
-
-    public String getCaption() {
-        return caption;
-    }
-
-    public Integer getPosition() {
-        return position;
+    public List<GalleryImage> getImages() {
+        return images;
     }
 
     @Override
@@ -47,16 +27,8 @@ public class MemoryBlockImageGallery implements MemoryBlockPart, Serializable {
         return BlockType.IMAGE_GALLERY;
     }
 
-    public MemoryBlockImageGallery withId(Long id) {
-        return new MemoryBlockImageGallery(id, this.blockId, this.imageUrl, this.caption, this.position);
-    }
-
-    public MemoryBlockImageGallery withCaption(String caption) {
-        return new MemoryBlockImageGallery(this.id, this.blockId, this.imageUrl, caption, this.position);
-    }
-
-    public MemoryBlockImageGallery withPosition(Integer position) {
-        return new MemoryBlockImageGallery(this.id, this.blockId, this.imageUrl, this.caption, position);
+    public MemoryBlockImageGallery withImages(List<GalleryImage> images) {
+        return new MemoryBlockImageGallery(this.blockId, images);
     }
 
     @Override
@@ -66,22 +38,58 @@ public class MemoryBlockImageGallery implements MemoryBlockPart, Serializable {
 
         MemoryBlockImageGallery that = (MemoryBlockImageGallery) o;
 
-        return id != null ? id.equals(that.id) : that.id == null;
+        return Objects.equals(blockId, that.blockId);
     }
 
     @Override
     public int hashCode() {
-        return id != null ? id.hashCode() : 0;
+        return blockId != null ? blockId.hashCode() : 0;
     }
 
     @Override
     public String toString() {
         return "MemoryBlockImageGallery{" +
-                "id=" + id +
-                ", blockId=" + blockId +
-                ", imageUrl='" + imageUrl + '\'' +
-                ", caption='" + caption + '\'' +
-                ", position=" + position +
+                "blockId=" + blockId +
+                ", images=" + images +
                 '}';
+    }
+
+    public static class GalleryImage implements Serializable {
+        private final String imageUrl;
+        private final String caption;
+
+        public GalleryImage(String imageUrl, String caption) {
+            this.imageUrl = imageUrl;
+            this.caption = caption;
+        }
+
+        public String getImageUrl() {
+            return imageUrl;
+        }
+
+        public String getCaption() {
+            return caption;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            GalleryImage that = (GalleryImage) o;
+            return Objects.equals(imageUrl, that.imageUrl) && Objects.equals(caption, that.caption);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(imageUrl, caption);
+        }
+
+        @Override
+        public String toString() {
+            return "GalleryImage{" +
+                    "imageUrl='" + imageUrl + '\'' +
+                    ", caption='" + caption + '\'' +
+                    '}';
+        }
     }
 }

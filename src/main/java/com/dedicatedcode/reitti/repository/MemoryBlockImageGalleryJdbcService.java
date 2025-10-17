@@ -1,14 +1,14 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.memory.MemoryBlockImageGallery;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
-import java.sql.PreparedStatement;
-import java.sql.Statement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,71 +16,79 @@ import java.util.Optional;
 public class MemoryBlockImageGalleryJdbcService {
 
     private final JdbcTemplate jdbcTemplate;
+    private final ObjectMapper objectMapper;
 
-    public MemoryBlockImageGalleryJdbcService(JdbcTemplate jdbcTemplate) {
+    public MemoryBlockImageGalleryJdbcService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
         this.jdbcTemplate = jdbcTemplate;
+        this.objectMapper = objectMapper;
     }
 
-    private static final RowMapper<MemoryBlockImageGallery> MEMORY_BLOCK_IMAGE_GALLERY_ROW_MAPPER = (rs, rowNum) -> new MemoryBlockImageGallery(
-            rs.getLong("id"),
-            rs.getLong("block_id"),
-            rs.getString("image_url"),
-            rs.getString("caption"),
-            rs.getInt("position")
-    );
+    private final RowMapper<MemoryBlockImageGallery> MEMORY_BLOCK_IMAGE_GALLERY_ROW_MAPPER = new RowMapper<>() {
+        @Override
+        public MemoryBlockImageGallery mapRow(ResultSet rs, int rowNum) throws SQLException {
+            Long blockId = rs.getLong("block_id");
+            String imagesJson = rs.getString("images");
+            List<MemoryBlockImageGallery.GalleryImage> images = null;
+            try {
+                images = objectMapper.readValue(imagesJson, new TypeReference<List<MemoryBlockImageGallery.GalleryImage>>() {});
+            } catch (Exception e) {
+                throw new SQLException("Failed to parse images JSON", e);
+            }
+            return new MemoryBlockImageGallery(blockId, images);
+        }
+    };
 
-    public MemoryBlockImageGallery create(MemoryBlockImageGallery image) {
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-        
-        jdbcTemplate.update(connection -> {
-            PreparedStatement ps = connection.prepareStatement(
-                    "INSERT INTO memory_block_image_gallery (block_id, image_url, caption, position) " +
-                    "VALUES (?, ?, ?, ?)",
-                    Statement.RETURN_GENERATED_KEYS
+    public MemoryBlockImageGallery create(MemoryBlockImageGallery gallery) {
+        try {
+            String imagesJson = objectMapper.writeValueAsString(gallery.getImages());
+            jdbcTemplate.update(
+                    "INSERT INTO memory_block_image_gallery (block_id, images) VALUES (?, ?::jsonb)",
+                    gallery.getBlockId(),
+                    imagesJson
             );
-            ps.setLong(1, image.getBlockId());
-            ps.setString(2, image.getImageUrl());
-            ps.setString(3, image.getCaption());
-            ps.setInt(4, image.getPosition());
-            return ps;
-        }, keyHolder);
-
-        Long id = (Long) keyHolder.getKeys().get("id");
-        return image.withId(id);
+            return gallery;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create MemoryBlockImageGallery", e);
+        }
     }
 
-    public MemoryBlockImageGallery update(MemoryBlockImageGallery image) {
-        jdbcTemplate.update(
-                "UPDATE memory_block_image_gallery SET caption = ?, position = ? WHERE id = ?",
-                image.getCaption(),
-                image.getPosition(),
-                image.getId()
-        );
-        return image;
+    public MemoryBlockImageGallery update(MemoryBlockImageGallery gallery) {
+        try {
+            String imagesJson = objectMapper.writeValueAsString(gallery.getImages());
+            jdbcTemplate.update(
+                    "UPDATE memory_block_image_gallery SET images = ?::jsonb WHERE block_id = ?",
+                    imagesJson,
+                    gallery.getBlockId()
+            );
+            return gallery;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to update MemoryBlockImageGallery", e);
+        }
     }
 
-    public void delete(Long id) {
-        jdbcTemplate.update("DELETE FROM memory_block_image_gallery WHERE id = ?", id);
+    public void delete(Long blockId) {
+        jdbcTemplate.update("DELETE FROM memory_block_image_gallery WHERE block_id = ?", blockId);
     }
 
     public void deleteByBlockId(Long blockId) {
         jdbcTemplate.update("DELETE FROM memory_block_image_gallery WHERE block_id = ?", blockId);
     }
 
-    public Optional<MemoryBlockImageGallery> findById(Long id) {
+    public Optional<MemoryBlockImageGallery> findById(Long blockId) {
         List<MemoryBlockImageGallery> results = jdbcTemplate.query(
-                "SELECT * FROM memory_block_image_gallery WHERE id = ?",
+                "SELECT * FROM memory_block_image_gallery WHERE block_id = ?",
                 MEMORY_BLOCK_IMAGE_GALLERY_ROW_MAPPER,
-                id
+                blockId
         );
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
     public List<MemoryBlockImageGallery> findByBlockId(Long blockId) {
-        return jdbcTemplate.query(
-                "SELECT * FROM memory_block_image_gallery WHERE block_id = ? ORDER BY position",
+        List<MemoryBlockImageGallery> results = jdbcTemplate.query(
+                "SELECT * FROM memory_block_image_gallery WHERE block_id = ?",
                 MEMORY_BLOCK_IMAGE_GALLERY_ROW_MAPPER,
                 blockId
         );
+        return results;
     }
 }

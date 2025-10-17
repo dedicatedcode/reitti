@@ -62,149 +62,133 @@ class MemoryBlockImageGalleryJdbcServiceTest {
     }
 
     @Test
-    void testCreateImage() {
-        MemoryBlockImageGallery image = new MemoryBlockImageGallery(
-                testBlock.getId(),
-                "https://example.com/image1.jpg",
-                "Test Caption",
-                0
+    void testCreateGallery() {
+        List<MemoryBlockImageGallery.GalleryImage> images = List.of(
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Caption 1"),
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image2.jpg", "Caption 2")
         );
 
-        MemoryBlockImageGallery created = memoryBlockImageGalleryJdbcService.create(image);
+        MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);
 
-        assertNotNull(created.getId());
+        MemoryBlockImageGallery created = memoryBlockImageGalleryJdbcService.create(gallery);
+
         assertEquals(testBlock.getId(), created.getBlockId());
-        assertEquals("https://example.com/image1.jpg", created.getImageUrl());
-        assertEquals("Test Caption", created.getCaption());
-        assertEquals(0, created.getPosition());
+        assertEquals(2, created.getImages().size());
+        assertEquals("https://example.com/image1.jpg", created.getImages().get(0).getImageUrl());
+        assertEquals("Caption 1", created.getImages().get(0).getCaption());
+        assertEquals("https://example.com/image2.jpg", created.getImages().get(1).getImageUrl());
+        assertEquals("Caption 2", created.getImages().get(1).getCaption());
     }
 
     @Test
-    void testUpdateImage() {
-        MemoryBlockImageGallery image = new MemoryBlockImageGallery(
-                testBlock.getId(),
-                "https://example.com/image1.jpg",
-                "Original Caption",
-                0
+    void testUpdateGallery() {
+        List<MemoryBlockImageGallery.GalleryImage> images = List.of(
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Original Caption")
         );
 
-        MemoryBlockImageGallery created = memoryBlockImageGalleryJdbcService.create(image);
+        MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);
+        MemoryBlockImageGallery created = memoryBlockImageGalleryJdbcService.create(gallery);
 
-        MemoryBlockImageGallery updated = created
-                .withCaption("Updated Caption")
-                .withPosition(5);
+        List<MemoryBlockImageGallery.GalleryImage> updatedImages = List.of(
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Updated Caption"),
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image3.jpg", "New Image")
+        );
 
+        MemoryBlockImageGallery updated = created.withImages(updatedImages);
         MemoryBlockImageGallery result = memoryBlockImageGalleryJdbcService.update(updated);
 
-        assertEquals("Updated Caption", result.getCaption());
-        assertEquals(5, result.getPosition());
+        assertEquals(2, result.getImages().size());
+        assertEquals("Updated Caption", result.getImages().get(0).getCaption());
+        assertEquals("https://example.com/image3.jpg", result.getImages().get(1).getImageUrl());
     }
 
     @Test
-    void testDeleteImage() {
-        MemoryBlockImageGallery image = new MemoryBlockImageGallery(
-                testBlock.getId(),
-                "https://example.com/image1.jpg",
-                "Test Caption",
-                0
+    void testDeleteGallery() {
+        List<MemoryBlockImageGallery.GalleryImage> images = List.of(
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Caption")
         );
 
-        MemoryBlockImageGallery created = memoryBlockImageGalleryJdbcService.create(image);
-        memoryBlockImageGalleryJdbcService.delete(created.getId());
+        MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);
+        memoryBlockImageGalleryJdbcService.create(gallery);
 
-        Optional<MemoryBlockImageGallery> found = memoryBlockImageGalleryJdbcService.findById(created.getId());
+        memoryBlockImageGalleryJdbcService.delete(testBlock.getId());
+
+        Optional<MemoryBlockImageGallery> found = memoryBlockImageGalleryJdbcService.findById(testBlock.getId());
         assertFalse(found.isPresent());
     }
 
     @Test
     void testDeleteByBlockId() {
-        MemoryBlockImageGallery image1 = new MemoryBlockImageGallery(
-                testBlock.getId(),
-                "https://example.com/image1.jpg",
-                "Caption 1",
-                0
+        List<MemoryBlockImageGallery.GalleryImage> images = List.of(
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Caption 1"),
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image2.jpg", "Caption 2")
         );
 
-        MemoryBlockImageGallery image2 = new MemoryBlockImageGallery(
-                testBlock.getId(),
-                "https://example.com/image2.jpg",
-                "Caption 2",
-                1
-        );
-
-        memoryBlockImageGalleryJdbcService.create(image1);
-        memoryBlockImageGalleryJdbcService.create(image2);
+        MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);
+        memoryBlockImageGalleryJdbcService.create(gallery);
 
         memoryBlockImageGalleryJdbcService.deleteByBlockId(testBlock.getId());
 
-        List<MemoryBlockImageGallery> images = memoryBlockImageGalleryJdbcService.findByBlockId(testBlock.getId());
-        assertTrue(images.isEmpty());
+        List<MemoryBlockImageGallery> galleries = memoryBlockImageGalleryJdbcService.findByBlockId(testBlock.getId());
+        assertTrue(galleries.isEmpty());
     }
 
     @Test
     void testFindById() {
-        MemoryBlockImageGallery image = new MemoryBlockImageGallery(
-                testBlock.getId(),
-                "https://example.com/image1.jpg",
-                "Test Caption",
-                0
+        List<MemoryBlockImageGallery.GalleryImage> images = List.of(
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Test Caption")
         );
 
-        MemoryBlockImageGallery created = memoryBlockImageGalleryJdbcService.create(image);
-        Optional<MemoryBlockImageGallery> found = memoryBlockImageGalleryJdbcService.findById(created.getId());
+        MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);
+        memoryBlockImageGalleryJdbcService.create(gallery);
+
+        Optional<MemoryBlockImageGallery> found = memoryBlockImageGalleryJdbcService.findById(testBlock.getId());
 
         assertTrue(found.isPresent());
-        assertEquals(created.getId(), found.get().getId());
-        assertEquals("https://example.com/image1.jpg", found.get().getImageUrl());
+        assertEquals(testBlock.getId(), found.get().getBlockId());
+        assertEquals(1, found.get().getImages().size());
+        assertEquals("https://example.com/image1.jpg", found.get().getImages().get(0).getImageUrl());
     }
 
     @Test
     void testFindByBlockId() {
-        MemoryBlockImageGallery image1 = new MemoryBlockImageGallery(
-                testBlock.getId(),
-                "https://example.com/image1.jpg",
-                "Caption 1",
-                0
+        List<MemoryBlockImageGallery.GalleryImage> images = List.of(
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Caption 1"),
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image2.jpg", "Caption 2"),
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image3.jpg", "Caption 3")
         );
 
-        MemoryBlockImageGallery image2 = new MemoryBlockImageGallery(
-                testBlock.getId(),
-                "https://example.com/image2.jpg",
-                "Caption 2",
-                1
-        );
+        MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);
+        memoryBlockImageGalleryJdbcService.create(gallery);
 
-        MemoryBlockImageGallery image3 = new MemoryBlockImageGallery(
-                testBlock.getId(),
-                "https://example.com/image3.jpg",
-                "Caption 3",
-                2
-        );
+        List<MemoryBlockImageGallery> galleries = memoryBlockImageGalleryJdbcService.findByBlockId(testBlock.getId());
 
-        memoryBlockImageGalleryJdbcService.create(image1);
-        memoryBlockImageGalleryJdbcService.create(image2);
-        memoryBlockImageGalleryJdbcService.create(image3);
-
-        List<MemoryBlockImageGallery> images = memoryBlockImageGalleryJdbcService.findByBlockId(testBlock.getId());
-
-        assertEquals(3, images.size());
-        assertEquals(0, images.get(0).getPosition());
-        assertEquals(1, images.get(1).getPosition());
-        assertEquals(2, images.get(2).getPosition());
+        assertEquals(1, galleries.size());
+        assertEquals(3, galleries.get(0).getImages().size());
+        assertEquals("https://example.com/image1.jpg", galleries.get(0).getImages().get(0).getImageUrl());
+        assertEquals("https://example.com/image2.jpg", galleries.get(0).getImages().get(1).getImageUrl());
+        assertEquals("https://example.com/image3.jpg", galleries.get(0).getImages().get(2).getImageUrl());
     }
 
     @Test
-    void testCreateImageWithNullCaption() {
-        MemoryBlockImageGallery image = new MemoryBlockImageGallery(
-                testBlock.getId(),
-                "https://example.com/image1.jpg",
-                null,
-                0
+    void testCreateGalleryWithNullCaptions() {
+        List<MemoryBlockImageGallery.GalleryImage> images = List.of(
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", null),
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image2.jpg", "Caption 2")
         );
 
-        MemoryBlockImageGallery created = memoryBlockImageGalleryJdbcService.create(image);
+        MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);
+        MemoryBlockImageGallery created = memoryBlockImageGalleryJdbcService.create(gallery);
 
-        assertNull(created.getCaption());
-        assertEquals("https://example.com/image1.jpg", created.getImageUrl());
+        assertNull(created.getImages().get(0).getCaption());
+        assertEquals("Caption 2", created.getImages().get(1).getCaption());
+    }
+
+    @Test
+    void testCreateEmptyGallery() {
+        MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), List.of());
+        MemoryBlockImageGallery created = memoryBlockImageGalleryJdbcService.create(gallery);
+
+        assertTrue(created.getImages().isEmpty());
     }
 }
