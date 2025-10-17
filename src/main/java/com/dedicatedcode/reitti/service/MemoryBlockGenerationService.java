@@ -96,8 +96,6 @@ public class MemoryBlockGenerationService {
             blockParts.add(introBlock);
         }
 
-//        ScoredVisit startVisit = clusters.getFirst().getHighestScoredVisit();
-//        blockParts.add(convertVisitToBlock(startVisit.getVisit()));
         // Add travel to accommodation section
         if (firstAccommodationArrival != null) {
             List<Trip> tripsToAccommodation = allTripsInRange.stream()
@@ -106,7 +104,20 @@ public class MemoryBlockGenerationService {
                 .sorted(Comparator.comparing(Trip::getStartTime))
                 .toList();
 
-                MemoryClusterBlock clusterBlock = convertToClusterBlock(tripsToAccommodation, accommodation.get());
+            //You set off from {0} at {1) and arrived at {3} at {4}. The total time for this part of your trip was {5}, with {6} spent actively traveling. Now it's time to relax, unpack, and prepare for what's next.
+            String text = messageSource.getMessage("memory.generator.travel_to_accommodation.text", new Object[]{
+                    home.map(h ->h.getPlace().getCity()).orElse(""),
+                    tripsToAccommodation.getFirst().getStartTime(),
+                    accommodation.map(a -> a.getPlace().getCity()).orElse(""),
+                    tripsToAccommodation.getLast().getEndTime(),
+                    Duration.between(tripsToAccommodation.getFirst().getStartTime(), tripsToAccommodation.getLast().getEndTime()).toSeconds(),
+                    tripsToAccommodation.stream().map(Trip::getDurationSeconds).reduce(0L, Long::sum)
+            }, LocaleContextHolder.getLocale());
+
+            MemoryClusterBlock clusterBlock = convertToClusterBlock(tripsToAccommodation, accommodation.get());
+
+            MemoryBlockText accommodationPreRoll = new MemoryBlockText(null, null, text);
+                blockParts.add(accommodationPreRoll);
                 blockParts.add(clusterBlock);
         }
 
@@ -273,7 +284,8 @@ public class MemoryBlockGenerationService {
 
         return messageSource.getMessage("memory.generator.introductory.text",
                 new Object[]{startDate, homePlace.getPlace().getCity(),
-                        totalDays, accommodationPlace.getCity(),
+                        totalDays,
+                        accommodationPlace.getCity(),
                         country,
                         totalVisits,
                         clusters.size(),

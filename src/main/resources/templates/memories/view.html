@@ -77,9 +77,8 @@
                 <div th:each="block : ${blocks}" class="memory-block" th:attr="data-block-id=${block.blockId}, data-block-type=${block.type.name()}">
                     <div class="block-content">
                         <div th:if="${block.type.name() == 'TEXT'}" class="text-block">
-                            <div class="block-header">
+                            <div class="block-header" th:if="${block.headline != null && !block.headline.isEmpty()}">
                                 <h3 class="title" th:text="${block.headline}">Text Block</h3>
-
                             </div>
                             <p th:text="${block.content}">Content will be loaded here</p>
                         </div>
@@ -299,9 +298,7 @@
                                 })();
                             </script>
                             <div class="cluster-summary" th:if="${block.combinedStartTime != null && block.combinedEndTime != null}">
-
                                 <div class="cluster-duration" th:if="${block.completeDuration != null}">
-                                    <i class="lni lni-hourglass"></i>
                                     <span th:text="
                                     #{memory.view.block.cluster.duration(${#numbers.formatDecimal(block.completeDuration / 3600.0, 0, 0)},${#numbers.formatDecimal((block.completeDuration % 3600) / 60, 0, 0)},${#numbers.formatDecimal(block.movingDuration / 3600.0, 0, 0)},${#numbers.formatDecimal((block.movingDuration % 3600) / 60, 0, 0)})}">Total Duration</span>
                                 </div>

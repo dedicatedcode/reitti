@@ -1845,6 +1845,7 @@ button:disabled {
 .memories-page .memory-blocks-container {
     font-family: var(--serif-font);
     font-size: 1.4em;
+    line-height: 1.6em;
 }
 
 .memories-page .memory-map {
@@ -1891,6 +1892,15 @@ button:disabled {
     margin-top: 36px;
 }
 
+.memories-page .text-block {
+    font-weight: 300;
+    font-size: 1.2em;
+}
+.memories-page .cluster-block .cluster-duration {
+    text-align: center;
+}
+.memories-page .cluster-block .cluster-duration {
+}
 .memories-page .cluster-block .block-header,
 .memories-page .visit-block .block-header {
     position: relative;
