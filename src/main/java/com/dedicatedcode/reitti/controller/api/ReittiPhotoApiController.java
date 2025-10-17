@@ -27,20 +27,21 @@ public class ReittiPhotoApiController {
         this.restTemplate = restTemplate;
     }
 
-    @GetMapping("/proxy/{assetId}/thumbnail")
-    public ResponseEntity<byte[]> getPhotoThumbnail(
-            @PathVariable String assetId,
-            @AuthenticationPrincipal User user) {
-        
-        return proxyImageRequest(user, assetId, "thumbnail");
-    }
-    
-    @GetMapping("/proxy/{assetId}/original")
-    public ResponseEntity<byte[]> getPhotoOriginal(
-            @PathVariable String assetId,
-            @AuthenticationPrincipal User user) {
-        
-        return proxyImageRequest(user, assetId, "fullsize");
+    @GetMapping("/{filename}")
+    public ResponseEntity<byte[]> getPhoto(@PathVariable String filename, @AuthenticationPrincipal User user) {
+
+        this.s3Storage.read("images/" + filename);
+        HttpHeaders responseHeaders = new HttpHeaders();
+
+                if (response.getHeaders().getContentType() != null) {
+                    responseHeaders.setContentType(response.getHeaders().getContentType());
+                } else {
+                    responseHeaders.setContentType(MediaType.IMAGE_JPEG);
+                }
+
+                responseHeaders.setCacheControl("public, max-age=3600");
+
+                return new ResponseEntity<>(response.getBody(), responseHeaders, HttpStatus.OK);
     }
     
     private ResponseEntity<byte[]> proxyImageRequest(User user, String assetId, String size) {

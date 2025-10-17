@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.dto.PhotoResponse;
 import com.dedicatedcode.reitti.model.memory.*;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.MemoryService;
+import com.dedicatedcode.reitti.service.S3Storage;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -29,10 +30,12 @@ public class MemoryBlockController {
 
     private final MemoryService memoryService;
     private final ImmichIntegrationService immichIntegrationService;
+    private final S3Storage s3Storage;
 
-    public MemoryBlockController(MemoryService memoryService, ImmichIntegrationService immichIntegrationService) {
+    public MemoryBlockController(MemoryService memoryService, ImmichIntegrationService immichIntegrationService, S3Storage s3Storage) {
         this.memoryService = memoryService;
         this.immichIntegrationService = immichIntegrationService;
+        this.s3Storage = s3Storage;
     }
 
     @DeleteMapping("/{blockId}")
@@ -42,7 +45,6 @@ public class MemoryBlockController {
             @PathVariable Long blockId,
             @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         
-        // Verify user owns the memory
         memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
@@ -104,7 +106,6 @@ public class MemoryBlockController {
             @RequestParam String headline,
             @RequestParam String content) {
         
-        // Verify user owns the memory
         memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
@@ -125,7 +126,6 @@ public class MemoryBlockController {
             @RequestParam String imageUrl,
             @RequestParam(required = false) String caption) {
         
-        // Verify user owns the memory
         memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
@@ -218,10 +218,8 @@ public class MemoryBlockController {
             @AuthenticationPrincipal User user,
             @PathVariable Long memoryId,
             @RequestBody Map<String, Object> request) {
-        
-        // Verify user owns the memory
-        Memory memory = memoryService.getMemoryById(user, memoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+
+        memoryService.getMemoryById(user, memoryId).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
         @SuppressWarnings("unchecked")
         List<Map<String, String>> images = (List<Map<String, String>>) request.get("images");
@@ -267,26 +265,18 @@ public class MemoryBlockController {
         }
         
         try {
-            // Create uploads directory if it doesn't exist
-            Path uploadDir = Paths.get("uploads");
-            if (!Files.exists(uploadDir)) {
-                Files.createDirectories(uploadDir);
-            }
-            
             // Generate unique filename
             String originalFilename = file.getOriginalFilename();
             String extension = "";
             if (originalFilename != null && originalFilename.contains(".")) {
                 extension = originalFilename.substring(originalFilename.lastIndexOf("."));
             }
-            String filename = UUID.randomUUID().toString() + extension;
-            
-            // Save file
-            Path filePath = uploadDir.resolve(filename);
-            Files.copy(file.getInputStream(), filePath);
+            String filename = UUID.randomUUID() + extension;
+
+            this.s3Storage.store("images/" + filename, file.getInputStream(), file.getSize(), file.getContentType());
             
             // Return URL
-            String fileUrl = "/uploads/" + filename;
+            String fileUrl = "/api/v1/photos/reitti/" + filename;
             
             Map<String, String> response = new HashMap<>();
             response.put("url", fileUrl);
