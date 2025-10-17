@@ -148,9 +148,8 @@ public class ImmichIntegrationService {
         
         if (searchResponse.getAssets() != null && searchResponse.getAssets().getItems() != null) {
             for (ImmichAsset asset : searchResponse.getAssets().getItems()) {
-                // Use proxy URLs instead of direct Immich URLs
-                String thumbnailUrl = "/api/v1/photos/proxy/" + asset.getId() + "/thumbnail";
-                String fullImageUrl = "/api/v1/photos/proxy/" + asset.getId() + "/original";
+                String thumbnailUrl = "/api/v1/photos/immich/proxy/" + asset.getId() + "/thumbnail";
+                String fullImageUrl = "/api/v1/photos/immich/proxy/" + asset.getId() + "/original";
                 
                 Double latitude = null;
                 Double longitude = null;

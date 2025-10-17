@@ -15,13 +15,13 @@ import java.util.List;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/v1/photos")
-public class PhotoApiController {
+@RequestMapping("/api/v1/photos/immich")
+public class ImmichPhotoApiController {
     
     private final ImmichIntegrationService immichIntegrationService;
     private final RestTemplate restTemplate;
     
-    public PhotoApiController(ImmichIntegrationService immichIntegrationService, RestTemplate restTemplate) {
+    public ImmichPhotoApiController(ImmichIntegrationService immichIntegrationService, RestTemplate restTemplate) {
         this.immichIntegrationService = immichIntegrationService;
         this.restTemplate = restTemplate;
     }
