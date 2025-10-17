@@ -1,0 +1,480 @@
+/* Gallery Block Form Styles */
+.memories-block .gallery-block-form {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.memories-block .gallery-panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin: 2rem 0;
+}
+
+@media (max-width: 768px) {
+    .memories-block .gallery-panels {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Gallery Panel */
+.memories-block .gallery-panel {
+    background: var(--surface-color, #ffffff);
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.memories-block .gallery-panel h4 {
+    margin: 0 0 1rem 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary, #212121);
+}
+
+.memories-block .gallery-panel h5 {
+    margin: 1.5rem 0 0.75rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary, #212121);
+}
+
+/* Immich Photos Container */
+.memories-block .immich-photos-container {
+    margin-bottom: 1.5rem;
+}
+
+.memories-block .immich-photos-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    min-height: 200px;
+}
+
+.memories-block .immich-photo-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+    background: var(--surface-variant, #f5f5f5);
+}
+
+.memories-block .immich-photo-item:hover {
+    border-color: var(--primary-color, #1976d2);
+    transform: scale(1.02);
+}
+
+.memories-block .immich-photo-item.selected {
+    border-color: var(--primary-color, #1976d2);
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+.memories-block .immich-photo-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.memories-block .photo-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.memories-block .immich-photo-item:hover .photo-overlay,
+.memories-block .immich-photo-item.selected .photo-overlay {
+    opacity: 1;
+}
+
+.memories-block .photo-overlay i {
+    font-size: 2rem;
+    color: #ffffff;
+}
+
+.memories-block .immich-photo-item.selected .photo-overlay i {
+    color: var(--primary-color, #1976d2);
+    background: #ffffff;
+    border-radius: 50%;
+    padding: 0.25rem;
+}
+
+/* Loading State */
+.memories-block .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    color: var(--text-secondary, #757575);
+    font-style: italic;
+}
+
+/* No Photos State */
+.memories-block .no-photos {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    color: var(--text-secondary, #757575);
+    text-align: center;
+    padding: 2rem;
+}
+
+/* Pagination Controls */
+.memories-block .immich-pagination {
+    margin-top: 1rem;
+}
+
+.memories-block .pagination-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.memories-block .pagination-controls button {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-color, #e0e0e0);
+    background: var(--surface-color, #ffffff);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+}
+
+.memories-block .pagination-controls button:hover {
+    background: var(--surface-variant, #f5f5f5);
+    border-color: var(--primary-color, #1976d2);
+}
+
+.memories-block .pagination-controls button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.memories-block .page-info {
+    font-size: 0.875rem;
+    color: var(--text-secondary, #757575);
+    min-width: 60px;
+    text-align: center;
+}
+
+/* Selected Photos List */
+.memories-block .selected-photos-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 0.5rem;
+}
+
+.memories-block .selected-photo-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 2px solid var(--primary-color, #1976d2);
+}
+
+.memories-block .selected-photo-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.memories-block .selected-photo-item .btn-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.7);
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: all 0.2s ease;
+}
+
+.memories-block .selected-photo-item .btn-remove:hover {
+    background: rgba(211, 47, 47, 0.9);
+    transform: scale(1.1);
+}
+
+.memories-block .selected-photo-item .btn-remove i {
+    font-size: 0.875rem;
+}
+
+/* Upload Panel */
+.memories-block .upload-area {
+    margin-bottom: 1.5rem;
+}
+
+.memories-block .upload-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+    border: 2px dashed var(--border-color, #e0e0e0);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: var(--surface-variant, #f5f5f5);
+}
+
+.memories-block .upload-label:hover {
+    border-color: var(--primary-color, #1976d2);
+    background: rgba(25, 118, 210, 0.05);
+}
+
+.memories-block .upload-label i {
+    font-size: 3rem;
+    color: var(--primary-color, #1976d2);
+    margin-bottom: 1rem;
+}
+
+.memories-block .upload-label span {
+    color: var(--text-secondary, #757575);
+    font-size: 0.875rem;
+}
+
+.memories-block #fileInput {
+    display: none;
+}
+
+/* Uploaded Files List */
+.memories-block .uploaded-files-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.75rem;
+}
+
+.memories-block .uploaded-file-item {
+    position: relative;
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--surface-color, #ffffff);
+}
+
+.memories-block .uploaded-file-item img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    display: block;
+}
+
+.memories-block .uploaded-file-item span {
+    display: block;
+    padding: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary, #757575);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: var(--surface-variant, #f5f5f5);
+}
+
+.memories-block .uploaded-file-item .btn-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.7);
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: all 0.2s ease;
+}
+
+.memories-block .uploaded-file-item .btn-remove:hover {
+    background: rgba(211, 47, 47, 0.9);
+    transform: scale(1.1);
+}
+
+.memories-block .uploaded-file-item .btn-remove i {
+    font-size: 0.875rem;
+}
+
+/* Form Actions */
+.memories-block .form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color, #e0e0e0);
+}
+
+.memories-block .form-actions button {
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.memories-block .form-actions .btn-primary {
+    background: var(--primary-color, #1976d2);
+    color: #ffffff;
+}
+
+.memories-block .form-actions .btn-primary:hover {
+    background: var(--primary-dark, #1565c0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.memories-block .form-actions .btn-secondary {
+    background: transparent;
+    color: var(--text-secondary, #757575);
+    border: 1px solid var(--border-color, #e0e0e0);
+}
+
+.memories-block .form-actions .btn-secondary:hover {
+    background: var(--surface-variant, #f5f5f5);
+    border-color: var(--text-secondary, #757575);
+}
+
+/* Block Type Selection */
+.memories-block .block-type-selection {
+    padding: 2rem;
+}
+
+.memories-block .block-type-selection h3 {
+    margin: 0 0 1.5rem 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary, #212121);
+}
+
+.memories-block .block-type-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.memories-block .block-type-option {
+    padding: 1.5rem;
+    border: 2px solid var(--border-color, #e0e0e0);
+    border-radius: 8px;
+    background: var(--surface-color, #ffffff);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.memories-block .block-type-option:hover {
+    border-color: var(--primary-color, #1976d2);
+    background: rgba(25, 118, 210, 0.05);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.memories-block .block-type-option span {
+    display: block;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary, #212121);
+    margin-bottom: 0.5rem;
+}
+
+.memories-block .block-type-option p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary, #757575);
+    line-height: 1.4;
+}
+
+/* Block Form */
+.memories-block .block-form {
+    padding: 2rem;
+}
+
+.memories-block .block-form h3 {
+    margin: 0 0 1.5rem 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary, #212121);
+}
+
+.memories-block .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.memories-block .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary, #212121);
+}
+
+.memories-block .form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 4px;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    background: var(--surface-color, #ffffff);
+}
+
+.memories-block .form-control:focus {
+    outline: none;
+    border-color: var(--primary-color, #1976d2);
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
+}
+
+.memories-block textarea.form-control {
+    resize: vertical;
+    font-family: inherit;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+    .memories-block .immich-photos-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .memories-block .selected-photos-list {
+        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    }
+    
+    .memories-block .uploaded-files-list {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    }
+    
+    .memories-block .form-actions {
+        flex-direction: column-reverse;
+    }
+    
+    .memories-block .form-actions button {
+        width: 100%;
+    }
+}
