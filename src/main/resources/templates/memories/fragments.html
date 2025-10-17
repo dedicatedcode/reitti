@@ -161,7 +161,7 @@
                 <form id="uploadForm" 
                       th:attr="hx-post=@{/memories/{id}/blocks/upload-image(id=${memoryId})}"
                       hx-encoding="multipart/form-data"
-                      hx-target="#uploadedFilesList"
+                      hx-target="#selectedPhotosCombined"
                       hx-swap="beforeend">
                     <input type="file" 
                            id="fileInput" 
