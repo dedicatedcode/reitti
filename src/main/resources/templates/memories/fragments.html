@@ -160,9 +160,7 @@
             <div class="upload-area">
                 <form id="uploadForm" 
                       th:attr="hx-post=@{/memories/{id}/blocks/upload-image(id=${memoryId})}"
-                      hx-encoding="multipart/form-data"
-                      hx-target="#selectedPhotosCombined"
-                      hx-swap="beforeend">
+                      hx-encoding="multipart/form-data">
                     <input type="file" 
                            id="fileInput" 
                            name="file" 
@@ -313,7 +311,7 @@
         }
 
         document.body.addEventListener('htmx:afterSwap', function(event) {
-            if (event.detail.target.id === 'uploadedFilesList') {
+            if (event.detail.target.closest('#uploadForm')) {
                 const response = JSON.parse(event.detail.xhr.response);
                 window.galleryBlockState.uploadedFiles.push(response);
                 renderCombinedPhotos();
