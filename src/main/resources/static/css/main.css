@@ -1842,12 +1842,6 @@ button:disabled {
     border: 1px solid;
 }
 
-.memories-page .memory-blocks-container {
-    font-family: var(--serif-font);
-    font-size: 1.4em;
-    line-height: 1.6em;
-}
-
 .memories-page .memory-map {
     position: absolute;
     height: var(--memories-header-height);
@@ -1893,9 +1887,9 @@ button:disabled {
 }
 
 .memories-page .text-block {
-    font-weight: 300;
     font-size: 1.2em;
 }
+
 .memories-page .cluster-block .cluster-duration {
     text-align: center;
 }
@@ -1904,6 +1898,7 @@ button:disabled {
 .memories-page .cluster-block .block-header,
 .memories-page .visit-block .block-header {
     position: relative;
+    margin-bottom: 16px;
 }
 
 .memories-page .cluster-block  .cluster-map {
@@ -1919,9 +1914,10 @@ button:disabled {
 }
 .memories-page .block-header .time {
     text-align: center;
-    font-size: 1.5rem;
+    font-size: 1.2em;
     font-weight: 300;
-
+    font-family: var(--serif-font);
+    color: lightgray;
 }
 
 .memories-page .block-header .title {

@@ -206,8 +206,7 @@ public class MemoryBlockGenerationService {
 
     private MemoryClusterBlock convertToClusterBlock(List<Trip> tripsToAccommodation, ProcessedVisit accommodation) {
         return new MemoryClusterBlock(null, tripsToAccommodation.stream().map(Trip::getId).toList(),
-                "Journey to " + accommodation.getPlace().getName(),
-                "Your journey began with travel to your accommodation.");
+                "Journey to " + accommodation.getPlace().getCity(), null);
     }
 
     /**
