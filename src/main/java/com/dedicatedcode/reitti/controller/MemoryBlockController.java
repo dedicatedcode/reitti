@@ -16,10 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Controller
 @RequestMapping("/memories/{memoryId}/blocks")
@@ -109,21 +106,6 @@ public class MemoryBlockController {
         MemoryBlockText updated = textBlock.withHeadline(headline).withContent(content);
         memoryService.updateTextBlock(updated);
         
-        return "redirect:/memories/" + memoryId;
-    }
-
-    @PostMapping("/{blockId}/images")
-    public String addImageToGallery(
-            @AuthenticationPrincipal User user,
-            @PathVariable Long memoryId,
-            @PathVariable Long blockId,
-            @RequestParam String imageUrl,
-            @RequestParam(required = false) String caption) {
-        
-        memoryService.getMemoryById(user, memoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
-        memoryService.addImageToGallery(blockId, imageUrl, caption);
         return "redirect:/memories/" + memoryId;
     }
 
@@ -218,20 +200,23 @@ public class MemoryBlockController {
         }
         
         MemoryBlock block = memoryService.addBlock(memoryId, BlockType.IMAGE_GALLERY);
-        
+        List<MemoryBlockImageGallery.GalleryImage> imageBlocks = new ArrayList<>();
+
         for (Map<String, String> image : images) {
             String type = image.get("type");
             if ("immich".equals(type)) {
                 String assetId = image.get("assetId");
                 String imageUrl = "/api/v1/photos/immich/proxy/" + assetId + "/original";
-                memoryService.addImageToGallery(block.getId(), imageUrl, null);
+                // load the image from the ImmichIntegrationService and store it like we do it on the uploadImage method AI!
+                imageBlocks.add(new MemoryBlockImageGallery.GalleryImage(imageUrl, null));
             } else if ("upload".equals(type)) {
                 String url = image.get("url");
                 String name = image.get("name");
-                memoryService.addImageToGallery(block.getId(), url, name);
+                imageBlocks.add(new MemoryBlockImageGallery.GalleryImage(url, name));
             }
         }
-        
+
+        this.memoryService.addImageGalleryBlock(block.getId(), imageBlocks);
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("blockId", block.getId());
@@ -260,9 +245,9 @@ public class MemoryBlockController {
             }
             String filename = UUID.randomUUID() + extension;
 
-            s3Storage.store("images/" + filename, file.getInputStream(), file.getSize(), file.getContentType());
-            
-            String fileUrl = "/api/v1/photos/reitti/" + filename;
+            s3Storage.store("memories/" + memoryId + "/" + filename, file.getInputStream(), file.getSize(), file.getContentType());
+
+            String fileUrl = "/api/v1/photos/reitti/memories/" + memoryId + "/" + filename;
             
             Map<String, String> response = new HashMap<>();
             response.put("url", fileUrl);
