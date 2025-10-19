@@ -221,17 +221,10 @@ public class MemoryService {
     }
 
     @Transactional
-    public MemoryBlockImageGallery addImageToGallery(Long blockId, String imageUrl, String caption) {
-        int maxPosition = memoryBlockImageGalleryJdbcService.findByBlockId(blockId).size();
-        MemoryBlockImageGallery image = new MemoryBlockImageGallery(blockId, List.of(new MemoryBlockImageGallery.GalleryImage(imageUrl, caption)));
-        return memoryBlockImageGalleryJdbcService.create(image);
-    }
+    public MemoryBlockImageGallery addImageGalleryBlock(Long blockId, List<MemoryBlockImageGallery.GalleryImage> images) {
+        return this.memoryBlockImageGalleryJdbcService.create(new MemoryBlockImageGallery(blockId, images));
 
-    @Transactional
-    public MemoryBlockImageGallery updateImageInGallery(MemoryBlockImageGallery image) {
-        return memoryBlockImageGalleryJdbcService.update(image);
     }
-
     @Transactional
     public void deleteImageFromGallery(Long imageId) {
         memoryBlockImageGalleryJdbcService.delete(imageId);

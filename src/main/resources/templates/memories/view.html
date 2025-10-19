@@ -184,7 +184,7 @@
                         <div th:if="${block.type.name() == 'IMAGE_GALLERY'}" class="gallery-block">
                             <div class="gallery-images-grid" th:id="${'gallery_' + block.blockId}">
                                 <div th:each="image : ${block.images}" 
-                                     class="photo-grid-item gallery-image-item"
+                                     class="gallery-image-item"
                                      th:attr="data-image-url=${image.imageUrl},data-caption=${image.caption}">
                                     <div class="photo-loading-spinner"></div>
                                     <img th:src="${image.imageUrl}" 
@@ -242,7 +242,7 @@
                                         });
 
                                         const closeButton = document.createElement('button');
-                                        closeButton.innerHTML = '<i class="lni lni-close"></i>';
+                                        closeButton.innerHTML = '<i class="lni lni-xmark-circle"></i>';
                                         closeButton.className = 'photo-modal-close-button';
 
                                         let prevButton, nextButton, counter;

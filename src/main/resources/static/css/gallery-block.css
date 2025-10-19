@@ -36,9 +36,8 @@
     border-radius: 4px;
     overflow: hidden;
     cursor: pointer;
-    border: 2px solid transparent;
+    border: 1px solid var(--color-highlight);
     transition: all 0.2s ease;
-    background: var(--surface-variant, #f5f5f5);
 }
 
 .immich-photo-item:hover {
@@ -131,25 +130,41 @@
     opacity: 0.5;
     cursor: not-allowed;
 }
-
-
-/* Selected Photos List */
-.selected-photos-list {
+.gallery-images-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-    gap: 0.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    grid-gap: 8px;
 }
 
+/* Selected Photos List */
+.selected-photos-combined {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(256px, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.gallery-image-item,
 .selected-photo-item {
     position: relative;
     aspect-ratio: 1;
-    border-radius: 4px;
+    border-radius: 16px;
     overflow: hidden;
     border: 1px solid var(--color-highlight);
     color: var(--color-text-white);
-    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.3);
+    transition: all 0.3s ease;
 }
 
+.gallery-image-item:hover {
+    border: 1px solid var(--color-highlight);
+    color: var(--color-text-white);
+    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.3);
+    transform: scale(1.02);
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+
+.gallery-image-item img,
 .selected-photo-item img {
     width: 100%;
     height: 100%;
@@ -194,26 +209,26 @@
     align-items: center;
     justify-content: center;
     padding: 3rem 2rem;
-    border: 2px dashed var(--border-color, #e0e0e0);
+    border: 1px solid var(--color-highlight);
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s ease;
-    background: var(--surface-variant, #f5f5f5);
 }
 
 .upload-label:hover {
-    border-color: var(--primary-color, #1976d2);
-    background: rgba(25, 118, 210, 0.05);
+    border: 1px solid var(--color-highlight);
+    color: var(--color-text-white);
+    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.3);    transform: scale(1.02);
 }
 
 .upload-label i {
     font-size: 3rem;
-    color: var(--primary-color, #1976d2);
+    color: var(--color-highlight);
     margin-bottom: 1rem;
 }
 
 .upload-label span {
-    color: var(--text-secondary, #757575);
+    color: var(--color-highlight);
     font-size: 0.875rem;
 }
 
@@ -287,7 +302,7 @@
         grid-template-columns: repeat(2, 1fr);
     }
 
-    .selected-photos-list {
+    .selected-photos-combined {
         grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
     }
 

@@ -37,4 +37,21 @@ public class ReittiPhotoApiController {
             return ResponseEntity.notFound().build();
         }
     }
+    @GetMapping("/memories/{memoryId}/{filename}")
+    public ResponseEntity<InputStreamResource> getPhotoForMemory(@PathVariable String memoryId,
+                                                                 @PathVariable String filename,
+                                                                 @AuthenticationPrincipal User user) {
+        try {
+            S3Storage.S3Object result = this.s3Storage.read("meories/" + memoryId + "/" + filename);
+            HttpHeaders responseHeaders = new HttpHeaders();
+            responseHeaders.setContentType(MediaType.valueOf(result.getContentType()));
+            responseHeaders.setContentLength(result.getContentLength());
+            responseHeaders.setCacheControl("public, max-age=3600");
+            return ResponseEntity.ok()
+                    .headers(responseHeaders)
+                    .body(new InputStreamResource(result.getInputStream()));
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 }

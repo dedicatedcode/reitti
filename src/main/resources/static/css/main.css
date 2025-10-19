@@ -1860,12 +1860,14 @@ button:disabled {
 
 .memories-page .memory-block {
     position: relative;
+    margin-bottom: 16px;
 }
+
 .memories-page .memory-block .block-actions {
     position: absolute;
     right: 8px;
     top: 8px;
-    z-index: 500;
+    z-index: 5000;
     opacity: 0;
     transition: opacity 0.3s ease;
 }

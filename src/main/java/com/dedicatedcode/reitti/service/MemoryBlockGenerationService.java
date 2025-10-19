@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.service;
 
+import com.dedicatedcode.reitti.dto.PhotoResponse;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.Trip;
@@ -7,6 +8,7 @@ import com.dedicatedcode.reitti.model.memory.*;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
+import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSource;
@@ -17,6 +19,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -40,11 +43,13 @@ public class MemoryBlockGenerationService {
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final TripJdbcService tripJdbcService;
     private final MessageSource messageSource;
+    private final ImmichIntegrationService immichIntegrationService;
 
-    public MemoryBlockGenerationService(ProcessedVisitJdbcService processedVisitJdbcService, TripJdbcService tripJdbcService, MessageSource messageSource) {
+    public MemoryBlockGenerationService(ProcessedVisitJdbcService processedVisitJdbcService, TripJdbcService tripJdbcService, MessageSource messageSource, ImmichIntegrationService immichIntegrationService) {
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.tripJdbcService = tripJdbcService;
         this.messageSource = messageSource;
+        this.immichIntegrationService = immichIntegrationService;
     }
 
     public List<MemoryBlockPart> generate(User user, Memory memory) {
@@ -127,6 +132,7 @@ public class MemoryBlockGenerationService {
 
         accommodation.ifPresent(a -> blockParts.add(convertVisitToBlock(a)));
 
+        Map<LocalDate, List<String>> imagesByDay = loadImagesFromIntegrations(user, startDate, endDate);
         // Process each cluster
         for (int i = 0; i < clusters.size(); i++) {
             VisitCluster cluster = clusters.get(i);
@@ -146,8 +152,15 @@ public class MemoryBlockGenerationService {
                 MemoryBlockVisit visitBlock = convertVisitToBlock(scoredVisit.getVisit());
                 blockParts.add(visitBlock);
             }
-            
-            // Add trip block if there's a significant trip to the next cluster
+            LocalDate today = cluster.getStartTime().atZone(ZoneId.systemDefault()).toLocalDate();
+            List<String> todaysImages = imagesByDay.getOrDefault(today, Collections.emptyList());
+            if (!todaysImages.isEmpty()) {
+                MemoryBlockImageGallery imageGallery = new MemoryBlockImageGallery(null,
+                        todaysImages.stream().map(s -> new MemoryBlockImageGallery.GalleryImage(s, null)).toList());
+                blockParts.add(imageGallery);
+            }
+            imagesByDay.remove(today);
+
             if (i < clusters.size() - 1) {
                 VisitCluster nextCluster = clusters.get(i + 1);
                 Optional<Trip> tripBetween = findTripBetweenClusters(allTripsInRange, cluster, nextCluster);
@@ -179,22 +192,25 @@ public class MemoryBlockGenerationService {
                 }
             }
         }
-        
-        // Add any significant standalone trips that weren't captured
-        List<Trip> significantTrips = filterSignificantTrips(allTripsInRange);
-        for (Trip trip : significantTrips) {
-            if (firstAccommodationArrival != null && lastAccommodationDeparture != null) {
-                if (trip.getStartTime() != null &&
-                        !trip.getStartTime().isBefore(firstAccommodationArrival) &&
-                        !trip.getStartTime().isAfter(lastAccommodationDeparture)) {
-                    MemoryBlockTrip tripBlock = convertTripToBlock(trip);
-                    blockParts.add(tripBlock);
-                }
-            }
-        }
+
         log.info("Generated {} memory block parts", blockParts.size());
         
         return blockParts;
+    }
+
+    private Map<LocalDate, List<String>> loadImagesFromIntegrations(User user, Instant startDate, Instant endDate) {
+        Map<LocalDate, List<String>> map = new HashMap<>();
+        LocalDate currentStart = startDate.atZone(ZoneId.of("UTC")).toLocalDate();
+        LocalDate currentEnd = startDate.plus(1, ChronoUnit.DAYS).atZone(ZoneId.of("UTC")).toLocalDate();
+        LocalDate end = endDate.atZone(ZoneId.of("UTC")).toLocalDate();
+        while (!currentEnd.isAfter(end)) {
+            map.put(currentStart, this.immichIntegrationService.searchPhotosForRange(user, currentStart, currentStart, "UTC")
+                    .stream().map(PhotoResponse::getFullImageUrl).toList());
+
+            currentStart = currentEnd;
+            currentEnd = currentEnd.plusDays(1);
+        }
+        return map;
     }
 
     private Optional<ProcessedVisit> findHome(List<ProcessedVisit> allVisitsInRange) {

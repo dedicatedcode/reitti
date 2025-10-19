@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.service.integration;
 
+import com.dedicatedcode.reitti.controller.api.ImmichPhotoApiController;
 import com.dedicatedcode.reitti.dto.ImmichAsset;
 import com.dedicatedcode.reitti.dto.ImmichSearchRequest;
 import com.dedicatedcode.reitti.dto.ImmichSearchResponse;
@@ -191,5 +192,56 @@ public class ImmichIntegrationService {
         }
         
         return photos;
+    }
+
+    public ResponseEntity<byte[]> proxyImageRequest(User user, String assetId, String size) {
+        Optional<ImmichIntegration> integrationOpt = getIntegrationForUser(user);
+
+        if (integrationOpt.isEmpty() || !integrationOpt.get().isEnabled()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        ImmichIntegration integration = integrationOpt.get();
+
+        try {
+            String baseUrl = integration.getServerUrl().endsWith("/") ?
+                integration.getServerUrl() : integration.getServerUrl() + "/";
+            String imageUrl = baseUrl + "api/assets/" + assetId + "/thumbnail?size=" + size;
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.add("x-api-key", integration.getApiToken());
+
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<byte[]> response = restTemplate.exchange(
+                imageUrl,
+                HttpMethod.GET,
+                entity,
+                byte[].class
+            );
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                HttpHeaders responseHeaders = new HttpHeaders();
+
+                // Copy content type from Immich response if available
+                if (response.getHeaders().getContentType() != null) {
+                    responseHeaders.setContentType(response.getHeaders().getContentType());
+                } else {
+                    // Default to JPEG for images
+                    responseHeaders.setContentType(MediaType.IMAGE_JPEG);
+                }
+
+                // Set cache headers for better performance
+                responseHeaders.setCacheControl("public, max-age=3600");
+
+                return new ResponseEntity<>(response.getBody(), responseHeaders, HttpStatus.OK);
+            }
+
+        } catch (Exception e) {
+            // Log error but don't expose details
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.notFound().build();
     }
 }
