@@ -207,7 +207,7 @@ public class MemoryBlockController {
             if ("immich".equals(type)) {
                 String assetId = image.get("assetId");
                 String imageUrl = "/api/v1/photos/immich/proxy/" + assetId + "/original";
-                // load the image from the ImmichIntegrationService and store it like we do it on the uploadImage method AI!
+                // load the image from the ImmichIntegrationService and store it like we do it on the uploadImage method AI! 
                 imageBlocks.add(new MemoryBlockImageGallery.GalleryImage(imageUrl, null));
             } else if ("upload".equals(type)) {
                 String url = image.get("url");
