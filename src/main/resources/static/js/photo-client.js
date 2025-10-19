@@ -8,7 +8,7 @@ class PhotoClient {
     async updatePhotosForRange(start, end, timezone) {
 
         try {
-            const response = await fetch(`/api/v1/photos/range?timezone=${timezone}&startDate=${start}&endDate=${end}`);
+            const response = await fetch(`/api/v1/photos/immich/range?timezone=${timezone}&startDate=${start}&endDate=${end}`);
             if (!response.ok) {
                 console.warn('Could not fetch photos for date:', date);
                 this.photos = [];

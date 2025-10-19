@@ -8,9 +8,11 @@ import com.dedicatedcode.reitti.dto.PhotoResponse;
 import com.dedicatedcode.reitti.model.IntegrationTestResult;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
+import com.dedicatedcode.reitti.model.memory.MemoryBlockImageGallery;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ImmichIntegrationJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
+import com.dedicatedcode.reitti.service.S3Storage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
@@ -26,6 +28,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class ImmichIntegrationService {
@@ -35,13 +38,16 @@ public class ImmichIntegrationService {
     private final ImmichIntegrationJdbcService immichIntegrationJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final RestTemplate restTemplate;
+    private final S3Storage s3Storage;
 
     public ImmichIntegrationService(ImmichIntegrationJdbcService immichIntegrationJdbcService,
                                     RawLocationPointJdbcService rawLocationPointJdbcService,
-                                    RestTemplate restTemplate) {
+                                    RestTemplate restTemplate,
+                                    S3Storage s3Storage) {
         this.immichIntegrationJdbcService = immichIntegrationJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.restTemplate = restTemplate;
+        this.s3Storage = s3Storage;
     }
     
     public Optional<ImmichIntegration> getIntegrationForUser(User user) {
@@ -243,5 +249,32 @@ public class ImmichIntegrationService {
         }
 
         return ResponseEntity.notFound().build();
+    }
+
+    public String downloadImage(User user, String assetId, String targetPath) {
+        ResponseEntity<byte[]> response = proxyImageRequest(user, assetId, "fullsize");
+        if (response.getStatusCode().is2xxSuccessful()) {
+            byte[] imageData = response.getBody();
+            if (imageData != null) {
+                String contentType = response.getHeaders().getContentType() != null ? response.getHeaders().getContentType().toString() : "image/jpeg";
+                long contentLength = imageData.length;
+                String filename = UUID.randomUUID() + getExtensionFromContentType(contentType);
+                s3Storage.store(targetPath +"/" + filename, new java.io.ByteArrayInputStream(imageData), contentLength, contentType);
+                return filename;
+            }
+        }
+        throw new IllegalStateException("Unable to download image from Immich");
+    }
+
+
+    private String getExtensionFromContentType(String contentType) {
+        return switch (contentType) {
+            case "image/jpeg" -> ".jpg";
+            case "image/png" -> ".png";
+            case "image/gif" -> ".gif";
+            case "image/webp" -> ".webp";
+            case null, default -> ".jpg"; // default
+
+        };
     }
 }

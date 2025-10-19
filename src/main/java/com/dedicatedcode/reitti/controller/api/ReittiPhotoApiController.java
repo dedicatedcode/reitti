@@ -42,7 +42,7 @@ public class ReittiPhotoApiController {
                                                                  @PathVariable String filename,
                                                                  @AuthenticationPrincipal User user) {
         try {
-            S3Storage.S3Object result = this.s3Storage.read("meories/" + memoryId + "/" + filename);
+            S3Storage.S3Object result = this.s3Storage.read("memories/" + memoryId + "/" + filename);
             HttpHeaders responseHeaders = new HttpHeaders();
             responseHeaders.setContentType(MediaType.valueOf(result.getContentType()));
             responseHeaders.setContentLength(result.getContentLength());

@@ -206,23 +206,7 @@ public class MemoryBlockController {
             String type = image.get("type");
             if ("immich".equals(type)) {
                 String assetId = image.get("assetId");
-                // Load the image from Immich and store it in S3 like in the uploadImage method
-                ImmichIntegration integration = immichIntegrationService.getImmichIntegration(user)
-                        .orElseThrow(() -> new IllegalArgumentException("Immich integration not found"));
-                if (!integration.isEnabled()) {
-                    throw new IllegalArgumentException("Immich integration is not enabled");
-                }
-                String url = integration.getServerUrl() + "/api/asset/" + assetId + "/original";
-                org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
-                headers.set("Authorization", "Bearer " + integration.getApiToken());
-                org.springframework.http.HttpEntity<String> entity = new org.springframework.http.HttpEntity<>(headers);
-                org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
-                org.springframework.http.ResponseEntity<byte[]> response = restTemplate.exchange(url, org.springframework.http.HttpMethod.GET, entity, byte[].class);
-                byte[] imageData = response.getBody();
-                String contentType = response.getHeaders().getContentType() != null ? response.getHeaders().getContentType().toString() : "image/jpeg";
-                long contentLength = imageData.length;
-                String filename = UUID.randomUUID() + getExtensionFromContentType(contentType);
-                s3Storage.store("memories/" + memoryId + "/" + filename, new java.io.ByteArrayInputStream(imageData), contentLength, contentType);
+                String filename = this.immichIntegrationService.downloadImage(user, assetId, "memories/" + memoryId);
                 String imageUrl = "/api/v1/photos/reitti/memories/" + memoryId + "/" + filename;
                 imageBlocks.add(new MemoryBlockImageGallery.GalleryImage(imageUrl, null));
             } else if ("upload".equals(type)) {
@@ -306,17 +290,4 @@ public class MemoryBlockController {
         return "memories/fragments :: immich-photos-grid";
     }
 
-    private String getExtensionFromContentType(String contentType) {
-        if ("image/jpeg".equals(contentType)) {
-            return ".jpg";
-        } else if ("image/png".equals(contentType)) {
-            return ".png";
-        } else if ("image/gif".equals(contentType)) {
-            return ".gif";
-        } else if ("image/webp".equals(contentType)) {
-            return ".webp";
-        } else {
-            return ".jpg"; // default
-        }
-    }
 }

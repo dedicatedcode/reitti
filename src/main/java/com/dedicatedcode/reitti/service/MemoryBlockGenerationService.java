@@ -155,8 +155,12 @@ public class MemoryBlockGenerationService {
             LocalDate today = cluster.getStartTime().atZone(ZoneId.systemDefault()).toLocalDate();
             List<String> todaysImages = imagesByDay.getOrDefault(today, Collections.emptyList());
             if (!todaysImages.isEmpty()) {
-                MemoryBlockImageGallery imageGallery = new MemoryBlockImageGallery(null,
-                        todaysImages.stream().map(s -> new MemoryBlockImageGallery.GalleryImage(s, null)).toList());
+                MemoryBlockImageGallery imageGallery = new MemoryBlockImageGallery(null, todaysImages.stream()
+                        .map(s -> {
+                            String filename = this.immichIntegrationService.downloadImage(user, s, "memories/" + memory.getId());
+                            String imageUrl = "/api/v1/photos/reitti/memories/" + memory.getId() + "/" + filename;
+                            return new MemoryBlockImageGallery.GalleryImage(imageUrl, null);
+                        }).toList());
                 blockParts.add(imageGallery);
             }
             imagesByDay.remove(today);
@@ -205,7 +209,7 @@ public class MemoryBlockGenerationService {
         LocalDate end = endDate.atZone(ZoneId.of("UTC")).toLocalDate();
         while (!currentEnd.isAfter(end)) {
             map.put(currentStart, this.immichIntegrationService.searchPhotosForRange(user, currentStart, currentStart, "UTC")
-                    .stream().map(PhotoResponse::getFullImageUrl).toList());
+                    .stream().map(PhotoResponse::getId).toList());
 
             currentStart = currentEnd;
             currentEnd = currentEnd.plusDays(1);
