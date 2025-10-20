@@ -41,6 +41,7 @@
                         hx-target="body"
                         hx-swap="innerHTML"
                         hx-confirm="Recalculate this memory? This will update all location data."
+                        hx-vals="js:{timezone: getUserTimezone()}"
                         th:text="#{memory.view.recalculate}">Recalculate
                 </button>
             </div>
@@ -467,9 +468,6 @@
                                         <span th:text="${trip.startVisit != null && trip.startVisit.place != null ? trip.startVisit.place.name : 'Start'}">Start</span>
                                         <span> → </span>
                                         <span th:text="${trip.endVisit != null && trip.endVisit.place != null ? trip.endVisit.place.name : 'End'}">End</span>
-                                        <th:block th:with="elapsedSeconds=${T(java.time.Duration).between(block.combinedStartTime, trip.startTime).getSeconds()}">
-                                            <span th:if="${elapsedSeconds != null}" th:text="' (arrived after ' + ${elapsedSeconds >= 3600 ? #numbers.formatDecimal(elapsedSeconds / 3600.0, 1, 1) + ' hours' : #numbers.formatDecimal(elapsedSeconds / 60.0, 0, 0) + ' minutes'} + ')'">Duration</span>
-                                        </th:block>
                                     </li>
                                 </ul>
                             </div>

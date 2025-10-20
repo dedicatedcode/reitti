@@ -261,7 +261,7 @@ public class MemoryController {
                                     @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                                     HttpServletResponse httpResponse) {
         memoryService.getMemoryById(user, id).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        memoryService.recalculateMemory(user, id);
+        memoryService.recalculateMemory(user, id, timezone);
         httpResponse.setHeader("HX-Redirect", "/memories/" + id + "?timezone=" + timezone.getId());
         return "Ok";
     }
