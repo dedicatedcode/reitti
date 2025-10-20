@@ -21,24 +21,22 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
 public class MemoryBlockGenerationService {
     private static final Logger log = LoggerFactory.getLogger(MemoryBlockGenerationService.class);
     
-    // Step 1: Filtering thresholds
-    private static final long MIN_VISIT_DURATION_SECONDS = 600; // 10 minutes
+    private static final long MIN_VISIT_DURATION_SECONDS = 600;
     
-    // Step 3: Scoring weights
     private static final double WEIGHT_DURATION = 1.0;
     private static final double WEIGHT_DISTANCE = 2.0;
     private static final double WEIGHT_CATEGORY = 3.0;
     private static final double WEIGHT_NOVELTY = 1.5;
     
-    // Step 4: Clustering parameters
-    private static final long CLUSTER_TIME_THRESHOLD_SECONDS = 7200; // 2 hours
-    private static final double CLUSTER_DISTANCE_THRESHOLD_METERS = 1000; // 500 meters
+    private static final long CLUSTER_TIME_THRESHOLD_SECONDS = 7200;
+    private static final double CLUSTER_DISTANCE_THRESHOLD_METERS = 1000;
     
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final TripJdbcService tripJdbcService;
@@ -101,7 +99,7 @@ public class MemoryBlockGenerationService {
             blockParts.add(introBlock);
         }
 
-        // Add travel to accommodation section
+        // Add travel to the accommodation section
         if (firstAccommodationArrival != null) {
             List<Trip> tripsToAccommodation = allTripsInRange.stream()
                 .filter(trip -> trip.getEndTime() != null && !trip.getEndTime().isAfter(firstAccommodationArrival))
@@ -125,19 +123,38 @@ public class MemoryBlockGenerationService {
 
 
             MemoryClusterBlock clusterBlock = convertToClusterBlock(tripsToAccommodation, accommodation.get());
-
-                blockParts.add(clusterBlock);
+            blockParts.add(clusterBlock);
         }
 
-
-        accommodation.ifPresent(a -> blockParts.add(convertVisitToBlock(a)));
-
         Map<LocalDate, List<String>> imagesByDay = loadImagesFromIntegrations(user, startDate, endDate);
+
+        accommodation.ifPresent(a -> {
+            MemoryBlockText intro = new MemoryBlockText(null, "Welcome to " + a.getPlace().getName(),
+                    messageSource.getMessage("memory.generator.intro_accommodation.text", new Object[]{
+
+            }, LocaleContextHolder.getLocale()));
+            blockParts.add(intro);
+            blockParts.add(convertVisitToBlock(a));
+            LocalDate dayOfAccommodation = a.getStartTime().atZone(ZoneId.of("UTC")).toLocalDate();
+            List<String> images = imagesByDay.get(dayOfAccommodation);
+            if (images != null && !images.isEmpty()) {
+                MemoryBlockImageGallery imageGallery = new MemoryBlockImageGallery(null, images.stream()
+                        .map(createImageFromAssetId(user, memory)).toList());
+                blockParts.add(imageGallery);
+                imagesByDay.remove(dayOfAccommodation);
+            }
+        });
+
         // Process each cluster
         for (int i = 0; i < clusters.size(); i++) {
             VisitCluster cluster = clusters.get(i);
 
+            //filter out visits before the first stay at accommodation
             if (firstAccommodationArrival != null && cluster.getEndTime() != null && cluster.getEndTime().isBefore(firstAccommodationArrival)) {
+                continue;
+            }
+            //filter out visits after the last stay at accommodation
+            if (lastAccommodationDeparture != null && cluster.getStartTime() != null && cluster.getStartTime().isAfter(lastAccommodationDeparture)) {
                 continue;
             }
 
@@ -146,21 +163,17 @@ public class MemoryBlockGenerationService {
             String clusterDescription = generateClusterDescription(cluster);
             MemoryBlockText clusterTextBlock = new MemoryBlockText(null, clusterHeadline, clusterDescription);
             blockParts.add(clusterTextBlock);
-            
-            // Add visit blocks for each visit in the cluster
-            for (ScoredVisit scoredVisit : cluster.getVisits()) {
-                MemoryBlockVisit visitBlock = convertVisitToBlock(scoredVisit.getVisit());
-                blockParts.add(visitBlock);
-            }
+
+
+            MemoryClusterBlock clusterBlock = new MemoryClusterBlock(null, cluster.getVisits().stream().map(ScoredVisit::getVisit)
+                    .map(ProcessedVisit::getId).toList(), null, null, BlockType.CLUSTER_VISIT);
+            blockParts.add(clusterBlock);
+
             LocalDate today = cluster.getStartTime().atZone(ZoneId.systemDefault()).toLocalDate();
             List<String> todaysImages = imagesByDay.getOrDefault(today, Collections.emptyList());
             if (!todaysImages.isEmpty()) {
                 MemoryBlockImageGallery imageGallery = new MemoryBlockImageGallery(null, todaysImages.stream()
-                        .map(s -> {
-                            String filename = this.immichIntegrationService.downloadImage(user, s, "memories/" + memory.getId());
-                            String imageUrl = "/api/v1/photos/reitti/memories/" + memory.getId() + "/" + filename;
-                            return new MemoryBlockImageGallery.GalleryImage(imageUrl, null);
-                        }).toList());
+                        .map(createImageFromAssetId(user, memory)).toList());
                 blockParts.add(imageGallery);
             }
             imagesByDay.remove(today);
@@ -175,31 +188,45 @@ public class MemoryBlockGenerationService {
             }
         }
         
-        // Add travel from accommodation section
         if (lastAccommodationDeparture != null) {
             List<Trip> tripsFromAccommodation = allTripsInRange.stream()
-                .filter(trip -> trip.getStartTime() != null && !trip.getStartTime().isBefore(lastAccommodationDeparture))
-                .filter(trip -> trip.getEndTime() != null && !trip.getEndTime().isAfter(endDate))
-                .sorted(Comparator.comparing(Trip::getStartTime))
-                .toList();
-            
+                    .filter(trip -> trip.getStartTime() != null && !trip.getStartTime().isBefore(lastAccommodationDeparture))
+                    .filter(trip -> trip.getEndTime() != null && !trip.getEndTime().isAfter(endDate))
+                    .sorted(Comparator.comparing(Trip::getStartTime))
+                    .toList();
+
+
             if (!tripsFromAccommodation.isEmpty()) {
-                MemoryBlockText travelFromText = new MemoryBlockText(
-                    null, 
-                    "Journey Home",
-                    "Your journey concluded with travel back home from " + accommodation.map(a -> a.getPlace().getName()).orElse("your accommodation") + ".");
-                blockParts.add(travelFromText);
-                
-                for (Trip trip : tripsFromAccommodation) {
-                    MemoryBlockTrip tripBlock = convertTripToBlock(trip);
-                    blockParts.add(tripBlock);
-                }
+                String text = messageSource.getMessage("memory.generator.travel_from_accommodation.text", new Object[]{
+                        accommodation.map(a -> a.getPlace().getCity()).orElse(""),
+                        tripsFromAccommodation.getFirst().getStartTime(),
+                        home.map(h -> h.getPlace().getCity()).orElse(""),
+                        tripsFromAccommodation.getLast().getEndTime(),
+                        Duration.between(tripsFromAccommodation.getFirst().getStartTime(), tripsFromAccommodation.getLast().getEndTime()).toSeconds(),
+                        tripsFromAccommodation.stream().map(Trip::getDurationSeconds).reduce(0L, Long::sum)
+                }, LocaleContextHolder.getLocale());
+
+                MemoryBlockText accommodationPreRoll = new MemoryBlockText(null, null, text);
+                blockParts.add(accommodationPreRoll);
             }
+
+
+            MemoryClusterBlock clusterBlock = convertToClusterBlock(tripsFromAccommodation, home.get());
+
+            blockParts.add(clusterBlock);
         }
 
         log.info("Generated {} memory block parts", blockParts.size());
         
         return blockParts;
+    }
+
+    private Function<String, MemoryBlockImageGallery.GalleryImage> createImageFromAssetId(User user, Memory memory) {
+        return s -> {
+            String filename = this.immichIntegrationService.downloadImage(user, s, "memories/" + memory.getId());
+            String imageUrl = "/api/v1/photos/reitti/memories/" + memory.getId() + "/" + filename;
+            return new MemoryBlockImageGallery.GalleryImage(imageUrl, null);
+        };
     }
 
     private Map<LocalDate, List<String>> loadImagesFromIntegrations(User user, Instant startDate, Instant endDate) {
@@ -229,12 +256,9 @@ public class MemoryBlockGenerationService {
 
     private MemoryClusterBlock convertToClusterBlock(List<Trip> tripsToAccommodation, ProcessedVisit accommodation) {
         return new MemoryClusterBlock(null, tripsToAccommodation.stream().map(Trip::getId).toList(),
-                "Journey to " + accommodation.getPlace().getCity(), null);
+                "Journey to " + accommodation.getPlace().getCity(), null, BlockType.CLUSTER_TRIP);
     }
 
-    /**
-     * Convert a ProcessedVisit to a MemoryBlockVisit with embedded data
-     */
     private MemoryBlockVisit convertVisitToBlock(ProcessedVisit visit) {
         return new MemoryBlockVisit(
             null, // blockId will be set when saved

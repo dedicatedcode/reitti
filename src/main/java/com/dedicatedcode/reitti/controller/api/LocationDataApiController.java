@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -107,21 +108,30 @@ public class LocationDataApiController {
                                                   @RequestParam(required = false) Double maxLng) {
         try {
             ZoneId userTimezone = ZoneId.of(timezone);
-            Instant startOfRange;
-            Instant endOfRange;
+            Instant startOfRange = null;
+            Instant endOfRange = null;
 
             // Support both single date and date range
             if (startDate != null && endDate != null) {
-                // Date range mode
-                LocalDate selectedStartDate = LocalDate.parse(startDate);
-                LocalDate selectedEndDate = LocalDate.parse(endDate);
+                //first try to parse them as date time
 
-                startOfRange = selectedStartDate.atStartOfDay(userTimezone).toInstant();
-                endOfRange = selectedEndDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
+                try {
+                    LocalDateTime startTimestamp = LocalDateTime.parse(startDate);
+                    LocalDateTime endTimestamp = LocalDateTime.parse(endDate);
+                    startOfRange = startTimestamp.atZone(userTimezone).toInstant();
+                    endOfRange = endTimestamp.atZone(userTimezone).toInstant();
+                } catch (DateTimeParseException ignored) {
+                }
+
+                if (startOfRange == null && endOfRange == null) {
+                    LocalDate selectedStartDate = LocalDate.parse(startDate);
+                    LocalDate selectedEndDate = LocalDate.parse(endDate);
+                    startOfRange = selectedStartDate.atStartOfDay(userTimezone).toInstant();
+                    endOfRange = selectedEndDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
+                }
             } else if (date != null) {
                 // Single date mode (backward compatibility)
                 LocalDate selectedDate = LocalDate.parse(date);
-
                 startOfRange = selectedDate.atStartOfDay(userTimezone).toInstant();
                 endOfRange = selectedDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
             } else {

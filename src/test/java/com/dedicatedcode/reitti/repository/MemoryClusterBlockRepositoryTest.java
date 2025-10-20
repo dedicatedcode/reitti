@@ -56,8 +56,8 @@ public class MemoryClusterBlockRepositoryTest {
                         Instant.parse("2007-12-03T11:15:30.00Z"),
                         HeaderType.MAP,
                         null));
-        MemoryBlock memoryBlock = memoryBlockJdbcService.create(new MemoryBlock(memory.getId(), BlockType.CLUSTER, 0));
-        MemoryClusterBlock cluster = new MemoryClusterBlock(memoryBlock.getId(), tripIds, "Journey to Airport", "A trip from home to the airport");
+        MemoryBlock memoryBlock = memoryBlockJdbcService.create(new MemoryBlock(memory.getId(), BlockType.CLUSTER_TRIP, 0));
+        MemoryClusterBlock cluster = new MemoryClusterBlock(memoryBlock.getId(), tripIds, "Journey to Airport", "A trip from home to the airport", BlockType.CLUSTER_TRIP);
 
         // When
         repository.save(user, cluster);
@@ -66,7 +66,7 @@ public class MemoryClusterBlockRepositoryTest {
         // Then
         assertThat(found).isPresent();
         assertThat(found.get().getBlockId()).isEqualTo(memoryBlock.getId());
-        assertThat(found.get().getTripIds()).isEqualTo(tripIds);
+        assertThat(found.get().getPartIds()).isEqualTo(tripIds);
         assertThat(found.get().getTitle()).isEqualTo("Journey to Airport");
         assertThat(found.get().getDescription()).isEqualTo("A trip from home to the airport");
     }
@@ -82,9 +82,9 @@ public class MemoryClusterBlockRepositoryTest {
                         Instant.parse("2007-12-03T11:15:30.00Z"),
                         HeaderType.MAP,
                         null));
-        MemoryBlock memoryBlock = memoryBlockJdbcService.create(new MemoryBlock(memory.getId(), BlockType.CLUSTER, 0));
+        MemoryBlock memoryBlock = memoryBlockJdbcService.create(new MemoryBlock(memory.getId(), BlockType.CLUSTER_TRIP, 0));
         List<Long> tripIds = List.of(4L, 5L);
-        MemoryClusterBlock cluster = new MemoryClusterBlock(memoryBlock.getId(), tripIds, "Another Journey", "Description");
+        MemoryClusterBlock cluster = new MemoryClusterBlock(memoryBlock.getId(), tripIds, "Another Journey", "Description", BlockType.CLUSTER_TRIP);
         repository.save(user, cluster);
 
         // When

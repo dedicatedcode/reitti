@@ -269,8 +269,7 @@ public class MemoryController {
     @GetMapping("/{id}/blocks/new")
     public String newBlockForm(@AuthenticationPrincipal User user, @PathVariable Long id, @RequestParam String type, Model model) {
 
-        Memory memory = memoryService.getMemoryById(user, id)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        memoryService.getMemoryById(user, id).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
 
         model.addAttribute("memoryId", id);
         model.addAttribute("blockType", type);

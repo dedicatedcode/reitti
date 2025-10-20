@@ -339,7 +339,7 @@
                                 })();
                             </script>
                         </div>
-                        <div th:if="${block.type.name() == 'CLUSTER'}" class="cluster-block">
+                        <div th:if="${block.type.name() == 'CLUSTER_TRIP'}" class="cluster-block">
                             <div class="block-header">
                                 <div class="time">
                                     <i class="lni lni-timer"></i>
@@ -470,6 +470,96 @@
                                         <th:block th:with="elapsedSeconds=${T(java.time.Duration).between(block.combinedStartTime, trip.startTime).getSeconds()}">
                                             <span th:if="${elapsedSeconds != null}" th:text="' (arrived after ' + ${elapsedSeconds >= 3600 ? #numbers.formatDecimal(elapsedSeconds / 3600.0, 1, 1) + ' hours' : #numbers.formatDecimal(elapsedSeconds / 60.0, 0, 0) + ' minutes'} + ')'">Duration</span>
                                         </th:block>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div th:if="${block.type.name() == 'CLUSTER_VISIT'}" class="cluster-block">
+                            <div class="block-header">
+                                <div class="time">
+                                    <i class="lni lni-timer"></i>
+                                    <span th:text="${#temporals.format(block.adjustedStartTime, 'MMM d, yyyy HH:mm')}">Start Time</span>
+                                    <span> - </span>
+                                    <span th:text="${#temporals.format(block.adjustedEndTime, 'HH:mm')}">End Time</span>
+                                </div>
+                                <i class="lni lni-layers"></i>
+                                <div class="title" th:text="${block.title}">Cluster Title</div>
+                            </div>
+                            <p th:if="${block.description != null}" class="cluster-description" th:text="${block.description}">Description</p>
+                            <div class="cluster-map" th:id="${'map_cluster_' + block.blockId}"></div>
+                            <script th:inline="javascript">
+                                (function() {
+                                    const userSettings =  /*[[${userSettings}]]*/  {};
+                                    const blockId =  /*[[${'map_cluster_' + block.blockId}]]*/  'map_cluster_99';
+                                    const visits =  /*[[${block.visits}]]*/  [];
+                                    const rawLocationUrl =  /*[[${block.rawLocationPointsUrl}]]*/  '';
+
+                                    // Initialize map
+                                    const clusterMap = L.map(blockId, {
+                                        attributionControl: false,
+                                    }).setView([50,50], 19);
+
+                                    let tileLayer;
+                                    if (userSettings.preferColoredMap) {
+                                        tileLayer = L.tileLayer(userSettings.tiles.service, {
+                                            maxZoom: 19,
+                                            attribution: userSettings.tiles.attribution
+                                        });
+                                    } else {
+                                        tileLayer = L.tileLayer.grayscale(userSettings.tiles.service, {
+                                            maxZoom: 19,
+                                            attribution: userSettings.tiles.attribution
+                                        });
+                                    }
+                                    tileLayer.addTo(clusterMap);
+
+                                    let clusterRawLocationLoader = new RawLocationLoader(clusterMap, userSettings);
+
+                                    // Load raw location data for the cluster's time range
+                                    if (rawLocationUrl) {
+                                        const userConfigs = [{
+                                            respectBounds: false,
+                                            url: rawLocationUrl,
+                                            color: '#f1ba63',
+                                            avatarUrl: null,
+                                            avatarFallback: null,
+                                            displayName: 'Cluster Path'
+                                        }];
+                                        clusterRawLocationLoader.init(userConfigs);
+                                        clusterRawLocationLoader.loadForDateRange(false, false);
+                                    }
+
+                                    let bounds = [];
+                                    if (visits.length > 0) {
+                                        for (let i = 0; i < visits.length; i++) {
+                                            const visit = visits[i];
+                                            if (visit.place) {
+                                                const lat = visit.place.latitudeCentroid;
+                                                const lon = visit.place.longitudeCentroid;
+                                                const name = visit.place.name;
+                                                L.circleMarker([lat, lon], {
+                                                    color: '#6a6a6a',
+                                                    fillColor: '#ff984f',
+                                                    fillOpacity: 0.1
+                                                }).addTo(clusterMap).bindPopup('Name: ' + name);
+                                                bounds.push([lat, lon]);
+                                            }
+                                        }
+                                    }
+
+                                    // Fit map to bounds if markers exist
+                                    if (bounds.length > 0) {
+                                        clusterMap.fitBounds(bounds, {padding: [10, 10]});
+                                    } else {
+                                        clusterMap.setView([51.505, -0.09], 13);
+                                    }
+                                })();
+                            </script>
+                            <div class="cluster-trips" th:if="${!block.visits.isEmpty()}">
+                                <h4>Visits in this Journey:</h4>
+                                <ul>
+                                    <li th:each="visit : ${block.visits}" class="trip-item">
+                                        <span th:text="${visit.place != null ? visit.place.name : 'Start'}">Start</span>
                                     </li>
                                 </ul>
                             </div>
