@@ -46,6 +46,8 @@ public class S3Storage {
         );
     }
 
+    //create a method to check for the existance of an item by name AI!
+
     public static class S3Object {
         private final InputStream inputStream;
         private final String contentType;
