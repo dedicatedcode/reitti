@@ -60,7 +60,7 @@
                         <tbody>
                             <tr th:each="trip : ${availableTrips}">
                                 <td>
-                                    <input type="checkbox" 
+                                    <input type="checkbox"
                                            name="selectedTrips" 
                                            th:value="${trip.id}" 
                                            th:checked="${clusterTripBlock.trips != null and clusterTripBlock.trips.contains(trip)}">
