@@ -1892,6 +1892,7 @@ button:disabled {
     font-size: 1.2em;
 }
 
+.memories-page .visit-address,
 .memories-page .cluster-block .cluster-duration {
     text-align: center;
 }

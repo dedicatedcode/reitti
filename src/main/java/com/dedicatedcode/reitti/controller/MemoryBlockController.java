@@ -79,13 +79,13 @@ public class MemoryBlockController {
             case TEXT:
                 memoryService.getTextBlock(blockId).ifPresent(text -> 
                     model.addAttribute("textBlock", text));
-                break;
+                return "memories/blocks/edit :: edit-text-block";
             case IMAGE_GALLERY:
                 List<MemoryBlockImageGallery> images = memoryService.getImagesForBlock(blockId);
                 model.addAttribute("images", images);
                 break;
         }
-        
+
         return "memories/blocks/edit";
     }
 

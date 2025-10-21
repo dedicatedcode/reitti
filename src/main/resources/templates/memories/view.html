@@ -80,13 +80,13 @@
             <div class="blocks-list" id="blocksList">
                 <div th:each="block : ${blocks}" class="memory-block" th:attr="data-block-id=${block.blockId}, data-block-type=${block.type.name()}">
                     <div class="block-content">
-                        <div th:if="${block.type.name() == 'TEXT'}" class="text-block">
+                        <div th:fragment="view-text-block" th:if="${block.type.name() == 'TEXT'}" class="text-block">
                             <div class="block-header" th:if="${block.headline != null && !block.headline.isEmpty()}">
                                 <h3 class="title" th:text="${block.headline}">Text Block</h3>
                             </div>
                             <p th:text="${block.content}">Content will be loaded here</p>
                         </div>
-                        <div th:if="${block.type.name() == 'VISIT'}" class="visit-block">
+                        <div th:fragment="view-visit-block" th:if="${block.type.name() == 'VISIT'}" class="visit-block">
                             <div class="block-header">
                                 <div class="visit-map" th:id="${'map_visit_' + block.blockId}"></div>
                                 <script th:inline="javascript">
@@ -130,7 +130,7 @@
                             </div>
                             <p th:if="${block.placeAddress != null}" class="visit-address" th:text="${block.placeAddress}">Address</p>
                         </div>
-                        <div th:if="${block.type.name() == 'TRIP'}" class="trip-block">
+                        <div th:fragment="view-trip-block" th:if="${block.type.name() == 'TRIP'}" class="trip-block">
                             <div class="trip-header">
                                 <i class="lni lni-direction"></i>
                                 <h3>Trip</h3>
@@ -167,7 +167,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div th:if="${block.type.name() == 'IMAGE_GALLERY'}" class="gallery-block">
+                        <div th:fragment="view-image-gallery-block" th:if="${block.type.name() == 'IMAGE_GALLERY'}" class="gallery-block">
                             <div class="gallery-images-grid" th:id="${'gallery_' + block.blockId}">
                                 <div th:each="image : ${block.images}" 
                                      class="gallery-image-item"
@@ -325,7 +325,7 @@
                                 })();
                             </script>
                         </div>
-                        <div th:if="${block.type.name() == 'CLUSTER_TRIP'}" class="cluster-block">
+                        <div th:fragment="view-cluster-trip-block" th:if="${block.type.name() == 'CLUSTER_TRIP'}" class="cluster-block">
                             <div class="block-header">
                                 <div class="time">
                                     <i class="lni lni-timer"></i>
@@ -457,7 +457,7 @@
                                 </ul>
                             </div>
                         </div>
-                        <div th:if="${block.type.name() == 'CLUSTER_VISIT'}" class="cluster-block">
+                        <div th:fragment="view-cluster-visit-block" th:if="${block.type.name() == 'CLUSTER_VISIT'}" class="cluster-block">
                             <div class="block-header">
                                 <div class="time">
                                     <i class="lni lni-timer"></i>

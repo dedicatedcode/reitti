@@ -22,7 +22,7 @@
     </nav>
     
     <div class="settings-content-area">
-        <div th:if="${block.blockType.name() == 'TEXT'}" class="memory-form">
+        <div th:fragment="edit-text-block" th:if="${block.blockType.name() == 'TEXT'}" class="memory-form">
             <h2>Edit Text Block</h2>
             <form th:action="@{/memories/{memoryId}/blocks/{blockId}/text(memoryId=${memoryId}, blockId=${block.id})}" method="post">
                 <div class="form-group">

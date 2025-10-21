@@ -16,11 +16,9 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,11 +27,13 @@ import java.util.stream.Collectors;
 public class MemoryBlockGenerationService {
     private static final Logger log = LoggerFactory.getLogger(MemoryBlockGenerationService.class);
 
-    private static final DateTimeFormatter FULL_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM");
+    private static final DateTimeFormatter FULL_DATE_FORMATTER = DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG);
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd MMM");
+    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("dd MMM, HH:mm");
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     private static final long MIN_VISIT_DURATION_SECONDS = 600;
-    
+
     private static final double WEIGHT_DURATION = 1.0;
     private static final double WEIGHT_DISTANCE = 2.0;
     private static final double WEIGHT_CATEGORY = 3.0;
@@ -45,13 +45,20 @@ public class MemoryBlockGenerationService {
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final TripJdbcService tripJdbcService;
     private final MessageSource messageSource;
+    private final I18nService i18nService;
     private final ImmichIntegrationService immichIntegrationService;
     private final S3Storage s3Storage;
 
-    public MemoryBlockGenerationService(ProcessedVisitJdbcService processedVisitJdbcService, TripJdbcService tripJdbcService, MessageSource messageSource, ImmichIntegrationService immichIntegrationService, S3Storage s3Storage) {
+    public MemoryBlockGenerationService(ProcessedVisitJdbcService processedVisitJdbcService,
+                                        TripJdbcService tripJdbcService,
+                                        MessageSource messageSource,
+                                        I18nService i18nService,
+                                        ImmichIntegrationService immichIntegrationService,
+                                        S3Storage s3Storage) {
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.tripJdbcService = tripJdbcService;
         this.messageSource = messageSource;
+        this.i18nService = i18nService;
         this.immichIntegrationService = immichIntegrationService;
         this.s3Storage = s3Storage;
     }
@@ -113,20 +120,21 @@ public class MemoryBlockGenerationService {
                 .sorted(Comparator.comparing(Trip::getStartTime))
                 .toList();
 
+            String formattedStartDate = formatTime(tripsToAccommodation.getFirst().getStartTime(), timeZone, false);
+            String formattedEndDate = formatTime(tripsToAccommodation.getLast().getEndTime(), timeZone, false);
             if (!tripsToAccommodation.isEmpty()) {
                 String text = messageSource.getMessage("memory.generator.travel_to_accommodation.text", new Object[]{
                         home.map(h ->h.getPlace().getCity()).orElse(""),
-                        tripsToAccommodation.getFirst().getStartTime(),
+                        formattedStartDate,
                         accommodation.map(a -> a.getPlace().getCity()).orElse(""),
-                        tripsToAccommodation.getLast().getEndTime(),
-                        Duration.between(tripsToAccommodation.getFirst().getStartTime(), tripsToAccommodation.getLast().getEndTime()).toSeconds(),
-                        tripsToAccommodation.stream().map(Trip::getDurationSeconds).reduce(0L, Long::sum)
+                        formattedEndDate,
+                        i18nService.humanizeDuration(Duration.between(tripsToAccommodation.getFirst().getStartTime(), tripsToAccommodation.getLast().getEndTime())),
+                        i18nService.humanizeDuration(tripsToAccommodation.stream().map(Trip::getDurationSeconds).reduce(0L, Long::sum))
                 }, LocaleContextHolder.getLocale());
 
                 MemoryBlockText accommodationPreRoll = new MemoryBlockText(null, null, text);
                 blockParts.add(accommodationPreRoll);
             }
-
 
             MemoryClusterBlock clusterBlock = convertToTripCluster(tripsToAccommodation, "Journey to " + accommodation.get().getPlace().getCity());
             blockParts.add(clusterBlock);
@@ -221,13 +229,15 @@ public class MemoryBlockGenerationService {
 
 
             if (!tripsFromAccommodation.isEmpty()) {
+                String formattedStartDate = formatTime(tripsFromAccommodation.getFirst().getStartTime(), timeZone, false);
+                String formattedEndDate = formatTime(tripsFromAccommodation.getLast().getEndTime(), timeZone, false);
                 String text = messageSource.getMessage("memory.generator.travel_from_accommodation.text", new Object[]{
                         accommodation.map(a -> a.getPlace().getCity()).orElse(""),
-                        tripsFromAccommodation.getFirst().getStartTime(),
+                        formattedStartDate,
                         home.map(h -> h.getPlace().getCity()).orElse(""),
-                        tripsFromAccommodation.getLast().getEndTime(),
-                        Duration.between(tripsFromAccommodation.getFirst().getStartTime(), tripsFromAccommodation.getLast().getEndTime()).toSeconds(),
-                        tripsFromAccommodation.stream().map(Trip::getDurationSeconds).reduce(0L, Long::sum)
+                        formattedEndDate,
+                        i18nService.humanizeDuration(Duration.between(tripsFromAccommodation.getFirst().getStartTime(), tripsFromAccommodation.getLast().getEndTime())),
+                        i18nService.humanizeDuration(tripsFromAccommodation.stream().map(Trip::getDurationSeconds).reduce(0L, Long::sum))
                 }, LocaleContextHolder.getLocale());
 
                 MemoryBlockText accommodationPreRoll = new MemoryBlockText(null, null, text);
@@ -314,10 +324,8 @@ public class MemoryBlockGenerationService {
         } else {
             country = messageSource.getMessage("country.unknown.label", null, LocaleContextHolder.getLocale());
         }
-        LocalDate localStart = startDate.atZone(timeZone).toLocalDate();
-        LocalDate localEnd = endDate.atZone(timeZone).toLocalDate();
-        String formattedStartDate = localStart.format(FULL_DATE_FORMATTER.withLocale(LocaleContextHolder.getLocale()));
-        String formattedEndDate = localStart.getYear() == localEnd.getYear() ? localEnd.format(DATE_FORMATTER.withLocale(LocaleContextHolder.getLocale())) : localEnd.format(FULL_DATE_FORMATTER.withLocale(LocaleContextHolder.getLocale()));
+        String formattedStartDate = formatDate(startDate, timeZone, true);
+        String formattedEndDate = formatDate(endDate, timeZone, false);
 
         return messageSource.getMessage("memory.generator.introductory.text",
                 new Object[]{
@@ -332,7 +340,17 @@ public class MemoryBlockGenerationService {
                 },
             LocaleContextHolder.getLocale());
     }
-    
+
+    private static String formatDate(Instant date, ZoneId timeZone, boolean withYear) {
+        LocalDate localEnd = date.atZone(timeZone).toLocalDate();
+        return withYear ? localEnd.format(FULL_DATE_FORMATTER.withLocale(LocaleContextHolder.getLocale())) : localEnd.format(DATE_FORMATTER.withLocale(LocaleContextHolder.getLocale()));
+    }
+
+    private static String formatTime(Instant date, ZoneId timeZone, boolean withDay) {
+        LocalDateTime localEnd = date.atZone(timeZone).toLocalDateTime();
+        return withDay ? localEnd.format(DATETIME_FORMATTER.withLocale(LocaleContextHolder.getLocale())) : localEnd.format(TIME_FORMATTER.withLocale(LocaleContextHolder.getLocale()));
+    }
+
     /**
      * Generate a headline for a visit cluster
      */
