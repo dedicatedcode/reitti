@@ -89,13 +89,48 @@ public class MemoryBlockController {
         return "memories/blocks/edit";
     }
 
+    @GetMapping("/{blockId}/view")
+    public String viewBlock(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long memoryId,
+            @PathVariable Long blockId,
+            Model model) {
+        
+        memoryService.getMemoryById(user, memoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        
+        MemoryBlock block = memoryService.getBlockById(blockId)
+                .orElseThrow(() -> new IllegalArgumentException("Block not found"));
+        
+        model.addAttribute("memoryId", memoryId);
+        model.addAttribute("block", block);
+        
+        switch (block.getBlockType()) {
+            case TEXT:
+                return "memories/blocks/view :: view-text-block";
+            case VISIT:
+                return "memories/blocks/view :: view-visit-block";
+            case TRIP:
+                return "memories/blocks/view :: view-trip-block";
+            case IMAGE_GALLERY:
+                return "memories/blocks/view :: view-image-gallery-block";
+            case CLUSTER_TRIP:
+                return "memories/blocks/view :: view-cluster-trip-block";
+            case CLUSTER_VISIT:
+                return "memories/blocks/view :: view-cluster-visit-block";
+            default:
+                throw new IllegalArgumentException("Unknown block type");
+        }
+    }
+
     @PostMapping("/{blockId}/text")
     public String updateTextBlock(
             @AuthenticationPrincipal User user,
             @PathVariable Long memoryId,
             @PathVariable Long blockId,
             @RequestParam String headline,
-            @RequestParam String content) {
+            @RequestParam String content,
+            Model model) {
         
         memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
@@ -106,7 +141,13 @@ public class MemoryBlockController {
         MemoryBlockText updated = textBlock.withHeadline(headline).withContent(content);
         memoryService.updateTextBlock(updated);
         
-        return "redirect:/memories/" + memoryId;
+        MemoryBlock block = memoryService.getBlockById(blockId)
+                .orElseThrow(() -> new IllegalArgumentException("Block not found"));
+        
+        model.addAttribute("memoryId", memoryId);
+        model.addAttribute("block", block);
+        
+        return "memories/blocks/view :: view-text-block";
     }
 
     @DeleteMapping("/{blockId}/images/{imageId}")
