@@ -46,15 +46,15 @@
             </form>
         </div>
         <div th:fragment="edit-cluster-trip-block" th:if="${block.blockType.name() == 'CLUSTER_TRIP'}" class="memory-form">
-            <h2>Edit Trips Block</h2>
+            <h2 th:text="#{memory.edit.block.cluster.trip.title}">Edit Trips Block</h2>
             <form th:attr="hx-post=@{/memories/{memoryId}/blocks/{blockId}/cluster-trips(memoryId=${memoryId}, blockId=${block.id})}" hx-target="closest .memory-block" hx-swap="innerHTML" hx-vals="js:{timezone: getUserTimezone()}">
                 <div class="form-group">
-                    <label>Select Trips</label>
+                    <label th:text="#{memory.edit.block.cluster.trip.select.trips}">Select Trips</label>
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>Selected</th>
-                                <th>Trip</th>
+                                <th th:text="#{memory.edit.block.cluster.trip.selected}">Selected</th>
+                                <th th:text="#{memory.edit.block.cluster.trip.trip}">Trip</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -75,8 +75,8 @@
                             th:attr="hx-get=@{/memories/{memoryId}/blocks/{blockId}/view(memoryId=${memoryId}, blockId=${block.id})}"
                             hx-target="closest .memory-block"
                             hx-swap="innerHTML"
-                            class="btn btn-secondary">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                            class="btn btn-secondary" th:text="#{common.cancel}">Cancel</button>
+                    <button type="submit" class="btn btn-primary" th:text="#{common.save.changes}">Save Changes</button>
                 </div>
             </form>
         </div>
