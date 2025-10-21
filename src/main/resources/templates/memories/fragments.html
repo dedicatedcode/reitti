@@ -209,137 +209,159 @@
     </div>
 
     <script th:inline="javascript">
-        if (typeof window.galleryBlockState === 'undefined') {
-            window.galleryBlockState = {
-                memoryId: /*[[${memoryId}]]*/ 0,
-                selectedImmichPhotos: new Map(),
-                selectedFiles: [],
-                currentPage: 0,
-                totalPages: 0
-            };
+        class GalleryBlockManager {
+            constructor(memoryId) {
+                this.memoryId = memoryId;
+                this.selectedImmichPhotos = new Map();
+                this.selectedFiles = [];
+                this.currentPage = 0;
+                this.totalPages = 0;
+            }
+
+            renderCombinedPhotos() {
+                const container = document.getElementById('selectedPhotosCombined');
+                container.innerHTML = '';
+                
+                this.selectedImmichPhotos.forEach((thumbnailUrl, assetId) => {
+                    const photoDiv = document.createElement('div');
+                    photoDiv.className = 'selected-photo-item';
+                    photoDiv.setAttribute('data-type', 'immich');
+                    photoDiv.setAttribute('data-id', assetId);
+                    photoDiv.innerHTML = `
+                        <img src="${thumbnailUrl}" alt="Selected photo">
+                        <button type="button" class="btn-remove" onclick="galleryManager.toggleImmichPhoto('${assetId}', '${thumbnailUrl}')">
+                            <i class="lni lni-ban-2"></i>
+                        </button>
+                    `;
+                    container.appendChild(photoDiv);
+                });
+                
+                this.selectedFiles.forEach((file, index) => {
+                    const photoDiv = document.createElement('div');
+                    photoDiv.className = 'selected-photo-item';
+                    photoDiv.setAttribute('data-type', 'upload');
+                    photoDiv.setAttribute('data-index', index);
+                    photoDiv.innerHTML = `
+                        <img src="${file.previewUrl}" alt="${file.name}">
+                        <button type="button" class="btn-remove" onclick="galleryManager.removeSelectedFile(${index})">
+                            <i class="lni lni-ban-2"></i>
+                        </button>
+                    `;
+                    container.appendChild(photoDiv);
+                });
+            }
+
+            toggleImmichPhoto(assetId, thumbnailUrl) {
+                if (this.selectedImmichPhotos.has(assetId)) {
+                    this.selectedImmichPhotos.delete(assetId);
+                    
+                    const photoItem = document.querySelector(`[data-asset-id="${assetId}"]`);
+                    if (photoItem) {
+                        photoItem.classList.remove('selected');
+                    }
+                } else {
+                    this.selectedImmichPhotos.set(assetId, thumbnailUrl);
+                    
+                    const photoItem = document.querySelector(`[data-asset-id="${assetId}"]`);
+                    if (photoItem) {
+                        photoItem.classList.add('selected');
+                    }
+                }
+                
+                this.renderCombinedPhotos();
+            }
+
+            removeSelectedFile(index) {
+                this.selectedFiles.splice(index, 1);
+                this.renderCombinedPhotos();
+            }
+
+            loadImmichPage(page) {
+                this.currentPage = page;
+                htmx.ajax('GET', `/memories/${this.memoryId}/blocks/immich-photos?page=${page}`, {
+                    target: '.immich-photos-grid',
+                    swap: 'outerHTML'
+                });
+            }
+
+            async createGalleryBlock() {
+                const images = [];
+                
+                // Handle Immich photos
+                this.selectedImmichPhotos.forEach((thumbnailUrl, assetId) => {
+                    images.push({
+                        type: 'immich',
+                        assetId: assetId
+                    });
+                });
+                
+                // Handle uploaded files: upload them first
+                for (const file of this.selectedFiles) {
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', file.file);
+                        
+                        const uploadResponse = await fetch(`/memories/${this.memoryId}/blocks/upload-image`, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        
+                        if (uploadResponse.ok) {
+                            const uploadData = await uploadResponse.json();
+                            images.push({
+                                type: 'upload',
+                                url: uploadData.url,
+                                name: uploadData.name
+                            });
+                        } else {
+                            console.error('Failed to upload file:', file.name);
+                        }
+                    } catch (error) {
+                        console.error('Error uploading file:', error);
+                    }
+                }
+
+                if (images.length === 0) {
+                    alert(/*[[#{memory.block.gallery.error.no.images}]]*/ 'Please select or upload at least one image');
+                    return;
+                }
+
+                fetch(`/memories/${this.memoryId}/blocks/image-gallery`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ images: images })
+                }).then(response => {
+                    if (response.ok) {
+                        window.location.href = `/memories/${this.memoryId}`;
+                    } else {
+                        alert(/*[[#{memory.block.gallery.error.create}]]*/ 'Failed to create gallery block');
+                    }
+                });
+            }
         }
 
+        const galleryManager = new GalleryBlockManager(/*[[${memoryId}]]*/ 0);
+
         function renderCombinedPhotos() {
-            const container = document.getElementById('selectedPhotosCombined');
-            container.innerHTML = '';
-            
-            window.galleryBlockState.selectedImmichPhotos.forEach((thumbnailUrl, assetId) => {
-                const photoDiv = document.createElement('div');
-                photoDiv.className = 'selected-photo-item';
-                photoDiv.setAttribute('data-type', 'immich');
-                photoDiv.setAttribute('data-id', assetId);
-                photoDiv.innerHTML = `
-                    <img src="${thumbnailUrl}" alt="Selected photo">
-                    <button type="button" class="btn-remove" onclick="toggleImmichPhoto('${assetId}', '${thumbnailUrl}')">
-                        <i class="lni lni-ban-2"></i>
-                    </button>
-                `;
-                container.appendChild(photoDiv);
-            });
-            
-            window.galleryBlockState.selectedFiles.forEach((file, index) => {
-                const photoDiv = document.createElement('div');
-                photoDiv.className = 'selected-photo-item';
-                photoDiv.setAttribute('data-type', 'upload');
-                photoDiv.setAttribute('data-index', index);
-                photoDiv.innerHTML = `
-                    <img src="${file.previewUrl}" alt="${file.name}">
-                    <button type="button" class="btn-remove" onclick="removeSelectedFile(${index})">
-                        <i class="lni lni-ban-2"></i>
-                    </button>
-                `;
-                container.appendChild(photoDiv);
-            });
+            galleryManager.renderCombinedPhotos();
         }
 
         function toggleImmichPhoto(assetId, thumbnailUrl) {
-            if (window.galleryBlockState.selectedImmichPhotos.has(assetId)) {
-                window.galleryBlockState.selectedImmichPhotos.delete(assetId);
-                
-                const photoItem = document.querySelector(`[data-asset-id="${assetId}"]`);
-                if (photoItem) {
-                    photoItem.classList.remove('selected');
-                }
-            } else {
-                window.galleryBlockState.selectedImmichPhotos.set(assetId, thumbnailUrl);
-                
-                const photoItem = document.querySelector(`[data-asset-id="${assetId}"]`);
-                if (photoItem) {
-                    photoItem.classList.add('selected');
-                }
-            }
-            
-            renderCombinedPhotos();
+            galleryManager.toggleImmichPhoto(assetId, thumbnailUrl);
         }
 
         function removeSelectedFile(index) {
-            window.galleryBlockState.selectedFiles.splice(index, 1);
-            renderCombinedPhotos();
+            galleryManager.removeSelectedFile(index);
         }
 
         function loadImmichPage(page) {
-            window.galleryBlockState.currentPage = page;
-            htmx.ajax('GET', `/memories/${window.galleryBlockState.memoryId}/blocks/immich-photos?page=${page}`, {
-                target: '.immich-photos-grid',
-                swap: 'outerHTML'
-            });
+            galleryManager.loadImmichPage(page);
         }
 
         async function createGalleryBlock() {
-            const images = [];
-            
-            // Handle Immich photos
-            window.galleryBlockState.selectedImmichPhotos.forEach((thumbnailUrl, assetId) => {
-                images.push({
-                    type: 'immich',
-                    assetId: assetId
-                });
-            });
-            
-            // Handle uploaded files: upload them first
-            for (const file of window.galleryBlockState.selectedFiles) {
-                try {
-                    const formData = new FormData();
-                    formData.append('file', file.file);
-                    
-                    const uploadResponse = await fetch(`/memories/${window.galleryBlockState.memoryId}/blocks/upload-image`, {
-                        method: 'POST',
-                        body: formData
-                    });
-                    
-                    if (uploadResponse.ok) {
-                        const uploadData = await uploadResponse.json();
-                        images.push({
-                            type: 'upload',
-                            url: uploadData.url,
-                            name: uploadData.name
-                        });
-                    } else {
-                        console.error('Failed to upload file:', file.name);
-                    }
-                } catch (error) {
-                    console.error('Error uploading file:', error);
-                }
-            }
-
-            if (images.length === 0) {
-                alert(/*[[#{memory.block.gallery.error.no.images}]]*/ 'Please select or upload at least one image');
-                return;
-            }
-
-            fetch(`/memories/${window.galleryBlockState.memoryId}/blocks/image-gallery`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ images: images })
-            }).then(response => {
-                if (response.ok) {
-                    window.location.href = `/memories/${window.galleryBlockState.memoryId}`;
-                } else {
-                    alert(/*[[#{memory.block.gallery.error.create}]]*/ 'Failed to create gallery block');
-                }
-            });
+            await galleryManager.createGalleryBlock();
         }
 
         // Event listener for file input
@@ -349,12 +371,12 @@
                 if (file.type.startsWith('image/')) {
                     const reader = new FileReader();
                     reader.onload = function(e) {
-                        window.galleryBlockState.selectedFiles.push({
+                        galleryManager.selectedFiles.push({
                             file: file,
                             previewUrl: e.target.result,
                             name: file.name
                         });
-                        renderCombinedPhotos();
+                        galleryManager.renderCombinedPhotos();
                     };
                     reader.readAsDataURL(file);
                 }
@@ -388,21 +410,23 @@
             const pageTotalPages = /*[[${totalPages}]]*/ 0;
             const pageCurrentPage = /*[[${currentPage}]]*/ 0;
             
-            if (window.galleryBlockState) {
-                window.galleryBlockState.totalPages = pageTotalPages;
-                window.galleryBlockState.currentPage = pageCurrentPage;
+            if (typeof galleryManager !== 'undefined') {
+                galleryManager.totalPages = pageTotalPages;
+                galleryManager.currentPage = pageCurrentPage;
             }
             
             document.querySelectorAll('.immich-photo-item').forEach(item => {
                 const assetId = item.getAttribute('data-asset-id');
                 const thumbnailUrl = item.getAttribute('data-thumbnail-url');
                 
-                if (window.galleryBlockState && window.galleryBlockState.selectedImmichPhotos.has(assetId)) {
+                if (typeof galleryManager !== 'undefined' && galleryManager.selectedImmichPhotos.has(assetId)) {
                     item.classList.add('selected');
                 }
                 
                 item.addEventListener('click', function() {
-                    toggleImmichPhoto(assetId, thumbnailUrl);
+                    if (typeof galleryManager !== 'undefined') {
+                        galleryManager.toggleImmichPhoto(assetId, thumbnailUrl);
+                    }
                 });
             });
             
@@ -419,7 +443,11 @@
                         prevBtn.type = 'button';
                         prevBtn.className = 'btn btn-secondary';
                         prevBtn.textContent = /*[[#{memory.block.gallery.pagination.previous}]]*/ 'Previous';
-                        prevBtn.onclick = () => loadImmichPage(pageCurrentPage - 1);
+                        prevBtn.onclick = () => {
+                            if (typeof galleryManager !== 'undefined') {
+                                galleryManager.loadImmichPage(pageCurrentPage - 1);
+                            }
+                        };
                         paginationDiv.appendChild(prevBtn);
                     }
                     
@@ -433,7 +461,11 @@
                         nextBtn.type = 'button';
                         nextBtn.className = 'btn btn-secondary';
                         nextBtn.textContent = /*[[#{memory.block.gallery.pagination.next}]]*/ 'Next';
-                        nextBtn.onclick = () => loadImmichPage(pageCurrentPage + 1);
+                        nextBtn.onclick = () => {
+                            if (typeof galleryManager !== 'undefined') {
+                                galleryManager.loadImmichPage(pageCurrentPage + 1);
+                            }
+                        };
                         paginationDiv.appendChild(nextBtn);
                     }
                     
