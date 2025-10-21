@@ -129,21 +129,6 @@
                                 <h3 class="visit-title" th:text="${block.placeName != null ? block.placeName : 'Unknown Location'}">Place Name</h3>
                             </div>
                             <p th:if="${block.placeAddress != null}" class="visit-address" th:text="${block.placeAddress}">Address</p>
-                            <div class="visit-details">
-                                <div class="visit-time">
-                                    <i class="lni lni-timer"></i>
-                                    <span th:text="${#temporals.format(block.startTime, 'MMM d, yyyy HH:mm')}">Start Time</span>
-                                    <span> - </span>
-                                    <span th:text="${#temporals.format(block.endTime, 'HH:mm')}">End Time</span>
-                                </div>
-                                <div class="visit-duration" th:if="${block.durationSeconds != null}">
-                                    <i class="lni lni-hourglass"></i>
-                                    <span th:text="${block.durationSeconds >= 3600 ? #numbers.formatDecimal(block.durationSeconds / 3600.0, 1, 1) + ' hours' : #numbers.formatDecimal(block.durationSeconds / 60.0, 0, 0) + ' minutes'}">Duration</span>
-                                </div>
-                            </div>
-                            <div class="visit-coordinates" th:if="${block.latitude != null && block.longitude != null}">
-                                <small th:text="${#numbers.formatDecimal(block.latitude, 1, 6)} + ', ' + ${#numbers.formatDecimal(block.longitude, 1, 6)}">Coordinates</small>
-                            </div>
                         </div>
                         <div th:if="${block.type.name() == 'TRIP'}" class="trip-block">
                             <div class="trip-header">
