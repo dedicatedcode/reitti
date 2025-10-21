@@ -24,7 +24,7 @@
     <div class="settings-content-area">
         <div th:fragment="edit-text-block" th:if="${block.blockType.name() == 'TEXT'}" class="memory-form">
             <h2>Edit Text Block</h2>
-            <form hx-post="@{/memories/{memoryId}/blocks/{blockId}/text(memoryId=${memoryId}, blockId=${block.id})}" hx-target="closest .memory-block" hx-swap="innerHTML">
+            <form th:attr="hx-post=@{/memories/{memoryId}/blocks/{blockId}/text(memoryId=${memoryId}, blockId=${block.id})}" hx-target="closest .memory-block" hx-swap="innerHTML" hx-vals="js:{timezone: getUserTimezone()}">
                 <div class="form-group">
                     <label for="headline">Headline</label>
                     <input type="text" id="headline" name="headline" class="form-control" 
@@ -39,7 +39,7 @@
 
                 <div class="form-actions">
                     <button type="button" 
-                            hx-get="@{/memories/{memoryId}/blocks/{blockId}/view(memoryId=${memoryId}, blockId=${block.id})}" 
+                            th:attr="hx-get=@{/memories/{memoryId}/blocks/{blockId}/view(memoryId=${memoryId}, blockId=${block.id})}"
                             hx-target="closest .memory-block" 
                             hx-swap="innerHTML" 
                             class="btn btn-secondary">Cancel</button>

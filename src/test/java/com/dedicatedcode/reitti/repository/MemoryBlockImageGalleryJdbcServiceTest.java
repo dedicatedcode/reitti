@@ -129,7 +129,7 @@ class MemoryBlockImageGalleryJdbcServiceTest {
 
         memoryBlockImageGalleryJdbcService.deleteByBlockId(testBlock.getId());
 
-        List<MemoryBlockImageGallery> galleries = memoryBlockImageGalleryJdbcService.findByBlockId(testBlock.getId());
+        Optional<MemoryBlockImageGallery> galleries = memoryBlockImageGalleryJdbcService.findByBlockId(testBlock.getId());
         assertTrue(galleries.isEmpty());
     }
 
@@ -161,13 +161,13 @@ class MemoryBlockImageGalleryJdbcServiceTest {
         MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);
         memoryBlockImageGalleryJdbcService.create(gallery);
 
-        List<MemoryBlockImageGallery> galleries = memoryBlockImageGalleryJdbcService.findByBlockId(testBlock.getId());
+        Optional<MemoryBlockImageGallery> galleries = memoryBlockImageGalleryJdbcService.findByBlockId(testBlock.getId());
 
-        assertEquals(1, galleries.size());
-        assertEquals(3, galleries.get(0).getImages().size());
-        assertEquals("https://example.com/image1.jpg", galleries.get(0).getImages().get(0).getImageUrl());
-        assertEquals("https://example.com/image2.jpg", galleries.get(0).getImages().get(1).getImageUrl());
-        assertEquals("https://example.com/image3.jpg", galleries.get(0).getImages().get(2).getImageUrl());
+        assertTrue(galleries.isPresent());
+        assertEquals(3, galleries.get().getImages().size());
+        assertEquals("https://example.com/image1.jpg", galleries.get().getImages().get(0).getImageUrl());
+        assertEquals("https://example.com/image2.jpg", galleries.get().getImages().get(1).getImageUrl());
+        assertEquals("https://example.com/image3.jpg", galleries.get().getImages().get(2).getImageUrl());
     }
 
     @Test

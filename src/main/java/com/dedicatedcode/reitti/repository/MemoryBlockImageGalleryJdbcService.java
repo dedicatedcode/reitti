@@ -83,12 +83,12 @@ public class MemoryBlockImageGalleryJdbcService {
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
-    public List<MemoryBlockImageGallery> findByBlockId(Long blockId) {
+    public Optional<MemoryBlockImageGallery> findByBlockId(Long blockId) {
         List<MemoryBlockImageGallery> results = jdbcTemplate.query(
                 "SELECT * FROM memory_block_image_gallery WHERE block_id = ?",
                 MEMORY_BLOCK_IMAGE_GALLERY_ROW_MAPPER,
                 blockId
         );
-        return results;
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 }

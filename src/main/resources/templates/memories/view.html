@@ -78,9 +78,9 @@
             </div>
 
             <div class="blocks-list" id="blocksList">
-                <div th:each="block : ${blocks}" class="memory-block" th:attr="data-block-id=${block.blockId}, data-block-type=${block.type.name()}">
+                <div th:fragment="view-block" th:each="block : ${blocks}" class="memory-block" th:attr="data-block-id=${block.blockId}, data-block-type=${block.type.name()}">
                     <div class="block-content">
-                        <div th:fragment="view-text-block" th:if="${block.type.name() == 'TEXT'}" class="text-block">
+                        <div th:if="${block.type.name() == 'TEXT'}" class="text-block">
                             <div class="block-header" th:if="${block.headline != null && !block.headline.isEmpty()}">
                                 <h3 class="title" th:text="${block.headline}">Text Block</h3>
                             </div>

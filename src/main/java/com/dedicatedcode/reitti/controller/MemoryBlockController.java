@@ -81,7 +81,7 @@ public class MemoryBlockController {
                     model.addAttribute("textBlock", text));
                 return "memories/blocks/edit :: edit-text-block";
             case IMAGE_GALLERY:
-                List<MemoryBlockImageGallery> images = memoryService.getImagesForBlock(blockId);
+                MemoryBlockImageGallery images = memoryService.getImagesForBlock(blockId);
                 model.addAttribute("images", images);
                 break;
         }
@@ -94,33 +94,15 @@ public class MemoryBlockController {
             @AuthenticationPrincipal User user,
             @PathVariable Long memoryId,
             @PathVariable Long blockId,
+            @RequestParam(required = false, defaultValue = "UTC" ) ZoneId timezone,
             Model model) {
-        
-        memoryService.getMemoryById(user, memoryId)
+
+        Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
-        MemoryBlock block = memoryService.getBlockById(blockId)
-                .orElseThrow(() -> new IllegalArgumentException("Block not found"));
-        
-        model.addAttribute("memoryId", memoryId);
-        model.addAttribute("block", block);
-        
-        switch (block.getBlockType()) {
-            case TEXT:
-                return "memories/blocks/view :: view-text-block";
-            case VISIT:
-                return "memories/blocks/view :: view-visit-block";
-            case TRIP:
-                return "memories/blocks/view :: view-trip-block";
-            case IMAGE_GALLERY:
-                return "memories/blocks/view :: view-image-gallery-block";
-            case CLUSTER_TRIP:
-                return "memories/blocks/view :: view-cluster-trip-block";
-            case CLUSTER_VISIT:
-                return "memories/blocks/view :: view-cluster-visit-block";
-            default:
-                throw new IllegalArgumentException("Unknown block type");
-        }
+        model.addAttribute("memory", memory);
+        model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, blockId).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
+
+        return "memories/view :: view-block";
     }
 
     @PostMapping("/{blockId}/text")
@@ -130,9 +112,10 @@ public class MemoryBlockController {
             @PathVariable Long blockId,
             @RequestParam String headline,
             @RequestParam String content,
+            @RequestParam(required = false, defaultValue = "UTC" ) ZoneId timezone,
             Model model) {
-        
-        memoryService.getMemoryById(user, memoryId)
+
+        Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
         MemoryBlockText textBlock = memoryService.getTextBlock(blockId)
@@ -141,13 +124,10 @@ public class MemoryBlockController {
         MemoryBlockText updated = textBlock.withHeadline(headline).withContent(content);
         memoryService.updateTextBlock(updated);
         
-        MemoryBlock block = memoryService.getBlockById(blockId)
-                .orElseThrow(() -> new IllegalArgumentException("Block not found"));
-        
-        model.addAttribute("memoryId", memoryId);
-        model.addAttribute("block", block);
-        
-        return "memories/blocks/view :: view-text-block";
+        model.addAttribute("memory", memory);
+        model.addAttribute("blocks", List.of(updated));
+
+        return "memories/view :: view-block";
     }
 
     @DeleteMapping("/{blockId}/images/{imageId}")
