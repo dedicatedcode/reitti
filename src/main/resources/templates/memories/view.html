@@ -549,7 +549,13 @@
                         </div>
                     </div>
                     <div class="block-actions">
-                        <button class="btn " th:onclick="'editBlock(' + ${block.blockId} + ')'"><i class="lni lni-pencil-1"></i></button>
+                        <button type="button"
+                                class="btn"
+                                th:attr="hx-get=@{/memories/{memoryId}/blocks/{blockId}/edit(memoryId=${memory.id}, blockId=${block.blockId})}"
+                                hx-target="closest .memory-block"
+                                hx-swap="innerHTML">
+                            <i class="lni lni-pencil-1"></i>
+                        </button>
                         <button type="button"
                                 class="btn btn-danger"
                                 th:attr="hx-delete=@{/memories/{memoryId}/blocks/{blockId}(memoryId=${memory.id}, blockId=${block.blockId})}"
