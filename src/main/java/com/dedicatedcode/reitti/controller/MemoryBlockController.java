@@ -56,6 +56,7 @@ public class MemoryBlockController {
             @AuthenticationPrincipal User user,
             @PathVariable Long memoryId,
             @PathVariable Long blockId,
+            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             Model model) {
         
         memoryService.getMemoryById(user, memoryId)
@@ -77,13 +78,13 @@ public class MemoryBlockController {
                     model.addAttribute("tripBlock", trip));
                 break;
             case TEXT:
-                memoryService.getTextBlock(blockId).ifPresent(text -> 
+                memoryService.getBlock(user, timezone, memoryId, blockId).ifPresent(text ->
                     model.addAttribute("textBlock", text));
                 return "memories/blocks/edit :: edit-text-block";
-            case IMAGE_GALLERY:
-                MemoryBlockImageGallery images = memoryService.getImagesForBlock(blockId);
-                model.addAttribute("images", images);
-                break;
+            case CLUSTER_TRIP:
+                memoryService.getBlock(user, timezone, memoryId, blockId).ifPresent(b ->
+                        model.addAttribute("clusterTripBlock", b));
+                return "memories/blocks/edit :: edit-cluster-trip-block";
         }
 
         return "memories/blocks/edit";

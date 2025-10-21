@@ -121,70 +121,14 @@ public class MemoryService {
         }
     }
     private Optional<? extends MemoryBlockPart> loadAndConvertBlockInstance(User user, ZoneId timezone, MemoryBlock block, UserSettings settings) {
-        Optional<? extends MemoryBlockPart> part = Optional.empty();
-        switch (block.getBlockType()) {
-            case TEXT:
-                part = memoryBlockTextJdbcService.findByBlockId(block.getId());
-                break;
-            case VISIT:
-                part = memoryBlockVisitJdbcService.findByBlockId(block.getId());
-                break;
-            case TRIP:
-                part = memoryBlockTripJdbcService.findByBlockId(block.getId());
-                break;
-            case IMAGE_GALLERY:
-                part = memoryBlockImageGalleryJdbcService.findByBlockId(block.getId());
-                break;
-            case CLUSTER_TRIP:
-                Optional<MemoryClusterBlock> clusterBlockOpt = memoryClusterBlockRepository.findByBlockId(user, block.getId());
-                part = clusterBlockOpt.map(memoryClusterBlock -> {
-                    List<Trip> trips = tripJdbcService.findByIds(user, memoryClusterBlock.getPartIds());
-                    Optional<Trip> first = trips.stream().findFirst();
-                    Optional<Trip> lastTrip = trips.stream().max(Comparator.comparing(Trip::getEndTime));
-
-                    long movingTime = trips.stream().mapToLong(Trip::getDurationSeconds).sum();
-                    long completeTime = first.map(trip -> Duration.between(trip.getStartTime(), lastTrip.get().getEndTime()).toSeconds()).orElse(0L);
-                    LocalDateTime adjustedStartTime = first.map(t -> adjustTime(settings, t.getStartTime(), t.getStartVisit().getPlace(), timezone)).orElse(null);
-                    LocalDateTime adjustedEndTime = lastTrip.map(t -> adjustTime(settings, t.getEndTime(), t.getEndVisit().getPlace(), timezone)).orElse(null);
-                    return new MemoryTripClusterBlockDTO(
-                            memoryClusterBlock,
-                            trips,
-                            "/api/v1/raw-location-points/trips?trips=" + String.join(",", memoryClusterBlock.getPartIds().stream().map(Objects::toString).toList()),
-                            adjustedStartTime,
-                            adjustedEndTime,
-                            completeTime,
-                            movingTime);
-                });
-                break;
-            case CLUSTER_VISIT:
-                Optional<MemoryClusterBlock> clusterVisitBlockOpt = memoryClusterBlockRepository.findByBlockId(user, block.getId());
-                part = clusterVisitBlockOpt.map(memoryClusterBlock -> {
-                    List<ProcessedVisit> visits = processedVisitJdbcService.findByIds(user, memoryClusterBlock.getPartIds());
-                    Optional<ProcessedVisit> first = visits.stream().findFirst();
-                    Optional<ProcessedVisit> last = visits.stream().max(Comparator.comparing(ProcessedVisit::getEndTime));
-
-                    LocalDateTime adjustedStartTime = first.map(t -> adjustTime(settings, t.getStartTime(), t.getPlace(), timezone)).orElse(null);
-                    LocalDateTime adjustedEndTime = last.map(t -> adjustTime(settings, t.getEndTime(), t.getPlace(), timezone)).orElse(null);
-                    Long completeDuration = 0L;
-                    return new MemoryVisitClusterBlockDTO(
-                            memoryClusterBlock,
-                            visits,
-                            "/api/v1/raw-location-points?startDate=" + first.get().getStartTime().atZone(timezone).toLocalDateTime() + "&endDate=" + last.get().getEndTime().atZone(timezone).toLocalDateTime() + "&timezone=" + timezone,
-                            adjustedStartTime,
-                            adjustedEndTime,
-                            completeDuration);
-                });
-                break;
-        }
-        return part;
-    }
-
-    private LocalDateTime adjustTime(UserSettings settings, Instant startTime, SignificantPlace place, ZoneId timezone) {
-        if (settings.getTimeDisplayMode() == TimeDisplayMode.DEFAULT) {
-            return startTime.atZone(timezone).toLocalDateTime();
-        } else {
-            return startTime.atZone(place.getTimezone()).toLocalDateTime();
-        }
+        return switch (block.getBlockType()) {
+            case TEXT -> memoryBlockTextJdbcService.findByBlockId(block.getId());
+            case VISIT -> memoryBlockVisitJdbcService.findByBlockId(block.getId());
+            case TRIP -> memoryBlockTripJdbcService.findByBlockId(block.getId());
+            case IMAGE_GALLERY -> memoryBlockImageGalleryJdbcService.findByBlockId(block.getId());
+            case CLUSTER_TRIP -> getClusterTripBlock(user, timezone, block, settings);
+            case CLUSTER_VISIT -> getClusterVisitBlock(user, timezone, block, settings);
+        };
     }
 
     public Optional<MemoryBlock> getBlockById(Long blockId) {
@@ -342,4 +286,60 @@ public class MemoryService {
         
         log.info("Recalculated memory {} with {} blocks", memoryId, autoGeneratedBlocks.size());
     }
+
+
+    private Optional<? extends MemoryBlockPart> getClusterTripBlock(User user, ZoneId timezone, MemoryBlock block, UserSettings settings) {
+        Optional<? extends MemoryBlockPart> part;
+        Optional<MemoryClusterBlock> clusterBlockOpt = memoryClusterBlockRepository.findByBlockId(user, block.getId());
+        part = clusterBlockOpt.map(memoryClusterBlock -> {
+            List<Trip> trips = tripJdbcService.findByIds(user, memoryClusterBlock.getPartIds());
+            Optional<Trip> first = trips.stream().findFirst();
+            Optional<Trip> lastTrip = trips.stream().max(Comparator.comparing(Trip::getEndTime));
+
+            long movingTime = trips.stream().mapToLong(Trip::getDurationSeconds).sum();
+            long completeTime = first.map(trip -> Duration.between(trip.getStartTime(), lastTrip.get().getEndTime()).toSeconds()).orElse(0L);
+            LocalDateTime adjustedStartTime = first.map(t -> adjustTime(settings, t.getStartTime(), t.getStartVisit().getPlace(), timezone)).orElse(null);
+            LocalDateTime adjustedEndTime = lastTrip.map(t -> adjustTime(settings, t.getEndTime(), t.getEndVisit().getPlace(), timezone)).orElse(null);
+            return new MemoryTripClusterBlockDTO(
+                    memoryClusterBlock,
+                    trips,
+                    "/api/v1/raw-location-points/trips?trips=" + String.join(",", memoryClusterBlock.getPartIds().stream().map(Objects::toString).toList()),
+                    adjustedStartTime,
+                    adjustedEndTime,
+                    completeTime,
+                    movingTime);
+        });
+        return part;
+    }
+
+    private Optional<? extends MemoryBlockPart> getClusterVisitBlock(User user, ZoneId timezone, MemoryBlock block, UserSettings settings) {
+        Optional<? extends MemoryBlockPart> part;
+        Optional<MemoryClusterBlock> clusterVisitBlockOpt = memoryClusterBlockRepository.findByBlockId(user, block.getId());
+        part = clusterVisitBlockOpt.map(memoryClusterBlock -> {
+            List<ProcessedVisit> visits = processedVisitJdbcService.findByIds(user, memoryClusterBlock.getPartIds());
+            Optional<ProcessedVisit> first = visits.stream().findFirst();
+            Optional<ProcessedVisit> last = visits.stream().max(Comparator.comparing(ProcessedVisit::getEndTime));
+
+            LocalDateTime adjustedStartTime = first.map(t -> adjustTime(settings, t.getStartTime(), t.getPlace(), timezone)).orElse(null);
+            LocalDateTime adjustedEndTime = last.map(t -> adjustTime(settings, t.getEndTime(), t.getPlace(), timezone)).orElse(null);
+            Long completeDuration = 0L;
+            return new MemoryVisitClusterBlockDTO(
+                    memoryClusterBlock,
+                    visits,
+                    "/api/v1/raw-location-points?startDate=" + first.get().getStartTime().atZone(timezone).toLocalDateTime() + "&endDate=" + last.get().getEndTime().atZone(timezone).toLocalDateTime() + "&timezone=" + timezone,
+                    adjustedStartTime,
+                    adjustedEndTime,
+                    completeDuration);
+        });
+        return part;
+    }
+
+    private LocalDateTime adjustTime(UserSettings settings, Instant startTime, SignificantPlace place, ZoneId timezone) {
+        if (settings.getTimeDisplayMode() == TimeDisplayMode.DEFAULT) {
+            return startTime.atZone(timezone).toLocalDateTime();
+        } else {
+            return startTime.atZone(place.getTimezone()).toLocalDateTime();
+        }
+    }
+
 }

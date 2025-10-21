@@ -30,18 +30,30 @@
                     <input type="text" id="headline" name="headline" class="form-control" 
                            th:value="${textBlock?.headline}" placeholder="Enter headline">
                 </div>
-
                 <div class="form-group">
                     <label for="content">Content</label>
                     <textarea id="content" name="content" class="form-control" rows="10" 
                               placeholder="Enter content" th:text="${textBlock?.content}"></textarea>
                 </div>
-
                 <div class="form-actions">
                     <button type="button" 
                             th:attr="hx-get=@{/memories/{memoryId}/blocks/{blockId}/view(memoryId=${memoryId}, blockId=${block.id})}"
                             hx-target="closest .memory-block" 
                             hx-swap="innerHTML" 
+                            class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+        <div th:fragment="edit-cluster-trip-block" th:if="${block.blockType.name() == 'CLUSTER_TRIP'}" class="memory-form">
+            <h2>Edit Trips Block</h2>
+            <form th:attr="hx-post=@{/memories/{memoryId}/blocks/{blockId}/cluster-trips(memoryId=${memoryId}, blockId=${block.id})}" hx-target="closest .memory-block" hx-swap="innerHTML" hx-vals="js:{timezone: getUserTimezone()}">
+
+                <div class="form-actions">
+                    <button type="button"
+                            th:attr="hx-get=@{/memories/{memoryId}/blocks/{blockId}/view(memoryId=${memoryId}, blockId=${block.id})}"
+                            hx-target="closest .memory-block"
+                            hx-swap="innerHTML"
                             class="btn btn-secondary">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save Changes</button>
                 </div>
