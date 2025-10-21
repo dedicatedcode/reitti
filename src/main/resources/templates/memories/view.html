@@ -228,7 +228,7 @@
                                         });
 
                                         const closeButton = document.createElement('button');
-                                        closeButton.innerHTML = '<i class="lni lni-xmark-circle"></i>';
+                                        closeButton.innerHTML = '<i class="lni lni-xmark-circle></i>';
                                         closeButton.className = 'photo-modal-close-button';
 
                                         let prevButton, nextButton, counter;
@@ -566,16 +566,14 @@
                         </button>
                     </div>
                 </div>
-                <div class="memory-block">
-                    <div class="blocks-header">
-                        <button type="button"
-                                class="btn btn-primary"
-                                th:attr="hx-get=@{/memories/{id}/blocks/select-type(id=${memory.id})}"
-                                hx-target="previous .memory-block"
-                                hx-swap="afterend">
-                            <i class="lni lni-plus"></i> <span th:text="#{memory.view.add.block}">Add Block</span>
-                        </button>
-                    </div>
+                <div th:each="block : ${blocks}" class="add-block-spacer">
+                    <button type="button"
+                            class="btn btn-primary"
+                            th:attr="hx-get=@{/memories/{id}/blocks/select-type(id=${memory.id})}"
+                            hx-target="closest .add-block-spacer"
+                            hx-swap="afterend">
+                        <i class="lni lni-plus"></i> <span th:text="#{memory.view.add.block}">Add Block</span>
+                    </button>
                 </div>
 
             </div>
