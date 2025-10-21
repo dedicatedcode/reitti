@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.controller;
 import com.dedicatedcode.reitti.dto.PhotoResponse;
 import com.dedicatedcode.reitti.model.memory.*;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.service.MemoryService;
 import com.dedicatedcode.reitti.service.S3Storage;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
@@ -24,11 +25,13 @@ public class MemoryBlockController {
 
     private final MemoryService memoryService;
     private final ImmichIntegrationService immichIntegrationService;
+    private final TripJdbcService tripJdbcService;
     private final S3Storage s3Storage;
 
-    public MemoryBlockController(MemoryService memoryService, ImmichIntegrationService immichIntegrationService, S3Storage s3Storage) {
+    public MemoryBlockController(MemoryService memoryService, ImmichIntegrationService immichIntegrationService, TripJdbcService tripJdbcService, S3Storage s3Storage) {
         this.memoryService = memoryService;
         this.immichIntegrationService = immichIntegrationService;
+        this.tripJdbcService = tripJdbcService;
         this.s3Storage = s3Storage;
     }
 
@@ -58,10 +61,10 @@ public class MemoryBlockController {
             @PathVariable Long blockId,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             Model model) {
-        
-        memoryService.getMemoryById(user, memoryId)
+
+        Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
+
         MemoryBlock block = memoryService.getBlockById(blockId)
                 .orElseThrow(() -> new IllegalArgumentException("Block not found"));
         
@@ -84,6 +87,7 @@ public class MemoryBlockController {
             case CLUSTER_TRIP:
                 memoryService.getBlock(user, timezone, memoryId, blockId).ifPresent(b ->
                         model.addAttribute("clusterTripBlock", b));
+                model.addAttribute("availableTrips", this.tripJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate()));
                 return "memories/blocks/edit :: edit-cluster-trip-block";
         }
 
