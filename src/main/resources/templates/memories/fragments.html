@@ -79,7 +79,7 @@
                     class="btn btn-secondary"
                     hx-get="/memories/fragments/empty"
                     hx-target=".block-form"
-                    hx-swap="outerHTML"
+                    hx-swap="delete"
                     th:text="#{memory.block.cancel}">Cancel</button>
             <button type="submit" class="btn btn-primary" th:text="#{memory.block.create}">Save Block</button>
         </div>
@@ -103,7 +103,7 @@
                     class="btn btn-secondary"
                     hx-get="/memories/fragments/empty"
                     hx-target=".block-form"
-                    hx-swap="outerHTML"
+                    hx-swap="delete"
                     th:text="#{memory.block.cancel}">Cancel</button>
             <button type="submit" class="btn btn-primary" th:text="#{memory.block.create}">Save Block</button>
         </div>
@@ -144,7 +144,7 @@
                     class="btn btn-secondary"
                     hx-get="/memories/fragments/empty"
                     hx-target=".block-form"
-                    hx-swap="outerHTML"
+                    hx-swap="delete"
                     th:text="#{memory.block.cancel}">Cancel</button>
             <button type="submit" class="btn btn-primary" th:text="#{memory.block.create}">Save Block</button>
         </div>
@@ -175,22 +175,16 @@
         <div class="gallery-panel upload-panel">
             <h4 th:text="#{memory.block.gallery.upload.title}">Upload Images</h4>
             <div class="upload-area">
-                <form id="uploadForm" 
-                      th:attr="hx-post=@{/memories/{id}/blocks/upload-image(id=${memoryId})}"
-                      hx-target="#selectedPhotosCombined"
-                      hx-swap="beforeend"
-                      hx-encoding="multipart/form-data">
-                    <input type="file" 
-                           id="fileInput" 
-                           name="file" 
-                           accept="image/*" 
-                           class="form-control"
-                           onchange="this.form.dispatchEvent(new Event('submit', {bubbles: true, cancelable: true}))">
-                    <label for="fileInput" class="upload-label">
-                        <i class="lni lni-cloud-upload"></i>
-                        <span th:text="#{memory.block.gallery.upload.choose}">Choose file or drag here</span>
-                    </label>
-                </form>
+                <input type="file" 
+                       id="fileInput" 
+                       name="files" 
+                       multiple 
+                       accept="image/*" 
+                       class="form-control">
+                <label for="fileInput" class="upload-label">
+                    <i class="lni lni-cloud-upload"></i>
+                    <span th:text="#{memory.block.gallery.upload.choose}">Choose files or drag here</span>
+                </label>
             </div>
         </div>
     </div>
@@ -209,8 +203,8 @@
         <button type="button"
                 class="btn btn-secondary"
                 th:attr="hx-get=@{/memories/fragments/empty}"
-                hx-target=".blocks-add-area"
-                hx-swap="innerHTML"
+                hx-target=".block-form"
+                hx-swap="delete"
                 th:text="#{memory.block.cancel}">Cancel</button>
     </div>
 
@@ -219,7 +213,7 @@
             window.galleryBlockState = {
                 memoryId: /*[[${memoryId}]]*/ 0,
                 selectedImmichPhotos: new Map(),
-                uploadedFiles: [],
+                selectedFiles: [],
                 currentPage: 0,
                 totalPages: 0
             };
@@ -243,14 +237,14 @@
                 container.appendChild(photoDiv);
             });
             
-            window.galleryBlockState.uploadedFiles.forEach((file, index) => {
+            window.galleryBlockState.selectedFiles.forEach((file, index) => {
                 const photoDiv = document.createElement('div');
                 photoDiv.className = 'selected-photo-item';
                 photoDiv.setAttribute('data-type', 'upload');
                 photoDiv.setAttribute('data-index', index);
                 photoDiv.innerHTML = `
-                    <img src="${file.url}" alt="${file.name}">
-                    <button type="button" class="btn-remove" onclick="removeUploadedFile(${index})">
+                    <img src="${file.previewUrl}" alt="${file.name}">
+                    <button type="button" class="btn-remove" onclick="removeSelectedFile(${index})">
                         <i class="lni lni-ban-2"></i>
                     </button>
                 `;
@@ -278,8 +272,8 @@
             renderCombinedPhotos();
         }
 
-        function removeUploadedFile(index) {
-            window.galleryBlockState.uploadedFiles.splice(index, 1);
+        function removeSelectedFile(index) {
+            window.galleryBlockState.selectedFiles.splice(index, 1);
             renderCombinedPhotos();
         }
 
@@ -291,9 +285,10 @@
             });
         }
 
-        function createGalleryBlock() {
+        async function createGalleryBlock() {
             const images = [];
             
+            // Handle Immich photos
             window.galleryBlockState.selectedImmichPhotos.forEach((thumbnailUrl, assetId) => {
                 images.push({
                     type: 'immich',
@@ -301,13 +296,31 @@
                 });
             });
             
-            window.galleryBlockState.uploadedFiles.forEach(file => {
-                images.push({
-                    type: 'upload',
-                    url: file.url,
-                    name: file.name
-                });
-            });
+            // Handle uploaded files: upload them first
+            for (const file of window.galleryBlockState.selectedFiles) {
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file.file);
+                    
+                    const uploadResponse = await fetch(`/memories/${window.galleryBlockState.memoryId}/blocks/upload-image`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (uploadResponse.ok) {
+                        const uploadData = await uploadResponse.json();
+                        images.push({
+                            type: 'upload',
+                            url: uploadData.url,
+                            name: uploadData.name
+                        });
+                    } else {
+                        console.error('Failed to upload file:', file.name);
+                    }
+                } catch (error) {
+                    console.error('Error uploading file:', error);
+                }
+            }
 
             if (images.length === 0) {
                 alert(/*[[#{memory.block.gallery.error.no.images}]]*/ 'Please select or upload at least one image');
@@ -329,13 +342,29 @@
             });
         }
 
+        // Event listener for file input
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const files = Array.from(event.target.files);
+            files.forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        window.galleryBlockState.selectedFiles.push({
+                            file: file,
+                            previewUrl: e.target.result,
+                            name: file.name
+                        });
+                        renderCombinedPhotos();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            // Clear the input so the same file can be selected again if needed
+            event.target.value = '';
+        });
+
         document.body.addEventListener('htmx:afterSwap', function(event) {
-            if (event.detail.target.closest('#selectedPhotosCombined')) {
-                const response = JSON.parse(event.detail.xhr.response);
-                window.galleryBlockState.uploadedFiles.push(response);
-                renderCombinedPhotos();
-                document.getElementById('fileInput').value = '';
-            }
+            // No longer needed for uploads since we handle them on create
         });
     </script>
 </div>
