@@ -48,7 +48,28 @@
         <div th:fragment="edit-cluster-trip-block" th:if="${block.blockType.name() == 'CLUSTER_TRIP'}" class="memory-form">
             <h2>Edit Trips Block</h2>
             <form th:attr="hx-post=@{/memories/{memoryId}/blocks/{blockId}/cluster-trips(memoryId=${memoryId}, blockId=${block.id})}" hx-target="closest .memory-block" hx-swap="innerHTML" hx-vals="js:{timezone: getUserTimezone()}">
-
+                <div class="form-group">
+                    <label>Select Trips</label>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Selected</th>
+                                <th>Trip</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="trip : ${availableTrips}">
+                                <td>
+                                    <input type="checkbox" 
+                                           name="selectedTrips" 
+                                           th:value="${trip.id}" 
+                                           th:checked="${clusterTripBlock.trips != null and clusterTripBlock.trips.contains(trip)}">
+                                </td>
+                                <td th:text="${#temporals.format(trip.startTime, 'MMM d, yyyy HH:mm')} + ' (' + ${trip.startVisit != null and trip.startVisit.place != null ? trip.startVisit.place.name : 'Unknown'} + ') -> ' + ${#temporals.format(trip.endTime, 'HH:mm')} + ' (' + ${trip.endVisit != null and trip.endVisit.place != null ? trip.endVisit.place.name : 'Unknown'} + ')'">Trip details</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
                 <div class="form-actions">
                     <button type="button"
                             th:attr="hx-get=@{/memories/{memoryId}/blocks/{blockId}/view(memoryId=${memoryId}, blockId=${block.id})}"
