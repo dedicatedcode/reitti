@@ -1923,6 +1923,10 @@ button:disabled {
     color: lightgray;
 }
 
+.memories-page .block-form {
+    margin-bottom: 16px;
+}
+
 .memories-page .block-header .title {
     margin: 0;
     font-size: 1.5em;

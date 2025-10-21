@@ -181,6 +181,10 @@ public class MemoryService {
         return memoryBlockTripJdbcService.findByBlockId(blockId);
     }
 
+    public Optional<MemoryClusterBlock> getClusterBlock(User user, Long blockId) {
+        return memoryClusterBlockRepository.findByBlockId(user, blockId);
+    }
+
     @Transactional
     public MemoryBlockText addTextBlock(Long blockId, String headline, String content) {
         MemoryBlockText blockText = new MemoryBlockText(blockId, headline, content);
@@ -188,8 +192,18 @@ public class MemoryService {
     }
 
     @Transactional
-    public MemoryBlockText updateTextBlock(MemoryBlockText blockText) {
+    public MemoryBlockText updateTextBlock(User user, MemoryBlockText blockText) {
         return memoryBlockTextJdbcService.update(blockText);
+    }
+
+    @Transactional
+    public void createClusterBlock(User user, MemoryClusterBlock clusterBlock) {
+        memoryClusterBlockRepository.save(user, clusterBlock);
+    }
+
+    @Transactional
+    public MemoryClusterBlock updateClusterBlock(User user, MemoryClusterBlock clusterBlock) {
+        return memoryClusterBlockRepository.update(user, clusterBlock);
     }
 
     public Optional<MemoryBlockText> getTextBlock(Long blockId) {

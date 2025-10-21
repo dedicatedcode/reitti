@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.dto.PhotoResponse;
+import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.memory.*;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
@@ -72,13 +73,16 @@ public class MemoryBlockController {
         model.addAttribute("block", block);
         
         switch (block.getBlockType()) {
+            case IMAGE_GALLERY:
+                boolean immichEnabled = immichIntegrationService.getIntegrationForUser(user)
+                        .map(ImmichIntegration::isEnabled)
+                        .orElse(false);
+                model.addAttribute("immichEnabled", immichEnabled);
+                model.addAttribute("imageBlock", memoryService.getBlock(user, timezone, memoryId, blockId).orElseThrow(() -> new IllegalArgumentException("Block not found")) );
+                return "memories/blocks/edit :: edit-image-gallery-block";
             case VISIT:
                 memoryService.getVisitBlock(blockId).ifPresent(visit -> 
                     model.addAttribute("visitBlock", visit));
-                break;
-            case TRIP:
-                memoryService.getTripBlock(blockId).ifPresent(trip -> 
-                    model.addAttribute("tripBlock", trip));
                 break;
             case TEXT:
                 memoryService.getBlock(user, timezone, memoryId, blockId).ifPresent(text ->
@@ -127,7 +131,7 @@ public class MemoryBlockController {
                 .orElseThrow(() -> new IllegalArgumentException("Text block not found"));
         
         MemoryBlockText updated = textBlock.withHeadline(headline).withContent(content);
-        memoryService.updateTextBlock(updated);
+        memoryService.updateTextBlock(user, updated);
         
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(updated));
@@ -135,18 +139,29 @@ public class MemoryBlockController {
         return "memories/view :: view-block";
     }
 
-    @DeleteMapping("/{blockId}/images/{imageId}")
-    public String deleteImageFromGallery(
+    @PostMapping("/{blockId}/cluster-trips")
+    public String updateClusterTripBlock(
             @AuthenticationPrincipal User user,
             @PathVariable Long memoryId,
             @PathVariable Long blockId,
-            @PathVariable Long imageId) {
-        
-        memoryService.getMemoryById(user, memoryId)
+            @RequestParam(name = "selectedTrips") List<Long> tripIds,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false, defaultValue = "UTC" ) ZoneId timezone,
+            Model model) {
+
+        Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
-        memoryService.deleteImageFromGallery(imageId);
-        return "redirect:/memories/" + memoryId;
+
+        MemoryClusterBlock block = memoryService.getClusterBlock(user, blockId)
+                .orElseThrow(() -> new IllegalArgumentException("Cluster block not found"));
+
+        MemoryClusterBlock updated = block.withPartIds(tripIds).withTitle(title);
+        memoryService.updateClusterBlock(user, updated);
+
+        model.addAttribute("memory", memory);
+        model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, blockId).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
+
+        return "memories/view :: view-block";
     }
 
     @PostMapping("/reorder")
@@ -178,6 +193,40 @@ public class MemoryBlockController {
         return "redirect:/memories/" + memoryId;
     }
 
+
+    @PostMapping("/trip-cluster")
+    public String createTripBlock(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long memoryId,
+            @RequestParam(name = "selectedTrips") List<Long> tripIds,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+            Model model) {
+
+        Memory memory = memoryService.getMemoryById(user, memoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+
+
+        MemoryBlock block = memoryService.addBlock(memoryId, BlockType.CLUSTER_TRIP);
+        MemoryClusterBlock clusterBlock = new MemoryClusterBlock(block.getId(), tripIds, title, null, BlockType.CLUSTER_TRIP);
+        memoryService.createClusterBlock(user, clusterBlock);
+        model.addAttribute("memory", memory);
+        model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, block.getId()).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
+
+        return "memories/view :: view-block";
+    }
+
+
+
+
+
+
+
+
+
+
+
+
     @PostMapping("/visit")
     public String createVisitBlock(
             @AuthenticationPrincipal User user,
@@ -194,20 +243,6 @@ public class MemoryBlockController {
         return "redirect:/memories/" + memoryId;
     }
 
-    @PostMapping("/trip")
-    public String createTripBlock(
-            @AuthenticationPrincipal User user,
-            @PathVariable Long memoryId,
-            @RequestParam Long tripId) {
-        
-        memoryService.getMemoryById(user, memoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
-        MemoryBlock block = memoryService.addBlock(memoryId, BlockType.TRIP);
-        memoryService.addTripBlock(user, block.getId(), tripId);
-        
-        return "redirect:/memories/" + memoryId;
-    }
 
     @PostMapping("/image-gallery")
     @ResponseBody

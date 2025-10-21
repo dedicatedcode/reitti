@@ -49,6 +49,11 @@
             <h2 th:text="#{memory.edit.block.cluster.trip.title}">Edit Trips Block</h2>
             <form th:attr="hx-post=@{/memories/{memoryId}/blocks/{blockId}/cluster-trips(memoryId=${memoryId}, blockId=${block.id})}" hx-target="closest .memory-block" hx-swap="innerHTML" hx-vals="js:{timezone: getUserTimezone()}">
                 <div class="form-group">
+                    <label th:text="#{memory.edit.block.title}" for="title">Title</label>
+                    <input type="text" id="title" name="title" class="form-control"
+                           th:value="${clusterTripBlock?.title}" th:placeholder="#{memory.edit.block.title.placeholder}" placeholder="Enter title">
+                </div>
+                <div class="form-group">
                     <label th:text="#{memory.edit.block.cluster.trip.select.trips}">Select Trips</label>
                     <table class="table">
                         <thead>
@@ -75,51 +80,13 @@
                             th:attr="hx-get=@{/memories/{memoryId}/blocks/{blockId}/view(memoryId=${memoryId}, blockId=${block.id})}"
                             hx-target="closest .memory-block"
                             hx-swap="innerHTML"
-                            class="btn btn-secondary" th:text="#{common.cancel}">Cancel</button>
-                    <button type="submit" class="btn btn-primary" th:text="#{common.save.changes}">Save Changes</button>
+                            class="btn btn-secondary" th:text="#{form.cancel}">Cancel</button>
+                    <button type="submit" class="btn btn-primary" th:text="#{form.save.changes}">Save Changes</button>
                 </div>
             </form>
         </div>
-
-        <div th:if="${block.blockType.name() == 'IMAGE_GALLERY'}" class="memory-form">
-            <h2>Edit Image Gallery</h2>
-            
-            <div class="images-list" th:if="${images != null && !images.isEmpty()}">
-                <div th:each="image : ${images}" class="image-item">
-                    <img th:src="${image.imageUrl}" alt="Gallery image" class="gallery-thumbnail">
-                    <input type="text" th:value="${image.caption}" class="form-control" placeholder="Caption">
-                    <form th:action="@{/memories/{memoryId}/blocks/{blockId}/images/{imageId}(memoryId=${memoryId}, blockId=${block.id}, imageId=${image.id})}" 
-                          method="post" style="display: inline;">
-                        <input type="hidden" name="_method" value="DELETE">
-                        <button type="submit" class="btn-icon danger" onclick="return confirm('Delete this image?')">
-                            <i class="lni lni-trash"></i>
-                        </button>
-                    </form>
-                </div>
-            </div>
-
-            <form th:action="@{/memories/{memoryId}/blocks/{blockId}/images(memoryId=${memoryId}, blockId=${block.id})}" method="post">
-                <div class="form-group">
-                    <label for="imageUrl">Add Image URL</label>
-                    <input type="url" id="imageUrl" name="imageUrl" class="form-control" 
-                           placeholder="https://example.com/image.jpg" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="caption">Caption</label>
-                    <input type="text" id="caption" name="caption" class="form-control" 
-                           placeholder="Image caption (optional)">
-                </div>
-
-                <div class="form-actions">
-                    <button type="button" 
-                            hx-get="@{/memories/{memoryId}/blocks/{blockId}/view(memoryId=${memoryId}, blockId=${block.id})}" 
-                            hx-target="closest .memory-block" 
-                            hx-swap="innerHTML" 
-                            class="btn btn-secondary">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Image</button>
-                </div>
-            </form>
+        <div th:fragment="edit-image-gallery-block" th:if="${block.blockType.name() == 'IMAGE_GALLERY'}" class="memory-form">
+            <h2 th:text="#{memory.block.gallery.edit}">Edit Image Gallery Block</h2>
         </div>
 
         <div th:if="${block.blockType.name() == 'VISIT'}" class="memory-form">

@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.model.memory.HeaderType;
 import com.dedicatedcode.reitti.model.memory.Memory;
 import com.dedicatedcode.reitti.model.memory.MemoryBlockPart;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.service.MemoryService;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -24,10 +25,12 @@ import java.util.List;
 public class MemoryController {
 
     private final MemoryService memoryService;
+    private final TripJdbcService tripJdbcService;
     private final ImmichIntegrationService immichIntegrationService;
 
-    public MemoryController(MemoryService memoryService, ImmichIntegrationService immichIntegrationService) {
+    public MemoryController(MemoryService memoryService, TripJdbcService tripJdbcService, ImmichIntegrationService immichIntegrationService) {
         this.memoryService = memoryService;
+        this.tripJdbcService = tripJdbcService;
         this.immichIntegrationService = immichIntegrationService;
     }
 
@@ -269,25 +272,28 @@ public class MemoryController {
     @GetMapping("/{id}/blocks/new")
     public String newBlockForm(@AuthenticationPrincipal User user, @PathVariable Long id, @RequestParam String type, Model model) {
 
-        memoryService.getMemoryById(user, id).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        Memory memory = memoryService.getMemoryById(user, id).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
 
         model.addAttribute("memoryId", id);
         model.addAttribute("blockType", type);
 
-        if ("IMAGE_GALLERY".equals(type)) {
-            boolean immichEnabled = immichIntegrationService.getIntegrationForUser(user)
-                    .map(ImmichIntegration::isEnabled)
-                    .orElse(false);
-            model.addAttribute("immichEnabled", immichEnabled);
+        switch (type) {
+            case "TEXT":
+                return "memories/fragments :: text-block-form";
+            case "VISIT":
+                return "memories/fragments :: visit-block-form";
+            case "TRIP_CLUSTER":
+                model.addAttribute("availableTrips", this.tripJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate()));
+                return "memories/fragments :: trip-block-form";
+            case "IMAGE_GALLERY":
+                boolean immichEnabled = immichIntegrationService.getIntegrationForUser(user)
+                        .map(ImmichIntegration::isEnabled)
+                        .orElse(false);
+                model.addAttribute("immichEnabled", immichEnabled);
+                return "memories/fragments :: image-gallery-block-form";
+            default:
+                throw new IllegalArgumentException("Unknown block type: " + type);
         }
-        
-        return switch (type) {
-            case "TEXT" -> "memories/fragments :: text-block-form";
-            case "VISIT" -> "memories/fragments :: visit-block-form";
-            case "TRIP" -> "memories/fragments :: trip-block-form";
-            case "IMAGE_GALLERY" -> "memories/fragments :: image-gallery-block-form";
-            default -> throw new IllegalArgumentException("Unknown block type: " + type);
-        };
     }
 
 

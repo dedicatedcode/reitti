@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.memory.BlockType;
+import com.dedicatedcode.reitti.model.memory.MemoryBlockText;
 import com.dedicatedcode.reitti.model.memory.MemoryClusterBlock;
 import com.dedicatedcode.reitti.model.security.User;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -45,6 +46,17 @@ public class MemoryClusterBlockRepository {
     public void deleteByBlockId(User user, Long blockId) {
         String sql = "DELETE FROM memory_block_cluster WHERE block_id = ? AND user_id = ?";
         jdbcTemplate.update(sql, blockId, user.getId());
+    }
+
+    public MemoryClusterBlock update(User user, MemoryClusterBlock cluster) {
+        String sql = "UPDATE memory_block_cluster SET part_ids = ?::jsonb, title = ?, description = ?, type = ? WHERE block_id = ? AND user_id = ?";
+        try {
+            String tripIdsJson = objectMapper.writeValueAsString(cluster.getPartIds());
+            this.jdbcTemplate.update(sql, tripIdsJson, cluster.getTitle(), cluster.getDescription(), cluster.getType().name(), cluster.getBlockId(), user.getId());
+            return cluster;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to save MemoryClusterBlock", e);
+        }
     }
 
     private class MemoryClusterBlockRowMapper implements RowMapper<MemoryClusterBlock> {

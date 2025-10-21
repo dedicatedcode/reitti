@@ -41,6 +41,13 @@ public class MemoryClusterBlock implements MemoryBlockPart, Serializable {
         return this.type;
     }
 
+    public MemoryClusterBlock withPartIds(List<Long> partIds) {
+        return new MemoryClusterBlock(this.blockId, partIds, this.title, this.description, this.type);
+    }
+
+    public MemoryClusterBlock withTitle(String title) {
+        return new MemoryClusterBlock(this.blockId, this.partIds, title, this.description, this.type);
+    }
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -63,4 +70,5 @@ public class MemoryClusterBlock implements MemoryBlockPart, Serializable {
                 ", description='" + description + '\'' +
                 '}';
     }
+
 }

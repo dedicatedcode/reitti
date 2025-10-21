@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.model.geo;
 
 import java.time.Instant;
+import java.util.Objects;
 
 public class Trip {
     
@@ -74,5 +75,17 @@ public class Trip {
 
     public Trip withId(Long id) {
         return new Trip(id, this.startTime, this.endTime, this.durationSeconds, this.estimatedDistanceMeters, this.travelledDistanceMeters, this.transportModeInferred, this.startVisit, this.endVisit, this.version);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        Trip trip = (Trip) o;
+        return Objects.equals(id, trip.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(id);
     }
 }
