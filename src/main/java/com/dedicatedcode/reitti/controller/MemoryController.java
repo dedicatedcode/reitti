@@ -144,6 +144,7 @@ public class MemoryController {
             );
             
             Memory created = memoryService.createMemory(user, memory);
+            this.memoryService.recalculateMemory(user, created.getId(), timezone);
             
             return "redirect:/memories/" + created.getId();
             
