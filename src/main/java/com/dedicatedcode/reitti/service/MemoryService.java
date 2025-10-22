@@ -181,11 +181,18 @@ public class MemoryService {
 
     @Transactional
     public void reorderBlocks(User user, Long memoryId, List<Long> blockIds) {
+        // First, temporarily shift all positions to avoid unique constraint violations
+        List<MemoryBlock> allBlocks = memoryBlockJdbcService.findByMemoryId(memoryId);
+        int offset = blockIds.size() + 1; // Use an offset larger than the number of blocks
+        for (MemoryBlock block : allBlocks) {
+            memoryBlockJdbcService.update(block.withPosition(block.getPosition() + offset));
+        }
+
+        // Now, set the correct positions
         for (int i = 0; i < blockIds.size(); i++) {
             Long blockId = blockIds.get(i);
             Optional<MemoryBlock> blockOpt = memoryBlockJdbcService.findById(user, blockId);
 
-            //this reaorder function does give a unique Key constraint violation because immediately there are two blocks with the same position when they are moved. Use a single transaction if possible. Feel free to add a reorder method to the MemoryBlockJdbcService AI!
             if (blockOpt.isPresent()) {
                 MemoryBlock block = blockOpt.get();
                 if (!block.getMemoryId().equals(memoryId)) {
