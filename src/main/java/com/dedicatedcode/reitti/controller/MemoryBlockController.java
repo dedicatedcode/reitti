@@ -9,7 +9,6 @@ import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.service.MemoryService;
 import com.dedicatedcode.reitti.service.S3Storage;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -19,7 +18,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 @Controller
 @RequestMapping("/memories/{memoryId}/blocks")
@@ -232,7 +233,6 @@ public class MemoryBlockController {
             @PathVariable Long memoryId,
             @RequestParam(required = false, defaultValue = "-1") int position,
             @RequestParam(required = false) List<String> uploadedUrls,
-            @RequestParam(required = false) List<String> immichImages,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             Model model) {
 
@@ -244,17 +244,6 @@ public class MemoryBlockController {
         if (uploadedUrls != null) {
             for (String url : uploadedUrls) {
                 imageBlocks.add(new MemoryBlockImageGallery.GalleryImage(url, null, "upload", null));
-            }
-        }
-
-        if (immichImages != null) {
-            for (String immichImage : immichImages) {
-                String[] parts = immichImage.split(":", 2);
-                if (parts.length == 2) {
-                    String assetId = parts[0];
-                    String thumbnailUrl = parts[1];
-                    imageBlocks.add(new MemoryBlockImageGallery.GalleryImage(thumbnailUrl, null, "immich", assetId));
-                }
             }
         }
 
@@ -315,32 +304,21 @@ public class MemoryBlockController {
             @PathVariable Long memoryId,
             @RequestParam String assetId,
             Model model) {
-        
+
         memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
-        try {
-            // Fetch the photo data from Immich
-            S3Storage.S3Object photoObject = immichIntegrationService.downloadPhoto(user, assetId);
-            
-            // Generate a unique filename
-            String filename = UUID.randomUUID() + ".jpg"; // Assuming JPG, adjust if needed
-            
-            // Store in S3
-            s3Storage.store("memories/" + memoryId + "/" + filename, photoObject.getInputStream(), photoObject.getContentLength(), photoObject.getContentType());
-            
-            // Generate the URL
-            String fileUrl = "/api/v1/photos/reitti/memories/" + memoryId + "/" + filename;
-            
-            // Return as a list for the fragment
-            List<String> urls = List.of(fileUrl);
-            model.addAttribute("urls", urls);
-            
-            return "memories/fragments :: uploaded-photos";
-            
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch and store Immich photo", e);
+
+        String imageUrl;
+        if (s3Storage.exists("memories/" + memoryId + "/" + assetId)) {
+            imageUrl = "/api/v1/photos/reitti/memories/" + memoryId + "/" + assetId;
+        } else {
+            String filename = this.immichIntegrationService.downloadImage(user, assetId, "memories/" + memoryId);
+            imageUrl = "/api/v1/photos/reitti/memories/" + memoryId + "/" + filename;
         }
+
+        model.addAttribute("urls", List.of(imageUrl));
+
+        return "memories/fragments :: uploaded-photos";
     }
 
     @GetMapping("/immich-photos")

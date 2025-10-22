@@ -235,7 +235,7 @@
     </div>
     <div th:each="photo : ${photos}" 
          class="immich-photo-item"
-         th:attr="hx-post=@{/memories/{id}/blocks/fetch-immich-photo(id=${memoryId})},hx-vals=js:{assetId: '${photo.id}'}"
+         th:attr="hx-post=@{/memories/{id}/blocks/fetch-immich-photo(id=${memoryId}, assetId=${photo.id})}"
          hx-target="#selectedPhotos"
          hx-swap="beforeend">
         <img th:src="${photo.thumbnailUrl}" th:alt="${photo.fileName}">
