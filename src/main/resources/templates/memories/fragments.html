@@ -196,10 +196,7 @@
     </div>
 
     <div class="form-actions">
-        <button type="button" 
-                class="btn btn-primary" 
-                onclick="createGalleryBlock()"
-                th:text="#{memory.block.create}">Create Gallery Block</button>
+        <button type="submit" class="btn btn-primary" th:text="#{memory.block.create}">Create Gallery Block</button>
         <button type="button"
                 class="btn btn-secondary"
                 th:attr="hx-get=@{/memories/fragments/empty}"
@@ -222,7 +219,7 @@
             renderCombinedPhotos() {
                 const container = document.getElementById('selectedPhotosCombined');
                 container.innerHTML = '';
-
+                
                 this.selectedImmichPhotos.forEach((thumbnailUrl, assetId) => {
                     const photoDiv = document.createElement('div');
                     photoDiv.className = 'selected-photo-item';
@@ -236,7 +233,7 @@
                     `;
                     container.appendChild(photoDiv);
                 });
-
+                
                 this.selectedFiles.forEach((file, index) => {
                     const photoDiv = document.createElement('div');
                     photoDiv.className = 'selected-photo-item';
@@ -255,20 +252,20 @@
             toggleImmichPhoto(assetId, thumbnailUrl) {
                 if (this.selectedImmichPhotos.has(assetId)) {
                     this.selectedImmichPhotos.delete(assetId);
-
+                    
                     const photoItem = document.querySelector(`[data-asset-id="${assetId}"]`);
                     if (photoItem) {
                         photoItem.classList.remove('selected');
                     }
                 } else {
                     this.selectedImmichPhotos.set(assetId, thumbnailUrl);
-
+                    
                     const photoItem = document.querySelector(`[data-asset-id="${assetId}"]`);
                     if (photoItem) {
                         photoItem.classList.add('selected');
                     }
                 }
-
+                
                 this.renderCombinedPhotos();
             }
 
@@ -287,7 +284,7 @@
 
             async createGalleryBlock() {
                 const images = [];
-
+                
                 // Handle Immich photos
                 this.selectedImmichPhotos.forEach((thumbnailUrl, assetId) => {
                     images.push({
@@ -295,18 +292,18 @@
                         assetId: assetId
                     });
                 });
-
+                
                 // Handle uploaded files: upload them first
                 for (const file of this.selectedFiles) {
                     try {
                         const formData = new FormData();
                         formData.append('file', file.file);
-
+                        
                         const uploadResponse = await fetch(`/memories/${this.memoryId}/blocks/upload-image`, {
                             method: 'POST',
                             body: formData
                         });
-
+                        
                         if (uploadResponse.ok) {
                             const uploadData = await uploadResponse.json();
                             images.push({

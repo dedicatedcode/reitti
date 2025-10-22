@@ -227,44 +227,50 @@ public class MemoryBlockController {
     }
 
     @PostMapping("/image-gallery")
-    @ResponseBody
-    public ResponseEntity<Map<String, Object>> createImageGalleryBlock(
+    public String createImageGalleryBlock(
             @AuthenticationPrincipal User user,
             @PathVariable Long memoryId,
             @RequestParam(required = false, defaultValue = "-1") int position,
-            @RequestBody Map<String, Object> request) {
+            @RequestParam("files") MultipartFile[] files,
+            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+            Model model) {
 
-        memoryService.getMemoryById(user, memoryId).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        Memory memory = memoryService.getMemoryById(user, memoryId).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
-        @SuppressWarnings("unchecked")
-        List<Map<String, String>> images = (List<Map<String, String>>) request.get("images");
-        
-        if (images == null || images.isEmpty()) {
-            throw new IllegalArgumentException("No images provided");
+        if (files == null || files.length == 0) {
+            throw new IllegalArgumentException("No files provided");
         }
         
         MemoryBlock block = memoryService.addBlock(user, memoryId, position, BlockType.IMAGE_GALLERY);
         List<MemoryBlockImageGallery.GalleryImage> imageBlocks = new ArrayList<>();
 
-        for (Map<String, String> image : images) {
-            String type = image.get("type");
-            if ("immich".equals(type)) {
-                String assetId = image.get("assetId");
-                String filename = this.immichIntegrationService.downloadImage(user, assetId, "memories/" + memoryId);
-                String imageUrl = "/api/v1/photos/reitti/memories/" + memoryId + "/" + filename;
-                imageBlocks.add(new MemoryBlockImageGallery.GalleryImage(imageUrl, null));
-            } else if ("upload".equals(type)) {
-                String url = image.get("url");
-                String name = image.get("name");
-                imageBlocks.add(new MemoryBlockImageGallery.GalleryImage(url, name));
+        for (MultipartFile file : files) {
+            if (!file.isEmpty()) {
+                try {
+                    String originalFilename = file.getOriginalFilename();
+                    String extension = "";
+                    if (originalFilename != null && originalFilename.contains(".")) {
+                        extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+                    }
+                    String filename = UUID.randomUUID() + extension;
+
+                    s3Storage.store("memories/" + memoryId + "/" + filename, file.getInputStream(), file.getSize(), file.getContentType());
+
+                    String fileUrl = "/api/v1/photos/reitti/memories/" + memoryId + "/" + filename;
+                    
+                    imageBlocks.add(new MemoryBlockImageGallery.GalleryImage(fileUrl, originalFilename));
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to upload file", e);
+                }
             }
         }
 
-        this.memoryService.addImageGalleryBlock(block.getId(), imageBlocks);
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("blockId", block.getId());
-        return ResponseEntity.ok(response);
+        memoryService.addImageGalleryBlock(block.getId(), imageBlocks);
+        
+        model.addAttribute("memory", memory);
+        model.addAttribute("blocks", List.of(memoryService.getBlock(user, timezone, memoryId, block.getId()).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
+        
+        return "memories/view :: view-block";
     }
 
     @PostMapping("/upload-image")
