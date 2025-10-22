@@ -126,7 +126,75 @@
             </form>
         </div>
         <div th:fragment="edit-image-gallery-block" th:if="${block.blockType.name() == 'IMAGE_GALLERY'}" class="memory-form">
-            <h2 th:text="#{memory.block.gallery.edit}">Edit Image Gallery Block</h2>
+            <h2 th:text="#{memory.block.gallery.edit}">New Image Gallery Block</h2>
+            <form th:attr="hx-post=@{/memories/{id}/blocks/{blockId}/image-gallery(id=${memoryId}, blockId=${block.id})}" hx-target="closest .memory-block" hx-swap="innerHTML" hx-vals="js:{timezone: getUserTimezone()}">
+                <div class="gallery-panels">
+                    <!-- Immich Panel -->
+                    <div class="gallery-panel immich-panel" th:if="${immichEnabled}">
+                        <h4 th:text="#{memory.block.gallery.immich.title}">Select from Immich</h4>
+                        <div class="immich-photos-container">
+                            <div class="immich-photos-grid"
+                                 id="immichPhotosGrid"
+                                 th:attr="hx-get=@{/memories/{id}/blocks/immich-photos(page=0, id=${memoryId})}"
+                                 hx-target=".immich-photos-container"
+                                 hx-trigger="load"
+                                 hx-swap="innerHTML">
+                                <div class="loading" th:text="#{memory.block.gallery.loading}">Loading photos...</div>
+                            </div>
+                            <div class="immich-pagination" id="immichPagination"></div>
+                        </div>
+                    </div>
+
+                    <!-- File Upload Panel -->
+                    <div class="gallery-panel upload-panel">
+                        <h4 th:text="#{memory.block.gallery.upload.title}">Upload Images</h4>
+                        <div class="upload-area">
+                            <input type="file"
+                                   id="fileInput"
+                                   name="files"
+                                   multiple
+                                   accept="image/*"
+                                   class="form-control"
+                                   th:attr="hx-post=@{/memories/{id}/blocks/upload-image(id=${memoryId})}"
+                                   hx-encoding="multipart/form-data"
+                                   hx-target="#selectedPhotos"
+                                   hx-swap="beforeend">
+                            <label for="fileInput" class="upload-label">
+                                <i class="lni lni-cloud-upload"></i>
+                                <span th:text="#{memory.block.gallery.upload.choose}">Choose files or drag here</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Combined Selected Photos Section -->
+                <div class="selected-photos-section">
+                    <h4 th:text="#{memory.block.gallery.selected.title}">Selected Photos</h4>
+                    <div class="selected-photos-combined" id="selectedPhotos">
+                        <div th:each="image : ${imageBlock.images}" class="selected-photo-item">
+                            <img th:src="${image.imageUrl}" alt="Uploaded image">
+                            <input type="hidden" name="uploadedUrls" th:value="${image.imageUrl}">
+                            <button type="button" class="btn-remove"
+                                    hx-get="/memories/fragments/empty"
+                                    hx-target="closest .selected-photo-item"
+                                    hx-swap="delete"
+                                    th:title="#{memory.block.gallery.remove}">
+                                <i class="lni lni-trash-3"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button"
+                            th:attr="hx-get=@{/memories/{memoryId}/blocks/{blockId}/view(memoryId=${memoryId}, blockId=${block.id})}"
+                            hx-target="closest .memory-block"
+                            hx-swap="innerHTML"
+                            class="btn btn-secondary" th:text="#{form.cancel}">Cancel</button>
+                    <button type="submit" class="btn btn-primary" th:text="#{form.save.changes}">Save Changes</button>
+                </div>
+            </form>
+
         </div>
 
     </div>

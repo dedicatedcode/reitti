@@ -11,6 +11,7 @@ import com.dedicatedcode.reitti.service.S3Storage;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -259,23 +260,56 @@ public class MemoryBlockController {
         return "memories/view :: view-block";
     }
 
+    @PostMapping("/{blockId}/image-gallery")
+    public String updateImageGalleryBlock(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long memoryId,
+            @PathVariable Long blockId,
+            @RequestParam(required = false) List<String> uploadedUrls,
+            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+            Model model) {
+
+        Memory memory = memoryService.getMemoryById(user, memoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+
+        MemoryBlockImageGallery imageBlock = memoryService.getImagesForBlock(blockId);
+        List<MemoryBlockImageGallery.GalleryImage> imageBlocks = new ArrayList<>();
+
+        if (uploadedUrls != null) {
+            for (String url : uploadedUrls) {
+                imageBlocks.add(new MemoryBlockImageGallery.GalleryImage(url, null, "upload", null));
+            }
+        }
+
+        if (imageBlocks.isEmpty()) {
+            throw new IllegalArgumentException("No images selected");
+        }
+
+        this.memoryService.updateImageBlock(user, imageBlock.withImages(imageBlocks));
+
+        model.addAttribute("memory", memory);
+        model.addAttribute("blocks", List.of(memoryService.getBlock(user, timezone, memoryId, blockId).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
+
+        return "memories/view :: view-block";
+    }
+
     @PostMapping("/upload-image")
     public String uploadImage(
             @AuthenticationPrincipal User user,
             @PathVariable Long memoryId,
             @RequestParam("files") List<MultipartFile> files,
             Model model) {
-        
+
         memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
+
         List<String> urls = new ArrayList<>();
-        
+
         for (MultipartFile file : files) {
             if (file.isEmpty()) {
                 continue;
             }
-            
+
             try {
                 String originalFilename = file.getOriginalFilename();
                 String extension = "";
@@ -288,12 +322,12 @@ public class MemoryBlockController {
 
                 String fileUrl = "/api/v1/photos/reitti/memories/" + memoryId + "/" + filename;
                 urls.add(fileUrl);
-                
+
             } catch (IOException e) {
                 throw new RuntimeException("Failed to upload file", e);
             }
         }
-        
+
         model.addAttribute("urls", urls);
         return "memories/fragments :: uploaded-photos";
     }

@@ -153,6 +153,11 @@ public class MemoryService {
     }
 
     @Transactional
+    public MemoryBlockImageGallery updateImageBlock(User user, MemoryBlockImageGallery blockText) {
+        return memoryBlockImageGalleryJdbcService.update(blockText);
+    }
+
+    @Transactional
     public void createClusterBlock(User user, MemoryClusterBlock clusterBlock) {
         memoryClusterBlockRepository.save(user, clusterBlock);
     }
