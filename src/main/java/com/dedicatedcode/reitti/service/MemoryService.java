@@ -82,8 +82,15 @@ public class MemoryService {
         Memory memory = this.memoryJdbcService.findById(user, memoryId).orElseThrow(() -> new IllegalArgumentException("Unable to find memory with id [" + memoryId + "]"));
         int maxPosition = memoryBlockJdbcService.getMaxPosition(memoryId);
 
-        MemoryBlock block = new MemoryBlock(memoryId, blockType, position != -1 ? position : maxPosition + 1);
-        return memoryBlockJdbcService.create(block);
+        MemoryBlock block = new MemoryBlock(memoryId, blockType, maxPosition + 1);
+        block = memoryBlockJdbcService.create(block);
+        if (position > -1) {
+            List<MemoryBlock> list = memoryBlockJdbcService.findByMemoryId(memoryId);
+            MemoryBlock lastBlock = list.removeLast();
+            list.add(position, lastBlock);
+            reorderBlocks(user, memoryId, list.stream().map(MemoryBlock::getId).toList());
+        }
+        return block;
     }
 
     @Transactional
@@ -177,6 +184,8 @@ public class MemoryService {
         for (int i = 0; i < blockIds.size(); i++) {
             Long blockId = blockIds.get(i);
             Optional<MemoryBlock> blockOpt = memoryBlockJdbcService.findById(user, blockId);
+
+            //this reaorder function does give a unique Key constraint violation because immediately there are two blocks with the same position when they are moved AI!
             if (blockOpt.isPresent()) {
                 MemoryBlock block = blockOpt.get();
                 if (!block.getMemoryId().equals(memoryId)) {
