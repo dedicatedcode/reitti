@@ -309,6 +309,40 @@ public class MemoryBlockController {
         return "memories/fragments :: uploaded-photos";
     }
 
+    @PostMapping("/fetch-immich-photo")
+    public String fetchImmichPhoto(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long memoryId,
+            @RequestParam String assetId,
+            Model model) {
+        
+        memoryService.getMemoryById(user, memoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        
+        try {
+            // Fetch the photo data from Immich
+            S3Storage.S3Object photoObject = immichIntegrationService.downloadPhoto(user, assetId);
+            
+            // Generate a unique filename
+            String filename = UUID.randomUUID() + ".jpg"; // Assuming JPG, adjust if needed
+            
+            // Store in S3
+            s3Storage.store("memories/" + memoryId + "/" + filename, photoObject.getInputStream(), photoObject.getContentLength(), photoObject.getContentType());
+            
+            // Generate the URL
+            String fileUrl = "/api/v1/photos/reitti/memories/" + memoryId + "/" + filename;
+            
+            // Return as a list for the fragment
+            List<String> urls = List.of(fileUrl);
+            model.addAttribute("urls", urls);
+            
+            return "memories/fragments :: uploaded-photos";
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch and store Immich photo", e);
+        }
+    }
+
     @GetMapping("/immich-photos")
     public String getImmichPhotos(
             @AuthenticationPrincipal User user,

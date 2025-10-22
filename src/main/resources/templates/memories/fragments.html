@@ -235,10 +235,12 @@
     </div>
     <div th:each="photo : ${photos}" 
          class="immich-photo-item"
-         th:attr="data-asset-id=${photo.id},data-thumbnail-url=${photo.thumbnailUrl}">
+         th:attr="hx-post=@{/memories/{id}/blocks/fetch-immich-photo(id=${memoryId})},hx-vals=js:{assetId: '${photo.id}'}"
+         hx-target="#selectedPhotos"
+         hx-swap="beforeend">
         <img th:src="${photo.thumbnailUrl}" th:alt="${photo.fileName}">
         <div class="photo-overlay">
-            <i class="lni lni-check-circle-1"></i>
+            <i class="lni lni-plus"></i>
         </div>
     </div>
     <div th:if="${totalPages > 1}" class="pagination-controls">
