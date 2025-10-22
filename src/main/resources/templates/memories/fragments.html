@@ -236,6 +236,23 @@
             <i class="lni lni-check-circle-1"></i>
         </div>
     </div>
+    <div th:if="${totalPages > 1}" class="pagination-controls">
+        <button th:if="${currentPage > 0}" 
+                type="button" 
+                class="btn btn-secondary" 
+                th:text="#{memory.block.gallery.pagination.previous}"
+                th:attr="hx-get=@{/memories/{memoryId}/blocks/immich-photos(id=${memoryId},page=${currentPage - 1})}"
+                hx-target=".immich-photos-container"
+                hx-swap="innerHTML">Previous</button>
+        <span class="page-info" th:text="${currentPage + 1} + ' / ' + ${totalPages}"></span>
+        <button th:if="${currentPage < totalPages - 1}" 
+                type="button" 
+                class="btn btn-secondary" 
+                th:text="#{memory.block.gallery.pagination.next}"
+                th:attr="hx-get=@{/memories/{memoryId}/blocks/immich-photos(id=${memoryId},page=${currentPage + 1})}"
+                hx-target=".immich-photos-container"
+                hx-swap="innerHTML">Next</button>
+    </div>
 </div>
 
 </body>

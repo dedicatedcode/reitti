@@ -331,6 +331,7 @@ public class MemoryBlockController {
         model.addAttribute("photos", pagePhotos);
         model.addAttribute("currentPage", page);
         model.addAttribute("totalPages", totalPages);
+        model.addAttribute("memoryId", memoryId);
         
         return "memories/fragments :: immich-photos-grid";
     }
