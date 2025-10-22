@@ -241,7 +241,7 @@
                 type="button" 
                 class="btn btn-secondary" 
                 th:text="#{memory.block.gallery.pagination.previous}"
-                th:attr="hx-get=@{/memories/{memoryId}/blocks/immich-photos(id=${memoryId},page=${currentPage - 1})}"
+                th:attr="hx-get=@{/memories/{id}/blocks/immich-photos(id=${memoryId},page=${currentPage - 1})}"
                 hx-target=".immich-photos-container"
                 hx-swap="innerHTML">Previous</button>
         <span class="page-info" th:text="${currentPage + 1} + ' / ' + ${totalPages}"></span>
@@ -249,7 +249,7 @@
                 type="button" 
                 class="btn btn-secondary" 
                 th:text="#{memory.block.gallery.pagination.next}"
-                th:attr="hx-get=@{/memories/{memoryId}/blocks/immich-photos(id=${memoryId},page=${currentPage + 1})}"
+                th:attr="hx-get=@{/memories/{id}/blocks/immich-photos(id=${memoryId},page=${currentPage + 1})}"
                 hx-target=".immich-photos-container"
                 hx-swap="innerHTML">Next</button>
     </div>
