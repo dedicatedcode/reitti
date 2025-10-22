@@ -120,7 +120,7 @@ public class MemoryBlockController {
     }
 
 
-    @PostMapping("/{blockId}/cluster-trips")
+    @PostMapping("/{blockId}/cluster")
     public String updateClusterBlock(
             @AuthenticationPrincipal User user,
             @PathVariable Long memoryId,
@@ -210,7 +210,7 @@ public class MemoryBlockController {
             @PathVariable Long memoryId,
             @RequestParam(required = false, defaultValue = "-1") int position,
             @RequestParam(name = "selectedParts") List<Long> selectedParts,
-            @RequestParam(name = "selectedParts") BlockType type,
+            @RequestParam BlockType type,
             @RequestParam(required = false) String title,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             Model model) {

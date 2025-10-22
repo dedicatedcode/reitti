@@ -89,7 +89,7 @@
 <!-- Visit block form -->
 <div th:fragment="visit-block-form" class="block-form">
     <h2 th:text="#{memory.block.visit.new}">Add Visit Block</h2>
-    <form th:attr="hx-post=@{/memories/{id}/blocks/visit-cluster(id=${memoryId}, position=${position})}" method="post" hx-target=".block-form" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}">
+    <form th:attr="hx-post=@{/memories/{id}/blocks/cluster(id=${memoryId}, position=${position}, type='CLUSTER_VISIT')}" method="post" hx-target=".block-form" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}">
         <div class="form-group">
             <label th:text="#{memory.edit.block.title}" for="title">Title</label>
             <input type="text" id="title" name="title" class="form-control" th:placeholder="#{memory.edit.block.title.placeholder}" placeholder="Enter title">
@@ -107,7 +107,7 @@
                 <tr th:each="visit : ${availableVisits}">
                     <td>
                         <input type="checkbox"
-                               name="selectedVisits"
+                               name="selectedParts"
                                th:value="${visit.id}">
                     </td>
                     <td th:text="${visit.place.name} + ' (' + ${#temporals.format(visit.startTime, 'MMM d, yyyy HH:mm')} + ' -> ' + ${#temporals.format(visit.endTime, 'HH:mm')} + ')'">Visit details</td>
@@ -130,7 +130,7 @@
 <!-- Trip block form -->
 <div th:fragment="trip-block-form" class="block-form">
     <h2 th:text="#{memory.block.trip.new}">Edit Trips Block</h2>
-    <form th:attr="hx-post=@{/memories/{id}/blocks/trip-cluster(id=${memoryId}, position=${position})}" method="post" hx-target=".block-form" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}">
+    <form th:attr="hx-post=@{/memories/{id}/blocks/cluster(id=${memoryId}, position=${position}, type='CLUSTER_TRIP')}" method="post" hx-target=".block-form" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}">
         <div class="form-group">
             <label th:text="#{memory.edit.block.title}" for="title">Title</label>
             <input type="text" id="title" name="title" class="form-control" th:placeholder="#{memory.edit.block.title.placeholder}" placeholder="Enter title">
@@ -148,7 +148,7 @@
                 <tr th:each="trip : ${availableTrips}">
                     <td>
                         <input type="checkbox"
-                               name="selectedTrips"
+                               name="selectedParts"
                                th:value="${trip.id}">
                     </td>
                     <td th:text="${#temporals.format(trip.startTime, 'MMM d, yyyy HH:mm')} + ' (' + ${trip.startVisit != null and trip.startVisit.place != null ? trip.startVisit.place.name : 'Unknown'} + ') -> ' + ${#temporals.format(trip.endTime, 'HH:mm')} + ' (' + ${trip.endVisit != null and trip.endVisit.place != null ? trip.endVisit.place.name : 'Unknown'} + ')'">Trip details</td>
