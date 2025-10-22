@@ -100,7 +100,7 @@ class MemoryBlockJdbcServiceTest {
 
         memoryBlockJdbcService.delete(created.getId());
 
-        Optional<MemoryBlock> found = memoryBlockJdbcService.findById(created.getId());
+        Optional<MemoryBlock> found = memoryBlockJdbcService.findById(testUser, created.getId());
         assertFalse(found.isPresent());
     }
 
@@ -109,7 +109,7 @@ class MemoryBlockJdbcServiceTest {
         MemoryBlock block = new MemoryBlock(testMemory.getId(), BlockType.TEXT, 0);
         MemoryBlock created = memoryBlockJdbcService.create(block);
 
-        Optional<MemoryBlock> found = memoryBlockJdbcService.findById(created.getId());
+        Optional<MemoryBlock> found = memoryBlockJdbcService.findById(testUser, created.getId());
 
         assertTrue(found.isPresent());
         assertEquals(created.getId(), found.get().getId());
@@ -119,8 +119,8 @@ class MemoryBlockJdbcServiceTest {
     @Test
     void testFindByMemoryId() {
         MemoryBlock block1 = new MemoryBlock(testMemory.getId(), BlockType.TEXT, 0);
-        MemoryBlock block2 = new MemoryBlock(testMemory.getId(), BlockType.VISIT, 1);
-        MemoryBlock block3 = new MemoryBlock(testMemory.getId(), BlockType.TRIP, 2);
+        MemoryBlock block2 = new MemoryBlock(testMemory.getId(), BlockType.CLUSTER_VISIT, 1);
+        MemoryBlock block3 = new MemoryBlock(testMemory.getId(), BlockType.CLUSTER_TRIP, 2);
 
         memoryBlockJdbcService.create(block1);
         memoryBlockJdbcService.create(block2);
@@ -139,8 +139,8 @@ class MemoryBlockJdbcServiceTest {
         assertEquals(-1, memoryBlockJdbcService.getMaxPosition(testMemory.getId()));
 
         MemoryBlock block1 = new MemoryBlock(testMemory.getId(), BlockType.TEXT, 0);
-        MemoryBlock block2 = new MemoryBlock(testMemory.getId(), BlockType.VISIT, 1);
-        MemoryBlock block3 = new MemoryBlock(testMemory.getId(), BlockType.TRIP, 5);
+        MemoryBlock block2 = new MemoryBlock(testMemory.getId(), BlockType.CLUSTER_VISIT, 1);
+        MemoryBlock block3 = new MemoryBlock(testMemory.getId(), BlockType.CLUSTER_TRIP, 5);
 
         memoryBlockJdbcService.create(block1);
         memoryBlockJdbcService.create(block2);
@@ -152,8 +152,8 @@ class MemoryBlockJdbcServiceTest {
     @Test
     void testCreateMultipleBlockTypes() {
         MemoryBlock textBlock = new MemoryBlock(testMemory.getId(), BlockType.TEXT, 0);
-        MemoryBlock visitBlock = new MemoryBlock(testMemory.getId(), BlockType.VISIT, 1);
-        MemoryBlock tripBlock = new MemoryBlock(testMemory.getId(), BlockType.TRIP, 2);
+        MemoryBlock visitBlock = new MemoryBlock(testMemory.getId(), BlockType.CLUSTER_VISIT, 1);
+        MemoryBlock tripBlock = new MemoryBlock(testMemory.getId(), BlockType.CLUSTER_TRIP, 2);
         MemoryBlock galleryBlock = new MemoryBlock(testMemory.getId(), BlockType.IMAGE_GALLERY, 3);
 
         MemoryBlock createdText = memoryBlockJdbcService.create(textBlock);
@@ -162,8 +162,8 @@ class MemoryBlockJdbcServiceTest {
         MemoryBlock createdGallery = memoryBlockJdbcService.create(galleryBlock);
 
         assertEquals(BlockType.TEXT, createdText.getBlockType());
-        assertEquals(BlockType.VISIT, createdVisit.getBlockType());
-        assertEquals(BlockType.TRIP, createdTrip.getBlockType());
+        assertEquals(BlockType.CLUSTER_VISIT, createdVisit.getBlockType());
+        assertEquals(BlockType.CLUSTER_TRIP, createdTrip.getBlockType());
         assertEquals(BlockType.IMAGE_GALLERY, createdGallery.getBlockType());
     }
 }

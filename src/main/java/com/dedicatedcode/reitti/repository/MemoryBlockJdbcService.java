@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.memory.BlockType;
 import com.dedicatedcode.reitti.model.memory.MemoryBlock;
+import com.dedicatedcode.reitti.model.security.User;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -71,11 +72,12 @@ public class MemoryBlockJdbcService {
         jdbcTemplate.update("DELETE FROM memory_block WHERE id = ?", blockId);
     }
 
-    public Optional<MemoryBlock> findById(Long id) {
+    public Optional<MemoryBlock> findById(User user, Long id) {
         List<MemoryBlock> results = jdbcTemplate.query(
-                "SELECT * FROM memory_block WHERE id = ?",
+                "SELECT * FROM memory_block LEFT JOIN memory ON memory_block.memory_id = memory.id WHERE memory_block.id = ? AND memory.user_id = ?",
                 MEMORY_BLOCK_ROW_MAPPER,
-                id
+                id,
+                user.getId()
         );
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }

@@ -25,8 +25,6 @@ public class MemoryService {
 
     private final MemoryJdbcService memoryJdbcService;
     private final MemoryBlockJdbcService memoryBlockJdbcService;
-    private final MemoryBlockVisitJdbcService memoryBlockVisitJdbcService;
-    private final MemoryBlockTripJdbcService memoryBlockTripJdbcService;
     private final MemoryBlockTextJdbcService memoryBlockTextJdbcService;
     private final MemoryBlockImageGalleryJdbcService memoryBlockImageGalleryJdbcService;
     private final MemoryClusterBlockRepository memoryClusterBlockRepository;
@@ -38,8 +36,6 @@ public class MemoryService {
     public MemoryService(
             MemoryJdbcService memoryJdbcService,
             MemoryBlockJdbcService memoryBlockJdbcService,
-            MemoryBlockVisitJdbcService memoryBlockVisitJdbcService,
-            MemoryBlockTripJdbcService memoryBlockTripJdbcService,
             MemoryBlockTextJdbcService memoryBlockTextJdbcService,
             MemoryBlockImageGalleryJdbcService memoryBlockImageGalleryJdbcService,
             MemoryClusterBlockRepository memoryClusterBlockRepository,
@@ -49,8 +45,6 @@ public class MemoryService {
             UserSettingsJdbcService userSettingsJdbcService) {
         this.memoryJdbcService = memoryJdbcService;
         this.memoryBlockJdbcService = memoryBlockJdbcService;
-        this.memoryBlockVisitJdbcService = memoryBlockVisitJdbcService;
-        this.memoryBlockTripJdbcService = memoryBlockTripJdbcService;
         this.memoryBlockTextJdbcService = memoryBlockTextJdbcService;
         this.memoryBlockImageGalleryJdbcService = memoryBlockImageGalleryJdbcService;
         this.memoryClusterBlockRepository = memoryClusterBlockRepository;
@@ -84,9 +78,11 @@ public class MemoryService {
     }
 
     @Transactional
-    public MemoryBlock addBlock(Long memoryId, BlockType blockType) {
+    public MemoryBlock addBlock(User user, Long memoryId, int position, BlockType blockType) {
+        Memory memory = this.memoryJdbcService.findById(user, memoryId).orElseThrow(() -> new IllegalArgumentException("Unable to find memory with id [" + memoryId + "]"));
         int maxPosition = memoryBlockJdbcService.getMaxPosition(memoryId);
-        MemoryBlock block = new MemoryBlock(memoryId, blockType, maxPosition + 1);
+
+        MemoryBlock block = new MemoryBlock(memoryId, blockType, position != -1 ? position : maxPosition + 1);
         return memoryBlockJdbcService.create(block);
     }
 
@@ -109,7 +105,7 @@ public class MemoryService {
 
     public Optional<? extends MemoryBlockPart> getBlock(User user, ZoneId timezone, long memoryId, long blockId) {
         UserSettings settings = this.userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
-        Optional<MemoryBlock> blockOpt = memoryBlockJdbcService.findById(blockId);
+        Optional<MemoryBlock> blockOpt = memoryBlockJdbcService.findById(user, blockId);
         if (blockOpt.isPresent()) {
             MemoryBlock block = blockOpt.get();
             if (!block.getMemoryId().equals(memoryId)) {
@@ -123,62 +119,14 @@ public class MemoryService {
     private Optional<? extends MemoryBlockPart> loadAndConvertBlockInstance(User user, ZoneId timezone, MemoryBlock block, UserSettings settings) {
         return switch (block.getBlockType()) {
             case TEXT -> memoryBlockTextJdbcService.findByBlockId(block.getId());
-            case VISIT -> memoryBlockVisitJdbcService.findByBlockId(block.getId());
-            case TRIP -> memoryBlockTripJdbcService.findByBlockId(block.getId());
             case IMAGE_GALLERY -> memoryBlockImageGalleryJdbcService.findByBlockId(block.getId());
             case CLUSTER_TRIP -> getClusterTripBlock(user, timezone, block, settings);
             case CLUSTER_VISIT -> getClusterVisitBlock(user, timezone, block, settings);
         };
     }
 
-    public Optional<MemoryBlock> getBlockById(Long blockId) {
-        return memoryBlockJdbcService.findById(blockId);
-    }
-
-    @Transactional
-    public MemoryBlockVisit addVisitBlock(User user, Long blockId, Long visitId) {
-        ProcessedVisit visit = this.processedVisitJdbcService.findByUserAndId(user, visitId).orElseThrow(() -> new IllegalArgumentException("Visit not found"));
-        MemoryBlockVisit blockWithId = new MemoryBlockVisit(
-            blockId,
-                visit.getId(),
-                visit.getPlace().getName(),
-                visit.getPlace().getAddress(),
-                visit.getPlace().getLatitudeCentroid(),
-                visit.getPlace().getLongitudeCentroid(),
-                visit.getStartTime(),
-                visit.getEndTime(),
-                visit.getDurationSeconds()
-        );
-        return memoryBlockVisitJdbcService.create(blockWithId);
-    }
-
-    public Optional<MemoryBlockVisit> getVisitBlock(Long blockId) {
-        return memoryBlockVisitJdbcService.findByBlockId(blockId);
-    }
-
-    @Transactional
-    public MemoryBlockTrip addTripBlock(User user, Long blockId, Long tripId) {
-        Trip trip = this.tripJdbcService.findByUserAndId(user, tripId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
-        MemoryBlockTrip blockWithId = new MemoryBlockTrip(
-            blockId,
-                trip.getStartTime(),
-                trip.getEndTime(),
-                trip.getDurationSeconds(),
-                trip.getEstimatedDistanceMeters(),
-                trip.getTravelledDistanceMeters(),
-                trip.getTransportModeInferred(),
-                trip.getStartVisit().getPlace().getName(),
-                trip.getStartVisit().getPlace().getLatitudeCentroid(),
-                trip.getStartVisit().getPlace().getLongitudeCentroid(),
-                trip.getEndVisit().getPlace().getName(),
-                trip.getEndVisit().getPlace().getLatitudeCentroid(),
-                trip.getEndVisit().getPlace().getLongitudeCentroid()
-        );
-        return memoryBlockTripJdbcService.create(blockWithId);
-    }
-
-    public Optional<MemoryBlockTrip> getTripBlock(Long blockId) {
-        return memoryBlockTripJdbcService.findByBlockId(blockId);
+    public Optional<MemoryBlock> getBlockById(User user, Long blockId) {
+        return memoryBlockJdbcService.findById(user, blockId);
     }
 
     public Optional<MemoryClusterBlock> getClusterBlock(User user, Long blockId) {
@@ -225,10 +173,10 @@ public class MemoryService {
     }
 
     @Transactional
-    public void reorderBlocks(Long memoryId, List<Long> blockIds) {
+    public void reorderBlocks(User user, Long memoryId, List<Long> blockIds) {
         for (int i = 0; i < blockIds.size(); i++) {
             Long blockId = blockIds.get(i);
-            Optional<MemoryBlock> blockOpt = memoryBlockJdbcService.findById(blockId);
+            Optional<MemoryBlock> blockOpt = memoryBlockJdbcService.findById(user, blockId);
             if (blockOpt.isPresent()) {
                 MemoryBlock block = blockOpt.get();
                 if (!block.getMemoryId().equals(memoryId)) {
@@ -250,47 +198,17 @@ public class MemoryService {
         
         // Generate new blocks
         List<MemoryBlockPart> autoGeneratedBlocks = blockGenerationService.generate(user, memory, timezone);
-        
+
         // Save the generated blocks
         for (MemoryBlockPart autoGeneratedBlock : autoGeneratedBlocks) {
             if (autoGeneratedBlock instanceof MemoryBlockText textBlock) {
-                MemoryBlock memoryBlock = addBlock(memoryId, BlockType.TEXT);
+                MemoryBlock memoryBlock = addBlock(user, memoryId, -1, BlockType.TEXT);
                 memoryBlockTextJdbcService.create(new MemoryBlockText(memoryBlock.getId(), textBlock.getHeadline(), textBlock.getContent()));
             } else if (autoGeneratedBlock instanceof MemoryBlockImageGallery imageGalleryBlock) {
-                MemoryBlock memoryBlock = addBlock(memoryId, BlockType.IMAGE_GALLERY);
+                MemoryBlock memoryBlock = addBlock(user, memoryId, -1, BlockType.IMAGE_GALLERY);
                 memoryBlockImageGalleryJdbcService.create(new MemoryBlockImageGallery(memoryBlock.getId(), imageGalleryBlock.getImages()));
-            } else if (autoGeneratedBlock instanceof MemoryBlockTrip tripBlock) {
-                MemoryBlock memoryBlock = addBlock(memoryId, BlockType.TRIP);
-                memoryBlockTripJdbcService.create(new MemoryBlockTrip(
-                    memoryBlock.getId(),
-                    tripBlock.getStartTime(),
-                    tripBlock.getEndTime(),
-                    tripBlock.getDurationSeconds(),
-                    tripBlock.getEstimatedDistanceMeters(),
-                    tripBlock.getTravelledDistanceMeters(),
-                    tripBlock.getTransportModeInferred(),
-                    tripBlock.getStartPlaceName(),
-                    tripBlock.getStartLatitude(),
-                    tripBlock.getStartLongitude(),
-                    tripBlock.getEndPlaceName(),
-                    tripBlock.getEndLatitude(),
-                    tripBlock.getEndLongitude()
-                ));
-            } else if (autoGeneratedBlock instanceof MemoryBlockVisit visitBlock) {
-                MemoryBlock memoryBlock = addBlock(memoryId, BlockType.VISIT);
-                memoryBlockVisitJdbcService.create(new MemoryBlockVisit(
-                    memoryBlock.getId(),
-                    visitBlock.getOriginalProcessedVisitId(),
-                    visitBlock.getPlaceName(),
-                    visitBlock.getPlaceAddress(),
-                    visitBlock.getLatitude(),
-                    visitBlock.getLongitude(),
-                    visitBlock.getStartTime(),
-                    visitBlock.getEndTime(),
-                    visitBlock.getDurationSeconds()
-                ));
             } else if (autoGeneratedBlock instanceof MemoryClusterBlock clusterBlock) {
-                MemoryBlock memoryBlock = addBlock(memoryId, clusterBlock.getType());
+                MemoryBlock memoryBlock = addBlock(user, memoryId, -1, clusterBlock.getType());
                 memoryClusterBlockRepository.save(user, new MemoryClusterBlock(memoryBlock.getId(),
                         clusterBlock.getPartIds(),
                         clusterBlock.getTitle(),

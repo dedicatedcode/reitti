@@ -1,10 +1,12 @@
 package com.dedicatedcode.reitti.controller;
 
+import com.dedicatedcode.reitti.controller.error.PageNotFoundException;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.memory.HeaderType;
 import com.dedicatedcode.reitti.model.memory.Memory;
 import com.dedicatedcode.reitti.model.memory.MemoryBlockPart;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.service.MemoryService;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
@@ -26,11 +28,16 @@ public class MemoryController {
 
     private final MemoryService memoryService;
     private final TripJdbcService tripJdbcService;
+    private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final ImmichIntegrationService immichIntegrationService;
 
-    public MemoryController(MemoryService memoryService, TripJdbcService tripJdbcService, ImmichIntegrationService immichIntegrationService) {
+    public MemoryController(MemoryService memoryService,
+                            TripJdbcService tripJdbcService,
+                            ProcessedVisitJdbcService processedVisitJdbcService,
+                            ImmichIntegrationService immichIntegrationService) {
         this.memoryService = memoryService;
         this.tripJdbcService = tripJdbcService;
+        this.processedVisitJdbcService = processedVisitJdbcService;
         this.immichIntegrationService = immichIntegrationService;
     }
 
@@ -48,7 +55,7 @@ public class MemoryController {
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             Model model) {
         Memory memory = memoryService.getMemoryById(user, id)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+                .orElseThrow(() -> new PageNotFoundException("Memory not found"));
         
         model.addAttribute("memory", memory);
 
@@ -248,8 +255,9 @@ public class MemoryController {
     }
 
     @GetMapping("/{id}/blocks/select-type")
-    public String selectBlockType(@AuthenticationPrincipal User user, @PathVariable Long id, Model model) {
+    public String selectBlockType(@AuthenticationPrincipal User user, @PathVariable Long id, @RequestParam(defaultValue = "-1") int position, Model model) {
         model.addAttribute("memoryId", id);
+        model.addAttribute("position", position);
         return "memories/fragments :: block-type-selection";
     }
 
@@ -270,21 +278,26 @@ public class MemoryController {
     }
 
     @GetMapping("/{id}/blocks/new")
-    public String newBlockForm(@AuthenticationPrincipal User user, @PathVariable Long id, @RequestParam String type, Model model) {
+    public String newBlockForm(@AuthenticationPrincipal User user,
+                               @PathVariable Long id,
+                               @RequestParam String type,
+                               @RequestParam(defaultValue = "-1") int position, Model model) {
 
         Memory memory = memoryService.getMemoryById(user, id).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
 
         model.addAttribute("memoryId", id);
+        model.addAttribute("position", position);
         model.addAttribute("blockType", type);
 
         switch (type) {
             case "TEXT":
                 return "memories/fragments :: text-block-form";
-            case "VISIT":
-                return "memories/fragments :: visit-block-form";
             case "TRIP_CLUSTER":
                 model.addAttribute("availableTrips", this.tripJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate()));
                 return "memories/fragments :: trip-block-form";
+            case "VISIT_CLUSTER":
+                model.addAttribute("availableVisits", this.processedVisitJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate()));
+                return "memories/fragments :: visit-block-form";
             case "IMAGE_GALLERY":
                 boolean immichEnabled = immichIntegrationService.getIntegrationForUser(user)
                         .map(ImmichIntegration::isEnabled)

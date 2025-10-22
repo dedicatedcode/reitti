@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.dto.PhotoResponse;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.memory.*;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.service.MemoryService;
 import com.dedicatedcode.reitti.service.S3Storage;
@@ -27,12 +28,14 @@ public class MemoryBlockController {
     private final MemoryService memoryService;
     private final ImmichIntegrationService immichIntegrationService;
     private final TripJdbcService tripJdbcService;
+    private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final S3Storage s3Storage;
 
-    public MemoryBlockController(MemoryService memoryService, ImmichIntegrationService immichIntegrationService, TripJdbcService tripJdbcService, S3Storage s3Storage) {
+    public MemoryBlockController(MemoryService memoryService, ImmichIntegrationService immichIntegrationService, TripJdbcService tripJdbcService, ProcessedVisitJdbcService processedVisitJdbcService, S3Storage s3Storage) {
         this.memoryService = memoryService;
         this.immichIntegrationService = immichIntegrationService;
         this.tripJdbcService = tripJdbcService;
+        this.processedVisitJdbcService = processedVisitJdbcService;
         this.s3Storage = s3Storage;
     }
 
@@ -66,7 +69,7 @@ public class MemoryBlockController {
         Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
 
-        MemoryBlock block = memoryService.getBlockById(blockId)
+        MemoryBlock block = memoryService.getBlockById(user, blockId)
                 .orElseThrow(() -> new IllegalArgumentException("Block not found"));
         
         model.addAttribute("memoryId", memoryId);
@@ -80,10 +83,11 @@ public class MemoryBlockController {
                 model.addAttribute("immichEnabled", immichEnabled);
                 model.addAttribute("imageBlock", memoryService.getBlock(user, timezone, memoryId, blockId).orElseThrow(() -> new IllegalArgumentException("Block not found")) );
                 return "memories/blocks/edit :: edit-image-gallery-block";
-            case VISIT:
-                memoryService.getVisitBlock(blockId).ifPresent(visit -> 
-                    model.addAttribute("visitBlock", visit));
-                break;
+            case CLUSTER_VISIT:
+                memoryService.getBlock(user, timezone, memoryId, blockId).ifPresent(b ->
+                        model.addAttribute("clusterVisitBlock", b));
+                model.addAttribute("availableVisits", this.processedVisitJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate()));
+                return "memories/blocks/edit :: edit-cluster-visit-block";
             case TEXT:
                 memoryService.getBlock(user, timezone, memoryId, blockId).ifPresent(text ->
                     model.addAttribute("textBlock", text));
@@ -140,11 +144,11 @@ public class MemoryBlockController {
     }
 
     @PostMapping("/{blockId}/cluster-trips")
-    public String updateClusterTripBlock(
+    public String updateClusterBlock(
             @AuthenticationPrincipal User user,
             @PathVariable Long memoryId,
             @PathVariable Long blockId,
-            @RequestParam(name = "selectedTrips") List<Long> tripIds,
+            @RequestParam(name = "selectedParts") List<Long> selectedParts,
             @RequestParam(required = false) String title,
             @RequestParam(required = false, defaultValue = "UTC" ) ZoneId timezone,
             Model model) {
@@ -155,7 +159,7 @@ public class MemoryBlockController {
         MemoryClusterBlock block = memoryService.getClusterBlock(user, blockId)
                 .orElseThrow(() -> new IllegalArgumentException("Cluster block not found"));
 
-        MemoryClusterBlock updated = block.withPartIds(tripIds).withTitle(title);
+        MemoryClusterBlock updated = block.withPartIds(selectedParts).withTitle(title);
         memoryService.updateClusterBlock(user, updated);
 
         model.addAttribute("memory", memory);
@@ -173,7 +177,7 @@ public class MemoryBlockController {
         memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
-        memoryService.reorderBlocks(memoryId, blockIds);
+        memoryService.reorderBlocks(user, memoryId, blockIds);
         return "redirect:/memories/" + memoryId;
     }
 
@@ -181,24 +185,27 @@ public class MemoryBlockController {
     public String createTextBlock(
             @AuthenticationPrincipal User user,
             @PathVariable Long memoryId,
+            @RequestParam(required = false, defaultValue = "-1") int position,
             @RequestParam(required = false) String headline,
             @RequestParam(required = false) String content) {
         
         memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
-        MemoryBlock block = memoryService.addBlock(memoryId, BlockType.TEXT);
+        MemoryBlock block = memoryService.addBlock(user, memoryId, position, BlockType.TEXT);
         memoryService.addTextBlock(block.getId(), headline, content);
         
         return "redirect:/memories/" + memoryId;
     }
 
 
-    @PostMapping("/trip-cluster")
-    public String createTripBlock(
+    @PostMapping("/cluster")
+    public String createClusterBlock(
             @AuthenticationPrincipal User user,
             @PathVariable Long memoryId,
-            @RequestParam(name = "selectedTrips") List<Long> tripIds,
+            @RequestParam(required = false, defaultValue = "-1") int position,
+            @RequestParam(name = "selectedParts") List<Long> selectedParts,
+            @RequestParam(name = "selectedParts") BlockType type,
             @RequestParam(required = false) String title,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             Model model) {
@@ -206,9 +213,8 @@ public class MemoryBlockController {
         Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
 
-
-        MemoryBlock block = memoryService.addBlock(memoryId, BlockType.CLUSTER_TRIP);
-        MemoryClusterBlock clusterBlock = new MemoryClusterBlock(block.getId(), tripIds, title, null, BlockType.CLUSTER_TRIP);
+        MemoryBlock block = memoryService.addBlock(user, memoryId, position, type);
+        MemoryClusterBlock clusterBlock = new MemoryClusterBlock(block.getId(), selectedParts, title, null, type);
         memoryService.createClusterBlock(user, clusterBlock);
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, block.getId()).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
@@ -216,39 +222,12 @@ public class MemoryBlockController {
         return "memories/view :: view-block";
     }
 
-
-
-
-
-
-
-
-
-
-
-
-    @PostMapping("/visit")
-    public String createVisitBlock(
-            @AuthenticationPrincipal User user,
-            @PathVariable Long memoryId,
-            @RequestParam Long visitId) {
-        
-        memoryService.getMemoryById(user, memoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-
-
-        MemoryBlock block = memoryService.addBlock(memoryId, BlockType.VISIT);
-        memoryService.addVisitBlock(user, block.getId(), visitId);
-        
-        return "redirect:/memories/" + memoryId;
-    }
-
-
     @PostMapping("/image-gallery")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> createImageGalleryBlock(
             @AuthenticationPrincipal User user,
             @PathVariable Long memoryId,
+            @RequestParam(required = false, defaultValue = "-1") int position,
             @RequestBody Map<String, Object> request) {
 
         memoryService.getMemoryById(user, memoryId).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
@@ -260,7 +239,7 @@ public class MemoryBlockController {
             throw new IllegalArgumentException("No images provided");
         }
         
-        MemoryBlock block = memoryService.addBlock(memoryId, BlockType.IMAGE_GALLERY);
+        MemoryBlock block = memoryService.addBlock(user, memoryId, position, BlockType.IMAGE_GALLERY);
         List<MemoryBlockImageGallery.GalleryImage> imageBlocks = new ArrayList<>();
 
         for (Map<String, String> image : images) {

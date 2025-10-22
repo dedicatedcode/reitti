@@ -1927,6 +1927,19 @@ button:disabled {
     margin-bottom: 16px;
 }
 
+.memories-page .add-block-spacer {
+    opacity: 0;
+    transition: all 0.3s ease-in-out;
+    text-align: center;
+    margin: 10px 0;
+    pointer-events: none;
+}
+
+.memories-page .memory-block:hover .add-block-spacer {
+    opacity: 1;
+    pointer-events: auto;
+}
+
 .memories-page .block-header .title {
     margin: 0;
     font-size: 1.5em;

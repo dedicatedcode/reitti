@@ -148,7 +148,8 @@ public class MemoryBlockGenerationService {
 
             }, LocaleContextHolder.getLocale()));
             blockParts.add(intro);
-            blockParts.add(convertVisitToBlock(a));
+            MemoryClusterBlock clusterBlock = new MemoryClusterBlock(null, List.of(a.getId()), null, null, BlockType.CLUSTER_VISIT);
+            blockParts.add(clusterBlock);
             LocalDate dayOfAccommodation = a.getStartTime().atZone(ZoneId.of("UTC")).toLocalDate();
             List<String> images = imagesByDay.get(dayOfAccommodation);
             if (images != null && !images.isEmpty()) {
@@ -297,20 +298,6 @@ public class MemoryBlockGenerationService {
     private MemoryClusterBlock convertToTripCluster(List<Trip> trips, String title) {
         return new MemoryClusterBlock(null, trips.stream().map(Trip::getId).toList(),
                 title, null, BlockType.CLUSTER_TRIP);
-    }
-
-    private MemoryBlockVisit convertVisitToBlock(ProcessedVisit visit) {
-        return new MemoryBlockVisit(
-            null, // blockId will be set when saved
-            visit.getId(),
-            visit.getPlace().getName(),
-            visit.getPlace().getAddress(),
-            visit.getPlace().getLatitudeCentroid(),
-            visit.getPlace().getLongitudeCentroid(),
-            visit.getStartTime(),
-            visit.getEndTime(),
-            visit.getDurationSeconds()
-        );
     }
 
     private String generateIntroductionText(Memory memory, List<VisitCluster> clusters, ProcessedVisit accommodation, ProcessedVisit homePlace,
