@@ -185,7 +185,7 @@ public class MemoryService {
             Long blockId = blockIds.get(i);
             Optional<MemoryBlock> blockOpt = memoryBlockJdbcService.findById(user, blockId);
 
-            //this reaorder function does give a unique Key constraint violation because immediately there are two blocks with the same position when they are moved AI!
+            //this reaorder function does give a unique Key constraint violation because immediately there are two blocks with the same position when they are moved. Use a single transaction if possible. AI!
             if (blockOpt.isPresent()) {
                 MemoryBlock block = blockOpt.get();
                 if (!block.getMemoryId().equals(memoryId)) {
