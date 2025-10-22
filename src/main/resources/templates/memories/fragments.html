@@ -20,7 +20,7 @@
         
         <button type="button" 
                 class="block-type-option"
-                th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='VISIT', position=${position})}"
+                th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='VISIT_CLUSTER', position=${position})}"
                 hx-target=".block-type-selection"
                 hx-swap="outerHTML">
             <span th:text="#{memory.block.type.visit}">Visit Block</span>
