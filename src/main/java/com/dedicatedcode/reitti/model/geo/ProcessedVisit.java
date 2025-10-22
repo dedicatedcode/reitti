@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.model.geo;
 
 import java.time.Instant;
+import java.util.Objects;
 
 public class ProcessedVisit {
 
@@ -66,5 +67,17 @@ public class ProcessedVisit {
                 ", durationSeconds=" + durationSeconds +
                 ", version=" + version +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        ProcessedVisit that = (ProcessedVisit) o;
+        return Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(id);
     }
 }

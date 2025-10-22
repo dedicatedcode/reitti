@@ -94,11 +94,11 @@
                            th:value="${clusterVisitBlock?.title}" th:placeholder="#{memory.edit.block.title.placeholder}" placeholder="Enter title">
                 </div>
                 <div class="form-group">
-                    <label th:text="#{memory.edit.block.cluster.visit.select.trips}">Select Trips</label>
+                    <label th:text="#{memory.edit.block.cluster.visit.select.visits}">Select Trips</label>
                     <table class="table">
                         <thead>
                             <tr>
-                                <th th:text="#{memory.edit.block.visit.trip.selected}">Selected</th>
+                                <th th:text="#{memory.edit.block.cluster.visit.selected}">Selected</th>
                                 <th th:text="#{memory.edit.block.cluster.visit.visit}">Visit</th>
                             </tr>
                         </thead>
@@ -108,9 +108,9 @@
                                     <input type="checkbox"
                                            name="selectedParts"
                                            th:value="${visit.id}"
-                                           th:checked="${clusterVisitBlock.parts != null and clusterVisitBlock.visits.contains(visit)}">
+                                           th:checked="${clusterVisitBlock.visits != null and clusterVisitBlock.visits.contains(visit)}">
                                 </td>
-                                <td th:text="${${visit.startVisit.place.name} + '(' + #temporals.format(visit.startTime, 'MMM d, yyyy HH:mm')+ ' -> ' + ${#temporals.format(visit.endTime, 'HH:mm')}}">Visit details</td>
+                                <td th:text="${visit.place.name} + ' (' + ${#temporals.format(visit.startTime, 'MMM d, yyyy HH:mm')} + ' -> ' + ${#temporals.format(visit.endTime, 'HH:mm')} + ')'">Visit details</td>
                             </tr>
                         </tbody>
                     </table>
