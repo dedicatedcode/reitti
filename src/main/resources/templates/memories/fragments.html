@@ -164,8 +164,9 @@
                     <div class="immich-photos-grid" 
                          id="immichPhotosGrid"
                          th:attr="hx-get=@{/memories/{id}/blocks/immich-photos(id=${memoryId},page=0)}"
+                         hx-target=".immich-photos-container"
                          hx-trigger="load"
-                         hx-swap="outerHTML">
+                         hx-swap="innerHTML">
                         <div class="loading" th:text="#{memory.block.gallery.loading}">Loading photos...</div>
                     </div>
                     <div class="immich-pagination" id="immichPagination"></div>
@@ -209,69 +210,6 @@
                     th:text="#{memory.block.cancel}">Cancel</button>
         </div>
     </form>
-
-    <script th:inline="javascript">
-        class GalleryBlockManager {
-            constructor(memoryId, position) {
-                this.memoryId = memoryId;
-                this.position = position;
-                this.selectedImmichPhotos = new Map();
-                this.currentPage = 0;
-                this.totalPages = 0;
-            }
-
-            toggleImmichPhoto(assetId, thumbnailUrl) {
-                const form = document.querySelector('.gallery-block-form form');
-                if (this.selectedImmichPhotos.has(assetId)) {
-                    this.selectedImmichPhotos.delete(assetId);
-                    
-                    const photoItem = document.querySelector(`[data-asset-id="${assetId}"]`);
-                    if (photoItem) {
-                        photoItem.classList.remove('selected');
-                    }
-                    
-                    // Remove hidden input
-                    const hiddenInput = form.querySelector(`input[name="immichImages"][value="${assetId}:${thumbnailUrl}"]`);
-                    if (hiddenInput) {
-                        hiddenInput.remove();
-                    }
-                } else {
-                    this.selectedImmichPhotos.set(assetId, thumbnailUrl);
-                    
-                    const photoItem = document.querySelector(`[data-asset-id="${assetId}"]`);
-                    if (photoItem) {
-                        photoItem.classList.add('selected');
-                    }
-                    
-                    // Add hidden input
-                    const hiddenInput = document.createElement('input');
-                    hiddenInput.type = 'hidden';
-                    hiddenInput.name = 'immichImages';
-                    hiddenInput.value = `${assetId}:${thumbnailUrl}`;
-                    form.appendChild(hiddenInput);
-                }
-            }
-
-            loadImmichPage(page) {
-                this.currentPage = page;
-                htmx.ajax('GET', `/memories/${this.memoryId}/blocks/immich-photos?page=${page}`, {
-                    target: '.immich-photos-grid',
-                    swap: 'outerHTML'
-                });
-            }
-        }
-
-        const galleryManager = new GalleryBlockManager(/*[[${memoryId}]]*/ 0,/*[[${position}]]*/ 0,);
-
-        function toggleImmichPhoto(assetId, thumbnailUrl) {
-            galleryManager.toggleImmichPhoto(assetId, thumbnailUrl);
-        }
-
-        function loadImmichPage(page) {
-            galleryManager.loadImmichPage(page);
-        }
-
-    </script>
 </div>
 
 <!-- Selected photo item fragment -->
@@ -298,76 +236,6 @@
             <i class="lni lni-check-circle-1"></i>
         </div>
     </div>
-    
-    <script th:inline="javascript">
-        (function() {
-            const pageTotalPages = /*[[${totalPages}]]*/ 0;
-            const pageCurrentPage = /*[[${currentPage}]]*/ 0;
-            
-            if (typeof galleryManager !== 'undefined') {
-                galleryManager.totalPages = pageTotalPages;
-                galleryManager.currentPage = pageCurrentPage;
-            }
-            
-            document.querySelectorAll('.immich-photo-item').forEach(item => {
-                const assetId = item.getAttribute('data-asset-id');
-                const thumbnailUrl = item.getAttribute('data-thumbnail-url');
-                
-                if (typeof galleryManager !== 'undefined' && galleryManager.selectedImmichPhotos.has(assetId)) {
-                    item.classList.add('selected');
-                }
-                
-                item.addEventListener('click', function() {
-                    if (typeof galleryManager !== 'undefined') {
-                        galleryManager.toggleImmichPhoto(assetId, thumbnailUrl);
-                    }
-                });
-            });
-            
-            const pagination = document.getElementById('immichPagination');
-            if (pagination) {
-                pagination.innerHTML = '';
-                
-                if (pageTotalPages > 1) {
-                    const paginationDiv = document.createElement('div');
-                    paginationDiv.className = 'pagination-controls';
-                    
-                    if (pageCurrentPage > 0) {
-                        const prevBtn = document.createElement('button');
-                        prevBtn.type = 'button';
-                        prevBtn.className = 'btn btn-secondary';
-                        prevBtn.textContent = /*[[#{memory.block.gallery.pagination.previous}]]*/ 'Previous';
-                        prevBtn.onclick = () => {
-                            if (typeof galleryManager !== 'undefined') {
-                                galleryManager.loadImmichPage(pageCurrentPage - 1);
-                            }
-                        };
-                        paginationDiv.appendChild(prevBtn);
-                    }
-                    
-                    const pageInfo = document.createElement('span');
-                    pageInfo.className = 'page-info';
-                    pageInfo.textContent = `${pageCurrentPage + 1} / ${pageTotalPages}`;
-                    paginationDiv.appendChild(pageInfo);
-                    
-                    if (pageCurrentPage < pageTotalPages - 1) {
-                        const nextBtn = document.createElement('button');
-                        nextBtn.type = 'button';
-                        nextBtn.className = 'btn btn-secondary';
-                        nextBtn.textContent = /*[[#{memory.block.gallery.pagination.next}]]*/ 'Next';
-                        nextBtn.onclick = () => {
-                            if (typeof galleryManager !== 'undefined') {
-                                galleryManager.loadImmichPage(pageCurrentPage + 1);
-                            }
-                        };
-                        paginationDiv.appendChild(nextBtn);
-                    }
-                    
-                    pagination.appendChild(paginationDiv);
-                }
-            }
-        })();
-    </script>
 </div>
 
 </body>
