@@ -46,11 +46,7 @@
                 </button>
             </div>
 
-            <div class="memory-header-section" th:if="${memory.headerType.name() == 'IMAGE' && memory.headerImageUrl != null}">
-                <img th:src="${memory.headerImageUrl}" th:alt="${memory.title}" class="memory-header-image-large">
-            </div>
-
-            <div class="memory-header-section map-header-section" th:if="${memory.headerType.name() == 'MAP'}">
+            <div class="memory-header-section map-header-section">
                 <div id="memory-map" class="memory-map"></div>
             </div>
 
@@ -228,7 +224,7 @@
                                         });
 
                                         const closeButton = document.createElement('button');
-                                        closeButton.innerHTML = '<i class="lni lni-xmark-circle></i>';
+                                        closeButton.innerHTML = '<i class="lni lni-xmark-circle"></i>';
                                         closeButton.className = 'photo-modal-close-button';
 
                                         let prevButton, nextButton, counter;

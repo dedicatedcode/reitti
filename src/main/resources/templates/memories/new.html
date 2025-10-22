@@ -61,25 +61,6 @@
                 </div>
             </div>
 
-            <div class="form-group">
-                <label th:text="#{memory.form.header.type.label}">Header Type *</label>
-                <div class="radio-group">
-                    <label class="radio-label">
-                        <input type="radio" name="headerType" value="MAP" th:checked="${headerType == null or headerType.name() == 'MAP'}">
-                        <span><i class="lni lni-map"></i> <span th:text="#{memory.form.header.type.map}">Map</span></span>
-                    </label>
-                    <label class="radio-label">
-                        <input type="radio" name="headerType" value="IMAGE" th:checked="${headerType != null and headerType.name() == 'IMAGE'}">
-                        <span><i class="lni lni-image"></i> <span th:text="#{memory.form.header.type.image}">Image</span></span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="form-group" id="imageUrlGroup" th:style="${headerType != null and headerType.name() == 'IMAGE'} ? 'display: block;' : 'display: none;'">
-                <label for="headerImageUrl" th:text="#{memory.form.header.image.url.label}">Header Image URL</label>
-                <input type="url" id="headerImageUrl" name="headerImageUrl" class="form-control" th:placeholder="#{memory.form.header.image.url.placeholder}" th:value="${headerImageUrl}">
-            </div>
-
             <div class="form-actions">
                 <a href="/memories" class="btn btn-secondary" th:text="#{memory.form.cancel}">Cancel</a>
                 <button type="submit" class="btn btn-primary" 

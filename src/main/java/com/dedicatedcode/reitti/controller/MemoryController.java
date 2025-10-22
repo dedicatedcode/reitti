@@ -89,7 +89,6 @@ public class MemoryController {
             @RequestParam(required = false) String description,
             @RequestParam LocalDate startDate,
             @RequestParam LocalDate endDate,
-            @RequestParam HeaderType headerType,
             @RequestParam(required = false) String headerImageUrl,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             Model model) {
@@ -100,7 +99,6 @@ public class MemoryController {
             model.addAttribute("description", description);
             model.addAttribute("startDate", startDate);
             model.addAttribute("endDate", endDate);
-            model.addAttribute("headerType", headerType);
             model.addAttribute("headerImageUrl", headerImageUrl);
             return "memories/new :: new-memory";
         }
@@ -117,7 +115,6 @@ public class MemoryController {
                 model.addAttribute("description", description);
                 model.addAttribute("startDate", startDate);
                 model.addAttribute("endDate", endDate);
-                model.addAttribute("headerType", headerType);
                 model.addAttribute("headerImageUrl", headerImageUrl);
                 return "memories/new :: new-memory";
             }
@@ -129,7 +126,6 @@ public class MemoryController {
                 model.addAttribute("description", description);
                 model.addAttribute("startDate", startDate);
                 model.addAttribute("endDate", endDate);
-                model.addAttribute("headerType", headerType);
                 model.addAttribute("headerImageUrl", headerImageUrl);
                 return "memories/new :: new-memory";
             }
@@ -139,7 +135,7 @@ public class MemoryController {
                     description != null ? description.trim() : null,
                     start,
                     end,
-                    headerType,
+                    HeaderType.MAP,
                     headerImageUrl
             );
             
@@ -154,7 +150,6 @@ public class MemoryController {
             model.addAttribute("description", description);
             model.addAttribute("startDate", startDate);
             model.addAttribute("endDate", endDate);
-            model.addAttribute("headerType", headerType);
             model.addAttribute("headerImageUrl", headerImageUrl);
             return "memories/new :: new-memory";
         }
