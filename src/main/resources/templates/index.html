@@ -46,6 +46,7 @@
 <div class="timeline">
     <div class="navbar">
         <span><img class="logo" th:src="@{/img/logo.svg}" alt="reitti logo" title="reitti" src="/img/logo.svg"></span>
+        <a href="/" class="nav-link active" th:title="#{nav.timeline}"><i class="lni lni-route-1"></i></a>
         <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/memories" class="nav-link" th:title="#{nav.memories}"><i class="lni lni-agenda"></i></a>
         <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/statistics" class="nav-link" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
         <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/settings" class="nav-link" th:title="#{nav.settings.tooltip}"><i class="lni lni-gear-1"></i></a>

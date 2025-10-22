@@ -64,6 +64,10 @@ body {
     transition: background-color 0.2s;
 }
 
+.navbar .nav-link.active {
+    color: var(--color-highlight)
+}
+
 .navbar .nav-link:hover {
     background-color: rgba(255, 255, 255, 0.2);
 }
