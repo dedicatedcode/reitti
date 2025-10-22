@@ -1933,11 +1933,13 @@ button:disabled {
     text-align: center;
     margin: 10px 0;
     pointer-events: none;
+    height: 1px;
 }
 
 .memories-page .memory-block:hover .add-block-spacer {
     opacity: 1;
     pointer-events: auto;
+    height: 36px;
 }
 
 .memories-page .block-header .title {

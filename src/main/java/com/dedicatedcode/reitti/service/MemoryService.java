@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.service;
 
+import com.dedicatedcode.reitti.controller.error.PageNotFoundException;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
@@ -79,7 +80,7 @@ public class MemoryService {
 
     @Transactional
     public MemoryBlock addBlock(User user, Long memoryId, int position, BlockType blockType) {
-        Memory memory = this.memoryJdbcService.findById(user, memoryId).orElseThrow(() -> new IllegalArgumentException("Unable to find memory with id [" + memoryId + "]"));
+        this.memoryJdbcService.findById(user, memoryId).orElseThrow(() -> new PageNotFoundException("Unable to find memory with id [" + memoryId + "]"));
         int maxPosition = memoryBlockJdbcService.getMaxPosition(memoryId);
 
         MemoryBlock block = new MemoryBlock(memoryId, blockType, maxPosition + 1);
