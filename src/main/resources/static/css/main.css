@@ -1759,7 +1759,18 @@ button:disabled {
     }
 }
 
-
+.memories-overview {
+    margin-left: 30rem;
+    color: var(--color-text-white);
+    font-family: "Fraunces", serif;
+    background: transparent;
+    z-index: 1000;
+    position: relative;
+    font-weight: 300;
+    font-size: 1.4rem;
+    max-height: 100vh;
+    padding: 2rem;
+}
 /* Memories */
 .memories-page {
         background-color: var(--color-background-dark);

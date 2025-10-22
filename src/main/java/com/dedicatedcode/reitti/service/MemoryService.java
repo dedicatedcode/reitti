@@ -78,6 +78,10 @@ public class MemoryService {
         return memoryJdbcService.findAllByUser(user);
     }
 
+    public List<Memory> getMemoriesForUserAndYear(User user, int year) {
+        return memoryJdbcService.findAllByUserAndYear(user, year);
+    }
+
     @Transactional
     public MemoryBlock addBlock(User user, Long memoryId, int position, BlockType blockType) {
         this.memoryJdbcService.findById(user, memoryId).orElseThrow(() -> new PageNotFoundException("Unable to find memory with id [" + memoryId + "]"));
@@ -294,6 +298,10 @@ public class MemoryService {
         } else {
             return startTime.atZone(place.getTimezone()).toLocalDateTime();
         }
+    }
+
+    public List<Integer> getAvailableYears(User user) {
+        return this.memoryJdbcService.findDistinctYears(user);
     }
 
 }

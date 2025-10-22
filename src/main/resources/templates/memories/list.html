@@ -14,87 +14,42 @@
     <script th:src="@{/js/raw-location-loader.js}"></script>
 </head>
 <body class="memories-page">
-<script th:inline="javascript">
-    window.userSettings = /*[[${userSettings}]]*/ {};
-
-    function getUserTimezone() {
-        if (window.userSettings.timeZoneOverride) {
-            return window.userSettings.timeZoneOverride;
-        } else {
-            return Intl.DateTimeFormat().resolvedOptions().timeZone;
-        }
-    }
-
-    function navigateToMemoryWithTimezone(event, memoryId) {
-        event.preventDefault();
-        const timezone = encodeURIComponent(getUserTimezone());
-        window.location.href = `/memories/${memoryId}?timezone=${timezone}`;
-    }
-</script>
-<div class="settings-container">
-    <div class="settings-nav">
+    <div id="memories-panel"></div>
+    <div class="timeline">
         <div class="navbar">
-            <span><img class="logo" th:src="@{/img/logo.svg}" alt="reitti logo" title="reitti" src="/img/logo.svg"></span>
+            <a th:href="@{/}"><img class="logo" th:src="@{/img/logo.svg}" alt="reitti logo" title="reitti" src="/img/logo.svg"></a>
             <a href="/" class="nav-link" th:title="#{nav.timeline}"><i class="lni lni-route-1"></i></a>
-            <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/memories" class="nav-link active" th:title="#{nav.memories}"><i class="lni lni-agenda"></i></a>
-            <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/statistics" class="nav-link" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
+            <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/memories" class="nav-link" th:title="#{nav.memories}"><i class="lni lni-agenda"></i></a>
+            <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/statistics" class="nav-link active" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
             <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/settings" class="nav-link" th:title="#{nav.settings.tooltip}"><i class="lni lni-gear-1"></i></a>
             <form th:action="@{/logout}" method="post" >
-                <button type="submit" class="nav-link" th:title="#{nav.logout.tooltip}"><i
-                        class="lni lni-exit"></i>
+                <button type="submit" class="nav-link" style="font-size: 1.4rem;" th:title="#{nav.logout.tooltip}"><i class="lni lni-exit"></i>
                 </button>
             </form>
         </div>
-    </div>
-    
-    <div class="settings-content-area" th:fragment="settings-content-area">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h2>Memories</h2>
-            <button hx-get="/memories/new" hx-target=".settings-content-area" class="btn btn-primary">Create Memory</button>
-        </div>
 
-        <div th:if="${memories.isEmpty()}" class="empty-state">
-            <i class="lni lni-image"></i>
-            <h2>No memories yet</h2>
-            <p>Create your first memory by selecting a date range on the timeline</p>
-        </div>
-
-        <div class="places-grid" th:unless="${memories.isEmpty()}">
-            <div th:each="memory : ${memories}" class="place-stats-card">
-                <div class="place-map-container">
-                    <div class="memory-header" th:if="${memory.headerType.name() == 'IMAGE' && memory.headerImageUrl != null}">
-                        <img th:src="${memory.headerImageUrl}" th:alt="${memory.title}" class="memory-header-image" style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px;">
-                    </div>
-                    <div class="memory-header map-header" th:if="${memory.headerType.name() == 'MAP'}">
-                        <div class="map-placeholder" style="height: 200px; display: flex; align-items: center; justify-content: center; background-color: rgba(255,255,255,0.1); border-radius: 8px;">
-                            <i class="lni lni-map" style="font-size: 3rem; opacity: 0.5;"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="place-details text-align-left">
-                    <div class="place-info">
-                        <h3 style="margin: 0 0 10px 0; font-size: 1.2rem;" th:text="${memory.title}">Memory Title</h3>
-                        <div style="margin-bottom: 8px;">
-                            <i class="lni lni-calendar" style="margin-right: 5px;"></i>
-                            <span th:text="${#temporals.format(memory.startDate, 'MMM d, yyyy')}">Start Date</span>
-                            <span th:if="${memory.startDate != memory.endDate}">
-                                - <span th:text="${#temporals.format(memory.endDate, 'MMM d, yyyy')}">End Date</span>
-                            </span>
-                        </div>
-                        <div th:if="${memory.description != null && !memory.description.isEmpty()}" 
-                             style="opacity: 0.8; font-size: 0.9rem; line-height: 1.4;" 
-                             th:text="${memory.description}">Description</div>
-                    </div>
-                    <div style="display: flex; gap: 10px; margin-top: 15px;">
-                        <a th:href="@{/memories/{id}(id=${memory.id})}" 
-                           class="btn btn-block memory-link"
-                           th:attr="data-memory-id=${memory.id}"
-                           onclick="navigateToMemoryWithTimezone(event, this.dataset.memoryId)">View Memory</a>
-                    </div>
-                </div>
+        <div class="timeline-container">
+            <div id="years-navigation"
+                 hx-get="/memories/years-navigation"
+                 hx-trigger="load">
+                <div class="photo-modal-loading-spinner htmx-indicator" th:text="#{timeline.loading}">Loading...</div>
             </div>
         </div>
     </div>
-</div>
+    <script th:inline="javascript">
+        window.userSettings = /*[[${userSettings}]]*/ {};
+
+        function getUserTimezone() {
+            if (window.userSettings.timeZoneOverride) {
+                return window.userSettings.timeZoneOverride;
+            } else {
+                return Intl.DateTimeFormat().resolvedOptions().timeZone;
+            }
+        }
+
+        function shouldTrigger(element) {
+            return !element.classList.contains('active');
+        }
+    </script>
 </body>
 </html>

@@ -279,5 +279,87 @@
     </div>
 </div>
 
+<div class="years-navigation" th:fragment="years-navigation">
+    <div class="timeline-entry trip active" id="overall-entry" data-year="overall"
+         hx-get="/memories/all"
+         hx-target="#memories-panel"
+         hx-trigger="load, click[shouldTrigger(this)]"
+         hx-swap="outerHTML">
+        <div class="entry-description" th:text="#{memory.list.all}">All</div>
+    </div>
+    <div class="timeline-entry trip" th:each="year : ${years}"
+         th:attr="hx-get='/memories/year/'+ ${year}, data-year=${year}"
+         hx-target="#memories-panel"
+         hx-trigger="click[shouldTrigger(this)]"
+         hx-swap="outerHTML">
+        <div class="entry-description" th:text="${year}">2024</div>
+    </div>
+    <script>
+        new function () {
+            document.querySelector('.years-navigation').addEventListener('click', function (event) {
+                const entry = event.target.closest('.timeline-entry');
+                if (!entry) return;
+                const isCurrentlyActive = entry.classList.contains('active');
+                if (isCurrentlyActive) {
+                    return;
+                }
+                document.querySelectorAll('.timeline-container .timeline-entry')
+                    .forEach(e => e.classList.remove('active'));
+                entry.classList.add('active');
+            });
+        }()
+
+    </script>
+</div>
+
+
+<div class="memories-overview settings-content-area" th:fragment="memories-list">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>Memories</h2>
+        <button hx-get="/memories/new" hx-target=".settings-content-area" class="btn btn-primary">Create Memory</button>
+    </div>
+
+    <div th:if="${memories.isEmpty()}" class="empty-state">
+        <i class="lni lni-image"></i>
+        <h2>No memories yet</h2>
+        <p>Create your first memory by selecting a date range on the timeline</p>
+    </div>
+
+    <div class="places-grid" th:unless="${memories.isEmpty()}">
+        <div th:each="memory : ${memories}" class="place-stats-card">
+            <div class="place-map-container">
+                <div class="memory-header" th:if="${memory.headerType.name() == 'IMAGE' && memory.headerImageUrl != null}">
+                    <img th:src="${memory.headerImageUrl}" th:alt="${memory.title}" class="memory-header-image" style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px;">
+                </div>
+                <div class="memory-header map-header" th:if="${memory.headerType.name() == 'MAP'}">
+                    <div class="map-placeholder" style="height: 200px; display: flex; align-items: center; justify-content: center; background-color: rgba(255,255,255,0.1); border-radius: 8px;">
+                        <i class="lni lni-map" style="font-size: 3rem; opacity: 0.5;"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="place-details text-align-left">
+                <div class="place-info">
+                    <h3 style="margin: 0 0 10px 0; font-size: 1.2rem;" th:text="${memory.title}">Memory Title</h3>
+                    <div style="margin-bottom: 8px;">
+                        <i class="lni lni-calendar" style="margin-right: 5px;"></i>
+                        <span th:text="${#temporals.format(memory.startDate, 'MMM d, yyyy')}">Start Date</span>
+                        <span th:if="${memory.startDate != memory.endDate}">
+                            - <span th:text="${#temporals.format(memory.endDate, 'MMM d, yyyy')}">End Date</span>
+                        </span>
+                    </div>
+                    <div th:if="${memory.description != null && !memory.description.isEmpty()}"
+                         style="opacity: 0.8; font-size: 0.9rem; line-height: 1.4;"
+                         th:text="${memory.description}">Description</div>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <a th:href="@{/memories/{id}(id=${memory.id})}"
+                       class="btn btn-block memory-link"
+                       th:attr="data-memory-id=${memory.id}"
+                       onclick="navigateToMemoryWithTimezone(event, this.dataset.memoryId)">View Memory</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>

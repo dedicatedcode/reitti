@@ -115,6 +115,14 @@ public class MemoryJdbcService {
         );
     }
 
+    public List<Memory> findAllByUserAndYear(User user, int year) {
+        return jdbcTemplate.query(
+                "SELECT * FROM memory WHERE user_id = ? AND (extract(YEAR FROM start_date) == ? OR extract(YEAR FROM end_date) == ?) ORDER BY created_at DESC",
+                MEMORY_ROW_MAPPER,
+                user.getId(), year, year
+        );
+    }
+
     public List<Memory> findByDateRange(User user, Instant startDate, Instant endDate) {
         return jdbcTemplate.query(
                 "SELECT * FROM memory " +
@@ -127,4 +135,12 @@ public class MemoryJdbcService {
                 startDate
         );
     }
+
+    public List<Integer> findDistinctYears(User user) {
+            String sql = "SELECT DISTINCT EXTRACT(YEAR FROM start_date) " +
+                    "FROM memory " +
+                    "WHERE user_id = ? " +
+                    "ORDER BY EXTRACT(YEAR FROM start_date) DESC";
+            return jdbcTemplate.queryForList(sql, Integer.class, user.getId());
+        }
 }

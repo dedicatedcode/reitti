@@ -42,10 +42,27 @@ public class MemoryController {
     }
 
     @GetMapping
-    public String listMemories(@AuthenticationPrincipal User user, Model model) {
-        List<Memory> memories = memoryService.getMemoriesForUser(user);
-        model.addAttribute("memories", memories);
+    public String get() {
         return "memories/list";
+    }
+
+    @GetMapping("/years-navigation")
+    public String listMemories(@AuthenticationPrincipal User user, Model model) {
+        model.addAttribute("years", memoryService.getAvailableYears(user));
+        return "memories/fragments :: years-navigation";
+    }
+
+    @GetMapping("/all")
+    public String getAll(@AuthenticationPrincipal User user, @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone, Model model) {
+        model.addAttribute("memories", this.memoryService.getMemoriesForUser(user));
+        return "memories/fragments :: memories-list";
+    }
+
+    @GetMapping("/year/{year}")
+    public String getYear(@AuthenticationPrincipal User user, @PathVariable int year, @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone, Model model) {
+        model.addAttribute("memories", this.memoryService.getMemoriesForUserAndYear(user, year));
+
+        return "memories/fragments :: memories-list";
     }
 
     @GetMapping("/{id}")
