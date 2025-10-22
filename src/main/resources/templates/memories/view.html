@@ -568,9 +568,10 @@
                     <div class="add-block-spacer">
                         <button type="button"
                                 class="btn btn-primary"
-                                th:attr="hx-get=@{/memories/{id}/blocks/select-type(id=${memory.id}, position=${iterStat.count})}"
+                                th:attr="hx-get=@{/memories/{id}/blocks/select-type(id=${memory.id})},data-block-id=${block.blockId}"
                                 hx-target="closest .add-block-spacer"
-                                hx-swap="afterend">
+                                hx-swap="afterend"
+                                hx-vals="js:{position: getBlockPosition()}">
                             <i class="lni lni-plus"></i> <span th:text="#{memory.view.add.block}">Add Block after</span>
                         </button>
                     </div>
@@ -587,6 +588,15 @@
     // User settings for timezone handling
     window.userSettings = /*[[${userSettings}]]*/ {};
 
+    function getBlockPosition() {
+        let allBlocks = document.querySelectorAll('.memory-block');
+        for (let i = 0; i < allBlocks.length; i++) {
+            const block = allBlocks[i];
+            if (block.dataset.blockId === event.currentTarget.dataset.blockId) {
+                return i + 1;
+            }
+        }
+    }
     function getUserTimezone() {
         if (window.userSettings.timeZoneOverride) {
             return window.userSettings.timeZoneOverride;

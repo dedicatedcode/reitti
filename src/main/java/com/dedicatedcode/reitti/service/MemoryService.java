@@ -184,7 +184,7 @@ public class MemoryService {
     public void reorderBlocks(User user, Long memoryId, List<Long> blockIds) {
         // First, temporarily shift all positions to avoid unique constraint violations
         List<MemoryBlock> allBlocks = memoryBlockJdbcService.findByMemoryId(memoryId);
-        int offset = blockIds.size() + 1; // Use an offset larger than the number of blocks
+        int offset = blockIds.size() + 2; // Use an offset larger than the number of blocks
         for (MemoryBlock block : allBlocks) {
             memoryBlockJdbcService.update(block.withPosition(block.getPosition() + offset));
         }

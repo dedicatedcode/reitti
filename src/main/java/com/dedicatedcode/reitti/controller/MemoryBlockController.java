@@ -118,30 +118,6 @@ public class MemoryBlockController {
         return "memories/view :: view-block";
     }
 
-    @PostMapping("/{blockId}/text")
-    public String updateTextBlock(
-            @AuthenticationPrincipal User user,
-            @PathVariable Long memoryId,
-            @PathVariable Long blockId,
-            @RequestParam String headline,
-            @RequestParam String content,
-            @RequestParam(required = false, defaultValue = "UTC" ) ZoneId timezone,
-            Model model) {
-
-        Memory memory = memoryService.getMemoryById(user, memoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
-        MemoryBlockText textBlock = memoryService.getTextBlock(blockId)
-                .orElseThrow(() -> new IllegalArgumentException("Text block not found"));
-        
-        MemoryBlockText updated = textBlock.withHeadline(headline).withContent(content);
-        memoryService.updateTextBlock(user, updated);
-        
-        model.addAttribute("memory", memory);
-        model.addAttribute("blocks", List.of(updated));
-
-        return "memories/view :: view-block";
-    }
 
     @PostMapping("/{blockId}/cluster-trips")
     public String updateClusterBlock(
@@ -187,17 +163,45 @@ public class MemoryBlockController {
             @PathVariable Long memoryId,
             @RequestParam(required = false, defaultValue = "-1") int position,
             @RequestParam(required = false) String headline,
-            @RequestParam(required = false) String content) {
-        
-        memoryService.getMemoryById(user, memoryId)
+            @RequestParam(required = false) String content,
+            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+            Model model) {
+
+        Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
+
         MemoryBlock block = memoryService.addBlock(user, memoryId, position, BlockType.TEXT);
         memoryService.addTextBlock(block.getId(), headline, content);
-        
-        return "redirect:/memories/" + memoryId;
+        model.addAttribute("memory", memory);
+        model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, block.getId()).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
+
+        return "memories/view :: view-block";
     }
 
+    @PostMapping("/{blockId}/text")
+    public String updateTextBlock(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long memoryId,
+            @PathVariable Long blockId,
+            @RequestParam String headline,
+            @RequestParam String content,
+            @RequestParam(required = false, defaultValue = "UTC" ) ZoneId timezone,
+            Model model) {
+
+        Memory memory = memoryService.getMemoryById(user, memoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+
+        MemoryBlockText textBlock = memoryService.getTextBlock(blockId)
+                .orElseThrow(() -> new IllegalArgumentException("Text block not found"));
+
+        MemoryBlockText updated = textBlock.withHeadline(headline).withContent(content);
+        memoryService.updateTextBlock(user, updated);
+
+        model.addAttribute("memory", memory);
+        model.addAttribute("blocks", List.of(updated));
+
+        return "memories/view :: view-block";
+    }
 
     @PostMapping("/cluster")
     public String createClusterBlock(

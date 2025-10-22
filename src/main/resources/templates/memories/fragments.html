@@ -62,7 +62,7 @@
 <!-- Text block form -->
 <div th:fragment="text-block-form" class="block-form">
     <h3 th:text="#{memory.block.text.new}">Add Text Block</h3>
-    <form th:action="@{/memories/{id}/blocks/text(id=${memoryId}, position=${position})}" method="post" hx-target="body" hx-swap="innerHTML">
+    <form th:attr="hx-post=@{/memories/{id}/blocks/text(id=${memoryId}, position=${position})}" method="post" hx-target=".block-form" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}">
         
         <div class="form-group">
             <label for="headline" th:text="#{memory.block.text.headline}">Headline</label>
@@ -89,7 +89,7 @@
 <!-- Visit block form -->
 <div th:fragment="visit-block-form" class="block-form">
     <h2 th:text="#{memory.block.visit.new}">Add Visit Block</h2>
-    <form th:action="@{/memories/{id}/blocks/visit(id=${memoryId}, position=${position})}" method="post" hx-target="closest .block-form" hx-swap="outerHTML">
+    <form th:attr="hx-post=@{/memories/{id}/blocks/visit(id=${memoryId}, position=${position})}" method="post" hx-target=".block-form" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}">
         
         <div class="form-group">
             <label for="visitId" th:text="#{memory.block.visit.select}">Select Visit</label>
@@ -113,7 +113,7 @@
 <!-- Trip block form -->
 <div th:fragment="trip-block-form" class="block-form">
     <h2 th:text="#{memory.block.trip.new}">Edit Trips Block</h2>
-    <form th:attr="hx-post=@{/memories/{id}/blocks/trip-cluster(id=${memoryId}, position=${position})}" method="post" hx-target="closest .block-form" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}">
+    <form th:attr="hx-post=@{/memories/{id}/blocks/trip-cluster(id=${memoryId}, position=${position})}" method="post" hx-target=".block-form" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}">
         <div class="form-group">
             <label th:text="#{memory.edit.block.title}" for="title">Title</label>
             <input type="text" id="title" name="title" class="form-control" th:placeholder="#{memory.edit.block.title.placeholder}" placeholder="Enter title">
