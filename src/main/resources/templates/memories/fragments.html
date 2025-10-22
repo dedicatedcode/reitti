@@ -163,7 +163,7 @@
                 <div class="immich-photos-container">
                     <div class="immich-photos-grid" 
                          id="immichPhotosGrid"
-                         th:attr="hx-get=@{/memories/{id}/blocks/immich-photos(id=${memoryId},page=0)}"
+                         th:attr="hx-get=@{/memories/{memoryId}/blocks/immich-photos(page=0)}"
                          hx-target=".immich-photos-container"
                          hx-trigger="load"
                          hx-swap="innerHTML">
@@ -183,7 +183,8 @@
                            multiple 
                            accept="image/*" 
                            class="form-control"
-                           th:attr="hx-post=@{/memories/{id}/blocks/upload-image(id=${memoryId})}"
+                           th:attr="hx-post=@{/memories/{memoryId}/blocks/upload-image}"
+                           hx-encoding="multipart/form-data"
                            hx-target="#selectedPhotos"
                            hx-swap="beforeend">
                     <label for="fileInput" class="upload-label">
@@ -223,6 +224,11 @@
             th:text="#{memory.block.gallery.remove}">Remove</button>
 </div>
 
+<!-- Uploaded photos fragment -->
+<div th:fragment="uploaded-photos">
+    <div th:each="url : ${urls}" th:replace="memories/fragments :: selected-photo-item(url=${url})"></div>
+</div>
+
 <!-- Immich photos grid fragment -->
 <div class="immich-photos-grid" th:fragment="immich-photos-grid">
     <div th:if="${photos.isEmpty()}" class="no-photos" th:text="#{memory.block.gallery.immich.no.photos}">
@@ -241,7 +247,7 @@
                 type="button" 
                 class="btn btn-secondary" 
                 th:text="#{memory.block.gallery.pagination.previous}"
-                th:attr="hx-get=@{/memories/{id}/blocks/immich-photos(id=${memoryId},page=${currentPage - 1})}"
+                th:attr="hx-get=@{/memories/{memoryId}/blocks/immich-photos(page=${currentPage - 1})}"
                 hx-target=".immich-photos-container"
                 hx-swap="innerHTML">Previous</button>
         <span class="page-info" th:text="${currentPage + 1} + ' / ' + ${totalPages}"></span>
@@ -249,7 +255,7 @@
                 type="button" 
                 class="btn btn-secondary" 
                 th:text="#{memory.block.gallery.pagination.next}"
-                th:attr="hx-get=@{/memories/{id}/blocks/immich-photos(id=${memoryId},page=${currentPage + 1})}"
+                th:attr="hx-get=@{/memories/{memoryId}/blocks/immich-photos(page=${currentPage + 1})}"
                 hx-target=".immich-photos-container"
                 hx-swap="innerHTML">Next</button>
     </div>

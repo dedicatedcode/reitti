@@ -274,34 +274,39 @@ public class MemoryBlockController {
     public String uploadImage(
             @AuthenticationPrincipal User user,
             @PathVariable Long memoryId,
-            @RequestParam("files") MultipartFile file,
+            @RequestParam("files") List<MultipartFile> files,
             Model model) {
         
         memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
-        if (file.isEmpty()) {
-            throw new IllegalArgumentException("File is empty");
+        List<String> urls = new ArrayList<>();
+        
+        for (MultipartFile file : files) {
+            if (file.isEmpty()) {
+                continue;
+            }
+            
+            try {
+                String originalFilename = file.getOriginalFilename();
+                String extension = "";
+                if (originalFilename != null && originalFilename.contains(".")) {
+                    extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+                }
+                String filename = UUID.randomUUID() + extension;
+
+                s3Storage.store("memories/" + memoryId + "/" + filename, file.getInputStream(), file.getSize(), file.getContentType());
+
+                String fileUrl = "/api/v1/photos/reitti/memories/" + memoryId + "/" + filename;
+                urls.add(fileUrl);
+                
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to upload file", e);
+            }
         }
         
-        try {
-            String originalFilename = file.getOriginalFilename();
-            String extension = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-            }
-            String filename = UUID.randomUUID() + extension;
-
-            s3Storage.store("memories/" + memoryId + "/" + filename, file.getInputStream(), file.getSize(), file.getContentType());
-
-            String fileUrl = "/api/v1/photos/reitti/memories/" + memoryId + "/" + filename;
-            
-            model.addAttribute("url", fileUrl);
-            return "memories/fragments :: selected-photo-item";
-            
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to upload file", e);
-        }
+        model.addAttribute("urls", urls);
+        return "memories/fragments :: uploaded-photos";
     }
 
     @GetMapping("/immich-photos")
