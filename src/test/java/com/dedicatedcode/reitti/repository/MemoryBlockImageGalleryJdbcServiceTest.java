@@ -64,8 +64,8 @@ class MemoryBlockImageGalleryJdbcServiceTest {
     @Test
     void testCreateGallery() {
         List<MemoryBlockImageGallery.GalleryImage> images = List.of(
-                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Caption 1"),
-                new MemoryBlockImageGallery.GalleryImage("https://example.com/image2.jpg", "Caption 2")
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Caption 1", null, null),
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image2.jpg", "Caption 2", null, null)
         );
 
         MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);
@@ -83,15 +83,15 @@ class MemoryBlockImageGalleryJdbcServiceTest {
     @Test
     void testUpdateGallery() {
         List<MemoryBlockImageGallery.GalleryImage> images = List.of(
-                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Original Caption")
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Original Caption", null, null)
         );
 
         MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);
         MemoryBlockImageGallery created = memoryBlockImageGalleryJdbcService.create(gallery);
 
         List<MemoryBlockImageGallery.GalleryImage> updatedImages = List.of(
-                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Updated Caption"),
-                new MemoryBlockImageGallery.GalleryImage("https://example.com/image3.jpg", "New Image")
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Updated Caption", null, null),
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image3.jpg", "New Image", null, null)
         );
 
         MemoryBlockImageGallery updated = created.withImages(updatedImages);
@@ -105,7 +105,7 @@ class MemoryBlockImageGalleryJdbcServiceTest {
     @Test
     void testDeleteGallery() {
         List<MemoryBlockImageGallery.GalleryImage> images = List.of(
-                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Caption")
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Caption", null, null)
         );
 
         MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);
@@ -120,8 +120,8 @@ class MemoryBlockImageGalleryJdbcServiceTest {
     @Test
     void testDeleteByBlockId() {
         List<MemoryBlockImageGallery.GalleryImage> images = List.of(
-                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Caption 1"),
-                new MemoryBlockImageGallery.GalleryImage("https://example.com/image2.jpg", "Caption 2")
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Caption 1", null, null),
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image2.jpg", "Caption 2", null, null)
         );
 
         MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);
@@ -136,7 +136,7 @@ class MemoryBlockImageGalleryJdbcServiceTest {
     @Test
     void testFindById() {
         List<MemoryBlockImageGallery.GalleryImage> images = List.of(
-                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Test Caption")
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Test Caption", null, null)
         );
 
         MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);
@@ -153,9 +153,9 @@ class MemoryBlockImageGalleryJdbcServiceTest {
     @Test
     void testFindByBlockId() {
         List<MemoryBlockImageGallery.GalleryImage> images = List.of(
-                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Caption 1"),
-                new MemoryBlockImageGallery.GalleryImage("https://example.com/image2.jpg", "Caption 2"),
-                new MemoryBlockImageGallery.GalleryImage("https://example.com/image3.jpg", "Caption 3")
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Caption 1", null, null),
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image2.jpg", "Caption 2", null, null),
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image3.jpg", "Caption 3", null, null)
         );
 
         MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);
@@ -173,8 +173,8 @@ class MemoryBlockImageGalleryJdbcServiceTest {
     @Test
     void testCreateGalleryWithNullCaptions() {
         List<MemoryBlockImageGallery.GalleryImage> images = List.of(
-                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", null),
-                new MemoryBlockImageGallery.GalleryImage("https://example.com/image2.jpg", "Caption 2")
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", null, null, null),
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/image2.jpg", "Caption 2", null, null)
         );
 
         MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);

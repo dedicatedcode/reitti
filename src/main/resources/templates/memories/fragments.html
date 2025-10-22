@@ -163,7 +163,7 @@
                 <div class="immich-photos-container">
                     <div class="immich-photos-grid" 
                          id="immichPhotosGrid"
-                         th:attr="hx-get=@{/memories/{memoryId}/blocks/immich-photos(page=0)}"
+                         th:attr="hx-get=@{/memories/{id}/blocks/immich-photos(page=0, id=${memoryId})}"
                          hx-target=".immich-photos-container"
                          hx-trigger="load"
                          hx-swap="innerHTML">
@@ -183,7 +183,7 @@
                            multiple 
                            accept="image/*" 
                            class="form-control"
-                           th:attr="hx-post=@{/memories/{memoryId}/blocks/upload-image}"
+                           th:attr="hx-post=@{/memories/{id}/blocks/upload-image(id=${memoryId})}"
                            hx-encoding="multipart/form-data"
                            hx-target="#selectedPhotos"
                            hx-swap="beforeend">
@@ -213,21 +213,20 @@
     </form>
 </div>
 
-<!-- Selected photo item fragment -->
-<div th:fragment="selected-photo-item" class="selected-photo-item">
-    <img th:src="${url}" alt="Uploaded image">
-    <input type="hidden" name="uploadedUrls" th:value="${url}">
-    <button type="button" 
-            hx-get="/memories/fragments/empty" 
-            hx-target="closest .selected-photo-item" 
-            hx-swap="delete"
-            th:text="#{memory.block.gallery.remove}">Remove</button>
-</div>
-
 <!-- Uploaded photos fragment -->
-<div th:fragment="uploaded-photos">
-    <div th:each="url : ${urls}" th:replace="memories/fragments :: selected-photo-item(url=${url})"></div>
-</div>
+<th:block th:fragment="uploaded-photos">
+    <div th:each="url : ${urls}" class="selected-photo-item">
+        <img th:src="${url}" alt="Uploaded image">
+        <input type="hidden" name="uploadedUrls" th:value="${url}">
+        <button type="button" class="btn-remove"
+                hx-get="/memories/fragments/empty"
+                hx-target="closest .selected-photo-item"
+                hx-swap="delete"
+                th:title="#{memory.block.gallery.remove}">
+            <i class="lni lni-trash-3"></i>
+        </button>
+    </div>
+</th:block>
 
 <!-- Immich photos grid fragment -->
 <div class="immich-photos-grid" th:fragment="immich-photos-grid">
@@ -247,7 +246,7 @@
                 type="button" 
                 class="btn btn-secondary" 
                 th:text="#{memory.block.gallery.pagination.previous}"
-                th:attr="hx-get=@{/memories/{memoryId}/blocks/immich-photos(page=${currentPage - 1})}"
+                th:attr="hx-get=@{/memories/{id}/blocks/immich-photos(page=${currentPage - 1}, id=${memoryId})}"
                 hx-target=".immich-photos-container"
                 hx-swap="innerHTML">Previous</button>
         <span class="page-info" th:text="${currentPage + 1} + ' / ' + ${totalPages}"></span>
@@ -255,7 +254,7 @@
                 type="button" 
                 class="btn btn-secondary" 
                 th:text="#{memory.block.gallery.pagination.next}"
-                th:attr="hx-get=@{/memories/{memoryId}/blocks/immich-photos(page=${currentPage + 1})}"
+                th:attr="hx-get=@{/memories/{id}/blocks/immich-photos(page=${currentPage + 1}, id=${memoryId})}"
                 hx-target=".immich-photos-container"
                 hx-swap="innerHTML">Next</button>
     </div>

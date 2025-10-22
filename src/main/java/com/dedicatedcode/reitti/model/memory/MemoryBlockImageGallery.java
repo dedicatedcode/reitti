@@ -56,11 +56,15 @@ public class MemoryBlockImageGallery implements MemoryBlockPart, Serializable {
 
     public static class GalleryImage implements Serializable {
         private final String imageUrl;
+        private final String integration;
+        private final String integrationId;
         private final String caption;
 
-        public GalleryImage(String imageUrl, String caption) {
+        public GalleryImage(String imageUrl, String caption, String integration, String integrationId) {
             this.imageUrl = imageUrl;
             this.caption = caption;
+            this.integration = integration;
+            this.integrationId = integrationId;
         }
 
         public String getImageUrl() {
@@ -69,6 +73,14 @@ public class MemoryBlockImageGallery implements MemoryBlockPart, Serializable {
 
         public String getCaption() {
             return caption;
+        }
+
+        public String getIntegration() {
+            return integration;
+        }
+
+        public String getIntegrationId() {
+            return integrationId;
         }
 
         @Override

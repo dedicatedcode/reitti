@@ -123,6 +123,7 @@
     align-items: center;
     justify-content: center;
     gap: 1rem;
+    grid-column: 1 / span 3;
 }
 
 

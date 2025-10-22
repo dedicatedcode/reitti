@@ -326,7 +326,7 @@ public class MemoryBlockController {
         
         List<PhotoResponse> allPhotos = immichIntegrationService.searchPhotosForRange(user, startDate, endDate, timezone);
         
-        int pageSize = 6;
+        int pageSize = 12;
         int totalPages = (int) Math.ceil((double) allPhotos.size() / pageSize);
         int startIndex = page * pageSize;
         int endIndex = Math.min(startIndex + pageSize, allPhotos.size());
@@ -340,5 +340,4 @@ public class MemoryBlockController {
         
         return "memories/fragments :: immich-photos-grid";
     }
-
 }

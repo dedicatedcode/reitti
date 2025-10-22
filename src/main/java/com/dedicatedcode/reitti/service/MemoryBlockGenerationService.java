@@ -260,11 +260,11 @@ public class MemoryBlockGenerationService {
         return todaysImages.stream()
                 .map(s -> {
                     if (s3Storage.exists("memories/" + memory.getId() + "/" + s)) {
-                        return new MemoryBlockImageGallery.GalleryImage("/api/v1/photos/reitti/memories/" + memory.getId() + "/" + s, null);
+                        return new MemoryBlockImageGallery.GalleryImage("/api/v1/photos/reitti/memories/" + memory.getId() + "/" + s, null, "immich", s);
                     } else {
                         String filename = this.immichIntegrationService.downloadImage(user, s, "memories/" + memory.getId());
                         String imageUrl = "/api/v1/photos/reitti/memories/" + memory.getId() + "/" + filename;
-                        return new MemoryBlockImageGallery.GalleryImage(imageUrl, null);
+                        return new MemoryBlockImageGallery.GalleryImage(imageUrl, null, "immich", s);
                     }
                 }).toList();
     }
