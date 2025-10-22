@@ -231,38 +231,35 @@ public class MemoryBlockController {
             @AuthenticationPrincipal User user,
             @PathVariable Long memoryId,
             @RequestParam(required = false, defaultValue = "-1") int position,
-            @RequestParam("files") MultipartFile[] files,
+            @RequestParam(required = false) List<String> uploadedUrls,
+            @RequestParam(required = false) List<String> immichImages,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             Model model) {
 
         Memory memory = memoryService.getMemoryById(user, memoryId).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
-        if (files == null || files.length == 0) {
-            throw new IllegalArgumentException("No files provided");
-        }
-        
         MemoryBlock block = memoryService.addBlock(user, memoryId, position, BlockType.IMAGE_GALLERY);
         List<MemoryBlockImageGallery.GalleryImage> imageBlocks = new ArrayList<>();
 
-        for (MultipartFile file : files) {
-            if (!file.isEmpty()) {
-                try {
-                    String originalFilename = file.getOriginalFilename();
-                    String extension = "";
-                    if (originalFilename != null && originalFilename.contains(".")) {
-                        extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-                    }
-                    String filename = UUID.randomUUID() + extension;
+        if (uploadedUrls != null) {
+            for (String url : uploadedUrls) {
+                imageBlocks.add(new MemoryBlockImageGallery.GalleryImage(url, null, "upload", null));
+            }
+        }
 
-                    s3Storage.store("memories/" + memoryId + "/" + filename, file.getInputStream(), file.getSize(), file.getContentType());
-
-                    String fileUrl = "/api/v1/photos/reitti/memories/" + memoryId + "/" + filename;
-                    
-                    imageBlocks.add(new MemoryBlockImageGallery.GalleryImage(fileUrl, originalFilename));
-                } catch (IOException e) {
-                    throw new RuntimeException("Failed to upload file", e);
+        if (immichImages != null) {
+            for (String immichImage : immichImages) {
+                String[] parts = immichImage.split(":", 2);
+                if (parts.length == 2) {
+                    String assetId = parts[0];
+                    String thumbnailUrl = parts[1];
+                    imageBlocks.add(new MemoryBlockImageGallery.GalleryImage(thumbnailUrl, null, "immich", assetId));
                 }
             }
+        }
+
+        if (imageBlocks.isEmpty()) {
+            throw new IllegalArgumentException("No images selected");
         }
 
         memoryService.addImageGalleryBlock(block.getId(), imageBlocks);
@@ -274,11 +271,11 @@ public class MemoryBlockController {
     }
 
     @PostMapping("/upload-image")
-    @ResponseBody
-    public ResponseEntity<Map<String, String>> uploadImage(
+    public String uploadImage(
             @AuthenticationPrincipal User user,
             @PathVariable Long memoryId,
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("files") MultipartFile file,
+            Model model) {
         
         memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
@@ -299,10 +296,8 @@ public class MemoryBlockController {
 
             String fileUrl = "/api/v1/photos/reitti/memories/" + memoryId + "/" + filename;
             
-            Map<String, String> response = new HashMap<>();
-            response.put("url", fileUrl);
-            response.put("name", originalFilename);
-            return ResponseEntity.ok(response);
+            model.addAttribute("url", fileUrl);
+            return "memories/fragments :: selected-photo-item";
             
         } catch (IOException e) {
             throw new RuntimeException("Failed to upload file", e);

@@ -155,55 +155,60 @@
 <div th:fragment="image-gallery-block-form" class="block-form gallery-block-form">
     <h3 th:text="#{memory.block.gallery.new}">New Image Gallery Block</h3>
     
-    <div class="gallery-panels">
-        <!-- Immich Panel -->
-        <div class="gallery-panel immich-panel" th:if="${immichEnabled}">
-            <h4 th:text="#{memory.block.gallery.immich.title}">Select from Immich</h4>
-            <div class="immich-photos-container">
-                <div class="immich-photos-grid" 
-                     id="immichPhotosGrid"
-                     th:attr="hx-get=@{/memories/{id}/blocks/immich-photos(id=${memoryId},page=0)}"
-                     hx-trigger="load"
-                     hx-swap="outerHTML">
-                    <div class="loading" th:text="#{memory.block.gallery.loading}">Loading photos...</div>
+    <form th:attr="hx-post=@{/memories/{id}/blocks/image-gallery(id=${memoryId}, position=${position})}" method="post" hx-target=".block-form" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}">
+        <div class="gallery-panels">
+            <!-- Immich Panel -->
+            <div class="gallery-panel immich-panel" th:if="${immichEnabled}">
+                <h4 th:text="#{memory.block.gallery.immich.title}">Select from Immich</h4>
+                <div class="immich-photos-container">
+                    <div class="immich-photos-grid" 
+                         id="immichPhotosGrid"
+                         th:attr="hx-get=@{/memories/{id}/blocks/immich-photos(id=${memoryId},page=0)}"
+                         hx-trigger="load"
+                         hx-swap="outerHTML">
+                        <div class="loading" th:text="#{memory.block.gallery.loading}">Loading photos...</div>
+                    </div>
+                    <div class="immich-pagination" id="immichPagination"></div>
                 </div>
-                <div class="immich-pagination" id="immichPagination"></div>
+            </div>
+
+            <!-- File Upload Panel -->
+            <div class="gallery-panel upload-panel">
+                <h4 th:text="#{memory.block.gallery.upload.title}">Upload Images</h4>
+                <div class="upload-area">
+                    <input type="file" 
+                           id="fileInput" 
+                           name="files" 
+                           multiple 
+                           accept="image/*" 
+                           class="form-control"
+                           th:attr="hx-post=@{/memories/{id}/blocks/upload-image(id=${memoryId})}"
+                           hx-target="#selectedPhotos"
+                           hx-swap="beforeend">
+                    <label for="fileInput" class="upload-label">
+                        <i class="lni lni-cloud-upload"></i>
+                        <span th:text="#{memory.block.gallery.upload.choose}">Choose files or drag here</span>
+                    </label>
+                </div>
             </div>
         </div>
 
-        <!-- File Upload Panel -->
-        <div class="gallery-panel upload-panel">
-            <h4 th:text="#{memory.block.gallery.upload.title}">Upload Images</h4>
-            <div class="upload-area">
-                <input type="file" 
-                       id="fileInput" 
-                       name="files" 
-                       multiple 
-                       accept="image/*" 
-                       class="form-control">
-                <label for="fileInput" class="upload-label">
-                    <i class="lni lni-cloud-upload"></i>
-                    <span th:text="#{memory.block.gallery.upload.choose}">Choose files or drag here</span>
-                </label>
-            </div>
+        <!-- Combined Selected Photos Section -->
+        <div class="selected-photos-section">
+            <h4 th:text="#{memory.block.gallery.selected.title}">Selected Photos</h4>
+            <div class="selected-photos-combined" id="selectedPhotos"></div>
         </div>
-    </div>
 
-    <!-- Combined Selected Photos Section -->
-    <div class="selected-photos-section">
-        <h4 th:text="#{memory.block.gallery.selected.title}">Selected Photos</h4>
-        <div class="selected-photos-combined" id="selectedPhotosCombined"></div>
-    </div>
-
-    <div class="form-actions">
-        <button type="submit" class="btn btn-primary" th:text="#{memory.block.create}">Create Gallery Block</button>
-        <button type="button"
-                class="btn btn-secondary"
-                th:attr="hx-get=@{/memories/fragments/empty}"
-                hx-target=".block-form"
-                hx-swap="delete"
-                th:text="#{memory.block.cancel}">Cancel</button>
-    </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary" th:text="#{memory.block.create}">Create Gallery Block</button>
+            <button type="button"
+                    class="btn btn-secondary"
+                    th:attr="hx-get=@{/memories/fragments/empty}"
+                    hx-target=".block-form"
+                    hx-swap="delete"
+                    th:text="#{memory.block.cancel}">Cancel</button>
+        </div>
+    </form>
 
     <script th:inline="javascript">
         class GalleryBlockManager {
@@ -211,51 +216,24 @@
                 this.memoryId = memoryId;
                 this.position = position;
                 this.selectedImmichPhotos = new Map();
-                this.selectedFiles = [];
                 this.currentPage = 0;
                 this.totalPages = 0;
             }
 
-            renderCombinedPhotos() {
-                const container = document.getElementById('selectedPhotosCombined');
-                container.innerHTML = '';
-                
-                this.selectedImmichPhotos.forEach((thumbnailUrl, assetId) => {
-                    const photoDiv = document.createElement('div');
-                    photoDiv.className = 'selected-photo-item';
-                    photoDiv.setAttribute('data-type', 'immich');
-                    photoDiv.setAttribute('data-id', assetId);
-                    photoDiv.innerHTML = `
-                        <img src="${thumbnailUrl}" alt="Selected photo">
-                        <button type="button" class="btn-remove" onclick="galleryManager.toggleImmichPhoto('${assetId}', '${thumbnailUrl}')">
-                            <i class="lni lni-ban-2"></i>
-                        </button>
-                    `;
-                    container.appendChild(photoDiv);
-                });
-                
-                this.selectedFiles.forEach((file, index) => {
-                    const photoDiv = document.createElement('div');
-                    photoDiv.className = 'selected-photo-item';
-                    photoDiv.setAttribute('data-type', 'upload');
-                    photoDiv.setAttribute('data-index', index);
-                    photoDiv.innerHTML = `
-                        <img src="${file.previewUrl}" alt="${file.name}">
-                        <button type="button" class="btn-remove" onclick="galleryManager.removeSelectedFile(${index})">
-                            <i class="lni lni-ban-2"></i>
-                        </button>
-                    `;
-                    container.appendChild(photoDiv);
-                });
-            }
-
             toggleImmichPhoto(assetId, thumbnailUrl) {
+                const form = document.querySelector('.gallery-block-form form');
                 if (this.selectedImmichPhotos.has(assetId)) {
                     this.selectedImmichPhotos.delete(assetId);
                     
                     const photoItem = document.querySelector(`[data-asset-id="${assetId}"]`);
                     if (photoItem) {
                         photoItem.classList.remove('selected');
+                    }
+                    
+                    // Remove hidden input
+                    const hiddenInput = form.querySelector(`input[name="immichImages"][value="${assetId}:${thumbnailUrl}"]`);
+                    if (hiddenInput) {
+                        hiddenInput.remove();
                     }
                 } else {
                     this.selectedImmichPhotos.set(assetId, thumbnailUrl);
@@ -264,14 +242,14 @@
                     if (photoItem) {
                         photoItem.classList.add('selected');
                     }
+                    
+                    // Add hidden input
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'immichImages';
+                    hiddenInput.value = `${assetId}:${thumbnailUrl}`;
+                    form.appendChild(hiddenInput);
                 }
-                
-                this.renderCombinedPhotos();
-            }
-
-            removeSelectedFile(index) {
-                this.selectedFiles.splice(index, 1);
-                this.renderCombinedPhotos();
             }
 
             loadImmichPage(page) {
@@ -281,109 +259,30 @@
                     swap: 'outerHTML'
                 });
             }
-
-            async createGalleryBlock() {
-                const images = [];
-                
-                // Handle Immich photos
-                this.selectedImmichPhotos.forEach((thumbnailUrl, assetId) => {
-                    images.push({
-                        type: 'immich',
-                        assetId: assetId
-                    });
-                });
-                
-                // Handle uploaded files: upload them first
-                for (const file of this.selectedFiles) {
-                    try {
-                        const formData = new FormData();
-                        formData.append('file', file.file);
-                        
-                        const uploadResponse = await fetch(`/memories/${this.memoryId}/blocks/upload-image`, {
-                            method: 'POST',
-                            body: formData
-                        });
-                        
-                        if (uploadResponse.ok) {
-                            const uploadData = await uploadResponse.json();
-                            images.push({
-                                type: 'upload',
-                                url: uploadData.url,
-                                name: uploadData.name
-                            });
-                        } else {
-                            console.error('Failed to upload file:', file.name);
-                        }
-                    } catch (error) {
-                        console.error('Error uploading file:', error);
-                    }
-                }
-
-                if (images.length === 0) {
-                    alert(/*[[#{memory.block.gallery.error.no.images}]]*/ 'Please select or upload at least one image');
-                    return;
-                }
-
-                fetch(`/memories/${this.memoryId}/blocks/image-gallery?position=${this.position}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ images: images })
-                }).then(response => {
-                    if (response.ok) {
-                        window.location.href = `/memories/${this.memoryId}`;
-                    } else {
-                        alert(/*[[#{memory.block.gallery.error.create}]]*/ 'Failed to create gallery block');
-                    }
-                });
-            }
         }
 
         const galleryManager = new GalleryBlockManager(/*[[${memoryId}]]*/ 0,/*[[${position}]]*/ 0,);
 
-        function renderCombinedPhotos() {
-            galleryManager.renderCombinedPhotos();
-        }
-
         function toggleImmichPhoto(assetId, thumbnailUrl) {
             galleryManager.toggleImmichPhoto(assetId, thumbnailUrl);
-        }
-
-        function removeSelectedFile(index) {
-            galleryManager.removeSelectedFile(index);
         }
 
         function loadImmichPage(page) {
             galleryManager.loadImmichPage(page);
         }
 
-        async function createGalleryBlock() {
-            await galleryManager.createGalleryBlock();
-        }
-
-        // Event listener for file input
-        document.getElementById('fileInput').addEventListener('change', function(event) {
-            const files = Array.from(event.target.files);
-            files.forEach(file => {
-                if (file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        galleryManager.selectedFiles.push({
-                            file: file,
-                            previewUrl: e.target.result,
-                            name: file.name
-                        });
-                        galleryManager.renderCombinedPhotos();
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
-            // Clear the input so the same file can be selected again if needed
-            event.target.value = '';
-        });
-
     </script>
+</div>
+
+<!-- Selected photo item fragment -->
+<div th:fragment="selected-photo-item" class="selected-photo-item">
+    <img th:src="${url}" alt="Uploaded image">
+    <input type="hidden" name="uploadedUrls" th:value="${url}">
+    <button type="button" 
+            hx-get="/memories/fragments/empty" 
+            hx-target="closest .selected-photo-item" 
+            hx-swap="delete"
+            th:text="#{memory.block.gallery.remove}">Remove</button>
 </div>
 
 <!-- Immich photos grid fragment -->
