@@ -16,15 +16,15 @@ import java.io.InputStream;
 @Service
 public class StorageService {
     private final S3Client s3Client;
-    private final String bucketName;
+    private final String storagePath;
 
-    public StorageService(S3Client s3Client, @Value("${reitti.storage.path}") String bucketName) {
+    public StorageService(S3Client s3Client, @Value("${reitti.storage.path}") String storagePath) {
         this.s3Client = s3Client;
-        this.bucketName = bucketName;
+        this.storagePath = storagePath;
     }
 
     public void store(String itemName, InputStream content, long contentLength, String contentType) {
-        PutObjectRequest putRequest = PutObjectRequest.builder().bucket(bucketName)
+        PutObjectRequest putRequest = PutObjectRequest.builder().bucket(storagePath)
                 .key(itemName)
                 .contentType(contentType)
                 .build();
@@ -34,7 +34,7 @@ public class StorageService {
 
     public StorageContent read(String itemName) {
         GetObjectRequest getRequest = GetObjectRequest.builder()
-                .bucket(bucketName)
+                .bucket(storagePath)
                 .key(itemName)
                 .build();
 
@@ -51,7 +51,7 @@ public class StorageService {
     public boolean exists(String itemName) {
         try {
             s3Client.headObject(HeadObjectRequest.builder()
-                    .bucket(bucketName)
+                    .bucket(storagePath)
                     .key(itemName)
                     .build());
             return true;
