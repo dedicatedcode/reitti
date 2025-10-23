@@ -347,12 +347,12 @@ public class MemoryController {
     }
 
     @GetMapping("/{id}/share")
-    public String shareMemoryDropdown(@AuthenticationPrincipal User user, @PathVariable Long id, Model model) {
+    public String shareMemoryOverlay(@AuthenticationPrincipal User user, @PathVariable Long id, Model model) {
         Memory memory = memoryService.getMemoryById(user, id)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
         model.addAttribute("memory", memory);
-        return "memories/fragments :: share-dropdown";
+        return "memories/view :: share-overlay";
     }
 
     @GetMapping("/{id}/share/form")
@@ -363,7 +363,7 @@ public class MemoryController {
         
         model.addAttribute("memory", memory);
         model.addAttribute("accessLevel", accessLevel);
-        return "memories/fragments :: share-form";
+        return "memories/view :: share-form";
     }
 
     @PostMapping("/{id}/share")
@@ -383,7 +383,7 @@ public class MemoryController {
         model.addAttribute("shareUrl", shareUrl);
         model.addAttribute("memory", memory);
         model.addAttribute("accessLevel", accessLevel);
-        return "memories/fragments :: share-result";
+        return "memories/view :: share-result";
     }
 
     private String getBaseUrl(HttpServletRequest request) {

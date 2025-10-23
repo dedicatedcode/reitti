@@ -10,6 +10,7 @@
     <link rel="stylesheet" th:href="@{/css/gallery-block.css}" href="../../static/css/gallery-block.css">
     <link rel="stylesheet" th:href="@{/css/photo-client.css}" href="../../static/css/photo-client.css">
     <link rel="stylesheet" th:href="@{/css/leaflet.css}" href="../../static/css/leaflet.css">
+    <link rel="stylesheet" th:href="@{/css/share-overlay.css}" href="../../static/css/share-overlay.css">
     <script src="/js/htmx.min.js"></script>
     <script src="/js/leaflet.js"></script>
     <script src="/js/leaflet.geodesic.2.7.2.js"></script>
@@ -46,16 +47,14 @@
                         hx-vals="js:{timezone: getUserTimezone()}"
                         th:text="#{memory.view.recalculate}">Recalculate
                 </button>
-                <div class="dropdown" th:if="${canEdit && isOwner}">
-                    <button type="button" 
-                            class="btn"
-                            th:attr="hx-get=@{/memories/{id}/share(id=${memory.id})}"
-                            hx-target="#share-dropdown-content"
-                            hx-swap="innerHTML">
-                        <i class="lni lni-share"></i> Share
-                    </button>
-                    <div id="share-dropdown-content"></div>
-                </div>
+                <button type="button" 
+                        class="btn"
+                        th:if="${canEdit && isOwner}"
+                        th:attr="hx-get=@{/memories/{id}/share(id=${memory.id})}"
+                        hx-target="#share-overlay-container"
+                        hx-swap="innerHTML">
+                    <i class="lni lni-share"></i> Share
+                </button>
             </div>
 
             <div class="memory-header-section map-header-section">
@@ -623,7 +622,7 @@
     });
 </script>
 
-<div id="share-modal-container"></div>
+<div id="share-overlay-container"></div>
 
 </body>
 </html>
