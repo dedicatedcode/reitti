@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.memory.HeaderType;
 import com.dedicatedcode.reitti.model.memory.Memory;
 import com.dedicatedcode.reitti.model.memory.MemoryBlockPart;
+import com.dedicatedcode.reitti.model.memory.MemoryOverviewDTO;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
@@ -54,14 +55,27 @@ public class MemoryController {
 
     @GetMapping("/all")
     public String getAll(@AuthenticationPrincipal User user, @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone, Model model) {
-        model.addAttribute("memories", this.memoryService.getMemoriesForUser(user));
+        model.addAttribute("memories", this.memoryService.getMemoriesForUser(user).stream().map(m -> {
+            String startDateLocal = m.getStartDate().atZone(timezone).toLocalDate().toString();
+            String endDateLocal = m.getEndDate().atZone(timezone).toLocalDate().toString();
+
+            String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + startDateLocal + "&endDate=" + endDateLocal;
+            return new MemoryOverviewDTO(m, rawLocationUrl);
+        }).toList());
         model.addAttribute("year", "all");
         return "memories/fragments :: memories-list";
     }
 
     @GetMapping("/year/{year}")
     public String getYear(@AuthenticationPrincipal User user, @PathVariable int year, @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone, Model model) {
-        model.addAttribute("memories", this.memoryService.getMemoriesForUserAndYear(user, year));
+        model.addAttribute("memories", this.memoryService.getMemoriesForUserAndYear(user, year)
+                .stream().map(m -> {
+                    String startDateLocal = m.getStartDate().atZone(timezone).toLocalDate().toString();
+                    String endDateLocal = m.getEndDate().atZone(timezone).toLocalDate().toString();
+
+                    String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + startDateLocal + "&endDate=" + endDateLocal;
+                    return new MemoryOverviewDTO(m, rawLocationUrl);
+                }).toList());
         model.addAttribute("year", year);
         return "memories/fragments :: memories-list";
     }

@@ -325,40 +325,33 @@
         <p>Create your first memory by selecting a date range on the timeline</p>
     </div>
 
-    <div class="places-grid" th:unless="${memories.isEmpty()}">
-        <div th:each="memory : ${memories}" class="place-stats-card">
-            <div class="place-map-container">
-                <div class="memory-header" th:if="${memory.headerType.name() == 'IMAGE' && memory.headerImageUrl != null}">
-                    <img th:src="${memory.headerImageUrl}" th:alt="${memory.title}" class="memory-header-image" style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px;">
-                </div>
-                <div class="memory-header map-header" th:if="${memory.headerType.name() == 'MAP'}">
-                    <div class="map-placeholder" style="height: 200px; display: flex; align-items: center; justify-content: center; background-color: rgba(255,255,255,0.1); border-radius: 8px;">
-                        <i class="lni lni-map" style="font-size: 3rem; opacity: 0.5;"></i>
-                    </div>
-                </div>
+    <div class="memories-grid" th:unless="${memories.isEmpty()}">
+        <div th:each="memory : ${memories}" class="memory-card">
+            <div class="memory-card-map-container" th:attr="data-raw-location-url=${memory.rawLocationUrl}">
             </div>
-            <div class="place-details text-align-left">
+            <div class="place-details">
                 <div class="place-info">
-                    <h3 style="margin: 0 0 10px 0; font-size: 1.2rem;" th:text="${memory.title}">Memory Title</h3>
+                    <h3 style="margin: 0 0 10px 0; font-size: 1.2rem;" th:text="${memory.memory.title}">Memory Title</h3>
                     <div style="margin-bottom: 8px;">
                         <i class="lni lni-calendar" style="margin-right: 5px;"></i>
-                        <span th:text="${#temporals.format(memory.startDate, 'MMM d, yyyy')}">Start Date</span>
-                        <span th:if="${memory.startDate != memory.endDate}">
-                            - <span th:text="${#temporals.format(memory.endDate, 'MMM d, yyyy')}">End Date</span>
+                        <span th:text="${#temporals.format(memory.memory.startDate, 'MMM d, yyyy')}">Start Date</span>
+                        <span th:if="${memory.memory.startDate != memory.memory.endDate}">
+                            - <span th:text="${#temporals.format(memory.memory.endDate, 'MMM d, yyyy')}">End Date</span>
                         </span>
                     </div>
-                    <div th:if="${memory.description != null && !memory.description.isEmpty()}"
+                    <div th:if="${memory.memory.description != null && !memory.memory.description.isEmpty()}"
                          style="opacity: 0.8; font-size: 0.9rem; line-height: 1.4;"
-                         th:text="${memory.description}">Description</div>
+                         th:text="${memory.memory.description}">Description</div>
                 </div>
                 <div style="display: flex; gap: 10px; margin-top: 15px;">
-                    <a th:href="@{/memories/{id}(id=${memory.id})}"
+                    <a th:href="@{/memories/{id}(id=${memory.memory.id})}"
                        class="btn btn-block memory-link"
-                       th:attr="data-memory-id=${memory.id}"
+                       th:attr="data-memory-id=${memory.memory.id}"
                        onclick="navigateToMemoryWithTimezone(event, this.dataset.memoryId)">View Memory</a>
                 </div>
             </div>
         </div>
+
     </div>
     <script>
         function navigateToMemoryWithTimezone(event, memoryId) {
@@ -366,6 +359,44 @@
             const timezone = getUserTimezone();
             window.location.href = `/memories/${memoryId}?timezone=${timezone}`;
         }
+
+        (function () {
+            const mapContainers = document.querySelectorAll('.memory-card-map-container');
+            for (const mapContainer of mapContainers) {
+                const memoryMap = L.map(mapContainer, {
+                    zoomControl: false,
+                    attributionControl: false,
+                    boxZoom: false,
+                    doubleClickZoom: false,
+                    dragging: false,
+                    keyboard: false,
+                    scrollWheelZoom: false,
+                    tap: false,
+                    touchZoom: false
+                }).setView([51.505, -0.09], 13);
+                L.tileLayer.grayscale('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(memoryMap);
+                const  rawLocationLoader = new RawLocationLoader(memoryMap, window.userSettings);
+                const userConfigs = [{
+                    url: mapContainer.attributes['data-raw-location-url'].value,
+                    color: '#f1ba63',
+                    avatarUrl: null,
+                    avatarFallback: null,
+                    displayName: 'Memory Location Data'
+                }];
+                rawLocationLoader.init(userConfigs);
+
+                // Load location data for the memory date range without bounds filtering
+                rawLocationLoader.loadForDateRange(
+                    null,
+                    null,
+                    false, // autoUpdateMode
+                    false  // withBounds - don't filter by current map bounds
+                );
+            }
+        })()
     </script>
 </div>
 </body>
