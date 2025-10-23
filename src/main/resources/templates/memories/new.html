@@ -36,7 +36,7 @@
             <span th:text="#{${error}}">Error message</span>
         </div>
         
-        <form th:href="@{/memories}" method="post" class="memory-form" onsubmit="return validateDates()">
+        <form th:href="@{/memories}" class="memory-form" onsubmit="return validateDates()">
             <div class="form-group">
                 <label for="title" th:text="#{memory.form.title.label}">Title *</label>
                 <input type="text" id="title" name="title" required class="form-control" th:placeholder="#{memory.form.title.placeholder}" th:value="${title}">
@@ -82,53 +82,43 @@
                 </button>
             </div>
         </form>
+        <script th:inline="javascript">
+            // User settings from server
+            window.userSettings = /*[[${userSettings}]]*/ {};
+
+            function getUserTimezone() {
+                if (window.userSettings.timezoneOverride) {
+                    return window.userSettings.timezoneOverride;
+                } else {
+                    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+                }
+            }
+
+            function validateDates() {
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                const errorDiv = document.getElementById('dateError');
+                const errorText = document.getElementById('dateErrorText');
+
+                if (!startDate || !endDate) {
+                    errorText.textContent = /*[[#{memory.form.date.error.empty}]]*/ 'Dates cannot be empty';
+                    errorDiv.style.display = 'block';
+                    return false;
+                }
+
+                if (new Date(startDate) > new Date(endDate)) {
+                    errorText.textContent = /*[[#{memory.form.date.error.end.before.start}]]*/ 'End date must be on or after start date';
+                    errorDiv.style.display = 'block';
+                    return false;
+                }
+
+                errorDiv.style.display = 'none';
+                return true;
+            }
+        </script>
+
     </div>
 </div>
-<script th:inline="javascript">
-    // User settings from server
-    window.userSettings = /*[[${userSettings}]]*/ {};
 
-    function getUserTimezone() {
-        if (window.userSettings.timezoneOverride) {
-            return window.userSettings.timezoneOverride;
-        } else {
-            return Intl.DateTimeFormat().resolvedOptions().timeZone;
-        }
-    }
-
-    function validateDates() {
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        const errorDiv = document.getElementById('dateError');
-        const errorText = document.getElementById('dateErrorText');
-
-        if (!startDate || !endDate) {
-            errorText.textContent = /*[[#{memory.form.date.error.empty}]]*/ 'Dates cannot be empty';
-            errorDiv.style.display = 'block';
-            return false;
-        }
-
-        if (new Date(startDate) > new Date(endDate)) {
-            errorText.textContent = /*[[#{memory.form.date.error.end.before.start}]]*/ 'End date must be on or after start date';
-            errorDiv.style.display = 'block';
-            return false;
-        }
-
-        errorDiv.style.display = 'none';
-        return true;
-    }
-
-    // Show/hide image URL field based on header type selection
-    document.querySelectorAll('input[name="headerType"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-            const imageUrlGroup = document.getElementById('imageUrlGroup');
-            if (this.value === 'IMAGE') {
-                imageUrlGroup.style.display = 'block';
-            } else {
-                imageUrlGroup.style.display = 'none';
-            }
-        });
-    });
-</script>
 </body>
 </html>

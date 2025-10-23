@@ -360,6 +360,13 @@
             </div>
         </div>
     </div>
+    <script>
+        function navigateToMemoryWithTimezone(event, memoryId) {
+            event.preventDefault();
+            const timezone = getUserTimezone();
+            window.location.href = `/memories/${memoryId}?timezone=${timezone}`;
+        }
+    </script>
 </div>
 </body>
 </html>
