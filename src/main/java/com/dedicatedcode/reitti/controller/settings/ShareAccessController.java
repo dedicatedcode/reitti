@@ -6,16 +6,15 @@ import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.MagicLinkToken;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSharing;
-import com.dedicatedcode.reitti.repository.MagicLinkJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
 import com.dedicatedcode.reitti.service.AvatarService;
+import com.dedicatedcode.reitti.service.MagicLinkTokenService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -25,39 +24,36 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/settings/share-access")
 public class ShareAccessController {
 
-    private final MagicLinkJdbcService magicLinkJdbcService;
+    private final MagicLinkTokenService magicLinkTokenService;
     private final UserJdbcService userJdbcService;
     private final UserSharingJdbcService userSharingJdbcService;
     private final AvatarService avatarService;
     private final MessageSource messageSource;
-    private final PasswordEncoder passwordEncoder;
     private final boolean dataManagementEnabled;
 
-    public ShareAccessController(MagicLinkJdbcService magicLinkJdbcService,
+    public ShareAccessController(MagicLinkTokenService magicLinkTokenService,
                                  UserJdbcService userJdbcService,
-                                 UserSharingJdbcService userSharingJdbcService, AvatarService avatarService,
+                                 UserSharingJdbcService userSharingJdbcService,
+                                 AvatarService avatarService,
                                  MessageSource messageSource,
-                                 PasswordEncoder passwordEncoder,
                                  @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
-        this.magicLinkJdbcService = magicLinkJdbcService;
+        this.magicLinkTokenService = magicLinkTokenService;
         this.userJdbcService = userJdbcService;
         this.userSharingJdbcService = userSharingJdbcService;
         this.avatarService = avatarService;
         this.messageSource = messageSource;
-        this.passwordEncoder = passwordEncoder;
         this.dataManagementEnabled = dataManagementEnabled;
     }
 
     @GetMapping
     public String magicLinksContent(@AuthenticationPrincipal User user, Model model) {
-        List<MagicLinkToken> tokens = magicLinkJdbcService.findByUser(user);
+        List<MagicLinkToken> tokens = magicLinkTokenService.getTokensForUser(user);
         model.addAttribute("tokens", tokens);
         model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
         model.addAttribute("activeSection", "sharing");
@@ -84,9 +80,6 @@ public class ShareAccessController {
                                   HttpServletRequest request,
                                   Model model) {
         try {
-            String rawToken = UUID.randomUUID().toString();
-            String tokenHash = passwordEncoder.encode(rawToken);
-
             // Calculate expiry date
             Instant expiryInstant = null;
             if (expiryDate != null && !expiryDate.trim().isEmpty()) {
@@ -95,7 +88,7 @@ public class ShareAccessController {
                     expiryInstant = localDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
                 } catch (Exception e) {
                     model.addAttribute("errorMessage", getMessage("magic.links.invalid.date"));
-                    List<MagicLinkToken> tokens = magicLinkJdbcService.findByUser(user);
+                    List<MagicLinkToken> tokens = magicLinkTokenService.getTokensForUser(user);
                     model.addAttribute("tokens", tokens);
                     model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
                     return "settings/share-access :: magic-links-content";
@@ -103,8 +96,7 @@ public class ShareAccessController {
             }
 
             // Create token object
-            MagicLinkToken token = new MagicLinkToken(null, name, tokenHash, accessLevel, expiryInstant, null, null, false);
-            magicLinkJdbcService.create(user, token);
+            String rawToken = magicLinkTokenService.createMapShareToken(user, name, accessLevel, expiryInstant);
 
             // Build the full magic link URL
             String baseUrl = getBaseUrl(request);
@@ -113,17 +105,15 @@ public class ShareAccessController {
             model.addAttribute("newTokenName", name);
             model.addAttribute("magicLinkUrl", magicLinkUrl);
 
-            List<MagicLinkToken> tokens = magicLinkJdbcService.findByUser(user);
-            model.addAttribute("tokens", tokens);
+            model.addAttribute("tokens", magicLinkTokenService.getTokensForUser(user));
             model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
 
             return "settings/share-access :: magic-links-content";
 
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("magic.links.create.error", e.getMessage()));
-            
-            List<MagicLinkToken> tokens = magicLinkJdbcService.findByUser(user);
-            model.addAttribute("tokens", tokens);
+
+            model.addAttribute("tokens", magicLinkTokenService.getTokensForUser(user));
             model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
             
             return "settings/share-access :: magic-links-content";
@@ -135,14 +125,13 @@ public class ShareAccessController {
                                   @AuthenticationPrincipal User user,
                                   Model model) {
         try {
-            magicLinkJdbcService.delete(id);
+            magicLinkTokenService.deleteToken(id);
             model.addAttribute("successMessage", getMessage("magic.links.deleted.success"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("magic.links.delete.error", e.getMessage()));
         }
 
-        List<MagicLinkToken> tokens = magicLinkJdbcService.findByUser(user);
-        model.addAttribute("tokens", tokens);
+        model.addAttribute("tokens", magicLinkTokenService.getTokensForUser(user));
         model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
 
         return "settings/share-access :: magic-links-content";

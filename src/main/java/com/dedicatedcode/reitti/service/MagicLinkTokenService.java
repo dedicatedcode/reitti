@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
+import com.dedicatedcode.reitti.model.security.MagicLinkResourceType;
 import com.dedicatedcode.reitti.model.security.MagicLinkToken;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.MagicLinkJdbcService;
@@ -26,6 +27,17 @@ public class MagicLinkTokenService {
         this.passwordEncoder = passwordEncoder;
     }
     
+    public String createMapShareToken(User user, String name, MagicLinkAccessLevel accessLevel, Instant expiryInstant) {
+        byte[] tokenBytes = new byte[32];
+        secureRandom.nextBytes(tokenBytes);
+        String rawToken = Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
+        String tokenHash = passwordEncoder.encode(rawToken);
+
+        MagicLinkToken token = new MagicLinkToken(null, name, tokenHash, accessLevel, expiryInstant, null, null, false);
+        magicLinkJdbcService.create(user, token);
+        return rawToken;
+    }
+
     public String createMemoryShareToken(User user, Long memoryId, MagicLinkAccessLevel accessLevel, int validDays) {
         // Generate a secure random token
         byte[] tokenBytes = new byte[32];
@@ -44,6 +56,8 @@ public class MagicLinkTokenService {
             tokenHash,
             accessLevel,
             expiryDate,
+            MagicLinkResourceType.MEMORY,
+            memoryId,
             Instant.now(),
             null,
             false
