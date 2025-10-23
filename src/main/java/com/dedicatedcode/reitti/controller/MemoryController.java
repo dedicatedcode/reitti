@@ -345,4 +345,46 @@ public class MemoryController {
                 throw new IllegalArgumentException("Unknown block type: " + type);
         }
     }
+
+    @GetMapping("/{id}/share")
+    public String shareMemoryDropdown(@AuthenticationPrincipal User user, @PathVariable Long id, Model model) {
+        Memory memory = memoryService.getMemoryById(user, id)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        
+        model.addAttribute("memory", memory);
+        return "memories/fragments :: share-dropdown";
+    }
+
+    @GetMapping("/{id}/share/form")
+    public String shareMemoryForm(@AuthenticationPrincipal User user, @PathVariable Long id, 
+                                  @RequestParam MagicLinkAccessLevel accessLevel, Model model) {
+        Memory memory = memoryService.getMemoryById(user, id)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        
+        model.addAttribute("memory", memory);
+        model.addAttribute("accessLevel", accessLevel);
+        return "memories/fragments :: share-form";
+    }
+
+    @PostMapping("/{id}/share")
+    public String createShareLink(@AuthenticationPrincipal User user, 
+                                  @PathVariable Long id,
+                                  @RequestParam MagicLinkAccessLevel accessLevel,
+                                  @RequestParam(defaultValue = "30") int validDays,
+                                  HttpServletRequest request,
+                                  Model model) {
+        // Verify user owns the memory
+        Memory memory = memoryService.getMemoryById(user, id)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        
+        String token = magicLinkTokenService.createMemoryShareToken(user, id, accessLevel, validDays);
+        String baseUrl = request.getScheme() + "://" + request.getServerName() + 
+                        (request.getServerPort() != 80 && request.getServerPort() != 443 ? ":" + request.getServerPort() : "");
+        String shareUrl = baseUrl + "/memories/" + id + "?token=" + token;
+        
+        model.addAttribute("shareUrl", shareUrl);
+        model.addAttribute("memory", memory);
+        model.addAttribute("accessLevel", accessLevel);
+        return "memories/fragments :: share-result";
+    }
 }
