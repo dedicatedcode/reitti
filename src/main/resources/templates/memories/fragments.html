@@ -329,21 +329,19 @@
         <div th:each="memory : ${memories}" class="memory-card">
             <div class="memory-card-map-container" th:attr="data-raw-location-url=${memory.rawLocationUrl}">
             </div>
-            <div class="place-details">
-                <div class="place-info">
-                    <h3 style="margin: 0 0 10px 0; font-size: 1.2rem;" th:text="${memory.memory.title}">Memory Title</h3>
-                    <div style="margin-bottom: 8px;">
-                        <i class="lni lni-calendar" style="margin-right: 5px;"></i>
+            <div class="memory-card-details">
+                <div class="memory-card-info">
+                    <h3 th:text="${memory.memory.title}">Memory Title</h3>
+                    <div>
                         <span th:text="${#temporals.format(memory.memory.startDate, 'MMM d, yyyy')}">Start Date</span>
                         <span th:if="${memory.memory.startDate != memory.memory.endDate}">
                             - <span th:text="${#temporals.format(memory.memory.endDate, 'MMM d, yyyy')}">End Date</span>
                         </span>
                     </div>
                     <div th:if="${memory.memory.description != null && !memory.memory.description.isEmpty()}"
-                         style="opacity: 0.8; font-size: 0.9rem; line-height: 1.4;"
                          th:text="${memory.memory.description}">Description</div>
                 </div>
-                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <div>
                     <a th:href="@{/memories/{id}(id=${memory.memory.id})}"
                        class="btn btn-block memory-link"
                        th:attr="data-memory-id=${memory.memory.id}"

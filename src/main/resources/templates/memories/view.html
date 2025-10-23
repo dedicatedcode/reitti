@@ -23,12 +23,12 @@
     <div class="settings-content-area">
         <div class="memory-header" th:fragment="memory-header">
             <div class="action-bar">
-                <a  class="btn btn-secondary"
-                        th:href="@{/memories}"
-                        th:text="#{memory.view.back}">back
-                </a>
+                <div><a class="btn"
+                        th:href="@{/memories}"><i class="lni lni-arrow-left"></i>
+                    <span th:text="#{memory.view.back}"></span></a></a>
+                </div>
                 <button type="button" 
-                        class="btn btn-secondary"
+                        class="btn"
                         th:attr="hx-get=@{/memories/{id}/edit(id=${memory.id})}"
                         hx-target=".memory-header"
                         hx-swap="innerHTML"
@@ -36,7 +36,7 @@
                         th:text="#{memory.view.edit}">Edit
                 </button>
                 <button type="button" 
-                        class="btn btn-primary"
+                        class="btn"
                         th:attr="hx-post=@{/memories/{id}/recalculate(id=${memory.id})}"
                         hx-target="body"
                         hx-swap="innerHTML"
