@@ -37,6 +37,7 @@ public class ReittiPhotoApiController {
             return ResponseEntity.notFound().build();
         }
     }
+
     @GetMapping("/memories/{memoryId}/{filename}")
     public ResponseEntity<InputStreamResource> getPhotoForMemory(@PathVariable String memoryId,
                                                                  @PathVariable String filename,

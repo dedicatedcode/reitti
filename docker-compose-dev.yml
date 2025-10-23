@@ -72,4 +72,3 @@ volumes:
   rabbitmq-data:
   photon-data:
   ot-recorder-data:
-  minio-data:

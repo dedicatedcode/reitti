@@ -15,15 +15,8 @@ public class StorageService {
     public StorageService(@Value("${reitti.storage.path}") String storagePath) {
         this.storagePath = storagePath;
         Path path = Paths.get(storagePath);
-        try {
-            if (!Files.exists(path)) {
-                Files.createDirectories(path);
-            }
-            if (!Files.isWritable(path)) {
-                throw new RuntimeException("Storage path '" + storagePath + "' is not writable. Please ensure the directory exists and the application has write permissions.");
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to initialize storage path '" + storagePath + "': " + e.getMessage(), e);
+        if (!Files.isWritable(path)) {
+            throw new RuntimeException("Storage path '" + storagePath + "' is not writable. Please ensure the directory exists and the application has write permissions.");
         }
     }
 
