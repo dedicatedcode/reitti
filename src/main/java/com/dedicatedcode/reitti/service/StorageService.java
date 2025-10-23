@@ -5,10 +5,8 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
+import java.util.stream.Stream;
 
 @Service
 public class StorageService {
@@ -52,9 +50,15 @@ public class StorageService {
     }
 
     public boolean exists(String itemName) {
-        //allow glob patterns for filename matching like /storage-path/itemName** AI!
-        Path filePath = Paths.get(storagePath, itemName);
-        return Files.exists(filePath);
+        Path basePath = Paths.get(storagePath);
+        PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:" + itemName);
+        try (Stream<Path> paths = Files.walk(basePath)) {
+            return paths
+                    .map(basePath::relativize)
+                    .anyMatch(matcher::matches);
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     public static class StorageContent {
