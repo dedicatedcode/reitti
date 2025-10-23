@@ -45,7 +45,7 @@ services:
       timeout: 5s
       retries: 5
   photon:
-    image: rtuszik/photon-docker:1.0.0
+    image: rtuszik/photon-docker:1.2.1
     environment:
       - UPDATE_STRATEGY=PARALLEL
       - REGION=de
@@ -66,29 +66,6 @@ services:
       - "8083:8083"
     volumes:
       - ot-recorder-data:/store
-  minio:
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
-    environment:
-      - MINIO_ACCESS_KEY=minioAccessKey
-      - MINIO_SECRET_KEY=minioSecretKey
-    ports:
-      - 9000:9000 # API port
-      - 9001:9001 # Console UI port
-    volumes:
-      - minio-data:/data
-    command: server /data --console-address ":9001"
-  createbuckets:
-    image: minio/mc:latest
-    depends_on:
-      - minio
-    restart: on-failure
-    entrypoint: >
-      /bin/sh -c "
-      sleep 5;
-      /usr/bin/mc alias set dockerminio http://minio:9000 minioAccessKey minioSecretKey;
-      /usr/bin/mc mb dockerminio/reitti/images;
-      exit 0;
-      "
 volumes:
   postgis-data:
   redis-data:

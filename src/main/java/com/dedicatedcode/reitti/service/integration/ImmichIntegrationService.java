@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.service.integration;
 
-import com.dedicatedcode.reitti.controller.api.ImmichPhotoApiController;
 import com.dedicatedcode.reitti.dto.ImmichAsset;
 import com.dedicatedcode.reitti.dto.ImmichSearchRequest;
 import com.dedicatedcode.reitti.dto.ImmichSearchResponse;
@@ -8,11 +7,10 @@ import com.dedicatedcode.reitti.dto.PhotoResponse;
 import com.dedicatedcode.reitti.model.IntegrationTestResult;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
-import com.dedicatedcode.reitti.model.memory.MemoryBlockImageGallery;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ImmichIntegrationJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
-import com.dedicatedcode.reitti.service.S3Storage;
+import com.dedicatedcode.reitti.service.StorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
@@ -28,7 +26,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class ImmichIntegrationService {
@@ -38,16 +35,16 @@ public class ImmichIntegrationService {
     private final ImmichIntegrationJdbcService immichIntegrationJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final RestTemplate restTemplate;
-    private final S3Storage s3Storage;
+    private final StorageService storageService;
 
     public ImmichIntegrationService(ImmichIntegrationJdbcService immichIntegrationJdbcService,
                                     RawLocationPointJdbcService rawLocationPointJdbcService,
                                     RestTemplate restTemplate,
-                                    S3Storage s3Storage) {
+                                    StorageService storageService) {
         this.immichIntegrationJdbcService = immichIntegrationJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.restTemplate = restTemplate;
-        this.s3Storage = s3Storage;
+        this.storageService = storageService;
     }
     
     public Optional<ImmichIntegration> getIntegrationForUser(User user) {
@@ -258,7 +255,7 @@ public class ImmichIntegrationService {
             if (imageData != null) {
                 String contentType = response.getHeaders().getContentType() != null ? response.getHeaders().getContentType().toString() : "image/jpeg";
                 long contentLength = imageData.length;
-                s3Storage.store(targetPath +"/" + assetId, new java.io.ByteArrayInputStream(imageData), contentLength, contentType);
+                storageService.store(targetPath +"/" + assetId, new java.io.ByteArrayInputStream(imageData), contentLength, contentType);
                 return assetId;
             }
         }

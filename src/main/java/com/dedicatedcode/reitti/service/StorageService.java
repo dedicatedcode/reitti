@@ -14,11 +14,11 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import java.io.InputStream;
 
 @Service
-public class S3Storage {
+public class StorageService {
     private final S3Client s3Client;
     private final String bucketName;
 
-    public S3Storage(S3Client s3Client, @Value("${reitti.s3.bucket}") String bucketName) {
+    public StorageService(S3Client s3Client, @Value("${reitti.storage.path}") String bucketName) {
         this.s3Client = s3Client;
         this.bucketName = bucketName;
     }
@@ -32,7 +32,7 @@ public class S3Storage {
         s3Client.putObject(putRequest, RequestBody.fromInputStream(content, contentLength));
     }
 
-    public S3Object read(String itemName) {
+    public StorageContent read(String itemName) {
         GetObjectRequest getRequest = GetObjectRequest.builder()
                 .bucket(bucketName)
                 .key(itemName)
@@ -41,7 +41,7 @@ public class S3Storage {
         ResponseInputStream<GetObjectResponse> response = s3Client.getObject(getRequest);
         GetObjectResponse metadata = response.response();
 
-        return new S3Object(
+        return new StorageContent(
                 response,
                 metadata.contentType(),
                 metadata.contentLength()
@@ -60,12 +60,12 @@ public class S3Storage {
         }
     }
 
-    public static class S3Object {
+    public static class StorageContent {
         private final InputStream inputStream;
         private final String contentType;
         private final Long contentLength;
 
-        public S3Object(InputStream inputStream, String contentType, Long contentLength) {
+        public StorageContent(InputStream inputStream, String contentType, Long contentLength) {
             this.inputStream = inputStream;
             this.contentType = contentType;
             this.contentLength = contentLength;

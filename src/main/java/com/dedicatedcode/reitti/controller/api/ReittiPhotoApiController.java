@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.controller.api;
 
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.S3Storage;
+import com.dedicatedcode.reitti.service.StorageService;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -16,16 +16,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/photos/reitti")
 public class ReittiPhotoApiController {
 
-    private final S3Storage s3Storage;
+    private final StorageService storageService;
 
-    public ReittiPhotoApiController(S3Storage s3Storage) {
-        this.s3Storage = s3Storage;
+    public ReittiPhotoApiController(StorageService storageService) {
+        this.storageService = storageService;
     }
 
     @GetMapping("/{filename}")
     public ResponseEntity<InputStreamResource> getPhoto(@PathVariable String filename, @AuthenticationPrincipal User user) {
         try {
-            S3Storage.S3Object result = this.s3Storage.read("images/" + filename);
+            StorageService.StorageContent result = this.storageService.read("images/" + filename);
             HttpHeaders responseHeaders = new HttpHeaders();
             responseHeaders.setContentType(MediaType.valueOf(result.getContentType()));
             responseHeaders.setContentLength(result.getContentLength());
@@ -42,7 +42,7 @@ public class ReittiPhotoApiController {
                                                                  @PathVariable String filename,
                                                                  @AuthenticationPrincipal User user) {
         try {
-            S3Storage.S3Object result = this.s3Storage.read("memories/" + memoryId + "/" + filename);
+            StorageService.StorageContent result = this.storageService.read("memories/" + memoryId + "/" + filename);
             HttpHeaders responseHeaders = new HttpHeaders();
             responseHeaders.setContentType(MediaType.valueOf(result.getContentType()));
             responseHeaders.setContentLength(result.getContentLength());

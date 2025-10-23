@@ -47,20 +47,20 @@ public class MemoryBlockGenerationService {
     private final MessageSource messageSource;
     private final I18nService i18nService;
     private final ImmichIntegrationService immichIntegrationService;
-    private final S3Storage s3Storage;
+    private final StorageService storageService;
 
     public MemoryBlockGenerationService(ProcessedVisitJdbcService processedVisitJdbcService,
                                         TripJdbcService tripJdbcService,
                                         MessageSource messageSource,
                                         I18nService i18nService,
                                         ImmichIntegrationService immichIntegrationService,
-                                        S3Storage s3Storage) {
+                                        StorageService storageService) {
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.tripJdbcService = tripJdbcService;
         this.messageSource = messageSource;
         this.i18nService = i18nService;
         this.immichIntegrationService = immichIntegrationService;
-        this.s3Storage = s3Storage;
+        this.storageService = storageService;
     }
 
     public List<MemoryBlockPart> generate(User user, Memory memory, ZoneId timeZone) {
@@ -259,7 +259,7 @@ public class MemoryBlockGenerationService {
     private List<MemoryBlockImageGallery.GalleryImage> fetchImagesFromImmich(User user, Memory memory, List<String> todaysImages) {
         return todaysImages.stream()
                 .map(s -> {
-                    if (s3Storage.exists("memories/" + memory.getId() + "/" + s)) {
+                    if (storageService.exists("memories/" + memory.getId() + "/" + s)) {
                         return new MemoryBlockImageGallery.GalleryImage("/api/v1/photos/reitti/memories/" + memory.getId() + "/" + s, null, "immich", s);
                     } else {
                         String filename = this.immichIntegrationService.downloadImage(user, s, "memories/" + memory.getId());

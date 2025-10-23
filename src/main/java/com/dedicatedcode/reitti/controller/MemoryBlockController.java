@@ -7,11 +7,10 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.service.MemoryService;
-import com.dedicatedcode.reitti.service.S3Storage;
+import com.dedicatedcode.reitti.service.StorageService;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -31,14 +30,14 @@ public class MemoryBlockController {
     private final ImmichIntegrationService immichIntegrationService;
     private final TripJdbcService tripJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
-    private final S3Storage s3Storage;
+    private final StorageService storageService;
 
-    public MemoryBlockController(MemoryService memoryService, ImmichIntegrationService immichIntegrationService, TripJdbcService tripJdbcService, ProcessedVisitJdbcService processedVisitJdbcService, S3Storage s3Storage) {
+    public MemoryBlockController(MemoryService memoryService, ImmichIntegrationService immichIntegrationService, TripJdbcService tripJdbcService, ProcessedVisitJdbcService processedVisitJdbcService, StorageService storageService) {
         this.memoryService = memoryService;
         this.immichIntegrationService = immichIntegrationService;
         this.tripJdbcService = tripJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
-        this.s3Storage = s3Storage;
+        this.storageService = storageService;
     }
 
     @DeleteMapping("/{blockId}")
@@ -318,7 +317,7 @@ public class MemoryBlockController {
                 }
                 String filename = UUID.randomUUID() + extension;
 
-                s3Storage.store("memories/" + memoryId + "/" + filename, file.getInputStream(), file.getSize(), file.getContentType());
+                storageService.store("memories/" + memoryId + "/" + filename, file.getInputStream(), file.getSize(), file.getContentType());
 
                 String fileUrl = "/api/v1/photos/reitti/memories/" + memoryId + "/" + filename;
                 urls.add(fileUrl);
@@ -343,7 +342,7 @@ public class MemoryBlockController {
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
 
         String imageUrl;
-        if (s3Storage.exists("memories/" + memoryId + "/" + assetId)) {
+        if (storageService.exists("memories/" + memoryId + "/" + assetId)) {
             imageUrl = "/api/v1/photos/reitti/memories/" + memoryId + "/" + assetId;
         } else {
             String filename = this.immichIntegrationService.downloadImage(user, assetId, "memories/" + memoryId);

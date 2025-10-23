@@ -27,18 +27,4 @@ public class AppConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
-    @Bean
-    public S3Client s3Client(@Value("${reitti.s3.endpoint}") String endpoint,
-                             @Value("${reitti.s3.region}") String region,
-                             @Value("${reitti.s3.access-key}") String accessKey,
-                             @Value("${reitti.s3.secret-key}") String secretKey) {
-        return S3Client.builder()
-                .endpointOverride(URI.create(endpoint))
-                .region(Region.of(region))
-                .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(accessKey, secretKey)))
-                .forcePathStyle(true)
-                .build();
-    }
 }
