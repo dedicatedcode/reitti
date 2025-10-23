@@ -52,6 +52,7 @@ public class StorageService {
     }
 
     public boolean exists(String itemName) {
+        //allow glob patterns for filename matching like /storage-path/itemName** AI!
         Path filePath = Paths.get(storagePath, itemName);
         return Files.exists(filePath);
     }
