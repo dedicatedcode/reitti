@@ -62,8 +62,11 @@
             </div>
 
             <div class="form-actions">
-                <a href="/memories" class="btn btn-secondary" th:text="#{memory.form.cancel}">Cancel</a>
-                <button type="submit" class="btn btn-primary" 
+                <button th:if="${year != 'all'}" th:attr="hx-get=@{/memories/year/{year}(year=${year})}"
+                        hx-target=".memories-overview" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}" class="btn btn-primary" th:text="#{memory.form.cancel}">Cancel</button>
+                <button th:if="${year == 'all'}" th:attr="hx-get=@{/memories}"
+                        hx-target=".memories-overview" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}" class="btn btn-primary" th:text="#{memory.form.cancel}">Cancel</button>
+                <button type="submit" class="btn btn-primary"
                         hx-indicator="#create-spinner"
                         hx-disabled-elt="this">
                     <span th:text="#{memory.form.create}">Create Memory</span>

@@ -282,14 +282,14 @@
 <div class="years-navigation" th:fragment="years-navigation">
     <div class="timeline-entry trip active" id="overall-entry" data-year="overall"
          hx-get="/memories/all"
-         hx-target="#memories-panel"
+         hx-target=".memories-overview"
          hx-trigger="load, click[shouldTrigger(this)]"
          hx-swap="outerHTML">
         <div class="entry-description" th:text="#{memory.list.all}">All</div>
     </div>
     <div class="timeline-entry trip" th:each="year : ${years}"
          th:attr="hx-get='/memories/year/'+ ${year}, data-year=${year}"
-         hx-target="#memories-panel"
+         hx-target=".memories-overview"
          hx-trigger="click[shouldTrigger(this)]"
          hx-swap="outerHTML">
         <div class="entry-description" th:text="${year}">2024</div>
@@ -316,7 +316,7 @@
 <div class="memories-overview settings-content-area" th:fragment="memories-list">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h2>Memories</h2>
-        <button hx-get="/memories/new" hx-target=".settings-content-area" class="btn btn-primary">Create Memory</button>
+        <button th:attr="hx-get=@{/memories/new(year=${year})}" hx-target=".settings-content-area" class="btn btn-primary">Create Memory</button>
     </div>
 
     <div th:if="${memories.isEmpty()}" class="empty-state">

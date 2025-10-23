@@ -55,13 +55,14 @@ public class MemoryController {
     @GetMapping("/all")
     public String getAll(@AuthenticationPrincipal User user, @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone, Model model) {
         model.addAttribute("memories", this.memoryService.getMemoriesForUser(user));
+        model.addAttribute("year", "all");
         return "memories/fragments :: memories-list";
     }
 
     @GetMapping("/year/{year}")
     public String getYear(@AuthenticationPrincipal User user, @PathVariable int year, @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone, Model model) {
         model.addAttribute("memories", this.memoryService.getMemoriesForUserAndYear(user, year));
-
+        model.addAttribute("year", year);
         return "memories/fragments :: memories-list";
     }
 
@@ -93,9 +94,11 @@ public class MemoryController {
             @AuthenticationPrincipal User user,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String year,
             Model model) {
         model.addAttribute("startDate", startDate);
         model.addAttribute("endDate", endDate);
+        model.addAttribute("year", year);
         return "memories/new :: new-memory";
     }
 

@@ -117,7 +117,7 @@ public class MemoryJdbcService {
 
     public List<Memory> findAllByUserAndYear(User user, int year) {
         return jdbcTemplate.query(
-                "SELECT * FROM memory WHERE user_id = ? AND (extract(YEAR FROM start_date) == ? OR extract(YEAR FROM end_date) == ?) ORDER BY created_at DESC",
+                "SELECT * FROM memory WHERE user_id = ? AND (extract(YEAR FROM start_date) = ? OR extract(YEAR FROM end_date) = ?) ORDER BY created_at DESC",
                 MEMORY_ROW_MAPPER,
                 user.getId(), year, year
         );
