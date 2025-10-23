@@ -140,18 +140,16 @@ public class MemoryBlockGenerationService {
             blockParts.add(clusterBlock);
         }
 
-        Map<LocalDate, List<String>> imagesByDay = loadImagesFromIntegrations(user, startDate, endDate);
+        Map<LocalDate, List<PhotoResponse>> imagesByDay = loadImagesFromIntegrations(user, startDate, endDate);
 
         accommodation.ifPresent(a -> {
             MemoryBlockText intro = new MemoryBlockText(null, "Welcome to " + a.getPlace().getName(),
-                    messageSource.getMessage("memory.generator.intro_accommodation.text", new Object[]{
-
-            }, LocaleContextHolder.getLocale()));
+                    messageSource.getMessage("memory.generator.intro_accommodation.text", new Object[]{}, LocaleContextHolder.getLocale()));
             blockParts.add(intro);
             MemoryClusterBlock clusterBlock = new MemoryClusterBlock(null, List.of(a.getId()), null, null, BlockType.CLUSTER_VISIT);
             blockParts.add(clusterBlock);
             LocalDate dayOfAccommodation = a.getStartTime().atZone(ZoneId.of("UTC")).toLocalDate();
-            List<String> images = imagesByDay.get(dayOfAccommodation);
+            List<PhotoResponse> images = imagesByDay.get(dayOfAccommodation);
             if (images != null && !images.isEmpty()) {
                 MemoryBlockImageGallery imageGallery = new MemoryBlockImageGallery(null, fetchImagesFromImmich(user, memory, images));
                 blockParts.add(imageGallery);
@@ -212,9 +210,8 @@ public class MemoryBlockGenerationService {
                     .map(ProcessedVisit::getId).toList(), null, null, BlockType.CLUSTER_VISIT);
             blockParts.add(clusterBlock);
 
-            List<String> todaysImages = imagesByDay.getOrDefault(today, Collections.emptyList());
+            List<PhotoResponse> todaysImages = imagesByDay.getOrDefault(today, Collections.emptyList());
             if (!todaysImages.isEmpty()) {
-
                 MemoryBlockImageGallery imageGallery = new MemoryBlockImageGallery(null, fetchImagesFromImmich(user, memory, todaysImages));
                 blockParts.add(imageGallery);
             }
@@ -256,28 +253,27 @@ public class MemoryBlockGenerationService {
         return blockParts;
     }
 
-    private List<MemoryBlockImageGallery.GalleryImage> fetchImagesFromImmich(User user, Memory memory, List<String> todaysImages) {
+    private List<MemoryBlockImageGallery.GalleryImage> fetchImagesFromImmich(User user, Memory memory, List<PhotoResponse> todaysImages) {
         return todaysImages.stream()
                 .map(s -> {
-                    if (storageService.exists("memories/" + memory.getId() + "/" + s)) {
-                        return new MemoryBlockImageGallery.GalleryImage("/api/v1/photos/reitti/memories/" + memory.getId() + "/" + s, null, "immich", s);
+                    if (storageService.exists("memories/" + memory.getId() + "/" + s + "**")) {
+                        return new MemoryBlockImageGallery.GalleryImage("/api/v1/photos/reitti/memories/" + memory.getId() + "/" + s.getFileName(), null, "immich", s.getId());
                     } else {
-                        String filename = this.immichIntegrationService.downloadImage(user, s, "memories/" + memory.getId());
+                        String filename = this.immichIntegrationService.downloadImage(user, s.getId(), "memories/" + memory.getId());
                         String imageUrl = "/api/v1/photos/reitti/memories/" + memory.getId() + "/" + filename;
-                        return new MemoryBlockImageGallery.GalleryImage(imageUrl, null, "immich", s);
+                        return new MemoryBlockImageGallery.GalleryImage(imageUrl, null, "immich", s.getId());
                     }
                 }).toList();
     }
 
-    private Map<LocalDate, List<String>> loadImagesFromIntegrations(User user, Instant startDate, Instant endDate) {
-        Map<LocalDate, List<String>> map = new HashMap<>();
+    private Map<LocalDate, List<PhotoResponse>> loadImagesFromIntegrations(User user, Instant startDate, Instant endDate) {
+        Map<LocalDate, List<PhotoResponse>> map = new HashMap<>();
         LocalDate currentStart = startDate.atZone(ZoneId.of("UTC")).toLocalDate();
         LocalDate currentEnd = startDate.plus(1, ChronoUnit.DAYS).atZone(ZoneId.of("UTC")).toLocalDate();
         LocalDate end = endDate.atZone(ZoneId.of("UTC")).toLocalDate();
         while (!currentEnd.isAfter(end)) {
             map.put(currentStart, this.immichIntegrationService.searchPhotosForRange(user, currentStart, currentStart, "UTC")
-                    .stream().sorted(Comparator.comparing(PhotoResponse::getDateTime))
-                    .map(PhotoResponse::getId).toList());
+                    .stream().sorted(Comparator.comparing(PhotoResponse::getDateTime)).toList());
 
             currentStart = currentEnd;
             currentEnd = currentEnd.plusDays(1);

@@ -255,8 +255,9 @@ public class ImmichIntegrationService {
             if (imageData != null) {
                 String contentType = response.getHeaders().getContentType() != null ? response.getHeaders().getContentType().toString() : "image/jpeg";
                 long contentLength = imageData.length;
-                storageService.store(targetPath +"/" + assetId, new java.io.ByteArrayInputStream(imageData), contentLength, contentType);
-                return assetId;
+                String filename = assetId + getExtensionFromContentType(contentType);
+                storageService.store(targetPath + "/" + filename, new java.io.ByteArrayInputStream(imageData), contentLength, contentType);
+                return filename;
             }
         }
         throw new IllegalStateException("Unable to download image from Immich");
