@@ -352,7 +352,7 @@ public class MemoryController {
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
         model.addAttribute("memory", memory);
-        return "memories/view :: share-overlay";
+        return "memories/fragments :: share-overlay";
     }
 
     @GetMapping("/{id}/share/form")
@@ -363,7 +363,7 @@ public class MemoryController {
         
         model.addAttribute("memory", memory);
         model.addAttribute("accessLevel", accessLevel);
-        return "memories/view :: share-form";
+        return "memories/fragments :: share-form";
     }
 
     @PostMapping("/{id}/share")
@@ -383,7 +383,7 @@ public class MemoryController {
         model.addAttribute("shareUrl", shareUrl);
         model.addAttribute("memory", memory);
         model.addAttribute("accessLevel", accessLevel);
-        return "memories/view :: share-result";
+        return "memories/fragments :: share-result";
     }
 
     private String getBaseUrl(HttpServletRequest request) {

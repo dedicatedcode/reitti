@@ -28,11 +28,13 @@
     align-items: center;
     padding: 20px 24px;
     border-bottom: 1px solid #e0e0e0;
+    color: var(--color-text-white);
+    background: var(--color-highlight);
 }
 
 .share-overlay-header h2 {
     margin: 0;
-    color: #333;
+    color: var(--color-background-dark);
     font-size: 1.5rem;
 }
 
@@ -53,22 +55,23 @@
 
 .share-overlay-body {
     padding: 24px;
+    color: var(--color-text-white);
+    background: var(--color-background-dark);
 }
 
 .memory-info {
     margin-bottom: 24px;
     padding: 16px;
-    background-color: #f8f9fa;
     border-radius: 6px;
+    border: 1px solid var(--color-highlight);
+    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.3);
 }
 
 .memory-info h3 {
     margin: 0 0 8px 0;
-    color: #333;
 }
 
 .memory-date-range {
-    color: #666;
     margin: 4px 0;
     display: flex;
     align-items: center;
@@ -76,7 +79,6 @@
 }
 
 .memory-description {
-    color: #555;
     margin: 8px 0 0 0;
 }
 
@@ -86,7 +88,6 @@
 
 .sharing-explanation h4 {
     margin: 0 0 12px 0;
-    color: #333;
 }
 
 .sharing-explanation ul {
@@ -96,30 +97,14 @@
 
 .sharing-explanation li {
     margin-bottom: 4px;
-    color: #555;
 }
 
 .sharing-options h4 {
     margin: 0 0 16px 0;
-    color: #333;
 }
 
 .sharing-option {
     margin-bottom: 12px;
-}
-
-.sharing-option-btn {
-    width: 100%;
-    padding: 0;
-    border: 2px solid #e0e0e0;
-    background: white;
-    border-radius: 8px;
-    transition: all 0.2s ease;
-}
-
-.sharing-option-btn:hover {
-    border-color: #007bff;
-    background-color: #f8f9ff;
 }
 
 .sharing-option-content {
@@ -131,40 +116,36 @@
 
 .sharing-option-icon {
     font-size: 2rem;
-    color: #007bff;
     margin-right: 16px;
     min-width: 48px;
 }
 
 .sharing-option-details h5 {
     margin: 0 0 4px 0;
-    color: #333;
     font-size: 1.1rem;
 }
 
 .sharing-option-details p {
     margin: 0;
-    color: #666;
     font-size: 0.9rem;
 }
 
 .share-config-summary {
     margin-bottom: 24px;
     padding: 16px;
-    background-color: #f8f9fa;
     border-radius: 6px;
+    border: 1px solid var(--color-highlight);
+    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.3);
 }
 
 .share-config-summary h3 {
     margin: 0 0 12px 0;
-    color: #333;
 }
 
 .access-level-display {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: #007bff;
     font-weight: 500;
 }
 
@@ -176,19 +157,17 @@
     display: block;
     margin-bottom: 6px;
     font-weight: 500;
-    color: #333;
 }
 
 .share-config-form .form-control {
     width: 100%;
     padding: 8px 12px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--color-highlight);
     border-radius: 4px;
     font-size: 1rem;
 }
 
 .share-config-form .form-text {
-    color: #666;
     font-size: 0.85rem;
     margin-top: 4px;
 }
@@ -199,36 +178,6 @@
     margin-top: 24px;
     padding-top: 20px;
     border-top: 1px solid #e0e0e0;
-}
-
-.btn {
-    padding: 10px 16px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background: white;
-    color: #333;
-    text-decoration: none;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.9rem;
-    transition: all 0.2s ease;
-}
-
-.btn:hover {
-    background-color: #f5f5f5;
-}
-
-.btn-primary {
-    background-color: #007bff;
-    border-color: #007bff;
-    color: white;
-}
-
-.btn-primary:hover {
-    background-color: #0056b3;
-    border-color: #0056b3;
 }
 
 .share-success {
@@ -243,7 +192,6 @@
 
 .share-success h3 {
     margin: 0 0 20px 0;
-    color: #333;
 }
 
 .share-details {
@@ -253,11 +201,6 @@
 
 .share-detail-item {
     margin-bottom: 8px;
-    color: #555;
-}
-
-.share-detail-item strong {
-    color: #333;
 }
 
 .share-link-section {
@@ -269,7 +212,6 @@
     display: block;
     margin-bottom: 8px;
     font-weight: 500;
-    color: #333;
 }
 
 .share-link-container {
@@ -280,23 +222,13 @@
 .share-url-input {
     flex: 1;
     padding: 10px 12px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--color-highlight);
+    color: var(--color-text-white);
+    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.3);
     border-radius: 4px;
     font-family: monospace;
     font-size: 0.9rem;
     background-color: #f8f9fa;
-}
-
-.btn-copy {
-    white-space: nowrap;
-    background-color: #6c757d;
-    border-color: #6c757d;
-    color: white;
-}
-
-.btn-copy:hover {
-    background-color: #545b62;
-    border-color: #545b62;
 }
 
 .share-instructions {
@@ -305,7 +237,6 @@
 
 .share-instructions h4 {
     margin: 0 0 12px 0;
-    color: #333;
 }
 
 .share-instructions ul {
@@ -315,7 +246,6 @@
 
 .share-instructions li {
     margin-bottom: 6px;
-    color: #555;
 }
 
 @media (max-width: 768px) {
