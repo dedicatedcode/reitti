@@ -622,6 +622,216 @@
     });
 </script>
 
+<div th:fragment="share-overlay" class="share-overlay">
+    <div class="share-overlay-content">
+        <div class="share-overlay-header">
+            <h2>Share Memory</h2>
+            <button type="button" 
+                    class="btn-close"
+                    hx-get="/memories/fragments/empty"
+                    hx-target="#share-overlay-container"
+                    hx-swap="innerHTML">×</button>
+        </div>
+        
+        <div class="share-overlay-body">
+            <div class="memory-info">
+                <h3 th:text="${memory.title}">Memory Title</h3>
+                <p class="memory-date-range">
+                    <i class="lni lni-calendar"></i>
+                    <span th:text="${#temporals.format(memory.startDate, 'MMMM d, yyyy')}">Start Date</span>
+                    <span th:if="${memory.startDate != memory.endDate}">
+                        - <span th:text="${#temporals.format(memory.endDate, 'MMMM d, yyyy')}">End Date</span>
+                    </span>
+                </p>
+                <p th:if="${memory.description != null && !memory.description.isEmpty()}" 
+                   class="memory-description" 
+                   th:text="${memory.description}">Description</p>
+            </div>
+            
+            <div class="sharing-explanation">
+                <h4>What will be shared?</h4>
+                <ul>
+                    <li>The complete memory with all its content blocks</li>
+                    <li>Location data and maps for the memory period</li>
+                    <li>Photos and text content within the memory</li>
+                    <li>Trip and visit information during this time period</li>
+                </ul>
+            </div>
+            
+            <div class="sharing-options">
+                <h4>Choose sharing permissions:</h4>
+                
+                <div class="sharing-option">
+                    <button type="button" 
+                            class="btn btn-outline sharing-option-btn"
+                            th:attr="hx-get=@{/memories/{id}/share/form(id=${memory.id}, accessLevel='MEMORY_VIEW_ONLY')}"
+                            hx-target="#share-overlay-container"
+                            hx-swap="innerHTML">
+                        <div class="sharing-option-content">
+                            <div class="sharing-option-icon">
+                                <i class="lni lni-eye"></i>
+                            </div>
+                            <div class="sharing-option-details">
+                                <h5>View Only</h5>
+                                <p>Recipients can view the memory but cannot make any changes</p>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+                
+                <div class="sharing-option">
+                    <button type="button" 
+                            class="btn btn-outline sharing-option-btn"
+                            th:attr="hx-get=@{/memories/{id}/share/form(id=${memory.id}, accessLevel='MEMORY_EDIT_ACCESS')}"
+                            hx-target="#share-overlay-container"
+                            hx-swap="innerHTML">
+                        <div class="sharing-option-content">
+                            <div class="sharing-option-icon">
+                                <i class="lni lni-pencil"></i>
+                            </div>
+                            <div class="sharing-option-details">
+                                <h5>Edit Access</h5>
+                                <p>Recipients can view and edit the memory, add blocks, and modify content</p>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:fragment="share-form" class="share-overlay">
+    <div class="share-overlay-content">
+        <div class="share-overlay-header">
+            <h2>Configure Share Link</h2>
+            <button type="button" 
+                    class="btn-close"
+                    hx-get="/memories/fragments/empty"
+                    hx-target="#share-overlay-container"
+                    hx-swap="innerHTML">×</button>
+        </div>
+        
+        <div class="share-overlay-body">
+            <div class="share-config-summary">
+                <h3>Sharing: <span th:text="${memory.title}">Memory Title</span></h3>
+                <div class="access-level-display">
+                    <i th:class="${accessLevel == T(com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel).MEMORY_VIEW_ONLY ? 'lni lni-eye' : 'lni lni-pencil'}"></i>
+                    <span th:text="${accessLevel == T(com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel).MEMORY_VIEW_ONLY ? 'View Only Access' : 'Edit Access'}">Access Level</span>
+                </div>
+            </div>
+            
+            <form th:attr="hx-post=@{/memories/{id}/share(id=${memory.id})}" 
+                  hx-target="#share-overlay-container"
+                  hx-swap="innerHTML"
+                  class="share-config-form">
+                <input type="hidden" name="accessLevel" th:value="${accessLevel}">
+                
+                <div class="form-group">
+                    <label for="validDays">Link expires after:</label>
+                    <select name="validDays" id="validDays" class="form-control">
+                        <option value="7">7 days</option>
+                        <option value="30" selected>30 days</option>
+                        <option value="90">90 days</option>
+                        <option value="0">Never expires</option>
+                    </select>
+                    <small class="form-text">Choose how long the share link should remain valid</small>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="lni lni-link"></i> Create Share Link
+                    </button>
+                    <button type="button" 
+                            class="btn"
+                            th:attr="hx-get=@{/memories/{id}/share(id=${memory.id})}"
+                            hx-target="#share-overlay-container"
+                            hx-swap="innerHTML">
+                        <i class="lni lni-arrow-left"></i> Back
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div th:fragment="share-result" class="share-overlay">
+    <div class="share-overlay-content">
+        <div class="share-overlay-header">
+            <h2>Share Link Created</h2>
+            <button type="button" 
+                    class="btn-close"
+                    hx-get="/memories/fragments/empty"
+                    hx-target="#share-overlay-container"
+                    hx-swap="innerHTML">×</button>
+        </div>
+        
+        <div class="share-overlay-body">
+            <div class="share-success">
+                <div class="success-icon">
+                    <i class="lni lni-checkmark-circle"></i>
+                </div>
+                <h3>Share Link Created Successfully!</h3>
+                
+                <div class="share-details">
+                    <div class="share-detail-item">
+                        <strong>Memory:</strong> <span th:text="${memory.title}">Memory Title</span>
+                    </div>
+                    <div class="share-detail-item">
+                        <strong>Access Level:</strong> 
+                        <span th:text="${accessLevel == T(com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel).MEMORY_VIEW_ONLY ? 'View Only' : 'Edit Access'}">Access Level</span>
+                    </div>
+                </div>
+                
+                <div class="share-link-section">
+                    <label for="shareUrl">Share this link:</label>
+                    <div class="share-link-container">
+                        <input type="text" 
+                               id="shareUrl"
+                               class="form-control share-url-input" 
+                               th:value="${shareUrl}" 
+                               readonly 
+                               onclick="this.select()">
+                        <button type="button" 
+                                class="btn btn-copy"
+                                onclick="navigator.clipboard.writeText(document.getElementById('shareUrl').value).then(() => { this.innerHTML = '<i class=\'lni lni-checkmark\'></i> Copied!'; setTimeout(() => { this.innerHTML = '<i class=\'lni lni-copy\'></i> Copy'; }, 2000); })">
+                            <i class="lni lni-copy"></i> Copy
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="share-instructions">
+                    <h4>How to share:</h4>
+                    <ul>
+                        <li>Copy the link above and send it to anyone you want to share with</li>
+                        <li>Recipients don't need an account to access the memory</li>
+                        <li>The link will work according to the permissions you've set</li>
+                        <li th:if="${accessLevel == T(com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel).MEMORY_VIEW_ONLY}">Recipients can view but not edit the memory</li>
+                        <li th:if="${accessLevel == T(com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel).MEMORY_EDIT_ACCESS}">Recipients can view and edit the memory</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="button" 
+                        class="btn btn-primary"
+                        hx-get="/memories/fragments/empty"
+                        hx-target="#share-overlay-container"
+                        hx-swap="innerHTML">
+                    <i class="lni lni-checkmark"></i> Done
+                </button>
+                <button type="button" 
+                        class="btn"
+                        th:attr="hx-get=@{/memories/{id}/share(id=${memory.id})}"
+                        hx-target="#share-overlay-container"
+                        hx-swap="innerHTML">
+                    <i class="lni lni-share"></i> Create Another Link
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div id="share-overlay-container"></div>
 
 </body>
