@@ -6,11 +6,14 @@ import com.dedicatedcode.reitti.model.memory.HeaderType;
 import com.dedicatedcode.reitti.model.memory.Memory;
 import com.dedicatedcode.reitti.model.memory.MemoryBlockPart;
 import com.dedicatedcode.reitti.model.memory.MemoryOverviewDTO;
+import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.service.MemoryService;
+import com.dedicatedcode.reitti.service.MagicLinkTokenService;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -31,15 +34,18 @@ public class MemoryController {
     private final TripJdbcService tripJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final ImmichIntegrationService immichIntegrationService;
+    private final MagicLinkTokenService magicLinkTokenService;
 
     public MemoryController(MemoryService memoryService,
                             TripJdbcService tripJdbcService,
                             ProcessedVisitJdbcService processedVisitJdbcService,
-                            ImmichIntegrationService immichIntegrationService) {
+                            ImmichIntegrationService immichIntegrationService,
+                            MagicLinkTokenService magicLinkTokenService) {
         this.memoryService = memoryService;
         this.tripJdbcService = tripJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.immichIntegrationService = immichIntegrationService;
+        this.magicLinkTokenService = magicLinkTokenService;
     }
 
     @GetMapping
