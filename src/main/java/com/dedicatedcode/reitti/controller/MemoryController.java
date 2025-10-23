@@ -373,18 +373,33 @@ public class MemoryController {
                                   @RequestParam(defaultValue = "30") int validDays,
                                   HttpServletRequest request,
                                   Model model) {
-        // Verify user owns the memory
         Memory memory = memoryService.getMemoryById(user, id)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
         String token = magicLinkTokenService.createMemoryShareToken(user, id, accessLevel, validDays);
-        String baseUrl = request.getScheme() + "://" + request.getServerName() + 
-                        (request.getServerPort() != 80 && request.getServerPort() != 443 ? ":" + request.getServerPort() : "");
+        String baseUrl = getBaseUrl(request);
         String shareUrl = baseUrl + "/memories/" + id + "?token=" + token;
         
         model.addAttribute("shareUrl", shareUrl);
         model.addAttribute("memory", memory);
         model.addAttribute("accessLevel", accessLevel);
         return "memories/fragments :: share-result";
+    }
+
+    private String getBaseUrl(HttpServletRequest request) {
+        String scheme = request.getScheme();
+        String serverName = request.getServerName();
+        int serverPort = request.getServerPort();
+        String contextPath = request.getContextPath();
+
+        StringBuilder url = new StringBuilder();
+        url.append(scheme).append("://").append(serverName);
+
+        if ((scheme.equals("http") && serverPort != 80) || (scheme.equals("https") && serverPort != 443)) {
+            url.append(":").append(serverPort);
+        }
+
+        url.append(contextPath);
+        return url.toString();
     }
 }

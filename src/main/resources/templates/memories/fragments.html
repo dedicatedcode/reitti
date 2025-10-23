@@ -397,5 +397,98 @@
         })()
     </script>
 </div>
+
+
+<div th:fragment="share-dropdown" class="dropdown-menu">
+    <button type="button"
+            class="dropdown-item"
+            th:attr="hx-get=@{/memories/{id}/share/form(id=${memory.id}, accessLevel='MEMORY_VIEW_ONLY')}"
+            hx-target="#share-modal-container"
+            hx-swap="innerHTML">
+        <i class="lni lni-eye"></i> Share for Viewing
+    </button>
+    <button type="button"
+            class="dropdown-item"
+            th:attr="hx-get=@{/memories/{id}/share/form(id=${memory.id}, accessLevel='MEMORY_EDIT_ACCESS')}"
+            hx-target="#share-modal-container"
+            hx-swap="innerHTML">
+        <i class="lni lni-pencil"></i> Share for Editing
+    </button>
+</div>
+
+<div th:fragment="share-form" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Share Memory - <span th:text="${accessLevel == T(com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel).MEMORY_VIEW_ONLY ? 'View Only' : 'Edit Access'}">Access Level</span></h3>
+            <button type="button"
+                    class="btn-close"
+                    hx-get="/memories/fragments/empty"
+                    hx-target="#share-modal-container"
+                    hx-swap="innerHTML">×</button>
+        </div>
+        <div class="modal-body">
+            <form th:attr="hx-post=@{/memories/{id}/share(id=${memory.id})}"
+                  hx-target="#share-modal-container"
+                  hx-swap="innerHTML">
+                <input type="hidden" name="accessLevel" th:value="${accessLevel}">
+
+                <div class="form-group">
+                    <label for="validDays">Valid for:</label>
+                    <select name="validDays" id="validDays" class="form-control">
+                        <option value="7">7 days</option>
+                        <option value="30" selected>30 days</option>
+                        <option value="90">90 days</option>
+                        <option value="0">Never expires</option>
+                    </select>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Create Share Link</button>
+                    <button type="button"
+                            class="btn"
+                            hx-get="/memories/fragments/empty"
+                            hx-target="#share-modal-container"
+                            hx-swap="innerHTML">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div th:fragment="share-result" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Share Link Created</h3>
+            <button type="button"
+                    class="btn-close"
+                    hx-get="/memories/fragments/empty"
+                    hx-target="#share-modal-container"
+                    hx-swap="innerHTML">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="alert alert-success">
+                <h4>Share Link Created Successfully!</h4>
+                <p>Access Level: <strong th:text="${accessLevel == T(com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel).MEMORY_VIEW_ONLY ? 'View Only' : 'Edit Access'}">Access Level</strong></p>
+                <p>Copy this link to share the memory:</p>
+                <div class="share-link-container">
+                    <input type="text"
+                           class="form-control"
+                           th:value="${shareUrl}"
+                           readonly
+                           onclick="this.select()">
+                </div>
+                <p class="text-muted mt-2">Anyone with this link will be able to access the memory according to the permissions you've set.</p>
+            </div>
+            <div class="form-actions">
+                <button type="button"
+                        class="btn btn-primary"
+                        hx-get="/memories/fragments/empty"
+                        hx-target="#share-modal-container"
+                        hx-swap="innerHTML">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 </body>
 </html>

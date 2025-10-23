@@ -116,6 +116,9 @@ public class MemoryBlockController {
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, blockId).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
 
+        model.addAttribute("canEdit", true);
+        model.addAttribute("isOwner", true);
+
         return "memories/view :: view-block";
     }
 
@@ -142,6 +145,8 @@ public class MemoryBlockController {
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, blockId).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
 
+        model.addAttribute("canEdit", true);
+        model.addAttribute("isOwner", true);
         return "memories/view :: view-block";
     }
 
@@ -175,7 +180,8 @@ public class MemoryBlockController {
         memoryService.addTextBlock(block.getId(), headline, content);
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, block.getId()).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
-
+        model.addAttribute("canEdit", true);
+        model.addAttribute("isOwner", true);
         return "memories/view :: view-block";
     }
 
@@ -200,7 +206,8 @@ public class MemoryBlockController {
 
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(updated));
-
+        model.addAttribute("canEdit", true);
+        model.addAttribute("isOwner", true);
         return "memories/view :: view-block";
     }
 
@@ -223,7 +230,8 @@ public class MemoryBlockController {
         memoryService.createClusterBlock(user, clusterBlock);
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, block.getId()).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
-
+        model.addAttribute("canEdit", true);
+        model.addAttribute("isOwner", true);
         return "memories/view :: view-block";
     }
 
@@ -255,7 +263,8 @@ public class MemoryBlockController {
         
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(memoryService.getBlock(user, timezone, memoryId, block.getId()).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
-        
+        model.addAttribute("canEdit", true);
+        model.addAttribute("isOwner", true);
         return "memories/view :: view-block";
     }
 
@@ -288,7 +297,8 @@ public class MemoryBlockController {
 
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(memoryService.getBlock(user, timezone, memoryId, blockId).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
-
+        model.addAttribute("canEdit", true);
+        model.addAttribute("isOwner", true);
         return "memories/view :: view-block";
     }
 
