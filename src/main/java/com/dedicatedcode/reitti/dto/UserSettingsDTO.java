@@ -23,6 +23,7 @@ public record UserSettingsDTO(
     public enum UIMode {
         FULL,
         SHARED_FULL,
+        VIEW_MEMORIES,
         SHARED_LIVE_MODE_ONLY
     }
 

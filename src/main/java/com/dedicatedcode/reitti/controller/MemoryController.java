@@ -378,7 +378,7 @@ public class MemoryController {
         
         String token = magicLinkTokenService.createMemoryShareToken(user, id, accessLevel, validDays);
         String baseUrl = getBaseUrl(request);
-        String shareUrl = baseUrl + "/memories/" + id + "?token=" + token;
+        String shareUrl = baseUrl + "/memories/" + id + "?mt=" + token;
         
         model.addAttribute("shareUrl", shareUrl);
         model.addAttribute("memory", memory);

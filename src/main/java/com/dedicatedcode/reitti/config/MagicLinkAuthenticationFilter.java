@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.config;
 
+import com.dedicatedcode.reitti.model.security.MagicLinkResourceType;
 import com.dedicatedcode.reitti.model.security.MagicLinkToken;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.MagicLinkJdbcService;
@@ -34,7 +35,12 @@ public class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        if (!"/access".equals(request.getRequestURI()) || request.getParameter("mt") == null) {
+        if (request.getParameter("mt") == null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        boolean isMemoryRequest = request.getRequestURI().startsWith("/memories/");
+        if (!("/access".equals(request.getRequestURI()) || isMemoryRequest)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -55,6 +61,20 @@ public class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
                 response.sendRedirect("/error/magic-link?error=expired");
                 return;
             }
+
+            if (isMemoryRequest) {
+                long extractorId;
+                try {
+                    extractorId = Long.parseLong(request.getRequestURI().substring("/memories/".length()));
+                } catch (NumberFormatException e) {
+                    extractorId = -1;
+                }
+                if (linkToken.getResourceType() != MagicLinkResourceType.MEMORY || extractorId != linkToken.getResourceId()) {
+                    response.sendRedirect("/error/magic-link?error=invalid");
+                    return;
+                }
+            }
+
 
             Optional<User> user = magicLinkJdbcService.findUserIdByToken(linkToken.getId()).flatMap(userJdbcService::findById);
 
@@ -77,7 +97,11 @@ public class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
             request.getSession().setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
                     SecurityContextHolder.getContext());
 
-            response.sendRedirect("/");
+            if (linkToken.getResourceType() != MagicLinkResourceType.MEMORY) {
+                response.sendRedirect("/");
+            } else {
+                response.sendRedirect("/memories/" + linkToken.getResourceId());
+            }
             return;
         } catch (Exception e) {
             response.sendRedirect("/error/magic-link?error=processing");

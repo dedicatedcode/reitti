@@ -94,6 +94,8 @@ public class UserSettingsControllerAdvice {
             return UserSettingsDTO.UIMode.SHARED_FULL;
         } else if (grantedRoles.contains("ROLE_MAGIC_LINK_ONLY_LIVE") || grantedRoles.contains("ROLE_MAGIC_LINK_ONLY_LIVE_WITH_PHOTOS")) {
             return UserSettingsDTO.UIMode.SHARED_LIVE_MODE_ONLY;
+        } else if (grantedRoles.contains("ROLE_MAGIC_LINK_MEMORY_VIEW_ONLY") || grantedRoles.contains("ROLE_MAGIC_LINK_MEMORY_EDIT_ACCESS")) {
+            return UserSettingsDTO.UIMode.VIEW_MEMORIES;
         } else {
             throw new IllegalStateException("Invalid user authentication mode detected [" + grantedRoles + "]");
         }
