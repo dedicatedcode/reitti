@@ -12,7 +12,6 @@ import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -44,21 +43,18 @@ public class MemoryBlockGenerationService {
     
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final TripJdbcService tripJdbcService;
-    private final MessageSource messageSource;
-    private final I18nService i18nService;
+    private final I18nService i18n;
     private final ImmichIntegrationService immichIntegrationService;
     private final StorageService storageService;
 
     public MemoryBlockGenerationService(ProcessedVisitJdbcService processedVisitJdbcService,
                                         TripJdbcService tripJdbcService,
-                                        MessageSource messageSource,
                                         I18nService i18nService,
                                         ImmichIntegrationService immichIntegrationService,
                                         StorageService storageService) {
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.tripJdbcService = tripJdbcService;
-        this.messageSource = messageSource;
-        this.i18nService = i18nService;
+        this.i18n = i18nService;
         this.immichIntegrationService = immichIntegrationService;
         this.storageService = storageService;
     }
@@ -108,7 +104,7 @@ public class MemoryBlockGenerationService {
         // Add introduction text block
         if (!clusters.isEmpty() && accommodation.isPresent() && home.isPresent() && startDate != null && endDate != null) {
             String introText = generateIntroductionText(memory, clusters, accommodation.orElse(null), home.orElse(null), startDate, endDate, timeZone);
-            MemoryBlockText introBlock = new MemoryBlockText(null, "Your Journey", introText);
+            MemoryBlockText introBlock = new MemoryBlockText(null, i18n.translate("memory.generator.headline.text"), introText);
             blockParts.add(introBlock);
         }
 
@@ -123,14 +119,14 @@ public class MemoryBlockGenerationService {
             String formattedStartDate = formatTime(tripsToAccommodation.getFirst().getStartTime(), timeZone, false);
             String formattedEndDate = formatTime(tripsToAccommodation.getLast().getEndTime(), timeZone, false);
             if (!tripsToAccommodation.isEmpty()) {
-                String text = messageSource.getMessage("memory.generator.travel_to_accommodation.text", new Object[]{
+                String text = i18n.translate("memory.generator.travel_to_accommodation.text",
                         home.map(h ->h.getPlace().getCity()).orElse(""),
                         formattedStartDate,
                         accommodation.map(a -> a.getPlace().getCity()).orElse(""),
                         formattedEndDate,
-                        i18nService.humanizeDuration(Duration.between(tripsToAccommodation.getFirst().getStartTime(), tripsToAccommodation.getLast().getEndTime())),
-                        i18nService.humanizeDuration(tripsToAccommodation.stream().map(Trip::getDurationSeconds).reduce(0L, Long::sum))
-                }, LocaleContextHolder.getLocale());
+                        i18n.humanizeDuration(Duration.between(tripsToAccommodation.getFirst().getStartTime(), tripsToAccommodation.getLast().getEndTime())),
+                        i18n.humanizeDuration(tripsToAccommodation.stream().map(Trip::getDurationSeconds).reduce(0L, Long::sum))
+                );
 
                 MemoryBlockText accommodationPreRoll = new MemoryBlockText(null, null, text);
                 blockParts.add(accommodationPreRoll);
@@ -143,8 +139,9 @@ public class MemoryBlockGenerationService {
         Map<LocalDate, List<PhotoResponse>> imagesByDay = loadImagesFromIntegrations(user, startDate, endDate);
 
         accommodation.ifPresent(a -> {
-            MemoryBlockText intro = new MemoryBlockText(null, "Welcome to " + a.getPlace().getName(),
-                    messageSource.getMessage("memory.generator.intro_accommodation.text", new Object[]{}, LocaleContextHolder.getLocale()));
+            MemoryBlockText intro = new MemoryBlockText(null,
+                    i18n.translate("memory.generator.intro_accommodation.headline",a.getPlace().getName()),
+                    i18n.translate("memory.generator.intro_accommodation.text"));
             blockParts.add(intro);
             MemoryClusterBlock clusterBlock = new MemoryClusterBlock(null, List.of(a.getId()), null, null, BlockType.CLUSTER_VISIT);
             blockParts.add(clusterBlock);
@@ -178,8 +175,8 @@ public class MemoryBlockGenerationService {
             }
 
             if (!handledDays.contains(today)) {
-                blockParts.add(new MemoryBlockText(null, messageSource.getMessage("memory.generator.day.text", new Object[]{
-                        Duration.between(startDate.truncatedTo(ChronoUnit.DAYS), cluster.getStartTime().truncatedTo(ChronoUnit.DAYS)).toDays(), cluster.getHighestScoredVisit().visit.getPlace().getCity()}, LocaleContextHolder.getLocale()), null));
+                blockParts.add(new MemoryBlockText(null, i18n.translate("memory.generator.day.text",
+                        Duration.between(startDate.truncatedTo(ChronoUnit.DAYS), cluster.getStartTime().truncatedTo(ChronoUnit.DAYS)).toDays(), cluster.getHighestScoredVisit().visit.getPlace().getCity()), null));
                 handledDays.add(today);
                 firstOfDay = true;
             } else {
@@ -229,14 +226,14 @@ public class MemoryBlockGenerationService {
             if (!tripsFromAccommodation.isEmpty()) {
                 String formattedStartDate = formatTime(tripsFromAccommodation.getFirst().getStartTime(), timeZone, false);
                 String formattedEndDate = formatTime(tripsFromAccommodation.getLast().getEndTime(), timeZone, false);
-                String text = messageSource.getMessage("memory.generator.travel_from_accommodation.text", new Object[]{
+                String text = i18n.translate("memory.generator.travel_from_accommodation.text",
                         accommodation.map(a -> a.getPlace().getCity()).orElse(""),
                         formattedStartDate,
                         home.map(h -> h.getPlace().getCity()).orElse(""),
                         formattedEndDate,
-                        i18nService.humanizeDuration(Duration.between(tripsFromAccommodation.getFirst().getStartTime(), tripsFromAccommodation.getLast().getEndTime())),
-                        i18nService.humanizeDuration(tripsFromAccommodation.stream().map(Trip::getDurationSeconds).reduce(0L, Long::sum))
-                }, LocaleContextHolder.getLocale());
+                        i18n.humanizeDuration(Duration.between(tripsFromAccommodation.getFirst().getStartTime(), tripsFromAccommodation.getLast().getEndTime())),
+                        i18n.humanizeDuration(tripsFromAccommodation.stream().map(Trip::getDurationSeconds).reduce(0L, Long::sum))
+                );
 
                 MemoryBlockText accommodationPreRoll = new MemoryBlockText(null, null, text);
                 blockParts.add(accommodationPreRoll);
@@ -303,15 +300,14 @@ public class MemoryBlockGenerationService {
         SignificantPlace accommodationPlace = accommodation.getPlace();
         String country;
         if (accommodationPlace.getCountryCode() != null) {
-            country = messageSource.getMessage("country." + accommodationPlace.getCountryCode() + ".label", null, accommodation.getPlace().getCountryCode().toLowerCase(), LocaleContextHolder.getLocale());
+            country = i18n.translateWithDefault("country." + accommodationPlace.getCountryCode() + ".label", accommodation.getPlace().getCountryCode().toLowerCase());
         } else {
-            country = messageSource.getMessage("country.unknown.label", null, LocaleContextHolder.getLocale());
+            country = i18n.translate("country.unknown.label");
         }
         String formattedStartDate = formatDate(startDate, timeZone, true);
         String formattedEndDate = formatDate(endDate, timeZone, false);
 
-        return messageSource.getMessage("memory.generator.introductory.text",
-                new Object[]{
+        return i18n.translate("memory.generator.introductory.text",
                         formattedStartDate,
                         homePlace.getPlace().getCity(),
                         totalDays,
@@ -319,9 +315,7 @@ public class MemoryBlockGenerationService {
                         country,
                         totalVisits,
                         clusters.size(),
-                        formattedEndDate
-                },
-            LocaleContextHolder.getLocale());
+                        formattedEndDate);
     }
 
     private static String formatDate(Instant date, ZoneId timeZone, boolean withYear) {

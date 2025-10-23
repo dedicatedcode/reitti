@@ -516,6 +516,7 @@ tr:hover {
 
 a.btn,
 button {
+    font-size: 14px;
     color: var(--color-highlight);
     border: none;
     padding: 8px 12px;
@@ -1772,7 +1773,6 @@ button:disabled {
 
 .memories-page .btn i {
     vertical-align: middle;
-    height: 20px;
 }
 
 
@@ -1880,7 +1880,7 @@ button:disabled {
     pointer-events: all;
 }
 
-.memories-page .memory-header:hover .action-bar div:first-child {
+.memories-page .memory-header .action-bar div:first-child {
     flex-grow: 2;
 }
 
