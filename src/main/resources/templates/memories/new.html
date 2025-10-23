@@ -69,7 +69,7 @@
             <div class="form-actions">
                 <button th:if="${year != 'all'}" th:attr="hx-get=@{/memories/year/{year}(year=${year})}"
                         hx-target=".memories-overview" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}" class="btn btn-primary" th:text="#{memory.form.cancel}">Cancel</button>
-                <button th:if="${year == 'all'}" th:attr="hx-get=@{/memories}"
+                <button th:if="${year == 'all'}" th:attr="hx-get=@{/memories/all}"
                         hx-target=".memories-overview" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}" class="btn btn-primary" th:text="#{memory.form.cancel}">Cancel</button>
                 <button type="submit" class="btn btn-primary"
                         hx-indicator="#create-spinner"
