@@ -29,6 +29,7 @@
                 </div>
                 <button type="button" 
                         class="btn"
+                        th:if="${canEdit}"
                         th:attr="hx-get=@{/memories/{id}/edit(id=${memory.id})}"
                         hx-target=".memory-header"
                         hx-swap="innerHTML"
@@ -37,6 +38,7 @@
                 </button>
                 <button type="button" 
                         class="btn"
+                        th:if="${canEdit && isOwner}"
                         th:attr="hx-post=@{/memories/{id}/recalculate(id=${memory.id})}"
                         hx-target="body"
                         hx-swap="innerHTML"

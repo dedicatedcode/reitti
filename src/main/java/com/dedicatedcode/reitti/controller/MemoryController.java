@@ -99,7 +99,8 @@ public class MemoryController {
         
         String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + startDateLocal + "&endDate=" + endDateLocal;
         model.addAttribute("rawLocationUrl", rawLocationUrl);
-        
+        model.addAttribute("canEdit", true);
+        model.addAttribute("isOwner", true);
         return "memories/view";
     }
 
