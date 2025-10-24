@@ -53,7 +53,7 @@ public class TransportationModesController {
     public String addTransportMode(@AuthenticationPrincipal User user,
                                    @RequestParam TransportMode mode,
                                    @RequestParam(required = false) Double maxSpeed,
-                                   @RequestParam(required = false) String unitSystem,
+                                   @RequestParam(required = false) UnitSystem unitSystem,
                                    RedirectAttributes redirectAttributes) {
         try {
             List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
@@ -66,9 +66,11 @@ public class TransportationModesController {
             }
             
             // Convert to km/h if input was in mph
-            Double maxKmh = maxSpeed;
-            if (maxSpeed != null && "IMPERIAL".equals(unitSystem)) {
+            Double maxKmh;
+            if (maxSpeed != null && unitSystem == UnitSystem.IMPERIAL) {
                 maxKmh = mphToKmh(maxSpeed);
+            } else {
+                maxKmh = maxSpeed;
             }
             
             // Check for duplicate maxKmh values (only if maxKmh is not null)
@@ -94,15 +96,17 @@ public class TransportationModesController {
     public String updateTransportMode(@AuthenticationPrincipal User user,
                                       @PathVariable TransportMode mode,
                                       @RequestParam(required = false) Double maxSpeed,
-                                      @RequestParam(required = false) String unitSystem,
+                                      @RequestParam(required = false) UnitSystem unitSystem,
                                       RedirectAttributes redirectAttributes) {
         try {
             List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
             
             // Convert to km/h if input was in mph
-            Double maxKmh = maxSpeed;
-            if (maxSpeed != null && "IMPERIAL".equals(unitSystem)) {
+            Double maxKmh;
+            if (maxSpeed != null && unitSystem == UnitSystem.IMPERIAL) {
                 maxKmh = mphToKmh(maxSpeed);
+            } else {
+                maxKmh = maxSpeed;
             }
             
             List<TransportModeConfig> updatedConfigs = configs.stream()
