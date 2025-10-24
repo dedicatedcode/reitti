@@ -3,7 +3,7 @@ CREATE TABLE transport_mode_detection_configs (
     transport_mode VARCHAR(255) NOT NULL,
     max_kmh DECIMAL,
     PRIMARY KEY (user_id, transport_mode),
-    UNIQUE (user_id, max_kmh)
+    CONSTRAINT transport_mode_detection_configs_unique_max_kmh_per_user UNIQUE NULLS NOT DISTINCT (user_id, max_kmh)
 );
 
 CREATE TABLE transport_mode_overrides (

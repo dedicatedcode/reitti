@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller.settings;
 
+import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.TransportModeConfig;
 import com.dedicatedcode.reitti.model.security.User;
@@ -33,7 +34,7 @@ public class TransportationModesController {
         model.addAttribute("availableModes", availableModes);
         model.addAttribute("activeSection", "transportation-modes");
         model.addAttribute("dataManagementEnabled", true);
-        model.addAttribute("isAdmin", user.getRole() == User.Role.ADMIN);
+        model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         
         return "settings/transportation-modes";
     }
@@ -121,7 +122,7 @@ public class TransportationModesController {
     private List<TransportMode> getAvailableModesToAdd(List<TransportModeConfig> configs) {
         List<TransportMode> usedModes = configs.stream()
                 .map(TransportModeConfig::mode)
-                .collect(Collectors.toList());
+                .toList();
         
         return Arrays.stream(TransportMode.values())
                 .filter(mode -> !usedModes.contains(mode))

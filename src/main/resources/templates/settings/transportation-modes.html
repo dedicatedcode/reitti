@@ -26,10 +26,6 @@
                     <span th:text="#{${errorMessage}}">Error message</span>
                 </div>
 
-                <div class="settings-card" th:if="${configs.isEmpty()}">
-                    <p th:text="#{transportation.modes.no.configs}">No transportation modes configured. Add one to get started.</p>
-                </div>
-
                 <div class="settings-card" th:if="${!configs.isEmpty()}">
                     <table>
                         <thead>
@@ -44,8 +40,8 @@
                             <td th:text="#{${'transportation.mode.' + config.mode().name().toLowerCase()}}"></td>
                             <td>
                                 <form th:attr="hx-post=@{/settings/transportation-modes/{mode}/update(mode=${config.mode()})}"
-                                      hx-target="#transportation-modes"
-                                      hx-swap="innerHTML"
+                                      hx-target="body"
+                                      hx-swap="outerHTML"
                                       hx-trigger="change"
                                       style="display: inline;">
                                     <input type="number" 
@@ -60,8 +56,8 @@
                             <td>
                                 <button class="btn btn-danger"
                                         th:attr="hx-post=@{/settings/transportation-modes/{mode}/delete(mode=${config.mode()})}, hx-confirm=#{transportation.modes.delete.confirm}"
-                                        hx-target="#transportation-modes"
-                                        hx-swap="innerHTML"
+                                        hx-target="body"
+                                        hx-swap="outerHTML"
                                         th:text="#{form.delete}">Delete
                                 </button>
                             </td>
@@ -73,8 +69,8 @@
                 <div class="settings-card" th:if="${!availableModes.isEmpty()}">
                     <h3 th:text="#{transportation.modes.add.title}">Add Transportation Mode</h3>
                     <form hx-post="/settings/transportation-modes/add" 
-                          hx-target="#transportation-modes" 
-                          hx-swap="innerHTML" 
+                          hx-target="body"
+                          hx-swap="outerHTML"
                           class="token-form"
                           style="margin-bottom: 20px;">
                         <div class="form-group">
