@@ -30,12 +30,19 @@ class TransportModeJdbcServiceTest {
 
     @BeforeEach
     void setUp() {
-        testUser = testingService.admin();
+        testUser = testingService.randomUser();
     }
 
     @Test
     void shouldGetTransportModeConfigsSortedByMaxKmhNullsLast() {
-        // Given - admin user already has default configs from migration
+        // Given - set up test configs for the random user
+        List<TransportModeConfig> testConfigs = List.of(
+            new TransportModeConfig(TransportMode.WALKING, 7.0),
+            new TransportModeConfig(TransportMode.CYCLING, 20.0),
+            new TransportModeConfig(TransportMode.DRIVING, 120.0),
+            new TransportModeConfig(TransportMode.TRANSIT, null)
+        );
+        transportModeJdbcService.setTransportModeConfigs(testUser, testConfigs);
 
         // When
         List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(testUser);
@@ -49,7 +56,7 @@ class TransportModeJdbcServiceTest {
         assertThat(configs.get(2).mode()).isEqualTo(TransportMode.DRIVING);
         assertThat(configs.get(2).maxKmh()).isEqualTo(120.0);
         assertThat(configs.get(3).mode()).isEqualTo(TransportMode.TRANSIT);
-        assertThat(configs.get(3).maxKmh()).isEqualTo(Double.MAX_VALUE);
+        assertThat(configs.get(3).maxKmh()).isNull();
     }
 
     @Test
@@ -77,7 +84,7 @@ class TransportModeJdbcServiceTest {
         // Given
         List<TransportModeConfig> configs = List.of(
             new TransportModeConfig(TransportMode.WALKING, 7.0),
-            new TransportModeConfig(TransportMode.TRANSIT, Double.MAX_VALUE)
+            new TransportModeConfig(TransportMode.TRANSIT, null)
         );
 
         // When
@@ -87,7 +94,7 @@ class TransportModeJdbcServiceTest {
         List<TransportModeConfig> retrievedConfigs = transportModeJdbcService.getTransportModeConfigs(testUser);
         assertThat(retrievedConfigs).hasSize(2);
         assertThat(retrievedConfigs.get(0).maxKmh()).isEqualTo(7.0);
-        assertThat(retrievedConfigs.get(1).maxKmh()).isEqualTo(Double.MAX_VALUE);
+        assertThat(retrievedConfigs.get(1).maxKmh()).isNull();
     }
 
     @Test
@@ -105,12 +112,16 @@ class TransportModeJdbcServiceTest {
     @Test
     void shouldCacheConfigsPerUser() {
         // Given
-        User user1 = testingService.admin();
+        User user1 = testingService.randomUser();
         User user2 = testingService.randomUser();
         
+        List<TransportModeConfig> user1Configs = List.of(
+            new TransportModeConfig(TransportMode.WALKING, 5.0)
+        );
         List<TransportModeConfig> user2Configs = List.of(
             new TransportModeConfig(TransportMode.WALKING, 10.0)
         );
+        transportModeJdbcService.setTransportModeConfigs(user1, user1Configs);
         transportModeJdbcService.setTransportModeConfigs(user2, user2Configs);
 
         // When - get configs for both users
@@ -119,9 +130,10 @@ class TransportModeJdbcServiceTest {
         List<TransportModeConfig> user1SecondCall = transportModeJdbcService.getTransportModeConfigs(user1);
 
         // Then - each user should have their own cached configs
-        assertThat(user1FirstCall).hasSize(4); // default configs from migration
+        assertThat(user1FirstCall).hasSize(1);
         assertThat(user2FirstCall).hasSize(1);
         assertThat(user1SecondCall).isEqualTo(user1FirstCall); // should be same cached result
+        assertThat(user1FirstCall.get(0).maxKmh()).isEqualTo(5.0);
         assertThat(user2FirstCall.get(0).maxKmh()).isEqualTo(10.0);
     }
 }
