@@ -2,7 +2,8 @@ CREATE TABLE transport_mode_detection_configs (
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     transport_mode VARCHAR(255) NOT NULL,
     max_kmh DECIMAL,
-    PRIMARY KEY (user_id, transport_mode)
+    PRIMARY KEY (user_id, transport_mode),
+    UNIQUE (user_id, max_kmh)
 );
 
 CREATE TABLE transport_mode_overrides (
