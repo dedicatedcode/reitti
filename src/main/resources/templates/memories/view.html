@@ -105,8 +105,10 @@
                                      class="gallery-image-item"
                                      th:attr="data-image-url=${image.imageUrl},data-caption=${image.caption}">
                                     <div class="photo-loading-spinner"></div>
-                                    <img th:src="${image.imageUrl}" 
+                                    <img th:data-src="${image.imageUrl}" 
                                          th:alt="${image.caption != null ? image.caption : 'Gallery image'}"
+                                         class="lazy-image"
+                                         src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200'%3E%3Crect width='100%25' height='100%25' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999'%3ELoading...%3C/text%3E%3C/svg%3E"
                                          onload="this.classList.add('loaded'); this.previousElementSibling.style.display='none';"
                                          onerror="this.style.display='none'; this.previousElementSibling.style.display='none'; this.parentElement.innerHTML='📷';">
                                 </div>
@@ -602,10 +604,49 @@
         }
     }
 
+    // Lazy loading for images using Intersection Observer
+    function initializeLazyLoading() {
+        if ('IntersectionObserver' in window) {
+            const imageObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        const dataSrc = img.getAttribute('data-src');
+                        if (dataSrc) {
+                            img.src = dataSrc;
+                            img.classList.remove('lazy-image');
+                            observer.unobserve(img);
+                        }
+                    }
+                });
+            }, {
+                rootMargin: '50px 0px', // Start loading 50px before the image enters viewport
+                threshold: 0.01
+            });
+
+            // Observe all lazy images
+            document.querySelectorAll('.lazy-image').forEach(img => {
+                imageObserver.observe(img);
+            });
+        } else {
+            // Fallback for browsers without Intersection Observer support
+            document.querySelectorAll('.lazy-image').forEach(img => {
+                const dataSrc = img.getAttribute('data-src');
+                if (dataSrc) {
+                    img.src = dataSrc;
+                    img.classList.remove('lazy-image');
+                }
+            });
+        }
+    }
+
     // Initialize map on page load
     initializeMemoryMap();
+    
+    // Initialize lazy loading on page load
+    initializeLazyLoading();
 
-    // Listen for htmx events to reinitialize map when header is updated
+    // Listen for htmx events to reinitialize map and lazy loading when content is updated
     document.body.addEventListener('htmx:afterSwap', function (event) {
         if (event.detail.target.classList.contains('memory-header')) {
             initializeMemoryMap()
@@ -625,6 +666,9 @@
                 rawLocationLoader.reloadForCurrentView(false);
             }
         }
+        
+        // Reinitialize lazy loading for any new images added via HTMX
+        initializeLazyLoading();
     });
 </script>
 
