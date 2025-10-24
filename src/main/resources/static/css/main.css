@@ -2088,3 +2088,54 @@ button:disabled {
     margin-top: 20px;
     margin-bottom: 20px;
 }
+
+/* Lazy loading styles */
+.lazy-image {
+    transition: opacity 0.3s ease;
+    background-color: #f0f0f0;
+}
+
+.lazy-image.loaded {
+    opacity: 1;
+}
+
+/* Placeholder styling for lazy images */
+.gallery-image-item {
+    position: relative;
+    min-height: 200px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.gallery-image-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Loading spinner for images */
+.photo-loading-spinner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 24px;
+    height: 24px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    z-index: 1;
+}
+
+@keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Hide spinner when image is loaded */
+.gallery-image-item img.loaded + .photo-loading-spinner {
+    display: none;
+}
