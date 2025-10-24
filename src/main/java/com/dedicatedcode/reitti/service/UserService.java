@@ -111,7 +111,7 @@ public class UserService {
                         new TransportModeConfig(TransportMode.WALKING, 7.0),
                         new TransportModeConfig(TransportMode.CYCLING, 20.0),
                         new TransportModeConfig(TransportMode.DRIVING, 120.0),
-                        new TransportModeConfig(TransportMode.WALKING, null)
+                        new TransportModeConfig(TransportMode.TRANSIT, null)
                 ));
     }
 
