@@ -1,10 +1,10 @@
 package com.dedicatedcode.reitti.service.processing;
 
+import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.TransportModeConfig;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.test.IntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
