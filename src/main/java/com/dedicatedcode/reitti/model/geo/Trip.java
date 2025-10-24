@@ -11,16 +11,16 @@ public class Trip {
     private final Long durationSeconds;
     private final Double estimatedDistanceMeters;
     private final Double travelledDistanceMeters;
-    private final String transportModeInferred;
+    private final TransportMode transportModeInferred;
     private final ProcessedVisit startVisit;
     private final ProcessedVisit endVisit;
     private final Long version;
 
-    public Trip(Instant startTime, Instant endTime, Long durationSeconds, Double estimatedDistanceMeters, Double travelledDistanceMeters, String transportModeInferred, ProcessedVisit startVisit, ProcessedVisit endVisit) {
+    public Trip(Instant startTime, Instant endTime, Long durationSeconds, Double estimatedDistanceMeters, Double travelledDistanceMeters, TransportMode transportModeInferred, ProcessedVisit startVisit, ProcessedVisit endVisit) {
         this(null, startTime, endTime, durationSeconds, estimatedDistanceMeters, travelledDistanceMeters, transportModeInferred, startVisit, endVisit, 1L);
     }
     
-    public Trip(Long id, Instant startTime, Instant endTime, Long durationSeconds, Double estimatedDistanceMeters, Double travelledDistanceMeters, String transportModeInferred, ProcessedVisit startVisit, ProcessedVisit endVisit, Long version) {
+    public Trip(Long id, Instant startTime, Instant endTime, Long durationSeconds, Double estimatedDistanceMeters, Double travelledDistanceMeters, TransportMode transportModeInferred, ProcessedVisit startVisit, ProcessedVisit endVisit, Long version) {
         this.id = id;
         this.startTime = startTime;
         this.endTime = endTime;
@@ -57,7 +57,7 @@ public class Trip {
         return travelledDistanceMeters;
     }
 
-    public String getTransportModeInferred() {
+    public TransportMode getTransportModeInferred() {
         return transportModeInferred;
     }
 

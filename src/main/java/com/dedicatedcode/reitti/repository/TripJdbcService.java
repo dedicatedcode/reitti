@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
+import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.security.User;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -40,7 +41,7 @@ public class TripJdbcService {
                     rs.getLong("duration_seconds"),
                     rs.getDouble("estimated_distance_meters"),
                     rs.getDouble("travelled_distance_meters"),
-                    rs.getString("transport_mode_inferred"),
+                    TransportMode.valueOf(rs.getString("transport_mode_inferred")),
                     startVisit,
                     endVisit,
                     rs.getLong("version")
@@ -134,7 +135,7 @@ public class TripJdbcService {
                 Timestamp.from(trip.getEndTime()),
                 trip.getDurationSeconds(),
                 trip.getTravelledDistanceMeters(),
-                trip.getTransportModeInferred(),
+                trip.getTransportModeInferred().name(),
                 trip.getStartVisit() != null ? trip.getStartVisit().getId() : null,
                 trip.getEndVisit() != null ? trip.getEndVisit().getId() : null
         );
@@ -148,7 +149,7 @@ public class TripJdbcService {
                 Timestamp.from(trip.getEndTime()),
                 trip.getDurationSeconds(),
                 trip.getTravelledDistanceMeters(),
-                trip.getTransportModeInferred(),
+                trip.getTransportModeInferred().name(),
                 trip.getStartVisit() != null ? trip.getStartVisit().getId() : null,
                 trip.getEndVisit() != null ? trip.getEndVisit().getId() : null,
                 trip.getId()
@@ -185,7 +186,7 @@ public class TripJdbcService {
                 trip.getDurationSeconds(),
                 trip.getEstimatedDistanceMeters(),
                 trip.getTravelledDistanceMeters(),
-                trip.getTransportModeInferred(),
+                trip.getTransportModeInferred().name(),
                 trip.getVersion()
             })
             .collect(Collectors.toList());

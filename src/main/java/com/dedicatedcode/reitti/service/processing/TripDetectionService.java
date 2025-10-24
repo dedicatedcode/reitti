@@ -28,6 +28,7 @@ public class TripDetectionService {
     private final PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService;
     private final TripJdbcService tripJdbcService;
     private final PreviewTripJdbcService previewTripJdbcService;
+    private final TransportModeService transportModeService;
     private final UserJdbcService userJdbcService;
     private final UserNotificationService userNotificationService;
     private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
@@ -37,7 +38,7 @@ public class TripDetectionService {
                                 RawLocationPointJdbcService rawLocationPointJdbcService,
                                 PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService,
                                 TripJdbcService tripJdbcService,
-                                PreviewTripJdbcService previewTripJdbcService,
+                                PreviewTripJdbcService previewTripJdbcService, TransportModeService transportModeService,
                                 UserJdbcService userJdbcService,
                                 UserNotificationService userNotificationService) {
         this.processedVisitJdbcService = processedVisitJdbcService;
@@ -46,6 +47,7 @@ public class TripDetectionService {
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
         this.tripJdbcService = tripJdbcService;
         this.previewTripJdbcService = previewTripJdbcService;
+        this.transportModeService = transportModeService;
         this.userJdbcService = userJdbcService;
         this.userNotificationService = userNotificationService;
     }
@@ -156,7 +158,7 @@ public class TripDetectionService {
         double estimatedDistanceInMeters = calculateDistanceBetweenPlaces(startVisit.getPlace(), endVisit.getPlace());
         double travelledDistanceMeters = GeoUtils.calculateTripDistance(tripPoints);
         // Create a new trip
-        String transportMode = inferTransportMode(travelledDistanceMeters != 0 ? travelledDistanceMeters : estimatedDistanceInMeters, tripStartTime, tripEndTime);
+        TransportMode transportMode = this.transportModeService.inferTransportMode(user, travelledDistanceMeters != 0 ? travelledDistanceMeters : estimatedDistanceInMeters, tripStartTime, tripEndTime);
         Trip trip = new Trip(
                 tripStartTime,
                 tripEndTime,
@@ -179,32 +181,4 @@ public class TripDetectionService {
                 place1.getLatitudeCentroid(), place1.getLongitudeCentroid(),
                 place2.getLatitudeCentroid(), place2.getLongitudeCentroid());
     }
-
-    private String inferTransportMode(double distanceMeters, Instant startTime, Instant endTime) {
-        // Calculate duration in seconds
-        long durationSeconds = endTime.getEpochSecond() - startTime.getEpochSecond();
-
-        // Avoid division by zero
-        if (durationSeconds <= 0) {
-            return "UNKNOWN";
-        }
-
-        // Calculate speed in meters per second
-        double speedMps = distanceMeters / durationSeconds;
-
-        // Convert to km/h for easier interpretation
-        double speedKmh = speedMps * 3.6;
-
-        // Simple transport mode inference based on average speed
-        if (speedKmh < 7) {
-            return "WALKING";
-        } else if (speedKmh < 20) {
-            return "CYCLING";
-        } else if (speedKmh < 120) {
-            return "DRIVING";
-        } else {
-            return "TRANSIT"; // High-speed transit like train
-        }
-    }
-
 }
