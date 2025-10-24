@@ -54,6 +54,16 @@ public class TransportationModesController {
                 return "redirect:/settings/transportation-modes";
             }
             
+            // Check for duplicate maxKmh values (only if maxKmh is not null)
+            if (maxKmh != null) {
+                boolean duplicateMaxKmh = configs.stream()
+                    .anyMatch(config -> config.maxKmh() != null && config.maxKmh().equals(maxKmh));
+                if (duplicateMaxKmh) {
+                    redirectAttributes.addFlashAttribute("errorMessage", "transportation.modes.error.duplicate.max.kmh");
+                    return "redirect:/settings/transportation-modes";
+                }
+            }
+            
             configs.add(new TransportModeConfig(mode, maxKmh));
             transportModeJdbcService.setTransportModeConfigs(user, configs);
             
