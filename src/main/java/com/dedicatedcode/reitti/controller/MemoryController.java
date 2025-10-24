@@ -13,8 +13,9 @@ import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
-import com.dedicatedcode.reitti.service.MemoryService;
 import com.dedicatedcode.reitti.service.MagicLinkTokenService;
+import com.dedicatedcode.reitti.service.MemoryService;
+import com.dedicatedcode.reitti.service.RequestHelper;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -421,29 +422,12 @@ public class MemoryController {
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         
         String token = magicLinkTokenService.createMemoryShareToken(user, id, accessLevel, validDays);
-        String baseUrl = getBaseUrl(request);
+        String baseUrl = RequestHelper.getBaseUrl(request);
         String shareUrl = baseUrl + "/memories/" + id + "?mt=" + token;
         
         model.addAttribute("shareUrl", shareUrl);
         model.addAttribute("memory", memory);
         model.addAttribute("accessLevel", accessLevel);
         return "memories/fragments :: share-result";
-    }
-
-    private String getBaseUrl(HttpServletRequest request) {
-        String scheme = request.getScheme();
-        String serverName = request.getServerName();
-        int serverPort = request.getServerPort();
-        String contextPath = request.getContextPath();
-
-        StringBuilder url = new StringBuilder();
-        url.append(scheme).append("://").append(serverName);
-
-        if ((scheme.equals("http") && serverPort != 80) || (scheme.equals("https") && serverPort != 443)) {
-            url.append(":").append(serverPort);
-        }
-
-        url.append(contextPath);
-        return url.toString();
     }
 }

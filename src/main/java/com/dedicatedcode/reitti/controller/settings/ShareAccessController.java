@@ -9,11 +9,12 @@ import com.dedicatedcode.reitti.model.security.UserSharing;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
 import com.dedicatedcode.reitti.service.AvatarService;
+import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.MagicLinkTokenService;
+import com.dedicatedcode.reitti.service.RequestHelper;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
-import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -34,28 +36,28 @@ public class ShareAccessController {
     private final UserJdbcService userJdbcService;
     private final UserSharingJdbcService userSharingJdbcService;
     private final AvatarService avatarService;
-    private final MessageSource messageSource;
     private final boolean dataManagementEnabled;
+    private final I18nService i18n;
 
     public ShareAccessController(MagicLinkTokenService magicLinkTokenService,
                                  UserJdbcService userJdbcService,
                                  UserSharingJdbcService userSharingJdbcService,
                                  AvatarService avatarService,
-                                 MessageSource messageSource,
-                                 @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
+                                 @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
+                                 I18nService i18nService) {
         this.magicLinkTokenService = magicLinkTokenService;
         this.userJdbcService = userJdbcService;
         this.userSharingJdbcService = userSharingJdbcService;
         this.avatarService = avatarService;
-        this.messageSource = messageSource;
         this.dataManagementEnabled = dataManagementEnabled;
+        this.i18n = i18nService;
     }
 
     @GetMapping
     public String magicLinksContent(@AuthenticationPrincipal User user, Model model) {
         List<MagicLinkToken> tokens = magicLinkTokenService.getTokensForUser(user);
         model.addAttribute("tokens", tokens);
-        model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
+        model.addAttribute("accessLevels", List.of(MagicLinkAccessLevel.FULL_ACCESS, MagicLinkAccessLevel.ONLY_LIVE, MagicLinkAccessLevel.ONLY_LIVE_WITH_PHOTOS));
         model.addAttribute("activeSection", "sharing");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
@@ -87,7 +89,7 @@ public class ShareAccessController {
                     LocalDate localDate = LocalDate.parse(expiryDate);
                     expiryInstant = localDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
                 } catch (Exception e) {
-                    model.addAttribute("errorMessage", getMessage("magic.links.invalid.date"));
+                    model.addAttribute("errorMessage", i18n.translate("magic.links.invalid.date"));
                     List<MagicLinkToken> tokens = magicLinkTokenService.getTokensForUser(user);
                     model.addAttribute("tokens", tokens);
                     model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
@@ -99,7 +101,7 @@ public class ShareAccessController {
             String rawToken = magicLinkTokenService.createMapShareToken(user, name, accessLevel, expiryInstant);
 
             // Build the full magic link URL
-            String baseUrl = getBaseUrl(request);
+            String baseUrl = RequestHelper.getBaseUrl(request);
             String magicLinkUrl = baseUrl + "/access?mt=" + rawToken;
 
             model.addAttribute("newTokenName", name);
@@ -111,7 +113,7 @@ public class ShareAccessController {
             return "settings/share-access :: magic-links-content";
 
         } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("magic.links.create.error", e.getMessage()));
+            model.addAttribute("errorMessage", i18n.translate("magic.links.create.error", e.getMessage()));
 
             model.addAttribute("tokens", magicLinkTokenService.getTokensForUser(user));
             model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
@@ -126,32 +128,15 @@ public class ShareAccessController {
                                   Model model) {
         try {
             magicLinkTokenService.deleteToken(id);
-            model.addAttribute("successMessage", getMessage("magic.links.deleted.success"));
+            model.addAttribute("successMessage", i18n.translate("magic.links.deleted.success"));
         } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("magic.links.delete.error", e.getMessage()));
+            model.addAttribute("errorMessage", i18n.translate("magic.links.delete.error", e.getMessage()));
         }
 
         model.addAttribute("tokens", magicLinkTokenService.getTokensForUser(user));
         model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
 
         return "settings/share-access :: magic-links-content";
-    }
-
-    private String getBaseUrl(HttpServletRequest request) {
-        String scheme = request.getScheme();
-        String serverName = request.getServerName();
-        int serverPort = request.getServerPort();
-        String contextPath = request.getContextPath();
-
-        StringBuilder url = new StringBuilder();
-        url.append(scheme).append("://").append(serverName);
-
-        if ((scheme.equals("http") && serverPort != 80) || (scheme.equals("https") && serverPort != 443)) {
-            url.append(":").append(serverPort);
-        }
-
-        url.append(contextPath);
-        return url.toString();
     }
 
     @PostMapping("/users")
@@ -173,9 +158,9 @@ public class ShareAccessController {
                     .collect(Collectors.toSet());
             this.userSharingJdbcService.delete(toDelete);
             this.userSharingJdbcService.create(user, toCreate);
-            model.addAttribute("shareSuccessMessage", getMessage("share-with.updated.success"));
+            model.addAttribute("shareSuccessMessage", i18n.translate("share-with.updated.success"));
         } catch (Exception e) {
-            model.addAttribute("shareErrorMessage", getMessage("share-with.update.error", e.getMessage()));
+            model.addAttribute("shareErrorMessage", i18n.translate("share-with.update.error", e.getMessage()));
         }
 
         List<UserDto> availableUsers = loadAvailableUsers(user);
@@ -187,10 +172,6 @@ public class ShareAccessController {
         model.addAttribute("sharedWithMeUsers", sharedWithMeUsers);
 
         return "settings/share-access :: share-with-content";
-    }
-
-    private String getMessage(String key, Object... args) {
-        return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
     }
 
     private List<UserDto> loadAvailableUsers(User user) {
@@ -209,9 +190,9 @@ public class ShareAccessController {
                                      Model model) {
         try {
             userSharingJdbcService.dismissSharedAccess(id, user.getId());
-            model.addAttribute("shareSuccessMessage", getMessage("shared-with-me.dismissed.success"));
+            model.addAttribute("shareSuccessMessage", i18n.translate("shared-with-me.dismissed.success"));
         } catch (Exception e) {
-            model.addAttribute("shareErrorMessage", getMessage("shared-with-me.dismiss.error", e.getMessage()));
+            model.addAttribute("shareErrorMessage", i18n.translate("shared-with-me.dismiss.error", e.getMessage()));
         }
 
         // Reload data for the fragment
