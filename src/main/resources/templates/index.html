@@ -233,7 +233,7 @@
             .addTo(map)
 
         // Initialize photo client
-        const photoClient = new PhotoClient(map);
+        const photoClient = new PhotoClient(map, window.userSettings.photoMode === 'ENABLED');
         
         // Initialize raw location loader
         rawLocationLoader = new RawLocationLoader(map, window.userSettings, {

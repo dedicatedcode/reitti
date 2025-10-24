@@ -15,6 +15,7 @@ public record UserSettingsDTO(
         Double homeLongitude,
         TilesCustomizationDTO tiles,
         UIMode uiMode,
+        PhotoMode photoMode,
         TimeDisplayMode displayMode,
         ZoneId timezoneOverride,
         String customCssUrl
@@ -25,6 +26,10 @@ public record UserSettingsDTO(
         SHARED_FULL,
         VIEW_MEMORIES,
         SHARED_LIVE_MODE_ONLY
+    }
+    public enum PhotoMode {
+        ENABLED,
+        DISABLED
     }
 
     public record TilesCustomizationDTO(String service, String attribution){}
