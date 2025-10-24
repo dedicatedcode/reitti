@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.service;
 
+import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
@@ -12,7 +13,6 @@ import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.repository.VisitDetectionParametersJdbcService;
 import com.dedicatedcode.reitti.service.processing.TransportModeJdbcService;
-import com.dedicatedcode.reitti.test.IntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
