@@ -42,15 +42,14 @@
                                 <form th:attr="hx-post=@{/settings/transportation-modes/{mode}/update(mode=${config.mode()})}"
                                       hx-target="body"
                                       hx-swap="outerHTML"
-                                      hx-trigger="change"
+                                      hx-trigger="change delay:500ms"
                                       style="display: inline;">
                                     <input type="number" 
                                            name="maxKmh" 
                                            th:value="${config.maxKmh()}"
                                            step="0.1"
                                            min="0"
-                                           placeholder="No limit"
-                                           style="width: 100px; border: 1px solid #ddd; padding: 4px; border-radius: 4px;">
+                                           placeholder="No limit">
                                 </form>
                             </td>
                             <td>

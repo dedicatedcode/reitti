@@ -13,6 +13,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Controller
@@ -55,15 +56,13 @@ public class TransportationModesController {
             }
             
             // Check for duplicate maxKmh values (only if maxKmh is not null)
-            if (maxKmh != null) {
                 boolean duplicateMaxKmh = configs.stream()
-                    .anyMatch(config -> config.maxKmh() != null && config.maxKmh().equals(maxKmh));
+                    .anyMatch(config -> Objects.equals(config.maxKmh(),maxKmh));
                 if (duplicateMaxKmh) {
                     redirectAttributes.addFlashAttribute("errorMessage", "transportation.modes.error.duplicate.max.kmh");
                     return "redirect:/settings/transportation-modes";
                 }
-            }
-            
+
             configs.add(new TransportModeConfig(mode, maxKmh));
             transportModeJdbcService.setTransportModeConfigs(user, configs);
             
@@ -136,6 +135,7 @@ public class TransportationModesController {
         
         return Arrays.stream(TransportMode.values())
                 .filter(mode -> !usedModes.contains(mode))
+                .filter(mode -> mode != TransportMode.UNKNOWN)
                 .collect(Collectors.toList());
     }
 }
