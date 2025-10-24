@@ -3,6 +3,8 @@ package com.dedicatedcode.reitti.service.processing;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.TransportModeConfig;
 import com.dedicatedcode.reitti.model.security.User;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +20,7 @@ public class TransportModeJdbcService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    @Cacheable(value = "transport-mode-configs", key = "#user.id")
     public List<TransportModeConfig> getTransportModeConfigs(User user) {
         String sql = """
             SELECT transport_mode, max_kmh 
@@ -34,6 +37,7 @@ public class TransportModeJdbcService {
     }
 
     @Transactional
+    @CacheEvict(value = "transport-mode-configs", key = "#user.id")
     public void setTransportModeConfigs(User user, List<TransportModeConfig> configs) {
         // Delete existing configs for the user
         String deleteSql = "DELETE FROM transport_mode_detection_configs WHERE user_id = ?";
