@@ -31,7 +31,7 @@
                         <thead>
                         <tr>
                             <th th:text="#{transportation.modes.table.mode}">Mode</th>
-                            <th th:text="#{transportation.modes.table.max.kmh}">Max Speed (km/h)</th>
+                            <th th:text="${isImperial ? #{transportation.modes.table.max.mph} : #{transportation.modes.table.max.kmh}}">Max Speed</th>
                             <th th:text="#{transportation.modes.table.actions}">Actions</th>
                         </tr>
                         </thead>
@@ -44,12 +44,13 @@
                                       hx-swap="outerHTML"
                                       hx-trigger="change delay:500ms"
                                       style="display: inline;">
+                                    <input type="hidden" name="unitSystem" th:value="${unitSystem.name()}">
                                     <input type="number" 
-                                           name="maxKmh" 
-                                           th:value="${config.maxKmh()}"
+                                           name="maxSpeed" 
+                                           th:value="${isImperial and config.maxKmh() != null ? #numbers.formatDecimal(config.maxKmh() / 1.60934, 1, 1) : config.maxKmh()}"
                                            step="0.1"
                                            min="0"
-                                           placeholder="No limit">
+                                           th:placeholder="${isImperial ? 'No limit' : 'No limit'}">
                                 </form>
                             </td>
                             <td>
@@ -82,14 +83,15 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="maxKmh" th:text="#{transportation.modes.max.kmh.label}">Max Speed (km/h)</label>
+                            <label for="maxSpeed" th:text="${isImperial ? #{transportation.modes.max.mph.label} : #{transportation.modes.max.kmh.label}}">Max Speed</label>
+                            <input type="hidden" name="unitSystem" th:value="${unitSystem.name()}">
                             <input type="number" 
-                                   id="maxKmh" 
-                                   name="maxKmh" 
+                                   id="maxSpeed" 
+                                   name="maxSpeed" 
                                    step="0.1" 
                                    min="0"
-                                   th:placeholder="#{transportation.modes.max.kmh.placeholder}">
-                            <small th:text="#{transportation.modes.max.kmh.help}">Leave empty for no speed limit</small>
+                                   th:placeholder="${isImperial ? #{transportation.modes.max.mph.placeholder} : #{transportation.modes.max.kmh.placeholder}}">
+                            <small th:text="${isImperial ? #{transportation.modes.max.mph.help} : #{transportation.modes.max.kmh.help}}">Leave empty for no speed limit</small>
                         </div>
                         <button type="submit" class="btn" th:text="#{transportation.modes.add.button}">Add Mode</button>
                     </form>
