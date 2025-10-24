@@ -304,4 +304,7 @@ public class MemoryService {
         return this.memoryJdbcService.findDistinctYears(user);
     }
 
+    public long getOwnerId(Memory memory) {
+        return this.memoryJdbcService.getOwnerId(memory).orElseThrow(() -> new PageNotFoundException("Memory not found"));
+    }
 }

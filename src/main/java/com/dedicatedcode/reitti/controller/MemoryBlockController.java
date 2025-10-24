@@ -3,6 +3,9 @@ package com.dedicatedcode.reitti.controller;
 import com.dedicatedcode.reitti.dto.PhotoResponse;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.memory.*;
+import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
+import com.dedicatedcode.reitti.model.security.MagicLinkResourceType;
+import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
@@ -21,6 +24,9 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import static com.dedicatedcode.reitti.model.Role.ADMIN;
+import static com.dedicatedcode.reitti.model.Role.USER;
 
 @Controller
 @RequestMapping("/memories/{memoryId}/blocks")
@@ -75,7 +81,10 @@ public class MemoryBlockController {
         
         model.addAttribute("memoryId", memoryId);
         model.addAttribute("block", block);
-        
+
+        model.addAttribute("isOwner", isOwner(memory, user));
+        model.addAttribute("canEdit", canEdit(memory, user));
+
         switch (block.getBlockType()) {
             case IMAGE_GALLERY:
                 boolean immichEnabled = immichIntegrationService.getIntegrationForUser(user)
@@ -116,8 +125,8 @@ public class MemoryBlockController {
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, blockId).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
 
-        model.addAttribute("canEdit", true);
-        model.addAttribute("isOwner", true);
+        model.addAttribute("isOwner", isOwner(memory, user));
+        model.addAttribute("canEdit", canEdit(memory, user));
 
         return "memories/view :: view-block";
     }
@@ -145,10 +154,35 @@ public class MemoryBlockController {
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, blockId).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
 
-        model.addAttribute("canEdit", true);
-        model.addAttribute("isOwner", true);
+        model.addAttribute("isOwner", isOwner(memory, user));
+        model.addAttribute("canEdit", canEdit(memory, user));
         return "memories/view :: view-block";
     }
+
+    @PostMapping("/cluster")
+    public String createClusterBlock(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long memoryId,
+            @RequestParam(required = false, defaultValue = "-1") int position,
+            @RequestParam(name = "selectedParts") List<Long> selectedParts,
+            @RequestParam BlockType type,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+            Model model) {
+
+        Memory memory = memoryService.getMemoryById(user, memoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+
+        MemoryBlock block = memoryService.addBlock(user, memoryId, position, type);
+        MemoryClusterBlock clusterBlock = new MemoryClusterBlock(block.getId(), selectedParts, title, null, type);
+        memoryService.createClusterBlock(user, clusterBlock);
+        model.addAttribute("memory", memory);
+        model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, block.getId()).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
+        model.addAttribute("isOwner", isOwner(memory, user));
+        model.addAttribute("canEdit", canEdit(memory, user));
+        return "memories/view :: view-block";
+    }
+
 
     @PostMapping("/reorder")
     public String reorderBlocks(
@@ -180,8 +214,8 @@ public class MemoryBlockController {
         memoryService.addTextBlock(block.getId(), headline, content);
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, block.getId()).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
-        model.addAttribute("canEdit", true);
-        model.addAttribute("isOwner", true);
+        model.addAttribute("isOwner", isOwner(memory, user));
+        model.addAttribute("canEdit", canEdit(memory, user));
         return "memories/view :: view-block";
     }
 
@@ -206,32 +240,8 @@ public class MemoryBlockController {
 
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(updated));
-        model.addAttribute("canEdit", true);
-        model.addAttribute("isOwner", true);
-        return "memories/view :: view-block";
-    }
-
-    @PostMapping("/cluster")
-    public String createClusterBlock(
-            @AuthenticationPrincipal User user,
-            @PathVariable Long memoryId,
-            @RequestParam(required = false, defaultValue = "-1") int position,
-            @RequestParam(name = "selectedParts") List<Long> selectedParts,
-            @RequestParam BlockType type,
-            @RequestParam(required = false) String title,
-            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
-            Model model) {
-
-        Memory memory = memoryService.getMemoryById(user, memoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-
-        MemoryBlock block = memoryService.addBlock(user, memoryId, position, type);
-        MemoryClusterBlock clusterBlock = new MemoryClusterBlock(block.getId(), selectedParts, title, null, type);
-        memoryService.createClusterBlock(user, clusterBlock);
-        model.addAttribute("memory", memory);
-        model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, block.getId()).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
-        model.addAttribute("canEdit", true);
-        model.addAttribute("isOwner", true);
+        model.addAttribute("isOwner", isOwner(memory, user));
+        model.addAttribute("canEdit", canEdit(memory, user));
         return "memories/view :: view-block";
     }
 
@@ -263,8 +273,8 @@ public class MemoryBlockController {
         
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(memoryService.getBlock(user, timezone, memoryId, block.getId()).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
-        model.addAttribute("canEdit", true);
-        model.addAttribute("isOwner", true);
+        model.addAttribute("isOwner", isOwner(memory, user));
+        model.addAttribute("canEdit", canEdit(memory, user));
         return "memories/view :: view-block";
     }
 
@@ -297,8 +307,8 @@ public class MemoryBlockController {
 
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(memoryService.getBlock(user, timezone, memoryId, blockId).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
-        model.addAttribute("canEdit", true);
-        model.addAttribute("isOwner", true);
+        model.addAttribute("isOwner", isOwner(memory, user));
+        model.addAttribute("canEdit", canEdit(memory, user));
         return "memories/view :: view-block";
     }
 
@@ -394,5 +404,24 @@ public class MemoryBlockController {
         model.addAttribute("memoryId", memoryId);
         
         return "memories/fragments :: immich-photos-grid";
+    }
+
+
+    private boolean isOwner(Memory memory, User user) {
+        if (user.getAuthorities().contains(ADMIN.asAuthority()) || user.getAuthorities().contains(USER.asAuthority())) {
+            return this.memoryService.getOwnerId(memory) == user.getId();
+        } else {
+            return false;
+        }
+    }
+
+    private boolean canEdit(Memory memory, User user) {
+        if (user.getAuthorities().contains(ADMIN.asAuthority()) || user.getAuthorities().contains(USER.asAuthority())) {
+            return this.memoryService.getOwnerId(memory) == user.getId();
+        } else {
+            //assume the user is of type TokenUser
+            TokenUser tokenUser = (TokenUser) user;
+            return user.getAuthorities().contains(MagicLinkAccessLevel.MEMORY_EDIT_ACCESS.asAuthority()) && tokenUser.grantsAccessTo(MagicLinkResourceType.MEMORY, memory.getId());
+        }
     }
 }

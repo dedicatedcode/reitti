@@ -1991,6 +1991,7 @@ button:disabled {
     height: 1px;
 }
 
+.memories-page .empty-blocks .add-block-spacer,
 .memories-page .memory-block:hover .add-block-spacer {
     opacity: 1;
     pointer-events: auto;
@@ -2078,4 +2079,12 @@ button:disabled {
     font-size: 0.85rem;
     opacity: 0.8;
     line-height: 1.3;
+}
+
+.empty-blocks {
+    text-align: center;
+    font-size: 1.4rem;
+    color: var(--color-highlight);
+    margin-top: 20px;
+    margin-bottom: 20px;
 }

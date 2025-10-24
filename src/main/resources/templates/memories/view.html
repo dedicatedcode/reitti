@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,7 +24,7 @@
     <div class="settings-content-area">
         <div class="memory-header" th:fragment="memory-header">
             <div class="action-bar">
-                <div><a class="btn"
+                <div sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')"><a class="btn"
                         th:href="@{/memories}"><i class="lni lni-arrow-left"></i>
                     <span th:text="#{memory.view.back}"></span></a></a>
                 </div>
@@ -56,7 +56,6 @@
                     <i class="lni lni-share"></i> Share
                 </button>
             </div>
-
             <div class="memory-header-section map-header-section">
                 <div id="memory-map" class="memory-map"></div>
             </div>
@@ -74,16 +73,23 @@
                         - <span th:text="${#temporals.format(memory.endDate, 'MMMM d, yyyy')}">End Date</span>
                     </span>
                 </p>
-
             </div>
         </div>
 
         <div class="memory-blocks-container">
-            <div th:if="${blocks.isEmpty()}" class="empty-blocks">
+            <div th:if="${blocks.isEmpty()}" class="memory-block empty-blocks">
                 <i class="lni lni-layers"></i>
                 <p th:text="#{memory.view.no.blocks}">No blocks yet. Add your first block to start building your memory.</p>
+                <div th:if="${canEdit}" class="add-block-spacer">
+                    <button type="button"
+                            class="btn btn-primary"
+                            th:attr="hx-get=@{/memories/{id}/blocks/select-type(id=${memory.id}, position=0)}"
+                            hx-target="closest .empty-blocks"
+                            hx-swap="outerHTML">
+                        <i class="lni lni-plus"></i> <span th:text="#{memory.view.add.first.block}">Add Block after</span>
+                    </button>
+                </div>
             </div>
-
             <div class="blocks-list" id="blocksList">
                 <div th:fragment="view-block" th:each="block, iterStat : ${blocks}" class="memory-block" th:attr="data-block-id=${block.blockId}, data-block-type=${block.type.name()}">
                     <div class="block-content">

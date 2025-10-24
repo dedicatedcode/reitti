@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller;
 
+import com.dedicatedcode.reitti.controller.error.ForbiddenException;
 import com.dedicatedcode.reitti.controller.error.PageNotFoundException;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.memory.HeaderType;
@@ -7,6 +8,8 @@ import com.dedicatedcode.reitti.model.memory.Memory;
 import com.dedicatedcode.reitti.model.memory.MemoryBlockPart;
 import com.dedicatedcode.reitti.model.memory.MemoryOverviewDTO;
 import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
+import com.dedicatedcode.reitti.model.security.MagicLinkResourceType;
+import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
@@ -25,6 +28,9 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
+
+import static com.dedicatedcode.reitti.model.Role.ADMIN;
+import static com.dedicatedcode.reitti.model.Role.USER;
 
 @Controller
 @RequestMapping("/memories")
@@ -94,7 +100,7 @@ public class MemoryController {
             Model model) {
         Memory memory = memoryService.getMemoryById(user, id)
                 .orElseThrow(() -> new PageNotFoundException("Memory not found"));
-        
+
         model.addAttribute("memory", memory);
 
         List<MemoryBlockPart> blocks = memoryService.getBlockPartsForMemory(user, id, timezone);
@@ -105,9 +111,27 @@ public class MemoryController {
         
         String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + startDateLocal + "&endDate=" + endDateLocal;
         model.addAttribute("rawLocationUrl", rawLocationUrl);
-        model.addAttribute("canEdit", true);
-        model.addAttribute("isOwner", true);
+        model.addAttribute("canEdit", canEdit(memory, user));
+        model.addAttribute("isOwner", isOwner(memory, user));
         return "memories/view";
+    }
+
+    private boolean isOwner(Memory memory, User user) {
+        if (user.getAuthorities().contains(ADMIN.asAuthority()) || user.getAuthorities().contains(USER.asAuthority())) {
+            return this.memoryService.getOwnerId(memory) == user.getId();
+        } else {
+            return false;
+        }
+    }
+
+    private boolean canEdit(Memory memory, User user) {
+        if (user.getAuthorities().contains(ADMIN.asAuthority()) || user.getAuthorities().contains(USER.asAuthority())) {
+            return this.memoryService.getOwnerId(memory) == user.getId();
+        } else {
+            //assume the user is of type TokenUser
+            TokenUser tokenUser = (TokenUser) user;
+            return user.getAuthorities().contains(MagicLinkAccessLevel.MEMORY_EDIT_ACCESS.asAuthority()) && tokenUser.grantsAccessTo(MagicLinkResourceType.MEMORY, memory.getId());
+        }
     }
 
     @GetMapping("/new")
@@ -201,6 +225,9 @@ public class MemoryController {
             Model model) {
         Memory memory = memoryService.getMemoryById(user, id)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        if (!canEdit(memory, user)) {
+            throw new ForbiddenException("You are not allowed to edit this memory");
+        }
         model.addAttribute("memory", memory);
         model.addAttribute("startDate", memory.getStartDate().atZone(timezone).toLocalDate());
         model.addAttribute("endDate", memory.getEndDate().atZone(timezone).toLocalDate());
@@ -223,7 +250,13 @@ public class MemoryController {
         
         Memory memory = memoryService.getMemoryById(user, id)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
+        if (!canEdit(memory, user)) {
+            throw new ForbiddenException("You are not allowed to edit this memory");
+        }
+
+        model.addAttribute("isOwner", isOwner(memory, user));
+        model.addAttribute("canEdit", canEdit(memory, user));
+
         // Add validation similar to create method
         if (title == null || title.trim().isEmpty()) {
             model.addAttribute("error", "memory.validation.title.required");
@@ -287,6 +320,11 @@ public class MemoryController {
 
     @DeleteMapping("/{id}")
     public String deleteMemory(@AuthenticationPrincipal User user, @PathVariable Long id) {
+        Memory memory = this.memoryService.getMemoryById(user, id).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+
+        if (!isOwner(memory, user)) {
+            throw new ForbiddenException("You are not allowed to delete this memory");
+        }
         memoryService.deleteMemory(user, id);
         return "redirect:/memories";
     }
@@ -308,7 +346,10 @@ public class MemoryController {
     public String recalculateMemory(@AuthenticationPrincipal User user, @PathVariable Long id,
                                     @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                                     HttpServletResponse httpResponse) {
-        memoryService.getMemoryById(user, id).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        Memory memory = memoryService.getMemoryById(user, id).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        if (!isOwner(memory, user)) {
+            throw new ForbiddenException("You are not allowed execute this action. Only the owner of the memory can do this.");
+        }
         memoryService.recalculateMemory(user, id, timezone);
         httpResponse.setHeader("HX-Redirect", "/memories/" + id + "?timezone=" + timezone.getId());
         return "Ok";
@@ -325,6 +366,9 @@ public class MemoryController {
         model.addAttribute("memoryId", id);
         model.addAttribute("position", position);
         model.addAttribute("blockType", type);
+
+        model.addAttribute("isOwner", isOwner(memory, user));
+        model.addAttribute("canEdit", canEdit(memory, user));
 
         switch (type) {
             case "TEXT":

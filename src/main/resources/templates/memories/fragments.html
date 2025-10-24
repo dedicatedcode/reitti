@@ -175,7 +175,7 @@
     <form th:attr="hx-post=@{/memories/{id}/blocks/image-gallery(id=${memoryId}, position=${position})}" method="post" hx-target=".block-form" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}">
         <div class="gallery-panels">
             <!-- Immich Panel -->
-            <div class="gallery-panel immich-panel" th:if="${immichEnabled}">
+            <div class="gallery-panel immich-panel" th:if="${immichEnabled && isOwner}">
                 <h4 th:text="#{memory.block.gallery.immich.title}">Select from Immich</h4>
                 <div class="immich-photos-container">
                     <div class="immich-photos-grid" 

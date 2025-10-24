@@ -143,4 +143,8 @@ public class MemoryJdbcService {
                     "ORDER BY EXTRACT(YEAR FROM start_date) DESC";
             return jdbcTemplate.queryForList(sql, Integer.class, user.getId());
         }
+
+    public Optional<Long> getOwnerId(Memory memory) {
+        return Optional.ofNullable(this.jdbcTemplate.queryForObject("SELECT user_id FROM memory WHERE id = ?", Long.class, memory.getId()));
+    }
 }
