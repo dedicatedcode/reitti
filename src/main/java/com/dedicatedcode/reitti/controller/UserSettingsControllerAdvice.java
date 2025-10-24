@@ -49,6 +49,7 @@ public class UserSettingsControllerAdvice {
                     DEFAULT_HOME_LONGITUDE,
                     tilesCustomizationProvider.getTilesConfiguration(),
                     UserSettingsDTO.UIMode.FULL,
+                    UserSettingsDTO.PhotoMode.DISABLED,
                     TimeDisplayMode.DEFAULT,
                     null,
                     null);
@@ -57,6 +58,7 @@ public class UserSettingsControllerAdvice {
         String username = authentication.getName();
         Optional<User> userOptional = userJdbcService.findByUsername(username);
         UserSettingsDTO.UIMode uiMode = mapUserToUiMode(authentication);
+        UserSettingsDTO.PhotoMode photoMode = mapUserToPhotoMode(authentication);
         if (userOptional.isPresent()) {
             User user = userOptional.get();
             UserSettings dbSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
@@ -68,6 +70,7 @@ public class UserSettingsControllerAdvice {
                     dbSettings.getHomeLongitude(),
                     tilesCustomizationProvider.getTilesConfiguration(),
                     uiMode,
+                    photoMode,
                     dbSettings.getTimeDisplayMode(),
                     dbSettings.getTimeZoneOverride(),
                     dbSettings.getCustomCss() !=null ? "/user-css/" + user.getId() : null);
@@ -81,6 +84,7 @@ public class UserSettingsControllerAdvice {
                 DEFAULT_HOME_LONGITUDE,
                 tilesCustomizationProvider.getTilesConfiguration(),
                 uiMode,
+                photoMode,
                 TimeDisplayMode.DEFAULT,
                 null,
                 null);
@@ -94,8 +98,22 @@ public class UserSettingsControllerAdvice {
             return UserSettingsDTO.UIMode.SHARED_FULL;
         } else if (grantedRoles.contains("ROLE_MAGIC_LINK_ONLY_LIVE") || grantedRoles.contains("ROLE_MAGIC_LINK_ONLY_LIVE_WITH_PHOTOS")) {
             return UserSettingsDTO.UIMode.SHARED_LIVE_MODE_ONLY;
+        } else if (grantedRoles.contains("ROLE_MAGIC_LINK_MEMORY_VIEW_ONLY") || grantedRoles.contains("ROLE_MAGIC_LINK_MEMORY_EDIT_ACCESS")) {
+            return UserSettingsDTO.UIMode.VIEW_MEMORIES;
         } else {
             throw new IllegalStateException("Invalid user authentication mode detected [" + grantedRoles + "]");
+        }
+    }
+    private UserSettingsDTO.PhotoMode mapUserToPhotoMode(Authentication authentication) {
+        List<String> grantedRoles = authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
+        if (grantedRoles.contains("ROLE_ADMIN") ||
+                grantedRoles.contains("ROLE_USER") ||
+                grantedRoles.contains("MAGIC_LINK_MEMORY_VIEW_ONLY") ||
+                grantedRoles.contains("MAGIC_LINK_MEMORY_EDIT_ACCESS") ||
+                grantedRoles.contains("ROLE_MAGIC_LINK_ONLY_LIVE_WITH_PHOTOS")) {
+            return UserSettingsDTO.PhotoMode.ENABLED;
+        } else {
+            return UserSettingsDTO.PhotoMode.DISABLED;
         }
     }
 

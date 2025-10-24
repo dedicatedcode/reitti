@@ -1,6 +1,8 @@
 package com.dedicatedcode.reitti.config;
 
+import com.dedicatedcode.reitti.model.security.MagicLinkResourceType;
 import com.dedicatedcode.reitti.model.security.MagicLinkToken;
+import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.MagicLinkJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
@@ -17,6 +19,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 @Component
@@ -34,7 +37,12 @@ public class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        if (!"/access".equals(request.getRequestURI()) || request.getParameter("mt") == null) {
+        if (request.getParameter("mt") == null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        boolean isMemoryRequest = request.getRequestURI().startsWith("/memories/");
+        if (!("/access".equals(request.getRequestURI()) || isMemoryRequest)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -55,6 +63,18 @@ public class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
                 response.sendRedirect("/error/magic-link?error=expired");
                 return;
             }
+            Long resourceId = null;
+            if (isMemoryRequest) {
+                try {
+                    resourceId = Long.parseLong(request.getRequestURI().substring("/memories/".length()));
+                } catch (NumberFormatException e) {
+                    //ignored
+                }
+                if (linkToken.getResourceType() != MagicLinkResourceType.MEMORY || resourceId == null || resourceId.longValue() != linkToken.getResourceId()) {
+                    response.sendRedirect("/error/magic-link?error=invalid");
+                    return;
+                }
+            }
 
             Optional<User> user = magicLinkJdbcService.findUserIdByToken(linkToken.getId()).flatMap(userJdbcService::findById);
 
@@ -67,7 +87,7 @@ public class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
 
             String specialRole = "ROLE_MAGIC_LINK_" + linkToken.getAccessLevel().name();
             MagicLinkAuthenticationToken authentication = new MagicLinkAuthenticationToken(
-                    user.get(),
+                    new TokenUser(user.get(), linkToken.getResourceType(), resourceId, List.of(specialRole)),
                     null,
                     Collections.singletonList(new SimpleGrantedAuthority(specialRole)),
                     linkToken.getId()
@@ -77,7 +97,11 @@ public class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
             request.getSession().setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
                     SecurityContextHolder.getContext());
 
-            response.sendRedirect("/");
+            if (linkToken.getResourceType() != MagicLinkResourceType.MEMORY) {
+                response.sendRedirect("/");
+            } else {
+                response.sendRedirect("/memories/" + linkToken.getResourceId());
+            }
             return;
         } catch (Exception e) {
             response.sendRedirect("/error/magic-link?error=processing");

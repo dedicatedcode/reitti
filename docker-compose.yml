@@ -11,8 +11,13 @@ services:
         restart: true
       redis:
         condition: service_healthy
+    volumes:
+     - reitti-data:/data/
     environment:
       PHOTON_BASE_URL: http://photon:2322
+      POSTGRES_USER: reitti
+      POSTGRES_PASSWORD: reitti
+      POSTGRES_DB: reittidb
   postgis:
     image: postgis/postgis:17-3.5-alpine
     environment:
@@ -48,7 +53,7 @@ services:
       timeout: 5s
       retries: 5
   photon:
-    image: rtuszik/photon-docker:1.0.0
+    image: rtuszik/photon-docker:1.2.1
     environment:
       - UPDATE_STRATEGY=PARALLEL
       - REGION=de #set your main country code here to save space or drop this line to fetch the whole index.
@@ -59,3 +64,4 @@ volumes:
   rabbitmq-data:
   redis-data:
   photon-data:
+  reitti-data:

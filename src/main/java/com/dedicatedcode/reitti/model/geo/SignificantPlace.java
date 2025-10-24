@@ -9,6 +9,7 @@ public class SignificantPlace implements Serializable {
     private final Long id;
     private final String name;
     private final String address;
+    private final String city;
     private final String countryCode;
     private final Double latitudeCentroid;
     private final Double longitudeCentroid;
@@ -18,12 +19,13 @@ public class SignificantPlace implements Serializable {
     private final Long version;
 
     public static SignificantPlace create(Double latitude, Double longitude) {
-        return new SignificantPlace(null, null, null, null, latitude, longitude, PlaceType.OTHER, ZoneId.systemDefault(), false, 1L);
+        return new SignificantPlace(null, null, null, null,null, latitude, longitude, PlaceType.OTHER, ZoneId.systemDefault(), false, 1L);
     }
 
     public SignificantPlace(Long id,
                             String name,
                             String address,
+                            String city,
                             String countryCode,
                             Double latitudeCentroid,
                             Double longitudeCentroid,
@@ -33,6 +35,7 @@ public class SignificantPlace implements Serializable {
         this.id = id;
         this.name = name;
         this.address = address;
+        this.city = city;
         this.countryCode = countryCode;
         this.latitudeCentroid = latitudeCentroid;
         this.longitudeCentroid = longitudeCentroid;
@@ -84,31 +87,35 @@ public class SignificantPlace implements Serializable {
     
     // Wither methods
     public SignificantPlace withGeocoded(boolean geocoded) {
-        return new SignificantPlace(this.id, this.name, this.address, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, timezone, geocoded, this.version);
+        return new SignificantPlace(this.id, this.name, this.address, city, this.countryCode,  this.latitudeCentroid, this.longitudeCentroid, this.type, timezone, geocoded, this.version);
     }
 
     public SignificantPlace withName(String name) {
-        return new SignificantPlace(this.id, name, this.address, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, timezone, this.geocoded, this.version);
+        return new SignificantPlace(this.id, name, this.address, city, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, timezone, this.geocoded, this.version);
     }
 
     public SignificantPlace withAddress(String address) {
-        return new SignificantPlace(this.id, this.name, address, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, timezone, this.geocoded, this.version);
+        return new SignificantPlace(this.id, this.name, address, city, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, timezone, this.geocoded, this.version);
     }
 
     public SignificantPlace withCountryCode(String countryCode) {
-        return new SignificantPlace(this.id, this.name, this.address, countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, timezone, this.geocoded, this.version);
+        return new SignificantPlace(this.id, this.name, this.address, city, countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, timezone, this.geocoded, this.version);
     }
 
     public SignificantPlace withType(PlaceType type) {
-        return new SignificantPlace(this.id, this.name, this.address, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, type, timezone, this.geocoded, this.version);
+        return new SignificantPlace(this.id, this.name, this.address, city, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, type, timezone, this.geocoded, this.version);
     }
 
     public SignificantPlace withId(Long id) {
-        return new SignificantPlace(id, this.name, address, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, timezone, this.geocoded, this.version);
+        return new SignificantPlace(id, this.name, address, city, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, timezone, this.geocoded, this.version);
     }
 
     public SignificantPlace withTimezone(ZoneId timezone) {
-        return new SignificantPlace(this.id, this.name, address, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, timezone, this.geocoded, this.version);
+        return new SignificantPlace(this.id, this.name, address, city, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, timezone, this.geocoded, this.version);
+    }
+
+    public SignificantPlace withCity(String city) {
+        return new SignificantPlace(this.id, this.name, address, city, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, timezone, this.geocoded, this.version);
     }
 
     @Override
@@ -131,6 +138,9 @@ public class SignificantPlace implements Serializable {
                 '}';
     }
 
+    public String getCity() {
+        return this.city;
+    }
 
     public enum PlaceType {
         RESTAURANT("lni-restaurant", "place.type.restaurant"),
@@ -151,6 +161,17 @@ public class SignificantPlace implements Serializable {
         CHURCH("lni-church", "place.type.church"),
         CINEMA("lni-camera", "place.type.cinema"),
         CAFE("lni-coffee-cup", "place.type.cafe"),
+        MUSEUM("lni-museum", "place.type.museum"),
+        LANDMARK("lni-landmark", "place.type.landmark"),
+        TOURIST_ATTRACTION("lni-map", "place.type.tourist_attraction"),
+        HISTORIC_SITE("lni-history", "place.type.historic_site"),
+        MONUMENT("lni-monument", "place.type.monument"),
+        SHOPPING_MALL("lni-shopping-basket", "place.type.shopping_mall"),
+        MARKET("lni-store", "place.type.market"),
+        GALLERY("lni-gallery", "place.type.gallery"),
+        THEATER("lni-theater", "place.type.theater"),
+        GROCERY_STORE("lni-cart", "place.type.grocery_store"),
+        ATM("lni-money-location", "place.type.atm"),
         OTHER("lni-map-marker", "place.type.other");
 
         private final String iconClass;

@@ -26,7 +26,7 @@ replay_pid*
 .aider*
 /target/
 /.idea/
-
+/data
 *secrets.properties
 *oidc.properties
 

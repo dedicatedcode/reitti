@@ -126,16 +126,16 @@ class MagicLinkJdbcServiceTest {
         // Given
         MagicLinkToken originalToken = createTestToken("update-token");
         Instant lastUsed = Instant.now();
-        
+
         MagicLinkToken updatedToken = new MagicLinkToken(
-            originalToken.getId(),
+                originalToken.getId(),
                 originalToken.getName(),
-            originalToken.getTokenHash(),
+                originalToken.getTokenHash(),
                 MagicLinkAccessLevel.ONLY_LIVE, // Changed access level
-            originalToken.getExpiryDate(),
-            originalToken.getCreatedAt(),
-            lastUsed, // Set last used
-            true
+                originalToken.getExpiryDate(),
+                originalToken.getCreatedAt(),
+                lastUsed, // Set last used
+                true
         );
 
         // When

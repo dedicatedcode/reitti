@@ -1,0 +1,282 @@
+.share-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.share-overlay-content {
+    background: white;
+    border-radius: 8px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.share-overlay-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e0e0e0;
+    color: var(--color-text-white);
+    background: var(--color-highlight);
+}
+
+.share-overlay-header h2 {
+    margin: 0;
+    color: var(--color-background-dark);
+    font-size: 1.5rem;
+}
+
+.btn-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #666;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+.btn-close:hover {
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+.share-overlay-body {
+    padding: 24px;
+    color: var(--color-text-white);
+    background: var(--color-background-dark);
+}
+
+.memory-info {
+    margin-bottom: 24px;
+    padding: 16px;
+    border-radius: 6px;
+    border: 1px solid var(--color-highlight);
+    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.3);
+}
+
+.memory-info h3 {
+    margin: 0 0 8px 0;
+}
+
+.memory-date-range {
+    margin: 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.memory-description {
+    margin: 8px 0 0 0;
+}
+
+.sharing-explanation {
+    margin-bottom: 24px;
+}
+
+.sharing-explanation h4 {
+    margin: 0 0 12px 0;
+}
+
+.sharing-explanation ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.sharing-explanation li {
+    margin-bottom: 4px;
+}
+
+.sharing-options h4 {
+    margin: 0 0 16px 0;
+}
+
+.sharing-option {
+    margin-bottom: 12px;
+}
+
+.sharing-option-content {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    text-align: left;
+}
+
+.sharing-option-icon {
+    font-size: 2rem;
+    margin-right: 16px;
+    min-width: 48px;
+}
+
+.sharing-option-details h5 {
+    margin: 0 0 4px 0;
+    font-size: 1.1rem;
+}
+
+.sharing-option-details p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.share-config-summary {
+    margin-bottom: 24px;
+    padding: 16px;
+    border-radius: 6px;
+    border: 1px solid var(--color-highlight);
+    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.3);
+}
+
+.share-config-summary h3 {
+    margin: 0 0 12px 0;
+}
+
+.access-level-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+}
+
+.share-config-form .form-group {
+    margin-bottom: 20px;
+}
+
+.share-config-form label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+.share-config-form .form-control {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--color-highlight);
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.share-config-form .form-text {
+    font-size: 0.85rem;
+    margin-top: 4px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.share-success {
+    text-align: center;
+}
+
+.success-icon {
+    font-size: 3rem;
+    color: #28a745;
+    margin-bottom: 16px;
+}
+
+.share-success h3 {
+    margin: 0 0 20px 0;
+}
+
+.share-details {
+    margin-bottom: 24px;
+    text-align: left;
+}
+
+.share-detail-item {
+    margin-bottom: 8px;
+}
+
+.share-link-section {
+    margin-bottom: 24px;
+    text-align: left;
+}
+
+.share-link-section label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.share-link-container {
+    display: flex;
+    gap: 8px;
+}
+
+.share-url-input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid var(--color-highlight);
+    color: var(--color-text-white);
+    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.3);
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9rem;
+    background-color: #f8f9fa;
+}
+
+.share-instructions {
+    text-align: left;
+}
+
+.share-instructions h4 {
+    margin: 0 0 12px 0;
+}
+
+.share-instructions ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.share-instructions li {
+    margin-bottom: 6px;
+}
+
+@media (max-width: 768px) {
+    .share-overlay {
+        padding: 10px;
+    }
+    
+    .share-overlay-content {
+        max-height: 95vh;
+    }
+    
+    .share-overlay-header,
+    .share-overlay-body {
+        padding: 16px;
+    }
+    
+    .sharing-option-content {
+        padding: 12px;
+    }
+    
+    .sharing-option-icon {
+        font-size: 1.5rem;
+        margin-right: 12px;
+        min-width: 36px;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .share-link-container {
+        flex-direction: column;
+    }
+}

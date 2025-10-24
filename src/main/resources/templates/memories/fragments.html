@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+
+<!-- Block type selection fragment -->
+<div th:fragment="block-type-selection" class="block-type-selection">
+    <h3 th:text="#{memory.block.select.type}">Select Block Type</h3>
+    <div class="block-type-grid">
+        <button type="button" 
+                class="block-type-option"
+                th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='TEXT', position=${position})}"
+                hx-target=".block-type-selection"
+                hx-swap="outerHTML">
+            <span th:text="#{memory.block.type.text}">Text Block</span>
+            <p th:text="#{memory.block.type.text.description}">Add text content with headlines and paragraphs</p>
+        </button>
+        
+        <button type="button" 
+                class="block-type-option"
+                th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='VISIT_CLUSTER', position=${position})}"
+                hx-target=".block-type-selection"
+                hx-swap="outerHTML">
+            <span th:text="#{memory.block.type.visit}">Visit Block</span>
+            <p th:text="#{memory.block.type.visit.description}">Add a location you visited during this memory</p>
+        </button>
+        
+        <button type="button" 
+                class="block-type-option"
+                th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='TRIP_CLUSTER', position=${position})}"
+                hx-target=".block-type-selection"
+                hx-swap="outerHTML">
+            <span th:text="#{memory.block.type.trip}">Trip Block</span>
+            <p th:text="#{memory.block.type.trip.description}">Add a journey or route from this memory</p>
+        </button>
+        
+        <button type="button" 
+                class="block-type-option"
+                th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='IMAGE_GALLERY', position=${position})}"
+                hx-target=".block-type-selection"
+                hx-swap="outerHTML">
+            <span th:text="#{memory.block.type.gallery}">Image Gallery</span>
+            <p th:text="#{memory.block.type.gallery.description}">Add a collection of photos from this memory</p>
+        </button>
+    </div>
+    
+    <div class="form-actions">
+        <button type="button" 
+                class="btn btn-secondary"
+                hx-get="/memories/fragments/empty"
+                hx-target=".block-type-selection"
+                hx-swap="delete"
+                th:text="#{memory.block.cancel}">Cancel</button>
+    </div>
+</div>
+
+<!-- Empty fragment for clearing content -->
+<div th:fragment="empty"></div>
+
+<!-- Text block form -->
+<div th:fragment="text-block-form" class="block-form">
+    <h3 th:text="#{memory.block.text.new}">Add Text Block</h3>
+    <form th:attr="hx-post=@{/memories/{id}/blocks/text(id=${memoryId}, position=${position})}" method="post" hx-target=".block-form" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}">
+        
+        <div class="form-group">
+            <label for="headline" th:text="#{memory.block.text.headline}">Headline</label>
+            <input type="text" id="headline" name="headline" class="form-control" th:placeholder="#{memory.block.text.headline.placeholder}">
+        </div>
+        
+        <div class="form-group">
+            <label for="content" th:text="#{memory.block.text.content}">Content</label>
+            <textarea id="content" name="content" class="form-control" rows="6" th:placeholder="#{memory.block.text.content.placeholder}"></textarea>
+        </div>
+        
+        <div class="form-actions">
+            <button type="button" 
+                    class="btn btn-secondary"
+                    hx-get="/memories/fragments/empty"
+                    hx-target=".block-form"
+                    hx-swap="delete"
+                    th:text="#{memory.block.cancel}">Cancel</button>
+            <button type="submit" class="btn btn-primary" th:text="#{memory.block.create}">Save Block</button>
+        </div>
+    </form>
+</div>
+
+<!-- Visit block form -->
+<div th:fragment="visit-block-form" class="block-form">
+    <h2 th:text="#{memory.block.visit.new}">Add Visit Block</h2>
+    <form th:attr="hx-post=@{/memories/{id}/blocks/cluster(id=${memoryId}, position=${position}, type='CLUSTER_VISIT')}" method="post" hx-target=".block-form" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}">
+        <div class="form-group">
+            <label th:text="#{memory.edit.block.title}" for="title">Title</label>
+            <input type="text" id="title" name="title" class="form-control" th:placeholder="#{memory.edit.block.title.placeholder}" placeholder="Enter title">
+        </div>
+        <div class="form-group">
+            <label th:text="#{memory.edit.block.cluster.visit.select.visits}">Select Visits</label>
+            <table class="table">
+                <thead>
+                <tr>
+                    <th th:text="#{memory.edit.block.cluster.visit.selected}">Selected</th>
+                    <th th:text="#{memory.edit.block.cluster.visit.visit}">Trip</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="visit : ${availableVisits}">
+                    <td>
+                        <input type="checkbox"
+                               name="selectedParts"
+                               th:value="${visit.id}">
+                    </td>
+                    <td th:text="${visit.place.name} + ' (' + ${#temporals.format(visit.startTime, 'MMM d, yyyy HH:mm')} + ' -> ' + ${#temporals.format(visit.endTime, 'HH:mm')} + ')'">Visit details</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="form-actions">
+            <button type="button"
+                    class="btn btn-secondary"
+                    hx-get="/memories/fragments/empty"
+                    hx-target=".block-form"
+                    hx-swap="delete"
+                    th:text="#{memory.block.cancel}">Cancel</button>
+            <button type="submit" class="btn btn-primary" th:text="#{memory.block.create}">Save Block</button>
+        </div>
+    </form>
+</div>
+
+<!-- Trip block form -->
+<div th:fragment="trip-block-form" class="block-form">
+    <h2 th:text="#{memory.block.trip.new}">Edit Trips Block</h2>
+    <form th:attr="hx-post=@{/memories/{id}/blocks/cluster(id=${memoryId}, position=${position}, type='CLUSTER_TRIP')}" method="post" hx-target=".block-form" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}">
+        <div class="form-group">
+            <label th:text="#{memory.edit.block.title}" for="title">Title</label>
+            <input type="text" id="title" name="title" class="form-control" th:placeholder="#{memory.edit.block.title.placeholder}" placeholder="Enter title">
+        </div>
+        <div class="form-group">
+            <label th:text="#{memory.edit.block.cluster.trip.select.trips}">Select Trips</label>
+            <table class="table">
+                <thead>
+                <tr>
+                    <th th:text="#{memory.edit.block.cluster.trip.selected}">Selected</th>
+                    <th th:text="#{memory.edit.block.cluster.trip.trip}">Trip</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="trip : ${availableTrips}">
+                    <td>
+                        <input type="checkbox"
+                               name="selectedParts"
+                               th:value="${trip.id}">
+                    </td>
+                    <td th:text="${#temporals.format(trip.startTime, 'MMM d, yyyy HH:mm')} + ' (' + ${trip.startVisit != null and trip.startVisit.place != null ? trip.startVisit.place.name : 'Unknown'} + ') -> ' + ${#temporals.format(trip.endTime, 'HH:mm')} + ' (' + ${trip.endVisit != null and trip.endVisit.place != null ? trip.endVisit.place.name : 'Unknown'} + ')'">Trip details</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="form-actions">
+            <button type="button"
+                    class="btn btn-secondary"
+                    hx-get="/memories/fragments/empty"
+                    hx-target=".block-form"
+                    hx-swap="delete"
+                    th:text="#{memory.block.cancel}">Cancel</button>
+            <button type="submit" class="btn btn-primary" th:text="#{memory.block.create}">Save Block</button>
+        </div>
+    </form>
+</div>
+
+<!-- Image gallery block form -->
+<div th:fragment="image-gallery-block-form" class="block-form gallery-block-form">
+    <h3 th:text="#{memory.block.gallery.new}">New Image Gallery Block</h3>
+    
+    <form th:attr="hx-post=@{/memories/{id}/blocks/image-gallery(id=${memoryId}, position=${position})}" method="post" hx-target=".block-form" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}">
+        <div class="gallery-panels">
+            <!-- Immich Panel -->
+            <div class="gallery-panel immich-panel" th:if="${immichEnabled && isOwner}">
+                <h4 th:text="#{memory.block.gallery.immich.title}">Select from Immich</h4>
+                <div class="immich-photos-container">
+                    <div class="immich-photos-grid" 
+                         id="immichPhotosGrid"
+                         th:attr="hx-get=@{/memories/{id}/blocks/immich-photos(page=0, id=${memoryId})}"
+                         hx-target=".immich-photos-container"
+                         hx-trigger="load"
+                         hx-swap="innerHTML">
+                        <div class="loading" th:text="#{memory.block.gallery.loading}">Loading photos...</div>
+                    </div>
+                    <div class="immich-pagination" id="immichPagination"></div>
+                </div>
+            </div>
+
+            <!-- File Upload Panel -->
+            <div class="gallery-panel upload-panel">
+                <h4 th:text="#{memory.block.gallery.upload.title}">Upload Images</h4>
+                <div class="upload-area">
+                    <input type="file" 
+                           id="fileInput" 
+                           name="files" 
+                           multiple 
+                           accept="image/*" 
+                           class="form-control"
+                           th:attr="hx-post=@{/memories/{id}/blocks/upload-image(id=${memoryId})}"
+                           hx-encoding="multipart/form-data"
+                           hx-target="#selectedPhotos"
+                           hx-swap="beforeend">
+                    <label for="fileInput" class="upload-label">
+                        <i class="lni lni-cloud-upload"></i>
+                        <span th:text="#{memory.block.gallery.upload.choose}">Choose files or drag here</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Combined Selected Photos Section -->
+        <div class="selected-photos-section">
+            <h4 th:text="#{memory.block.gallery.selected.title}">Selected Photos</h4>
+            <div class="selected-photos-combined" id="selectedPhotos"></div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary" th:text="#{memory.block.create}">Create Gallery Block</button>
+            <button type="button"
+                    class="btn btn-secondary"
+                    th:attr="hx-get=@{/memories/fragments/empty}"
+                    hx-target=".block-form"
+                    hx-swap="delete"
+                    th:text="#{memory.block.cancel}">Cancel</button>
+        </div>
+    </form>
+</div>
+
+<!-- Uploaded photos fragment -->
+<th:block th:fragment="uploaded-photos">
+    <div th:each="url : ${urls}" class="selected-photo-item">
+        <img th:src="${url}" alt="Uploaded image">
+        <input type="hidden" name="uploadedUrls" th:value="${url}">
+        <button type="button" class="btn-remove"
+                hx-get="/memories/fragments/empty"
+                hx-target="closest .selected-photo-item"
+                hx-swap="delete"
+                th:title="#{memory.block.gallery.remove}">
+            <i class="lni lni-trash-3"></i>
+        </button>
+    </div>
+</th:block>
+
+<!-- Immich photos grid fragment -->
+<div class="immich-photos-grid" th:fragment="immich-photos-grid">
+    <div th:if="${photos.isEmpty()}" class="no-photos" th:text="#{memory.block.gallery.immich.no.photos}">
+        No photos found for this date range
+    </div>
+    <div th:each="photo : ${photos}" 
+         class="immich-photo-item"
+         th:attr="hx-post=@{/memories/{id}/blocks/fetch-immich-photo(id=${memoryId}, assetId=${photo.id})}"
+         hx-target="#selectedPhotos"
+         hx-swap="beforeend">
+        <img th:src="${photo.thumbnailUrl}" th:alt="${photo.fileName}">
+        <div class="photo-overlay">
+            <i class="lni lni-plus"></i>
+        </div>
+    </div>
+    <div th:if="${totalPages > 1}" class="pagination-controls">
+        <button th:if="${currentPage > 0}" 
+                type="button" 
+                class="btn btn-secondary" 
+                th:text="#{memory.block.gallery.pagination.previous}"
+                th:attr="hx-get=@{/memories/{id}/blocks/immich-photos(page=${currentPage - 1}, id=${memoryId})}"
+                hx-target=".immich-photos-container"
+                hx-swap="innerHTML">Previous</button>
+        <span class="page-info" th:text="${currentPage + 1} + ' / ' + ${totalPages}"></span>
+        <button th:if="${currentPage < totalPages - 1}" 
+                type="button" 
+                class="btn btn-secondary" 
+                th:text="#{memory.block.gallery.pagination.next}"
+                th:attr="hx-get=@{/memories/{id}/blocks/immich-photos(page=${currentPage + 1}, id=${memoryId})}"
+                hx-target=".immich-photos-container"
+                hx-swap="innerHTML">Next</button>
+    </div>
+</div>
+
+<div class="years-navigation" th:fragment="years-navigation">
+    <div class="timeline-entry trip active" id="overall-entry" data-year="overall"
+         hx-get="/memories/all"
+         hx-target=".memories-overview"
+         hx-trigger="load, click[shouldTrigger(this)]"
+         hx-swap="outerHTML">
+        <div class="entry-description" th:text="#{memory.list.all}">All</div>
+    </div>
+    <div class="timeline-entry trip" th:each="year : ${years}"
+         th:attr="hx-get='/memories/year/'+ ${year}, data-year=${year}"
+         hx-target=".memories-overview"
+         hx-trigger="click[shouldTrigger(this)]"
+         hx-swap="outerHTML">
+        <div class="entry-description" th:text="${year}">2024</div>
+    </div>
+    <script>
+        new function () {
+            document.querySelector('.years-navigation').addEventListener('click', function (event) {
+                const entry = event.target.closest('.timeline-entry');
+                if (!entry) return;
+                const isCurrentlyActive = entry.classList.contains('active');
+                if (isCurrentlyActive) {
+                    return;
+                }
+                document.querySelectorAll('.timeline-container .timeline-entry')
+                    .forEach(e => e.classList.remove('active'));
+                entry.classList.add('active');
+            });
+        }()
+
+    </script>
+</div>
+
+
+<div class="memories-overview settings-content-area" th:fragment="memories-list">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>Memories</h2>
+        <button th:attr="hx-get=@{/memories/new(year=${year})}" hx-target=".settings-content-area" class="btn btn-primary">Create Memory</button>
+    </div>
+
+    <div th:if="${memories.isEmpty()}" class="empty-state">
+        <i class="lni lni-image"></i>
+        <h2>No memories yet</h2>
+        <p>Create your first memory by selecting a date range on the timeline</p>
+    </div>
+
+    <div class="memories-grid" th:unless="${memories.isEmpty()}">
+        <div th:each="memory : ${memories}" class="memory-card">
+            <div class="memory-card-map-container" th:attr="data-raw-location-url=${memory.rawLocationUrl}">
+            </div>
+            <div class="memory-card-details">
+                <div class="memory-card-info">
+                    <h3 th:text="${memory.memory.title}">Memory Title</h3>
+                    <div>
+                        <span th:text="${#temporals.format(memory.memory.startDate, 'MMM d, yyyy')}">Start Date</span>
+                        <span th:if="${memory.memory.startDate != memory.memory.endDate}">
+                            - <span th:text="${#temporals.format(memory.memory.endDate, 'MMM d, yyyy')}">End Date</span>
+                        </span>
+                    </div>
+                    <div th:if="${memory.memory.description != null && !memory.memory.description.isEmpty()}"
+                         th:text="${memory.memory.description}">Description</div>
+                </div>
+                <div>
+                    <a th:href="@{/memories/{id}(id=${memory.memory.id})}"
+                       class="btn btn-block memory-link"
+                       th:attr="data-memory-id=${memory.memory.id}"
+                       onclick="navigateToMemoryWithTimezone(event, this.dataset.memoryId)">View Memory</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <script>
+        function navigateToMemoryWithTimezone(event, memoryId) {
+            event.preventDefault();
+            const timezone = getUserTimezone();
+            window.location.href = `/memories/${memoryId}?timezone=${timezone}`;
+        }
+
+        (function () {
+            const mapContainers = document.querySelectorAll('.memory-card-map-container');
+            for (const mapContainer of mapContainers) {
+                const memoryMap = L.map(mapContainer, {
+                    zoomControl: false,
+                    attributionControl: false,
+                    boxZoom: false,
+                    doubleClickZoom: false,
+                    dragging: false,
+                    keyboard: false,
+                    scrollWheelZoom: false,
+                    tap: false,
+                    touchZoom: false
+                }).setView([51.505, -0.09], 13);
+                L.tileLayer.grayscale('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(memoryMap);
+                const  rawLocationLoader = new RawLocationLoader(memoryMap, window.userSettings);
+                const userConfigs = [{
+                    url: mapContainer.attributes['data-raw-location-url'].value,
+                    color: '#f1ba63',
+                    avatarUrl: null,
+                    avatarFallback: null,
+                    displayName: 'Memory Location Data'
+                }];
+                rawLocationLoader.init(userConfigs);
+
+                // Load location data for the memory date range without bounds filtering
+                rawLocationLoader.loadForDateRange(
+                    null,
+                    null,
+                    false, // autoUpdateMode
+                    false  // withBounds - don't filter by current map bounds
+                );
+            }
+        })()
+    </script>
+</div>
+
+
+<div th:fragment="share-overlay" class="share-overlay">
+    <div class="share-overlay-content">
+        <div class="share-overlay-header">
+            <h2 th:text="#{memory.share.title}">Share Memory</h2>
+            <button type="button"
+                    class="btn-close"
+                    hx-get="/memories/fragments/empty"
+                    hx-target="#share-overlay-container"
+                    hx-swap="innerHTML">×</button>
+        </div>
+
+        <div class="share-overlay-body">
+            <div class="memory-info">
+                <h3 th:text="${memory.title}">Memory Title</h3>
+                <p class="memory-date-range">
+                    <i class="lni lni-calendar"></i>
+                    <span th:text="${#temporals.format(memory.startDate, 'MMMM d, yyyy')}">Start Date</span>
+                    <span th:if="${memory.startDate != memory.endDate}">
+                        - <span th:text="${#temporals.format(memory.endDate, 'MMMM d, yyyy')}">End Date</span>
+                    </span>
+                </p>
+                <p th:if="${memory.description != null && !memory.description.isEmpty()}"
+                   class="memory-description"
+                   th:text="${memory.description}">Description</p>
+            </div>
+
+            <div class="sharing-explanation">
+                <h4 th:text="#{memory.share.what.title}">What will be shared?</h4>
+                <ul>
+                    <li th:text="#{memory.share.what.content}">The complete memory with all its content blocks</li>
+                    <li th:text="#{memory.share.what.location}">Location data and maps for the memory period</li>
+                    <li th:text="#{memory.share.what.photos}">Photos and text content within the memory</li>
+                    <li th:text="#{memory.share.what.trips}">Trip and visit information during this time period</li>
+                </ul>
+            </div>
+
+            <div class="sharing-options">
+                <h4 th:text="#{memory.share.permissions.title}">Choose sharing permissions:</h4>
+
+                <div class="sharing-option">
+                    <button type="button"
+                            class="btn btn-block sharing-option-btn"
+                            th:attr="hx-get=@{/memories/{id}/share/form(id=${memory.id}, accessLevel='MEMORY_VIEW_ONLY')}"
+                            hx-target="#share-overlay-container"
+                            hx-swap="innerHTML">
+                        <div class="sharing-option-content">
+                            <div class="sharing-option-icon">
+                                <i class="lni lni-eye"></i>
+                            </div>
+                            <div class="sharing-option-details">
+                                <h5 th:text="#{memory.share.view.title}">View Only</h5>
+                                <p th:text="#{memory.share.view.description}">Recipients can view the memory but cannot make any changes</p>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+
+                <div class="sharing-option">
+                    <button type="button"
+                            class="btn btn-block sharing-option-btn"
+                            th:attr="hx-get=@{/memories/{id}/share/form(id=${memory.id}, accessLevel='MEMORY_EDIT_ACCESS')}"
+                            hx-target="#share-overlay-container"
+                            hx-swap="innerHTML">
+                        <div class="sharing-option-content">
+                            <div class="sharing-option-icon">
+                                <i class="lni lni-pencil-1"></i>
+                            </div>
+                            <div class="sharing-option-details">
+                                <h5 th:text="#{memory.share.edit.title}">Edit Access</h5>
+                                <p th:text="#{memory.share.edit.description}">Recipients can view and edit the memory, add blocks, and modify content</p>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:fragment="share-form" class="share-overlay">
+    <div class="share-overlay-content">
+        <div class="share-overlay-header">
+            <h2 th:text="#{memory.share.configure.title}">Configure Share Link</h2>
+            <button type="button"
+                    class="btn-close"
+                    hx-get="/memories/fragments/empty"
+                    hx-target="#share-overlay-container"
+                    hx-swap="innerHTML">×</button>
+        </div>
+
+        <div class="share-overlay-body">
+            <div class="share-config-summary">
+                <h3 th:text="#{memory.share.configure.sharing} + ': ' + ${memory.title}">Sharing: Memory Title</h3>
+                <div class="access-level-display">
+                    <i th:class="${accessLevel == T(com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel).MEMORY_VIEW_ONLY ? 'lni lni-eye' : 'lni lni-pencil'}"></i>
+                    <span th:text="${accessLevel == T(com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel).MEMORY_VIEW_ONLY ? #{memory.share.access.view} : #{memory.share.access.edit}}">Access Level</span>
+                </div>
+            </div>
+
+            <form th:attr="hx-post=@{/memories/{id}/share(id=${memory.id})}"
+                  hx-target="#share-overlay-container"
+                  hx-swap="innerHTML"
+                  class="share-config-form">
+                <input type="hidden" name="accessLevel" th:value="${accessLevel}">
+
+                <div class="form-group">
+                    <label for="validDays" th:text="#{memory.share.expires.label}">Link expires after:</label>
+                    <select name="validDays" id="validDays" class="form-control">
+                        <option value="7" th:text="#{memory.share.expires.7days}">7 days</option>
+                        <option value="30" selected th:text="#{memory.share.expires.30days}">30 days</option>
+                        <option value="90" th:text="#{memory.share.expires.90days}">90 days</option>
+                        <option value="0" th:text="#{memory.share.expires.never}">Never expires</option>
+                    </select>
+                    <small class="form-text" th:text="#{memory.share.expires.help}">Choose how long the share link should remain valid</small>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="lni lni-link"></i> <span th:text="#{memory.share.create.button}">Create Share Link</span>
+                    </button>
+                    <button type="button"
+                            class="btn"
+                            th:attr="hx-get=@{/memories/{id}/share(id=${memory.id})}"
+                            hx-target="#share-overlay-container"
+                            hx-swap="innerHTML">
+                        <i class="lni lni-arrow-left"></i> <span th:text="#{memory.share.back.button}">Back</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div th:fragment="share-result" class="share-overlay">
+    <div class="share-overlay-content">
+        <div class="share-overlay-header">
+            <h2 th:text="#{memory.share.result.title}">Share Link Created</h2>
+            <button type="button"
+                    class="btn-close"
+                    hx-get="/memories/fragments/empty"
+                    hx-target="#share-overlay-container"
+                    hx-swap="innerHTML">×</button>
+        </div>
+
+        <div class="share-overlay-body">
+            <div class="share-success">
+                <div class="success-icon">
+                    <i class="lni lni-check-circle-1"></i>
+                </div>
+                <h3 th:text="#{memory.share.result.success}">Share Link Created Successfully!</h3>
+
+                <div class="share-details">
+                    <div class="share-detail-item">
+                        <strong th:text="#{memory.share.result.memory}">Memory:</strong> <span th:text="${memory.title}">Memory Title</span>
+                    </div>
+                    <div class="share-detail-item">
+                        <strong th:text="#{memory.share.result.access}">Access Level:</strong>
+                        <span th:text="${accessLevel == T(com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel).MEMORY_VIEW_ONLY ? #{memory.share.access.view} : #{memory.share.access.edit}}">Access Level</span>
+                    </div>
+                </div>
+
+                <div class="share-link-section">
+                    <label for="shareUrl" th:text="#{memory.share.result.link.label}">Share this link:</label>
+                    <div class="share-link-container">
+                        <input type="text"
+                               id="shareUrl"
+                               class="form-control share-url-input"
+                               th:value="${shareUrl}"
+                               readonly
+                               onclick="this.select()">
+                        <button type="button"
+                                class="btn btn-copy"
+                                th:attr="data-copied-text=#{memory.share.result.copied}, data-copy-text=#{memory.share.result.copy}"
+                                onclick="navigator.clipboard.writeText(document.getElementById('shareUrl').value).then(() => { this.innerHTML = '<i class=\'lni lni-checkmark\'></i> ' + this.dataset.copiedText; setTimeout(() => { this.innerHTML = '<i class=\'lni lni-copy\'></i> ' + this.dataset.copyText; }, 2000); })">
+                            <i class="lni lni-copy"></i> <span th:text="#{memory.share.result.copy}">Copy</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="share-instructions">
+                    <h4 th:text="#{memory.share.result.instructions.title}">How to share:</h4>
+                    <ul>
+                        <li th:text="#{memory.share.result.instructions.copy}">Copy the link above and send it to anyone you want to share with</li>
+                        <li th:text="#{memory.share.result.instructions.account}">Recipients don't need an account to access the memory</li>
+                        <li th:text="#{memory.share.result.instructions.permissions}">The link will work according to the permissions you've set</li>
+                        <li th:if="${accessLevel == T(com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel).MEMORY_VIEW_ONLY}" th:text="#{memory.share.result.instructions.view}">Recipients can view but not edit the memory</li>
+                        <li th:if="${accessLevel == T(com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel).MEMORY_EDIT_ACCESS}" th:text="#{memory.share.result.instructions.edit}">Recipients can view and edit the memory</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button"
+                        class="btn btn-primary"
+                        hx-get="/memories/fragments/empty"
+                        hx-target="#share-overlay-container"
+                        hx-swap="innerHTML">
+                    <i class="lni lni-checkmark"></i> <span th:text="#{memory.share.result.done}">Done</span>
+                </button>
+                <button type="button"
+                        class="btn"
+                        th:attr="hx-get=@{/memories/{id}/share(id=${memory.id})}"
+                        hx-target="#share-overlay-container"
+                        hx-swap="innerHTML">
+                    <i class="lni lni-share"></i> <span th:text="#{memory.share.result.another}">Create Another Link</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

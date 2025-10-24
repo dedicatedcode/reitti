@@ -1,14 +1,17 @@
 class PhotoClient {
-    constructor(map) {
+    constructor(map, enabled) {
         this.map = map;
         this.photoMarkers = [];
         this.photos = [];
+        this.enabled = enabled;
     }
 
     async updatePhotosForRange(start, end, timezone) {
-
+        if (!this.enabled) {
+            return;
+        }
         try {
-            const response = await fetch(`/api/v1/photos/range?timezone=${timezone}&startDate=${start}&endDate=${end}`);
+            const response = await fetch(`/api/v1/photos/immich/range?timezone=${timezone}&startDate=${start}&endDate=${end}`);
             if (!response.ok) {
                 console.warn('Could not fetch photos for date:', date);
                 this.photos = [];

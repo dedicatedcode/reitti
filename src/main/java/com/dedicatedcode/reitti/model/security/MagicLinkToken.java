@@ -11,14 +11,21 @@ public class MagicLinkToken implements Serializable {
     private final Instant expiryDate;
     private final Instant createdAt;
     private final Instant lastUsed;
+    private final MagicLinkResourceType resourceType;
+    private final Long resourceId;
     private final boolean isUsed; // To enforce one-time use if needed
 
     public MagicLinkToken(Long id, String name, String tokenHash, MagicLinkAccessLevel accessLevel, Instant expiryDate, Instant createdAt, Instant lastUsed, boolean isUsed) {
+        this(id, name, tokenHash, accessLevel, expiryDate, MagicLinkResourceType.MAP, null, createdAt, lastUsed, isUsed);
+    }
+    public MagicLinkToken(Long id, String name, String tokenHash, MagicLinkAccessLevel accessLevel, Instant expiryDate, MagicLinkResourceType resourceType, Long resourceId, Instant createdAt, Instant lastUsed, boolean isUsed) {
         this.id = id;
         this.name = name;
         this.tokenHash = tokenHash;
         this.accessLevel = accessLevel;
         this.expiryDate = expiryDate;
+        this.resourceType = resourceType;
+        this.resourceId = resourceId;
         this.createdAt = createdAt;
         this.lastUsed = lastUsed;
         this.isUsed = isUsed;
@@ -54,5 +61,13 @@ public class MagicLinkToken implements Serializable {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public MagicLinkResourceType getResourceType() {
+        return resourceType;
+    }
+
+    public Long getResourceId() {
+        return resourceId;
     }
 }

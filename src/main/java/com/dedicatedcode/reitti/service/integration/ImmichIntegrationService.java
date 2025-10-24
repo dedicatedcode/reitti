@@ -10,6 +10,7 @@ import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ImmichIntegrationJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
+import com.dedicatedcode.reitti.service.StorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
@@ -34,13 +35,16 @@ public class ImmichIntegrationService {
     private final ImmichIntegrationJdbcService immichIntegrationJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final RestTemplate restTemplate;
+    private final StorageService storageService;
 
     public ImmichIntegrationService(ImmichIntegrationJdbcService immichIntegrationJdbcService,
                                     RawLocationPointJdbcService rawLocationPointJdbcService,
-                                    RestTemplate restTemplate) {
+                                    RestTemplate restTemplate,
+                                    StorageService storageService) {
         this.immichIntegrationJdbcService = immichIntegrationJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.restTemplate = restTemplate;
+        this.storageService = storageService;
     }
     
     public Optional<ImmichIntegration> getIntegrationForUser(User user) {
@@ -148,9 +152,8 @@ public class ImmichIntegrationService {
         
         if (searchResponse.getAssets() != null && searchResponse.getAssets().getItems() != null) {
             for (ImmichAsset asset : searchResponse.getAssets().getItems()) {
-                // Use proxy URLs instead of direct Immich URLs
-                String thumbnailUrl = "/api/v1/photos/proxy/" + asset.getId() + "/thumbnail";
-                String fullImageUrl = "/api/v1/photos/proxy/" + asset.getId() + "/original";
+                String thumbnailUrl = "/api/v1/photos/immich/proxy/" + asset.getId() + "/thumbnail";
+                String fullImageUrl = "/api/v1/photos/immich/proxy/" + asset.getId() + "/original";
                 
                 Double latitude = null;
                 Double longitude = null;
@@ -192,5 +195,83 @@ public class ImmichIntegrationService {
         }
         
         return photos;
+    }
+
+    public ResponseEntity<byte[]> proxyImageRequest(User user, String assetId, String size) {
+        Optional<ImmichIntegration> integrationOpt = getIntegrationForUser(user);
+
+        if (integrationOpt.isEmpty() || !integrationOpt.get().isEnabled()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        ImmichIntegration integration = integrationOpt.get();
+
+        try {
+            String baseUrl = integration.getServerUrl().endsWith("/") ?
+                integration.getServerUrl() : integration.getServerUrl() + "/";
+            String imageUrl = baseUrl + "api/assets/" + assetId + "/thumbnail?size=" + size;
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.add("x-api-key", integration.getApiToken());
+
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<byte[]> response = restTemplate.exchange(
+                imageUrl,
+                HttpMethod.GET,
+                entity,
+                byte[].class
+            );
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                HttpHeaders responseHeaders = new HttpHeaders();
+
+                // Copy content type from Immich response if available
+                if (response.getHeaders().getContentType() != null) {
+                    responseHeaders.setContentType(response.getHeaders().getContentType());
+                } else {
+                    // Default to JPEG for images
+                    responseHeaders.setContentType(MediaType.IMAGE_JPEG);
+                }
+
+                // Set cache headers for better performance
+                responseHeaders.setCacheControl("public, max-age=3600");
+
+                return new ResponseEntity<>(response.getBody(), responseHeaders, HttpStatus.OK);
+            }
+
+        } catch (Exception e) {
+            // Log error but don't expose details
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.notFound().build();
+    }
+
+    public String downloadImage(User user, String assetId, String targetPath) {
+        ResponseEntity<byte[]> response = proxyImageRequest(user, assetId, "fullsize");
+        if (response.getStatusCode().is2xxSuccessful()) {
+            byte[] imageData = response.getBody();
+            if (imageData != null) {
+                String contentType = response.getHeaders().getContentType() != null ? response.getHeaders().getContentType().toString() : "image/jpeg";
+                long contentLength = imageData.length;
+                String filename = assetId + getExtensionFromContentType(contentType);
+                storageService.store(targetPath + "/" + filename, new java.io.ByteArrayInputStream(imageData), contentLength, contentType);
+                return filename;
+            }
+        }
+        throw new IllegalStateException("Unable to download image from Immich");
+    }
+
+
+    private String getExtensionFromContentType(String contentType) {
+        return switch (contentType) {
+            case "image/jpeg" -> ".jpg";
+            case "image/png" -> ".png";
+            case "image/gif" -> ".gif";
+            case "image/webp" -> ".webp";
+            case null, default -> ".jpg"; // default
+
+        };
     }
 }
