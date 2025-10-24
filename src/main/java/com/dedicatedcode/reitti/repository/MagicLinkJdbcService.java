@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
+import com.dedicatedcode.reitti.model.security.MagicLinkResourceType;
 import com.dedicatedcode.reitti.model.security.MagicLinkToken;
 import com.dedicatedcode.reitti.model.security.User;
 import org.springframework.cache.annotation.CacheEvict;
@@ -36,8 +37,8 @@ public class MagicLinkJdbcService {
     @CacheEvict(value = "magic-links", allEntries = true)
     public MagicLinkToken create(User user, MagicLinkToken token) {
         String sql = """
-            INSERT INTO magic_link_tokens (user_id, name, token_hash, access_level, expiry_date, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO magic_link_tokens (user_id, name, token_hash, access_level, expiry_date, created_at, resource_type, resource_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """;
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -51,11 +52,17 @@ public class MagicLinkJdbcService {
             ps.setString(4, token.getAccessLevel().name());
             ps.setTimestamp(5, token.getExpiryDate() != null ? Timestamp.from(token.getExpiryDate()) : null);
             ps.setTimestamp(6, Timestamp.from(now));
+            ps.setString(7, token.getResourceType().name());
+            if (token.getResourceId() == null) {
+                ps.setNull(8, java.sql.Types.BIGINT);
+            } else {
+                ps.setLong(8, token.getResourceId());
+            }
             return ps;
         }, keyHolder);
 
         long id = keyHolder.getKey().longValue();
-        return new MagicLinkToken(id, token.getName(), token.getTokenHash(), token.getAccessLevel(), token.getExpiryDate(), now, null, false);
+        return new MagicLinkToken(id, token.getName(), token.getTokenHash(), token.getAccessLevel(), token.getExpiryDate(), token.getResourceType(), token.getResourceId(), now, null, false);
     }
 
     @CacheEvict(value = "magic-links", allEntries = true)
@@ -83,7 +90,7 @@ public class MagicLinkJdbcService {
     @Cacheable(value = "magic-links", key = "#id")
     public Optional<MagicLinkToken> findById(long id) {
         String sql = """
-            SELECT id, name, token_hash, access_level, expiry_date, created_at, last_used_at
+            SELECT id, name, token_hash, access_level, expiry_date, created_at, last_used_at, resource_type, resource_id
             FROM magic_link_tokens
             WHERE id = ?
             """;
@@ -96,7 +103,7 @@ public class MagicLinkJdbcService {
     @Cacheable(value = "magic-links", key = "'hash:' + #tokenHash")
     public Optional<MagicLinkToken> findByTokenHash(String tokenHash) {
         String sql = """
-            SELECT id, name, token_hash, access_level, expiry_date, created_at, last_used_at
+            SELECT id, name, token_hash, access_level, expiry_date, created_at, last_used_at, resource_type, resource_id
             FROM magic_link_tokens
             WHERE token_hash = ?
             """;
@@ -108,7 +115,7 @@ public class MagicLinkJdbcService {
     @Transactional(readOnly = true)
     public Optional<MagicLinkToken> findByRawToken(String rawToken) {
         String sql = """
-            SELECT id, name, token_hash, access_level, expiry_date, created_at, last_used_at
+            SELECT id, name, token_hash, access_level, expiry_date, created_at, last_used_at, resource_type, resource_id
             FROM magic_link_tokens
             WHERE expiry_date IS NULL OR expiry_date > ?
             """;
@@ -147,7 +154,7 @@ public class MagicLinkJdbcService {
     @Cacheable(value = "magic-links", key = "'user:' + #user.id")
     public List<MagicLinkToken> findByUser(User user) {
         String sql = """
-            SELECT id, name, token_hash, access_level, expiry_date, created_at, last_used_at
+            SELECT id, name, token_hash, access_level, expiry_date, created_at, last_used_at, resource_type, resource_id
             FROM magic_link_tokens
             WHERE user_id = ?
             ORDER BY created_at DESC
@@ -178,7 +185,9 @@ public class MagicLinkJdbcService {
             
             boolean isUsed = lastUsed != null;
 
-            return new MagicLinkToken(id, name, tokenHash, accessLevel, expiryDate, createdAt, lastUsed, isUsed);
+            MagicLinkResourceType resourceTyp = MagicLinkResourceType.valueOf(rs.getString("resource_type"));
+            Long resourceId = rs.getLong("resource_id") == 0 ? null : rs.getLong("resource_id");
+            return new MagicLinkToken(id, name, tokenHash, accessLevel, expiryDate, resourceTyp, resourceId, createdAt, lastUsed, isUsed);
         }
     }
 }

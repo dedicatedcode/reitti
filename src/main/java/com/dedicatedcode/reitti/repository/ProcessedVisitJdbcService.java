@@ -157,6 +157,20 @@ public class ProcessedVisitJdbcService {
         jdbcTemplate.update(sql, ids.toArray());
     }
 
+
+    public List<ProcessedVisit> findByIds(User user, List<Long> ids) {
+        String placeholders = String.join(",", ids.stream().map(id -> "?").toList());
+        String sql = "SELECT pv.* " +
+                "FROM processed_visits pv " +
+                "WHERE pv.user_id = ? AND pv.id IN (" + placeholders + ")";
+        Object[] params = new Object[ids.size() + 1];
+        params[0] = user.getId();
+        for (int i = 0; i < ids.size(); i++) {
+            params[i + 1] = ids.get(i);
+        }
+        return jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, params);
+    }
+
     public Optional<ProcessedVisit> findByUserAndStartTimeAndEndTimeAndPlace(User user, Instant startTime, Instant endTime, SignificantPlace place) {
         String sql = "SELECT pv.* " +
                 "FROM processed_visits pv " +
@@ -217,4 +231,5 @@ public class ProcessedVisitJdbcService {
     public void deleteAllForUserAfter(User user, Instant start) {
         jdbcTemplate.update("DELETE FROM processed_visits WHERE user_id = ?  AND end_time >= ?", user.getId(), Timestamp.from(start));
     }
+
 }

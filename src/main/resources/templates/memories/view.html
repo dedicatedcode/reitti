@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${memory.title} + ' - Reitti'">Memory - Reitti</title>
+    <link rel="icon" th:href="@{/img/logo.svg}">
+    <link rel="stylesheet" th:href="@{/css/main.css}" href="../../static/css/main.css">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}" href="../../static/css/lineicons.css">
+    <link rel="stylesheet" th:href="@{/css/gallery-block.css}" href="../../static/css/gallery-block.css">
+    <link rel="stylesheet" th:href="@{/css/photo-client.css}" href="../../static/css/photo-client.css">
+    <link rel="stylesheet" th:href="@{/css/leaflet.css}" href="../../static/css/leaflet.css">
+    <link rel="stylesheet" th:href="@{/css/share-overlay.css}" href="../../static/css/share-overlay.css">
+    <script src="/js/htmx.min.js"></script>
+    <script src="/js/leaflet.js"></script>
+    <script src="/js/leaflet.geodesic.2.7.2.js"></script>
+    <script src="/js/TileLayer.Grayscale.js"></script>
+    <script src="/js/raw-location-loader.js"></script>
+    <script src="/js/HumanizeDuration.js"></script>
+    <script src="/js/photo-client.js"></script>
+</head>
+<body class="memories-page">
+<div class="settings-container">
+    <div class="settings-content-area">
+        <div class="memory-header" th:fragment="memory-header">
+            <div class="action-bar">
+                <div sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')"><a class="btn"
+                        th:href="@{/memories}"><i class="lni lni-arrow-left"></i>
+                    <span th:text="#{memory.view.back}"></span></a></a>
+                </div>
+                <button type="button" 
+                        class="btn"
+                        th:if="${canEdit}"
+                        th:attr="hx-get=@{/memories/{id}/edit(id=${memory.id})}"
+                        hx-target=".memory-header"
+                        hx-swap="innerHTML"
+                        hx-vals="js:{timezone: getUserTimezone()}"
+                        th:text="#{memory.view.edit}">Edit
+                </button>
+                <button type="button" 
+                        class="btn"
+                        th:if="${canEdit && isOwner}"
+                        th:attr="hx-post=@{/memories/{id}/recalculate(id=${memory.id})}"
+                        hx-target="body"
+                        hx-swap="innerHTML"
+                        hx-confirm="Recalculate this memory? This will update all location data."
+                        hx-vals="js:{timezone: getUserTimezone()}"
+                        th:text="#{memory.view.recalculate}">Recalculate
+                </button>
+                <button type="button" 
+                        class="btn"
+                        th:if="${canEdit && isOwner}"
+                        th:attr="hx-get=@{/memories/{id}/share(id=${memory.id})}"
+                        hx-target="#share-overlay-container"
+                        hx-swap="innerHTML">
+                    <i class="lni lni-share"></i> Share
+                </button>
+            </div>
+            <div class="memory-header-section map-header-section">
+                <div id="memory-map" class="memory-map"></div>
+            </div>
+
+            <div class="memory-details">
+                <h1 class="memory-date-range-large">
+                    <span th:text="${memory.title}">Title</span>
+                </h1>
+                <p class="memory-description-large" th:if="${memory.description != null && !memory.description.isEmpty()}"
+                   th:text="${memory.description}">Description</p>
+                <p class="memory-date-range-large">
+                    <i class="lni lni-calendar"></i>
+                    <span th:text="${#temporals.format(memory.startDate, 'MMMM d, yyyy')}">Start Date</span>
+                    <span th:if="${memory.startDate != memory.endDate}">
+                        - <span th:text="${#temporals.format(memory.endDate, 'MMMM d, yyyy')}">End Date</span>
+                    </span>
+                </p>
+            </div>
+        </div>
+
+        <div class="memory-blocks-container">
+            <div th:if="${blocks.isEmpty()}" class="memory-block empty-blocks">
+                <i class="lni lni-layers"></i>
+                <p th:text="#{memory.view.no.blocks}">No blocks yet. Add your first block to start building your memory.</p>
+                <div th:if="${canEdit}" class="add-block-spacer">
+                    <button type="button"
+                            class="btn btn-primary"
+                            th:attr="hx-get=@{/memories/{id}/blocks/select-type(id=${memory.id}, position=0)}"
+                            hx-target="closest .empty-blocks"
+                            hx-swap="outerHTML">
+                        <i class="lni lni-plus"></i> <span th:text="#{memory.view.add.first.block}">Add Block after</span>
+                    </button>
+                </div>
+            </div>
+            <div class="blocks-list" id="blocksList">
+                <div th:fragment="view-block" th:each="block, iterStat : ${blocks}" class="memory-block" th:attr="data-block-id=${block.blockId}, data-block-type=${block.type.name()}">
+                    <div class="block-content">
+                        <div th:if="${block.type.name() == 'TEXT'}" class="text-block">
+                            <div class="block-header" th:if="${block.headline != null && !block.headline.isEmpty()}">
+                                <h3 class="title" th:text="${block.headline}">Text Block</h3>
+                            </div>
+                            <p th:text="${block.content}">Content will be loaded here</p>
+                        </div>
+                        <div th:if="${block.type.name() == 'IMAGE_GALLERY'}" class="gallery-block">
+                            <div class="gallery-images-grid" th:id="${'gallery_' + block.blockId}">
+                                <div th:each="image : ${block.images}" 
+                                     class="gallery-image-item"
+                                     th:attr="data-image-url=${image.imageUrl},data-caption=${image.caption}">
+                                    <div class="photo-loading-spinner"></div>
+                                    <img th:data-src="${image.imageUrl}" 
+                                         th:alt="${image.caption != null ? image.caption : 'Gallery image'}"
+                                         class="lazy-image"
+                                         src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200'%3E%3Crect width='100%25' height='100%25' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999'%3ELoading...%3C/text%3E%3C/svg%3E"
+                                         onload="this.classList.add('loaded'); this.previousElementSibling.style.display='none';"
+                                         onerror="this.style.display='none'; this.previousElementSibling.style.display='none'; this.parentElement.innerHTML='📷';">
+                                </div>
+                            </div>
+                            <script th:inline="javascript">
+                                (function() {
+                                    const blockId = /*[[${block.blockId}]]*/ 0;
+                                    const images = /*[[${block.images}]]*/ [];
+                                    
+                                    const galleryContainer = document.getElementById('gallery_' + blockId);
+                                    const imageElements = galleryContainer.querySelectorAll('.gallery-image-item');
+                                    
+                                    imageElements.forEach((element, index) => {
+                                        element.addEventListener('click', () => {
+                                            showGalleryModal(images, index);
+                                        });
+                                    });
+                                    
+                                    function showGalleryModal(allImages, currentIndex) {
+                                        const modal = document.createElement('div');
+                                        modal.className = 'photo-modal';
+
+                                        const imageContainer = document.createElement('div');
+                                        imageContainer.className = 'photo-modal-container';
+
+                                        const modalSpinner = document.createElement('div');
+                                        modalSpinner.className = 'photo-modal-loading-spinner';
+                                        imageContainer.appendChild(modalSpinner);
+
+                                        const img = document.createElement('img');
+                                        img.src = allImages[currentIndex].imageUrl;
+                                        img.alt = allImages[currentIndex].caption || 'Gallery image';
+
+                                        img.addEventListener('load', () => {
+                                            img.classList.add('loaded');
+                                            if (imageContainer.contains(modalSpinner)) {
+                                                imageContainer.removeChild(modalSpinner);
+                                            }
+                                        });
+
+                                        img.addEventListener('error', () => {
+                                            if (imageContainer.contains(modalSpinner)) {
+                                                imageContainer.removeChild(modalSpinner);
+                                            }
+                                            img.style.display = 'none';
+                                            const errorMsg = document.createElement('div');
+                                            errorMsg.textContent = 'Failed to load image';
+                                            errorMsg.style.color = '#ccc';
+                                            errorMsg.style.fontSize = '18px';
+                                            imageContainer.appendChild(errorMsg);
+                                        });
+
+                                        const closeButton = document.createElement('button');
+                                        closeButton.innerHTML = '<i class="lni lni-xmark-circle"></i>';
+                                        closeButton.className = 'photo-modal-close-button';
+
+                                        let prevButton, nextButton, counter;
+                                        if (allImages.length > 1) {
+                                            prevButton = document.createElement('button');
+                                            prevButton.innerHTML = '<i class="lni lni-chevron-left"></i>';
+                                            prevButton.className = 'photo-nav-button photo-nav-prev';
+                                            prevButton.disabled = currentIndex === 0;
+
+                                            nextButton = document.createElement('button');
+                                            nextButton.innerHTML = '<i class="lni lni-chevron-left lni-rotate-180"></i>';
+                                            nextButton.className = 'photo-nav-button photo-nav-next';
+                                            nextButton.disabled = currentIndex === allImages.length - 1;
+
+                                            counter = document.createElement('div');
+                                            counter.className = 'photo-counter';
+                                            counter.textContent = `${currentIndex + 1} / ${allImages.length}`;
+                                        }
+
+                                        const showPrevImage = () => {
+                                            if (currentIndex > 0) {
+                                                closeModal();
+                                                showGalleryModal(allImages, currentIndex - 1);
+                                            }
+                                        };
+
+                                        const showNextImage = () => {
+                                            if (currentIndex < allImages.length - 1) {
+                                                closeModal();
+                                                showGalleryModal(allImages, currentIndex + 1);
+                                            }
+                                        };
+
+                                        const handleKeydown = (e) => {
+                                            switch (e.key) {
+                                                case 'Escape':
+                                                    closeModal();
+                                                    break;
+                                                case 'ArrowLeft':
+                                                    e.preventDefault();
+                                                    showPrevImage();
+                                                    break;
+                                                case 'ArrowRight':
+                                                    e.preventDefault();
+                                                    showNextImage();
+                                                    break;
+                                            }
+                                        };
+
+                                        const closeModal = () => {
+                                            document.removeEventListener('keydown', handleKeydown);
+                                            if (document.body.contains(modal)) {
+                                                document.body.removeChild(modal);
+                                            }
+                                        };
+
+                                        closeButton.addEventListener('click', (e) => {
+                                            e.preventDefault();
+                                            closeModal();
+                                        });
+
+                                        modal.addEventListener('click', (e) => {
+                                            if (e.target === modal) {
+                                                closeModal();
+                                            }
+                                        });
+
+                                        if (prevButton) {
+                                            prevButton.addEventListener('click', (e) => {
+                                                e.stopPropagation();
+                                                showPrevImage();
+                                            });
+                                        }
+
+                                        if (nextButton) {
+                                            nextButton.addEventListener('click', (e) => {
+                                                e.stopPropagation();
+                                                showNextImage();
+                                            });
+                                        }
+
+                                        document.addEventListener('keydown', handleKeydown);
+
+                                        imageContainer.appendChild(img);
+                                        imageContainer.appendChild(closeButton);
+                                        
+                                        if (prevButton) imageContainer.appendChild(prevButton);
+                                        if (nextButton) imageContainer.appendChild(nextButton);
+                                        if (counter) imageContainer.appendChild(counter);
+                                        
+                                        modal.appendChild(imageContainer);
+                                        document.body.appendChild(modal);
+                                    }
+                                })();
+                            </script>
+                        </div>
+                        <div th:if="${block.type.name() == 'CLUSTER_TRIP'}" class="cluster-block">
+                            <div class="block-header">
+                                <div class="time">
+                                    <i class="lni lni-timer"></i>
+                                    <span th:text="${#temporals.format(block.adjustedStartTime, 'MMM d, yyyy HH:mm')}">Start Time</span>
+                                    <span> - </span>
+                                    <span th:text="${#temporals.format(block.adjustedEndTime, 'HH:mm')}">End Time</span>
+                                </div>
+                                <i class="lni lni-layers"></i>
+                                <div class="title" th:text="${block.title}">Cluster Title</div>
+                            </div>
+                            <p th:if="${block.description != null}" class="cluster-description" th:text="${block.description}">Description</p>
+                            <div class="cluster-map" th:id="${'map_cluster_' + block.blockId}"></div>
+                            <script th:inline="javascript">
+                                (function() {
+                                    const userSettings =  /*[[${userSettings}]]*/  {};
+                                    const blockId =  /*[[${'map_cluster_' + block.blockId}]]*/  'map_cluster_99';
+                                    const trips =  /*[[${block.trips}]]*/  [];
+                                    const rawLocationUrl =  /*[[${block.rawLocationPointsUrl}]]*/  '';
+                                    const combinedStartTime =  /*[[${block.combinedStartTime}]]*/  null;
+
+                                    // Initialize map
+                                    const clusterMap = L.map(blockId, {
+                                        attributionControl: false,
+                                    }).setView([50,50], 19);
+
+                                    let tileLayer;
+                                    if (userSettings.preferColoredMap) {
+                                        tileLayer = L.tileLayer(userSettings.tiles.service, {
+                                            maxZoom: 19,
+                                            attribution: userSettings.tiles.attribution
+                                        });
+                                    } else {
+                                        tileLayer = L.tileLayer.grayscale(userSettings.tiles.service, {
+                                            maxZoom: 19,
+                                            attribution: userSettings.tiles.attribution
+                                        });
+                                    }
+                                    tileLayer.addTo(clusterMap);
+
+                                    let clusterRawLocationLoader = new RawLocationLoader(clusterMap, userSettings);
+
+                                    // Load raw location data for the cluster's time range
+                                    if (rawLocationUrl) {
+                                        const userConfigs = [{
+                                            respectBounds: false,
+                                            url: rawLocationUrl,
+                                            color: '#f1ba63',
+                                            avatarUrl: null,
+                                            avatarFallback: null,
+                                            displayName: 'Cluster Path'
+                                        }];
+                                        clusterRawLocationLoader.init(userConfigs);
+                                        clusterRawLocationLoader.loadForDateRange(false, false);
+                                    }
+
+                                    // Add markers for start, stops, and end using default filled circle markers
+                                    let bounds = [];
+                                    if (trips.length > 0) {
+                                        // Start marker
+                                        const startTrip = trips[0];
+                                        if (startTrip.startVisit && startTrip.startVisit.place) {
+                                            const startLat = startTrip.startVisit.place.latitudeCentroid;
+                                            const startLon = startTrip.startVisit.place.longitudeCentroid;
+                                            const startName = startTrip.startVisit.place.name;
+                                            const startTimeFormatted = combinedStartTime ? new Date(combinedStartTime).toLocaleTimeString() : 'unknown';
+                                            L.circleMarker([startLat, startLon], {
+                                                color: '#4a9fdc',
+                                                fillColor: '#59bcff',
+                                                fillOpacity: 0.2
+                                            }).addTo(clusterMap).bindPopup('Start: ' + startName + '<br>Departed at: ' + startTimeFormatted);
+                                            bounds.push([startLat, startLon]);
+                                        }
+
+                                        // Intermediate stops (end of each trip except last)
+                                        for (let i = 0; i < trips.length - 1; i++) {
+                                            const trip = trips[i];
+                                            if (trip.endVisit && trip.endVisit.place) {
+                                                const lat = trip.endVisit.place.latitudeCentroid;
+                                                const lon = trip.endVisit.place.longitudeCentroid;
+                                                const name = trip.endVisit.place.name;
+                                                const arrivedAfter = combinedStartTime && trip.endTime ? humanizeDuration((new Date(trip.endTime) - new Date(combinedStartTime)),{units: ["h", "m"], round: true}) : 'unknown';
+                                                L.circleMarker([lat, lon], {
+                                                    color: '#6a6a6a',
+                                                    fillColor: '#ff984f',
+                                                    fillOpacity: 0.1
+                                                }).addTo(clusterMap).bindPopup('Stop: ' + name + '<br>Arrived after: ' + arrivedAfter);
+                                                bounds.push([lat, lon]);
+                                            }
+                                        }
+
+                                        // End marker
+                                        const endTrip = trips[trips.length - 1];
+                                        if (endTrip.endVisit && endTrip.endVisit.place) {
+                                            const endLat = endTrip.endVisit.place.latitudeCentroid;
+                                            const endLon = endTrip.endVisit.place.longitudeCentroid;
+                                            const endName = endTrip.endVisit.place.name;
+                                            const arrivedAfter = combinedStartTime && endTrip.endTime ? humanizeDuration((new Date(endTrip.endTime) - new Date(combinedStartTime)),{units: ["h", "m"], round: true}) : 'unknown';
+                                            L.circleMarker([endLat, endLon], {
+                                                color: '#37bd57',
+                                                fillColor: '#55ea7a',
+                                                fillOpacity: 0.2
+                                            }).addTo(clusterMap).bindPopup('End: ' + endName + '<br>Arrived after: ' + arrivedAfter);
+                                            bounds.push([endLat, endLon]);
+                                        }
+                                    }
+
+                                    // Fit map to bounds if markers exist
+                                    if (bounds.length > 0) {
+                                        clusterMap.fitBounds(bounds, {padding: [10, 10]});
+                                    } else {
+                                        clusterMap.setView([51.505, -0.09], 13);
+                                    }
+                                })();
+                            </script>
+                            <div class="cluster-summary" th:if="${block.combinedStartTime != null && block.combinedEndTime != null}">
+                                <div class="cluster-duration" th:if="${block.completeDuration != null}">
+                                    <span th:text="
+                                    #{memory.view.block.cluster.duration(${#numbers.formatDecimal(block.completeDuration / 3600.0, 0, 0)},${#numbers.formatDecimal((block.completeDuration % 3600) / 60, 0, 0)},${#numbers.formatDecimal(block.movingDuration / 3600.0, 0, 0)},${#numbers.formatDecimal((block.movingDuration % 3600) / 60, 0, 0)})}">Total Duration</span>
+                                </div>
+                            </div>
+                            <div class="cluster-trips" th:if="${!block.trips.isEmpty()}">
+                                <h4>Trips in this Journey:</h4>
+                                <ul>
+                                    <li th:each="trip : ${block.trips}" class="trip-item">
+                                        <span th:text="${trip.startVisit != null && trip.startVisit.place != null ? trip.startVisit.place.name : 'Start'}">Start</span>
+                                        <span> → </span>
+                                        <span th:text="${trip.endVisit != null && trip.endVisit.place != null ? trip.endVisit.place.name : 'End'}">End</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div th:if="${block.type.name() == 'CLUSTER_VISIT'}" class="cluster-block">
+                            <div class="block-header">
+                                <div class="time">
+                                    <i class="lni lni-timer"></i>
+                                    <span th:text="${#temporals.format(block.adjustedStartTime, 'MMM d, yyyy HH:mm')}">Start Time</span>
+                                    <span> - </span>
+                                    <span th:text="${#temporals.format(block.adjustedEndTime, 'HH:mm')}">End Time</span>
+                                </div>
+                                <i class="lni lni-layers"></i>
+                                <div class="title" th:text="${block.title}">Cluster Title</div>
+                            </div>
+                            <p th:if="${block.description != null}" class="cluster-description" th:text="${block.description}">Description</p>
+                            <div class="cluster-map" th:id="${'map_cluster_' + block.blockId}"></div>
+                            <script th:inline="javascript">
+                                (function() {
+                                    const userSettings =  /*[[${userSettings}]]*/  {};
+                                    const blockId =  /*[[${'map_cluster_' + block.blockId}]]*/  'map_cluster_99';
+                                    const visits =  /*[[${block.visits}]]*/  [];
+                                    const rawLocationUrl =  /*[[${block.rawLocationPointsUrl}]]*/  '';
+
+                                    // Initialize map
+                                    const clusterMap = L.map(blockId, {
+                                        attributionControl: false,
+                                    }).setView([50,50], 19);
+
+                                    let tileLayer;
+                                    if (userSettings.preferColoredMap) {
+                                        tileLayer = L.tileLayer(userSettings.tiles.service, {
+                                            maxZoom: 19,
+                                            attribution: userSettings.tiles.attribution
+                                        });
+                                    } else {
+                                        tileLayer = L.tileLayer.grayscale(userSettings.tiles.service, {
+                                            maxZoom: 19,
+                                            attribution: userSettings.tiles.attribution
+                                        });
+                                    }
+                                    tileLayer.addTo(clusterMap);
+
+                                    let clusterRawLocationLoader = new RawLocationLoader(clusterMap, userSettings);
+
+                                    // Load raw location data for the cluster's time range
+                                    if (rawLocationUrl) {
+                                        const userConfigs = [{
+                                            respectBounds: false,
+                                            url: rawLocationUrl,
+                                            color: '#f1ba63',
+                                            avatarUrl: null,
+                                            avatarFallback: null,
+                                            displayName: 'Cluster Path'
+                                        }];
+                                        clusterRawLocationLoader.init(userConfigs);
+                                        clusterRawLocationLoader.loadForDateRange(false, false);
+                                    }
+
+                                    let bounds = [];
+                                    if (visits.length > 0) {
+                                        for (let i = 0; i < visits.length; i++) {
+                                            const visit = visits[i];
+                                            if (visit.place) {
+                                                const lat = visit.place.latitudeCentroid;
+                                                const lon = visit.place.longitudeCentroid;
+                                                const name = visit.place.name;
+                                                L.circleMarker([lat, lon], {
+                                                    color: '#6a6a6a',
+                                                    fillColor: '#ff984f',
+                                                    fillOpacity: 0.1
+                                                }).addTo(clusterMap).bindPopup('Name: ' + name);
+                                                bounds.push([lat, lon]);
+                                            }
+                                        }
+                                    }
+
+                                    // Fit map to bounds if markers exist
+                                    if (bounds.length > 0) {
+                                        clusterMap.fitBounds(bounds, {padding: [10, 10]});
+                                    } else {
+                                        clusterMap.setView([51.505, -0.09], 13);
+                                    }
+                                })();
+                            </script>
+                            <div class="cluster-trips" th:if="${!block.visits.isEmpty()}">
+                                <h4>Visits in this Journey:</h4>
+                                <ul>
+                                    <li th:each="visit : ${block.visits}" class="trip-item">
+                                        <span th:text="${visit.place != null ? visit.place.name : 'Start'}">Start</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div th:if="${canEdit}" class="block-actions">
+                        <button type="button"
+                                class="btn"
+                                th:attr="hx-get=@{/memories/{memoryId}/blocks/{blockId}/edit(memoryId=${memory.id}, blockId=${block.blockId})}"
+                                hx-target="closest .memory-block"
+                                hx-swap="innerHTML">
+                            <i class="lni lni-pencil-1"></i>
+                        </button>
+                        <button type="button"
+                                class="btn btn-danger"
+                                th:attr="hx-delete=@{/memories/{memoryId}/blocks/{blockId}(memoryId=${memory.id}, blockId=${block.blockId})}"
+                                hx-target="closest .memory-block"
+                                hx-swap="outerHTML"
+                                hx-confirm="Delete this block?">
+                            <i class="lni lni-trash-3"></i>
+                        </button>
+                    </div>
+                    <div th:if="${canEdit}" class="add-block-spacer">
+                        <button type="button"
+                                class="btn btn-primary"
+                                th:attr="hx-get=@{/memories/{id}/blocks/select-type(id=${memory.id})},data-block-id=${block.blockId}"
+                                hx-target="closest .add-block-spacer"
+                                hx-swap="afterend"
+                                hx-vals="js:{position: getBlockPosition()}">
+                            <i class="lni lni-plus"></i> <span th:text="#{memory.view.add.block}">Add Block after</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<script th:inline="javascript">
+    // User settings for timezone handling
+    window.userSettings = /*[[${userSettings}]]*/ {};
+
+    function getBlockPosition() {
+        let allBlocks = document.querySelectorAll('.memory-block');
+        for (let i = 0; i < allBlocks.length; i++) {
+            const block = allBlocks[i];
+            if (block.dataset.blockId === event.currentTarget.dataset.blockId) {
+                return i + 1;
+            }
+        }
+    }
+    function getUserTimezone() {
+        if (window.userSettings.timeZoneOverride) {
+            return window.userSettings.timeZoneOverride;
+        } else {
+            return Intl.DateTimeFormat().resolvedOptions().timeZone;
+        }
+    }
+
+    function humanizeDuration(seconds) {
+        if (!seconds || seconds <= 0) return 'unknown';
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        if (hours > 0) {
+            return hours + 'h ' + minutes + 'm';
+        } else {
+            return minutes + 'm';
+        }
+    }
+
+    const memory = /*[[${memory}]]*/ {};
+    const rawLocationUrl = /*[[${rawLocationUrl}]]*/ '';
+    let rawLocationLoader = null;
+    let memoryMap = null;
+
+
+    function initializeMemoryMap() {
+        // Only initialize if header type is MAP and map container exists
+        if (memory.headerType === 'MAP' && document.getElementById('memory-map')) {
+            if (memoryMap && typeof memoryMap.getContainer === 'function') {
+                memoryMap.remove();
+            }
+
+            memoryMap = L.map('memory-map', {
+                zoomControl: false,
+                attributionControl: false,
+                boxZoom: false,
+                doubleClickZoom: false,
+                dragging: false,
+                keyboard: false,
+                scrollWheelZoom: false,
+                tap: false,
+                touchZoom: false
+            }).setView([51.505, -0.09], 13);
+
+            L.tileLayer.grayscale('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(memoryMap);
+            if (rawLocationLoader === null) {
+                rawLocationLoader = new RawLocationLoader(memoryMap, window.userSettings);
+            }
+            // Initialize raw location loader for the memory
+            if (rawLocationUrl && rawLocationLoader !== null) {
+                const userConfigs = [{
+                    url: rawLocationUrl,
+                    color: '#f1ba63',
+                    avatarUrl: null,
+                    avatarFallback: null,
+                    displayName: 'Memory Location Data'
+                }];
+                rawLocationLoader.init(userConfigs);
+
+                // Load location data for the memory date range without bounds filtering
+                rawLocationLoader.loadForDateRange(
+                    memory.startDate,
+                    memory.endDate,
+                    false, // autoUpdateMode
+                    false  // withBounds - don't filter by current map bounds
+                );
+            }
+        }
+    }
+
+    // Lazy loading for images using Intersection Observer
+    function initializeLazyLoading() {
+        if ('IntersectionObserver' in window) {
+            const imageObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        const dataSrc = img.getAttribute('data-src');
+                        if (dataSrc) {
+                            img.src = dataSrc;
+                            img.classList.remove('lazy-image');
+                            observer.unobserve(img);
+                        }
+                    }
+                });
+            }, {
+                rootMargin: '50px 0px', // Start loading 50px before the image enters viewport
+                threshold: 0.01
+            });
+
+            // Observe all lazy images
+            document.querySelectorAll('.lazy-image').forEach(img => {
+                imageObserver.observe(img);
+            });
+        } else {
+            // Fallback for browsers without Intersection Observer support
+            document.querySelectorAll('.lazy-image').forEach(img => {
+                const dataSrc = img.getAttribute('data-src');
+                if (dataSrc) {
+                    img.src = dataSrc;
+                    img.classList.remove('lazy-image');
+                }
+            });
+        }
+    }
+
+    // Initialize map on page load
+    initializeMemoryMap();
+    
+    // Initialize lazy loading on page load
+    initializeLazyLoading();
+
+    // Listen for htmx events to reinitialize map and lazy loading when content is updated
+    document.body.addEventListener('htmx:afterSwap', function (event) {
+        if (event.detail.target.classList.contains('memory-header')) {
+            initializeMemoryMap()
+
+            if (rawLocationUrl) {
+                if (rawLocationLoader === null) {
+                    rawLocationLoader = new RawLocationLoader(memoryMap, {});
+                }
+                const userConfigs = [{
+                    url: rawLocationUrl,
+                    color: '#f1ba63',
+                    avatarUrl: null,
+                    avatarFallback: null,
+                    displayName: 'Memory Location Data'
+                }];
+                rawLocationLoader.init(userConfigs);
+                rawLocationLoader.reloadForCurrentView(false);
+            }
+        }
+        
+        // Reinitialize lazy loading for any new images added via HTMX
+        initializeLazyLoading();
+    });
+</script>
+
+
+<div id="share-overlay-container"></div>
+
+</body>
+</html>

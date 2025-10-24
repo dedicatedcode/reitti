@@ -69,7 +69,7 @@ public class TestingService {
     }
 
     public User randomUser() {
-       return this.userJdbcService.createUser(new User(UUID.randomUUID().toString(), "Test User"));
+        return this.userJdbcService.createUser(new User(UUID.randomUUID().toString(), "Test User"));
     }
 
     public void triggerProcessingPipeline(int timeout) {

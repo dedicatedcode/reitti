@@ -12,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -47,11 +48,32 @@ public class TripJdbcService {
         }
     };
 
+    public List<Trip> findByIds(User user, List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        String sql = "SELECT t.* FROM trips t WHERE t.user_id = ? AND t.id IN (" + placeholders + ")";
+        Object[] params = new Object[ids.size() + 1];
+        params[0] = user.getId();
+        for (int i = 0; i < ids.size(); i++) {
+            params[i + 1] = ids.get(i);
+        }
+        return jdbcTemplate.query(sql, TRIP_ROW_MAPPER, params);
+    }
+
     public List<Trip> findByUser(User user) {
         String sql = "SELECT t.*" +
                 "FROM trips t " +
                 "WHERE t.user_id = ? ORDER BY start_time";
         return jdbcTemplate.query(sql, TRIP_ROW_MAPPER, user.getId());
+    }
+
+    public Optional<Trip> findByUserAndId(User user, Long id) {
+        String sql = "SELECT t.*" +
+                "FROM trips t " +
+                "WHERE t.user_id = ? AND id = ?";
+        return jdbcTemplate.query(sql, TRIP_ROW_MAPPER, user.getId(), id).stream().findFirst();
     }
 
     public List<Trip> findByUserAndTimeOverlap(User user, Instant startTime, Instant endTime) {
