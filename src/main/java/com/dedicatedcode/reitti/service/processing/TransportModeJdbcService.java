@@ -9,7 +9,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class TransportModeJdbcService {
@@ -23,34 +25,32 @@ public class TransportModeJdbcService {
     @Cacheable(value = "transport-mode-configs", key = "#user.id")
     public List<TransportModeConfig> getTransportModeConfigs(User user) {
         String sql = """
-            SELECT transport_mode, max_kmh 
-            FROM transport_mode_detection_configs 
+            SELECT transport_mode, max_kmh
+            FROM transport_mode_detection_configs
             WHERE user_id = ? 
             ORDER BY max_kmh NULLS LAST
             """;
         
         return jdbcTemplate.query(sql, (rs, rowNum) -> {
             TransportMode mode = TransportMode.valueOf(rs.getString("transport_mode"));
-            Double maxKmh = rs.getObject("max_kmh", Double.class);
-            return new TransportModeConfig(mode, maxKmh != null ? maxKmh : Double.MAX_VALUE);
+            Double maxKmh = Optional.ofNullable(rs.getObject("max_kmh")).map(BigDecimal.class::cast).map(BigDecimal::doubleValue).orElse(null);
+            return new TransportModeConfig(mode, maxKmh);
         }, user.getId());
     }
 
     @Transactional
     @CacheEvict(value = "transport-mode-configs", key = "#user.id")
     public void setTransportModeConfigs(User user, List<TransportModeConfig> configs) {
-        // Delete existing configs for the user
         String deleteSql = "DELETE FROM transport_mode_detection_configs WHERE user_id = ?";
         jdbcTemplate.update(deleteSql, user.getId());
 
-        // Insert new configs
         String insertSql = """
-            INSERT INTO transport_mode_detection_configs (user_id, transport_mode, max_kmh) 
+            INSERT INTO transport_mode_detection_configs (user_id, transport_mode, max_kmh)
             VALUES (?, ?, ?)
             """;
         
         for (TransportModeConfig config : configs) {
-            Double maxKmh = config.maxKmh() == Double.MAX_VALUE ? null : config.maxKmh();
+            Double maxKmh = config.maxKmh();
             jdbcTemplate.update(insertSql, user.getId(), config.mode().name(), maxKmh);
         }
     }

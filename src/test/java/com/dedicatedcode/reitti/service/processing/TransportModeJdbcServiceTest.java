@@ -23,9 +23,6 @@ class TransportModeJdbcServiceTest {
     @Autowired
     private TestingService testingService;
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
-
     private User testUser;
 
     @BeforeEach

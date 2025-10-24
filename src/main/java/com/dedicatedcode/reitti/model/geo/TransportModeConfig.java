@@ -1,5 +1,7 @@
 package com.dedicatedcode.reitti.model.geo;
 
-public record TransportModeConfig(TransportMode mode, double maxKmh) {
+import java.io.Serializable;
+
+public record TransportModeConfig(TransportMode mode, Double maxKmh) implements Serializable {
 
 }
