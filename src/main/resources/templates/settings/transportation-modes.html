@@ -15,6 +15,97 @@
 <div class="settings-container">
     <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
     <div class="settings-content-area">
+        <div id="transportation-modes" class="settings-section active">
+            <div th:fragment="transportation-modes-content">
+                <h2 th:text="#{transportation.modes.title}">Transportation Modes</h2>
+
+                <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+                    <span th:text="#{${successMessage}}">Success message</span>
+                </div>
+                <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+                    <span th:text="#{${errorMessage}}">Error message</span>
+                </div>
+
+                <div class="settings-card" th:if="${configs.isEmpty()}">
+                    <p th:text="#{transportation.modes.no.configs}">No transportation modes configured. Add one to get started.</p>
+                </div>
+
+                <div class="settings-card" th:if="${!configs.isEmpty()}">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th th:text="#{transportation.modes.table.mode}">Mode</th>
+                            <th th:text="#{transportation.modes.table.max.kmh}">Max Speed (km/h)</th>
+                            <th th:text="#{transportation.modes.table.actions}">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="config : ${configs}">
+                            <td th:text="#{${'transportation.mode.' + config.mode().name().toLowerCase()}}"></td>
+                            <td>
+                                <form th:attr="hx-post=@{/settings/transportation-modes/{mode}/update(mode=${config.mode()})}"
+                                      hx-target="#transportation-modes"
+                                      hx-swap="innerHTML"
+                                      hx-trigger="change"
+                                      style="display: inline;">
+                                    <input type="number" 
+                                           name="maxKmh" 
+                                           th:value="${config.maxKmh()}"
+                                           step="0.1"
+                                           min="0"
+                                           placeholder="No limit"
+                                           style="width: 100px; border: 1px solid #ddd; padding: 4px; border-radius: 4px;">
+                                </form>
+                            </td>
+                            <td>
+                                <button class="btn btn-danger"
+                                        th:attr="hx-post=@{/settings/transportation-modes/{mode}/delete(mode=${config.mode()})}, hx-confirm=#{transportation.modes.delete.confirm}"
+                                        hx-target="#transportation-modes"
+                                        hx-swap="innerHTML"
+                                        th:text="#{form.delete}">Delete
+                                </button>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="settings-card" th:if="${!availableModes.isEmpty()}">
+                    <h3 th:text="#{transportation.modes.add.title}">Add Transportation Mode</h3>
+                    <form hx-post="/settings/transportation-modes/add" 
+                          hx-target="#transportation-modes" 
+                          hx-swap="innerHTML" 
+                          class="token-form"
+                          style="margin-bottom: 20px;">
+                        <div class="form-group">
+                            <label for="mode" th:text="#{transportation.modes.mode.label}">Transportation Mode</label>
+                            <select id="mode" name="mode" required>
+                                <option value="" th:text="#{transportation.modes.mode.select}">Select a mode...</option>
+                                <option th:each="mode : ${availableModes}" 
+                                        th:value="${mode}" 
+                                        th:text="#{${'transportation.mode.' + mode.name().toLowerCase()}}"></option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="maxKmh" th:text="#{transportation.modes.max.kmh.label}">Max Speed (km/h)</label>
+                            <input type="number" 
+                                   id="maxKmh" 
+                                   name="maxKmh" 
+                                   step="0.1" 
+                                   min="0"
+                                   th:placeholder="#{transportation.modes.max.kmh.placeholder}">
+                            <small th:text="#{transportation.modes.max.kmh.help}">Leave empty for no speed limit</small>
+                        </div>
+                        <button type="submit" class="btn" th:text="#{transportation.modes.add.button}">Add Mode</button>
+                    </form>
+                </div>
+
+                <div class="settings-card" th:if="${availableModes.isEmpty() && !configs.isEmpty()}">
+                    <p th:text="#{transportation.modes.all.configured}">All available transportation modes have been configured.</p>
+                </div>
+
+            </div>
+        </div>
     </div>
 </div>
 </body>
