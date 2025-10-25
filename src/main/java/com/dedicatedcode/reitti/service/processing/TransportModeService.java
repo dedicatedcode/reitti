@@ -8,9 +8,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class TransportModeService {
@@ -84,8 +83,14 @@ public class TransportModeService {
         TransportMode mode = classifySegment(currentSegmentPoints, configs);
         segments.add(new TripSegment(currentSegmentPoints, mode));
 
-        // count the number of transportMode from the segments and return the one which occured the mose AI!
-        return segments;
+        // Count occurrences of each transport mode and return the most frequent one
+        Map<TransportMode, Long> modeCount = segments.stream()
+                .collect(Collectors.groupingBy(TripSegment::dominantMode, Collectors.counting()));
+        
+        return modeCount.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse(TransportMode.UNKNOWN);
     }
 
     private List<Double> calculateSpeeds(List<RawLocationPoint> points) {
