@@ -101,9 +101,40 @@
                     <p th:text="#{transportation.modes.all.configured}">All available transportation modes have been configured.</p>
                 </div>
 
+                <div class="settings-card" th:if="${!configs.isEmpty()}">
+                    <h3 th:text="#{transportation.modes.reclassify.title}">Reclassify Trips</h3>
+                    <p th:text="#{transportation.modes.reclassify.description}">After changing your transportation mode settings, you can reclassify all existing trips to apply the new configurations.</p>
+                    
+                    <button id="reclassify-btn" 
+                            class="btn btn-primary"
+                            hx-post="/settings/transportation-modes/reclassify"
+                            hx-target="#reclassify-status"
+                            hx-swap="innerHTML"
+                            hx-indicator="#reclassify-spinner"
+                            th:text="#{transportation.modes.reclassify.button}">Reclassify All Trips</button>
+                    
+                    <div id="reclassify-spinner" class="htmx-indicator" style="margin-left: 10px;">
+                        <i class="lni lni-spinner-arrow spinning"></i>
+                        <span th:text="#{transportation.modes.reclassify.processing}">Processing...</span>
+                    </div>
+                    
+                    <div id="reclassify-status" style="margin-top: 10px;"></div>
+                </div>
+
             </div>
         </div>
     </div>
 </div>
+<div th:fragment="reclassify-status">
+    <div th:if="${reclassifyStatus == 'started'}" class="alert alert-info">
+        <i class="lni lni-checkmark-circle"></i>
+        <span th:text="#{${message}}">Reclassification started successfully. This process will run in the background.</span>
+    </div>
+    <div th:if="${reclassifyStatus == 'error'}" class="alert alert-danger">
+        <i class="lni lni-cross-circle"></i>
+        <span th:text="#{${message}}">Failed to start reclassification. Please try again.</span>
+    </div>
+</div>
+
 </body>
 </html>

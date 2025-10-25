@@ -37,6 +37,38 @@ public class TransportModeService {
         transportModeOverrideJdbcService.addTransportModeOverride(user, transportMode, trip.getStartTime(), trip.getEndTime());
     }
 
+    public void overrideTransportMode(User user, TransportMode transportMode, Instant startTime, Instant endTime) {
+        transportModeOverrideJdbcService.addTransportModeOverride(user, transportMode, startTime, endTime);
+    }
+
+    public Optional<TransportMode> getTransportModeOverride(User user, Instant startTime, Instant endTime) {
+        return transportModeOverrideJdbcService.getTransportModeOverride(user, startTime, endTime);
+    }
+
+    public void reclassifyAllTripsForUser(User user) {
+        // This method would need access to trip repository and raw location points
+        // For now, this is a placeholder that would need to be implemented
+        // based on your existing trip storage and processing infrastructure
+        
+        // Typical implementation would:
+        // 1. Get all trips for the user
+        // 2. For each trip, get the raw location points
+        // 3. Re-run the classification with current transport mode configs
+        // 4. Update the trip's transport mode in the database
+        
+        // Example structure:
+        // List<Trip> userTrips = tripRepository.findByUser(user);
+        // List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
+        // 
+        // for (Trip trip : userTrips) {
+        //     List<RawLocationPoint> points = rawLocationPointRepository.findByTripId(trip.getId());
+        //     TransportMode newMode = segmentAndClassifyTrip(points, configs);
+        //     tripRepository.updateTransportMode(trip.getId(), newMode);
+        // }
+        
+        throw new UnsupportedOperationException("Reclassification not yet implemented - requires trip repository access");
+    }
+
     public TransportMode segmentAndClassifyTrip(List<RawLocationPoint> points, List<TransportModeConfig> configs) {
         List<TripSegment> segments = new ArrayList<>();
         List<Double> speeds = calculateSpeeds(points); // Speeds between points
