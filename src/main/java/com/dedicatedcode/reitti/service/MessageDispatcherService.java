@@ -74,6 +74,12 @@ public class MessageDispatcherService {
         visitDetectionPreviewService.updatePreviewStatus(event.getPreviewId());
     }
 
+    @RabbitListener(queues = RabbitMQConfig.RECALCULATE_TRIP_QUEUE, concurrency = "${reitti.events.concurrency}")
+    public void handleTripDetection(RecalculateTripEvent event) {
+        logger.debug("Dispatching RecalculateTripEvent for user: {}", event.getUsername());
+        tripDetectionService.recalculateTrip(event);
+    }
+
     @RabbitListener(queues = RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE, concurrency = "${reitti.events.concurrency}")
     public void handleSignificantPlaceCreated(SignificantPlaceCreatedEvent event) {
         logger.debug("Dispatching SignificantPlaceCreatedEvent for place: {}", event.placeId());

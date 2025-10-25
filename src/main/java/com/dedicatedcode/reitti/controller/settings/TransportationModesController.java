@@ -1,13 +1,18 @@
 package com.dedicatedcode.reitti.controller.settings;
 
+import com.dedicatedcode.reitti.config.RabbitMQConfig;
+import com.dedicatedcode.reitti.event.RecalculateTripEvent;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.TransportModeConfig;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
-import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.repository.TransportModeJdbcService;
+import com.dedicatedcode.reitti.repository.TripJdbcService;
+import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
+import com.dedicatedcode.reitti.service.processing.TransportModeService;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -17,19 +22,28 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/settings/transportation-modes")
 public class TransportationModesController {
 
+    private final RabbitTemplate rabbitTemplate;
+    private final TripJdbcService tripJdbcService;
     private final TransportModeJdbcService transportModeJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
+    private final TransportModeService transportModeService;
 
-    public TransportationModesController(TransportModeJdbcService transportModeJdbcService, 
-                                       UserSettingsJdbcService userSettingsJdbcService) {
+    public TransportationModesController(RabbitTemplate rabbitTemplate, TripJdbcService tripJdbcService,
+                                         TransportModeJdbcService transportModeJdbcService,
+                                         UserSettingsJdbcService userSettingsJdbcService,
+                                         TransportModeService transportModeService) {
+        this.rabbitTemplate = rabbitTemplate;
+        this.tripJdbcService = tripJdbcService;
         this.transportModeJdbcService = transportModeJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
+        this.transportModeService = transportModeService;
     }
 
     @GetMapping
@@ -175,5 +189,28 @@ public class TransportationModesController {
     
     private Double kmhToMph(Double kmh) {
         return kmh / 1.60934;
+    }
+
+    @PostMapping("/reclassify")
+    public String reclassifyTrips(@AuthenticationPrincipal User user, Model model) {
+        try {
+            // Start async reclassification
+            CompletableFuture.runAsync(() -> {
+                tripJdbcService.findIdsByUser(user).forEach(tripId -> {
+                    rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME,
+                            RabbitMQConfig.DETECT_TRIP_RECALCULATION_ROUTING_KEY,
+                            new RecalculateTripEvent(user.getUsername(), tripId));
+                });
+            });
+            
+            model.addAttribute("reclassifyStatus", "started");
+            model.addAttribute("message", "transportation.modes.reclassify.started");
+            
+        } catch (Exception e) {
+            model.addAttribute("reclassifyStatus", "error");
+            model.addAttribute("message", "transportation.modes.reclassify.error");
+        }
+        
+        return "settings/transportation-modes :: reclassify-status";
     }
 }
