@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+
+<div th:fragment="edit-form" class="trip-edit-form">
+    <form th:hx-put="@{/timeline/trips/{id}/transport-mode(id=${tripId})}"
+          hx-target="closest .trip-transport-mode-container"
+          hx-swap="outerHTML">
+        <input type="hidden" name="startTime" th:value="${startTime}">
+        <input type="hidden" name="endTime" th:value="${endTime}">
+        <input type="hidden" name="date" th:value="${date}">
+        <input type="hidden" name="timezone" th:value="${timezone}">
+        
+        <select name="transportMode" required>
+            <option value="" th:text="#{timeline.trip.transport.select}">Select transport mode...</option>
+            <option th:each="mode : ${transportModes}" 
+                    th:value="${mode}" 
+                    th:text="#{${'transportation.mode.' + mode.name().toLowerCase()}}"
+                    th:selected="${mode == currentTransportMode}"></option>
+        </select>
+        
+        <button type="submit" class="btn btn-sm" th:text="#{form.save}">Save</button>
+        <button type="button" 
+                class="btn btn-sm btn-secondary"
+                th:hx-get="@{/timeline/trips/view/{id}(id=${tripId}, transportMode=${currentTransportMode})}"
+                hx-target="closest .trip-transport-mode-container"
+                hx-swap="outerHTML"
+                th:text="#{form.cancel}">Cancel</button>
+    </form>
+</div>
+
+<div th:fragment="view-mode" class="trip-transport-mode-container">
+    <span class="transport-mode" th:if="${transportMode != null}">
+        <span th:switch="${transportMode}">
+            <span th:case="'WALKING'" th:text="#{timeline.transport.walking}">by foot</span>
+            <span th:case="'CYCLING'" th:text="#{timeline.transport.cycling}">by bike</span>
+            <span th:case="'DRIVING'" th:text="#{timeline.transport.driving}">by car</span>
+            <span th:case="'TRANSIT'" th:text="#{timeline.transport.transit}">by transit</span>
+            <span th:case="*" th:text="${transportMode}">unknown</span>
+        </span>
+    </span>
+    <i class="lni lni-pencil-1 edit-icon"
+       th:hx-get="@{/timeline/trips/edit-form/{id}(id=${tripId}, date=${date}, timezone=${timezone})}"
+       hx-target="closest .trip-transport-mode-container"
+       hx-swap="outerHTML"></i>
+</div>
+
+</body>
+</html>

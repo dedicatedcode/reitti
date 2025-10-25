@@ -12,6 +12,7 @@ import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
 import com.dedicatedcode.reitti.service.AvatarService;
 import com.dedicatedcode.reitti.service.TimelineService;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
+import com.dedicatedcode.reitti.service.processing.TransportModeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -38,6 +39,7 @@ public class TimelineController {
     private final UserSharingJdbcService userSharingJdbcService;
     private final TimelineService timelineService;
     private final UserSettingsJdbcService userSettingsJdbcService;
+    private final TransportModeService transportModeService;
 
     @Autowired
     public TimelineController(SignificantPlaceJdbcService placeService,
@@ -45,7 +47,8 @@ public class TimelineController {
                               AvatarService avatarService,
                               ReittiIntegrationService reittiIntegrationService, UserSharingJdbcService userSharingJdbcService,
                               TimelineService timelineService,
-                              UserSettingsJdbcService userSettingsJdbcService) {
+                              UserSettingsJdbcService userSettingsJdbcService,
+                              TransportModeService transportModeService) {
         this.placeService = placeService;
         this.userJdbcService = userJdbcService;
         this.avatarService = avatarService;
@@ -53,6 +56,7 @@ public class TimelineController {
         this.userSharingJdbcService = userSharingJdbcService;
         this.timelineService = timelineService;
         this.userSettingsJdbcService = userSettingsJdbcService;
+        this.transportModeService = transportModeService;
     }
 
     @GetMapping("/content/range")
@@ -115,6 +119,66 @@ public class TimelineController {
         return "fragments/place-edit :: view-mode";
     }
 
+    @GetMapping("/trips/edit-form/{id}")
+    public String getTripEditForm(@PathVariable Long id,
+                                  @RequestParam(required = false) String date,
+                                  @RequestParam(required = false) String timezone,
+                                  Model model) {
+        model.addAttribute("tripId", id);
+        model.addAttribute("transportModes", com.dedicatedcode.reitti.model.geo.TransportMode.values());
+        model.addAttribute("date", date);
+        model.addAttribute("timezone", timezone);
+        return "fragments/trip-edit :: edit-form";
+    }
+
+    @PutMapping("/trips/{id}/transport-mode")
+    public String updateTripTransportMode(@PathVariable Long id,
+                                          @RequestParam String transportMode,
+                                          @RequestParam String startTime,
+                                          @RequestParam String endTime,
+                                          @RequestParam(required = false) String date,
+                                          @RequestParam(required = false, defaultValue = "UTC") String timezone,
+                                          Authentication principal,
+                                          Model model) {
+        // Find the user by username
+        User user = userJdbcService.findByUsername(principal.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        try {
+            TransportMode mode = com.dedicatedcode.reitti.model.geo.TransportMode.valueOf(transportMode);
+            Instant start = Instant.parse(startTime);
+            Instant end = Instant.parse(endTime);
+            
+            transportModeService.overrideTransportMode(user, mode, start, end);
+            
+            // If we have timeline context, reload the entire timeline
+            if (date != null) {
+                return getTimelineContent(date, timezone, principal, model, null);
+            }
+            
+            // Otherwise just return success
+            model.addAttribute("tripId", id);
+            model.addAttribute("transportMode", mode);
+            return "fragments/trip-edit :: view-mode";
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid transport mode");
+        }
+    }
+
+    @GetMapping("/trips/view/{id}")
+    public String getTripView(@PathVariable Long id,
+                              @RequestParam(required = false) String transportMode,
+                              Model model) {
+        model.addAttribute("tripId", id);
+        if (transportMode != null) {
+            try {
+                model.addAttribute("transportMode", com.dedicatedcode.reitti.model.geo.TransportMode.valueOf(transportMode));
+            } catch (IllegalArgumentException e) {
+                // Invalid transport mode, ignore
+            }
+        }
+        return "fragments/trip-edit :: view-mode";
+    }
 
     private String getTimelineContent(String date,
                                       String timezone,
