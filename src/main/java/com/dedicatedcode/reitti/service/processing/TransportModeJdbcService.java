@@ -54,4 +54,9 @@ public class TransportModeJdbcService {
             jdbcTemplate.update(insertSql, user.getId(), config.mode().name(), maxKmh);
         }
     }
+
+    @CacheEvict(value = "transport-mode-configs", key = "#user.id")
+    public void deleteAllForUser(User user) {
+        this.jdbcTemplate.update("DELETE FROM transport_mode_detection_configs WHERE user_id = ?", user.getId());
+    }
 }

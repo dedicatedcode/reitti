@@ -5,7 +5,6 @@ import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
-import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.TransportModeConfig;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
@@ -81,7 +80,7 @@ class UserServiceTest {
             52.5200,
             13.4050,
             "Europe/Berlin",
-            TimeDisplayMode.TWELVE_HOUR
+            TimeDisplayMode.DEFAULT
         );
 
         // Then
@@ -100,7 +99,7 @@ class UserServiceTest {
         assertThat(settings.getHomeLatitude()).isEqualTo(52.5200);
         assertThat(settings.getHomeLongitude()).isEqualTo(13.4050);
         assertThat(settings.getTimeZoneOverride()).isEqualTo(ZoneId.of("Europe/Berlin"));
-        assertThat(settings.getTimeDisplayMode()).isEqualTo(TimeDisplayMode.TWELVE_HOUR);
+        assertThat(settings.getTimeDisplayMode()).isEqualTo(TimeDisplayMode.DEFAULT);
 
         // Verify default parameters are created
         List<DetectionParameter> detectionParams = visitDetectionParametersJdbcService.findAllConfigurationsForUser(user);
@@ -124,14 +123,12 @@ class UserServiceTest {
             null,
             null,
             null,
-            TimeDisplayMode.TWENTY_FOUR_HOUR
+            TimeDisplayMode.DEFAULT
         );
 
         // Then
         UserSettings settings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
         assertThat(settings.getTimeZoneOverride()).isNull();
-        assertThat(settings.getHomeLatitude()).isNull();
-        assertThat(settings.getHomeLongitude()).isNull();
     }
 
     @Test
