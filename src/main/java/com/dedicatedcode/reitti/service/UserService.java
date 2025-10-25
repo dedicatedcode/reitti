@@ -3,22 +3,27 @@ package com.dedicatedcode.reitti.service;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
+import com.dedicatedcode.reitti.model.geo.TransportMode;
+import com.dedicatedcode.reitti.model.geo.TransportModeConfig;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.*;
+import com.dedicatedcode.reitti.repository.TransportModeJdbcService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.ZoneId;
+import java.util.List;
 
 @Service
 public class UserService {
     private final UserJdbcService userJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final VisitDetectionParametersJdbcService visitDetectionParametersJdbcService;
+    private final TransportModeJdbcService transportModeJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final VisitJdbcService visitJdbcService;
     private final SignificantPlaceJdbcService significantPlaceJdbcService;
@@ -27,10 +32,21 @@ public class UserService {
     private final ApiTokenJdbcService apiTokenJdbcService;
     private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserJdbcService userJdbcService, UserSettingsJdbcService userSettingsJdbcService, VisitDetectionParametersJdbcService visitDetectionParametersJdbcService, RawLocationPointJdbcService rawLocationPointJdbcService, VisitJdbcService visitJdbcService, SignificantPlaceJdbcService significantPlaceJdbcService, ProcessedVisitJdbcService processedVisitJdbcService, GeocodingResponseJdbcService geocodingResponseJdbcService, ApiTokenJdbcService apiTokenJdbcService, PasswordEncoder passwordEncoder) {
+    public UserService(UserJdbcService userJdbcService,
+                       UserSettingsJdbcService userSettingsJdbcService,
+                       VisitDetectionParametersJdbcService visitDetectionParametersJdbcService,
+                       TransportModeJdbcService transportModeJdbcService,
+                       RawLocationPointJdbcService rawLocationPointJdbcService,
+                       VisitJdbcService visitJdbcService,
+                       SignificantPlaceJdbcService significantPlaceJdbcService,
+                       ProcessedVisitJdbcService processedVisitJdbcService,
+                       GeocodingResponseJdbcService geocodingResponseJdbcService,
+                       ApiTokenJdbcService apiTokenJdbcService,
+                       PasswordEncoder passwordEncoder) {
         this.userJdbcService = userJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.visitDetectionParametersJdbcService = visitDetectionParametersJdbcService;
+        this.transportModeJdbcService = transportModeJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.visitJdbcService = visitJdbcService;
         this.significantPlaceJdbcService = significantPlaceJdbcService;
@@ -50,6 +66,7 @@ public class UserService {
                 .withExternalId(externalId)
                 .withProfileUrl(profileUrl));
         saveDefaultVisitDetectionParameters(createdUser);
+        saveDefaultTransportationModeDetectionParameters(createdUser);
 
         return createdUser;
 
@@ -83,8 +100,19 @@ public class UserService {
 
 
         saveDefaultVisitDetectionParameters(createdUser);
+        saveDefaultTransportationModeDetectionParameters(createdUser);
         userSettingsJdbcService.save(userSettings);
         return createdUser;
+    }
+
+    private void saveDefaultTransportationModeDetectionParameters(User createdUser) {
+        this.transportModeJdbcService.setTransportModeConfigs(createdUser,
+                List.of(
+                        new TransportModeConfig(TransportMode.WALKING, 7.0),
+                        new TransportModeConfig(TransportMode.CYCLING, 20.0),
+                        new TransportModeConfig(TransportMode.DRIVING, 120.0),
+                        new TransportModeConfig(TransportMode.TRANSIT, null)
+                ));
     }
 
     private void saveDefaultVisitDetectionParameters(User createdUser) {
@@ -99,6 +127,7 @@ public class UserService {
     @Transactional
     public void deleteUser(User user) {
         this.visitDetectionParametersJdbcService.findAllConfigurationsForUser(user).forEach(detectionParameter -> this.visitDetectionParametersJdbcService.delete(detectionParameter.getId()));
+        this.transportModeJdbcService.deleteAllForUser(user);
         this.userSettingsJdbcService.deleteFor(user);
         this.geocodingResponseJdbcService.deleteAllForUser(user);
         this.processedVisitJdbcService.deleteAllForUser(user);

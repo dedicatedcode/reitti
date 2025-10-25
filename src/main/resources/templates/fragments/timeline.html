@@ -46,59 +46,59 @@
              th:data-lng="${entry.place?.longitudeCentroid}"
              th:data-path="${entry.path}"
              th:data-user-id="${userData.userId}">
+            <th:block th:fragment="timeline-entry">
+                <!-- Entry Description -->
+                <div class="entry-description">
+                    <!-- Visit with editable place name -->
+                    <div th:if="${entry.type.name() == 'VISIT'}" class="place-name-container">
+                        <span class="place-name" th:text="${entry.place?.name ?: 'Unknown Place'}">Place Name</span>
+                        <i class="lni lni-pencil-1 edit-icon"
+                           th:hx-get="@{/timeline/places/edit-form/{id}(id=${entry.place?.id}, date=${date}, timezone=${timezone})}"
+                           hx-target="closest .place-name-container"
+                           hx-swap="outerHTML"
+                           th:if="${entry.place?.id != null}"></i>
+                    </div>
 
-        <!-- Entry Description -->
-        <div class="entry-description">
-            <!-- Visit with editable place name -->
-            <div th:if="${entry.type.name() == 'VISIT'}" class="place-name-container">
-                <span class="place-name" th:text="${entry.place?.name ?: 'Unknown Place'}">Place Name</span>
-                <i class="lni lni-pencil-1 edit-icon"
-                   th:hx-get="@{/timeline/places/edit-form/{id}(id=${entry.place?.id}, date=${date}, timezone=${timezone})}"
-                   hx-target="closest .place-name-container"
-                   hx-swap="outerHTML"
-                   th:if="${entry.place?.id != null}"></i>
-            </div>
-            
-            <!-- Trip description -->
-            <span th:if="${entry.type.name() == 'TRIP'}" th:text="#{timeline.trip}">Trip</span>
-        </div>
-        <!-- Type -->
-        <div class="entry-time" th:if="${entry.type.name() == 'VISIT'}">
-            <span th:text="#{${entry.place.type.messageKey}}">Home</span>
-        </div>
-        <!-- Duration and Distance -->
-        <span class="entry-duration">
-            <span th:if="${entry.type.name() == 'VISIT'}">
-                <span th:text="#{timeline.duration}">Duration</span>: 
-                <span th:text="${entry.formattedDuration}">1h 30m</span>
-            </span>
-            <span th:if="${entry.type.name() == 'TRIP'}">
-                <span th:if="${entry.formattedDistance != null}">
-                    <span th:text="#{timeline.distance}">Distance</span>: 
-                    <span th:text="${entry.formattedDistance}">5.2 km</span>
-                </span>
-                <span th:if="${entry.transportMode != null}">
-                    <span th:switch="${entry.transportMode}">
-                        <span th:case="'WALKING'" th:text="#{timeline.transport.walking}">by foot</span>
-                        <span th:case="'CYCLING'" th:text="#{timeline.transport.cycling}">by bike</span>
-                        <span th:case="'DRIVING'" th:text="#{timeline.transport.driving}">by car</span>
-                        <span th:case="*" th:text="${entry.transportMode}">unknown</span>
+                    <!-- Trip description -->
+                    <span th:if="${entry.type.name() == 'TRIP'}" th:text="#{timeline.trip}">Trip</span>
+                </div>
+                <!-- Type -->
+                <div class="entry-time" th:if="${entry.type.name() == 'VISIT'}">
+                    <span th:text="#{${entry.place.type.messageKey}}">Home</span>
+                </div>
+                <!-- Duration and Distance -->
+                <span class="entry-duration">
+                    <span th:if="${entry.type.name() == 'VISIT'}">
+                        <span th:text="#{timeline.duration}">Duration</span>:
+                        <span th:text="${entry.formattedDuration}">1h 30m</span>
+                    </span>
+                    <span th:if="${entry.type.name() == 'TRIP'}">
+                        <span th:if="${entry.formattedDistance != null}">
+                            <span th:text="#{timeline.distance}">Distance</span>:
+                            <span th:text="${entry.formattedDistance}">5.2 km</span>
+                        </span>
+                        <div th:if="${entry.transportMode != null}" class="trip-transport-mode-container">
+                            <span th:text="#{'timeline.transport.' + ${entry.transportMode} + '.label'}">by foot</span>
+                            <i class="lni lni-pencil-1 edit-icon"
+                               th:hx-get="@{/timeline/trips/edit-form/{id}(id=${entry.resourceId})}"
+                               hx-target="closest .trip-transport-mode-container"
+                               hx-swap="outerHTML"></i>
+                        </div>
                     </span>
                 </span>
-            </span>
-        </span>
-        
-        <!-- Time -->
-        <div class="entry-time">
-            <span th:if="${timeDisplayMode.name() == 'GEO_LOCAL'}" 
-                  th:text="${entry.formattedLocalTimeRange}"
-                  th:title="|#{timeline.time.your}: ${entry.formattedTimeRange}|">09:00 - 10:30</span>
-            <span th:if="${timeDisplayMode.name() == 'DEFAULT'}" 
-                  th:text="${entry.formattedTimeRange}"
-                  th:title="|#{timeline.time.local}: ${entry.formattedLocalTimeRange}|">09:00 - 10:30</span>
+
+                <!-- Time -->
+                <div class="entry-time">
+                    <span th:if="${timeDisplayMode.name() == 'GEO_LOCAL'}"
+                          th:text="${entry.formattedLocalTimeRange}"
+                          th:title="|#{timeline.time.your}: ${entry.formattedTimeRange}|">09:00 - 10:30</span>
+                    <span th:if="${timeDisplayMode.name() == 'DEFAULT'}"
+                          th:text="${entry.formattedTimeRange}"
+                          th:title="|#{timeline.time.local}: ${entry.formattedLocalTimeRange}|">09:00 - 10:30</span>
+                </div>
+            </th:block>
         </div>
     </div>
-</div>
 </div>
 
 </body>

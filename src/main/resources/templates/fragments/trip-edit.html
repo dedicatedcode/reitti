@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+
+<div th:fragment="edit-form" class="inline-edit-form editing trip-transport-mode-container">
+    <form th:hx-put="@{/timeline/trips/{id}/transport-mode(id=${tripId})}"
+          hx-target="closest .trip-transport-mode-container"
+          hx-swap="outerHTML">
+        <input type="hidden" name="timezone" th:value="${timezone}">
+        <div class="form-group">
+            <select name="transportMode" th:placeholder="#{timeline.trip.transport.select}" required>
+                <option th:each="mode : ${availableTransportModes}"
+                        th:value="${mode}"
+                        th:text="#{${'transportation.mode.' + mode + '.name'}}"
+                        th:selected="${mode == transportMode}"></option>
+            </select>
+        </div>
+        <div class="form-buttons">
+            <button type="submit" class="btn btn-sm" th:text="#{form.update}">Update</button>
+            <button type="button"
+                    class="btn btn-sm btn-secondary"
+                    th:hx-get="@{/timeline/trips/view/{id}(id=${tripId}, transportMode=${param.currentTransportMode})}"
+                    hx-target="closest .trip-transport-mode-container"
+                    hx-swap="outerHTML"
+                    th:text="#{form.cancel}">Cancel</button>
+        </div>
+    </form>
+</div>
+
+<div th:fragment="view-mode" class="trip-transport-mode-container">
+    <span th:text="#{'timeline.transport.' + ${transportMode} + '.label'}">by foot</span>
+    </span>
+    <i class="lni lni-pencil-1 edit-icon"
+       th:hx-get="@{/timeline/trips/edit-form/{id}(id=${tripId}, date=${date}, timezone=${timezone})}"
+       hx-target="closest .trip-transport-mode-container"
+       hx-swap="outerHTML"></i>
+</div>
+
+</body>
+</html>

@@ -60,7 +60,12 @@
            th:classappend="${activeSection == 'visit-sensitivity'} ? 'active' : ''"
            th:title="#{visit.sensitivity.title.description}"
            th:text="#{visit.sensitivity.title}">Visit Sensitivity</a>
-        
+        <a href="/settings/transportation-modes"
+           class="settings-nav-item"
+           th:classappend="${activeSection == 'transportation-modes'} ? 'active' : ''"
+           th:title="#{settings.transportation-modes.description}"
+           th:text="#{settings.transportation-modes}">Transportion Modes</a>
+
         <a href="/settings/geocode-services"
            class="settings-nav-item"
            th:classappend="${activeSection == 'geocode-services'} ? 'active' : ''"

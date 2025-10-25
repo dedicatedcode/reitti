@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
+import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.security.User;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -39,7 +40,7 @@ public class PreviewTripJdbcService {
                     rs.getLong("duration_seconds"),
                     rs.getDouble("estimated_distance_meters"),
                     rs.getDouble("travelled_distance_meters"),
-                    rs.getString("transport_mode_inferred"),
+                    TransportMode.valueOf(rs.getString("transport_mode_inferred")),
                     startVisit,
                     endVisit,
                     rs.getLong("version")

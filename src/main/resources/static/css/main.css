@@ -480,6 +480,7 @@ tr:hover {
     font-weight: lighter;
     pointer-events: all;
     cursor: pointer;
+    position: relative;
 }
 
 .timeline-entry.active {
