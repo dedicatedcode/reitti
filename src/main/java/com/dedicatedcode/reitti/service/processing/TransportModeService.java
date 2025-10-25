@@ -8,10 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -63,12 +60,20 @@ public class TransportModeService {
         TransportMode mode = classifySegment(currentSegmentPoints, configs);
         segments.add(new TripSegment(currentSegmentPoints, mode));
 
-        // Count occurrences of each transport mode and return the most frequent one
-        Map<TransportMode, Long> modeCount = segments.stream()
-                .collect(Collectors.groupingBy(TripSegment::dominantMode, Collectors.counting()));
-
-        // ok, this does not work as expected, we should first calculate the duraion in minutes for every segment, and then the transport mode with the most minutes wins AI!
-        return modeCount.entrySet().stream()
+        // Calculate duration in minutes for each transport mode and return the one with the most minutes
+        Map<TransportMode, Double> modeDurationMinutes = new HashMap<>();
+        
+        for (TripSegment segment : segments) {
+            if (segment.points().size() < 2) continue;
+            
+            Instant startTime = segment.points().get(0).getTimestamp();
+            Instant endTime = segment.points().get(segment.points().size() - 1).getTimestamp();
+            double durationMinutes = Duration.between(startTime, endTime).toMillis() / (1000.0 * 60.0);
+            
+            modeDurationMinutes.merge(segment.dominantMode(), durationMinutes, Double::sum);
+        }
+        
+        return modeDurationMinutes.entrySet().stream()
                 .max(Map.Entry.comparingByValue())
                 .map(Map.Entry::getKey)
                 .orElse(TransportMode.UNKNOWN);
