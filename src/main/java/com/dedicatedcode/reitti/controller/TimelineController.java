@@ -4,14 +4,14 @@ import com.dedicatedcode.reitti.dto.TimelineData;
 import com.dedicatedcode.reitti.dto.TimelineEntry;
 import com.dedicatedcode.reitti.dto.UserTimelineData;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
+import com.dedicatedcode.reitti.model.geo.TransportMode;
+import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
-import com.dedicatedcode.reitti.repository.UserJdbcService;
-import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
-import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
+import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.AvatarService;
 import com.dedicatedcode.reitti.service.TimelineService;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
+import com.dedicatedcode.reitti.service.processing.TransportModeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -38,6 +38,8 @@ public class TimelineController {
     private final UserSharingJdbcService userSharingJdbcService;
     private final TimelineService timelineService;
     private final UserSettingsJdbcService userSettingsJdbcService;
+    private final TransportModeService transportModeService;
+    private final TripJdbcService tripJdbcService;
 
     @Autowired
     public TimelineController(SignificantPlaceJdbcService placeService,
@@ -45,7 +47,9 @@ public class TimelineController {
                               AvatarService avatarService,
                               ReittiIntegrationService reittiIntegrationService, UserSharingJdbcService userSharingJdbcService,
                               TimelineService timelineService,
-                              UserSettingsJdbcService userSettingsJdbcService) {
+                              UserSettingsJdbcService userSettingsJdbcService,
+                              TransportModeService transportModeService,
+                              TripJdbcService tripJdbcService) {
         this.placeService = placeService;
         this.userJdbcService = userJdbcService;
         this.avatarService = avatarService;
@@ -53,6 +57,8 @@ public class TimelineController {
         this.userSharingJdbcService = userSharingJdbcService;
         this.timelineService = timelineService;
         this.userSettingsJdbcService = userSettingsJdbcService;
+        this.transportModeService = transportModeService;
+        this.tripJdbcService = tripJdbcService;
     }
 
     @GetMapping("/content/range")
@@ -115,6 +121,48 @@ public class TimelineController {
         return "fragments/place-edit :: view-mode";
     }
 
+    @GetMapping("/trips/edit-form/{id}")
+    public String getTripEditForm(@PathVariable Long id,
+                                  Model model) {
+        Trip trip = tripJdbcService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        model.addAttribute("tripId", id);
+        model.addAttribute("transportMode", trip.getTransportModeInferred());
+        model.addAttribute("availableTransportModes", Arrays.stream(TransportMode.values()).filter(t -> t != TransportMode.UNKNOWN).toList());
+        return "fragments/trip-edit :: edit-form";
+    }
+
+    @PutMapping("/trips/{id}/transport-mode")
+    public String updateTripTransportMode(@PathVariable Long id,
+                                          @RequestParam String transportMode,
+                                          Authentication principal,
+                                          Model model) {
+        // Find the user by username
+        User user = userJdbcService.findByUsername(principal.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        Trip trip = tripJdbcService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+
+        try {
+            TransportMode mode = TransportMode.valueOf(transportMode);
+            tripJdbcService.update(trip.withTransportMode(mode));
+            transportModeService.overrideTransportMode(user, mode, trip);
+            
+            model.addAttribute("tripId", id);
+            model.addAttribute("transportMode", mode);
+            return "fragments/trip-edit :: view-mode";
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid transport mode");
+        }
+    }
+
+    @GetMapping("/trips/view/{id}")
+    public String getTripView(@PathVariable Long id, Model model) {
+        Trip trip = tripJdbcService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        model.addAttribute("tripId", id);
+        model.addAttribute("transportMode", trip.getTransportModeInferred());
+        model.addAttribute("availableTransportModes", Arrays.stream(TransportMode.values()).filter(t -> t != TransportMode.UNKNOWN).toList());
+        return "fragments/trip-edit :: view-mode";
+    }
 
     private String getTimelineContent(String date,
                                       String timezone,

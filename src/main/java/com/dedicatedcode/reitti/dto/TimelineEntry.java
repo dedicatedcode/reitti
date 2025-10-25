@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.dto;
 
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
+import com.dedicatedcode.reitti.model.geo.TransportMode;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -9,9 +10,12 @@ import java.time.ZoneId;
  * Inner class to represent timeline entries for the template
  */
 public class TimelineEntry {
-    public enum Type {VISIT, TRIP}
+
+
+    public enum Type {VISIT, TRIP;}
 
     private String id;
+    private Long resourceId;
     private Type type;
     private SignificantPlace place;
     private String path;
@@ -24,7 +28,7 @@ public class TimelineEntry {
     private String formattedDuration;
     private Double distanceMeters;
     private String formattedDistance;
-    private String transportMode;
+    private TransportMode transportMode;
 
     // Getters and setters
     public String getId() {
@@ -33,6 +37,14 @@ public class TimelineEntry {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public Long getResourceId() {
+        return resourceId;
+    }
+
+    public void setResourceId(Long resourceId) {
+        this.resourceId = resourceId;
     }
 
     public Type getType() {
@@ -123,11 +135,11 @@ public class TimelineEntry {
         this.formattedDistance = formattedDistance;
     }
 
-    public String getTransportMode() {
+    public TransportMode getTransportMode() {
         return transportMode;
     }
 
-    public void setTransportMode(String transportMode) {
+    public void setTransportMode(TransportMode transportMode) {
         this.transportMode = transportMode;
     }
 

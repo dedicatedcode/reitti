@@ -18,6 +18,7 @@
     border-radius: 4px;
 }
 
+.timeline-entry.trip.active .edit-icon,
 .timeline-entry.active .place-name-container:hover .edit-icon {
     opacity: 1;
 }
@@ -32,9 +33,10 @@
     font-family: inherit;
 }
 
+.trip-transport-mode-container.editing,
 .place-name-container.editing {
     border-radius: 3px;
-    font-size: 1.2rem;
+    font-size: 1rem;
     float: left;
     min-width: 700px;
 }
@@ -64,11 +66,9 @@
     width: 100%;
 }
 
-.inline-edit-form select {
-    font-size: 1.2rem;
-}
 
 @media (max-width: 800px) {
+    .trip-transport-mode-container.editing,
     .place-name-container.editing {
         border-radius: 3px;
         font-size: 1rem;
