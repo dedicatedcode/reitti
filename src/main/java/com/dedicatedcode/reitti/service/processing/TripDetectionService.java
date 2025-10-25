@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.event.ProcessedVisitCreatedEvent;
+import com.dedicatedcode.reitti.event.RecalculateTripEvent;
 import com.dedicatedcode.reitti.model.geo.*;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
@@ -180,5 +181,21 @@ public class TripDetectionService {
         return GeoUtils.distanceInMeters(
                 place1.getLatitudeCentroid(), place1.getLongitudeCentroid(),
                 place2.getLatitudeCentroid(), place2.getLongitudeCentroid());
+    }
+
+    public void recalculateTrip(RecalculateTripEvent event) {
+        User user = this.userJdbcService.findByUsername(event.getUsername()).orElseThrow();
+
+        this.tripJdbcService.findByUserAndId(user, event.getTripId()).ifPresent(trip -> {
+            logger.info("Recalculating trip [{}] for user [{}]", trip.getId(), user.getUsername());
+            Instant startTime = trip.getStartTime();
+            Instant endTime = trip.getEndTime();
+            List<RawLocationPoint> tripPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, startTime, endTime);
+            TransportMode transportMode = this.transportModeService.inferTransportMode(user, tripPoints, startTime, endTime);
+            if (trip.getTransportModeInferred() != transportMode) {
+                logger.info("TransportMode changed from [{}] to [{}] for trip [{}]", trip.getTransportModeInferred(), transportMode, trip.getId());
+                this.tripJdbcService.update(trip.withTransportMode(transportMode));
+            }
+        });
     }
 }
