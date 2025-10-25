@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.service.processing;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.TransportModeConfig;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.TransportModeJdbcService;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;

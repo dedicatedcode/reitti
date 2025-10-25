@@ -11,7 +11,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.repository.VisitDetectionParametersJdbcService;
-import com.dedicatedcode.reitti.service.processing.TransportModeJdbcService;
+import com.dedicatedcode.reitti.repository.TransportModeJdbcService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 

@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.service.processing;
+package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.TransportModeConfig;

@@ -9,7 +9,7 @@ import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.*;
-import com.dedicatedcode.reitti.service.processing.TransportModeJdbcService;
+import com.dedicatedcode.reitti.repository.TransportModeJdbcService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
