@@ -66,8 +66,8 @@ public class TransportModeService {
         for (TripSegment segment : segments) {
             if (segment.points().size() < 2) continue;
             
-            Instant startTime = segment.points().get(0).getTimestamp();
-            Instant endTime = segment.points().get(segment.points().size() - 1).getTimestamp();
+            Instant startTime = segment.points().getFirst().getTimestamp();
+            Instant endTime = segment.points().getLast().getTimestamp();
             double durationMinutes = Duration.between(startTime, endTime).toMillis() / (1000.0 * 60.0);
             
             modeDurationMinutes.merge(segment.dominantMode(), durationMinutes, Double::sum);

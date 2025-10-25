@@ -158,7 +158,7 @@ public class TripDetectionService {
         double estimatedDistanceInMeters = calculateDistanceBetweenPlaces(startVisit.getPlace(), endVisit.getPlace());
         double travelledDistanceMeters = GeoUtils.calculateTripDistance(tripPoints);
         // Create a new trip
-        TransportMode transportMode = this.transportModeService.inferTransportMode(user, travelledDistanceMeters != 0 ? travelledDistanceMeters : estimatedDistanceInMeters, tripStartTime, tripEndTime);
+        TransportMode transportMode = this.transportModeService.inferTransportMode(user, tripPoints, tripStartTime, tripEndTime);
         Trip trip = new Trip(
                 tripStartTime,
                 tripEndTime,
