@@ -9,8 +9,8 @@
     <form th:hx-put="@{/timeline/trips/{id}/transport-mode(id=${tripId})}"
           hx-target="closest .trip-transport-mode-container"
           hx-swap="outerHTML">
-        <input type="hidden" name="startTime" th:value="${startTime}">
-        <input type="hidden" name="endTime" th:value="${endTime}">
+        <input type="hidden" name="startTime" th:value="${param.startTime}">
+        <input type="hidden" name="endTime" th:value="${param.endTime}">
         <input type="hidden" name="date" th:value="${date}">
         <input type="hidden" name="timezone" th:value="${timezone}">
         
@@ -19,13 +19,13 @@
             <option th:each="mode : ${transportModes}" 
                     th:value="${mode}" 
                     th:text="#{${'transportation.mode.' + mode.name().toLowerCase()}}"
-                    th:selected="${mode == currentTransportMode}"></option>
+                    th:selected="${mode.name() == param.currentTransportMode[0]}"></option>
         </select>
         
         <button type="submit" class="btn btn-sm" th:text="#{form.save}">Save</button>
         <button type="button" 
                 class="btn btn-sm btn-secondary"
-                th:hx-get="@{/timeline/trips/view/{id}(id=${tripId}, transportMode=${currentTransportMode})}"
+                th:hx-get="@{/timeline/trips/view/{id}(id=${tripId}, transportMode=${param.currentTransportMode})}"
                 hx-target="closest .trip-transport-mode-container"
                 hx-swap="outerHTML"
                 th:text="#{form.cancel}">Cancel</button>
@@ -33,7 +33,7 @@
 </div>
 
 <div th:fragment="view-mode" class="trip-transport-mode-container">
-    <span class="transport-mode" th:if="${transportMode != null}">
+    <span th:if="${transportMode != null}">
         <span th:switch="${transportMode}">
             <span th:case="'WALKING'" th:text="#{timeline.transport.walking}">by foot</span>
             <span th:case="'CYCLING'" th:text="#{timeline.transport.cycling}">by bike</span>

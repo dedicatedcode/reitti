@@ -60,14 +60,7 @@
             </div>
             
             <!-- Trip description -->
-            <div th:if="${entry.type.name() == 'TRIP'}" class="trip-transport-mode-container">
-                <span th:text="#{timeline.trip}">Trip</span>
-                <i class="lni lni-pencil-1 edit-icon"
-                   th:hx-get="@{/timeline/trips/edit-form/{id}(id=${entry.id}, date=${date}, timezone=${timezone})}"
-                   hx-target="closest .trip-transport-mode-container"
-                   hx-swap="outerHTML"
-                   th:attr="hx-vals='{&quot;startTime&quot;: &quot;' + ${entry.startTime} + '&quot;, &quot;endTime&quot;: &quot;' + ${entry.endTime} + '&quot;, &quot;currentTransportMode&quot;: &quot;' + ${entry.transportMode} + '&quot;}'"></i>
-            </div>
+            <span th:if="${entry.type.name() == 'TRIP'}" th:text="#{timeline.trip}">Trip</span>
         </div>
         <!-- Type -->
         <div class="entry-time" th:if="${entry.type.name() == 'VISIT'}">
@@ -84,7 +77,7 @@
                     <span th:text="#{timeline.distance}">Distance</span>: 
                     <span th:text="${entry.formattedDistance}">5.2 km</span>
                 </span>
-                <span th:if="${entry.transportMode != null}">
+                <div th:if="${entry.transportMode != null}" class="trip-transport-mode-container">
                     <span th:switch="${entry.transportMode}">
                         <span th:case="'WALKING'" th:text="#{timeline.transport.walking}">by foot</span>
                         <span th:case="'CYCLING'" th:text="#{timeline.transport.cycling}">by bike</span>
@@ -92,7 +85,12 @@
                         <span th:case="'TRANSIT'" th:text="#{timeline.transport.transit}">by transit</span>
                         <span th:case="*" th:text="${entry.transportMode}">unknown</span>
                     </span>
-                </span>
+                    <i class="lni lni-pencil-1 edit-icon"
+                       th:hx-get="@{/timeline/trips/edit-form/{id}(id=${entry.id}, date=${date}, timezone=${timezone})}"
+                       hx-target="closest .trip-transport-mode-container"
+                       hx-swap="outerHTML"
+                       th:attr="hx-vals='{&quot;startTime&quot;: &quot;' + ${entry.startTime} + '&quot;, &quot;endTime&quot;: &quot;' + ${entry.endTime} + '&quot;, &quot;currentTransportMode&quot;: &quot;' + ${entry.transportMode} + '&quot;}'"></i>
+                </div>
             </span>
         </span>
         
