@@ -8,7 +8,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -23,34 +26,14 @@ public class TransportModeService {
         this.transportModeOverrideJdbcService = transportModeOverrideJdbcService;
     }
 
-    public TransportMode inferTransportMode(User user, List<RawLocationPoint> tripPoints, double distanceMeters, Instant startTime, Instant endTime) {
+    public TransportMode inferTransportMode(User user, List<RawLocationPoint> tripPoints, Instant startTime, Instant endTime) {
 
         Optional<TransportMode> override = this.transportModeOverrideJdbcService.getTransportModeOverride(user, startTime, endTime);
         if (override.isPresent()) {
             return override.get();
         }
         List<TransportModeConfig> config = transportModeJdbcService.getTransportModeConfigs(user);
-
-        // Calculate duration in seconds
-        long durationSeconds = endTime.getEpochSecond() - startTime.getEpochSecond();
-
-        // Avoid division by zero
-        if (durationSeconds <= 0) {
-            return TransportMode.UNKNOWN;
-        }
-
-        // Calculate speed in meters per second
-        double speedMps = distanceMeters / durationSeconds;
-
-        // Convert to km/h for easier interpretation
-        double speedKmh = speedMps * 3.6;
-
-        for (TransportModeConfig transportModeConfig : config) {
-            if (transportModeConfig.maxKmh() == null || transportModeConfig.maxKmh() > speedKmh)
-                return transportModeConfig.mode();
-        }
-
-        return TransportMode.UNKNOWN;
+        return segmentAndClassifyTrip(tripPoints, config);
     }
 
     public void overrideTransportMode(User user, TransportMode transportMode, Trip trip) {
@@ -68,10 +51,7 @@ public class TransportModeService {
             double prevSpeed = (i > 1) ? speeds.get(i - 2) : 0; // Speed to previous point
             double currSpeed = speeds.get(i - 1); // Speed from current to next
 
-            // Simple change-point detection: If speed increases/decreases by 50%+, start new segment
-            // Adjust threshold as needed (0.5 = 50%)
             if (prevSpeed > 0 && Math.abs(currSpeed - prevSpeed) / prevSpeed > 0.5) {
-                // Classify previous segment and add to list
                 TransportMode mode = classifySegment(currentSegmentPoints, configs);
                 segments.add(new TripSegment(new ArrayList<>(currentSegmentPoints), mode));
                 currentSegmentPoints.clear();
@@ -86,7 +66,8 @@ public class TransportModeService {
         // Count occurrences of each transport mode and return the most frequent one
         Map<TransportMode, Long> modeCount = segments.stream()
                 .collect(Collectors.groupingBy(TripSegment::dominantMode, Collectors.counting()));
-        
+
+        // ok, this does not work as expected, we should first calculate the duraion in minutes for every segment, and then the transport mode with the most minutes wins AI!
         return modeCount.entrySet().stream()
                 .max(Map.Entry.comparingByValue())
                 .map(Map.Entry::getKey)
