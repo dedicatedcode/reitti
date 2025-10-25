@@ -26,6 +26,10 @@ public class TransportModeService {
 
     public TransportMode inferTransportMode(User user, double distanceMeters, Instant startTime, Instant endTime) {
 
+        Optional<TransportMode> override = this.transportModeOverrideJdbcService.getTransportModeOverride(user, startTime, endTime);
+        if (override.isPresent()) {
+            return override.get();
+        }
         List<TransportModeConfig> config = transportModeJdbcService.getTransportModeConfigs(user);
 
         // Calculate duration in seconds
@@ -52,9 +56,5 @@ public class TransportModeService {
 
     public void overrideTransportMode(User user, TransportMode transportMode, Trip trip) {
         transportModeOverrideJdbcService.addTransportModeOverride(user, transportMode, trip.getStartTime(), trip.getEndTime());
-    }
-
-    public Optional<TransportMode> getTransportModeOverride(User user, Instant startTime, Instant endTime) {
-        return transportModeOverrideJdbcService.getTransportModeOverride(user, startTime, endTime);
     }
 }
