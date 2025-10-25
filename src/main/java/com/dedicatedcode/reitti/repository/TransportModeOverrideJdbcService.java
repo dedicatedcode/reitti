@@ -19,7 +19,6 @@ public class TransportModeOverrideJdbcService {
 
     @Transactional
     public void addTransportModeOverride(User user, TransportMode transportMode, Instant start, Instant end) {
-        // Calculate the middle time between start and end
         Instant middleTime = Instant.ofEpochMilli((start.toEpochMilli() + end.toEpochMilli()) / 2);
         
         // Delete any existing overrides for this user in the time range
