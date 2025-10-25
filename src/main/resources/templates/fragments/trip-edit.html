@@ -5,42 +5,33 @@
 </head>
 <body>
 
-<div th:fragment="edit-form" class="trip-edit-form">
+<div th:fragment="edit-form" class="inline-edit-form editing trip-transport-mode-container">
     <form th:hx-put="@{/timeline/trips/{id}/transport-mode(id=${tripId})}"
           hx-target="closest .trip-transport-mode-container"
           hx-swap="outerHTML">
-        <input type="hidden" name="startTime" th:value="${param.startTime}">
-        <input type="hidden" name="endTime" th:value="${param.endTime}">
-        <input type="hidden" name="date" th:value="${date}">
         <input type="hidden" name="timezone" th:value="${timezone}">
-        
-        <select name="transportMode" required>
-            <option value="" th:text="#{timeline.trip.transport.select}">Select transport mode...</option>
-            <option th:each="mode : ${transportModes}" 
-                    th:value="${mode}" 
-                    th:text="#{${'transportation.mode.' + mode.name().toLowerCase()}}"
-                    th:selected="${mode.name() == param.currentTransportMode[0]}"></option>
-        </select>
-        
-        <button type="submit" class="btn btn-sm" th:text="#{form.save}">Save</button>
-        <button type="button" 
-                class="btn btn-sm btn-secondary"
-                th:hx-get="@{/timeline/trips/view/{id}(id=${tripId}, transportMode=${param.currentTransportMode})}"
-                hx-target="closest .trip-transport-mode-container"
-                hx-swap="outerHTML"
-                th:text="#{form.cancel}">Cancel</button>
+        <div class="form-group">
+            <select name="transportMode" th:placeholder="#{timeline.trip.transport.select}" required>
+                <option th:each="mode : ${availableTransportModes}"
+                        th:value="${mode}"
+                        th:text="#{${'transportation.mode.' + mode + '.name'}}"
+                        th:selected="${mode == transportMode}"></option>
+            </select>
+        </div>
+        <div class="form-buttons">
+            <button type="submit" class="btn btn-sm" th:text="#{form.update}">Update</button>
+            <button type="button"
+                    class="btn btn-sm btn-secondary"
+                    th:hx-get="@{/timeline/trips/view/{id}(id=${tripId}, transportMode=${param.currentTransportMode})}"
+                    hx-target="closest .trip-transport-mode-container"
+                    hx-swap="outerHTML"
+                    th:text="#{form.cancel}">Cancel</button>
+        </div>
     </form>
 </div>
 
 <div th:fragment="view-mode" class="trip-transport-mode-container">
-    <span th:if="${transportMode != null}">
-        <span th:switch="${transportMode}">
-            <span th:case="'WALKING'" th:text="#{timeline.transport.walking}">by foot</span>
-            <span th:case="'CYCLING'" th:text="#{timeline.transport.cycling}">by bike</span>
-            <span th:case="'DRIVING'" th:text="#{timeline.transport.driving}">by car</span>
-            <span th:case="'TRANSIT'" th:text="#{timeline.transport.transit}">by transit</span>
-            <span th:case="*" th:text="${transportMode}">unknown</span>
-        </span>
+    <span th:text="#{'timeline.transport.' + ${transportMode} + '.label'}">by foot</span>
     </span>
     <i class="lni lni-pencil-1 edit-icon"
        th:hx-get="@{/timeline/trips/edit-form/{id}(id=${tripId}, date=${date}, timezone=${timezone})}"

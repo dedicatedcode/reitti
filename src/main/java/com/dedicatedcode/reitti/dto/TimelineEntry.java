@@ -10,9 +10,12 @@ import java.time.ZoneId;
  * Inner class to represent timeline entries for the template
  */
 public class TimelineEntry {
-    public enum Type {VISIT, TRIP}
+
+
+    public enum Type {VISIT, TRIP;}
 
     private String id;
+    private Long resourceId;
     private Type type;
     private SignificantPlace place;
     private String path;
@@ -34,6 +37,14 @@ public class TimelineEntry {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public Long getResourceId() {
+        return resourceId;
+    }
+
+    public void setResourceId(Long resourceId) {
+        this.resourceId = resourceId;
     }
 
     public Type getType() {

@@ -77,6 +77,14 @@ public class Trip {
         return new Trip(id, this.startTime, this.endTime, this.durationSeconds, this.estimatedDistanceMeters, this.travelledDistanceMeters, this.transportModeInferred, this.startVisit, this.endVisit, this.version);
     }
 
+    public Trip withTransportMode(TransportMode mode) {
+        return new Trip(this.id, this.startTime, this.endTime, this.durationSeconds, this.estimatedDistanceMeters, this.travelledDistanceMeters, mode, this.startVisit, this.endVisit, this.version);
+    }
+
+    public Trip withVersion(long version) {
+        return new Trip(id, this.startTime, this.endTime, this.durationSeconds, this.estimatedDistanceMeters, this.travelledDistanceMeters, this.transportModeInferred, this.startVisit, this.endVisit, version);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
@@ -88,4 +96,5 @@ public class Trip {
     public int hashCode() {
         return Objects.hashCode(id);
     }
+
 }

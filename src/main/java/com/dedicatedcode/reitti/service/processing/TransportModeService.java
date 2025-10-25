@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.TransportModeConfig;
+import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.TransportModeJdbcService;
 import com.dedicatedcode.reitti.repository.TransportModeOverrideJdbcService;
@@ -49,8 +50,8 @@ public class TransportModeService {
         return TransportMode.UNKNOWN;
     }
 
-    public void overrideTransportMode(User user, TransportMode transportMode, Instant startTime, Instant endTime) {
-        transportModeOverrideJdbcService.addTransportModeOverride(user, transportMode, startTime, endTime);
+    public void overrideTransportMode(User user, TransportMode transportMode, Trip trip) {
+        transportModeOverrideJdbcService.addTransportModeOverride(user, transportMode, trip.getStartTime(), trip.getEndTime());
     }
 
     public Optional<TransportMode> getTransportModeOverride(User user, Instant startTime, Instant endTime) {

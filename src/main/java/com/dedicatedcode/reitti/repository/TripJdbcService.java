@@ -143,7 +143,7 @@ public class TripJdbcService {
     }
 
     public Trip update(Trip trip) {
-        String sql = "UPDATE trips SET start_time = ?, end_time = ?, duration_seconds = ?, travelled_distance_meters = ?, transport_mode_inferred = ?, start_place_id = ?, end_place_id = ?, start_visit_id = ?, end_visit_id = ?, version = ? WHERE id = ?";
+        String sql = "UPDATE trips SET start_time = ?, end_time = ?, duration_seconds = ?, travelled_distance_meters = ?, transport_mode_inferred = ?, start_visit_id = ?, end_visit_id = ?, version = ? WHERE id = ?";
         jdbcTemplate.update(sql,
                 Timestamp.from(trip.getStartTime()),
                 Timestamp.from(trip.getEndTime()),
@@ -152,9 +152,10 @@ public class TripJdbcService {
                 trip.getTransportModeInferred().name(),
                 trip.getStartVisit() != null ? trip.getStartVisit().getId() : null,
                 trip.getEndVisit() != null ? trip.getEndVisit().getId() : null,
+                trip.getVersion() + 1,
                 trip.getId()
         );
-        return trip;
+        return trip.withVersion(trip.getVersion() + 1);
     }
 
     public Optional<Trip> findById(Long id) {

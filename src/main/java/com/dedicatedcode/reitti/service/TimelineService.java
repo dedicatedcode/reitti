@@ -95,6 +95,7 @@ public class TimelineService {
             if (place != null) {
                 TimelineEntry entry = new TimelineEntry();
                 entry.setId("visit-" + visit.getId());
+                entry.setResourceId(visit.getId());
                 entry.setType(TimelineEntry.Type.VISIT);
                 entry.setPlace(place);
                 entry.setStartTime(visit.getStartTime());
@@ -112,6 +113,7 @@ public class TimelineService {
         for (Trip trip : trips) {
             TimelineEntry entry = new TimelineEntry();
             entry.setId("trip-" + trip.getId());
+            entry.setResourceId(trip.getId());
             entry.setType(TimelineEntry.Type.TRIP);
             entry.setStartTime(trip.getStartTime());
             entry.setStartTimezone(trip.getStartVisit().getPlace().getTimezone());

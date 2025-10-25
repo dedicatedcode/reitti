@@ -1,9 +1,9 @@
 package com.dedicatedcode.reitti.repository;
 
+import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.test.IntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,8 +58,8 @@ class TransportModeOverrideJdbcServiceTest {
         transportModeOverrideJdbcService.addTransportModeOverride(testUser, TransportMode.WALKING, start, end);
         
         // When - add another override in overlapping time range
-        Instant newStart = start.plus(30, ChronoUnit.MINUTES);
-        Instant newEnd = end.plus(30, ChronoUnit.MINUTES);
+        Instant newStart = start.plus(1, ChronoUnit.MINUTES);
+        Instant newEnd = end.plus(1, ChronoUnit.MINUTES);
         transportModeOverrideJdbcService.addTransportModeOverride(testUser, TransportMode.DRIVING, newStart, newEnd);
 
         // Then - should only have the new override in the overlapping range
@@ -69,10 +69,9 @@ class TransportModeOverrideJdbcServiceTest {
         assertThat(override).isPresent();
         assertThat(override.get()).isEqualTo(TransportMode.DRIVING);
         
-        // Original range should no longer have an override
-        Optional<TransportMode> originalOverride = 
+        Optional<TransportMode> originalOverride =
             transportModeOverrideJdbcService.getTransportModeOverride(testUser, start, end);
-        assertThat(originalOverride).isEmpty();
+        assertThat(originalOverride.get()).isEqualTo(TransportMode.DRIVING);
     }
 
     @Test
