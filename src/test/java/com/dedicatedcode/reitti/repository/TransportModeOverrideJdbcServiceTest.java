@@ -10,7 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -41,15 +41,11 @@ class TransportModeOverrideJdbcServiceTest {
         transportModeOverrideJdbcService.addTransportModeOverride(testUser, mode, start, end);
 
         // Then
-        List<TransportModeOverrideJdbcService.TransportModeOverride> overrides = 
-            transportModeOverrideJdbcService.getTransportModeOverrides(testUser);
+        Optional<TransportMode> override = 
+            transportModeOverrideJdbcService.getTransportModeOverride(testUser, start, end);
         
-        assertThat(overrides).hasSize(1);
-        assertThat(overrides.get(0).getTransportMode()).isEqualTo(TransportMode.CYCLING);
-        
-        // Time should be the middle between start and end
-        Instant expectedMiddle = Instant.ofEpochMilli((start.toEpochMilli() + end.toEpochMilli()) / 2);
-        assertThat(overrides.get(0).getTime()).isEqualTo(expectedMiddle);
+        assertThat(override).isPresent();
+        assertThat(override.get()).isEqualTo(TransportMode.CYCLING);
     }
 
     @Test
@@ -66,12 +62,17 @@ class TransportModeOverrideJdbcServiceTest {
         Instant newEnd = end.plus(30, ChronoUnit.MINUTES);
         transportModeOverrideJdbcService.addTransportModeOverride(testUser, TransportMode.DRIVING, newStart, newEnd);
 
-        // Then - should only have the new override
-        List<TransportModeOverrideJdbcService.TransportModeOverride> overrides = 
-            transportModeOverrideJdbcService.getTransportModeOverrides(testUser);
+        // Then - should only have the new override in the overlapping range
+        Optional<TransportMode> override = 
+            transportModeOverrideJdbcService.getTransportModeOverride(testUser, newStart, newEnd);
         
-        assertThat(overrides).hasSize(1);
-        assertThat(overrides.get(0).getTransportMode()).isEqualTo(TransportMode.DRIVING);
+        assertThat(override).isPresent();
+        assertThat(override.get()).isEqualTo(TransportMode.DRIVING);
+        
+        // Original range should no longer have an override
+        Optional<TransportMode> originalOverride = 
+            transportModeOverrideJdbcService.getTransportModeOverride(testUser, start, end);
+        assertThat(originalOverride).isEmpty();
     }
 
     @Test
@@ -88,13 +89,16 @@ class TransportModeOverrideJdbcServiceTest {
         transportModeOverrideJdbcService.addTransportModeOverride(testUser, TransportMode.CYCLING, start2, end2);
 
         // Then
-        List<TransportModeOverrideJdbcService.TransportModeOverride> overrides = 
-            transportModeOverrideJdbcService.getTransportModeOverrides(testUser);
+        Optional<TransportMode> override1 = 
+            transportModeOverrideJdbcService.getTransportModeOverride(testUser, start1, end1);
+        Optional<TransportMode> override2 = 
+            transportModeOverrideJdbcService.getTransportModeOverride(testUser, start2, end2);
         
-        assertThat(overrides).hasSize(2);
-        // Should be ordered by time
-        assertThat(overrides.get(0).getTransportMode()).isEqualTo(TransportMode.WALKING);
-        assertThat(overrides.get(1).getTransportMode()).isEqualTo(TransportMode.CYCLING);
+        assertThat(override1).isPresent();
+        assertThat(override1.get()).isEqualTo(TransportMode.WALKING);
+        
+        assertThat(override2).isPresent();
+        assertThat(override2.get()).isEqualTo(TransportMode.CYCLING);
     }
 
     @Test
@@ -112,20 +116,27 @@ class TransportModeOverrideJdbcServiceTest {
         transportModeOverrideJdbcService.deleteAllTransportModeOverrides(testUser);
 
         // Then
-        List<TransportModeOverrideJdbcService.TransportModeOverride> overrides = 
-            transportModeOverrideJdbcService.getTransportModeOverrides(testUser);
+        Optional<TransportMode> override1 = 
+            transportModeOverrideJdbcService.getTransportModeOverride(testUser, start1, end1);
+        Optional<TransportMode> override2 = 
+            transportModeOverrideJdbcService.getTransportModeOverride(testUser, start2, end2);
         
-        assertThat(overrides).isEmpty();
+        assertThat(override1).isEmpty();
+        assertThat(override2).isEmpty();
     }
 
     @Test
-    void shouldReturnEmptyListForUserWithNoOverrides() {
+    void shouldReturnEmptyOptionalForUserWithNoOverrides() {
+        // Given
+        Instant start = Instant.now().minus(1, ChronoUnit.HOURS);
+        Instant end = Instant.now();
+
         // When
-        List<TransportModeOverrideJdbcService.TransportModeOverride> overrides = 
-            transportModeOverrideJdbcService.getTransportModeOverrides(testUser);
+        Optional<TransportMode> override = 
+            transportModeOverrideJdbcService.getTransportModeOverride(testUser, start, end);
 
         // Then
-        assertThat(overrides).isEmpty();
+        assertThat(override).isEmpty();
     }
 
     @Test
@@ -140,15 +151,15 @@ class TransportModeOverrideJdbcServiceTest {
         transportModeOverrideJdbcService.addTransportModeOverride(user2, TransportMode.CYCLING, start, end);
 
         // Then
-        List<TransportModeOverrideJdbcService.TransportModeOverride> user1Overrides = 
-            transportModeOverrideJdbcService.getTransportModeOverrides(testUser);
-        List<TransportModeOverrideJdbcService.TransportModeOverride> user2Overrides = 
-            transportModeOverrideJdbcService.getTransportModeOverrides(user2);
+        Optional<TransportMode> user1Override = 
+            transportModeOverrideJdbcService.getTransportModeOverride(testUser, start, end);
+        Optional<TransportMode> user2Override = 
+            transportModeOverrideJdbcService.getTransportModeOverride(user2, start, end);
         
-        assertThat(user1Overrides).hasSize(1);
-        assertThat(user1Overrides.get(0).getTransportMode()).isEqualTo(TransportMode.WALKING);
+        assertThat(user1Override).isPresent();
+        assertThat(user1Override.get()).isEqualTo(TransportMode.WALKING);
         
-        assertThat(user2Overrides).hasSize(1);
-        assertThat(user2Overrides.get(0).getTransportMode()).isEqualTo(TransportMode.CYCLING);
+        assertThat(user2Override).isPresent();
+        assertThat(user2Override.get()).isEqualTo(TransportMode.CYCLING);
     }
 }
