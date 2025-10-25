@@ -79,7 +79,7 @@
                                 <option value="" th:text="#{transportation.modes.mode.select}">Select a mode...</option>
                                 <option th:each="mode : ${availableModes}" 
                                         th:value="${mode}" 
-                                        th:text="#{${'transportation.mode.' + mode.name().toLowerCase()}}"></option>
+                                        th:text="#{${'transportation.mode.' + mode + '.name'}}"></option>
                             </select>
                         </div>
                         <div class="form-group">

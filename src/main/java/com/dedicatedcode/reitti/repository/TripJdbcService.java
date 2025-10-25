@@ -213,4 +213,8 @@ public class TripJdbcService {
         String sql = "DELETE FROM trips WHERE user_id = ? AND end_time >= ?";
         jdbcTemplate.update(sql, user.getId(), Timestamp.from(start));
     }
+
+    public List<Long> findIdsByUser(User user) {
+        return jdbcTemplate.queryForList("SELECT id FROM trips WHERE user_id = ?", Long.class, user.getId());
+    }
 }
