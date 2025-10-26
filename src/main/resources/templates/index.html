@@ -44,6 +44,7 @@
 </div>
 
 <div class="timeline">
+
     <div class="navbar">
         <span><img class="logo" th:src="@{/img/logo.svg}" alt="reitti logo" title="reitti" src="/img/logo.svg"></span>
         <a href="/" class="nav-link active" th:title="#{nav.timeline}"><i class="lni lni-route-1"></i></a>
@@ -51,7 +52,6 @@
         <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/statistics" class="nav-link" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
         <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/settings" class="nav-link" th:title="#{nav.settings.tooltip}"><i class="lni lni-gear-1"></i></a>
         <a type="button" class="nav-link" id="auto-update-btn" onclick="toggleAutoUpdate()" title="Auto Update"><i class="lni lni-play"></i></a>
-        <a type="button" class="nav-link" id="timeline-toggle-btn" onclick="toggleTimeline()" title="Toggle Timeline"><i class="lni lni-layout-sidebar-left"></i></a>
         <a type="button" class="nav-link" onclick="toggleFullscreen()" title="Toggle Fullscreen"><i class="lni lni-arrow-all-direction"></i></a>
         <form th:action="@{/logout}" method="post" >
             <button type="submit" class="nav-link" th:title="#{nav.logout.tooltip}"><i
@@ -66,6 +66,9 @@
          hx-indicator="#loading-indicator">
         <div id="loading-indicator" class="timeline-entry" th:text="#{timeline.loading}">Loading...</div>
     </div>
+    <button type="button" class="timeline-toggle-btn" id="timeline-toggle-btn" onclick="toggleTimeline()" title="Hide Timeline">
+        <i class="lni lni-exit"></i>
+    </button>
 </div>
 
 <!-- Horizontal date picker will be initialized here -->
@@ -216,10 +219,10 @@
         const isHidden = document.body.classList.contains('timeline-hidden');
         
         if (isHidden) {
-            icon.className = 'lni lni-layout-sidebar-right';
+            icon.className = 'lni lni-enter';
             btn.title = 'Show Timeline';
         } else {
-            icon.className = 'lni lni-layout-sidebar-left';
+            icon.className = 'lni lni-exit';
             btn.title = 'Hide Timeline';
         }
     }

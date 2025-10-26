@@ -469,13 +469,11 @@ tr:hover {
 
 .timeline-toggle-btn {
     position: absolute;
-    top: 20px;
-    right: 20px;
+    bottom: 180px;
     z-index: 10;
-    background: rgba(59, 59, 59, 0.8);
+    background: transparent;
     backdrop-filter: blur(10px);
     color: white;
-    border: 1px solid var(--color-highlight);
     border-radius: 50%;
     width: 40px;
     height: 40px;
@@ -489,9 +487,8 @@ tr:hover {
 }
 
 .timeline-toggle-btn:hover {
-    background: rgba(59, 59, 59, 0.95);
+    background: transparent;
     border-color: var(--color-highlight);
-    box-shadow: 0 4px 12px rgba(245, 222, 179, 0.3);
     transform: translateY(-2px);
 }
 
@@ -783,11 +780,8 @@ body.timeline-hidden .timeline-container {
 
 body.timeline-hidden .timeline-toggle-btn {
     position: fixed;
-    left: 20px;
-    top: 20px;
+    bottom: 180px;
     right: auto;
-    background: rgba(59, 59, 59, 0.9);
-    backdrop-filter: blur(10px);
 }
 
 .statistics-content {
