@@ -25,6 +25,7 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 @Controller
 @RequestMapping("/settings/visit-sensitivity")
@@ -40,6 +41,7 @@ public class SettingsVisitSensitivityController {
     private final MessageSource messageSource;
     private final boolean dataManagementEnabled;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final SignificantPlaceJdbcService significantPlaceJdbcService;
 
     public SettingsVisitSensitivityController(VisitDetectionParametersJdbcService configurationService,
                                               VisitDetectionPreviewService visitDetectionPreviewService,
@@ -48,7 +50,7 @@ public class SettingsVisitSensitivityController {
                                               ProcessedVisitJdbcService processedVisitJdbcService,
                                               VisitJdbcService visitJdbcService,
                                               MessageSource messageSource,
-                                              @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled, RawLocationPointJdbcService rawLocationPointJdbcService) {
+                                              @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled, RawLocationPointJdbcService rawLocationPointJdbcService, SignificantPlaceJdbcService significantPlaceJdbcService) {
         this.configurationService = configurationService;
         this.visitDetectionPreviewService = visitDetectionPreviewService;
         this.processingPipelineTrigger = processingPipelineTrigger;
@@ -58,6 +60,7 @@ public class SettingsVisitSensitivityController {
         this.messageSource = messageSource;
         this.dataManagementEnabled = dataManagementEnabled;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.significantPlaceJdbcService = significantPlaceJdbcService;
     }
     
     @GetMapping
@@ -259,38 +262,17 @@ public class SettingsVisitSensitivityController {
             throw new IllegalArgumentException("No configuration needs recalculation");
         }
 
-        DetectionParameter earliest = needsRecalculation.getFirst();
-        DetectionParameter latest = needsRecalculation.getLast();
-
-        boolean recalculateAll = earliest.getValidSince() == null && latest.getValidSince() == null;
-        if (recalculateAll) {
+        CompletableFuture.runAsync(() -> {
             log.debug("Clearing all time range");
             tripJdbcService.deleteAllForUser(user);
             processedVisitJdbcService.deleteAllForUser(user);
             visitJdbcService.deleteAllForUser(user);
+            significantPlaceJdbcService.deleteForUser(user);
             rawLocationPointJdbcService.markAllAsUnprocessedForUser(user);
-        } else {
-            Optional<DetectionParameter> parametersAfterEarliest = allConfigurationsForUser.stream().filter(p -> p.getValidSince() != null && p.getValidSince().isAfter(latest.getValidSince())).findFirst();
-
-            if (parametersAfterEarliest.isPresent()) {
-                log.debug("Clearing time range between {} and {}", earliest.getValidSince(), parametersAfterEarliest.get().getValidSince());
-                this.tripJdbcService.deleteAllForUserBetween(user, earliest.getValidSince(), parametersAfterEarliest.get().getValidSince());
-                this.processedVisitJdbcService.deleteAllForUserBetween(user, earliest.getValidSince(), parametersAfterEarliest.get().getValidSince());
-                this.visitJdbcService.deleteAllForUserBetween(user, earliest.getValidSince(), parametersAfterEarliest.get().getValidSince());
-
-                this.rawLocationPointJdbcService.markAllAsUnprocessedForUserBetween(user, earliest.getValidSince(), parametersAfterEarliest.get().getValidSince());
-            } else {
-                log.debug("Clearing time range after {}", earliest.getValidSince());
-                this.tripJdbcService.deleteAllForUserAfter(user, earliest.getValidSince());
-                this.processedVisitJdbcService.deleteAllForUserAfter(user, earliest.getValidSince());
-                this.visitJdbcService.deleteAllForUserAfter(user, earliest.getValidSince());
-
-                this.rawLocationPointJdbcService.markAllAsUnprocessedForUserAfter(user, earliest.getValidSince());
-            }
-        }
-        allConfigurationsForUser.forEach(config -> this.configurationService.updateConfiguration(config.withNeedsRecalculation(false)));
-        processingPipelineTrigger.start();
-        log.debug("Recalculation of all configurations completed");
+            allConfigurationsForUser.forEach(config -> this.configurationService.updateConfiguration(config.withNeedsRecalculation(false)));
+            processingPipelineTrigger.start();
+        });
+        log.debug("Recalculation of all configurations triggered");
     }
 
     private String validateConfiguration(DetectionParameter config, User user) {

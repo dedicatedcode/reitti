@@ -344,7 +344,6 @@
             function loadRawLocationData(map, timelineData, color) {
                 // Extract raw location points URL from timeline data
                 let rawLocationPointsUrl = null;
-                debugger
                 // Look for raw location points URL in the timeline data
                 if (timelineData && timelineData.length > 0) {
                     const firstUserSection = timelineData.find(item => item.rawLocationPointsUrl);
@@ -507,9 +506,8 @@
                         // Check if this event is for our preview
                         if (eventData.previewId && eventData.previewId === previewId) {
                             console.log('Configuration Preview: Received event for our preview, reloading data');
-                            
                             // Check if the event date matches our preview date
-                            if (eventData.date && eventData.date === previewDate) {
+                            if (eventData.type === 'PLACE' || (eventData.date && eventData.date === previewDate)) {
                                 // Reload preview data if preview is ready and visible
                                 if (previewReady) {
                                     if (document.getElementById('preview-data-btn').classList.contains('active')) {
