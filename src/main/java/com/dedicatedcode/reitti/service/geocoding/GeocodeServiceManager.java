@@ -7,5 +7,5 @@ import java.util.Optional;
 
 public interface GeocodeServiceManager {
     @Transactional
-    Optional<GeocodeResult> reverseGeocode(SignificantPlace significantPlace);
+    Optional<GeocodeResult> reverseGeocode(SignificantPlace significantPlace, boolean recordResponse);
 }

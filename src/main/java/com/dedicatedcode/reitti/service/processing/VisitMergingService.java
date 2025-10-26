@@ -40,6 +40,7 @@ public class VisitMergingService {
     private final PreviewProcessedVisitJdbcService previewProcessedVisitJdbcService;
     private final UserJdbcService userJdbcService;
     private final SignificantPlaceJdbcService significantPlaceJdbcService;
+    private final PreviewSignificantPlaceJdbcService previewSignificantPlaceJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService;
     private final GeometryFactory geometryFactory;
@@ -56,6 +57,7 @@ public class VisitMergingService {
                                UserJdbcService userJdbcService,
                                RabbitTemplate rabbitTemplate,
                                SignificantPlaceJdbcService significantPlaceJdbcService,
+                               PreviewSignificantPlaceJdbcService previewSignificantPlaceJdbcService,
                                RawLocationPointJdbcService rawLocationPointJdbcService,
                                PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService,
                                GeometryFactory geometryFactory,
@@ -69,6 +71,7 @@ public class VisitMergingService {
         this.userJdbcService = userJdbcService;
         this.rabbitTemplate = rabbitTemplate;
         this.significantPlaceJdbcService = significantPlaceJdbcService;
+        this.previewSignificantPlaceJdbcService = previewSignificantPlaceJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
         this.geometryFactory = geometryFactory;
@@ -181,18 +184,18 @@ public class VisitMergingService {
         Instant currentEndTime = currentVisit.getEndTime();
 
         // Find or create a place for the first visit
-        List<SignificantPlace> nearbyPlaces = findNearbyPlaces(user, currentVisit.getLatitude(), currentVisit.getLongitude(), mergeConfiguration);
+        List<SignificantPlace> nearbyPlaces = findNearbyPlaces(user, previewId, currentVisit.getLatitude(), currentVisit.getLongitude(), mergeConfiguration);
         SignificantPlace currentPlace = nearbyPlaces.isEmpty() ?
-                createSignificantPlace(user, currentVisit) :
+                createSignificantPlace(user, currentVisit, previewId) :
                 findClosestPlace(currentVisit, nearbyPlaces);
 
         for (int i = 1; i < visits.size(); i++) {
             Visit nextVisit = visits.get(i);
 
             // Find nearby places for the next visit
-            nearbyPlaces = findNearbyPlaces(user, nextVisit.getLatitude(), nextVisit.getLongitude(), mergeConfiguration);
+            nearbyPlaces = findNearbyPlaces(user, previewId, nextVisit.getLatitude(), nextVisit.getLongitude(), mergeConfiguration);
             SignificantPlace nextPlace = nearbyPlaces.isEmpty() ?
-                    createSignificantPlace(user, nextVisit) :
+                    createSignificantPlace(user, nextVisit, previewId) :
                     findClosestPlace(nextVisit, nearbyPlaces);
 
             // Check if the next visit is at the same place and within the time threshold
@@ -252,21 +255,25 @@ public class VisitMergingService {
     }
 
 
-    private List<SignificantPlace> findNearbyPlaces(User user, double latitude, double longitude, DetectionParameter.VisitMerging mergeConfiguration) {
+    private List<SignificantPlace> findNearbyPlaces(User user, String previewId, double latitude, double longitude, DetectionParameter.VisitMerging mergeConfiguration) {
         // Create a point geometry
         Point point = geometryFactory.createPoint(new Coordinate(longitude, latitude));
         // Find places within the merge distance
-        return significantPlaceJdbcService.findNearbyPlaces(user.getId(), point, GeoUtils.metersToDegreesAtPosition(mergeConfiguration.getMinDistanceBetweenVisits(), latitude)[0]);
+        if (previewId == null) {
+            return significantPlaceJdbcService.findNearbyPlaces(user.getId(), point, GeoUtils.metersToDegreesAtPosition(mergeConfiguration.getMinDistanceBetweenVisits() / 2.0, latitude)[0]);
+        } else {
+            return previewSignificantPlaceJdbcService.findNearbyPlaces(user.getId(), point, GeoUtils.metersToDegreesAtPosition(mergeConfiguration.getMinDistanceBetweenVisits() / 2.0, latitude)[0], previewId);
+        }
     }
 
-    private SignificantPlace createSignificantPlace(User user, Visit visit) {
+    private SignificantPlace createSignificantPlace(User user, Visit visit, String previewId) {
         SignificantPlace significantPlace = SignificantPlace.create(visit.getLatitude(), visit.getLongitude());
         Optional<ZoneId> timezone = this.timezoneService.getTimezone(significantPlace);
         if (timezone.isPresent()) {
             significantPlace = significantPlace.withTimezone(timezone.get());
         }
-        significantPlace = this.significantPlaceJdbcService.create(user, significantPlace);
-        publishSignificantPlaceCreatedEvent(significantPlace);
+        significantPlace = previewId == null ? this.significantPlaceJdbcService.create(user, significantPlace) : this.previewSignificantPlaceJdbcService.create(user, previewId, significantPlace);
+        publishSignificantPlaceCreatedEvent(user, significantPlace, previewId);
         return significantPlace;
     }
 
@@ -275,8 +282,10 @@ public class VisitMergingService {
         return new ProcessedVisit(place, startTime, endTime, endTime.getEpochSecond() - startTime.getEpochSecond());
     }
 
-    private void publishSignificantPlaceCreatedEvent(SignificantPlace place) {
+    private void publishSignificantPlaceCreatedEvent(User user, SignificantPlace place, String previewId) {
         SignificantPlaceCreatedEvent event = new SignificantPlaceCreatedEvent(
+                user.getUsername(),
+                previewId,
                 place.getId(),
                 place.getLatitudeCentroid(),
                 place.getLongitudeCentroid()

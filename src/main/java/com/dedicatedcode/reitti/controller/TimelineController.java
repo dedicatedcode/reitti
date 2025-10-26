@@ -115,9 +115,12 @@ public class TimelineController {
     }
 
     @GetMapping("/places/view/{id}")
-    public String getPlaceView(@PathVariable Long id, Model model) {
+    public String getPlaceView(@PathVariable Long id,
+                               @RequestParam(required = false) String date,
+                               Model model) {
         SignificantPlace place = placeService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         model.addAttribute("place", place);
+        model.addAttribute("date", date);
         return "fragments/place-edit :: view-mode";
     }
 

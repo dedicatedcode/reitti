@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.event.SSEEvent;
 import com.dedicatedcode.reitti.event.SSEType;
 import com.dedicatedcode.reitti.model.NotificationData;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
+import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.integration.ReittiSubscriptionService;
@@ -46,6 +47,18 @@ public class UserNotificationService {
         sendToQueue(user, dates, eventType, previewId);
     }
 
+    public void placeUpdate(User user, SignificantPlace place, String previewId) {
+        SSEType eventType = SSEType.PLACE;
+        log.debug("Place updated for user [{}]", user.getId());
+        sendToQueue(user, eventType, previewId);
+    }
+
+    public void placeUpdate(User user, SignificantPlace place) {
+        SSEType eventType = SSEType.PLACE;
+        log.debug("Place updated for user [{}]", user.getId());
+        sendToQueue(user, eventType, null);
+    }
+
     public void newVisits(User user, List<ProcessedVisit> processedVisits) {
         SSEType eventType = SSEType.VISITS;
         log.debug("New Visits for user [{}]", user.getId());
@@ -66,6 +79,10 @@ public class UserNotificationService {
         for (LocalDate date : dates) {
             this.rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.USER_EVENT_ROUTING_KEY, new SSEEvent(eventType, user.getId(), user.getId(), date, previewId));
         }
+    }
+
+    public void sendToQueue(User user, SSEType eventType, String previewId) {
+        this.rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.USER_EVENT_ROUTING_KEY, new SSEEvent(eventType, user.getId(), user.getId(), null, previewId));
     }
 
     private void notifyReittiSubscriptions(User user, SSEType eventType, Set<LocalDate> dates) {

@@ -22,9 +22,9 @@ import java.util.stream.Collectors;
 public class PreviewProcessedVisitJdbcService {
 
     private final JdbcTemplate jdbcTemplate;
-    private final SignificantPlaceJdbcService significantPlaceJdbcService;
+    private final PreviewSignificantPlaceJdbcService significantPlaceJdbcService;
 
-    public PreviewProcessedVisitJdbcService(JdbcTemplate jdbcTemplate, SignificantPlaceJdbcService significantPlaceJdbcService) {
+    public PreviewProcessedVisitJdbcService(JdbcTemplate jdbcTemplate, PreviewSignificantPlaceJdbcService significantPlaceJdbcService) {
         this.jdbcTemplate = jdbcTemplate;
         this.significantPlaceJdbcService = significantPlaceJdbcService;
     }

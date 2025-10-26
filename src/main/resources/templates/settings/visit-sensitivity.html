@@ -31,6 +31,7 @@
             <div th:if="${recalculationAdvised}" class="alert alert-warning">
                 <h3><span th:text="#{visit.sensitivity.recalculation.title}">Recalculation Advised</span></h3>
                 <p th:text="#{visit.sensitivity.recalculation.message}">Configuration has changed. Recalculation is highly advised for these changes to take effect on existing data, otherwise they will only affect new incoming data.</p>
+                <p th:text="#{visit.sensitivity.recalculation.warning}">Warning: This action will remove all existing places and recreate them according to the new settings.</p>
                 <div class="alert-actions">
                     <button type="button" 
                             class="btn btn-warning"
