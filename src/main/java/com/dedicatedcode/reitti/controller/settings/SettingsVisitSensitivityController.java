@@ -264,13 +264,18 @@ public class SettingsVisitSensitivityController {
 
         CompletableFuture.runAsync(() -> {
             log.debug("Clearing all time range");
-            tripJdbcService.deleteAllForUser(user);
-            processedVisitJdbcService.deleteAllForUser(user);
-            visitJdbcService.deleteAllForUser(user);
-            significantPlaceJdbcService.deleteForUser(user);
-            rawLocationPointJdbcService.markAllAsUnprocessedForUser(user);
-            allConfigurationsForUser.forEach(config -> this.configurationService.updateConfiguration(config.withNeedsRecalculation(false)));
-            processingPipelineTrigger.start();
+            try {
+                tripJdbcService.deleteAllForUser(user);
+                processedVisitJdbcService.deleteAllForUser(user);
+                visitJdbcService.deleteAllForUser(user);
+                significantPlaceJdbcService.deleteForUser(user);
+                rawLocationPointJdbcService.markAllAsUnprocessedForUser(user);
+                allConfigurationsForUser.forEach(config -> this.configurationService.updateConfiguration(config.withNeedsRecalculation(false)));
+                log.debug("Starting recalculation of all configurations");
+                processingPipelineTrigger.start();
+            } catch (Exception e) {
+                log.error("Error clearing time range", e);
+            }
         });
         log.debug("Recalculation of all configurations triggered");
     }

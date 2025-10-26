@@ -36,8 +36,7 @@ public class GeocodeServiceJdbcService {
     };
 
     public List<RemoteGeocodeService> findByEnabledTrueOrderByLastUsedAsc() {
-        String sql = "SELECT * " +
-                "FROM geocode_services WHERE enabled = true ORDER BY last_used ASC NULLS FIRST";
+        String sql = "SELECT * FROM geocode_services WHERE enabled = true ORDER BY last_used ASC NULLS FIRST";
         return jdbcTemplate.query(sql, GEOCODE_SERVICE_ROW_MAPPER);
     }
 

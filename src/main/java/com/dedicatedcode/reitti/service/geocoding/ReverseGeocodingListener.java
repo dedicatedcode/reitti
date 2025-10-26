@@ -49,7 +49,7 @@ public class ReverseGeocodingListener {
         SignificantPlace place = placeOptional.get();
 
         try {
-            Optional<GeocodeResult> resultOpt = this.geocodeServiceManager.reverseGeocode(place);
+            Optional<GeocodeResult> resultOpt = this.geocodeServiceManager.reverseGeocode(place, event.previewId() == null);
 
             if (resultOpt.isPresent()) {
                 GeocodeResult result = resultOpt.get();

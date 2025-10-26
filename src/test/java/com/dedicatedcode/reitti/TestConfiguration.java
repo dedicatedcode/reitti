@@ -15,7 +15,7 @@ public class TestConfiguration {
 
     @Bean
     public GeocodeServiceManager geocodeServiceManager() {
-        return significantPlace -> {
+        return (significantPlace, b) -> {
             String label = significantPlace.getLatitudeCentroid() + "," + significantPlace.getLongitudeCentroid();
             return Optional.of(new GeocodeResult(label, "Test Street " + geocodes.getAndIncrement(), "1", "Test City", "12345","Test District", "de", SignificantPlace.PlaceType.OTHER));
         };

@@ -84,6 +84,7 @@ public class MessageDispatcherService {
     public void handleSignificantPlaceCreated(SignificantPlaceCreatedEvent event) {
         logger.debug("Dispatching SignificantPlaceCreatedEvent for place: {}", event.placeId());
         reverseGeocodingListener.handleSignificantPlaceCreated(event);
+        visitDetectionPreviewService.updatePreviewStatus(event.previewId());
     }
 
     @RabbitListener(queues = RabbitMQConfig.USER_EVENT_QUEUE)

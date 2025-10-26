@@ -136,6 +136,7 @@ public class SignificantPlaceJdbcService {
     }
 
     public void deleteForUser(User user) {
+        this.jdbcTemplate.update("DELETE FROM geocoding_response WHERE significant_place_id IN (SELECT id FROM significant_places WHERE user_id = ?)", user.getId());
         this.jdbcTemplate.update("DELETE FROM significant_places WHERE user_id = ?", user.getId());
     }
 }
