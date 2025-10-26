@@ -51,6 +51,7 @@
         <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/statistics" class="nav-link" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
         <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/settings" class="nav-link" th:title="#{nav.settings.tooltip}"><i class="lni lni-gear-1"></i></a>
         <a type="button" class="nav-link" id="auto-update-btn" onclick="toggleAutoUpdate()" title="Auto Update"><i class="lni lni-play"></i></a>
+        <a type="button" class="nav-link" id="timeline-toggle-btn" onclick="toggleTimeline()" title="Toggle Timeline"><i class="lni lni-layout-sidebar-left"></i></a>
         <a type="button" class="nav-link" onclick="toggleFullscreen()" title="Toggle Fullscreen"><i class="lni lni-arrow-all-direction"></i></a>
         <form th:action="@{/logout}" method="post" >
             <button type="submit" class="nav-link" th:title="#{nav.logout.tooltip}"><i
@@ -193,7 +194,48 @@
     let pulsatingMarkers = [];
 
 
+    // Timeline visibility functions
+    function toggleTimeline() {
+        const body = document.body;
+        const isHidden = body.classList.contains('timeline-hidden');
+        
+        if (isHidden) {
+            body.classList.remove('timeline-hidden');
+            localStorage.setItem('timelineHidden', 'false');
+        } else {
+            body.classList.add('timeline-hidden');
+            localStorage.setItem('timelineHidden', 'true');
+        }
+        
+        updateTimelineToggleButton();
+    }
+    
+    function updateTimelineToggleButton() {
+        const btn = document.getElementById('timeline-toggle-btn');
+        const icon = btn.querySelector('i');
+        const isHidden = document.body.classList.contains('timeline-hidden');
+        
+        if (isHidden) {
+            icon.className = 'lni lni-layout-sidebar-right';
+            btn.title = 'Show Timeline';
+        } else {
+            icon.className = 'lni lni-layout-sidebar-left';
+            btn.title = 'Hide Timeline';
+        }
+    }
+    
+    // Restore timeline visibility state from localStorage
+    function restoreTimelineState() {
+        const timelineHidden = localStorage.getItem('timelineHidden');
+        if (timelineHidden === 'true') {
+            document.body.classList.add('timeline-hidden');
+        }
+        updateTimelineToggleButton();
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
+        // Restore timeline state on page load
+        restoreTimelineState();
         // Check if date is in URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         let initialDate;
