@@ -181,7 +181,7 @@ public class VisitMergingService {
         Instant currentEndTime = currentVisit.getEndTime();
 
         // Find or create a place for the first visit
-        List<SignificantPlace> nearbyPlaces = findNearbyPlaces(user, currentVisit.getLatitude(), currentVisit.getLongitude());
+        List<SignificantPlace> nearbyPlaces = findNearbyPlaces(user, currentVisit.getLatitude(), currentVisit.getLongitude(), mergeConfiguration);
         SignificantPlace currentPlace = nearbyPlaces.isEmpty() ?
                 createSignificantPlace(user, currentVisit) :
                 findClosestPlace(currentVisit, nearbyPlaces);
@@ -190,7 +190,7 @@ public class VisitMergingService {
             Visit nextVisit = visits.get(i);
 
             // Find nearby places for the next visit
-            nearbyPlaces = findNearbyPlaces(user, nextVisit.getLatitude(), nextVisit.getLongitude());
+            nearbyPlaces = findNearbyPlaces(user, nextVisit.getLatitude(), nextVisit.getLongitude(), mergeConfiguration);
             SignificantPlace nextPlace = nearbyPlaces.isEmpty() ?
                     createSignificantPlace(user, nextVisit) :
                     findClosestPlace(nextVisit, nearbyPlaces);
@@ -252,11 +252,11 @@ public class VisitMergingService {
     }
 
 
-    private List<SignificantPlace> findNearbyPlaces(User user, double latitude, double longitude) {
+    private List<SignificantPlace> findNearbyPlaces(User user, double latitude, double longitude, DetectionParameter.VisitMerging mergeConfiguration) {
         // Create a point geometry
         Point point = geometryFactory.createPoint(new Coordinate(longitude, latitude));
         // Find places within the merge distance
-        return significantPlaceJdbcService.findNearbyPlaces(user.getId(), point, GeoUtils.metersToDegreesAtPosition(50, latitude)[0]);
+        return significantPlaceJdbcService.findNearbyPlaces(user.getId(), point, GeoUtils.metersToDegreesAtPosition(mergeConfiguration.getMinDistanceBetweenVisits(), latitude)[0]);
     }
 
     private SignificantPlace createSignificantPlace(User user, Visit visit) {
