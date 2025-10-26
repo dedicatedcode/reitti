@@ -467,6 +467,38 @@ tr:hover {
     scrollbar-width: none; /* Firefox */
 }
 
+.timeline-toggle-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 10;
+    background: rgba(59, 59, 59, 0.8);
+    backdrop-filter: blur(10px);
+    color: white;
+    border: 1px solid var(--color-highlight);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    pointer-events: auto;
+    font-size: 1.2rem;
+}
+
+.timeline-toggle-btn:hover {
+    background: rgba(59, 59, 59, 0.95);
+    border-color: var(--color-highlight);
+    box-shadow: 0 4px 12px rgba(245, 222, 179, 0.3);
+    transform: translateY(-2px);
+}
+
+.timeline-toggle-btn i {
+    font-size: 1.2rem;
+}
+
 .timeline-container {
     font-family: "Serif";
     width: 350px;
@@ -747,6 +779,15 @@ body.timeline-hidden .timeline-container {
     width: 0;
     overflow: hidden;
     transition: all 0.3s ease-in-out;
+}
+
+body.timeline-hidden .timeline-toggle-btn {
+    position: fixed;
+    left: 20px;
+    top: 20px;
+    right: auto;
+    background: rgba(59, 59, 59, 0.9);
+    backdrop-filter: blur(10px);
 }
 
 .statistics-content {
