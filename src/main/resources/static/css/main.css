@@ -471,6 +471,8 @@ tr:hover {
     font-family: "Serif";
     width: 350px;
     padding-bottom: 250px;
+    transition: opacity 0.3s ease;
+
 }
 
 .timeline-entry {
@@ -701,10 +703,10 @@ input[type=file]::file-selector-button:hover {
     width: 8px;
     z-index: 100;
     opacity: 0.7;
-    transition: opacity 0.3s ease;
     pointer-events: none;
     padding-top: 100px;
     padding-bottom: 250px;
+    transition: all 0.3s ease-in-out;
 }
 
 .timeline-scroll-indicator:hover {
@@ -744,7 +746,7 @@ body.timeline-hidden .timeline-scroll-indicator,
 body.timeline-hidden .timeline-container {
     width: 0;
     overflow: hidden;
-    transition: width 0.3s ease-in-out;
+    transition: all 0.3s ease-in-out;
 }
 
 .statistics-content {
