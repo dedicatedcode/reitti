@@ -739,6 +739,14 @@ input[type=file]::file-selector-button:hover {
     width: 100%;
 }
 
+
+body.timeline-hidden .timeline-scroll-indicator,
+body.timeline-hidden .timeline-container {
+    width: 0;
+    overflow: hidden;
+    transition: width 0.3s ease-in-out;
+}
+
 .statistics-content {
     margin-left: 30rem;
     color: var(--color-text-white);
