@@ -85,7 +85,7 @@ public class PreviewTripJdbcService {
                 trip.getDurationSeconds(),
                 trip.getEstimatedDistanceMeters(),
                 trip.getTravelledDistanceMeters(),
-                trip.getTransportModeInferred(),
+                trip.getTransportModeInferred().name(),
                 trip.getVersion(),
                 previewId
             })

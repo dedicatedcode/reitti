@@ -206,7 +206,7 @@
                 
                 // Group places by coordinates to avoid duplicate markers
                 const placeGroups = new Map();
-                
+
                 // Process timeline data (similar to index.html)
                 if (data && data.length > 0) {
                     data.forEach(element => {
@@ -344,7 +344,7 @@
             function loadRawLocationData(map, timelineData, color) {
                 // Extract raw location points URL from timeline data
                 let rawLocationPointsUrl = null;
-                
+                debugger
                 // Look for raw location points URL in the timeline data
                 if (timelineData && timelineData.length > 0) {
                     const firstUserSection = timelineData.find(item => item.rawLocationPointsUrl);
@@ -386,27 +386,31 @@
                     lineCap: 'round',
                     steps: 2
                 });
-                
-                if (rawPointsData && rawPointsData.points && rawPointsData.points.length > 0) {
-                    const rawPointsCoords = rawPointsData.points.map(point => [point.latitude, point.longitude]);
-                    bounds.extend(rawPointsCoords);
-                    rawPointsPath.setLatLngs(rawPointsCoords);
-                    rawPointsPath.addTo(map);
-                    
-                    // Combine with existing bounds if they exist
-                    if (map._previewBounds && map._previewBounds.isValid()) {
-                        bounds.extend(map._previewBounds);
+
+                if (rawPointsData && rawPointsData.segments && rawPointsData.segments.length > 0) {
+                    for (const segment of rawPointsData.segments) {
+                        const rawPointsCoords = segment.points.map(point => [point.latitude, point.longitude]);
+                        bounds.extend(rawPointsCoords);
+                        rawPointsPath.setLatLngs(rawPointsCoords);
+                        rawPointsPath.addTo(map);
+
+                        // Combine with existing bounds if they exist
+                        if (map._previewBounds && map._previewBounds.isValid()) {
+                            bounds.extend(map._previewBounds);
+                        }
+
+                        // Fit map to combined bounds
+                        if (bounds.isValid()) {
+                            map.fitBounds(bounds, {
+                                paddingTopLeft: [20, 20],
+                                paddingBottomRight: [20, 20],
+                                maxZoom: 15
+                            });
+                        }
                     }
-                    
-                    // Fit map to combined bounds
-                    if (bounds.isValid()) {
-                        map.fitBounds(bounds, {
-                            paddingTopLeft: [20, 20],
-                            paddingBottomRight: [20, 20],
-                            maxZoom: 15
-                        });
-                    }
+
                 }
+
             }
             
             function getUserTimezone() {
