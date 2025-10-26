@@ -132,6 +132,8 @@ public class GeoCodingSettingsController {
                 // Send SignificantPlaceCreatedEvent for each non-geocoded place
                 for (SignificantPlace place : nonGeocodedPlaces) {
                     SignificantPlaceCreatedEvent event = new SignificantPlaceCreatedEvent(
+                            username,
+                            null,
                             place.getId(),
                             place.getLatitudeCentroid(),
                             place.getLongitudeCentroid()
@@ -172,6 +174,8 @@ public class GeoCodingSettingsController {
                 // Send SignificantPlaceCreatedEvent for each place
                 for (SignificantPlace place : allPlaces) {
                     SignificantPlaceCreatedEvent event = new SignificantPlaceCreatedEvent(
+                            username,
+                            null,
                             place.getId(),
                             place.getLatitudeCentroid(),
                             place.getLongitudeCentroid()

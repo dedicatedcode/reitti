@@ -2140,3 +2140,8 @@ button:disabled {
 .gallery-image-item img.loaded + .photo-loading-spinner {
     display: none;
 }
+
+#current-timeline .timeline-entry,
+#preview-timeline .timeline-entry {
+    cursor: initial;
+}

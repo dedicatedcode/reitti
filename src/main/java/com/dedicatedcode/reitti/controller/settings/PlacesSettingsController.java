@@ -182,6 +182,8 @@ public class PlacesSettingsController {
 
                 // Send SignificantPlaceCreatedEvent to trigger geocoding
                 SignificantPlaceCreatedEvent event = new SignificantPlaceCreatedEvent(
+                        user.getUsername(),
+                        null,
                         significantPlace.getId(),
                         significantPlace.getLatitudeCentroid(),
                         significantPlace.getLongitudeCentroid()

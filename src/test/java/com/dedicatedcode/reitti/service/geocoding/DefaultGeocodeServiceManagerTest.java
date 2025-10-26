@@ -59,7 +59,7 @@ class DefaultGeocodeServiceManagerTest {
                 .thenReturn(Collections.emptyList());
 
         // When
-        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(SignificantPlace.create(53.863149, 10.700927));
+        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(SignificantPlace.create(53.863149, 10.700927), false);
 
         // Then
         assertThat(result).isEmpty();
@@ -100,7 +100,7 @@ class DefaultGeocodeServiceManagerTest {
                 .thenReturn(mockResponse);
 
         // When
-        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(SignificantPlace.create(latitude, longitude));
+        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(SignificantPlace.create(latitude, longitude), false);
 
         // Then
         assertThat(result).isPresent();
@@ -135,7 +135,7 @@ class DefaultGeocodeServiceManagerTest {
                 .thenReturn(mockResponse);
 
         // When
-        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(SignificantPlace.create(latitude, longitude));
+        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(SignificantPlace.create(latitude, longitude), false);
 
         // Then
         assertThat(result).isPresent();
@@ -217,7 +217,7 @@ class DefaultGeocodeServiceManagerTest {
                 .thenReturn(mockResponse);
 
         // When
-        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(SignificantPlace.create(latitude, longitude));
+        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(SignificantPlace.create(latitude, longitude), false);
 
         // Then
         assertThat(result).isPresent();
@@ -269,7 +269,7 @@ class DefaultGeocodeServiceManagerTest {
                 .thenReturn(photonResponse);
 
         // When
-        Optional<GeocodeResult> result = managerWithFixedService.reverseGeocode(SignificantPlace.create(latitude, longitude));
+        Optional<GeocodeResult> result = managerWithFixedService.reverseGeocode(SignificantPlace.create(latitude, longitude), false);
 
         // Then
         assertThat(result).isPresent();
@@ -300,7 +300,7 @@ class DefaultGeocodeServiceManagerTest {
                 .thenThrow(new RuntimeException("Service unavailable"));
 
         // When
-        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(SignificantPlace.create(latitude, longitude));
+        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(SignificantPlace.create(latitude, longitude), false);
 
         // Then
         assertThat(result).isEmpty();
