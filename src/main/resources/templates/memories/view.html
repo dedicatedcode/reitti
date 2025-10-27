@@ -271,7 +271,8 @@
                                 <div class="title" th:text="${block.title}">Cluster Title</div>
                             </div>
                             <p th:if="${block.description != null}" class="cluster-description" th:text="${block.description}">Description</p>
-                            <div class="cluster-map" th:id="${'map_cluster_' + block.blockId}"></div>
+                            <div th:id="${block.trips.isEmpty()}" th:text="#{memory.block.trip.empty}">There a now Trips selected for this block.</div>
+                            <div th:unless="${block.trips.isEmpty()}" class="cluster-map" th:id="${'map_cluster_' + block.blockId}"></div>
                             <script th:inline="javascript">
                                 (function() {
                                     const userSettings =  /*[[${userSettings}]]*/  {};
@@ -403,7 +404,8 @@
                                 <div class="title" th:text="${block.title}">Cluster Title</div>
                             </div>
                             <p th:if="${block.description != null}" class="cluster-description" th:text="${block.description}">Description</p>
-                            <div class="cluster-map" th:id="${'map_cluster_' + block.blockId}"></div>
+                            <div th:id="${block.visits.isEmpty()}" th:text="#{memory.block.visit.empty}">There a now Visits selected for this block.</div>
+                            <div th:unless="${block.visits.isEmpty()}" class="cluster-map" th:id="${'map_cluster_' + block.blockId}"></div>
                             <script th:inline="javascript">
                                 (function() {
                                     const userSettings =  /*[[${userSettings}]]*/  {};

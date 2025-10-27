@@ -116,11 +116,11 @@ public class MemoryBlockGenerationService {
                 .sorted(Comparator.comparing(Trip::getStartTime))
                 .toList();
 
-            String formattedStartDate = formatTime(tripsToAccommodation.getFirst().getStartTime(), timeZone, false);
-            String formattedEndDate = formatTime(tripsToAccommodation.getLast().getEndTime(), timeZone, false);
             if (!tripsToAccommodation.isEmpty()) {
+                String formattedStartDate = formatTime(tripsToAccommodation.getFirst().getStartTime(), timeZone, false);
+                String formattedEndDate = formatTime(tripsToAccommodation.getLast().getEndTime(), timeZone, false);
                 String text = i18n.translate("memory.generator.travel_to_accommodation.text",
-                        home.map(h ->h.getPlace().getCity()).orElse(""),
+                        home.map(h -> h.getPlace().getCity()).orElse(""),
                         formattedStartDate,
                         accommodation.map(a -> a.getPlace().getCity()).orElse(""),
                         formattedEndDate,
