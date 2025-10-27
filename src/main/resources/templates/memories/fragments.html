@@ -494,7 +494,7 @@
                 <h3 th:text="#{memory.share.configure.sharing} + ': ' + ${memory.title}">Sharing: Memory Title</h3>
                 <div class="access-level-display">
                     <i th:class="${accessLevel == T(com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel).MEMORY_VIEW_ONLY ? 'lni lni-eye' : 'lni lni-pencil'}"></i>
-                    <span th:text="${accessLevel == T(com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel).MEMORY_VIEW_ONLY ? #{memory.share.access.view} : #{memory.share.access.edit}}">Access Level</span>
+                    <span th:text="#{${accessLevel == T(com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel).MEMORY_VIEW_ONLY ? 'memory.share.access.view' : 'memory.share.access.edit'}}">Access Level</span>
                 </div>
             </div>
 
@@ -556,7 +556,7 @@
                     </div>
                     <div class="share-detail-item">
                         <strong th:text="#{memory.share.result.access}">Access Level:</strong>
-                        <span th:text="${accessLevel == T(com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel).MEMORY_VIEW_ONLY ? #{memory.share.access.view} : #{memory.share.access.edit}}">Access Level</span>
+                        <span th:text="#{${accessLevel == T(com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel).MEMORY_VIEW_ONLY ? 'memory.share.access.view' : 'memory.share.access.edit'}}">Access Level</span>
                     </div>
                 </div>
 
