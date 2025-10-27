@@ -209,7 +209,7 @@ public class MemoryController {
             Memory created = memoryService.createMemory(user, memory);
             this.memoryService.recalculateMemory(user, created.getId(), timezone);
             response.setHeader("HX-Redirect", "/memories/" + created.getId());
-            return null;
+            return "memories/fragments :: empty";
 
         } catch (Exception e) {
             model.addAttribute("error", "memory.validation.start.date.required");
