@@ -784,6 +784,50 @@ body.timeline-hidden .timeline-toggle-btn {
     right: auto;
 }
 
+.datepicker-toggle-btn {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    z-index: 10;
+    background: transparent;
+    backdrop-filter: blur(10px);
+    color: white;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    pointer-events: auto;
+    font-size: 1.2rem;
+    border: none;
+}
+
+.datepicker-toggle-btn:hover {
+    background: transparent;
+    border-color: var(--color-highlight);
+    transform: translateY(-2px);
+}
+
+.datepicker-toggle-btn i {
+    font-size: 1.2rem;
+}
+
+body.datepicker-hidden #horizontal-date-picker-container {
+    transform: translateY(100%);
+    transition: all 0.3s ease-in-out;
+}
+
+body.datepicker-hidden .datepicker-toggle-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(59, 59, 59, 0.9);
+    backdrop-filter: blur(10px);
+}
+
 .statistics-content {
     margin-left: 30rem;
     color: var(--color-text-white);

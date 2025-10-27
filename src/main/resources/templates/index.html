@@ -72,7 +72,11 @@
 </div>
 
 <!-- Horizontal date picker will be initialized here -->
-<div id="horizontal-date-picker-container"></div>
+<div id="horizontal-date-picker-container">
+    <button type="button" class="datepicker-toggle-btn" id="datepicker-toggle-btn" onclick="toggleDatePicker()" title="Hide Date Picker">
+        <i class="lni lni-exit"></i>
+    </button>
+</div>
 
 <script th:inline="javascript">
     // Locale object for JavaScript
@@ -235,10 +239,51 @@
         }
         updateTimelineToggleButton();
     }
+    
+    // Date picker visibility functions
+    function toggleDatePicker() {
+        const body = document.body;
+        const isHidden = body.classList.contains('datepicker-hidden');
+        
+        if (isHidden) {
+            body.classList.remove('datepicker-hidden');
+            localStorage.setItem('datepickerHidden', 'false');
+        } else {
+            body.classList.add('datepicker-hidden');
+            localStorage.setItem('datepickerHidden', 'true');
+        }
+        
+        updateDatePickerToggleButton();
+    }
+    
+    function updateDatePickerToggleButton() {
+        const btn = document.getElementById('datepicker-toggle-btn');
+        const icon = btn.querySelector('i');
+        const isHidden = document.body.classList.contains('datepicker-hidden');
+        
+        if (isHidden) {
+            icon.className = 'lni lni-enter';
+            btn.title = 'Show Date Picker';
+        } else {
+            icon.className = 'lni lni-exit';
+            btn.title = 'Hide Date Picker';
+        }
+    }
+    
+    // Restore date picker visibility state from localStorage
+    function restoreDatePickerState() {
+        const datepickerHidden = localStorage.getItem('datepickerHidden');
+        if (datepickerHidden === 'true') {
+            document.body.classList.add('datepicker-hidden');
+        }
+        updateDatePickerToggleButton();
+    }
 
     document.addEventListener('DOMContentLoaded', function () {
         // Restore timeline state on page load
         restoreTimelineState();
+        // Restore date picker state on page load
+        restoreDatePickerState();
         // Check if date is in URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         let initialDate;
