@@ -471,6 +471,7 @@ tr:hover {
     font-family: "Serif";
     width: 350px;
     padding-bottom: 250px;
+    transition: opacity 0.3s ease;
 }
 
 .timeline-entry {
@@ -701,10 +702,10 @@ input[type=file]::file-selector-button:hover {
     width: 8px;
     z-index: 100;
     opacity: 0.7;
-    transition: opacity 0.3s ease;
     pointer-events: none;
     padding-top: 100px;
     padding-bottom: 250px;
+    transition: all 0.3s ease-in-out;
 }
 
 .timeline-scroll-indicator:hover {
@@ -737,6 +738,102 @@ input[type=file]::file-selector-button:hover {
 
 .leaflet-container .photo-marker-icon img {
     width: 100%;
+}
+
+
+body.timeline-hidden .timeline-scroll-indicator,
+body.timeline-hidden .timeline-container {
+    width: 0;
+    overflow: hidden;
+    transition: all 0.3s ease-in-out;
+}
+
+body.timeline-hidden .timeline-toggle-btn {
+    position: fixed;
+    bottom: 180px;
+    right: auto;
+}
+
+body.datepicker-hidden .timeline-toggle-btn,
+body.timeline-hidden.datepicker-hidden .timeline-toggle-btn {
+    bottom: 24px;
+}
+
+.datepicker-toggle-btn {
+    position: absolute;
+    right: 4px;
+    z-index: 10;
+    color: white;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    pointer-events: auto;
+    font-size: 1.2rem;
+    background: rgba(59, 59, 59, 0.9);
+    backdrop-filter: blur(10px);
+}
+
+.datepicker-toggle-btn:hover {
+    border-color: var(--color-highlight);
+    transform: translateY(-2px);
+    background: rgba(59, 59, 59, 0.9);
+}
+
+.datepicker-toggle-btn i {
+    font-size: 1.2rem;
+}
+
+.timeline-toggle-btn {
+    position: absolute;
+    z-index: 10;
+    background: transparent;
+    backdrop-filter: blur(10px);
+    color: white;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    pointer-events: auto;
+    font-size: 1.2rem;
+}
+
+
+.timeline-toggle-btn,
+.datepicker-toggle-btn {
+    bottom: 188px;
+
+}
+
+.timeline-toggle-btn:hover {
+    background: transparent;
+    border-color: var(--color-highlight);
+    transform: translateY(-2px);
+}
+
+.timeline-toggle-btn i {
+    font-size: 1.2rem;
+}
+
+body.datepicker-hidden #horizontal-date-picker-container {
+    transform: translateY(100%);
+    transition: all 0.3s ease-in-out;
+}
+
+body.datepicker-hidden .datepicker-toggle-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(59, 59, 59, 0.9);
+    backdrop-filter: blur(10px);
 }
 
 .statistics-content {
@@ -1161,6 +1258,12 @@ input[type=file]::file-selector-button:hover {
 
     .settings-header h1 {
         font-size: 1.5rem;
+    }
+
+
+    .timeline-toggle-btn,
+    .datepicker-toggle-btn {
+        bottom: 210px;
     }
 }
 

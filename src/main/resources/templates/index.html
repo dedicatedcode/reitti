@@ -44,6 +44,7 @@
 </div>
 
 <div class="timeline">
+
     <div class="navbar">
         <span><img class="logo" th:src="@{/img/logo.svg}" alt="reitti logo" title="reitti" src="/img/logo.svg"></span>
         <a href="/" class="nav-link active" th:title="#{nav.timeline}"><i class="lni lni-route-1"></i></a>
@@ -65,10 +66,17 @@
          hx-indicator="#loading-indicator">
         <div id="loading-indicator" class="timeline-entry" th:text="#{timeline.loading}">Loading...</div>
     </div>
+    <button type="button" class="timeline-toggle-btn" id="timeline-toggle-btn" onclick="toggleTimeline()" title="Hide Timeline">
+        <i class="lni lni-exit"></i>
+    </button>
 </div>
 
-<!-- Horizontal date picker will be initialized here -->
-<div id="horizontal-date-picker-container"></div>
+<button type="button" class="datepicker-toggle-btn" id="datepicker-toggle-btn" onclick="toggleDatePicker()" title="Hide Date Picker">
+    <i class="lni lni-exit-down"></i>
+</button>
+<div id="horizontal-date-picker-container">
+
+</div>
 
 <script th:inline="javascript">
     // Locale object for JavaScript
@@ -193,7 +201,89 @@
     let pulsatingMarkers = [];
 
 
+    // Timeline visibility functions
+    function toggleTimeline() {
+        const body = document.body;
+        const isHidden = body.classList.contains('timeline-hidden');
+        
+        if (isHidden) {
+            body.classList.remove('timeline-hidden');
+            localStorage.setItem('timelineHidden', 'false');
+        } else {
+            body.classList.add('timeline-hidden');
+            localStorage.setItem('timelineHidden', 'true');
+        }
+        
+        updateTimelineToggleButton();
+    }
+    
+    function updateTimelineToggleButton() {
+        const btn = document.getElementById('timeline-toggle-btn');
+        const icon = btn.querySelector('i');
+        const isHidden = document.body.classList.contains('timeline-hidden');
+        
+        if (isHidden) {
+            icon.className = 'lni lni-enter';
+            btn.title = 'Show Timeline';
+        } else {
+            icon.className = 'lni lni-exit';
+            btn.title = 'Hide Timeline';
+        }
+    }
+    
+    // Restore timeline visibility state from localStorage
+    function restoreTimelineState() {
+        const timelineHidden = localStorage.getItem('timelineHidden');
+        if (timelineHidden === 'true') {
+            document.body.classList.add('timeline-hidden');
+        }
+        updateTimelineToggleButton();
+    }
+    
+    // Date picker visibility functions
+    function toggleDatePicker() {
+        const body = document.body;
+        const isHidden = body.classList.contains('datepicker-hidden');
+        
+        if (isHidden) {
+            body.classList.remove('datepicker-hidden');
+            localStorage.setItem('datepickerHidden', 'false');
+        } else {
+            body.classList.add('datepicker-hidden');
+            localStorage.setItem('datepickerHidden', 'true');
+        }
+        
+        updateDatePickerToggleButton();
+    }
+    
+    function updateDatePickerToggleButton() {
+        const btn = document.getElementById('datepicker-toggle-btn');
+        const icon = btn.querySelector('i');
+        const isHidden = document.body.classList.contains('datepicker-hidden');
+        
+        if (isHidden) {
+            icon.className = 'lni lni-exit-up';
+            btn.title = 'Show Date Picker';
+        } else {
+            icon.className = 'lni lni-enter-down';
+            btn.title = 'Hide Date Picker';
+        }
+    }
+    
+    // Restore date picker visibility state from localStorage
+    function restoreDatePickerState() {
+        const datepickerHidden = localStorage.getItem('datepickerHidden');
+        if (datepickerHidden === 'true') {
+            document.body.classList.add('datepicker-hidden');
+        }
+        updateDatePickerToggleButton();
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
+        // Restore timeline state on page load
+        restoreTimelineState();
+        // Restore date picker state on page load
+        restoreDatePickerState();
         // Check if date is in URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         let initialDate;
