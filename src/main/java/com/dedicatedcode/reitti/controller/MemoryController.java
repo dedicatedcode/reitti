@@ -157,7 +157,8 @@ public class MemoryController {
             @RequestParam LocalDate endDate,
             @RequestParam(required = false) String headerImageUrl,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
-            Model model) {
+            Model model,
+            HttpServletResponse response) {
 
         if (title == null || title.trim().isEmpty()) {
             model.addAttribute("error", "memory.validation.title.required");
@@ -207,9 +208,9 @@ public class MemoryController {
             
             Memory created = memoryService.createMemory(user, memory);
             this.memoryService.recalculateMemory(user, created.getId(), timezone);
-            
-            return "redirect:/memories/" + created.getId();
-            
+            response.setHeader("HX-Redirect", "/memories/" + created.getId());
+            return null;
+
         } catch (Exception e) {
             model.addAttribute("error", "memory.validation.start.date.required");
             model.addAttribute("title", title);
