@@ -789,7 +789,7 @@ body.timeline-hidden.datepicker-hidden .timeline-toggle-btn {
 }
 
 .timeline-toggle-btn {
-    position: absolute;
+    position: fixed;
     z-index: 10;
     background: transparent;
     backdrop-filter: blur(10px);
