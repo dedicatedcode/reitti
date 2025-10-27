@@ -36,7 +36,7 @@
             <span th:text="#{${error}}">Error message</span>
         </div>
         
-        <form th:href="@{/memories}" class="memory-form" onsubmit="return validateDates()">
+        <form th:attr="hx-post=@{/memories}" class="memory-form" hx-vals='js:{"timezone": getUserTimezone()}' onsubmit="return validateDates()">
             <div class="form-group">
                 <label for="title" th:text="#{memory.form.title.label}">Title *</label>
                 <input type="text" id="title" name="title" required class="form-control" th:placeholder="#{memory.form.title.placeholder}" th:value="${title}">
