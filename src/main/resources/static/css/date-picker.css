@@ -12,6 +12,14 @@
     flex-direction: column;
 }
 
+body.date-picker-hidden .horizontal-date-picker{
+    height: 0;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+}
+
 .date-picker-container {
     display: flex;
     overflow-x: auto;
