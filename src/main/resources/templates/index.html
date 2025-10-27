@@ -71,11 +71,11 @@
     </button>
 </div>
 
-<!-- Horizontal date picker will be initialized here -->
+<button type="button" class="datepicker-toggle-btn" id="datepicker-toggle-btn" onclick="toggleDatePicker()" title="Hide Date Picker">
+    <i class="lni lni-exit-down"></i>
+</button>
 <div id="horizontal-date-picker-container">
-    <button type="button" class="datepicker-toggle-btn" id="datepicker-toggle-btn" onclick="toggleDatePicker()" title="Hide Date Picker">
-        <i class="lni lni-exit"></i>
-    </button>
+
 </div>
 
 <script th:inline="javascript">
@@ -262,10 +262,10 @@
         const isHidden = document.body.classList.contains('datepicker-hidden');
         
         if (isHidden) {
-            icon.className = 'lni lni-enter';
+            icon.className = 'lni lni-exit-up';
             btn.title = 'Show Date Picker';
         } else {
-            icon.className = 'lni lni-exit';
+            icon.className = 'lni lni-enter-down';
             btn.title = 'Hide Date Picker';
         }
     }
