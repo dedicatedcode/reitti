@@ -320,14 +320,15 @@ public class MemoryController {
     }
 
     @DeleteMapping("/{id}")
-    public String deleteMemory(@AuthenticationPrincipal User user, @PathVariable Long id) {
+    public String deleteMemory(@AuthenticationPrincipal User user, @PathVariable Long id, HttpServletResponse response) {
         Memory memory = this.memoryService.getMemoryById(user, id).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
 
         if (!isOwner(memory, user)) {
             throw new ForbiddenException("You are not allowed to delete this memory");
         }
         memoryService.deleteMemory(user, id);
-        return "redirect:/memories";
+        response.setHeader("HX-Redirect", "/memories");
+        return "";
     }
 
     @GetMapping("/{id}/blocks/select-type")

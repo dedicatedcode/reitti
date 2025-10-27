@@ -55,6 +55,15 @@
                         hx-swap="innerHTML">
                     <i class="lni lni-share"></i> Share
                 </button>
+                <button type="button" 
+                        class="btn btn-danger"
+                        th:if="${canEdit && isOwner}"
+                        th:attr="hx-delete=@{/memories/{id}(id=${memory.id})}"
+                        hx-confirm="Are you sure you want to delete this memory? This action cannot be undone."
+                        hx-target="body"
+                        hx-swap="innerHTML">
+                    <i class="lni lni-trash-3"></i> Delete
+                </button>
             </div>
             <div class="memory-header-section map-header-section">
                 <div id="memory-map" class="memory-map"></div>
