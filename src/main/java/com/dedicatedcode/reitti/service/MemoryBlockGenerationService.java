@@ -67,7 +67,7 @@ public class MemoryBlockGenerationService {
         List<Trip> allTripsInRange = this.tripJdbcService.findByUserAndTimeOverlap(user, startDate, endDate);
         
         // Step 1: Data Pre-processing & Filtering
-        Optional<ProcessedVisit> accommodation = findAccommodation(allVisitsInRange);
+        Optional<ProcessedVisit> accommodation = findAccommodation(allVisitsInRange, startDate, endDate);
         Optional<ProcessedVisit> home = findHome(allVisitsInRange);
 
         // Find first and last accommodation visits
@@ -342,12 +342,11 @@ public class MemoryBlockGenerationService {
     /**
      * Step 1: Find accommodation by analyzing visits during sleeping hours (22:00 - 06:00)
      */
-    private Optional<ProcessedVisit> findAccommodation(List<ProcessedVisit> visits) {
-        //when calculating the sleep time make sure that visits, which extend the overall time of the memory are not counted since the can extend mutiple days after the memory AI!
+    private Optional<ProcessedVisit> findAccommodation(List<ProcessedVisit> visits, Instant memoryStart, Instant memoryEnd) {
         Map<Long, Long> sleepingHoursDuration = new HashMap<>();
         
         for (ProcessedVisit visit : visits) {
-            long durationInSleepingHours = calculateSleepingHoursDuration(visit);
+            long durationInSleepingHours = calculateSleepingHoursDuration(visit, memoryStart, memoryEnd);
             if (durationInSleepingHours > 0) {
                 sleepingHoursDuration.merge(visit.getPlace().getId(), durationInSleepingHours, Long::sum);
             }
@@ -360,14 +359,18 @@ public class MemoryBlockGenerationService {
                 .findFirst());
     }
     
-    private long calculateSleepingHoursDuration(ProcessedVisit visit) {
+    private long calculateSleepingHoursDuration(ProcessedVisit visit, Instant memoryStart, Instant memoryEnd) {
         ZoneId timeZone = visit.getPlace().getTimezone();
         if (timeZone == null) {
             timeZone = ZoneId.systemDefault();
         }
         
-        var startLocal = visit.getStartTime().atZone(timeZone);
-        var endLocal = visit.getEndTime().atZone(timeZone);
+        // Constrain visit times to memory boundaries
+        Instant constrainedStart = visit.getStartTime().isBefore(memoryStart) ? memoryStart : visit.getStartTime();
+        Instant constrainedEnd = visit.getEndTime().isAfter(memoryEnd) ? memoryEnd : visit.getEndTime();
+        
+        var startLocal = constrainedStart.atZone(timeZone);
+        var endLocal = constrainedEnd.atZone(timeZone);
         
         long totalSleepingDuration = 0;
         
