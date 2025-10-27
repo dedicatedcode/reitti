@@ -210,6 +210,11 @@
             body.classList.remove('timeline-hidden');
             localStorage.setItem('timelineHidden', 'false');
         } else {
+            // Scroll timeline back to top before hiding to ensure navbar is accessible
+            const timeline = document.querySelector('.timeline');
+            if (timeline) {
+                timeline.scrollTop = 0;
+            }
             body.classList.add('timeline-hidden');
             localStorage.setItem('timelineHidden', 'true');
         }
