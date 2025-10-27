@@ -281,10 +281,11 @@ public class MemoryService {
             LocalDateTime adjustedStartTime = first.map(t -> adjustTime(settings, t.getStartTime(), t.getPlace(), timezone)).orElse(null);
             LocalDateTime adjustedEndTime = last.map(t -> adjustTime(settings, t.getEndTime(), t.getPlace(), timezone)).orElse(null);
             Long completeDuration = 0L;
+            String rawLocationPointsUrl = first.map(processedVisit -> "/api/v1/raw-location-points?startDate=" + processedVisit.getStartTime().atZone(timezone).toLocalDateTime() + "&endDate=" + last.get().getEndTime().atZone(timezone).toLocalDateTime() + "&timezone=" + timezone).orElse(null);
             return new MemoryVisitClusterBlockDTO(
                     memoryClusterBlock,
                     visits,
-                    "/api/v1/raw-location-points?startDate=" + first.get().getStartTime().atZone(timezone).toLocalDateTime() + "&endDate=" + last.get().getEndTime().atZone(timezone).toLocalDateTime() + "&timezone=" + timezone,
+                    rawLocationPointsUrl,
                     adjustedStartTime,
                     adjustedEndTime,
                     completeDuration);
