@@ -734,51 +734,60 @@ document.addEventListener('htmx:beforeRequest', function(event) {
     }
 });
 
+let processingAnimationInterval = null;
+
 function startMemoryProcessingAnimation() {
     const steps = [
-        { step: 'clustering', duration: 3000, progress: 20 },
-        { step: 'visits', duration: 2500, progress: 40 },
-        { step: 'accommodation', duration: 2000, progress: 60 },
-        { step: 'texts', duration: 3500, progress: 80 },
-        { step: 'images', duration: 2000, progress: 100 }
+        { step: 'clustering', text: 'Clustering trips and visits...' },
+        { step: 'visits', text: 'Creating visit records...' },
+        { step: 'accommodation', text: 'Determining accommodation...' },
+        { step: 'texts', text: 'Generating texts...' },
+        { step: 'images', text: 'Copying images...' }
     ];
     
     let currentStepIndex = 0;
     const progressFill = document.querySelector('.progress-fill');
     const progressText = document.querySelector('.progress-text');
     
-    function animateStep() {
-        if (currentStepIndex >= steps.length) return;
-        
-        const currentStep = steps[currentStepIndex];
+    // Set progress bar to indeterminate animation
+    progressFill.style.width = '100%';
+    progressFill.style.animation = 'indeterminate-progress 2s ease-in-out infinite';
+    
+    function cycleSteps() {
         const stepElements = document.querySelectorAll('.processing-step');
         
-        // Mark previous steps as completed
-        stepElements.forEach((el, index) => {
-            if (index < currentStepIndex) {
-                el.classList.remove('active');
-                el.classList.add('completed');
-            } else if (index === currentStepIndex) {
-                el.classList.add('active');
-                el.classList.remove('completed');
-            } else {
-                el.classList.remove('active', 'completed');
-            }
+        // Reset all steps
+        stepElements.forEach(el => {
+            el.classList.remove('active', 'completed');
         });
         
-        // Update progress
-        progressFill.style.width = currentStep.progress + '%';
-        progressText.textContent = `Step ${currentStepIndex + 1} of ${steps.length}`;
+        // Activate current step
+        if (stepElements[currentStepIndex]) {
+            stepElements[currentStepIndex].classList.add('active');
+            progressText.textContent = steps[currentStepIndex].text;
+        }
         
-        currentStepIndex++;
-        
-        // Continue to next step
-        setTimeout(animateStep, currentStep.duration);
+        // Move to next step, cycle back to beginning
+        currentStepIndex = (currentStepIndex + 1) % steps.length;
     }
     
-    // Start animation after a short delay
-    setTimeout(animateStep, 500);
+    // Start cycling immediately
+    cycleSteps();
+    
+    // Continue cycling every 2 seconds
+    processingAnimationInterval = setInterval(cycleSteps, 2000);
 }
+
+// Clean up animation when request completes
+document.addEventListener('htmx:afterRequest', function(event) {
+    if (event.detail.target.id === 'memory-processing-overlay' || 
+        event.detail.elt.getAttribute('hx-indicator') === '#memory-processing-overlay') {
+        if (processingAnimationInterval) {
+            clearInterval(processingAnimationInterval);
+            processingAnimationInterval = null;
+        }
+    }
+});
 </script>
 
 </body>
