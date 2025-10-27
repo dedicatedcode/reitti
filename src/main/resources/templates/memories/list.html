@@ -37,6 +37,44 @@
             </div>
         </div>
     </div>
+
+    <!-- Memory Processing Overlay -->
+    <div id="memory-processing-overlay" class="memory-processing-overlay">
+        <div class="memory-processing-content">
+            <div class="memory-processing-spinner">
+                <i class="lni lni-spinner-2 lni-is-spinning"></i>
+            </div>
+            <h2 class="memory-processing-title">Creating Memory</h2>
+            <div class="memory-processing-steps">
+                <div class="processing-step active" data-step="clustering">
+                    <i class="lni lni-bike"></i>
+                    <span>Clustering trips and visits...</span>
+                </div>
+                <div class="processing-step" data-step="visits">
+                    <i class="lni lni-map-marker-1"></i>
+                    <span>Creating visit records...</span>
+                </div>
+                <div class="processing-step" data-step="accommodation">
+                    <i class="lni lni-home-2"></i>
+                    <span>Determining accommodation...</span>
+                </div>
+                <div class="processing-step" data-step="texts">
+                    <i class="lni lni-text-format"></i>
+                    <span>Generating texts...</span>
+                </div>
+                <div class="processing-step" data-step="images">
+                    <i class="lni lni-photos"></i>
+                    <span>Copying images...</span>
+                </div>
+            </div>
+            <div class="memory-processing-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+                <span class="progress-text">Step 1 of 5</span>
+            </div>
+        </div>
+    </div>
     <script th:inline="javascript">
         window.userSettings = /*[[${userSettings}]]*/ {};
 
@@ -50,6 +88,59 @@
 
         function shouldTrigger(element) {
             return !element.classList.contains('active');
+        }
+        // Memory processing animation
+        document.addEventListener('htmx:beforeRequest', function(event) {
+            if (event.detail.target.id === 'memory-processing-overlay' ||
+                event.detail.elt.getAttribute('hx-indicator') === '#memory-processing-overlay') {
+                startMemoryProcessingAnimation();
+            }
+        });
+
+        function startMemoryProcessingAnimation() {
+            const steps = [
+                { step: 'clustering', duration: 3000, progress: 20 },
+                { step: 'visits', duration: 2500, progress: 40 },
+                { step: 'accommodation', duration: 2000, progress: 60 },
+                { step: 'texts', duration: 3500, progress: 80 },
+                { step: 'images', duration: 2000, progress: 100 }
+            ];
+
+            let currentStepIndex = 0;
+            const progressFill = document.querySelector('.progress-fill');
+            const progressText = document.querySelector('.progress-text');
+
+            function animateStep() {
+                if (currentStepIndex >= steps.length) return;
+
+                const currentStep = steps[currentStepIndex];
+                const stepElements = document.querySelectorAll('.processing-step');
+
+                // Mark previous steps as completed
+                stepElements.forEach((el, index) => {
+                    if (index < currentStepIndex) {
+                        el.classList.remove('active');
+                        el.classList.add('completed');
+                    } else if (index === currentStepIndex) {
+                        el.classList.add('active');
+                        el.classList.remove('completed');
+                    } else {
+                        el.classList.remove('active', 'completed');
+                    }
+                });
+
+                // Update progress
+                progressFill.style.width = currentStep.progress + '%';
+                progressText.textContent = `Step ${currentStepIndex + 1} of ${steps.length}`;
+
+                currentStepIndex++;
+
+                // Continue to next step
+                setTimeout(animateStep, currentStep.duration);
+            }
+
+            // Start animation after a short delay
+            setTimeout(animateStep, 500);
         }
     </script>
 </body>

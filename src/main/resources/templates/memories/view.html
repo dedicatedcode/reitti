@@ -688,7 +688,7 @@
 <div id="share-overlay-container"></div>
 
 <!-- Memory Processing Overlay -->
-<div id="memory-processing-overlay" class="memory-processing-overlay htmx-indicator">
+<div id="memory-processing-overlay" class="memory-processing-overlay">
     <div class="memory-processing-content">
         <div class="memory-processing-spinner">
             <i class="lni lni-spinner-2 lni-is-spinning"></i>
@@ -696,15 +696,15 @@
         <h2 class="memory-processing-title">Processing Memory</h2>
         <div class="memory-processing-steps">
             <div class="processing-step active" data-step="clustering">
-                <i class="lni lni-layers"></i>
+                <i class="lni lni-bike"></i>
                 <span>Clustering trips and visits...</span>
             </div>
             <div class="processing-step" data-step="visits">
-                <i class="lni lni-map-marker"></i>
+                <i class="lni lni-map-marker-1"></i>
                 <span>Creating visit records...</span>
             </div>
             <div class="processing-step" data-step="accommodation">
-                <i class="lni lni-home"></i>
+                <i class="lni lni-home-2"></i>
                 <span>Determining accommodation...</span>
             </div>
             <div class="processing-step" data-step="texts">
@@ -712,7 +712,7 @@
                 <span>Generating texts...</span>
             </div>
             <div class="processing-step" data-step="images">
-                <i class="lni lni-image"></i>
+                <i class="lni lni-photos"></i>
                 <span>Copying images...</span>
             </div>
         </div>
@@ -724,113 +724,6 @@
         </div>
     </div>
 </div>
-
-<style>
-.memory-processing-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(10px);
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s ease;
-}
-
-.memory-processing-overlay.htmx-request {
-    opacity: 1;
-    visibility: visible;
-}
-
-.memory-processing-content {
-    background: var(--color-background-dark);
-    border: 1px solid var(--color-highlight);
-    border-radius: 12px;
-    padding: 40px;
-    text-align: center;
-    max-width: 500px;
-    width: 90%;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-}
-
-.memory-processing-spinner {
-    margin-bottom: 20px;
-}
-
-.memory-processing-spinner i {
-    font-size: 3rem;
-    color: var(--color-highlight);
-}
-
-.memory-processing-title {
-    color: white;
-    margin-bottom: 30px;
-    font-size: 1.5rem;
-}
-
-.memory-processing-steps {
-    margin-bottom: 30px;
-}
-
-.processing-step {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    padding: 12px 0;
-    color: #666;
-    transition: all 0.3s ease;
-    opacity: 0.5;
-}
-
-.processing-step.active {
-    color: var(--color-highlight);
-    opacity: 1;
-    transform: translateX(10px);
-}
-
-.processing-step.completed {
-    color: #4CAF50;
-    opacity: 0.8;
-}
-
-.processing-step i {
-    margin-right: 15px;
-    font-size: 1.2rem;
-    width: 20px;
-}
-
-.memory-processing-progress {
-    margin-top: 20px;
-}
-
-.progress-bar {
-    width: 100%;
-    height: 6px;
-    background: #333;
-    border-radius: 3px;
-    overflow: hidden;
-    margin-bottom: 10px;
-}
-
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--color-highlight), #ffd700);
-    width: 20%;
-    transition: width 2s ease;
-    border-radius: 3px;
-}
-
-.progress-text {
-    color: #ccc;
-    font-size: 0.9rem;
-}
-</style>
 
 <script>
 // Memory processing animation
