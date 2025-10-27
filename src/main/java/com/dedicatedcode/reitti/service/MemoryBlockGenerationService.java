@@ -343,6 +343,7 @@ public class MemoryBlockGenerationService {
      * Step 1: Find accommodation by analyzing visits during sleeping hours (22:00 - 06:00)
      */
     private Optional<ProcessedVisit> findAccommodation(List<ProcessedVisit> visits) {
+        //when calculating the sleep time make sure that visits, which extend the overall time of the memory are not counted since the can extend mutiple days after the memory AI!
         Map<Long, Long> sleepingHoursDuration = new HashMap<>();
         
         for (ProcessedVisit visit : visits) {
