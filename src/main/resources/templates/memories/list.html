@@ -44,34 +44,34 @@
             <div class="memory-processing-spinner">
                 <i class="lni lni-spinner-2 lni-is-spinning"></i>
             </div>
-            <h2 class="memory-processing-title">Creating Memory</h2>
+            <h2 class="memory-processing-title" th:text="#{memory.processing.title.creating}">Creating Memory</h2>
             <div class="memory-processing-steps">
                 <div class="processing-step active" data-step="clustering">
                     <i class="lni lni-bike"></i>
-                    <span>Clustering trips and visits...</span>
+                    <span th:text="#{memory.processing.step.clustering}">Clustering trips and visits...</span>
                 </div>
                 <div class="processing-step" data-step="visits">
                     <i class="lni lni-map-marker-1"></i>
-                    <span>Creating visit records...</span>
+                    <span th:text="#{memory.processing.step.visits}">Creating visit records...</span>
                 </div>
                 <div class="processing-step" data-step="accommodation">
                     <i class="lni lni-home-2"></i>
-                    <span>Determining accommodation...</span>
+                    <span th:text="#{memory.processing.step.accommodation}">Determining accommodation...</span>
                 </div>
                 <div class="processing-step" data-step="texts">
                     <i class="lni lni-text-format"></i>
-                    <span>Generating texts...</span>
+                    <span th:text="#{memory.processing.step.texts}">Generating texts...</span>
                 </div>
                 <div class="processing-step" data-step="images">
                     <i class="lni lni-photos"></i>
-                    <span>Copying images...</span>
+                    <span th:text="#{memory.processing.step.images}">Copying images...</span>
                 </div>
             </div>
             <div class="memory-processing-progress">
                 <div class="progress-bar">
                     <div class="progress-fill"></div>
                 </div>
-                <span class="progress-text">Step 1 of 5</span>
+                <span class="progress-text" th:text="#{memory.processing.step.counter(1, 5)}">Step 1 of 5</span>
             </div>
         </div>
     </div>
@@ -102,11 +102,11 @@
 
         function startMemoryProcessingAnimation() {
             const steps = [
-                { step: 'clustering', text: 'Clustering trips and visits...' },
-                { step: 'visits', text: 'Creating visit records...' },
-                { step: 'accommodation', text: 'Determining accommodation...' },
-                { step: 'texts', text: 'Generating texts...' },
-                { step: 'images', text: 'Copying images...' }
+                { step: 'clustering', text: /*[[#{memory.processing.step.clustering}]]*/ 'Clustering trips and visits...' },
+                { step: 'visits', text: /*[[#{memory.processing.step.visits}]]*/ 'Creating visit records...' },
+                { step: 'accommodation', text: /*[[#{memory.processing.step.accommodation}]]*/ 'Determining accommodation...' },
+                { step: 'texts', text: /*[[#{memory.processing.step.texts}]]*/ 'Generating texts...' },
+                { step: 'images', text: /*[[#{memory.processing.step.images}]]*/ 'Copying images...' }
             ];
 
             let currentStepIndex = 0;
