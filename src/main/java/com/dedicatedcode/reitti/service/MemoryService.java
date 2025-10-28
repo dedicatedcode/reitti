@@ -30,8 +30,8 @@ public class MemoryService {
     private final MemoryBlockImageGalleryJdbcService memoryBlockImageGalleryJdbcService;
     private final MemoryClusterBlockRepository memoryClusterBlockRepository;
     private final MemoryBlockGenerationService blockGenerationService;
-    private final ProcessedVisitJdbcService processedVisitJdbcService;
-    private final TripJdbcService tripJdbcService;
+    private final MemoryVisitJdbcService memoryVisitJdbcService;
+    private final MemoryTripJdbcService memoryTripJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
 
     public MemoryService(
@@ -41,8 +41,8 @@ public class MemoryService {
             MemoryBlockImageGalleryJdbcService memoryBlockImageGalleryJdbcService,
             MemoryClusterBlockRepository memoryClusterBlockRepository,
             MemoryBlockGenerationService blockGenerationService,
-            ProcessedVisitJdbcService processedVisitJdbcService,
-            TripJdbcService tripJdbcService,
+            MemoryVisitJdbcService memoryVisitJdbcService,
+            TripJdbcService tripJdbcService, MemoryTripJdbcService memoryTripJdbcService,
             UserSettingsJdbcService userSettingsJdbcService) {
         this.memoryJdbcService = memoryJdbcService;
         this.memoryBlockJdbcService = memoryBlockJdbcService;
@@ -50,8 +50,8 @@ public class MemoryService {
         this.memoryBlockImageGalleryJdbcService = memoryBlockImageGalleryJdbcService;
         this.memoryClusterBlockRepository = memoryClusterBlockRepository;
         this.blockGenerationService = blockGenerationService;
-        this.processedVisitJdbcService = processedVisitJdbcService;
-        this.tripJdbcService = tripJdbcService;
+        this.memoryVisitJdbcService = memoryVisitJdbcService;
+        this.memoryTripJdbcService = memoryTripJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
     }
 
@@ -250,17 +250,17 @@ public class MemoryService {
         Optional<? extends MemoryBlockPart> part;
         Optional<MemoryClusterBlock> clusterBlockOpt = memoryClusterBlockRepository.findByBlockId(user, block.getId());
         part = clusterBlockOpt.map(memoryClusterBlock -> {
-            List<Trip> trips = tripJdbcService.findByIds(user, memoryClusterBlock.getPartIds());
-            Optional<Trip> first = trips.stream().findFirst();
-            Optional<Trip> lastTrip = trips.stream().max(Comparator.comparing(Trip::getEndTime));
+            List<MemoryTrip> trips = memoryTripJdbcService.findByMemoryBlockId(memoryClusterBlock.getBlockId());
+            Optional<MemoryTrip> first = trips.stream().findFirst();
+            Optional<MemoryTrip> lastTrip = trips.stream().max(Comparator.comparing(MemoryTrip::getEndTime));
 
-            long movingTime = trips.stream().mapToLong(Trip::getDurationSeconds).sum();
+            long movingTime = trips.stream().mapToLong(MemoryTrip::getDurationSeconds).sum();
             long completeTime = first.map(trip -> Duration.between(trip.getStartTime(), lastTrip.get().getEndTime()).toSeconds()).orElse(0L);
-            LocalDateTime adjustedStartTime = first.map(t -> adjustTime(settings, t.getStartTime(), t.getStartVisit().getPlace(), timezone)).orElse(null);
-            LocalDateTime adjustedEndTime = lastTrip.map(t -> adjustTime(settings, t.getEndTime(), t.getEndVisit().getPlace(), timezone)).orElse(null);
+            LocalDateTime adjustedStartTime = first.map(t -> adjustTime(settings, t.getStartTime(), t.getStartVisit().getTimezone(), timezone)).orElse(null);
+            LocalDateTime adjustedEndTime = lastTrip.map(t -> adjustTime(settings, t.getEndTime(), t.getEndVisit().getTimezone(), timezone)).orElse(null);
             return new MemoryTripClusterBlockDTO(
                     memoryClusterBlock,
-                    trips.stream().map(MemoryTrip::create).toList(),
+                    trips,
                     "/api/v1/raw-location-points/trips?trips=" + String.join(",", memoryClusterBlock.getPartIds().stream().map(Objects::toString).toList()),
                     adjustedStartTime,
                     adjustedEndTime,
@@ -274,17 +274,17 @@ public class MemoryService {
         Optional<? extends MemoryBlockPart> part;
         Optional<MemoryClusterBlock> clusterVisitBlockOpt = memoryClusterBlockRepository.findByBlockId(user, block.getId());
         part = clusterVisitBlockOpt.map(memoryClusterBlock -> {
-            List<ProcessedVisit> visits = processedVisitJdbcService.findByIds(user, memoryClusterBlock.getPartIds());
-            Optional<ProcessedVisit> first = visits.stream().findFirst();
-            Optional<ProcessedVisit> last = visits.stream().max(Comparator.comparing(ProcessedVisit::getEndTime));
+            List<MemoryVisit> visits = memoryVisitJdbcService.findByMemoryBlockId(block.getId());
+            Optional<MemoryVisit> first = visits.stream().findFirst();
+            Optional<MemoryVisit> last = visits.stream().max(Comparator.comparing(MemoryVisit::getEndTime));
 
-            LocalDateTime adjustedStartTime = first.map(t -> adjustTime(settings, t.getStartTime(), t.getPlace(), timezone)).orElse(null);
-            LocalDateTime adjustedEndTime = last.map(t -> adjustTime(settings, t.getEndTime(), t.getPlace(), timezone)).orElse(null);
+            LocalDateTime adjustedStartTime = first.map(t -> adjustTime(settings, t.getStartTime(), t.getTimezone(), timezone)).orElse(null);
+            LocalDateTime adjustedEndTime = last.map(t -> adjustTime(settings, t.getEndTime(), t.getTimezone(), timezone)).orElse(null);
             Long completeDuration = 0L;
             String rawLocationPointsUrl = first.map(processedVisit -> "/api/v1/raw-location-points?startDate=" + processedVisit.getStartTime().atZone(timezone).toLocalDateTime() + "&endDate=" + last.get().getEndTime().atZone(timezone).toLocalDateTime() + "&timezone=" + timezone).orElse(null);
             return new MemoryVisitClusterBlockDTO(
                     memoryClusterBlock,
-                    visits.stream().map(MemoryVisit::create).toList(),
+                    visits,
                     rawLocationPointsUrl,
                     adjustedStartTime,
                     adjustedEndTime,
@@ -293,11 +293,11 @@ public class MemoryService {
         return part;
     }
 
-    private LocalDateTime adjustTime(UserSettings settings, Instant startTime, SignificantPlace place, ZoneId timezone) {
+    private LocalDateTime adjustTime(UserSettings settings, Instant startTime, ZoneId placeTimezone, ZoneId timezone) {
         if (settings.getTimeDisplayMode() == TimeDisplayMode.DEFAULT) {
             return startTime.atZone(timezone).toLocalDateTime();
         } else {
-            return startTime.atZone(place.getTimezone()).toLocalDateTime();
+            return startTime.atZone(placeTimezone).toLocalDateTime();
         }
     }
 

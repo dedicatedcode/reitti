@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 
 public class MemoryVisit {
     private final Long id;
@@ -13,12 +14,13 @@ public class MemoryVisit {
     private final Instant endTime;
     private final double latitudeCentroid;
     private final double longitudeCentroid;
+    private final ZoneId timezone;
 
     public static MemoryVisit create(ProcessedVisit visit) {
-        return new MemoryVisit(null, true, visit.getPlace().getName(), visit.getStartTime(), visit.getEndTime(), visit.getPlace().getLatitudeCentroid(), visit.getPlace().getLongitudeCentroid());
+        return new MemoryVisit(null, true, visit.getPlace().getName(), visit.getStartTime(), visit.getEndTime(), visit.getPlace().getLatitudeCentroid(), visit.getPlace().getLongitudeCentroid(), visit.getPlace().getTimezone());
     }
 
-    public MemoryVisit(Long id, boolean connected, String name, Instant startTime, Instant endTime, double latitudeCentroid, double longitudeCentroid) {
+    public MemoryVisit(Long id, boolean connected, String name, Instant startTime, Instant endTime, double latitudeCentroid, double longitudeCentroid, ZoneId timezone) {
         this.id = id;
         this.connected = connected;
         this.name = name;
@@ -26,6 +28,7 @@ public class MemoryVisit {
         this.endTime = endTime;
         this.latitudeCentroid = latitudeCentroid;
         this.longitudeCentroid = longitudeCentroid;
+        this.timezone = timezone;
     }
 
     public Long getId() {
@@ -58,5 +61,13 @@ public class MemoryVisit {
 
     public double getLongitudeCentroid() {
         return this.longitudeCentroid;
+    }
+
+    public ZoneId getTimezone() {
+        return timezone;
+    }
+
+    public MemoryVisit withId(Long generatedId) {
+        return new MemoryVisit(generatedId, this.connected, this.name, this.startTime, this.endTime, this.latitudeCentroid, this.longitudeCentroid, timezone);
     }
 }

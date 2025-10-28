@@ -54,4 +54,8 @@ public class MemoryTrip {
     public MemoryVisit getEndVisit() {
         return this.endVisit;
     }
+
+    public MemoryTrip withId(Long generatedId) {
+        return new MemoryTrip(generatedId, this.connected, this.startVisit, this.endVisit, this.startTime, this.endTime);
+    }
 }
