@@ -70,7 +70,28 @@ public class StorageService {
 
     public void remove(String itemName) {
         Path filePath = Paths.get(storagePath, itemName);
-        //delete filePath nd if it is a directory all of its content AI!
+        try {
+            if (Files.exists(filePath)) {
+                if (Files.isDirectory(filePath)) {
+                    // Delete directory and all its contents recursively
+                    try (Stream<Path> paths = Files.walk(filePath)) {
+                        paths.sorted(java.util.Comparator.reverseOrder())
+                             .forEach(path -> {
+                                 try {
+                                     Files.delete(path);
+                                 } catch (IOException e) {
+                                     throw new RuntimeException("Failed to delete path '" + path + "': " + e.getMessage(), e);
+                                 }
+                             });
+                    }
+                } else {
+                    // Delete single file
+                    Files.delete(filePath);
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to remove item '" + itemName + "': " + e.getMessage(), e);
+        }
     }
 
     public static class StorageContent {
