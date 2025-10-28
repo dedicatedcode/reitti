@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.ZoneId;
 import java.util.List;
 
@@ -23,20 +24,19 @@ public class MemoryTripJdbcService {
 
     public MemoryTrip save(User user, MemoryTrip memoryTrip, Long memoryBlockId, Long originalId, Long startVisitId, Long endVisitId) {
         String sql = """
-            INSERT INTO memory_trips (id, user_id, original_id, memory_block_id, start_visit_id, end_visit_id, start_time, end_time)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO memory_trips (user_id, original_id, memory_block_id, start_visit_id, end_visit_id, start_time, end_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             RETURNING id
             """;
 
         Long generatedId = jdbcTemplate.queryForObject(sql, Long.class,
-            memoryTrip.getId(),
             user.getId(),
             originalId,
             memoryBlockId,
             startVisitId,
             endVisitId,
-            memoryTrip.getStartTime(),
-            memoryTrip.getEndTime()
+            Timestamp.from(memoryTrip.getStartTime()),
+            Timestamp.from(memoryTrip.getEndTime())
         );
 
         return memoryTrip.withId(generatedId);
@@ -44,7 +44,7 @@ public class MemoryTripJdbcService {
 
     public List<MemoryTrip> findByMemoryBlockId(Long memoryBlockId) {
         String sql = """
-            SELECT mt.id, mt.start_time, mt.end_time,
+            SELECT mt.id, mt.start_time, mt.end_time, mt.original_id,
                            sv.id as start_visit_id, sv.name as start_visit_name, sv.start_time as start_visit_start_time, sv.original_id as start_visit_original_id,
                    sv.end_time as start_visit_end_time, sv.latitude_centroid as start_visit_lat, sv.longitude_centroid as start_visit_lon, sv.timezone as start_visit_timezone,
                            ev.id as end_visit_id, ev.name as end_visit_name, ev.start_time as end_visit_start_time, ev.original_id as end_visit_original_id,
@@ -61,7 +61,7 @@ public class MemoryTripJdbcService {
 
     public List<MemoryTrip> findByUserAndMemoryId(User user, Long memoryId) {
         String sql = """
-            SELECT mt.id, mt.start_time, mt.end_time,
+            SELECT mt.id, mt.start_time, mt.end_time, mt.original_id,
                            sv.id as start_visit_id, sv.name as start_visit_name, sv.start_time as start_visit_start_time,
                            sv.original_id as start_visit_original_id,
                    sv.end_time as start_visit_end_time, sv.latitude_centroid as start_visit_lat, sv.longitude_centroid as start_visit_lon, sv.timezone as start_visit_timezone,

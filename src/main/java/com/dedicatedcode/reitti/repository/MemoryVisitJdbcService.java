@@ -8,6 +8,9 @@ import org.springframework.stereotype.Service;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 
@@ -26,17 +29,17 @@ public class MemoryVisitJdbcService {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             RETURNING id
             """;
-        
+
         Long generatedId = jdbcTemplate.queryForObject(sql, Long.class,
-            user.getId(),
-            originalId,
-            memoryBlockId,
-            memoryVisit.getName(),
-            memoryVisit.getStartTime(),
-            memoryVisit.getEndTime(),
-            memoryVisit.getLatitudeCentroid(),
-            memoryVisit.getLongitudeCentroid(),
-            memoryVisit.getTimezone().getId()
+                user.getId(),
+                originalId,
+                memoryBlockId,
+                memoryVisit.getName(),
+                Timestamp.from(memoryVisit.getStartTime()),
+                Time.from(memoryVisit.getEndTime()),
+                memoryVisit.getLatitudeCentroid(),
+                memoryVisit.getLongitudeCentroid(),
+                memoryVisit.getTimezone().getId()
         );
 
         return memoryVisit.withId(generatedId);
@@ -69,7 +72,7 @@ public class MemoryVisitJdbcService {
                 rs.getTimestamp("end_time").toInstant(),
                 rs.getDouble("latitude_centroid"),
                 rs.getDouble("longitude_centroid"),
-                ZoneOffset.of(rs.getString("timezone")));
+                ZoneId.of(rs.getString("timezone")));
         }
     }
 }

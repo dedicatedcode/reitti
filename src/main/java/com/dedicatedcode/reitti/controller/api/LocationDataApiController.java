@@ -48,14 +48,6 @@ public class LocationDataApiController {
         this.userJdbcService = userJdbcService;
     }
 
-    private static LocationPoint toLocationPoint(RawLocationPoint point) {
-        LocationPoint p = new LocationPoint();
-        p.setLatitude(point.getLatitude());
-        p.setLongitude(point.getLongitude());
-        p.setAccuracyMeters(point.getAccuracyMeters());
-        p.setTimestamp(point.getTimestamp().toString());
-        return p;
-    }
 
     @GetMapping("/raw-location-points/trips")
     public ResponseEntity<?> getRawLocationPointsTrips(@AuthenticationPrincipal User user,
@@ -77,7 +69,7 @@ public class LocationDataApiController {
         RawLocationDataResponse result = new RawLocationDataResponse(tmp.stream().map(s -> {
             List<LocationPoint> simplifiedPoints = simplificationService.simplifyPoints(s, zoom);
             return new RawLocationDataResponse.Segment(simplifiedPoints);
-        }).toList(), latest.map(LocationDataApiController::toLocationPoint).orElse(null));
+        }).toList(), latest.map(this::toLocationPoint).orElse(null));
         return ResponseEntity.ok(result);
     }
 
@@ -151,7 +143,7 @@ public class LocationDataApiController {
             }).toList();
 
             Optional<RawLocationPoint> latest = this.rawLocationPointJdbcService.findLatest(user);
-            return ResponseEntity.ok(new RawLocationDataResponse(result, latest.map(LocationDataApiController::toLocationPoint).orElse(null)));
+            return ResponseEntity.ok(new RawLocationDataResponse(result, latest.map(this::toLocationPoint).orElse(null)));
             
         } catch (DateTimeParseException e) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -253,5 +245,13 @@ public class LocationDataApiController {
                 point.getLongitude() <= maxLng;
     }
 
+    private LocationPoint toLocationPoint(RawLocationPoint point) {
+        LocationPoint p = new LocationPoint();
+        p.setLatitude(point.getLatitude());
+        p.setLongitude(point.getLongitude());
+        p.setAccuracyMeters(point.getAccuracyMeters());
+        p.setTimestamp(point.getTimestamp().toString());
+        return p;
+    }
 
 }

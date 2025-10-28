@@ -116,10 +116,8 @@
                                      class="gallery-image-item"
                                      th:attr="data-image-url=${image.imageUrl},data-caption=${image.caption}">
                                     <div class="photo-loading-spinner"></div>
-                                    <img th:data-src="${image.imageUrl}" 
-                                         th:alt="${image.caption != null ? image.caption : 'Gallery image'}"
+                                    <img th:data-src="${image.imageUrl}"
                                          class="lazy-image"
-                                         src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200'%3E%3Crect width='100%25' height='100%25' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999'%3ELoading...%3C/text%3E%3C/svg%3E"
                                          onload="this.classList.add('loaded'); this.previousElementSibling.style.display='none';"
                                          onerror="this.style.display='none'; this.previousElementSibling.style.display='none'; this.parentElement.innerHTML='📷';">
                                 </div>

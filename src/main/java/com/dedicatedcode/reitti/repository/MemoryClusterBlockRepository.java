@@ -26,7 +26,7 @@ public class MemoryClusterBlockRepository {
         this.objectMapper = objectMapper;
     }
 
-    public void save(User user, MemoryClusterBlock cluster) {
+    public MemoryClusterBlock save(User user, MemoryClusterBlock cluster) {
         String sql = "INSERT INTO memory_block_cluster (block_id, part_ids, user_id, title, description, type) VALUES (?, ?::jsonb, ?, ?, ?, ?) " +
                      "ON CONFLICT (block_id) DO UPDATE SET part_ids = EXCLUDED.part_ids, title = EXCLUDED.title, description = EXCLUDED.description, type = EXCLUDED.type";
         try {
@@ -35,6 +35,8 @@ public class MemoryClusterBlockRepository {
         } catch (Exception e) {
             throw new RuntimeException("Failed to save MemoryClusterBlock", e);
         }
+
+        return cluster;
     }
 
     public Optional<MemoryClusterBlock> findByBlockId(User user, Long blockId) {

@@ -2,7 +2,7 @@ CREATE TABLE memory_visits
 (
     id                 BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     user_id            BIGINT           NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    original_id        BIGINT           NULL REFERENCES visits (id) ON DELETE SET NULL,
+    original_id        BIGINT           NULL REFERENCES processed_visits (id) ON DELETE SET NULL,
     memory_block_id    BIGINT           NOT NULL REFERENCES memory_block (id) ON DELETE CASCADE,
     name               TEXT             NOT NULL,
     start_time         TIMESTAMP        NOT NULL,
