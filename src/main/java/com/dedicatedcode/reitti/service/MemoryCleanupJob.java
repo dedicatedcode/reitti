@@ -22,32 +22,48 @@ public class MemoryCleanupJob {
 
     @Scheduled(cron = "${reitti.storage.cleanup.cron}")
     public void cleanUp() {
-        //mke this resilient to any error which could occur so it will always try to work on all items, even if one fils AI!
-        List<String> itemNames = this.storageService.getChildren("/memories");
+        List<String> itemNames;
+        try {
+            itemNames = this.storageService.getChildren("/memories");
+        } catch (Exception e) {
+            log.error("Failed to get memory directories for cleanup", e);
+            return;
+        }
+        
         for (String itemName : itemNames) {
-
-            boolean exists = this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM memory WHERE id = ?::int", Integer.class, itemName) > 0;
-            if (!exists) {
-                String pathToDelete = "/memories/" + itemName;
-                this.storageService.remove(pathToDelete);
-                log.info("deleted path [{}] since memory [{}] does not exists", pathToDelete, itemName);
-            } else {
-                this.storageService.getChildren("/memories/" + itemName).forEach(s -> {
-                    // Check if the file is referenced in any memory_block_image_gallery images column
-                    boolean isReferenced = this.jdbcTemplate.queryForObject(
-                            "SELECT COUNT(*) FROM memory_block_image_gallery WHERE images::text LIKE ? AND block_id IN (SELECT id FROM memory_block WHERE memory_id = ?::int)",
-                            Integer.class,
-                            "%" + s + "%",
-                            itemName
-                    ) > 0;
-                    
-                    if (!isReferenced) {
-                        String pathToDelete = "/memories/" + itemName + "/" + s;
-                        this.storageService.remove(pathToDelete);
-                        log.info("deleted file [{}] since it is not referenced in any memory block image gallery", pathToDelete);
+            try {
+                boolean exists = this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM memory WHERE id = ?::int", Integer.class, itemName) > 0;
+                if (!exists) {
+                    String pathToDelete = "/memories/" + itemName;
+                    this.storageService.remove(pathToDelete);
+                    log.info("deleted path [{}] since memory [{}] does not exists", pathToDelete, itemName);
+                } else {
+                    try {
+                        this.storageService.getChildren("/memories/" + itemName).forEach(s -> {
+                            try {
+                                // Check if the file is referenced in any memory_block_image_gallery images column
+                                boolean isReferenced = this.jdbcTemplate.queryForObject(
+                                        "SELECT COUNT(*) FROM memory_block_image_gallery WHERE images::text LIKE ? AND block_id IN (SELECT id FROM memory_block WHERE memory_id = ?::int)",
+                                        Integer.class,
+                                        "%" + s + "%",
+                                        itemName
+                                ) > 0;
+                                
+                                if (!isReferenced) {
+                                    String pathToDelete = "/memories/" + itemName + "/" + s;
+                                    this.storageService.remove(pathToDelete);
+                                    log.info("deleted file [{}] since it is not referenced in any memory block image gallery", pathToDelete);
+                                }
+                            } catch (Exception e) {
+                                log.error("Failed to process file [{}] in memory [{}] during cleanup", s, itemName, e);
+                            }
+                        });
+                    } catch (Exception e) {
+                        log.error("Failed to get files for memory [{}] during cleanup", itemName, e);
                     }
-                });
-
+                }
+            } catch (Exception e) {
+                log.error("Failed to process memory [{}] during cleanup", itemName, e);
             }
         }
     }
