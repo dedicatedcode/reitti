@@ -331,10 +331,10 @@
                                     if (trips.length > 0) {
                                         // Start marker
                                         const startTrip = trips[0];
-                                        if (startTrip.startVisit && startTrip.startVisit.place) {
-                                            const startLat = startTrip.startVisit.place.latitudeCentroid;
-                                            const startLon = startTrip.startVisit.place.longitudeCentroid;
-                                            const startName = startTrip.startVisit.place.name;
+                                        if (startTrip.startVisit) {
+                                            const startLat = startTrip.startVisit.latitudeCentroid;
+                                            const startLon = startTrip.startVisit.longitudeCentroid;
+                                            const startName = startTrip.startVisit.name;
                                             const startTimeFormatted = combinedStartTime ? new Date(combinedStartTime).toLocaleTimeString() : 'unknown';
                                             L.circleMarker([startLat, startLon], {
                                                 color: '#4a9fdc',
@@ -347,10 +347,10 @@
                                         // Intermediate stops (end of each trip except last)
                                         for (let i = 0; i < trips.length - 1; i++) {
                                             const trip = trips[i];
-                                            if (trip.endVisit && trip.endVisit.place) {
-                                                const lat = trip.endVisit.place.latitudeCentroid;
-                                                const lon = trip.endVisit.place.longitudeCentroid;
-                                                const name = trip.endVisit.place.name;
+                                            if (trip.endVisit) {
+                                                const lat = trip.endVisit.latitudeCentroid;
+                                                const lon = trip.endVisit.longitudeCentroid;
+                                                const name = trip.endVisit.name;
                                                 const arrivedAfter = combinedStartTime && trip.endTime ? humanizeDuration((new Date(trip.endTime) - new Date(combinedStartTime)),{units: ["h", "m"], round: true}) : 'unknown';
                                                 L.circleMarker([lat, lon], {
                                                     color: '#6a6a6a',
@@ -363,10 +363,10 @@
 
                                         // End marker
                                         const endTrip = trips[trips.length - 1];
-                                        if (endTrip.endVisit && endTrip.endVisit.place) {
-                                            const endLat = endTrip.endVisit.place.latitudeCentroid;
-                                            const endLon = endTrip.endVisit.place.longitudeCentroid;
-                                            const endName = endTrip.endVisit.place.name;
+                                        if (endTrip.endVisit) {
+                                            const endLat = endTrip.endVisit.latitudeCentroid;
+                                            const endLon = endTrip.endVisit.longitudeCentroid;
+                                            const endName = endTrip.endVisit.name;
                                             const arrivedAfter = combinedStartTime && endTrip.endTime ? humanizeDuration((new Date(endTrip.endTime) - new Date(combinedStartTime)),{units: ["h", "m"], round: true}) : 'unknown';
                                             L.circleMarker([endLat, endLon], {
                                                 color: '#37bd57',
@@ -395,9 +395,9 @@
                                 <h4>Trips in this Journey:</h4>
                                 <ul>
                                     <li th:each="trip : ${block.trips}" class="trip-item">
-                                        <span th:text="${trip.startVisit != null && trip.startVisit.place != null ? trip.startVisit.place.name : 'Start'}">Start</span>
+                                        <span th:text="${trip.startVisit.name ?: 'Start'}">Start</span>
                                         <span> → </span>
-                                        <span th:text="${trip.endVisit != null && trip.endVisit.place != null ? trip.endVisit.place.name : 'End'}">End</span>
+                                        <span th:text="${trip.endVisit.name  ?: 'End'}">End</span>
                                     </li>
                                 </ul>
                             </div>
@@ -461,18 +461,15 @@
                                     let bounds = [];
                                     if (visits.length > 0) {
                                         for (let i = 0; i < visits.length; i++) {
-                                            const visit = visits[i];
-                                            if (visit.place) {
-                                                const lat = visit.place.latitudeCentroid;
-                                                const lon = visit.place.longitudeCentroid;
-                                                const name = visit.place.name;
-                                                L.circleMarker([lat, lon], {
-                                                    color: '#6a6a6a',
-                                                    fillColor: '#ff984f',
-                                                    fillOpacity: 0.1
-                                                }).addTo(clusterMap).bindPopup('Name: ' + name);
-                                                bounds.push([lat, lon]);
-                                            }
+                                            const lat = visits[i].latitudeCentroid;
+                                            const lon = visits[i].longitudeCentroid;
+                                            const name = visits[i].name;
+                                            L.circleMarker([lat, lon], {
+                                                color: '#6a6a6a',
+                                                fillColor: '#ff984f',
+                                                fillOpacity: 0.1
+                                            }).addTo(clusterMap).bindPopup('Name: ' + name);
+                                            bounds.push([lat, lon]);
                                         }
                                     }
 
@@ -488,7 +485,7 @@
                                 <h4>Visits in this Journey:</h4>
                                 <ul>
                                     <li th:each="visit : ${block.visits}" class="trip-item">
-                                        <span th:text="${visit.place != null ? visit.place.name : 'Start'}">Start</span>
+                                        <span th:text="${visit.name ?: 'Start'}">Start</span>
                                     </li>
                                 </ul>
                             </div>

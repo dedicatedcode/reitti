@@ -65,7 +65,7 @@ public class MemoryClusterBlock implements MemoryBlockPart, Serializable {
     public String toString() {
         return "MemoryClusterBlock{" +
                 "blockId=" + blockId +
-                ", tripIds=" + partIds +
+                ", partIds=" + partIds +
                 ", title='" + title + '\'' +
                 ", description='" + description + '\'' +
                 '}';

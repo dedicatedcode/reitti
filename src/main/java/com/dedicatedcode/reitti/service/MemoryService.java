@@ -260,7 +260,7 @@ public class MemoryService {
             LocalDateTime adjustedEndTime = lastTrip.map(t -> adjustTime(settings, t.getEndTime(), t.getEndVisit().getPlace(), timezone)).orElse(null);
             return new MemoryTripClusterBlockDTO(
                     memoryClusterBlock,
-                    trips,
+                    trips.stream().map(MemoryTrip::create).toList(),
                     "/api/v1/raw-location-points/trips?trips=" + String.join(",", memoryClusterBlock.getPartIds().stream().map(Objects::toString).toList()),
                     adjustedStartTime,
                     adjustedEndTime,
@@ -284,7 +284,7 @@ public class MemoryService {
             String rawLocationPointsUrl = first.map(processedVisit -> "/api/v1/raw-location-points?startDate=" + processedVisit.getStartTime().atZone(timezone).toLocalDateTime() + "&endDate=" + last.get().getEndTime().atZone(timezone).toLocalDateTime() + "&timezone=" + timezone).orElse(null);
             return new MemoryVisitClusterBlockDTO(
                     memoryClusterBlock,
-                    visits,
+                    visits.stream().map(MemoryVisit::create).toList(),
                     rawLocationPointsUrl,
                     adjustedStartTime,
                     adjustedEndTime,
