@@ -24,47 +24,48 @@
     <div class="settings-content-area">
         <div class="memory-header" th:fragment="memory-header">
             <div class="action-bar">
-                <div sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')"><a class="btn"
-                        th:href="@{/memories}"><i class="lni lni-arrow-left"></i>
-                    <span th:text="#{memory.view.back}"></span></a></a>
+                <div sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')">
+                    <a class="btn" th:href="@{/memories}"><i class="lni lni-arrow-left"></i> <span th:text="#{memory.view.back}"></span></a>
                 </div>
-                <button type="button" 
-                        class="btn"
-                        th:if="${canEdit}"
-                        th:attr="hx-get=@{/memories/{id}/edit(id=${memory.id})}"
-                        hx-target=".memory-header"
-                        hx-swap="innerHTML"
-                        hx-vals="js:{timezone: getUserTimezone()}"
-                        th:text="#{memory.view.edit}">Edit
-                </button>
-                <button type="button" 
-                        class="btn"
-                        th:if="${canEdit && isOwner}"
-                        th:attr="hx-post=@{/memories/{id}/recalculate(id=${memory.id})}"
-                        hx-target="body"
-                        hx-swap="innerHTML"
-                        hx-confirm="Recalculate this memory? This will update all location data."
-                        hx-vals="js:{timezone: getUserTimezone()}"
-                        hx-indicator="#memory-processing-overlay"
-                        th:text="#{memory.view.recalculate}">Recalculate
-                </button>
-                <button type="button" 
-                        class="btn"
-                        th:if="${canEdit && isOwner}"
-                        th:attr="hx-get=@{/memories/{id}/share(id=${memory.id})}"
-                        hx-target="#share-overlay-container"
-                        hx-swap="innerHTML">
-                    <i class="lni lni-share"></i> Share
-                </button>
-                <button type="button" 
-                        class="btn btn-danger"
-                        th:if="${canEdit && isOwner}"
-                        th:attr="hx-delete=@{/memories/{id}(id=${memory.id})}"
-                        hx-confirm="Are you sure you want to delete this memory? This action cannot be undone."
-                        hx-target="body"
-                        hx-swap="innerHTML">
-                    <i class="lni lni-trash-3"></i> Delete
-                </button>
+                <div>
+                    <button type="button"
+                            class="btn"
+                            th:if="${canEdit}"
+                            th:attr="hx-get=@{/memories/{id}/edit(id=${memory.id})}"
+                            hx-target=".memory-header"
+                            hx-swap="innerHTML"
+                            hx-vals="js:{timezone: getUserTimezone()}"
+                            th:text="#{memory.view.edit}">Edit
+                    </button>
+                    <button type="button"
+                            class="btn"
+                            th:if="${canEdit && isOwner}"
+                            th:attr="hx-post=@{/memories/{id}/recalculate(id=${memory.id})}"
+                            hx-target="body"
+                            hx-swap="innerHTML"
+                            hx-confirm="Recalculate this memory? This will update all location data."
+                            hx-vals="js:{timezone: getUserTimezone()}"
+                            hx-indicator="#memory-processing-overlay"
+                            th:text="#{memory.view.recalculate}">Recalculate
+                    </button>
+                    <button type="button"
+                            class="btn"
+                            th:if="${canEdit && isOwner}"
+                            th:attr="hx-get=@{/memories/{id}/share(id=${memory.id})}"
+                            hx-target="#share-overlay-container"
+                            hx-swap="innerHTML">
+                        <i class="lni lni-share"></i> Share
+                    </button>
+                    <button type="button"
+                            class="btn btn-danger"
+                            th:if="${canEdit && isOwner}"
+                            th:attr="hx-delete=@{/memories/{id}(id=${memory.id})}"
+                            hx-confirm="Are you sure you want to delete this memory? This action cannot be undone."
+                            hx-target="body"
+                            hx-swap="innerHTML">
+                        <i class="lni lni-trash-3"></i> Delete
+                    </button>
+                </div>
             </div>
             <div class="memory-header-section map-header-section">
                 <div id="memory-map" class="memory-map"></div>

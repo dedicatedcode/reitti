@@ -525,6 +525,7 @@ button {
     border-radius: 4px;
     cursor: pointer;
     text-decoration: none;
+    display: inline-block;
 }
 
 a.btn:hover,
@@ -1971,12 +1972,14 @@ button:disabled {
 .memories-page .memory-header .action-bar {
     z-index: 500;
     position: relative;
-    padding: 24px;
+    padding: 8px;
     display: flex;
     justify-content: flex-end;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease;
+    background: #00000075;
+    backdrop-filter: blur(4px);
 }
 
 .memories-page .memory-header:hover .action-bar {
