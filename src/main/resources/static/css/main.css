@@ -525,6 +525,7 @@ button {
     border-radius: 4px;
     cursor: pointer;
     text-decoration: none;
+    display: inline-block;
 }
 
 a.btn:hover,
@@ -1971,17 +1972,20 @@ button:disabled {
 .memories-page .memory-header .action-bar {
     z-index: 500;
     position: relative;
-    padding: 24px;
+    padding: 8px;
     display: flex;
     justify-content: flex-end;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.3s ease;
+    transition: all 0.3s ease;
+    background: #00000075;
+    backdrop-filter: blur(4px);
 }
 
 .memories-page .memory-header:hover .action-bar {
     opacity: 1;
     pointer-events: all;
+    box-shadow: -1px -1px 9px wheat, 1px -1px 9px #6f560d, -1px 1px 5px #24201c, 1px 1px 0 #171414;
 }
 
 .memories-page .memory-header .action-bar div:first-child {
@@ -2196,7 +2200,6 @@ button:disabled {
 /* Lazy loading styles */
 .lazy-image {
     transition: opacity 0.3s ease;
-    background-color: #f0f0f0;
 }
 
 .lazy-image.loaded {
@@ -2207,7 +2210,7 @@ button:disabled {
 .gallery-image-item {
     position: relative;
     min-height: 200px;
-    background-color: #f8f9fa;
+    background-color: #2d2d2d;
     border-radius: 4px;
     overflow: hidden;
 }

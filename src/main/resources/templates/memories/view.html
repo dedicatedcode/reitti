@@ -24,47 +24,48 @@
     <div class="settings-content-area">
         <div class="memory-header" th:fragment="memory-header">
             <div class="action-bar">
-                <div sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')"><a class="btn"
-                        th:href="@{/memories}"><i class="lni lni-arrow-left"></i>
-                    <span th:text="#{memory.view.back}"></span></a></a>
+                <div sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')">
+                    <a class="btn" th:href="@{/memories}"><i class="lni lni-arrow-left"></i> <span th:text="#{memory.view.back}"></span></a>
                 </div>
-                <button type="button" 
-                        class="btn"
-                        th:if="${canEdit}"
-                        th:attr="hx-get=@{/memories/{id}/edit(id=${memory.id})}"
-                        hx-target=".memory-header"
-                        hx-swap="innerHTML"
-                        hx-vals="js:{timezone: getUserTimezone()}"
-                        th:text="#{memory.view.edit}">Edit
-                </button>
-                <button type="button" 
-                        class="btn"
-                        th:if="${canEdit && isOwner}"
-                        th:attr="hx-post=@{/memories/{id}/recalculate(id=${memory.id})}"
-                        hx-target="body"
-                        hx-swap="innerHTML"
-                        hx-confirm="Recalculate this memory? This will update all location data."
-                        hx-vals="js:{timezone: getUserTimezone()}"
-                        hx-indicator="#memory-processing-overlay"
-                        th:text="#{memory.view.recalculate}">Recalculate
-                </button>
-                <button type="button" 
-                        class="btn"
-                        th:if="${canEdit && isOwner}"
-                        th:attr="hx-get=@{/memories/{id}/share(id=${memory.id})}"
-                        hx-target="#share-overlay-container"
-                        hx-swap="innerHTML">
-                    <i class="lni lni-share"></i> Share
-                </button>
-                <button type="button" 
-                        class="btn btn-danger"
-                        th:if="${canEdit && isOwner}"
-                        th:attr="hx-delete=@{/memories/{id}(id=${memory.id})}"
-                        hx-confirm="Are you sure you want to delete this memory? This action cannot be undone."
-                        hx-target="body"
-                        hx-swap="innerHTML">
-                    <i class="lni lni-trash-3"></i> Delete
-                </button>
+                <div>
+                    <button type="button"
+                            class="btn"
+                            th:if="${canEdit}"
+                            th:attr="hx-get=@{/memories/{id}/edit(id=${memory.id})}"
+                            hx-target=".memory-header"
+                            hx-swap="innerHTML"
+                            hx-vals="js:{timezone: getUserTimezone()}"
+                            th:text="#{memory.view.edit}">Edit
+                    </button>
+                    <button type="button"
+                            class="btn"
+                            th:if="${canEdit && isOwner}"
+                            th:attr="hx-post=@{/memories/{id}/recalculate(id=${memory.id})}"
+                            hx-target="body"
+                            hx-swap="innerHTML"
+                            hx-confirm="Recalculate this memory? This will update all location data."
+                            hx-vals="js:{timezone: getUserTimezone()}"
+                            hx-indicator="#memory-processing-overlay"
+                            th:text="#{memory.view.recalculate}">Recalculate
+                    </button>
+                    <button type="button"
+                            class="btn"
+                            th:if="${canEdit && isOwner}"
+                            th:attr="hx-get=@{/memories/{id}/share(id=${memory.id})}"
+                            hx-target="#share-overlay-container"
+                            hx-swap="innerHTML">
+                        <i class="lni lni-share"></i> Share
+                    </button>
+                    <button type="button"
+                            class="btn btn-danger"
+                            th:if="${canEdit && isOwner}"
+                            th:attr="hx-delete=@{/memories/{id}(id=${memory.id})}"
+                            hx-confirm="Are you sure you want to delete this memory? This action cannot be undone."
+                            hx-target="body"
+                            hx-swap="innerHTML">
+                        <i class="lni lni-trash-3"></i> Delete
+                    </button>
+                </div>
             </div>
             <div class="memory-header-section map-header-section">
                 <div id="memory-map" class="memory-map"></div>
@@ -115,10 +116,8 @@
                                      class="gallery-image-item"
                                      th:attr="data-image-url=${image.imageUrl},data-caption=${image.caption}">
                                     <div class="photo-loading-spinner"></div>
-                                    <img th:data-src="${image.imageUrl}" 
-                                         th:alt="${image.caption != null ? image.caption : 'Gallery image'}"
+                                    <img th:data-src="${image.imageUrl}"
                                          class="lazy-image"
-                                         src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200'%3E%3Crect width='100%25' height='100%25' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999'%3ELoading...%3C/text%3E%3C/svg%3E"
                                          onload="this.classList.add('loaded'); this.previousElementSibling.style.display='none';"
                                          onerror="this.style.display='none'; this.previousElementSibling.style.display='none'; this.parentElement.innerHTML='📷';">
                                 </div>
@@ -331,10 +330,10 @@
                                     if (trips.length > 0) {
                                         // Start marker
                                         const startTrip = trips[0];
-                                        if (startTrip.startVisit && startTrip.startVisit.place) {
-                                            const startLat = startTrip.startVisit.place.latitudeCentroid;
-                                            const startLon = startTrip.startVisit.place.longitudeCentroid;
-                                            const startName = startTrip.startVisit.place.name;
+                                        if (startTrip.startVisit) {
+                                            const startLat = startTrip.startVisit.latitudeCentroid;
+                                            const startLon = startTrip.startVisit.longitudeCentroid;
+                                            const startName = startTrip.startVisit.name;
                                             const startTimeFormatted = combinedStartTime ? new Date(combinedStartTime).toLocaleTimeString() : 'unknown';
                                             L.circleMarker([startLat, startLon], {
                                                 color: '#4a9fdc',
@@ -347,10 +346,10 @@
                                         // Intermediate stops (end of each trip except last)
                                         for (let i = 0; i < trips.length - 1; i++) {
                                             const trip = trips[i];
-                                            if (trip.endVisit && trip.endVisit.place) {
-                                                const lat = trip.endVisit.place.latitudeCentroid;
-                                                const lon = trip.endVisit.place.longitudeCentroid;
-                                                const name = trip.endVisit.place.name;
+                                            if (trip.endVisit) {
+                                                const lat = trip.endVisit.latitudeCentroid;
+                                                const lon = trip.endVisit.longitudeCentroid;
+                                                const name = trip.endVisit.name;
                                                 const arrivedAfter = combinedStartTime && trip.endTime ? humanizeDuration((new Date(trip.endTime) - new Date(combinedStartTime)),{units: ["h", "m"], round: true}) : 'unknown';
                                                 L.circleMarker([lat, lon], {
                                                     color: '#6a6a6a',
@@ -363,10 +362,10 @@
 
                                         // End marker
                                         const endTrip = trips[trips.length - 1];
-                                        if (endTrip.endVisit && endTrip.endVisit.place) {
-                                            const endLat = endTrip.endVisit.place.latitudeCentroid;
-                                            const endLon = endTrip.endVisit.place.longitudeCentroid;
-                                            const endName = endTrip.endVisit.place.name;
+                                        if (endTrip.endVisit) {
+                                            const endLat = endTrip.endVisit.latitudeCentroid;
+                                            const endLon = endTrip.endVisit.longitudeCentroid;
+                                            const endName = endTrip.endVisit.name;
                                             const arrivedAfter = combinedStartTime && endTrip.endTime ? humanizeDuration((new Date(endTrip.endTime) - new Date(combinedStartTime)),{units: ["h", "m"], round: true}) : 'unknown';
                                             L.circleMarker([endLat, endLon], {
                                                 color: '#37bd57',
@@ -395,9 +394,9 @@
                                 <h4>Trips in this Journey:</h4>
                                 <ul>
                                     <li th:each="trip : ${block.trips}" class="trip-item">
-                                        <span th:text="${trip.startVisit != null && trip.startVisit.place != null ? trip.startVisit.place.name : 'Start'}">Start</span>
+                                        <span th:text="${trip.startVisit.name ?: 'Start'}">Start</span>
                                         <span> → </span>
-                                        <span th:text="${trip.endVisit != null && trip.endVisit.place != null ? trip.endVisit.place.name : 'End'}">End</span>
+                                        <span th:text="${trip.endVisit.name  ?: 'End'}">End</span>
                                     </li>
                                 </ul>
                             </div>
@@ -461,18 +460,15 @@
                                     let bounds = [];
                                     if (visits.length > 0) {
                                         for (let i = 0; i < visits.length; i++) {
-                                            const visit = visits[i];
-                                            if (visit.place) {
-                                                const lat = visit.place.latitudeCentroid;
-                                                const lon = visit.place.longitudeCentroid;
-                                                const name = visit.place.name;
-                                                L.circleMarker([lat, lon], {
-                                                    color: '#6a6a6a',
-                                                    fillColor: '#ff984f',
-                                                    fillOpacity: 0.1
-                                                }).addTo(clusterMap).bindPopup('Name: ' + name);
-                                                bounds.push([lat, lon]);
-                                            }
+                                            const lat = visits[i].latitudeCentroid;
+                                            const lon = visits[i].longitudeCentroid;
+                                            const name = visits[i].name;
+                                            L.circleMarker([lat, lon], {
+                                                color: '#6a6a6a',
+                                                fillColor: '#ff984f',
+                                                fillOpacity: 0.1
+                                            }).addTo(clusterMap).bindPopup('Name: ' + name);
+                                            bounds.push([lat, lon]);
                                         }
                                     }
 
@@ -488,7 +484,7 @@
                                 <h4>Visits in this Journey:</h4>
                                 <ul>
                                     <li th:each="visit : ${block.visits}" class="trip-item">
-                                        <span th:text="${visit.place != null ? visit.place.name : 'Start'}">Start</span>
+                                        <span th:text="${visit.name ?: 'Start'}">Start</span>
                                     </li>
                                 </ul>
                             </div>

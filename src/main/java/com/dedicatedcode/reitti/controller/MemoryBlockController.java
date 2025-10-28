@@ -7,6 +7,8 @@ import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.MagicLinkResourceType;
 import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.MemoryTripJdbcService;
+import com.dedicatedcode.reitti.repository.MemoryVisitJdbcService;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.service.MemoryService;
@@ -36,13 +38,17 @@ public class MemoryBlockController {
     private final ImmichIntegrationService immichIntegrationService;
     private final TripJdbcService tripJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
+    private final MemoryVisitJdbcService memoryVisitJdbcService;
+    private final MemoryTripJdbcService memoryTripJdbcService;
     private final StorageService storageService;
 
-    public MemoryBlockController(MemoryService memoryService, ImmichIntegrationService immichIntegrationService, TripJdbcService tripJdbcService, ProcessedVisitJdbcService processedVisitJdbcService, StorageService storageService) {
+    public MemoryBlockController(MemoryService memoryService, ImmichIntegrationService immichIntegrationService, TripJdbcService tripJdbcService, ProcessedVisitJdbcService processedVisitJdbcService, MemoryVisitJdbcService memoryVisitJdbcService, MemoryTripJdbcService memoryTripJdbcService, StorageService storageService) {
         this.memoryService = memoryService;
         this.immichIntegrationService = immichIntegrationService;
         this.tripJdbcService = tripJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
+        this.memoryVisitJdbcService = memoryVisitJdbcService;
+        this.memoryTripJdbcService = memoryTripJdbcService;
         this.storageService = storageService;
     }
 
@@ -149,6 +155,7 @@ public class MemoryBlockController {
                 .orElseThrow(() -> new IllegalArgumentException("Cluster block not found"));
 
         MemoryClusterBlock updated = block.withPartIds(selectedParts).withTitle(title);
+        //check if partId is known, else fetch visit or trip and create a new corrosponding MemoryVisit or MemoryTrip depending on the type, and take this id as partId
         memoryService.updateClusterBlock(user, updated);
 
         model.addAttribute("memory", memory);
@@ -173,11 +180,9 @@ public class MemoryBlockController {
         Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
 
-        MemoryBlock block = memoryService.addBlock(user, memoryId, position, type);
-        MemoryClusterBlock clusterBlock = new MemoryClusterBlock(block.getId(), selectedParts, title, null, type);
-        memoryService.createClusterBlock(user, clusterBlock);
+        MemoryClusterBlock clusterBlock = memoryService.createClusterBlock(user,memory, title, position, type, selectedParts);
         model.addAttribute("memory", memory);
-        model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, block.getId()).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
+        model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, clusterBlock.getBlockId()).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
         model.addAttribute("isOwner", isOwner(memory, user));
         model.addAttribute("canEdit", canEdit(memory, user));
         return "memories/view :: view-block";

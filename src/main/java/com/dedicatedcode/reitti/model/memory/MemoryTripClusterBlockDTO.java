@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.model.memory;
 
-import com.dedicatedcode.reitti.model.geo.Trip;
 
 import java.io.Serializable;
 import java.time.Instant;
@@ -11,14 +10,14 @@ import java.util.Objects;
 public class MemoryTripClusterBlockDTO implements MemoryBlockPart, Serializable {
 
     private final MemoryClusterBlock clusterBlock;
-    private final List<Trip> trips;
+    private final List<MemoryTrip> trips;
     private final String rawLocationPointsUrl;
     private final LocalDateTime adjustedStartTime;
     private final LocalDateTime adjustedEndTime;
     private final Long completeDuration;
     private final Long movingDuration;
 
-    public MemoryTripClusterBlockDTO(MemoryClusterBlock clusterBlock, List<Trip> trips, String rawLocationPointsUrl, LocalDateTime adjustedStartTime, LocalDateTime adjustedEndTime, Long completeDuration, Long movingDuration) {
+    public MemoryTripClusterBlockDTO(MemoryClusterBlock clusterBlock, List<MemoryTrip> trips, String rawLocationPointsUrl, LocalDateTime adjustedStartTime, LocalDateTime adjustedEndTime, Long completeDuration, Long movingDuration) {
         this.clusterBlock = clusterBlock;
         this.trips = trips != null ? List.copyOf(trips) : List.of();
         this.rawLocationPointsUrl = rawLocationPointsUrl;
@@ -32,7 +31,7 @@ public class MemoryTripClusterBlockDTO implements MemoryBlockPart, Serializable 
         return clusterBlock;
     }
 
-    public List<Trip> getTrips() {
+    public List<MemoryTrip> getTrips() {
         return trips;
     }
 
@@ -61,7 +60,7 @@ public class MemoryTripClusterBlockDTO implements MemoryBlockPart, Serializable 
     public Instant getCombinedStartTime() {
         if (trips == null || trips.isEmpty()) return null;
         return trips.stream()
-                .map(Trip::getStartTime)
+                .map(MemoryTrip::getStartTime)
                 .min(Instant::compareTo)
                 .orElse(null);
     }
@@ -69,7 +68,7 @@ public class MemoryTripClusterBlockDTO implements MemoryBlockPart, Serializable 
     public Instant getCombinedEndTime() {
         if (trips == null || trips.isEmpty()) return null;
         return trips.stream()
-                .map(Trip::getEndTime)
+                .map(MemoryTrip::getEndTime)
                 .max(Instant::compareTo)
                 .orElse(null);
     }
@@ -77,21 +76,21 @@ public class MemoryTripClusterBlockDTO implements MemoryBlockPart, Serializable 
     public Long getCombinedDurationSeconds() {
         if (trips == null || trips.isEmpty()) return 0L;
         return trips.stream()
-                .mapToLong(Trip::getDurationSeconds)
+                .mapToLong(MemoryTrip::getDurationSeconds)
                 .sum();
     }
 
     public List<String> getCombinedStartPlaces() {
         if (trips == null || trips.isEmpty()) return List.of();
         return trips.stream()
-                .map(trip -> trip.getStartVisit() != null && trip.getStartVisit().getPlace() != null ? trip.getStartVisit().getPlace().getName() : null)
+                .map(trip -> trip.getStartVisit().getName())
                 .toList();
     }
 
     public List<String> getCombinedEndPlaces() {
         if (trips == null || trips.isEmpty()) return List.of();
         return trips.stream()
-                .map(trip -> trip.getEndVisit() != null && trip.getEndVisit().getPlace() != null ? trip.getEndVisit().getPlace().getName() : null)
+                .map(trip -> trip.getEndVisit().getName())
                 .toList();
     }
 
