@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.*;
+import java.util.List;
 import java.util.stream.Stream;
 
 @Service
@@ -51,6 +52,44 @@ public class StorageService {
                     .anyMatch(matcher::matches);
         } catch (IOException e) {
             return false;
+        }
+    }
+
+    public List<String> getChildren(String path) {
+        Path basePath = Paths.get(storagePath, path);
+        try (Stream<Path> paths = Files.walk(basePath, 1)) {
+            return paths
+                    .map(basePath::relativize)
+                    .map(Path::toString)
+                    .filter(istr -> !istr.isEmpty() && !istr.equals(".") && !istr.equals(".."))
+                    .toList();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read item '" + path + "': " + e.getMessage(), e);
+        }
+    }
+
+    public void remove(String itemName) {
+        Path filePath = Paths.get(storagePath, itemName);
+        try {
+            if (Files.exists(filePath)) {
+                if (Files.isDirectory(filePath)) {
+                    try (Stream<Path> paths = Files.walk(filePath)) {
+                        paths.sorted(java.util.Comparator.reverseOrder())
+                             .forEach(path -> {
+                                 try {
+                                     Files.delete(path);
+                                 } catch (IOException e) {
+                                     throw new RuntimeException("Failed to delete path '" + path + "': " + e.getMessage(), e);
+                                 }
+                             });
+                    }
+                } else {
+                    // Delete single file
+                    Files.delete(filePath);
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to remove item '" + itemName + "': " + e.getMessage(), e);
         }
     }
 
