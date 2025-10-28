@@ -73,7 +73,6 @@ public class StorageService {
         try {
             if (Files.exists(filePath)) {
                 if (Files.isDirectory(filePath)) {
-                    // Delete directory and all its contents recursively
                     try (Stream<Path> paths = Files.walk(filePath)) {
                         paths.sorted(java.util.Comparator.reverseOrder())
                              .forEach(path -> {
