@@ -34,9 +34,10 @@ public class MemoryCleanupJob {
                 this.storageService.getChildren("/memories/" + itemName).forEach(s -> {
                     // Check if the file is referenced in any memory_block_image_gallery images column
                     boolean isReferenced = this.jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM memory_block_image_gallery WHERE images::text LIKE ?", 
-                        Integer.class, 
-                        "%" + s + "%"
+                            "SELECT COUNT(*) FROM memory_block_image_gallery WHERE images::text LIKE ? AND block_id IN (SELECT id FROM memory_block WHERE memory_id = ?::int)",
+                            Integer.class,
+                            "%" + s + "%",
+                            itemName
                     ) > 0;
                     
                     if (!isReferenced) {

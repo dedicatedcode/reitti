@@ -55,7 +55,7 @@ public class StorageService {
         }
     }
 
-    public List<String> getDirectories(String path) {
+    public List<String> getChildren(String path) {
         Path basePath = Paths.get(storagePath, path);
         try (Stream<Path> paths = Files.walk(basePath, 1)) {
             return paths
