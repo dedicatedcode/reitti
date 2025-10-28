@@ -22,6 +22,7 @@ public class MemoryCleanupJob {
 
     @Scheduled(cron = "${reitti.storage.cleanup.cron}")
     public void cleanUp() {
+        //mke this resilient to any error which could occur so it will always try to work on all items, even if one fils AI!
         List<String> itemNames = this.storageService.getChildren("/memories");
         for (String itemName : itemNames) {
 
