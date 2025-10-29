@@ -350,7 +350,8 @@
                                                 const lat = trip.endVisit.latitudeCentroid;
                                                 const lon = trip.endVisit.longitudeCentroid;
                                                 const name = trip.endVisit.name;
-                                                const arrivedAfter = combinedStartTime && trip.endTime ? humanizeDuration((new Date(trip.endTime) - new Date(combinedStartTime)),{units: ["h", "m"], round: true}) : 'unknown';
+                                                const seconds = new Date(trip.endTime) - new Date(combinedStartTime);
+                                                const arrivedAfter = combinedStartTime && trip.endTime ? humanizeDuration(seconds,{units: ["h", "m"], round: true}) : 'unknown';
                                                 L.circleMarker([lat, lon], {
                                                     color: '#6a6a6a',
                                                     fillColor: '#ff984f',
@@ -544,17 +545,6 @@
             return window.userSettings.timeZoneOverride;
         } else {
             return Intl.DateTimeFormat().resolvedOptions().timeZone;
-        }
-    }
-
-    function humanizeDuration(seconds) {
-        if (!seconds || seconds <= 0) return 'unknown';
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
-        if (hours > 0) {
-            return hours + 'h ' + minutes + 'm';
-        } else {
-            return minutes + 'm';
         }
     }
 
