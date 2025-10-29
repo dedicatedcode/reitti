@@ -169,7 +169,14 @@ public class GeoJsonImporter {
             return null;
         }
 
-        point.setTimestamp(timestamp);
+        // Convert Unix epoch timestamp to ISO format if needed
+        String isoTimestamp = convertToIsoTimestamp(timestamp);
+        if (isoTimestamp == null) {
+            logger.warn("Could not parse timestamp '{}' for point {}. Will discard it", timestamp, point);
+            return null;
+        }
+
+        point.setTimestamp(isoTimestamp);
 
         // Try to extract accuracy from properties
         Double accuracy = null;
@@ -184,5 +191,26 @@ public class GeoJsonImporter {
         point.setAccuracyMeters(accuracy != null ? accuracy : 50.0); // Default accuracy of 50 meters
 
         return point;
+    }
+
+    /**
+     * Converts timestamp to ISO format. Handles both Unix epoch seconds and ISO strings.
+     */
+    private String convertToIsoTimestamp(String timestamp) {
+        try {
+            // Try to parse as Unix epoch seconds (numeric)
+            long epochSeconds = Long.parseLong(timestamp);
+            return java.time.Instant.ofEpochSecond(epochSeconds).toString();
+        } catch (NumberFormatException e) {
+            // Not a number, assume it's already in ISO format or another string format
+            try {
+                // Try to parse as ISO instant to validate
+                java.time.Instant.parse(timestamp);
+                return timestamp; // Already valid ISO format
+            } catch (Exception ex) {
+                // Try other common formats if needed
+                return null;
+            }
+        }
     }
 }
