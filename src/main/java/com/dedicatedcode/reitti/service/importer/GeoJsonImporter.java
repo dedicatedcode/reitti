@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -94,6 +95,7 @@ public class GeoJsonImporter {
                 batchProcessor.sendToQueue(user, batch);
             }
 
+            //when processedCount == null, return a failure message instead of success AI!
             logger.info("Successfully imported and queued {} location points from GeoJSON file for user {}",
                     processedCount.get(), user.getUsername());
 
@@ -198,17 +200,13 @@ public class GeoJsonImporter {
      */
     private String convertToIsoTimestamp(String timestamp) {
         try {
-            // Try to parse as Unix epoch seconds (numeric)
             long epochSeconds = Long.parseLong(timestamp);
-            return java.time.Instant.ofEpochSecond(epochSeconds).toString();
+            return Instant.ofEpochSecond(epochSeconds).toString();
         } catch (NumberFormatException e) {
-            // Not a number, assume it's already in ISO format or another string format
             try {
-                // Try to parse as ISO instant to validate
-                java.time.Instant.parse(timestamp);
+                Instant.parse(timestamp);
                 return timestamp; // Already valid ISO format
             } catch (Exception ex) {
-                // Try other common formats if needed
                 return null;
             }
         }
