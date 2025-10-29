@@ -14,8 +14,8 @@ public class MemoryTrip {
     private final Instant startTime;
     private final Instant endTime;
 
-    public static MemoryTrip create(Trip trip) {
-        return new MemoryTrip(null, true, MemoryVisit.create(trip.getStartVisit()), MemoryVisit.create(trip.getEndVisit()), trip.getStartTime(), trip.getEndTime());
+    public static MemoryTrip create(Trip trip, MemoryVisit startVisit, MemoryVisit endVisit) {
+        return new MemoryTrip(null, true, startVisit, endVisit, trip.getStartTime(), trip.getEndTime());
     }
 
     public MemoryTrip(Long id, boolean connected, MemoryVisit startVisit, MemoryVisit endVisit, Instant startTime, Instant endTime) {

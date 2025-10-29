@@ -61,6 +61,11 @@ public class MemoryVisitJdbcService {
         jdbcTemplate.update(sql, memoryBlockId);
     }
 
+    public void deleteById(Long id) {
+        String sql = "DELETE FROM memory_visits WHERE id = ?";
+        jdbcTemplate.update(sql, id);
+    }
+
     private static class MemoryVisitRowMapper implements RowMapper<MemoryVisit> {
         @Override
         public MemoryVisit mapRow(ResultSet rs, int rowNum) throws SQLException {

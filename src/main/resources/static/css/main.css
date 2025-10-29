@@ -1978,7 +1978,7 @@ button:disabled {
     opacity: 0;
     pointer-events: none;
     transition: all 0.3s ease;
-    background: #00000075;
+    background: #00000008;
     backdrop-filter: blur(4px);
 }
 
