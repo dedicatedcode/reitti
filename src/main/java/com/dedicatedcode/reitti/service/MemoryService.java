@@ -173,10 +173,10 @@ public class MemoryService {
                 for (Long partId : selectedParts) {
                     this.tripJdbcService.findById(partId)
                             .map(trip -> {
-                                MemoryTrip memoryTrip = MemoryTrip.create(trip);
                                 MemoryVisit startVisit = this.memoryVisitJdbcService.save(user, MemoryVisit.create(trip.getStartVisit()), block.getId(), trip.getStartVisit().getId());
                                 MemoryVisit endVisit = this.memoryVisitJdbcService.save(user, MemoryVisit.create(trip.getEndVisit()), block.getId(), trip.getEndVisit().getId());
-                                return this.memoryTripJdbcService.save(user, memoryTrip, block.getId(), trip.getId(), startVisit.getId(), endVisit.getId());
+                                MemoryTrip memoryTrip = MemoryTrip.create(trip, startVisit, endVisit);
+                                return this.memoryTripJdbcService.save(user, memoryTrip, block.getId(), trip.getId());
                             }).map(MemoryTrip::getId).ifPresent(selectedPartIds::add);
                 }
                 break;

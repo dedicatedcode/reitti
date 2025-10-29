@@ -22,7 +22,7 @@ public class MemoryTripJdbcService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public MemoryTrip save(User user, MemoryTrip memoryTrip, Long memoryBlockId, Long originalId, Long startVisitId, Long endVisitId) {
+    public MemoryTrip save(User user, MemoryTrip memoryTrip, Long memoryBlockId, Long originalId) {
         String sql = """
             INSERT INTO memory_trips (user_id, original_id, memory_block_id, start_visit_id, end_visit_id, start_time, end_time)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -33,8 +33,8 @@ public class MemoryTripJdbcService {
             user.getId(),
             originalId,
             memoryBlockId,
-            startVisitId,
-            endVisitId,
+            memoryTrip.getStartVisit().getId(),
+            memoryTrip.getEndVisit().getId(),
             Timestamp.from(memoryTrip.getStartTime()),
             Timestamp.from(memoryTrip.getEndTime())
         );
@@ -81,6 +81,11 @@ public class MemoryTripJdbcService {
     public void deleteByMemoryBlockId(Long memoryBlockId) {
         String sql = "DELETE FROM memory_trips WHERE memory_block_id = ?";
         jdbcTemplate.update(sql, memoryBlockId);
+    }
+
+    public void deleteById(Long id) {
+        String sql = "DELETE FROM memory_trips WHERE id = ?";
+        jdbcTemplate.update(sql, id);
     }
 
     private static class MemoryTripRowMapper implements RowMapper<MemoryTrip> {

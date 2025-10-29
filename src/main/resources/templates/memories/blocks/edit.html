@@ -63,14 +63,14 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr th:each="trip : ${availableTrips}">
+                            <tr th:each="tripDto : ${availableTrips}">
                                 <td>
                                     <input type="checkbox"
                                            name="selectedParts"
-                                           th:value="${trip.id}" 
-                                           th:checked="${clusterTripBlock.trips != null and clusterTripBlock.trips.contains(trip)}">
+                                           th:value="${tripDto.memoryTrip() ? 'm-id:' + tripDto.id() : 't-id:' + tripDto.id() }"
+                                           th:checked="${tripDto.memoryTrip()}">
                                 </td>
-                                <td th:text="${#temporals.format(trip.startTime, 'MMM d, yyyy HH:mm')} + ' (' + ${trip.startVisit != null and trip.startVisit.place != null ? trip.startVisit.place.name : 'Unknown'} + ') -> ' + ${#temporals.format(trip.endTime, 'HH:mm')} + ' (' + ${trip.endVisit != null and trip.endVisit.place != null ? trip.endVisit.place.name : 'Unknown'} + ')'">Trip details</td>
+                                <td th:text="${#temporals.format(tripDto.trip().startTime, 'MMM d, yyyy HH:mm')} + ' (' + ${tripDto.trip().startVisit.name} + ') -> ' + ${#temporals.format(tripDto.trip().endTime, 'MMM d, yyyy HH:mm')} + ' (' + ${tripDto.trip().endVisit.name} + ')'">Trip details</td>
                             </tr>
                         </tbody>
                     </table>
@@ -103,14 +103,15 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr th:each="visit : ${availableVisits}">
+                            <tr th:each="visitDto : ${availableVisits}">
                                 <td>
                                     <input type="checkbox"
                                            name="selectedParts"
-                                           th:value="${visit.id}"
-                                           th:checked="${clusterVisitBlock.visits != null and clusterVisitBlock.visits.contains(visit)}">
+                                           th:value="${visitDto.memoryVisit() ? 'm-id:' + visitDto.id() : 'v-id:' + visitDto.id() }"
+                                           th:checked="${visitDto.memoryVisit()}">
+                                    <input type="hidden" name="memoryPart" th:value="${visitDto.memoryVisit()}">
                                 </td>
-                                <td th:text="${visit.place.name} + ' (' + ${#temporals.format(visit.startTime, 'MMM d, yyyy HH:mm')} + ' -> ' + ${#temporals.format(visit.endTime, 'HH:mm')} + ')'">Visit details</td>
+                                <td th:text="${visitDto.visit().name} + ' (' + ${#temporals.format(visitDto.visit().startTime, 'MMM d, yyyy HH:mm')} + ' -> ' + ${#temporals.format(visitDto.visit().endTime, 'MMM d, yyyy HH:mm')} + ')'">Visit details</td>
                             </tr>
                         </tbody>
                     </table>

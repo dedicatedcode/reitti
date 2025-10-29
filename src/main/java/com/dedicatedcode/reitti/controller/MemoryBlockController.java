@@ -1,6 +1,8 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.dto.PhotoResponse;
+import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
+import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.memory.*;
 import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
@@ -24,6 +26,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -99,19 +102,35 @@ public class MemoryBlockController {
                 model.addAttribute("immichEnabled", immichEnabled);
                 model.addAttribute("imageBlock", memoryService.getBlock(user, timezone, memoryId, blockId).orElseThrow(() -> new IllegalArgumentException("Block not found")) );
                 return "memories/blocks/edit :: edit-image-gallery-block";
-            case CLUSTER_VISIT:
-                memoryService.getBlock(user, timezone, memoryId, blockId).ifPresent(b ->
-                        model.addAttribute("clusterVisitBlock", b));
-                model.addAttribute("availableVisits", this.processedVisitJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate()));
-                return "memories/blocks/edit :: edit-cluster-visit-block";
             case TEXT:
                 memoryService.getBlock(user, timezone, memoryId, blockId).ifPresent(text ->
                     model.addAttribute("textBlock", text));
                 return "memories/blocks/edit :: edit-text-block";
+            case CLUSTER_VISIT:
+                memoryService.getBlock(user, timezone, memoryId, blockId).ifPresent(b ->
+                        model.addAttribute("clusterVisitBlock", b));
+                List<ProcessedVisit> storedVisits = this.processedVisitJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate());
+                List<MemoryVisit> currentMemoryVisits = memoryVisitJdbcService.findByMemoryBlockId(blockId);
+                List<MemoryVisitDto> availableVisits = new ArrayList<>();
+                currentMemoryVisits.stream().map(v -> new MemoryVisitDto(v.getId(), v, true, true)).forEach(availableVisits::add);
+                storedVisits.stream().filter(v -> currentMemoryVisits.stream().noneMatch(mv -> mv.getStartTime().equals(v.getStartTime()))).forEach(v -> availableVisits.add(new MemoryVisitDto(v.getId(), MemoryVisit.create(v), false, false)));
+                model.addAttribute("availableVisits", availableVisits.stream().sorted(Comparator.comparing(memoryVisitDto -> memoryVisitDto.visit.getStartTime())).toList());
+                return "memories/blocks/edit :: edit-cluster-visit-block";
             case CLUSTER_TRIP:
+                List<Trip> storedTrips = this.tripJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate());
+                List<MemoryTrip> currentMemoryTrips = memoryTripJdbcService.findByMemoryBlockId(blockId);
+                List<MemoryTripDto> availableTrips = new ArrayList<>();
+                currentMemoryTrips.stream().map(v -> new MemoryTripDto(v.getId(), v, true, true)).forEach(availableTrips::add);
+
+                storedTrips.stream().filter(v -> currentMemoryTrips.stream().noneMatch(mv -> mv.getStartTime().equals(v.getStartTime()))).forEach(t -> {
+                    MemoryVisit startVisit = MemoryVisit.create(t.getStartVisit());
+                    MemoryVisit endVisit = MemoryVisit.create(t.getEndVisit());
+                    availableTrips.add(new MemoryTripDto(t.getId(), MemoryTrip.create(t, startVisit, endVisit), false, false));
+                });
+
                 memoryService.getBlock(user, timezone, memoryId, blockId).ifPresent(b ->
                         model.addAttribute("clusterTripBlock", b));
-                model.addAttribute("availableTrips", this.tripJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate()));
+                model.addAttribute("availableTrips", availableTrips.stream().sorted(Comparator.comparing(memoryTripDto -> memoryTripDto.trip.getStartTime())).toList());
                 return "memories/blocks/edit :: edit-cluster-trip-block";
         }
 
@@ -130,7 +149,6 @@ public class MemoryBlockController {
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, blockId).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
-
         model.addAttribute("isOwner", isOwner(memory, user));
         model.addAttribute("canEdit", canEdit(memory, user));
 
@@ -143,7 +161,7 @@ public class MemoryBlockController {
             @AuthenticationPrincipal User user,
             @PathVariable Long memoryId,
             @PathVariable Long blockId,
-            @RequestParam(name = "selectedParts") List<Long> selectedParts,
+            @RequestParam(name = "selectedParts") List<String> selectedParts,
             @RequestParam(required = false) String title,
             @RequestParam(required = false, defaultValue = "UTC" ) ZoneId timezone,
             Model model) {
@@ -154,13 +172,61 @@ public class MemoryBlockController {
         MemoryClusterBlock block = memoryService.getClusterBlock(user, blockId)
                 .orElseThrow(() -> new IllegalArgumentException("Cluster block not found"));
 
-        MemoryClusterBlock updated = block.withPartIds(selectedParts).withTitle(title);
-        //check if partId is known, else fetch visit or trip and create a new corrosponding MemoryVisit or MemoryTrip depending on the type, and take this id as partId
+        List<Long> partIds = new ArrayList<>();
+        if (block.getType() == BlockType.CLUSTER_TRIP) {
+            List<MemoryTrip> persistedTrips = this.memoryTripJdbcService.findByMemoryBlockId(blockId);
+
+            for (String selectedPart : selectedParts) {
+                String type = selectedPart.substring(0, selectedPart.lastIndexOf("-"));
+                long partId = Long.parseLong(selectedPart.substring(selectedPart.lastIndexOf("-") + 4));
+                switch (type) {
+                    case "m":
+                        MemoryTrip knownMemoryTrip = persistedTrips.stream().filter(p -> p.getId() == partId).findFirst().orElseThrow(() -> new IllegalArgumentException("MemoryTrip not found"));
+                        partIds.add(knownMemoryTrip.getId());
+                        persistedTrips.remove(knownMemoryTrip);
+                        break;
+                    case "t":
+                        Trip trip = this.tripJdbcService.findById(partId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
+                        MemoryVisit startVisit = this.memoryVisitJdbcService.save(user, MemoryVisit.create(trip.getStartVisit()), block.getBlockId(), trip.getStartVisit().getId());
+                        MemoryVisit endVisit = this.memoryVisitJdbcService.save(user, MemoryVisit.create(trip.getEndVisit()), block.getBlockId(), trip.getEndVisit().getId());
+                        MemoryTrip persistedMemoryTrip = this.memoryTripJdbcService.save(user, MemoryTrip.create(trip, startVisit, endVisit), block.getBlockId(), trip.getId());
+                        partIds.add(persistedMemoryTrip.getId());
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Invalid part id [" + selectedPart + "] detected");
+                }
+            }
+            persistedTrips.forEach(mt -> memoryTripJdbcService.deleteById(mt.getId()));
+        } else if (block.getType() == BlockType.CLUSTER_VISIT) {
+            List<MemoryVisit> persistedVisits = this.memoryVisitJdbcService.findByMemoryBlockId(blockId);
+            for (String selectedPart : selectedParts) {
+                String type = selectedPart.substring(0, selectedPart.lastIndexOf("-"));
+                long partId = Long.parseLong(selectedPart.substring(selectedPart.lastIndexOf("-") + 4));
+                switch (type) {
+                    case "m":
+                        MemoryVisit knownMemoryVisit = persistedVisits.stream().filter(p -> p.getId() == partId).findFirst().orElseThrow(() -> new IllegalArgumentException("MemoryVisit not found"));
+                        partIds.add(knownMemoryVisit.getId());
+                        persistedVisits.remove(knownMemoryVisit);
+                        break;
+                    case "v":
+                        ProcessedVisit visit = this.processedVisitJdbcService.findById(partId).orElseThrow(() -> new IllegalArgumentException("ProcessedVisit not found"));
+                        MemoryVisit persistedMemoryVisit = this.memoryVisitJdbcService.save(user, MemoryVisit.create(visit), block.getBlockId(), visit.getId());
+                        partIds.add(persistedMemoryVisit.getId());
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Invalid part id [" + selectedPart + "] detected");
+                }
+            }
+            persistedVisits.forEach(mt -> memoryVisitJdbcService.deleteById(mt.getId()));
+        } else {
+            throw new IllegalArgumentException("Invalid block type [" + block.getType() + "] detected");
+        }
+
+        MemoryClusterBlock updated = block.withPartIds(partIds).withTitle(title);
         memoryService.updateClusterBlock(user, updated);
 
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, blockId).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
-
         model.addAttribute("isOwner", isOwner(memory, user));
         model.addAttribute("canEdit", canEdit(memory, user));
         return "memories/view :: view-block";
@@ -428,5 +494,11 @@ public class MemoryBlockController {
             TokenUser tokenUser = (TokenUser) user;
             return user.getAuthorities().contains(MagicLinkAccessLevel.MEMORY_EDIT_ACCESS.asAuthority()) && tokenUser.grantsAccessTo(MagicLinkResourceType.MEMORY, memory.getId());
         }
+    }
+
+    private record MemoryTripDto(long id, MemoryTrip trip, boolean selected, boolean memoryTrip) {
+    }
+
+    private record MemoryVisitDto(long id, MemoryVisit visit, boolean selected, boolean memoryVisit) {
     }
 }
