@@ -95,7 +95,10 @@ public class GeoJsonImporter {
                 batchProcessor.sendToQueue(user, batch);
             }
 
-            //when processedCount == null, return a failure message instead of success AI!
+            if (processedCount.get() == 0) {
+                return Map.of("success", false, "error", "No valid location points found in GeoJSON");
+            }
+
             logger.info("Successfully imported and queued {} location points from GeoJSON file for user {}",
                     processedCount.get(), user.getUsername());
 
