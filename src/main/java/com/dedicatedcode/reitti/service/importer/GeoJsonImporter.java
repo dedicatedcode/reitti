@@ -95,19 +95,19 @@ public class GeoJsonImporter {
                 batchProcessor.sendToQueue(user, batch);
             }
 
+
+            logger.info("Imported and queued {} location points from GeoJSON file for user [{}]", processedCount.get(), user.getUsername());
             if (processedCount.get() == 0) {
-                return Map.of("success", false, "error", "No valid location points found in GeoJSON");
+                return Map.of("success", false,
+                        "error", "No valid location points found in GeoJSON",
+                        "pointsReceived", 0);
+            } else {
+                return Map.of(
+                        "success", true,
+                        "message", "Successfully queued " + processedCount.get() + " location points for processing",
+                        "pointsReceived", processedCount.get()
+                );
             }
-
-            logger.info("Successfully imported and queued {} location points from GeoJSON file for user {}",
-                    processedCount.get(), user.getUsername());
-
-            return Map.of(
-                    "success", true,
-                    "message", "Successfully queued " + processedCount.get() + " location points for processing",
-                    "pointsReceived", processedCount.get()
-            );
-
         } catch (IOException e) {
             logger.error("Error processing GeoJSON file", e);
             return Map.of("success", false, "error", "Error processing GeoJSON file: " + e.getMessage());

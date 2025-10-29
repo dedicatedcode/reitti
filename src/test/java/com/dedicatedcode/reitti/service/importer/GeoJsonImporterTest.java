@@ -41,12 +41,12 @@ class GeoJsonImporterTest {
     void setUp() {
         objectMapper = new ObjectMapper();
         geoJsonImporter = new GeoJsonImporter(objectMapper, stateHolder, batchProcessor);
-        when(batchProcessor.getBatchSize()).thenReturn(100);
-        when(user.getUsername()).thenReturn("testuser");
     }
 
     @Test
     void shouldImportFeatureCollectionWithIsoTimestamp() {
+        when(batchProcessor.getBatchSize()).thenReturn(100);
+
         String geoJson = """
             {
               "type": "FeatureCollection",
@@ -107,6 +107,7 @@ class GeoJsonImporterTest {
 
     @Test
     void shouldImportFeatureCollectionWithUnixEpochTimestamp() {
+        when(batchProcessor.getBatchSize()).thenReturn(100);
         String geoJson = """
             {
               "type": "FeatureCollection",
@@ -164,6 +165,7 @@ class GeoJsonImporterTest {
 
     @Test
     void shouldImportSingleFeature() {
+        when(batchProcessor.getBatchSize()).thenReturn(100);
         String geoJson = """
             {
               "type": "Feature",
@@ -234,6 +236,7 @@ class GeoJsonImporterTest {
 
     @Test
     void shouldHandleUnsupportedGeoJsonType() {
+        when(batchProcessor.getBatchSize()).thenReturn(100);
         String geoJson = """
             {
               "type": "LineString",
@@ -251,6 +254,8 @@ class GeoJsonImporterTest {
 
     @Test
     void shouldSkipFeaturesWithoutTimestamp() {
+        when(batchProcessor.getBatchSize()).thenReturn(100);
+
         String geoJson = """
             {
               "type": "FeatureCollection",
@@ -272,13 +277,14 @@ class GeoJsonImporterTest {
         InputStream inputStream = new ByteArrayInputStream(geoJson.getBytes());
         Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user);
 
-        assertTrue((Boolean) result.get("success"));
+        assertFalse((Boolean) result.get("success"));
         assertEquals(0, result.get("pointsReceived"));
         verify(batchProcessor, never()).sendToQueue(any(), any());
     }
 
     @Test
     void shouldUseDefaultAccuracyWhenNotProvided() {
+        when(batchProcessor.getBatchSize()).thenReturn(100);
         String geoJson = """
             {
               "type": "Feature",
