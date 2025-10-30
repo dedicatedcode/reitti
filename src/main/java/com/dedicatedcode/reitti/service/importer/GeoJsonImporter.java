@@ -12,6 +12,10 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -94,15 +98,19 @@ public class GeoJsonImporter {
                 batchProcessor.sendToQueue(user, batch);
             }
 
-            logger.info("Successfully imported and queued {} location points from GeoJSON file for user {}",
-                    processedCount.get(), user.getUsername());
 
-            return Map.of(
-                    "success", true,
-                    "message", "Successfully queued " + processedCount.get() + " location points for processing",
-                    "pointsReceived", processedCount.get()
-            );
-
+            logger.info("Imported and queued {} location points from GeoJSON file for user [{}]", processedCount.get(), user.getUsername());
+            if (processedCount.get() == 0) {
+                return Map.of("success", false,
+                        "error", "No valid location points found in GeoJSON",
+                        "pointsReceived", 0);
+            } else {
+                return Map.of(
+                        "success", true,
+                        "message", "Successfully queued " + processedCount.get() + " location points for processing",
+                        "pointsReceived", processedCount.get()
+                );
+            }
         } catch (IOException e) {
             logger.error("Error processing GeoJSON file", e);
             return Map.of("success", false, "error", "Error processing GeoJSON file: " + e.getMessage());
@@ -169,7 +177,14 @@ public class GeoJsonImporter {
             return null;
         }
 
-        point.setTimestamp(timestamp);
+        // Convert Unix epoch timestamp to ISO format if needed
+        String isoTimestamp = convertToIsoTimestamp(timestamp);
+        if (isoTimestamp == null) {
+            logger.warn("Could not parse timestamp '{}' for point {}. Will discard it", timestamp, point);
+            return null;
+        }
+
+        point.setTimestamp(isoTimestamp);
 
         // Try to extract accuracy from properties
         Double accuracy = null;
@@ -184,5 +199,21 @@ public class GeoJsonImporter {
         point.setAccuracyMeters(accuracy != null ? accuracy : 50.0); // Default accuracy of 50 meters
 
         return point;
+    }
+
+    /**
+     * Converts timestamp to ISO format. Handles both Unix epoch seconds and ISO strings.
+     */
+    private String convertToIsoTimestamp(String timestamp) {
+        try {
+            long epochSeconds = Long.parseLong(timestamp);
+            return Instant.ofEpochSecond(epochSeconds).toString();
+        } catch (NumberFormatException e) {
+            try {
+                return ZonedDateTime.parse(timestamp).withZoneSameInstant(java.time.ZoneOffset.UTC).truncatedTo(java.time.temporal.ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_INSTANT);
+            } catch (Exception ex) {
+                return null;
+            }
+        }
     }
 }

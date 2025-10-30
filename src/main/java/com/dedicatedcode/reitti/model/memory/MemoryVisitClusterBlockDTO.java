@@ -1,8 +1,5 @@
 package com.dedicatedcode.reitti.model.memory;
 
-import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
-import com.dedicatedcode.reitti.model.geo.Visit;
-
 import java.io.Serializable;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -12,13 +9,13 @@ import java.util.Objects;
 public class MemoryVisitClusterBlockDTO implements MemoryBlockPart, Serializable {
 
     private final MemoryClusterBlock clusterBlock;
-    private final List<ProcessedVisit> visits;
+    private final List<MemoryVisit> visits;
     private final String rawLocationPointsUrl;
     private final LocalDateTime adjustedStartTime;
     private final LocalDateTime adjustedEndTime;
     private final Long completeDuration;
 
-    public MemoryVisitClusterBlockDTO(MemoryClusterBlock clusterBlock, List<ProcessedVisit> visits, String rawLocationPointsUrl, LocalDateTime adjustedStartTime, LocalDateTime adjustedEndTime, Long completeDuration) {
+    public MemoryVisitClusterBlockDTO(MemoryClusterBlock clusterBlock, List<MemoryVisit> visits, String rawLocationPointsUrl, LocalDateTime adjustedStartTime, LocalDateTime adjustedEndTime, Long completeDuration) {
         this.clusterBlock = clusterBlock;
         this.visits = visits != null ? List.copyOf(visits) : List.of();
         this.rawLocationPointsUrl = rawLocationPointsUrl;
@@ -31,7 +28,7 @@ public class MemoryVisitClusterBlockDTO implements MemoryBlockPart, Serializable
         return clusterBlock;
     }
 
-    public List<ProcessedVisit> getVisits() {
+    public List<MemoryVisit> getVisits() {
         return visits;
     }
 
@@ -56,7 +53,7 @@ public class MemoryVisitClusterBlockDTO implements MemoryBlockPart, Serializable
     public Instant getCombinedStartTime() {
         if (visits == null || visits.isEmpty()) return null;
         return visits.stream()
-                .map(ProcessedVisit::getStartTime)
+                .map(MemoryVisit::getStartTime)
                 .min(Instant::compareTo)
                 .orElse(null);
     }
@@ -64,7 +61,7 @@ public class MemoryVisitClusterBlockDTO implements MemoryBlockPart, Serializable
     public Instant getCombinedEndTime() {
         if (visits == null || visits.isEmpty()) return null;
         return visits.stream()
-                .map(ProcessedVisit::getEndTime)
+                .map(MemoryVisit::getEndTime)
                 .max(Instant::compareTo)
                 .orElse(null);
     }
@@ -72,7 +69,7 @@ public class MemoryVisitClusterBlockDTO implements MemoryBlockPart, Serializable
     public Long getCombinedDurationSeconds() {
         if (visits == null || visits.isEmpty()) return 0L;
         return visits.stream()
-                .mapToLong(ProcessedVisit::getDurationSeconds)
+                .mapToLong(MemoryVisit::getDurationSeconds)
                 .sum();
     }
 

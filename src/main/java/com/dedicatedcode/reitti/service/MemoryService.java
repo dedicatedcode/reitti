@@ -2,9 +2,6 @@ package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.controller.error.PageNotFoundException;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
-import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
-import com.dedicatedcode.reitti.model.geo.SignificantPlace;
-import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.memory.*;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
@@ -30,9 +27,11 @@ public class MemoryService {
     private final MemoryBlockImageGalleryJdbcService memoryBlockImageGalleryJdbcService;
     private final MemoryClusterBlockRepository memoryClusterBlockRepository;
     private final MemoryBlockGenerationService blockGenerationService;
-    private final ProcessedVisitJdbcService processedVisitJdbcService;
-    private final TripJdbcService tripJdbcService;
+    private final MemoryVisitJdbcService memoryVisitJdbcService;
+    private final MemoryTripJdbcService memoryTripJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
+    private final TripJdbcService tripJdbcService;
+    private final ProcessedVisitJdbcService processedVisitJdbcService;
 
     public MemoryService(
             MemoryJdbcService memoryJdbcService,
@@ -41,18 +40,22 @@ public class MemoryService {
             MemoryBlockImageGalleryJdbcService memoryBlockImageGalleryJdbcService,
             MemoryClusterBlockRepository memoryClusterBlockRepository,
             MemoryBlockGenerationService blockGenerationService,
-            ProcessedVisitJdbcService processedVisitJdbcService,
+            MemoryVisitJdbcService memoryVisitJdbcService,
+            MemoryTripJdbcService memoryTripJdbcService,
+            UserSettingsJdbcService userSettingsJdbcService,
             TripJdbcService tripJdbcService,
-            UserSettingsJdbcService userSettingsJdbcService) {
+            ProcessedVisitJdbcService processedVisitJdbcService) {
         this.memoryJdbcService = memoryJdbcService;
         this.memoryBlockJdbcService = memoryBlockJdbcService;
         this.memoryBlockTextJdbcService = memoryBlockTextJdbcService;
         this.memoryBlockImageGalleryJdbcService = memoryBlockImageGalleryJdbcService;
         this.memoryClusterBlockRepository = memoryClusterBlockRepository;
         this.blockGenerationService = blockGenerationService;
-        this.processedVisitJdbcService = processedVisitJdbcService;
-        this.tripJdbcService = tripJdbcService;
+        this.memoryVisitJdbcService = memoryVisitJdbcService;
+        this.memoryTripJdbcService = memoryTripJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
+        this.tripJdbcService = tripJdbcService;
+        this.processedVisitJdbcService = processedVisitJdbcService;
     }
 
     @Transactional
@@ -162,8 +165,35 @@ public class MemoryService {
     }
 
     @Transactional
-    public void createClusterBlock(User user, MemoryClusterBlock clusterBlock) {
-        memoryClusterBlockRepository.save(user, clusterBlock);
+    public MemoryClusterBlock createClusterBlock(User user, Memory memory, String title, int position, BlockType type, List<Long> selectedParts) {
+        MemoryBlock block = addBlock(user, memory.getId(), position, type);
+        List<Long> selectedPartIds = new ArrayList<>();
+        switch (type) {
+            case CLUSTER_TRIP:
+                for (Long partId : selectedParts) {
+                    this.tripJdbcService.findById(partId)
+                            .map(trip -> {
+                                MemoryVisit startVisit = this.memoryVisitJdbcService.save(user, MemoryVisit.create(trip.getStartVisit()), block.getId(), trip.getStartVisit().getId());
+                                MemoryVisit endVisit = this.memoryVisitJdbcService.save(user, MemoryVisit.create(trip.getEndVisit()), block.getId(), trip.getEndVisit().getId());
+                                MemoryTrip memoryTrip = MemoryTrip.create(trip, startVisit, endVisit);
+                                return this.memoryTripJdbcService.save(user, memoryTrip, block.getId(), trip.getId());
+                            }).map(MemoryTrip::getId).ifPresent(selectedPartIds::add);
+                }
+                break;
+            case CLUSTER_VISIT:
+                for (Long partId : selectedParts) {
+                    this.processedVisitJdbcService.findById(partId)
+                            .map(visit -> {
+                                MemoryVisit memoryVisit = MemoryVisit.create(visit);
+                                return this.memoryVisitJdbcService.save(user, memoryVisit, block.getId(), visit.getId());
+                            }).map(MemoryVisit::getId).ifPresent(selectedPartIds::add);
+                }
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid block type");
+        }
+        MemoryClusterBlock clusterBlock = new MemoryClusterBlock(block.getId(), selectedPartIds, title, null, type);
+        return memoryClusterBlockRepository.save(user, clusterBlock);
     }
 
     @Transactional
@@ -234,11 +264,7 @@ public class MemoryService {
                 MemoryBlock memoryBlock = addBlock(user, memoryId, -1, BlockType.IMAGE_GALLERY);
                 memoryBlockImageGalleryJdbcService.create(new MemoryBlockImageGallery(memoryBlock.getId(), imageGalleryBlock.getImages()));
             } else if (autoGeneratedBlock instanceof MemoryClusterBlock clusterBlock) {
-                MemoryBlock memoryBlock = addBlock(user, memoryId, -1, clusterBlock.getType());
-                memoryClusterBlockRepository.save(user, new MemoryClusterBlock(memoryBlock.getId(),
-                        clusterBlock.getPartIds(),
-                        clusterBlock.getTitle(),
-                        clusterBlock.getDescription(), clusterBlock.getType()));
+                createClusterBlock(user, memory, clusterBlock.getTitle(), -1, clusterBlock.getType(), clusterBlock.getPartIds());
             }
         }
         
@@ -247,39 +273,39 @@ public class MemoryService {
 
 
     private Optional<? extends MemoryBlockPart> getClusterTripBlock(User user, ZoneId timezone, MemoryBlock block, UserSettings settings) {
-        Optional<? extends MemoryBlockPart> part;
         Optional<MemoryClusterBlock> clusterBlockOpt = memoryClusterBlockRepository.findByBlockId(user, block.getId());
-        part = clusterBlockOpt.map(memoryClusterBlock -> {
-            List<Trip> trips = tripJdbcService.findByIds(user, memoryClusterBlock.getPartIds());
-            Optional<Trip> first = trips.stream().findFirst();
-            Optional<Trip> lastTrip = trips.stream().max(Comparator.comparing(Trip::getEndTime));
-
-            long movingTime = trips.stream().mapToLong(Trip::getDurationSeconds).sum();
+        return clusterBlockOpt.map(memoryClusterBlock -> {
+            List<MemoryTrip> trips = memoryTripJdbcService.findByMemoryBlockId(memoryClusterBlock.getBlockId());
+            Optional<MemoryTrip> first = trips.stream().findFirst();
+            Optional<MemoryTrip> lastTrip = trips.stream().max(Comparator.comparing(MemoryTrip::getEndTime));
+            if (first.isEmpty()) {
+                return null;
+            }
+            long movingTime = trips.stream().mapToLong(MemoryTrip::getDurationSeconds).sum();
             long completeTime = first.map(trip -> Duration.between(trip.getStartTime(), lastTrip.get().getEndTime()).toSeconds()).orElse(0L);
-            LocalDateTime adjustedStartTime = first.map(t -> adjustTime(settings, t.getStartTime(), t.getStartVisit().getPlace(), timezone)).orElse(null);
-            LocalDateTime adjustedEndTime = lastTrip.map(t -> adjustTime(settings, t.getEndTime(), t.getEndVisit().getPlace(), timezone)).orElse(null);
+            LocalDateTime adjustedStartTime = first.map(t -> adjustTime(settings, t.getStartTime(), t.getStartVisit().getTimezone(), timezone)).orElse(null);
+            LocalDateTime adjustedEndTime = lastTrip.map(t -> adjustTime(settings, t.getEndTime(), t.getEndVisit().getTimezone(), timezone)).orElse(null);
             return new MemoryTripClusterBlockDTO(
                     memoryClusterBlock,
                     trips,
-                    "/api/v1/raw-location-points/trips?trips=" + String.join(",", memoryClusterBlock.getPartIds().stream().map(Objects::toString).toList()),
+                    "/api/v1/raw-location-points?startDate=" + adjustedStartTime + "&endDate=" + adjustedEndTime + "&timezone=" + timezone.getId(),
                     adjustedStartTime,
                     adjustedEndTime,
                     completeTime,
                     movingTime);
         });
-        return part;
     }
 
     private Optional<? extends MemoryBlockPart> getClusterVisitBlock(User user, ZoneId timezone, MemoryBlock block, UserSettings settings) {
         Optional<? extends MemoryBlockPart> part;
         Optional<MemoryClusterBlock> clusterVisitBlockOpt = memoryClusterBlockRepository.findByBlockId(user, block.getId());
         part = clusterVisitBlockOpt.map(memoryClusterBlock -> {
-            List<ProcessedVisit> visits = processedVisitJdbcService.findByIds(user, memoryClusterBlock.getPartIds());
-            Optional<ProcessedVisit> first = visits.stream().findFirst();
-            Optional<ProcessedVisit> last = visits.stream().max(Comparator.comparing(ProcessedVisit::getEndTime));
+            List<MemoryVisit> visits = memoryVisitJdbcService.findByMemoryBlockId(block.getId());
+            Optional<MemoryVisit> first = visits.stream().findFirst();
+            Optional<MemoryVisit> last = visits.stream().max(Comparator.comparing(MemoryVisit::getEndTime));
 
-            LocalDateTime adjustedStartTime = first.map(t -> adjustTime(settings, t.getStartTime(), t.getPlace(), timezone)).orElse(null);
-            LocalDateTime adjustedEndTime = last.map(t -> adjustTime(settings, t.getEndTime(), t.getPlace(), timezone)).orElse(null);
+            LocalDateTime adjustedStartTime = first.map(t -> adjustTime(settings, t.getStartTime(), t.getTimezone(), timezone)).orElse(null);
+            LocalDateTime adjustedEndTime = last.map(t -> adjustTime(settings, t.getEndTime(), t.getTimezone(), timezone)).orElse(null);
             Long completeDuration = 0L;
             String rawLocationPointsUrl = first.map(processedVisit -> "/api/v1/raw-location-points?startDate=" + processedVisit.getStartTime().atZone(timezone).toLocalDateTime() + "&endDate=" + last.get().getEndTime().atZone(timezone).toLocalDateTime() + "&timezone=" + timezone).orElse(null);
             return new MemoryVisitClusterBlockDTO(
@@ -293,11 +319,11 @@ public class MemoryService {
         return part;
     }
 
-    private LocalDateTime adjustTime(UserSettings settings, Instant startTime, SignificantPlace place, ZoneId timezone) {
+    private LocalDateTime adjustTime(UserSettings settings, Instant startTime, ZoneId placeTimezone, ZoneId timezone) {
         if (settings.getTimeDisplayMode() == TimeDisplayMode.DEFAULT) {
             return startTime.atZone(timezone).toLocalDateTime();
         } else {
-            return startTime.atZone(place.getTimezone()).toLocalDateTime();
+            return startTime.atZone(placeTimezone).toLocalDateTime();
         }
     }
 
