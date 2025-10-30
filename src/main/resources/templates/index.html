@@ -115,7 +115,8 @@
 
     window.userSettings = /*[[${userSettings}]]*/ {}
 
-    const messagesDiv = document.getElementById('sse-message');    let autoUpdateMode = false;
+    const messagesDiv = document.getElementById('sse-message');
+    let autoUpdateMode = false;
     let autoUpdateTimer = null;
     let autoUpdateTimeInterval = null;
     let eventSource = null;
@@ -637,11 +638,13 @@
         const icon = btn.querySelector('i');
         
         if (!autoUpdateMode) {
+            document.body.classList.add('auto-update-mode');
+
             // Enable auto-update mode
             autoUpdateMode = true;
             icon.className = 'lni lni-pause';
             btn.title = 'Pause Auto Update';
-            
+
             // Hide timeline and date picker smoothly
             hideUIElements();
             
@@ -723,6 +726,9 @@
             window.horizontalDatePicker.exitRangeMode();
             window.horizontalDatePicker.setDate(getSelectedDate());
         }
+
+        document.body.classList.remove('auto-update-mode');
+
     }
 
     function startAutoUpdateTimer() {
