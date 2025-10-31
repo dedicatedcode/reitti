@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.*;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -57,6 +58,9 @@ public class StorageService {
 
     public List<String> getChildren(String path) {
         Path basePath = Paths.get(storagePath, path);
+        if (!Files.isDirectory(basePath)) {
+            return Collections.emptyList();
+        }
         try (Stream<Path> paths = Files.walk(basePath, 1)) {
             return paths
                     .map(basePath::relativize)

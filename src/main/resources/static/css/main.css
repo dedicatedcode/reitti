@@ -837,6 +837,11 @@ body.datepicker-hidden .datepicker-toggle-btn {
     backdrop-filter: blur(10px);
 }
 
+body.auto-update-mode .timeline-toggle-btn,
+body.auto-update-mode .datepicker-toggle-btn {
+    display: none;
+}
+
 .statistics-content {
     margin-left: 30rem;
     color: var(--color-text-white);
