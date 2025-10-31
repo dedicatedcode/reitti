@@ -1,10 +1,3 @@
-> [!WARNING]  
-> To prevent an issue where the photon service downloads the entire planet's data (a very large file!), please update your docker-compose.yml file. This affects users who set up Reitti using our Docker Compose file before 2025-09-08. The photon service has renamed the COUNTRY_CODE variable to REGION.
-> What to do:
-> - Option A: Download the latest docker-compose.yml from the repository.
-> - Option B: Manually edit your existing docker-compose.yml and change the COUNTRY_CODE environment variable to REGION in the photon service definition.
-> For more details, you can see the exact changes in this [commit](https://github.com/dedicatedcode/reitti/commit/b2416892a48c15793a39d11c305b500c2077a9d3). We recommend making this change before you next pull any images.
-
 ![](.github/banner.png)
 
 
@@ -280,9 +273,10 @@ The included `docker-compose.yml` provides a complete setup with:
 
 Configure mobile apps for automatic location tracking:
 
-- **OwnTracks**: Privacy-focused location sharing
-- **GPSLogger**: Lightweight Android GPS logging
-- **Custom Apps**: Use the REST API for custom integrations
+- **[OwnTracks](https://www.dedicatedcode.com/projects/reitti/integrations/mobile-apps/)**: Privacy-focused location sharing
+- **[GPSLogger](https://www.dedicatedcode.com/projects/reitti/integrations/mobile-apps/)**: Lightweight Android GPS logging
+- **[Home-Assistant](https://www.dedicatedcode.com/projects/reitti/integrations/home-assistant/)**: Use Home-Assistant to send location data
+- **[Custom Apps](https://www.dedicatedcode.com/projects/reitti/integrations/custom-file-upload/)**: Use the REST API for custom integrations
 
 ### Photo Integration
 
