@@ -592,12 +592,7 @@
                 rawLocationLoader.init(userConfigs);
 
                 // Load location data for the memory date range without bounds filtering
-                rawLocationLoader.loadForDateRange(
-                    memory.startDate,
-                    memory.endDate,
-                    false, // autoUpdateMode
-                    false  // withBounds - don't filter by current map bounds
-                );
+                rawLocationLoader.loadForDateRange(false, false);
             }
         }
     }
