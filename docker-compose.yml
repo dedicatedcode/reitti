@@ -15,9 +15,10 @@ services:
      - reitti-data:/data/
     environment:
       PHOTON_BASE_URL: http://photon:2322
-      POSTGRES_USER: reitti
-      POSTGRES_PASSWORD: reitti
-      POSTGRES_DB: reittidb
+      POSTGIS_USER: reitti
+      POSTGIS_PASSWORD: reitti
+      POSTGIS_DB: reittidb
+      POSTGIS_HOST: postgis
   postgis:
     image: postgis/postgis:17-3.5-alpine
     environment:
