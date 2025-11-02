@@ -29,7 +29,7 @@
         <div id="edit-fragment" class="memory-header" th:fragment="edit-memory">
         <div th:if="${error}" class="alert alert-error">
             <i class="lni lni-warning"></i>
-            <span th:text="#{${error}}">Error message</span>
+            <span th:text="${error}">Error message</span>
         </div>
 
         <form th:attr="hx-post=@{/memories/{id}(id=${memory.id})}" hx-vals="js:{timezone: getUserTimezone()}" method="post" class="memory-form" hx-swap="outerHTML" hx-target=".memory-header">

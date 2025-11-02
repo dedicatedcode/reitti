@@ -24,14 +24,22 @@
     object-fit: cover;
     border-radius: 50%;
     font-size: 1.6rem;
+    background: var(--color-highlight);
+    font-family: var(--serif-font);
 }
 
-.avatar-marker-fallback {
-    font-size: 14px;
-    font-weight: bold;
-    color: #666;
-    text-align: center;
-    line-height: 1;
+
+.avatar-marker-img:after {
+    content: attr(alt);
+    top: 0;
+    position: absolute;
+    background: white;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding-top: 2px;
+    padding-left: 1px;
+    font-family: var(--serif-font);
 }
 
 @keyframes avatar-pulse {
