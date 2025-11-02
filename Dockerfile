@@ -11,6 +11,7 @@ RUN addgroup -S reitti -g 1000 && adduser -S reitti -u 1000 -G reitti
 # Set environment variables
 ENV SPRING_PROFILES_ACTIVE=docker
 ENV APP_HOME=/app
+ENV DATA_DIR=/data
 
 # Create application directory
 RUN mkdir -p $APP_HOME && \
