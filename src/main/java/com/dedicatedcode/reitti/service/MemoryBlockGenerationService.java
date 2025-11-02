@@ -240,9 +240,10 @@ public class MemoryBlockGenerationService {
             }
 
 
-            MemoryClusterBlock clusterBlock = convertToTripCluster(tripsFromAccommodation, "Journey to " + home.get().getPlace().getCity());
-
-            blockParts.add(clusterBlock);
+            if (home.isPresent()) {
+                MemoryClusterBlock clusterBlock = convertToTripCluster(tripsFromAccommodation, "Journey to " + home.get().getPlace().getCity());
+                blockParts.add(clusterBlock);
+            }
         }
 
         log.info("Generated {} memory block parts", blockParts.size());
