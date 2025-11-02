@@ -2345,14 +2345,6 @@ button:disabled {
     margin-bottom: 10px;
 }
 
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--color-highlight), #ffd700);
-    width: 20%;
-    transition: width 2s ease;
-    border-radius: 3px;
-}
-
 .progress-text {
     color: #ccc;
     font-size: 0.9rem;

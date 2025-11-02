@@ -13,12 +13,15 @@ import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
+import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.MagicLinkTokenService;
 import com.dedicatedcode.reitti.service.MemoryService;
 import com.dedicatedcode.reitti.service.RequestHelper;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -36,23 +39,27 @@ import static com.dedicatedcode.reitti.model.Role.USER;
 @Controller
 @RequestMapping("/memories")
 public class MemoryController {
+    private static final Logger log = LoggerFactory.getLogger(MemoryController.class);
 
     private final MemoryService memoryService;
     private final TripJdbcService tripJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final ImmichIntegrationService immichIntegrationService;
     private final MagicLinkTokenService magicLinkTokenService;
+    private final I18nService i18n;
 
     public MemoryController(MemoryService memoryService,
                             TripJdbcService tripJdbcService,
                             ProcessedVisitJdbcService processedVisitJdbcService,
                             ImmichIntegrationService immichIntegrationService,
-                            MagicLinkTokenService magicLinkTokenService) {
+                            MagicLinkTokenService magicLinkTokenService,
+                            I18nService i18n) {
         this.memoryService = memoryService;
         this.tripJdbcService = tripJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.immichIntegrationService = immichIntegrationService;
         this.magicLinkTokenService = magicLinkTokenService;
+        this.i18n = i18n;
     }
 
     @GetMapping
@@ -156,12 +163,13 @@ public class MemoryController {
             @RequestParam LocalDate startDate,
             @RequestParam LocalDate endDate,
             @RequestParam(required = false) String headerImageUrl,
+            @RequestParam(required = false) String year,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             Model model,
             HttpServletResponse response) {
 
         if (title == null || title.trim().isEmpty()) {
-            model.addAttribute("error", "memory.validation.title.required");
+            model.addAttribute("error", i18n.translate("memory.validation.title.required"));
             model.addAttribute("title", title);
             model.addAttribute("description", description);
             model.addAttribute("startDate", startDate);
@@ -177,23 +185,27 @@ public class MemoryController {
             
             // Validate dates are not in the future
             if (start.isAfter(today) || end.isAfter(today)) {
-                model.addAttribute("error", "memory.validation.date.future");
+                model.addAttribute("error", i18n.translate("memory.validation.date.future"));
                 model.addAttribute("title", title);
                 model.addAttribute("description", description);
                 model.addAttribute("startDate", startDate);
                 model.addAttribute("endDate", endDate);
                 model.addAttribute("headerImageUrl", headerImageUrl);
+                model.addAttribute("year", year);
+
                 return "memories/new :: new-memory";
             }
             
             // Validate end date is not before start date
             if (end.isBefore(start)) {
-                model.addAttribute("error", "memory.validation.end.date.before.start");
+                model.addAttribute("error", i18n.translate("memory.validation.end.date.before.start"));
                 model.addAttribute("title", title);
                 model.addAttribute("description", description);
                 model.addAttribute("startDate", startDate);
                 model.addAttribute("endDate", endDate);
                 model.addAttribute("headerImageUrl", headerImageUrl);
+                model.addAttribute("year", year);
+
                 return "memories/new :: new-memory";
             }
             
@@ -212,12 +224,15 @@ public class MemoryController {
             return "memories/fragments :: empty";
 
         } catch (Exception e) {
-            model.addAttribute("error", "memory.validation.start.date.required");
+            log.error("Error creating memory", e);
+            model.addAttribute("error", i18n.translate("memory.creation.error", e.getMessage()));
             model.addAttribute("title", title);
             model.addAttribute("description", description);
             model.addAttribute("startDate", startDate);
             model.addAttribute("endDate", endDate);
             model.addAttribute("headerImageUrl", headerImageUrl);
+            model.addAttribute("year", year);
+
             return "memories/new :: new-memory";
         }
     }
@@ -261,7 +276,7 @@ public class MemoryController {
 
         // Add validation similar to create method
         if (title == null || title.trim().isEmpty()) {
-            model.addAttribute("error", "memory.validation.title.required");
+            model.addAttribute("error", i18n.translate("memory.validation.title.required"));
             model.addAttribute("memory", memory);
             
             model.addAttribute("cancelEndpoint", "/memories/" + id);
@@ -276,7 +291,7 @@ public class MemoryController {
             Instant today = Instant.now();
             
             if (start.isAfter(today) || end.isAfter(today)) {
-                model.addAttribute("error", "memory.validation.date.future");
+                model.addAttribute("error", i18n.translate("memory.validation.date.future"));
                 model.addAttribute("memory", memory);
                 
                 model.addAttribute("cancelEndpoint", "/memories/" + id);
@@ -286,7 +301,7 @@ public class MemoryController {
             }
             
             if (end.isBefore(start)) {
-                model.addAttribute("error", "memory.validation.end.date.before.start");
+                model.addAttribute("error", i18n.translate("memory.validation.end.date.before.start"));
                 model.addAttribute("memory", memory);
                 
                 model.addAttribute("cancelEndpoint", "/memories/" + id);
@@ -310,7 +325,7 @@ public class MemoryController {
             return "memories/view :: memory-header";
 
         } catch (Exception e) {
-            model.addAttribute("error", "memory.validation.start.date.required");
+            model.addAttribute("error", i18n.translate("memory.validation.start.date.required"));
             model.addAttribute("memory", memory);
             
             model.addAttribute("cancelEndpoint", "/memories/" + id);

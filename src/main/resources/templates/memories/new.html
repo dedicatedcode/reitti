@@ -33,13 +33,14 @@
     <div th:fragment="new-memory" class="settings-content-area">
         <div th:if="${error}" class="alert alert-error">
             <i class="lni lni-warning"></i>
-            <span th:text="#{${error}}">Error message</span>
+            <span th:text="${error}">Error message</span>
         </div>
         
-        <form th:attr="hx-post=@{/memories}" class="memory-form" hx-indicator="#memory-processing-overlay" hx-vals='js:{"timezone": getUserTimezone()}' onsubmit="return validateDates()">
+        <form th:attr="hx-post=@{/memories}" class="memory-form" hx-indicator="#memory-processing-overlay" hx-swap="outerHTML" hx-target="closest .settings-content-area" hx-vals='js:{"timezone": getUserTimezone()}' onsubmit="return validateDates()">
             <div class="form-group">
                 <label for="title" th:text="#{memory.form.title.label}">Title *</label>
                 <input type="text" id="title" name="title" required class="form-control" th:placeholder="#{memory.form.title.placeholder}" th:value="${title}">
+                <input type="hidden" name="year" th:value="${year}">
             </div>
 
             <div class="form-group">

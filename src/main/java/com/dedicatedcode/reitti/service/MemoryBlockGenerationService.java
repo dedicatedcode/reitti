@@ -246,7 +246,7 @@ public class MemoryBlockGenerationService {
         }
 
         log.info("Generated {} memory block parts", blockParts.size());
-        
+
         return blockParts;
     }
 
