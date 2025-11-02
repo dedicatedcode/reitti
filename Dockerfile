@@ -11,6 +11,7 @@ RUN addgroup -S reitti -g 1000 && adduser -S reitti -u 1000 -G reitti
 # Set environment variables
 ENV SPRING_PROFILES_ACTIVE=docker
 ENV APP_HOME=/app
+ENV DATA_DIR=/data
 
 # Create application directory
 RUN mkdir -p $APP_HOME && \
@@ -34,6 +35,9 @@ RUN echo '#!/bin/sh' > /entrypoint.sh && \
     echo '  # Fix ownership of all files' >> /entrypoint.sh && \
     echo '  chown -R reitti:reitti $APP_HOME' >> /entrypoint.sh && \
     echo 'fi' >> /entrypoint.sh && \
+    echo '# Ensure data directory exists and has correct ownership' >> /entrypoint.sh && \
+    echo 'mkdir -p $DATA_DIR' >> /entrypoint.sh && \
+    echo 'chown -R reitti:reitti $DATA_DIR' >> /entrypoint.sh && \
     echo 'exec su-exec reitti java $JAVA_OPTS -jar $APP_HOME/app.jar -Dspring.profiles.active=docker "$@"' >> /entrypoint.sh && \
     chmod +x /entrypoint.sh
 
