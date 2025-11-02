@@ -223,6 +223,11 @@
                         <span class="language-flag">🇫🇷</span>
                         <span th:text="#{language.french}" class="language-name">Français</span>
                     </label>
+                    <label class="btn language-btn">
+                        <input type="radio" name="preferred_language" value="ru" th:checked="${selectedLanguage == 'ru'}" style="display: none;">
+                        <span class="language-flag">🇷🇺</span>
+                        <span th:text="#{language.russian}" class="language-name">Russian</span>
+                    </label>
                 </div>
             </div>
         </div>
