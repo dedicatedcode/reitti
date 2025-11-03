@@ -189,10 +189,11 @@ public class MemoryBlockGenerationService {
                         .filter(trip -> trip.getEndTime() != null && (trip.getEndTime().equals(cluster.getStartTime())))
                         .sorted(Comparator.comparing(Trip::getEndTime))
                         .toList();
-
-                if (Duration.between(tripsBetweenVisits.getFirst().getStartTime(), tripsBetweenVisits.getLast().getEndTime()).toMinutes() > 30) {
-                    MemoryClusterBlock clusterBlock = convertToTripCluster(tripsBetweenVisits, "Journey to " + cluster.getHighestScoredVisit().visit().getPlace().getCity());
-                    blockParts.add(clusterBlock);
+                if (!tripsBetweenVisits.isEmpty()) {
+                    if (Duration.between(tripsBetweenVisits.getFirst().getStartTime(), tripsBetweenVisits.getLast().getEndTime()).toMinutes() > 30) {
+                        MemoryClusterBlock clusterBlock = convertToTripCluster(tripsBetweenVisits, "Journey to " + cluster.getHighestScoredVisit().visit().getPlace().getCity());
+                        blockParts.add(clusterBlock);
+                    }
                 }
                 previousVisit = cluster.getVisits().stream().map(ScoredVisit::visit).max(Comparator.comparing(ProcessedVisit::getEndTime)).orElse(null);
             }
