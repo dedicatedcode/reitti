@@ -96,7 +96,7 @@ public class UserSettingsControllerAdvice {
             return UserSettingsDTO.UIMode.FULL;
         } else if (grantedRoles.contains("ROLE_MAGIC_LINK_FULL_ACCESS")) {
             return UserSettingsDTO.UIMode.SHARED_FULL;
-        } else if (grantedRoles.contains("ROLE_MAGIC_LINK_ONLY_LIVE") || grantedRoles.contains("ROLE_MAGIC_LINK_ONLY_LIVE_WITH_PHOTOS")) {
+        } else if (grantedRoles.contains("ROLE_MAGIC_LINK_ONLY_LIVE") || grantedRoles.contains("ROLE_MAGIC_LINK_ONLY_LIVE_WITH_PHOTOS") || grantedRoles.contains("ROLE_MAGIC_LINK_ONLY_LAST_LOCATION")) {
             return UserSettingsDTO.UIMode.SHARED_LIVE_MODE_ONLY;
         } else if (grantedRoles.contains("ROLE_MAGIC_LINK_MEMORY_VIEW_ONLY") || grantedRoles.contains("ROLE_MAGIC_LINK_MEMORY_EDIT_ACCESS")) {
             return UserSettingsDTO.UIMode.VIEW_MEMORIES;
