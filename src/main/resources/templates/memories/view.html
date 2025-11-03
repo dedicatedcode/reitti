@@ -571,12 +571,21 @@
                 scrollWheelZoom: false,
                 tap: false,
                 touchZoom: false
-            }).setView([51.505, -0.09], 13);
+            }).setView([userSettings.homeLatitude, userSettings.homeLongitude], 5);
 
-            L.tileLayer.grayscale('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(memoryMap);
+
+            if (userSettings.preferColoredMap) {
+                L.tileLayer(userSettings.tiles.service, {
+                    maxZoom: 19,
+                    attribution: userSettings.tiles.attribution
+                }).addTo(memoryMap);
+            } else {
+                L.tileLayer.grayscale(userSettings.tiles.service, {
+                    maxZoom: 19,
+                    attribution: userSettings.tiles.attribution
+                }).addTo(memoryMap);
+            }
+
             if (rawLocationLoader === null) {
                 rawLocationLoader = new RawLocationLoader(memoryMap, window.userSettings);
             }
