@@ -310,8 +310,6 @@ class RawLocationLoader {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('date')) {
             return urlParams.get('date');
-        } else if (window.userSettings.newestData) {
-            return window.userSettings.newestData.split('T')[0];
         } else {
             return new Date().toISOString().split('T')[0];
         }

@@ -14,7 +14,6 @@ import com.dedicatedcode.reitti.service.MagicLinkTokenService;
 import com.dedicatedcode.reitti.service.RequestHelper;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.MessageSource;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -23,7 +22,6 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -57,7 +55,7 @@ public class ShareAccessController {
     public String magicLinksContent(@AuthenticationPrincipal User user, Model model) {
         List<MagicLinkToken> tokens = magicLinkTokenService.getTokensForUser(user);
         model.addAttribute("tokens", tokens);
-        model.addAttribute("accessLevels", List.of(MagicLinkAccessLevel.FULL_ACCESS, MagicLinkAccessLevel.ONLY_LIVE, MagicLinkAccessLevel.ONLY_LIVE_WITH_PHOTOS));
+        model.addAttribute("accessLevels", List.of(MagicLinkAccessLevel.FULL_ACCESS, MagicLinkAccessLevel.ONLY_LIVE, MagicLinkAccessLevel.ONLY_LIVE_WITH_PHOTOS, MagicLinkAccessLevel.ONLY_LAST_LOCATION));
         model.addAttribute("activeSection", "sharing");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
