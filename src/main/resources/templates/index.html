@@ -139,6 +139,8 @@
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('date')) {
             return urlParams.get('date');
+        } else if (window.userSettings.uiMode === 'SHARED_LIVE_MODE_ONLY') {
+            return new Date().toISOString().split('T')[0];
         } else if (window.userSettings.newestData) {
             return window.userSettings.newestData.split('T')[0];
         } else {
@@ -198,9 +200,6 @@
             targetSection.classList.add('active');
         }
     }
-
-    let pulsatingMarkers = [];
-
 
     // Timeline visibility functions
     function toggleTimeline() {
@@ -302,8 +301,12 @@
             }
         }
 
-        if (!initialDate && window.userSettings.newestData) {
-            initialDate = window.userSettings.newestData.split('T')[0]
+        if (!initialDate) {
+            if (window.userSettings.uiMode === 'SHARED_LIVE_MODE_ONLY') {
+
+            } else if (window.userSettings.newestData) {
+                initialDate = window.userSettings.newestData.split('T')[0]
+            }
         }
 
         // Set date picker to URL date or today's date

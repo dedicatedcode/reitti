@@ -1057,59 +1057,6 @@ body.auto-update-mode .datepicker-toggle-btn {
 .settings-card a {
     color: var(--color-highlight);
 }
-@media (max-width: 800px) {
-    .timeline-entry {
-        padding: 1rem 2rem 0 1rem;
-    }
-
-    .timeline-entry .entry-description {
-        font-size: 1rem;
-        font-weight: normal;
-    }
-
-    .timeline-entry {
-        display: inline-block;
-        font-size: 1rem;
-        color: white;
-    }
-
-    .timeline-entry.active {
-        color: var(--color-highlight);
-        padding: 1rem 2rem 0 1.3rem;
-    }
-
-    .timeline-entry.active .entry-description {
-        font-size: 1.3rem;
-    }
-
-    .timeline {
-        width: 100%;
-    }
-
-    .timeline-scroll-indicator {
-        left: 5px;
-        width: 4px;
-        height: 50vh;
-    }
-
-    .scroll-thumb {
-        width: 8px;
-        height: 16px;
-        border-radius: 4px;
-    }
-
-    .scroll-thumb::before {
-        width: 4px;
-        height: 4px;
-    }
-
-    .place-name-container.editing {
-        border-radius: 3px;
-        font-size: 1rem;
-        float: left;
-        min-width: 0;
-    }
-}
 
 .text-align-left {
     text-align: left;
@@ -1227,8 +1174,58 @@ body.auto-update-mode .datepicker-toggle-btn {
     border: 1px solid;
 }
 
-/* Mobile responsiveness for settings page */
-@media (max-width: 768px) {
+@media (max-width: 800px) {
+    .timeline-entry {
+        padding: 1rem 2rem 0 1rem;
+    }
+
+    .timeline-entry .entry-description {
+        font-size: 1rem;
+        font-weight: normal;
+    }
+
+    .timeline-entry {
+        font-size: 1rem;
+        color: white;
+    }
+
+    .timeline-entry.active {
+        color: var(--color-highlight);
+        padding: 1rem 2rem 0 1.3rem;
+    }
+
+    .timeline-entry.active .entry-description {
+        font-size: 1.3rem;
+    }
+
+    .timeline {
+        width: 100%;
+    }
+
+    .timeline-scroll-indicator {
+        left: 5px;
+        width: 4px;
+        height: 50vh;
+    }
+
+    .scroll-thumb {
+        width: 8px;
+        height: 16px;
+        border-radius: 4px;
+    }
+
+    .scroll-thumb::before {
+        width: 4px;
+        height: 4px;
+    }
+
+    .place-name-container.editing {
+        border-radius: 3px;
+        font-size: 1rem;
+        float: left;
+        min-width: 0;
+    }
+
     .settings-container {
         flex-direction: column;
     }
@@ -1269,6 +1266,9 @@ body.auto-update-mode .datepicker-toggle-btn {
 
     .timeline-toggle-btn,
     .datepicker-toggle-btn {
+        bottom: 210px;
+    }
+    body.timeline-hidden .timeline-toggle-btn {
         bottom: 210px;
     }
 }

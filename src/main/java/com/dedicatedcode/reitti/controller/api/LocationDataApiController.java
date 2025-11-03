@@ -3,7 +3,8 @@ package com.dedicatedcode.reitti.controller.api;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.RawLocationDataResponse;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
-import com.dedicatedcode.reitti.model.geo.Trip;
+import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
+import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
@@ -22,10 +23,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -48,31 +46,6 @@ public class LocationDataApiController {
         this.userJdbcService = userJdbcService;
     }
 
-
-    @GetMapping("/raw-location-points/trips")
-    public ResponseEntity<?> getRawLocationPointsTrips(@AuthenticationPrincipal User user,
-                                                       @RequestParam List<Long> trips,
-                                                       @RequestParam(required = false) Integer zoom,
-                                                       @RequestParam(required = false) Double minLat,
-                                                       @RequestParam(required = false) Double maxLat,
-                                                       @RequestParam(required = false) Double minLng,
-                                                       @RequestParam(required = false) Double maxLng) {
-        List<List<LocationPoint>> tmp = new ArrayList<>();
-        List<Trip> loadedTrips = this.tripJdbcService.findByIds(user, trips);
-        for (Trip trip : loadedTrips) {
-            Instant startOfRange = trip.getStartTime();
-            Instant endOfRange = trip.getEndTime();
-            List<List<LocationPoint>> segments = loadSegmentsInBoundingBoxAndTime(user, minLat, maxLat, minLng, maxLng, startOfRange, endOfRange);
-            tmp.addAll(segments);
-        }
-        Optional<RawLocationPoint> latest = this.rawLocationPointJdbcService.findLatest(user);
-        RawLocationDataResponse result = new RawLocationDataResponse(tmp.stream().map(s -> {
-            List<LocationPoint> simplifiedPoints = simplificationService.simplifyPoints(s, zoom);
-            return new RawLocationDataResponse.Segment(simplifiedPoints);
-        }).toList(), latest.map(this::toLocationPoint).orElse(null));
-        return ResponseEntity.ok(result);
-    }
-
     @GetMapping("/raw-location-points")
     public ResponseEntity<?> getRawLocationPointsForCurrentUser(@AuthenticationPrincipal User user,
                                                                 @RequestParam(required = false) String date,
@@ -84,11 +57,12 @@ public class LocationDataApiController {
                                                                 @RequestParam(required = false) Double maxLat,
                                                                 @RequestParam(required = false) Double minLng,
                                                                 @RequestParam(required = false) Double maxLng) {
-        return this.getRawLocationPoints(user.getId(), date, startDate, endDate, timezone, zoom,  minLat, maxLat, minLng, maxLng);
+        return this.getRawLocationPoints(user, user.getId(), date, startDate, endDate, timezone, zoom,  minLat, maxLat, minLng, maxLng);
     }
 
     @GetMapping("/raw-location-points/{userId}")
-    public ResponseEntity<?> getRawLocationPoints(@PathVariable Long userId,
+    public ResponseEntity<?> getRawLocationPoints(@AuthenticationPrincipal User user,
+                                                  @PathVariable Long userId,
                                                   @RequestParam(required = false) String date,
                                                   @RequestParam(required = false) String startDate,
                                                   @RequestParam(required = false) String endDate,
@@ -132,17 +106,34 @@ public class LocationDataApiController {
                 ));
             }
 
+
+            boolean includeRawLocationPath = true;
+            if (user instanceof TokenUser) {
+                if (!Objects.equals(user.getId(), userId)) {
+                    throw new IllegalAccessException("User not allowed to fetch raw location points for other users");
+                }
+
+                includeRawLocationPath = user.getAuthorities().stream().anyMatch(a ->
+                        a.equals(MagicLinkAccessLevel.FULL_ACCESS.asAuthority()) ||
+                        a.equals(MagicLinkAccessLevel.ONLY_LIVE.asAuthority()) ||
+                        a.equals(MagicLinkAccessLevel.ONLY_LIVE_WITH_PHOTOS.asAuthority()));
+            }
             // Get the user from the repository by userId
-            User user = userJdbcService.findById(userId)
+            User userToFetchDataFrom = userJdbcService.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-            List<List<LocationPoint>> segments = loadSegmentsInBoundingBoxAndTime(user, minLat, maxLat, minLng, maxLng, startOfRange, endOfRange);
-            List<RawLocationDataResponse.Segment> result = segments.stream().map(s -> {
-                List<LocationPoint> simplifiedPoints = simplificationService.simplifyPoints(s, zoom);
-                return new RawLocationDataResponse.Segment(simplifiedPoints);
-            }).toList();
+            List<RawLocationDataResponse.Segment> result;
+            if (includeRawLocationPath) {
+                List<List<LocationPoint>> segments = loadSegmentsInBoundingBoxAndTime(userToFetchDataFrom, minLat, maxLat, minLng, maxLng, startOfRange, endOfRange);
+                result = segments.stream().map(s -> {
+                    List<LocationPoint> simplifiedPoints = simplificationService.simplifyPoints(s, zoom);
+                    return new RawLocationDataResponse.Segment(simplifiedPoints);
+                }).toList();
+            } else {
+                result = Collections.emptyList();
+            }
 
-            Optional<RawLocationPoint> latest = this.rawLocationPointJdbcService.findLatest(user);
+            Optional<RawLocationPoint> latest = this.rawLocationPointJdbcService.findLatest(userToFetchDataFrom);
             return ResponseEntity.ok(new RawLocationDataResponse(result, latest.map(this::toLocationPoint).orElse(null)));
             
         } catch (DateTimeParseException e) {
