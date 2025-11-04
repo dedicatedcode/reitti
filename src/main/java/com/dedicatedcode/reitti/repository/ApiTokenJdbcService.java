@@ -163,7 +163,7 @@ public class ApiTokenJdbcService {
     private ApiTokenUsage mapRowToApiUsage(ResultSet rs, int rowNum) throws SQLException {
         return new ApiTokenUsage(rs.getString("token"),
                 rs.getString("name"),
-                rs.getTimestamp("at").toLocalDateTime(),
+                rs.getTimestamp("at").toInstant(),
                 rs.getString("endpoint"),
                 rs.getString("ip"));
     }

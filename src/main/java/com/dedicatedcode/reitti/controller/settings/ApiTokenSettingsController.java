@@ -4,16 +4,16 @@ import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ApiTokenService;
+import com.dedicatedcode.reitti.service.TimeUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Controller
@@ -37,8 +37,12 @@ public class ApiTokenSettingsController {
         model.addAttribute("activeSection", "api-tokens");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
-        model.addAttribute("tokens", apiTokenService.getTokensForUser(user));
-        model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(user, 10));
+        model.addAttribute("tokens", apiTokenService.getTokensForUser(user).stream()
+                .map(t -> new ApiTokeDTO(t.getId(), t.getToken(), t.getName(), TimeUtil.adjustInstant(t.getCreatedAt()), TimeUtil.adjustInstant(t.getLastUsedAt()))).toList());
+        model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(user, 10)
+                .stream()
+                .map(t -> new ApiTokenUsageDTO(t.token(), t.name(), TimeUtil.adjustInstant(t.at()), t.endpoint(), t.ip()))
+                .toList());
         model.addAttribute("maxUsagesToShow", 10);
         return "settings/api-tokens";
     }
@@ -82,6 +86,10 @@ public class ApiTokenSettingsController {
         return "settings/api-tokens :: api-tokens-content";
     }
 
+    public record ApiTokeDTO(Long id, String token, String name, LocalDateTime createdAt, LocalDateTime lastUsedAt) {}
+
+    public record ApiTokenUsageDTO(String token, String name, LocalDateTime at, String endpoint, String ip) {
+    }
 
     private String getMessage(String key, Object... args) {
         return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
