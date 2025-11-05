@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="/css/lineicons.css">
     <script src="/js/htmx.min.js"></script>
     <script src="/js/util.js"></script>
+    <script src="/js/gpx-downloader.js"></script>
 </head>
 <body class="settings-page">
 <div class="settings-container">
@@ -67,11 +68,8 @@
                             <button type="button" 
                                     class="btn" 
                                     th:text="#{export.gpx.button}"
-                                    hx-get="/settings/export-data/gpx"
-                                    hx-include="#startDate, #endDate"
-                                    hx-vals='js:{"timezone": getUserTimezone()}'
-                                    hx-indicator="#gpx-loading"
-                                    hx-trigger="click">Export as GPX</button>
+                                    data-gpx-download
+                                    onclick="handleGpxDownload(this)">Export as GPX</button>
                             <div id="gpx-loading" style="display: none; margin-left: 10px;">
                                 <div style="display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: var(--color-accent); animation: spin 1s ease-in-out infinite;"></div>
                             </div>
@@ -132,6 +130,18 @@
     </div>
     <script th:inline="javascript">
         window.userSettings = /*[[${userSettings}]]*/ {}
+        
+        function handleGpxDownload(buttonElement) {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            if (!startDate || !endDate) {
+                alert('Bitte wählen Sie ein Start- und Enddatum aus.');
+                return;
+            }
+            
+            gpxDownloader.downloadGpx(startDate, endDate, buttonElement);
+        }
     </script>
 </div>
 </body>
