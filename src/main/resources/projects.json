@@ -1,39 +1,44 @@
-{
-  "projects": [
-    {
-      "name": "Spring Boot",
-      "description": "Java-based framework for building production-ready applications",
-      "url": "https://spring.io/projects/spring-boot",
-      "license": "Apache 2.0",
-      "category": "Framework"
-    },
-    {
-      "name": "Leaflet",
-      "description": "Open-source JavaScript library for mobile-friendly interactive maps",
-      "url": "https://leafletjs.com/",
-      "license": "BSD-2-Clause",
-      "category": "Frontend"
-    },
-    {
-      "name": "HTMX",
-      "description": "High power tools for HTML",
-      "url": "https://htmx.org/",
-      "license": "BSD-2-Clause",
-      "category": "Frontend"
-    },
-    {
-      "name": "PostgreSQL",
-      "description": "Advanced open source relational database",
-      "url": "https://www.postgresql.org/",
-      "license": "PostgreSQL License",
-      "category": "Database"
-    },
-    {
-      "name": "Thymeleaf",
-      "description": "Modern server-side Java template engine",
-      "url": "https://www.thymeleaf.org/",
-      "license": "Apache 2.0",
-      "category": "Template Engine"
-    }
-  ]
-}
+{"projects": [
+        {
+            "name": "Spring Boot",
+            "description": "Java-based framework for building production-ready applications",
+            "url": "https://spring.io/projects/spring-boot",
+            "license": "Apache 2.0",
+            "category": "Framework"
+        },
+        {
+            "name": "PostgreSQL",
+            "description": "Advanced open source relational database",
+            "url": "https://www.postgresql.org/",
+            "license": "PostgreSQL License",
+            "category": "Database"
+        },
+        {
+            "name": "Leaflet",
+            "description": "Open-source JavaScript library for mobile-friendly interactive maps",
+            "url": "https://leafletjs.com/",
+            "license": "BSD-2-Clause",
+            "category": "Frontend"
+        },
+        {
+            "name": "HTMX",
+            "description": "High power tools for HTML",
+            "url": "https://htmx.org/",
+            "license": "BSD-2-Clause",
+            "category": "Frontend"
+        },
+        {
+            "name": "Thymeleaf",
+            "description": "Modern server-side Java template engine",
+            "url": "https://www.thymeleaf.org/",
+            "license": "Apache 2.0",
+            "category": "Template Engine"
+        },
+        {
+            "name": "Chart.js",
+            "description": "Simple yet flexible JavaScript charting library",
+            "url": "https://www.chartjs.org/",
+            "license": "MIT",
+            "category": "Frontend"
+        }
+    ]}

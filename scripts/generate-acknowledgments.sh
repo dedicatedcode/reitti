@@ -38,10 +38,9 @@ fetch_contributors() {
             name: (.name // .login),
             role: "Contributor",
             avatar: .avatar_url,
-            github: .login,
-            contributions: ["Code", "Documentation"]
+            github: .login
         }
-    ][:10]')  # Limit to top 10 contributors
+    ]')
     
     # Create contributors.json
     echo "{\"contributors\": $contributors_data}" > "$RESOURCES_DIR/contributors.json"
