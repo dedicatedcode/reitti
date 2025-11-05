@@ -71,7 +71,7 @@
                                     onclick="handleGpxDownload(this)"
                                     style="display: flex; align-items: center; gap: 8px;">
                                 <span th:text="#{export.gpx.button}">Export as GPX</span>
-                                <div id="gpx-loading" style="display: none; height: 1em; display: flex; align-items: center;">
+                                <div id="gpx-loading" style="display: none; height: 0; margin-left: 8px; width: 20px;">
                                     <div style="width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: var(--color-accent); animation: spin 1s ease-in-out infinite;"></div>
                                 </div>
                             </button>
@@ -136,12 +136,7 @@
         function handleGpxDownload(buttonElement) {
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
-            
-            if (!startDate || !endDate) {
-                alert('Bitte wählen Sie ein Start- und Enddatum aus.');
-                return;
-            }
-            
+
             gpxDownloader.downloadGpx(startDate, endDate, buttonElement);
         }
     </script>
