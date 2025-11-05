@@ -41,10 +41,10 @@
 }
 
 .acknowledgments-title i {
-    color: #ff6b6b;
+    color: var(--color-highlight);
     font-size: 1.5rem;
-    animation: heartbeat 2s ease-in-out infinite;
-    filter: drop-shadow(0 2px 4px rgba(255, 107, 107, 0.3));
+    animation: gentle-pulse 3s ease-in-out infinite;
+    filter: drop-shadow(0 2px 4px rgba(245, 222, 179, 0.3));
 }
 
 .acknowledgments-subtitle {
@@ -74,6 +74,7 @@
     color: var(--color-highlight);
     font-size: 1.25rem;
     filter: drop-shadow(0 2px 4px rgba(245, 222, 179, 0.3));
+    animation: gentle-glow 4s ease-in-out infinite;
 }
 
 /* Contributors Section */
@@ -107,7 +108,7 @@
     left: 0;
     right: 0;
     height: 6px;
-    background: linear-gradient(90deg, #ff6b6b, var(--color-highlight), #4ecdc4, #45b7d1);
+    background: linear-gradient(90deg, var(--color-highlight), rgba(245, 222, 179, 0.8), var(--color-highlight));
     background-size: 300% 100%;
     animation: shimmer 3s ease-in-out infinite;
 }
@@ -120,6 +121,7 @@
     font-size: 1.5rem;
     opacity: 0;
     transition: all 0.3s ease;
+    color: var(--color-highlight);
 }
 
 .contributor-card:hover {
@@ -132,7 +134,7 @@
 
 .contributor-card:hover::after {
     opacity: 1;
-    transform: rotate(360deg);
+    transform: scale(1.2);
 }
 
 .contributor-avatar {
@@ -252,7 +254,7 @@
 
 .translator-card:hover::before {
     opacity: 1;
-    transform: rotate(360deg) scale(1.2);
+    transform: scale(1.2);
 }
 
 .translator-avatar {
@@ -356,7 +358,7 @@
 
 .completion-fill {
     height: 100%;
-    background: linear-gradient(90deg, #10b981, var(--color-highlight), #4ecdc4);
+    background: linear-gradient(90deg, var(--color-highlight), rgba(245, 222, 179, 0.8), var(--color-highlight));
     border-radius: 10px;
     transition: width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     position: relative;
@@ -427,6 +429,7 @@
     opacity: 0.3;
     transition: all 0.3s ease;
     z-index: 2;
+    color: var(--color-highlight);
 }
 
 .project-card:hover {
@@ -439,7 +442,7 @@
 
 .project-card:hover::before {
     opacity: 1;
-    transform: rotate(360deg) scale(1.2);
+    transform: scale(1.2);
 }
 
 .project-header {
@@ -558,16 +561,22 @@
 
 .thank-you-icon {
     font-size: 4rem;
-    color: #ff6b6b;
+    color: var(--color-highlight);
     margin-bottom: 1.5rem;
-    animation: heartbeat 2s ease-in-out infinite;
-    filter: drop-shadow(0 4px 8px rgba(255, 107, 107, 0.3));
+    animation: gentle-pulse 3s ease-in-out infinite;
+    filter: drop-shadow(0 4px 8px rgba(245, 222, 179, 0.3));
 }
 
-@keyframes heartbeat {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.15); }
-    100% { transform: scale(1); }
+@keyframes gentle-pulse {
+    0% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.05); opacity: 1; }
+    100% { transform: scale(1); opacity: 0.8; }
+}
+
+@keyframes gentle-glow {
+    0% { filter: drop-shadow(0 2px 4px rgba(245, 222, 179, 0.3)); }
+    50% { filter: drop-shadow(0 2px 8px rgba(245, 222, 179, 0.5)); }
+    100% { filter: drop-shadow(0 2px 4px rgba(245, 222, 179, 0.3)); }
 }
 
 @keyframes shimmer {
