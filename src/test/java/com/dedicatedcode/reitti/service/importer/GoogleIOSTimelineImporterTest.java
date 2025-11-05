@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.service.importer;
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
+import com.dedicatedcode.reitti.model.processing.RecalculationState;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ImportBatchProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
@@ -29,7 +30,7 @@ class GoogleIOSTimelineImporterTest {
         DetectionParameter config = new DetectionParameter(-1L,
                 new DetectionParameter.VisitDetection(100, 5, 300, 300),
                 new DetectionParameter.VisitMerging(24,300, 100),
-                null, false);
+                null, RecalculationState.DONE);
         when(parametersService.getCurrentConfiguration(any(), any(Instant.class))).thenReturn(config);
 
         GoogleIOSTimelineImporter importHandler = new GoogleIOSTimelineImporter(new ObjectMapper(), new ImportStateHolder(), new ImportBatchProcessor(mock, 100, 15), parametersService);

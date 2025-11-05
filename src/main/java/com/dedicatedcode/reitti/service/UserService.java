@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.TransportModeConfig;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
+import com.dedicatedcode.reitti.model.processing.RecalculationState;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.*;
@@ -120,7 +121,7 @@ public class UserService {
                 new DetectionParameter.VisitDetection(100, 5, 300, 330),
                 new DetectionParameter.VisitMerging(48, 300, 200),
                 null,
-                false)
+                RecalculationState.DONE)
         );
     }
 
