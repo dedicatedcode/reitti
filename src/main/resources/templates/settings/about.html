@@ -166,46 +166,50 @@
         const firework = document.createElement('div');
         firework.className = 'firework';
         
-        // Random position
+        // Random position for explosion
         const x = Math.random() * window.innerWidth;
         const y = Math.random() * (window.innerHeight * 0.6) + (window.innerHeight * 0.2);
         
         firework.style.left = x + 'px';
         firework.style.top = y + 'px';
         
-        // Create trail
+        // Create trail that starts from bottom and goes to explosion point
         const trail = document.createElement('div');
         trail.className = 'firework-trail';
         trail.style.setProperty('--trail-color', color);
-        trail.style.left = x + 'px';
-        trail.style.top = y + 'px';
+        trail.style.left = (x - 2) + 'px'; // Center the trail
+        trail.style.bottom = '0px'; // Start from bottom
+        trail.style.height = (window.innerHeight - y + 30) + 'px'; // Go to explosion point
         document.body.appendChild(trail);
         
-        // Create particles
-        const particleCount = 20;
-        for (let i = 0; i < particleCount; i++) {
-            const particle = document.createElement('div');
-            particle.className = 'firework-particle';
-            particle.style.backgroundColor = color;
+        // Delay explosion until trail reaches the top
+        setTimeout(() => {
+            // Create particles
+            const particleCount = 20;
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'firework-particle';
+                particle.style.backgroundColor = color;
+                
+                const angle = (i / particleCount) * Math.PI * 2;
+                const distance = 50 + Math.random() * 100;
+                const dx = Math.cos(angle) * distance;
+                const dy = Math.sin(angle) * distance;
+                
+                particle.style.setProperty('--dx', dx + 'px');
+                particle.style.setProperty('--dy', dy + 'px');
+                
+                firework.appendChild(particle);
+            }
             
-            const angle = (i / particleCount) * Math.PI * 2;
-            const distance = 50 + Math.random() * 100;
-            const dx = Math.cos(angle) * distance;
-            const dy = Math.sin(angle) * distance;
-            
-            particle.style.setProperty('--dx', dx + 'px');
-            particle.style.setProperty('--dy', dy + 'px');
-            
-            firework.appendChild(particle);
-        }
-        
-        document.body.appendChild(firework);
+            document.body.appendChild(firework);
+        }, 600); // Delay to let trail animate first
         
         // Clean up
         setTimeout(() => {
             if (firework.parentNode) firework.parentNode.removeChild(firework);
             if (trail.parentNode) trail.parentNode.removeChild(trail);
-        }, 2000);
+        }, 2500);
     }
 </script>
 </body>

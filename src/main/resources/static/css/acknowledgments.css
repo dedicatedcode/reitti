@@ -626,22 +626,29 @@
 }
 
 .firework-trail {
-    position: absolute;
+    position: fixed;
     width: 4px;
-    height: 30px;
-    background: linear-gradient(to bottom, transparent, var(--trail-color));
+    background: linear-gradient(to top, var(--trail-color), transparent);
     animation: firework-trail 0.8s ease-out forwards;
-    box-shadow: 0 0 4px var(--trail-color);
+    box-shadow: 0 0 8px var(--trail-color);
+    border-radius: 2px;
 }
 
 @keyframes firework-trail {
     0% {
-        transform: translateY(100vh) scale(1);
+        opacity: 0;
+        transform: scaleY(0);
+        transform-origin: bottom;
+    }
+    50% {
         opacity: 1;
+        transform: scaleY(1);
+        transform-origin: bottom;
     }
     100% {
-        transform: translateY(0) scale(0);
         opacity: 0;
+        transform: scaleY(1);
+        transform-origin: bottom;
     }
 }
 
