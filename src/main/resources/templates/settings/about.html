@@ -179,10 +179,9 @@
         
         const trail = document.createElement('div');
         trail.className = 'firework-trail';
-        trail.style.setProperty('--trail-color', color);
         trail.style.setProperty('--trail-offset', trailOffset + 'px');
         trail.style.setProperty('--trail-duration', trailDuration + 's');
-        trail.style.left = (x - 2) + 'px';
+        trail.style.left = (x - 3) + 'px';
         trail.style.bottom = '0px';
         trail.style.height = (window.innerHeight - y + 30) + 'px';
         document.body.appendChild(trail);
