@@ -1,0 +1,18 @@
+{
+  "contributors": [
+    {
+      "name": "Max Mustermann",
+      "role": "Lead Developer",
+      "avatar": "https://github.com/maxmustermann.png",
+      "github": "maxmustermann",
+      "contributions": ["Core Development", "Architecture", "UI/UX"]
+    },
+    {
+      "name": "Jane Doe",
+      "role": "Backend Developer",
+      "avatar": "https://github.com/janedoe.png",
+      "github": "janedoe",
+      "contributions": ["API Development", "Database Design", "Performance Optimization"]
+    }
+  ]
+}

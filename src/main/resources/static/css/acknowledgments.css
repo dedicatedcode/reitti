@@ -1,0 +1,412 @@
+/* Acknowledgments Section Styles */
+.acknowledgments-section {
+    margin-top: 2rem;
+}
+
+.acknowledgments-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--primary-color, #2563eb);
+    margin-bottom: 0.5rem;
+}
+
+.acknowledgments-title i {
+    color: #ef4444;
+    font-size: 1.25rem;
+}
+
+.acknowledgments-subtitle {
+    color: var(--text-secondary, #6b7280);
+    margin-bottom: 2rem;
+    line-height: 1.6;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    color: var(--text-primary, #111827);
+}
+
+.section-title i {
+    color: var(--primary-color, #2563eb);
+}
+
+/* Contributors Section */
+.contributors-section {
+    margin-bottom: 3rem;
+}
+
+.contributors-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+}
+
+.contributor-card {
+    background: var(--card-background, #ffffff);
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.contributor-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ef4444);
+}
+
+.contributor-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+}
+
+.contributor-avatar {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 1rem;
+}
+
+.contributor-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--primary-color, #2563eb);
+}
+
+.contributor-badge {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    background: var(--primary-color, #2563eb);
+    color: white;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+}
+
+.contributor-info {
+    text-align: center;
+}
+
+.contributor-name {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--text-primary, #111827);
+}
+
+.contributor-role {
+    color: var(--text-secondary, #6b7280);
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}
+
+.contributor-contributions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.contribution-tag {
+    background: var(--primary-color-light, #dbeafe);
+    color: var(--primary-color, #2563eb);
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.contributor-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary, #6b7280);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: color 0.2s ease;
+}
+
+.contributor-link:hover {
+    color: var(--primary-color, #2563eb);
+}
+
+/* Translators Section */
+.translators-section {
+    margin-bottom: 3rem;
+}
+
+.translators-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.translator-card {
+    background: var(--card-background, #ffffff);
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.translator-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.translator-avatar {
+    position: relative;
+    width: 70px;
+    height: 70px;
+    margin: 0 auto 1rem;
+}
+
+.translator-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--border-color, #e5e7eb);
+}
+
+.completion-badge {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background: #10b981;
+    color: white;
+    border-radius: 12px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 2px solid white;
+}
+
+.completion-badge.incomplete {
+    background: #f59e0b;
+}
+
+.translator-info {
+    text-align: center;
+}
+
+.translator-name {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary, #111827);
+}
+
+.translator-languages {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.language-tag {
+    background: #f3f4f6;
+    color: #374151;
+    padding: 0.25rem 0.5rem;
+    border-radius: 16px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.completion-bar {
+    background: #f3f4f6;
+    height: 6px;
+    border-radius: 3px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.completion-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #059669);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.translator-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary, #6b7280);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: color 0.2s ease;
+}
+
+.translator-link:hover {
+    color: var(--primary-color, #2563eb);
+}
+
+/* Projects Section */
+.projects-section {
+    margin-bottom: 3rem;
+}
+
+.projects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.project-card {
+    background: var(--card-background, #ffffff);
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.project-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.project-header {
+    background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.project-category {
+    background: var(--primary-color, #2563eb);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.project-license {
+    color: var(--text-secondary, #6b7280);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.project-content {
+    padding: 1.5rem;
+}
+
+.project-name {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary, #111827);
+}
+
+.project-description {
+    color: var(--text-secondary, #6b7280);
+    line-height: 1.5;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}
+
+.project-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--primary-color, #2563eb);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.project-link:hover {
+    color: var(--primary-color-dark, #1d4ed8);
+    gap: 0.75rem;
+}
+
+/* Thank You Message */
+.thank-you-message {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 1px solid #f59e0b;
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+    margin-top: 2rem;
+}
+
+.thank-you-content {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.thank-you-icon {
+    font-size: 3rem;
+    color: #ef4444;
+    margin-bottom: 1rem;
+    animation: heartbeat 2s ease-in-out infinite;
+}
+
+@keyframes heartbeat {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.thank-you-message h4 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #92400e;
+    margin-bottom: 1rem;
+}
+
+.thank-you-message p {
+    color: #92400e;
+    line-height: 1.6;
+    font-size: 1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .contributors-grid,
+    .translators-grid,
+    .projects-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .acknowledgments-title {
+        font-size: 1.25rem;
+    }
+    
+    .section-title {
+        font-size: 1.125rem;
+    }
+    
+    .project-header {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-start;
+    }
+}

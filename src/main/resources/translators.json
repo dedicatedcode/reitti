@@ -1,0 +1,25 @@
+{
+  "translators": [
+    {
+      "name": "Anna Schmidt",
+      "languages": ["German", "English"],
+      "avatar": "https://weblate.org/avatar/anna.png",
+      "weblate": "anna_schmidt",
+      "completionPercentage": 100
+    },
+    {
+      "name": "Pierre Dubois",
+      "languages": ["French"],
+      "avatar": "https://weblate.org/avatar/pierre.png",
+      "weblate": "pierre_dubois",
+      "completionPercentage": 95
+    },
+    {
+      "name": "Marco Rossi",
+      "languages": ["Italian"],
+      "avatar": "https://weblate.org/avatar/marco.png",
+      "weblate": "marco_rossi",
+      "completionPercentage": 87
+    }
+  ]
+}

@@ -9,6 +9,7 @@
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
     <link rel="stylesheet" href="/css/main.css">
     <link rel="stylesheet" href="/css/lineicons.css">
+    <link rel="stylesheet" href="/css/acknowledgments.css">
     <script src="/js/htmx.min.js"></script>
     <script src="/js/util.js"></script>
 </head>
@@ -31,6 +32,113 @@
                     <strong th:text="#{about.build.time}">Build Time:</strong>
                     <span th:text="${buildTime}">N/A</span>
                 </p>
+            </div>
+
+            <!-- Acknowledgments Section -->
+            <div class="acknowledgments-section">
+                <h3 class="acknowledgments-title">
+                    <i class="lni lni-heart-filled"></i>
+                    <span th:text="#{about.acknowledgments.title}">Acknowledgments</span>
+                </h3>
+                <p class="acknowledgments-subtitle" th:text="#{about.acknowledgments.subtitle}">
+                    Reitti wouldn't be possible without the amazing contributions from our community and the incredible open-source projects we build upon.
+                </p>
+
+                <!-- Contributors Section -->
+                <div class="contributors-section" th:if="${!contributors.isEmpty()}">
+                    <h4 class="section-title">
+                        <i class="lni lni-users"></i>
+                        <span th:text="#{about.contributors.title}">Contributors</span>
+                    </h4>
+                    <div class="contributors-grid">
+                        <div class="contributor-card" th:each="contributor : ${contributors}">
+                            <div class="contributor-avatar">
+                                <img th:src="${contributor.avatar}" th:alt="${contributor.name}" />
+                                <div class="contributor-badge">
+                                    <i class="lni lni-github-original"></i>
+                                </div>
+                            </div>
+                            <div class="contributor-info">
+                                <h5 class="contributor-name" th:text="${contributor.name}">Name</h5>
+                                <p class="contributor-role" th:text="${contributor.role}">Role</p>
+                                <div class="contributor-contributions">
+                                    <span class="contribution-tag" th:each="contribution : ${contributor.contributions}" th:text="${contribution}">Contribution</span>
+                                </div>
+                                <a th:href="'https://github.com/' + ${contributor.github}" class="contributor-link" target="_blank">
+                                    <i class="lni lni-github-original"></i>
+                                    <span th:text="${contributor.github}">GitHub</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Translators Section -->
+                <div class="translators-section" th:if="${!translators.isEmpty()}">
+                    <h4 class="section-title">
+                        <i class="lni lni-world"></i>
+                        <span th:text="#{about.translators.title}">Translators</span>
+                    </h4>
+                    <div class="translators-grid">
+                        <div class="translator-card" th:each="translator : ${translators}">
+                            <div class="translator-avatar">
+                                <img th:src="${translator.avatar}" th:alt="${translator.name}" />
+                                <div class="completion-badge" th:classappend="${translator.completionPercentage == 100} ? 'complete' : 'incomplete'">
+                                    <span th:text="${translator.completionPercentage} + '%'">100%</span>
+                                </div>
+                            </div>
+                            <div class="translator-info">
+                                <h5 class="translator-name" th:text="${translator.name}">Name</h5>
+                                <div class="translator-languages">
+                                    <span class="language-tag" th:each="language : ${translator.languages}" th:text="${language}">Language</span>
+                                </div>
+                                <div class="completion-bar">
+                                    <div class="completion-fill" th:style="'width: ' + ${translator.completionPercentage} + '%'"></div>
+                                </div>
+                                <a th:href="'https://weblate.org/user/' + ${translator.weblate}" class="translator-link" target="_blank">
+                                    <i class="lni lni-world"></i>
+                                    <span>Weblate Profile</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Open Source Projects Section -->
+                <div class="projects-section" th:if="${!projects.isEmpty()}">
+                    <h4 class="section-title">
+                        <i class="lni lni-code"></i>
+                        <span th:text="#{about.projects.title}">Open Source Projects</span>
+                    </h4>
+                    <div class="projects-grid">
+                        <div class="project-card" th:each="project : ${projects}">
+                            <div class="project-header">
+                                <div class="project-category" th:text="${project.category}">Category</div>
+                                <div class="project-license" th:text="${project.license}">License</div>
+                            </div>
+                            <div class="project-content">
+                                <h5 class="project-name" th:text="${project.name}">Project Name</h5>
+                                <p class="project-description" th:text="${project.description}">Description</p>
+                                <a th:href="${project.url}" class="project-link" target="_blank">
+                                    <i class="lni lni-link"></i>
+                                    <span th:text="#{about.projects.visit}">Visit Project</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Thank You Message -->
+                <div class="thank-you-message">
+                    <div class="thank-you-content">
+                        <i class="lni lni-heart-filled thank-you-icon"></i>
+                        <h4 th:text="#{about.thankyou.title}">Thank You!</h4>
+                        <p th:text="#{about.thankyou.message}">
+                            Every contribution, no matter how small, helps make Reitti better for everyone. 
+                            We're grateful for your support and dedication to the open-source community.
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
