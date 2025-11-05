@@ -60,10 +60,6 @@
                             </div>
                             <div class="contributor-info">
                                 <h5 class="contributor-name" th:text="${contributor.name}">Name</h5>
-                                <p class="contributor-role" th:text="${contributor.role}">Role</p>
-                                <div class="contributor-contributions">
-                                    <span class="contribution-tag" th:each="contribution : ${contributor.contributions}" th:text="${contribution}">Contribution</span>
-                                </div>
                                 <a th:href="'https://github.com/' + ${contributor.github}" class="contributor-link" target="_blank">
                                     <i class="lni lni-github-original"></i>
                                     <span th:text="${contributor.github}">GitHub</span>
@@ -129,7 +125,7 @@
                 </div>
 
                 <!-- Thank You Message -->
-                <div class="thank-you-message">
+                <div class="thank-you-message" onclick="createFireworks()">
                     <div class="thank-you-content">
                         <i class="lni lni-heart thank-you-icon"></i>
                         <h4 th:text="#{about.thankyou.title}">Thank You!</h4>
@@ -145,5 +141,71 @@
 </div>
 <script th:inline="javascript">
     window.userSettings = /*[[${userSettings}]]*/ {}
+    
+    function createFireworks() {
+        const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#f0932b', '#eb4d4b', '#6c5ce7', '#a29bfe'];
+        
+        // Create multiple fireworks
+        for (let i = 0; i < 8; i++) {
+            setTimeout(() => {
+                createSingleFirework(colors[Math.floor(Math.random() * colors.length)]);
+            }, i * 200);
+        }
+        
+        // Create expanding fireworks after initial burst
+        setTimeout(() => {
+            for (let i = 0; i < 15; i++) {
+                setTimeout(() => {
+                    createSingleFirework(colors[Math.floor(Math.random() * colors.length)]);
+                }, i * 100);
+            }
+        }, 2000);
+    }
+    
+    function createSingleFirework(color) {
+        const firework = document.createElement('div');
+        firework.className = 'firework';
+        
+        // Random position
+        const x = Math.random() * window.innerWidth;
+        const y = Math.random() * (window.innerHeight * 0.6) + (window.innerHeight * 0.2);
+        
+        firework.style.left = x + 'px';
+        firework.style.top = y + 'px';
+        
+        // Create trail
+        const trail = document.createElement('div');
+        trail.className = 'firework-trail';
+        trail.style.setProperty('--trail-color', color);
+        trail.style.left = x + 'px';
+        trail.style.top = y + 'px';
+        document.body.appendChild(trail);
+        
+        // Create particles
+        const particleCount = 20;
+        for (let i = 0; i < particleCount; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'firework-particle';
+            particle.style.backgroundColor = color;
+            
+            const angle = (i / particleCount) * Math.PI * 2;
+            const distance = 50 + Math.random() * 100;
+            const dx = Math.cos(angle) * distance;
+            const dy = Math.sin(angle) * distance;
+            
+            particle.style.setProperty('--dx', dx + 'px');
+            particle.style.setProperty('--dy', dy + 'px');
+            
+            firework.appendChild(particle);
+        }
+        
+        document.body.appendChild(firework);
+        
+        // Clean up
+        setTimeout(() => {
+            if (firework.parentNode) firework.parentNode.removeChild(firework);
+            if (trail.parentNode) trail.parentNode.removeChild(trail);
+        }, 2000);
+    }
 </script>
 </body>
