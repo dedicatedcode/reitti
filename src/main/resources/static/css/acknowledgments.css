@@ -267,14 +267,11 @@
     height: 100%;
     border-radius: 50%;
     object-fit: cover;
-    border: 3px solid var(--color-highlight);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
     transition: all 0.3s ease;
 }
 
 .translator-card:hover .translator-avatar img {
     transform: scale(1.1);
-    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.4);
 }
 
 .completion-badge {
