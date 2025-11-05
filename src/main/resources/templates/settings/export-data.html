@@ -66,13 +66,15 @@
 
                         <div style="margin-left: auto;">
                             <button type="button" 
-                                    class="btn" 
-                                    th:text="#{export.gpx.button}"
+                                    class="btn"
                                     data-gpx-download
-                                    onclick="handleGpxDownload(this)">Export as GPX</button>
-                            <div id="gpx-loading" style="display: none; margin-left: 10px;">
-                                <div style="display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: var(--color-accent); animation: spin 1s ease-in-out infinite;"></div>
-                            </div>
+                                    onclick="handleGpxDownload(this)">
+                                <span th:text="#{export.gpx.button}">Export as GPX</span>
+                                <div id="gpx-loading" style="display: none; margin-left: 10px;">
+                                    <div style="display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: var(--color-accent); animation: spin 1s ease-in-out infinite;"></div>
+                                </div>
+                            </button>
+
                         </div>
                     </div>
                 </div>

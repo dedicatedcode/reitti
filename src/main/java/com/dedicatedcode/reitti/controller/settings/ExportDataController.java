@@ -94,14 +94,16 @@ public class ExportDataController {
         try {
             LocalDate start = LocalDate.parse(startDate);
             LocalDate end = LocalDate.parse(endDate);
-            
+            ZonedDateTime startDateTime = start.atStartOfDay(timezone);
+            ZonedDateTime endDateTime = end.plusDays(1).atStartOfDay(timezone);
+
             String filename = String.format("location_data_%s_to_%s.gpx", 
                 start.format(DateTimeFormatter.ISO_LOCAL_DATE),
                 end.format(DateTimeFormatter.ISO_LOCAL_DATE));
             
             StreamingResponseBody stream = outputStream -> {
                 try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
-                    gpxExportService.generateGpxContentStreaming(user, start, end, writer);
+                    gpxExportService.generateGpxContentStreaming(user, startDateTime.toInstant(), endDateTime.toInstant(), writer);
                 } catch (Exception e) {
                     throw new RuntimeException("Error generating GPX file", e);
                 }
