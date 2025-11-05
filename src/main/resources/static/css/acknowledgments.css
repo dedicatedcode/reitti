@@ -690,23 +690,23 @@
 @keyframes firework-trail {
     0% {
         opacity: 0;
-        transform: scaleY(0);
+        transform: scaleY(0) translateX(0px);
         filter: brightness(1.5);
     }
     20% {
         opacity: 1;
-        transform: scaleY(0.2);
+        transform: scaleY(0.2) translateX(var(--arc-offset, 0px));
         filter: brightness(1.2);
     }
     80% {
         opacity: 1;
-        transform: scaleY(1);
+        transform: scaleY(1) translateX(var(--arc-offset, 0px));
         filter: brightness(1);
     }
     100% {
-        opacity: 0.3;
-        transform: scaleY(1);
-        filter: brightness(0.8);
+        opacity: 0.9;
+        transform: scaleY(1) translateX(var(--arc-offset, 0px));
+        filter: brightness(1);
     }
 }
 

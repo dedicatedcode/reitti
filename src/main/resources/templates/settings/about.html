@@ -173,12 +173,14 @@
         firework.style.left = x + 'px';
         firework.style.top = y + 'px';
         
-        // Create straight rocket trail
+        // Create arced rocket trail
         const trailDuration = 1.0 + Math.random() * 0.6; // 1.0-1.6s
+        const arcOffset = (Math.random() - 0.5) * 40; // Small arc -20px to +20px
         
         const trail = document.createElement('div');
         trail.className = 'firework-trail';
         trail.style.setProperty('--trail-duration', trailDuration + 's');
+        trail.style.setProperty('--arc-offset', arcOffset + 'px');
         trail.style.left = (x - 1.5) + 'px';
         trail.style.bottom = '0px';
         trail.style.height = (window.innerHeight - y + 20) + 'px';
@@ -189,13 +191,16 @@
         setTimeout(() => {
             createExplosion(firework, color, x, y);
             document.body.appendChild(firework);
+            
+            // Start fading trail immediately after explosion
+            trail.style.animation = `firework-trail-fade 0.5s ease-out forwards`;
         }, explosionDelay);
         
         // Clean up
         setTimeout(() => {
             if (firework.parentNode) firework.parentNode.removeChild(firework);
             if (trail.parentNode) trail.parentNode.removeChild(trail);
-        }, explosionDelay + 5000);
+        }, explosionDelay + 2000); // Reduced from 5000 to 2000
     }
     
     function createExplosion(firework, color, x, y) {
