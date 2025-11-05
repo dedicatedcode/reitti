@@ -205,7 +205,7 @@
         const explosionTypes = ['circle', 'heart', 'star', 'burst', 'ring'];
         const explosionType = explosionTypes[Math.floor(Math.random() * explosionTypes.length)];
         
-        let particleCount = 20;
+        let particleCount = 50;
         let particles = [];
         
         switch (explosionType) {
@@ -213,16 +213,16 @@
                 particles = createCircleExplosion(particleCount);
                 break;
             case 'heart':
-                particles = createHeartExplosion(16);
+                particles = createHeartExplosion(particleCount);
                 break;
             case 'star':
-                particles = createStarExplosion(15);
+                particles = createStarExplosion(particleCount);
                 break;
             case 'burst':
-                particles = createBurstExplosion(25);
+                particles = createBurstExplosion(particleCount);
                 break;
             case 'ring':
-                particles = createRingExplosion(18);
+                particles = createRingExplosion(particleCount);
                 break;
         }
         

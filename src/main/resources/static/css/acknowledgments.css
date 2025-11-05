@@ -6,10 +6,11 @@
 .acknowledgments-section {
     margin-top: 2rem;
     background: linear-gradient(135deg, var(--color-background-dark) 0%, var(--color-background-dark-light) 100%);
-    border-radius: 20px;
+    border-radius: 8px;
     padding: 2rem;
     position: relative;
     overflow: hidden;
+    border: 1px solid var(--color-highlight);
 }
 
 .acknowledgments-section::before {
