@@ -86,7 +86,7 @@ public class ExportDataController {
         return "settings/export-data :: data-content";
     }
     
-    @PostMapping("/gpx")
+    @GetMapping("/gpx")
     public ResponseEntity<StreamingResponseBody> exportGpx(@AuthenticationPrincipal User user,
                                                            @RequestParam String startDate,
                                                            @RequestParam String endDate,

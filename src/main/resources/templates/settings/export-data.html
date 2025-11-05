@@ -64,11 +64,17 @@
                         </div>
 
                         <div style="margin-left: auto;">
-                            <form action="/settings/export-data/gpx" method="post" style="margin: 0;">
-                                <input type="hidden" name="startDate" th:value="${startDate}">
-                                <input type="hidden" name="endDate" th:value="${endDate}">
-                                <button type="submit" class="btn" th:text="#{export.gpx.button}">Export as GPX</button>
-                            </form>
+                            <button type="button" 
+                                    class="btn" 
+                                    th:text="#{export.gpx.button}"
+                                    hx-get="/settings/export-data/gpx"
+                                    hx-include="#startDate, #endDate"
+                                    hx-vals='js:{"timezone": getUserTimezone()}'
+                                    hx-indicator="#gpx-loading"
+                                    hx-trigger="click">Export as GPX</button>
+                            <div id="gpx-loading" style="display: none; margin-left: 10px;">
+                                <div style="display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: var(--color-accent); animation: spin 1s ease-in-out infinite;"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
