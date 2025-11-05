@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="/css/acknowledgments.css">
     <script src="/js/htmx.min.js"></script>
     <script src="/js/util.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fireworks-js@2.x/dist/index.umd.js"></script>
+    <script src="/js/fireworks.min.js"></script>
 </head>
 <body class="settings-page">
 <div class="settings-container">
@@ -146,73 +146,22 @@
 
 <script th:inline="javascript">
     window.userSettings = /*[[${userSettings}]]*/ {}
-    
-    let fireworks = null;
-    
+
+    const container = document.getElementById('fireworks-container');
+    let fireworks = new Fireworks.default(container, {
+        particles: 100,
+        explosion: 15,
+    });
+    let running = false;
     function startFireworks() {
-        const container = document.getElementById('fireworks-container');
-        
-        if (fireworks) {
+        if (running) {
             fireworks.stop();
+            running = false;
+        } else {
+            fireworks.start();
+            running = true;
+
         }
-        
-        fireworks = new Fireworks.default(container, {
-            opacity: 0.5,
-            acceleration: 1.05,
-            friction: 0.97,
-            gravity: 1.5,
-            particles: 50,
-            traceLength: 3,
-            traceSpeed: 10,
-            explosion: 5,
-            intensity: 30,
-            flickering: 50,
-            lineStyle: 'round',
-            hue: {
-                min: 0,
-                max: 360
-            },
-            delay: {
-                min: 30,
-                max: 60
-            },
-            rocketsPoint: {
-                min: 50,
-                max: 50
-            },
-            lineWidth: {
-                explosion: {
-                    min: 1,
-                    max: 3
-                },
-                trace: {
-                    min: 1,
-                    max: 2
-                }
-            },
-            brightness: {
-                min: 50,
-                max: 80
-            },
-            decay: {
-                min: 0.015,
-                max: 0.03
-            },
-            mouse: {
-                click: false,
-                move: false,
-                max: 1
-            }
-        });
-        
-        fireworks.start();
-        
-        // Stop fireworks after 5 seconds
-        setTimeout(() => {
-            if (fireworks) {
-                fireworks.stop();
-            }
-        }, 5000);
     }
 </script>
 </body>
