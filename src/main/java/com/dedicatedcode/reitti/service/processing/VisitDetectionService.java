@@ -208,29 +208,50 @@ public class VisitDetectionService {
     }
 
     private GeoPoint weightedCenter(List<RawLocationPoint> clusterPoints) {
-        //this needs to be changed, a user can never be on the center of all these clustere points. Actually the clustered points are representing the stay but the user has to be on the most likeley of them. Most likely is problem that part with the most parts and then snapped to one of them. AI!
-
-
-        // Calculate the centroid of the cluster using weighted average based on accuracy
-        // Points with better accuracy (lower meters value) get higher weight
-        double weightSum = 0;
-        double weightedLatSum = 0;
-        double weightedLngSum = 0;
-
-        for (RawLocationPoint point : clusterPoints) {
-            // Use inverse of accuracy as weight (higher accuracy = higher weight)
-            double weight = point.getAccuracyMeters() != null && point.getAccuracyMeters() > 0
-                    ? 1.0 / point.getAccuracyMeters()
-                    : 1.0; // default weight if accuracy is null or zero
-
-            weightSum += weight;
-            weightedLatSum += point.getLatitude() * weight;
-            weightedLngSum += point.getLongitude() * weight;
+        // Find the most likely actual location by identifying the point with highest local density
+        // and snapping to the nearest actual measurement point
+        
+        RawLocationPoint bestPoint = null;
+        double maxDensityScore = 0;
+        
+        // For each point, calculate a density score based on nearby points and accuracy
+        for (RawLocationPoint candidate : clusterPoints) {
+            double densityScore = 0;
+            
+            for (RawLocationPoint neighbor : clusterPoints) {
+                if (candidate == neighbor) continue;
+                
+                double distance = GeoUtils.distanceInMeters(candidate, neighbor);
+                double accuracy = candidate.getAccuracyMeters() != null && candidate.getAccuracyMeters() > 0 
+                    ? candidate.getAccuracyMeters() 
+                    : 50.0; // default accuracy if null
+                
+                // Points within accuracy radius contribute to density
+                // Closer points and better accuracy contribute more
+                if (distance <= accuracy * 2) {
+                    double proximityWeight = Math.max(0, 1.0 - (distance / (accuracy * 2)));
+                    double accuracyWeight = 1.0 / accuracy;
+                    densityScore += proximityWeight * accuracyWeight;
+                }
+            }
+            
+            // Add self-contribution based on accuracy
+            densityScore += 1.0 / (candidate.getAccuracyMeters() != null && candidate.getAccuracyMeters() > 0 
+                ? candidate.getAccuracyMeters() 
+                : 50.0);
+            
+            if (densityScore > maxDensityScore) {
+                maxDensityScore = densityScore;
+                bestPoint = candidate;
+            }
         }
-
-        double latCentroid = weightedLatSum / weightSum;
-        double lngCentroid = weightedLngSum / weightSum;
-        return new GeoPoint(latCentroid, lngCentroid);
+        
+        // Fallback to first point if no best point found
+        if (bestPoint == null) {
+            bestPoint = clusterPoints.getFirst();
+        }
+        
+        return new GeoPoint(bestPoint.getLatitude(), bestPoint.getLongitude());
     }
 
     private Visit createVisit(Double longitude, Double latitude, StayPoint stayPoint) {
