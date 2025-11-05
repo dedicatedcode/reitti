@@ -610,8 +610,12 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    animation: firework-explosion 1.5s ease-out forwards;
+    animation: firework-explosion var(--duration, 2s) var(--easing, ease-out) forwards;
     box-shadow: 0 0 6px currentColor;
+}
+
+.firework-particle.falling {
+    animation: firework-fall 3s ease-in forwards;
 }
 
 @keyframes firework-explosion {
@@ -619,8 +623,22 @@
         transform: scale(0) translate(0, 0);
         opacity: 1;
     }
+    70% {
+        opacity: 1;
+    }
     100% {
         transform: scale(1) translate(var(--dx), var(--dy));
+        opacity: 0.3;
+    }
+}
+
+@keyframes firework-fall {
+    0% {
+        transform: scale(1) translate(var(--dx), var(--dy));
+        opacity: 0.3;
+    }
+    100% {
+        transform: scale(0.5) translate(var(--dx), calc(var(--dy) + 200px));
         opacity: 0;
     }
 }
@@ -629,26 +647,28 @@
     position: fixed;
     width: 4px;
     background: linear-gradient(to top, var(--trail-color), transparent);
-    animation: firework-trail 0.8s ease-out forwards;
+    animation: firework-trail var(--trail-duration, 1.2s) ease-in-out forwards;
     box-shadow: 0 0 8px var(--trail-color);
     border-radius: 2px;
+    transform-origin: bottom;
 }
 
 @keyframes firework-trail {
     0% {
         opacity: 0;
-        transform: scaleY(0);
-        transform-origin: bottom;
+        transform: scaleY(0) translateX(var(--trail-offset, 0px));
     }
-    50% {
+    30% {
+        opacity: 0.8;
+        transform: scaleY(0.3) translateX(var(--trail-offset, 0px));
+    }
+    70% {
         opacity: 1;
-        transform: scaleY(1);
-        transform-origin: bottom;
+        transform: scaleY(1) translateX(var(--trail-offset, 0px));
     }
     100% {
         opacity: 0;
-        transform: scaleY(1);
-        transform-origin: bottom;
+        transform: scaleY(1) translateX(var(--trail-offset, 0px));
     }
 }
 

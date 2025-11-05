@@ -166,50 +166,152 @@
         const firework = document.createElement('div');
         firework.className = 'firework';
         
-        // Random position for explosion
-        const x = Math.random() * window.innerWidth;
-        const y = Math.random() * (window.innerHeight * 0.6) + (window.innerHeight * 0.2);
+        // Random position for explosion with more spread
+        const x = Math.random() * (window.innerWidth * 1.2) - (window.innerWidth * 0.1);
+        const y = Math.random() * (window.innerHeight * 0.5) + (window.innerHeight * 0.1);
         
         firework.style.left = x + 'px';
         firework.style.top = y + 'px';
         
-        // Create trail that starts from bottom and goes to explosion point
+        // Create trail with random offset for spread
+        const trailOffset = (Math.random() - 0.5) * 100;
+        const trailDuration = 0.8 + Math.random() * 0.8; // 0.8-1.6s
+        
         const trail = document.createElement('div');
         trail.className = 'firework-trail';
         trail.style.setProperty('--trail-color', color);
-        trail.style.left = (x - 2) + 'px'; // Center the trail
-        trail.style.bottom = '0px'; // Start from bottom
-        trail.style.height = (window.innerHeight - y + 30) + 'px'; // Go to explosion point
+        trail.style.setProperty('--trail-offset', trailOffset + 'px');
+        trail.style.setProperty('--trail-duration', trailDuration + 's');
+        trail.style.left = (x - 2) + 'px';
+        trail.style.bottom = '0px';
+        trail.style.height = (window.innerHeight - y + 30) + 'px';
         document.body.appendChild(trail);
         
         // Delay explosion until trail reaches the top
+        const explosionDelay = trailDuration * 700; // 70% of trail duration
         setTimeout(() => {
-            // Create particles
-            const particleCount = 20;
-            for (let i = 0; i < particleCount; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'firework-particle';
-                particle.style.backgroundColor = color;
-                
-                const angle = (i / particleCount) * Math.PI * 2;
-                const distance = 50 + Math.random() * 100;
-                const dx = Math.cos(angle) * distance;
-                const dy = Math.sin(angle) * distance;
-                
-                particle.style.setProperty('--dx', dx + 'px');
-                particle.style.setProperty('--dy', dy + 'px');
-                
-                firework.appendChild(particle);
-            }
-            
+            createExplosion(firework, color, x, y);
             document.body.appendChild(firework);
-        }, 600); // Delay to let trail animate first
+        }, explosionDelay);
         
         // Clean up
         setTimeout(() => {
             if (firework.parentNode) firework.parentNode.removeChild(firework);
             if (trail.parentNode) trail.parentNode.removeChild(trail);
-        }, 2500);
+        }, explosionDelay + 5000);
+    }
+    
+    function createExplosion(firework, color, x, y) {
+        const explosionTypes = ['circle', 'heart', 'star', 'burst', 'ring'];
+        const explosionType = explosionTypes[Math.floor(Math.random() * explosionTypes.length)];
+        
+        let particleCount = 20;
+        let particles = [];
+        
+        switch (explosionType) {
+            case 'circle':
+                particles = createCircleExplosion(particleCount);
+                break;
+            case 'heart':
+                particles = createHeartExplosion(16);
+                break;
+            case 'star':
+                particles = createStarExplosion(15);
+                break;
+            case 'burst':
+                particles = createBurstExplosion(25);
+                break;
+            case 'ring':
+                particles = createRingExplosion(18);
+                break;
+        }
+        
+        particles.forEach((pos, i) => {
+            const particle = document.createElement('div');
+            particle.className = 'firework-particle';
+            particle.style.backgroundColor = color;
+            
+            const duration = 1.5 + Math.random() * 1; // 1.5-2.5s
+            const easing = Math.random() > 0.5 ? 'ease-out' : 'cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            
+            particle.style.setProperty('--dx', pos.dx + 'px');
+            particle.style.setProperty('--dy', pos.dy + 'px');
+            particle.style.setProperty('--duration', duration + 's');
+            particle.style.setProperty('--easing', easing);
+            
+            firework.appendChild(particle);
+            
+            // Make particles fall after explosion
+            setTimeout(() => {
+                particle.classList.add('falling');
+            }, duration * 1000);
+        });
+    }
+    
+    function createCircleExplosion(count) {
+        const particles = [];
+        for (let i = 0; i < count; i++) {
+            const angle = (i / count) * Math.PI * 2;
+            const distance = 60 + Math.random() * 80;
+            particles.push({
+                dx: Math.cos(angle) * distance,
+                dy: Math.sin(angle) * distance
+            });
+        }
+        return particles;
+    }
+    
+    function createHeartExplosion(count) {
+        const particles = [];
+        for (let i = 0; i < count; i++) {
+            const t = (i / count) * Math.PI * 2;
+            const scale = 40;
+            const dx = scale * (16 * Math.pow(Math.sin(t), 3));
+            const dy = -scale * (13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+            particles.push({ dx, dy });
+        }
+        return particles;
+    }
+    
+    function createStarExplosion(count) {
+        const particles = [];
+        const points = 5;
+        for (let i = 0; i < count; i++) {
+            const angle = (i / count) * Math.PI * 2;
+            const pointIndex = Math.floor((angle / (Math.PI * 2)) * points * 2);
+            const distance = (pointIndex % 2 === 0) ? 80 : 40; // Alternating distances for star shape
+            particles.push({
+                dx: Math.cos(angle) * distance,
+                dy: Math.sin(angle) * distance
+            });
+        }
+        return particles;
+    }
+    
+    function createBurstExplosion(count) {
+        const particles = [];
+        for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 30 + Math.random() * 120;
+            particles.push({
+                dx: Math.cos(angle) * distance,
+                dy: Math.sin(angle) * distance
+            });
+        }
+        return particles;
+    }
+    
+    function createRingExplosion(count) {
+        const particles = [];
+        for (let i = 0; i < count; i++) {
+            const angle = (i / count) * Math.PI * 2;
+            const distance = 70 + Math.random() * 20; // Tight ring
+            particles.push({
+                dx: Math.cos(angle) * distance,
+                dy: Math.sin(angle) * distance
+            });
+        }
+        return particles;
     }
 </script>
 </body>
