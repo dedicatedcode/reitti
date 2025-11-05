@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.repository;
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
+import com.dedicatedcode.reitti.model.processing.RecalculationState;
 import com.dedicatedcode.reitti.model.security.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,7 +42,7 @@ class VisitDetectionParametersJdbcServiceTest {
                 24L, 1800L, 50L
         );
         DetectionParameter detectionParameter = new DetectionParameter(
-                null, visitDetection, visitMerging, Instant.now(), false
+                null, visitDetection, visitMerging, Instant.now(), RecalculationState.DONE
         );
 
         // When
@@ -73,7 +74,7 @@ class VisitDetectionParametersJdbcServiceTest {
                 12L, 900L, 25L
         );
         DetectionParameter detectionParameter = new DetectionParameter(
-                null, visitDetection, visitMerging, null, false
+                null, visitDetection, visitMerging, null, RecalculationState.DONE
         );
 
         // When
@@ -95,7 +96,7 @@ class VisitDetectionParametersJdbcServiceTest {
                 24L, 1800L, 50L
         );
         DetectionParameter initialConfig = new DetectionParameter(
-                null, initialVisitDetection, initialVisitMerging, Instant.now(), false
+                null, initialVisitDetection, initialVisitMerging, Instant.now(), RecalculationState.DONE
         );
         visitDetectionParametersJdbcService.saveConfiguration(testUser, initialConfig);
 
@@ -111,7 +112,7 @@ class VisitDetectionParametersJdbcServiceTest {
         );
         Instant newValidSince = Instant.now().plusSeconds(3600).truncatedTo(ChronoUnit.MILLIS);
         DetectionParameter updatedConfig = new DetectionParameter(
-                savedConfig.getId(), updatedVisitDetection, updatedVisitMerging, newValidSince, false
+                savedConfig.getId(), updatedVisitDetection, updatedVisitMerging, newValidSince, RecalculationState.DONE
         );
         visitDetectionParametersJdbcService.updateConfiguration(updatedConfig);
 
@@ -141,7 +142,7 @@ class VisitDetectionParametersJdbcServiceTest {
                 24L, 1800L, 50L
         );
         DetectionParameter detectionParameter = new DetectionParameter(
-                null, visitDetection, visitMerging, Instant.now(), false
+                null, visitDetection, visitMerging, Instant.now(), RecalculationState.DONE
         );
         visitDetectionParametersJdbcService.saveConfiguration(testUser, detectionParameter);
 
@@ -166,7 +167,7 @@ class VisitDetectionParametersJdbcServiceTest {
                 24L, 1800L, 50L
         );
         DetectionParameter detectionParameter = new DetectionParameter(
-                null, visitDetection, visitMerging, null, false
+                null, visitDetection, visitMerging, null, RecalculationState.DONE
         );
         visitDetectionParametersJdbcService.saveConfiguration(testUser, detectionParameter);
 
@@ -196,10 +197,10 @@ class VisitDetectionParametersJdbcServiceTest {
         );
 
         // Save configurations in different order
-        DetectionParameter config1 = new DetectionParameter(null, visitDetection, visitMerging, now, false);
-        DetectionParameter config2 = new DetectionParameter(null, visitDetection, visitMerging, later, false);
-        DetectionParameter config3 = new DetectionParameter(null, visitDetection, visitMerging, earlier, false);
-        DetectionParameter config4 = new DetectionParameter(null, visitDetection, visitMerging, null, false);
+        DetectionParameter config1 = new DetectionParameter(null, visitDetection, visitMerging, now, RecalculationState.DONE);
+        DetectionParameter config2 = new DetectionParameter(null, visitDetection, visitMerging, later, RecalculationState.DONE);
+        DetectionParameter config3 = new DetectionParameter(null, visitDetection, visitMerging, earlier, RecalculationState.DONE);
+        DetectionParameter config4 = new DetectionParameter(null, visitDetection, visitMerging, null, RecalculationState.DONE);
 
         visitDetectionParametersJdbcService.saveConfiguration(testUser, config1);
         visitDetectionParametersJdbcService.saveConfiguration(testUser, config2);

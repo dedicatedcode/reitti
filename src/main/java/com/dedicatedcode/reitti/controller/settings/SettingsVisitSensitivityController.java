@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.controller.settings;
 import com.dedicatedcode.reitti.dto.ConfigurationForm;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
+import com.dedicatedcode.reitti.model.processing.RecalculationState;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.VisitDetectionPreviewService;
@@ -24,7 +25,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 @Controller
@@ -128,14 +128,18 @@ public class SettingsVisitSensitivityController {
                 model.addAttribute("errorMessage", validationError);
             } else {
                 if (config.getId() == null) {
-                    config = config.withNeedsRecalculation(this.rawLocationPointJdbcService.containsDataAfter(user, config.getValidSince()));
+                    if (this.rawLocationPointJdbcService.containsDataAfter(user, config.getValidSince())) {
+                        config = config.withRecalculationState(RecalculationState.NEEDED);
+                    }
                     configurationService.saveConfiguration(user, config);
                 } else {
                     // Existing configuration - check if it has changed
                     DetectionParameter originalConfig = configurationService.findById(config.getId(), user)
                             .orElseThrow(() -> new IllegalArgumentException("Configuration not found"));
+                    if (form.hasConfigurationChanged(originalConfig)) {
+                        config = config.withRecalculationState(RecalculationState.NEEDED);
 
-                    config = config.withNeedsRecalculation(form.hasConfigurationChanged(originalConfig));
+                    }
                     configurationService.updateConfiguration(config);
                 }
                 model.addAttribute("successMessage", "Configuration saved successfully. Changes will apply to new incoming data.");
@@ -158,7 +162,7 @@ public class SettingsVisitSensitivityController {
     }
 
     private boolean calculateNeedsConfiguration(DetectionParameter config) {
-        return config.needsRecalculation();
+        return config.getRecalculationState() == RecalculationState.NEEDED;
     }
 
     @DeleteMapping("/{id}")
@@ -179,7 +183,7 @@ public class SettingsVisitSensitivityController {
 
         DetectionParameter newLatest = this.configurationService.findCurrent(user, config.getValidSince());
         if (this.rawLocationPointJdbcService.containsData(user, newLatest.getValidSince(), config.getValidSince())) {
-            this.configurationService.updateConfiguration(newLatest.withNeedsRecalculation(true));
+            this.configurationService.updateConfiguration(newLatest.withRecalculationState(RecalculationState.NEEDED));
         }
         detectionParameters = configurationService.findAllConfigurationsForUser(user);
         model.addAttribute("configurations", detectionParameters);
@@ -215,7 +219,7 @@ public class SettingsVisitSensitivityController {
     public String dismissRecalculation(@AuthenticationPrincipal User user, Model model) {
         try {
             this.configurationService.findAllConfigurationsForUser(user)
-                    .forEach(config -> this.configurationService.updateConfiguration(config.withNeedsRecalculation(false)));
+                    .forEach(config -> this.configurationService.updateConfiguration(config.withRecalculationState(RecalculationState.DONE)));
             model.addAttribute("successMessage", messageSource.getMessage("visit.sensitivity.recalculation.dismissed", null, LocaleContextHolder.getLocale()));
         } catch (Exception e) {
             model.addAttribute("errorMessage", messageSource.getMessage("visit.sensitivity.recalculation.error", new Object[]{e.getMessage()}, LocaleContextHolder.getLocale()));
@@ -256,12 +260,13 @@ public class SettingsVisitSensitivityController {
         List<DetectionParameter> allConfigurationsForUser = this.configurationService.findAllConfigurationsForUser(user);
 
         List<DetectionParameter> needsRecalculation = allConfigurationsForUser.stream()
-                .filter(DetectionParameter::needsRecalculation).toList().reversed();
+                .filter(dp -> dp.getRecalculationState() == RecalculationState.NEEDED).toList().reversed();
 
         if (needsRecalculation.isEmpty()) {
             throw new IllegalArgumentException("No configuration needs recalculation");
         }
 
+        needsRecalculation.forEach(dp -> this.configurationService.updateConfiguration(dp.withRecalculationState(RecalculationState.RUNNING)));
         CompletableFuture.runAsync(() -> {
             log.debug("Clearing all time range");
             try {
@@ -270,7 +275,7 @@ public class SettingsVisitSensitivityController {
                 visitJdbcService.deleteAllForUser(user);
                 significantPlaceJdbcService.deleteForUser(user);
                 rawLocationPointJdbcService.markAllAsUnprocessedForUser(user);
-                allConfigurationsForUser.forEach(config -> this.configurationService.updateConfiguration(config.withNeedsRecalculation(false)));
+                allConfigurationsForUser.forEach(config -> this.configurationService.updateConfiguration(config.withRecalculationState(RecalculationState.DONE)));
                 log.debug("Starting recalculation of all configurations");
                 processingPipelineTrigger.start();
             } catch (Exception e) {

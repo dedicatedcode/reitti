@@ -528,9 +528,9 @@
         rgba(245, 222, 179, 0.3) 0%, 
         rgba(245, 222, 179, 0.1) 50%, 
         rgba(255, 107, 107, 0.1) 100%);
-    border: 3px solid rgba(245, 222, 179, 0.4);
-    border-radius: 25px;
-    padding: 3rem;
+    border: 2px solid rgba(245, 222, 179, 0.4);
+    border-radius: 8px;
+    padding: 1rem;
     text-align: center;
     margin-top: 3rem;
     position: relative;

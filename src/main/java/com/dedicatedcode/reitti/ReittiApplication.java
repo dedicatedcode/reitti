@@ -13,3 +13,4 @@ public class ReittiApplication {
         SpringApplication.run(ReittiApplication.class, args);
     }
 }
+

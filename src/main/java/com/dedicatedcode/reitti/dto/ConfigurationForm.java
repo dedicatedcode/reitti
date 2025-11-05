@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.dto;
 
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
+import com.dedicatedcode.reitti.model.processing.RecalculationState;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.*;
@@ -217,6 +218,6 @@ public class ConfigurationForm {
         
         Instant validSinceInstant = validSince != null ? ZonedDateTime.of(validSince.atStartOfDay(), timezone).toInstant() : null;
         
-        return new DetectionParameter(getId(), visitDetection, visitMerging, validSinceInstant, true);
+        return new DetectionParameter(getId(), visitDetection, visitMerging, validSinceInstant, RecalculationState.NEEDED);
     }
 }
