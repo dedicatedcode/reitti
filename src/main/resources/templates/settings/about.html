@@ -70,36 +70,6 @@
                     </div>
                 </div>
 
-                <!-- Translators Section -->
-                <div class="translators-section" th:if="${!translators.isEmpty()}">
-                    <h4 class="section-title">
-                        <i class="lni lni-world"></i>
-                        <span th:text="#{about.translators.title}">Translators</span>
-                    </h4>
-                    <div class="translators-grid">
-                        <div class="translator-card" th:each="translator : ${translators}">
-                            <div class="translator-avatar">
-                                <img th:src="${translator.avatar}" th:alt="${translator.name}" />
-                                <div class="completion-badge" th:classappend="${translator.completionPercentage == 100} ? 'complete' : 'incomplete'">
-                                    <span th:text="${translator.completionPercentage} + '%'">100%</span>
-                                </div>
-                            </div>
-                            <div class="translator-info">
-                                <h5 class="translator-name" th:text="${translator.name}">Name</h5>
-                                <div class="translator-languages">
-                                    <span class="language-tag" th:each="language : ${translator.languages}" th:text="${language}">Language</span>
-                                </div>
-                                <div class="completion-bar">
-                                    <div class="completion-fill" th:style="'width: ' + ${translator.completionPercentage} + '%'"></div>
-                                </div>
-                                <a th:href="'https://weblate.org/user/' + ${translator.weblate}" class="translator-link" target="_blank">
-                                    <i class="lni lni-world"></i>
-                                    <span>Weblate Profile</span>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- Open Source Projects Section -->
                 <div class="projects-section" th:if="${!projects.isEmpty()}">

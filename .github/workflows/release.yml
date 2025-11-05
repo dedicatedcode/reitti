@@ -29,9 +29,6 @@ jobs:
           ./scripts/generate-acknowledgments.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WEBLATE_TOKEN: ${{ secrets.WEBLATE_TOKEN }}
-          WEBLATE_PROJECT: reitti
-          WEBLATE_API_URL: https://hosted.weblate.org/api
       - name: Build
         run: mvn verify -DskipTests
       - name: Create bundle

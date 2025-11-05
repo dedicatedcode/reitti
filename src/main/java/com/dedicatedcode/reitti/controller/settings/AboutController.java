@@ -45,12 +45,10 @@ public class AboutController {
         // Load acknowledgments data
         try {
             model.addAttribute("contributors", loadContributors());
-            model.addAttribute("translators", loadTranslators());
             model.addAttribute("projects", loadProjects());
         } catch (IOException e) {
             // Log error and continue without acknowledgments
             model.addAttribute("contributors", List.of());
-            model.addAttribute("translators", List.of());
             model.addAttribute("projects", List.of());
         }
         
@@ -63,11 +61,6 @@ public class AboutController {
         return (List<Map<String, Object>>) data.get("contributors");
     }
 
-    private List<Map<String, Object>> loadTranslators() throws IOException {
-        var resource = new ClassPathResource("translators.json");
-        var data = objectMapper.readValue(resource.getInputStream(), new TypeReference<Map<String, Object>>() {});
-        return (List<Map<String, Object>>) data.get("translators");
-    }
 
     private List<Map<String, Object>> loadProjects() throws IOException {
         var resource = new ClassPathResource("projects.json");

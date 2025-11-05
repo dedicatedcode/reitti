@@ -12,10 +12,6 @@ RESOURCES_DIR="$SCRIPT_DIR/../src/main/resources"
 GITHUB_REPO="${GITHUB_REPOSITORY:-dedicatedcode/reitti}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
-# Weblate API settings
-WEBLATE_API_URL="${WEBLATE_API_URL:-https://hosted.weblate.org/api}"
-WEBLATE_PROJECT="${WEBLATE_PROJECT:-reitti}"
-WEBLATE_TOKEN="${WEBLATE_TOKEN:-}"
 
 echo "Generating acknowledgments data..."
 
@@ -52,54 +48,6 @@ fetch_contributors() {
     echo "✓ Contributors data saved to contributors.json"
 }
 
-# Function to fetch Weblate translators
-fetch_translators() {
-    echo "Fetching translators from Weblate..."
-    
-    if [ -z "$WEBLATE_TOKEN" ]; then
-        echo "⚠ WEBLATE_TOKEN not set, creating sample translators.json"
-        local sample_translators='[
-            {
-                "name": "Community Translator",
-                "languages": ["German", "English"],
-                "avatar": "https://www.gravatar.com/avatar/default?d=identicon",
-                "weblate": "community",
-                "completionPercentage": 95
-            }
-        ]'
-        echo "{\"translators\": $sample_translators}" > "$RESOURCES_DIR/translators.json"
-        return
-    fi
-    
-    local headers="-H \"Authorization: Token $WEBLATE_TOKEN\""
-    
-    # Fetch project components to get language statistics
-    local components_url="$WEBLATE_API_URL/projects/$WEBLATE_PROJECT/components/"
-    local components=$(eval "curl -s $headers \"$components_url\"" | jq -r '.results[].slug' | head -1)
-    
-    if [ -z "$components" ]; then
-        echo "⚠ No components found, creating empty translators.json"
-        echo '{"translators": []}' > "$RESOURCES_DIR/translators.json"
-        return
-    fi
-    
-    # Get statistics for the first component (main translation)
-    local stats_url="$WEBLATE_API_URL/components/$WEBLATE_PROJECT/$components/statistics/"
-    local translators_data=$(eval "curl -s $headers \"$stats_url\"" | jq '[
-        .results[] | 
-        select(.translated_percent > 5) |
-        {
-            name: (.language.name + " Translator"),
-            languages: [.language.name],
-            avatar: "https://www.gravatar.com/avatar/default?d=identicon",
-            weblate: (.language.code | tostring | ascii_downcase),
-            completionPercentage: (.translated_percent | floor)
-        }
-    ][:8]')  # Limit to top 8 translators
-    
-    echo "{\"translators\": $translators_data}" > "$RESOURCES_DIR/translators.json"
-    echo "✓ Translators data saved to translators.json"
-}
 
 # Function to create projects.json with open source dependencies
 create_projects_data() {
@@ -173,13 +121,11 @@ main() {
     
     # Generate all acknowledgment files
     fetch_contributors
-    fetch_translators
     create_projects_data
     
     echo "✅ Acknowledgments data generation completed!"
     echo "Generated files:"
     echo "  - $RESOURCES_DIR/contributors.json"
-    echo "  - $RESOURCES_DIR/translators.json"
     echo "  - $RESOURCES_DIR/projects.json"
 }
 
