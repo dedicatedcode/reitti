@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
+import com.dedicatedcode.reitti.model.processing.RecalculationState;
 import com.dedicatedcode.reitti.model.security.User;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -26,7 +27,7 @@ public class VisitDetectionParametersJdbcService {
 
     private static final RowMapper<DetectionParameter> CONFIGURATION_ROW_MAPPER = (rs, _) -> {
         Long id = rs.getLong("id");
-        boolean needsRecalculation = rs.getBoolean("needs_recalculation");
+        RecalculationState recalculationState = RecalculationState.valueOf(rs.getString("recalculation_state"));
         Timestamp validSinceTimestamp = rs.getTimestamp("valid_since");
         Instant validSince = validSinceTimestamp != null ? validSinceTimestamp.toInstant() : null;
 
@@ -43,7 +44,7 @@ public class VisitDetectionParametersJdbcService {
                 rs.getLong("merging_min_distance_between_visits")
         );
 
-        return new DetectionParameter(id, visitDetection, visitMerging, validSince, needsRecalculation);
+        return new DetectionParameter(id, visitDetection, visitMerging, validSince, recalculationState);
     };
 
 
@@ -76,10 +77,9 @@ public class VisitDetectionParametersJdbcService {
         String sql = """
             INSERT INTO visit_detection_parameters (
                 user_id, valid_since, detection_search_distance_meters,
-                detection_minimum_adjacent_points, detection_minimum_stay_time_seconds, 
-                detection_max_merge_time_between_same_stay_points, merging_search_duration_in_hours, 
-                            merging_max_merge_time_between_same_visits, merging_min_distance_between_visits, needs_recalculation
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                detection_minimum_adjacent_points, detection_minimum_stay_time_seconds,
+                detection_max_merge_time_between_same_stay_points, merging_search_duration_in_hours,
+                merging_max_merge_time_between_same_visits, merging_min_distance_between_visits, recalculation_state) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
         
         Timestamp validSinceTimestamp = detectionParameter.getValidSince() != null ?
@@ -95,7 +95,7 @@ public class VisitDetectionParametersJdbcService {
             detectionParameter.getVisitMerging().getSearchDurationInHours(),
             detectionParameter.getVisitMerging().getMaxMergeTimeBetweenSameVisits(),
             detectionParameter.getVisitMerging().getMinDistanceBetweenVisits(),
-            detectionParameter.needsRecalculation()
+            detectionParameter.getRecalculationState().name()
         );
     }
 
@@ -111,7 +111,7 @@ public class VisitDetectionParametersJdbcService {
                 merging_search_duration_in_hours = ?,
                 merging_max_merge_time_between_same_visits = ?,
                 merging_min_distance_between_visits = ?,
-                needs_recalculation = ?
+                recalculation_state = ?
             WHERE id = ?
             """;
         
@@ -127,7 +127,7 @@ public class VisitDetectionParametersJdbcService {
             detectionParameter.getVisitMerging().getSearchDurationInHours(),
             detectionParameter.getVisitMerging().getMaxMergeTimeBetweenSameVisits(),
             detectionParameter.getVisitMerging().getMinDistanceBetweenVisits(),
-            detectionParameter.needsRecalculation(),
+            detectionParameter.getRecalculationState().name(),
             detectionParameter.getId()
         );
     }

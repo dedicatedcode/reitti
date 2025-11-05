@@ -8,14 +8,14 @@ public class DetectionParameter implements Serializable {
     private final VisitDetection visitDetection;
     private final VisitMerging visitMerging;
     private final Instant validSince;
-    private final boolean needsRecalculation;
+    private final RecalculationState recalculationState;
 
-    public DetectionParameter(Long id, VisitDetection visitDetection, VisitMerging visitMerging, Instant validSince, boolean needsRecalculation) {
+    public DetectionParameter(Long id, VisitDetection visitDetection, VisitMerging visitMerging, Instant validSince, RecalculationState recalculationState) {
         this.id = id;
         this.visitDetection = visitDetection;
         this.visitMerging = visitMerging;
         this.validSince = validSince;
-        this.needsRecalculation = needsRecalculation;
+        this.recalculationState = recalculationState;
     }
 
     public Long getId() {
@@ -34,12 +34,12 @@ public class DetectionParameter implements Serializable {
         return validSince;
     }
 
-    public boolean needsRecalculation() {
-        return this.needsRecalculation;
+    public RecalculationState getRecalculationState() {
+        return this.recalculationState;
     }
 
-    public DetectionParameter withNeedsRecalculation(boolean needsRecalculation) {
-        return new DetectionParameter(this.id, this.visitDetection, this.visitMerging, this.validSince, needsRecalculation);
+    public DetectionParameter withRecalculationState(RecalculationState recalculationState) {
+        return new DetectionParameter(this.id, this.visitDetection, this.visitMerging, this.validSince, recalculationState);
     }
 
     public static class VisitDetection implements Serializable {
