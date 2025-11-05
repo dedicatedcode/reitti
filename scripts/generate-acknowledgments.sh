@@ -92,7 +92,7 @@ fetch_translators() {
             name: (.language.name + " Translator"),
             languages: [.language.name],
             avatar: "https://www.gravatar.com/avatar/default?d=identicon",
-            weblate: (.language.code | ascii_downcase),
+            weblate: (.language.code | tostring | ascii_downcase),
             completionPercentage: (.translated_percent | floor)
         }
     ][:8]')  # Limit to top 8 translators
