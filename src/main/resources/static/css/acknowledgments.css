@@ -646,67 +646,67 @@
 
 .firework-trail {
     position: fixed;
-    width: 6px;
-    background: linear-gradient(to top, #ffffff, rgba(255, 255, 255, 0.8), transparent);
-    animation: firework-trail var(--trail-duration, 1.2s) ease-in-out forwards;
+    width: 3px;
+    background: linear-gradient(to top, #ffffff 0%, #ffffff 80%, transparent 100%);
+    animation: firework-trail var(--trail-duration, 1.2s) ease-out forwards;
     box-shadow: 
-        0 0 12px rgba(255, 255, 255, 0.8),
-        0 0 24px rgba(255, 255, 255, 0.4);
-    border-radius: 3px;
+        0 0 8px rgba(255, 255, 255, 0.9),
+        0 0 16px rgba(255, 255, 255, 0.5);
+    border-radius: 2px;
     transform-origin: bottom;
 }
 
-.firework-trail::before {
+.firework-trail::after {
     content: '';
     position: absolute;
-    top: 0;
-    left: -2px;
-    right: -2px;
-    height: 100%;
-    background: 
-        radial-gradient(ellipse 8px 20px at 50% 20%, rgba(255, 255, 255, 0.6), transparent),
-        radial-gradient(ellipse 6px 15px at 30% 40%, rgba(255, 255, 255, 0.4), transparent),
-        radial-gradient(ellipse 6px 15px at 70% 60%, rgba(255, 255, 255, 0.4), transparent),
-        radial-gradient(ellipse 8px 20px at 50% 80%, rgba(255, 255, 255, 0.6), transparent);
-    border-radius: 3px;
-    animation: cloud-drift var(--trail-duration, 1.2s) ease-in-out forwards;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 15px;
+    background: radial-gradient(ellipse, rgba(255, 200, 100, 0.8) 0%, transparent 70%);
+    border-radius: 50%;
+    animation: rocket-flame var(--trail-duration, 1.2s) ease-out forwards;
 }
 
-@keyframes cloud-drift {
+@keyframes rocket-flame {
     0% {
-        opacity: 0;
-        transform: translateX(0px);
-    }
-    30% {
-        opacity: 0.8;
-        transform: translateX(-2px);
-    }
-    70% {
         opacity: 1;
-        transform: translateX(2px);
+        transform: translateX(-50%) scale(1);
+        background: radial-gradient(ellipse, rgba(255, 150, 50, 0.9) 0%, transparent 70%);
+    }
+    50% {
+        opacity: 0.8;
+        transform: translateX(-50%) scale(1.2);
+        background: radial-gradient(ellipse, rgba(255, 200, 100, 0.8) 0%, transparent 70%);
     }
     100% {
         opacity: 0;
-        transform: translateX(0px);
+        transform: translateX(-50%) scale(0.8);
+        background: radial-gradient(ellipse, rgba(255, 255, 200, 0.6) 0%, transparent 70%);
     }
 }
 
 @keyframes firework-trail {
     0% {
         opacity: 0;
-        transform: scaleY(0) translateX(var(--trail-offset, 0px));
+        transform: scaleY(0);
+        filter: brightness(1.5);
     }
-    30% {
-        opacity: 0.8;
-        transform: scaleY(0.3) translateX(var(--trail-offset, 0px));
-    }
-    70% {
+    20% {
         opacity: 1;
-        transform: scaleY(1) translateX(var(--trail-offset, 0px));
+        transform: scaleY(0.2);
+        filter: brightness(1.2);
+    }
+    80% {
+        opacity: 1;
+        transform: scaleY(1);
+        filter: brightness(1);
     }
     100% {
-        opacity: 0;
-        transform: scaleY(1) translateX(var(--trail-offset, 0px));
+        opacity: 0.3;
+        transform: scaleY(1);
+        filter: brightness(0.8);
     }
 }
 

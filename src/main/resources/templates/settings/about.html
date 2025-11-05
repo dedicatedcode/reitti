@@ -173,17 +173,15 @@
         firework.style.left = x + 'px';
         firework.style.top = y + 'px';
         
-        // Create trail with random offset for spread
-        const trailOffset = (Math.random() - 0.5) * 100;
-        const trailDuration = 0.8 + Math.random() * 0.8; // 0.8-1.6s
+        // Create straight rocket trail
+        const trailDuration = 1.0 + Math.random() * 0.6; // 1.0-1.6s
         
         const trail = document.createElement('div');
         trail.className = 'firework-trail';
-        trail.style.setProperty('--trail-offset', trailOffset + 'px');
         trail.style.setProperty('--trail-duration', trailDuration + 's');
-        trail.style.left = (x - 3) + 'px';
+        trail.style.left = (x - 1.5) + 'px';
         trail.style.bottom = '0px';
-        trail.style.height = (window.innerHeight - y + 30) + 'px';
+        trail.style.height = (window.innerHeight - y + 20) + 'px';
         document.body.appendChild(trail);
         
         // Delay explosion until trail reaches the top
