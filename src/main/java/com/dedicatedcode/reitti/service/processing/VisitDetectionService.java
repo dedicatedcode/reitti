@@ -208,6 +208,9 @@ public class VisitDetectionService {
     }
 
     private GeoPoint weightedCenter(List<RawLocationPoint> clusterPoints) {
+        //this needs to be changed, a user can never be on the center of all these clustere points. Actually the clustered points are representing the stay but the user has to be on the most likeley of them. Most likely is problem that part with the most parts and then snapped to one of them. AI!
+
+
         // Calculate the centroid of the cluster using weighted average based on accuracy
         // Points with better accuracy (lower meters value) get higher weight
         double weightSum = 0;
