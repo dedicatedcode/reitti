@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.GpxExportService;
+import com.dedicatedcode.reitti.service.TimeUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -23,7 +24,11 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
 
 @Controller
@@ -51,9 +56,7 @@ public class ExportDataController {
         model.addAttribute("endDate", today);
 
         // Get raw location points for today by default
-        List<RawLocationPoint> rawLocationPoints = rawLocationPointJdbcService.findByUserAndDateRange(
-                user, today.atStartOfDay(), today.plusDays(1).atStartOfDay());
-        model.addAttribute("rawLocationPoints", rawLocationPoints);
+        model.addAttribute("rawLocationPoints", Collections.emptyList());
         model.addAttribute("activeSection", "export-data");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
@@ -63,26 +66,31 @@ public class ExportDataController {
     public String getExportDataContent(@AuthenticationPrincipal User user,
                                       @RequestParam(required = false) String startDate,
                                       @RequestParam(required = false) String endDate,
+                                      @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                                       Model model) {
         
         LocalDate start = startDate != null ? LocalDate.parse(startDate) : LocalDate.now();
         LocalDate end = endDate != null ? LocalDate.parse(endDate) : LocalDate.now();
-        
+        ZonedDateTime startDateTime = start.atStartOfDay(timezone);
+        ZonedDateTime endDateTime = end.plusDays(1).atStartOfDay(timezone);
         model.addAttribute("startDate", start);
         model.addAttribute("endDate", end);
         
         // Get raw location points for the date range
-        List<RawLocationPoint> rawLocationPoints = rawLocationPointJdbcService.findByUserAndDateRange(
-            user, start.atStartOfDay(), end.plusDays(1).atStartOfDay());
-        model.addAttribute("rawLocationPoints", rawLocationPoints);
+        List<RawLocationPoint> rawLocationPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(
+            user, startDateTime.toInstant(), endDateTime.toInstant());
+        model.addAttribute("rawLocationPoints", rawLocationPoints.stream()
+                .map(p -> new DataLine(TimeUtil.adjustInstant(p.getTimestamp(), timezone), p.getLatitude(), p.getLongitude(), p.getAccuracyMeters(), p.isProcessed()))
+                .toList());
         
-        return "settings/export-data :: export-data-content";
+        return "settings/export-data :: data-content";
     }
     
     @PostMapping("/gpx")
     public ResponseEntity<StreamingResponseBody> exportGpx(@AuthenticationPrincipal User user,
-                                                          @RequestParam String startDate,
-                                                           @RequestParam String endDate) {
+                                                           @RequestParam String startDate,
+                                                           @RequestParam String endDate,
+                                                           @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
         try {
             LocalDate start = LocalDate.parse(startDate);
             LocalDate end = LocalDate.parse(endDate);
@@ -115,5 +123,7 @@ public class ExportDataController {
                 });
         }
     }
+
+    public record DataLine(LocalDateTime timestamp, double latitude, double longitude, double accuracyMeters, boolean processed) {}
 
 }

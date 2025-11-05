@@ -8,6 +8,9 @@ import java.time.ZoneId;
 
 public class TimeUtil {
     public static LocalDateTime adjustInstant(Instant instant) {
-        return instant.atZone(ZoneId.of("UTC")).withZoneSameInstant(LocaleContextHolder.getTimeZone().toZoneId()).toLocalDateTime();
+        return adjustInstant(instant, LocaleContextHolder.getTimeZone().toZoneId());
+    }
+    public static LocalDateTime adjustInstant(Instant instant, ZoneId zoneId) {
+        return instant.atZone(ZoneId.systemDefault()).withZoneSameInstant(zoneId).toLocalDateTime();
     }
 }
