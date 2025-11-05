@@ -7,7 +7,6 @@ import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
-import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.LocationPointsSimplificationService;
 import org.slf4j.Logger;
@@ -32,16 +31,14 @@ public class LocationDataApiController {
     private static final Logger logger = LoggerFactory.getLogger(LocationDataApiController.class);
     
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
-    private final TripJdbcService tripJdbcService;
     private final LocationPointsSimplificationService simplificationService;
     private final UserJdbcService userJdbcService;
     
     @Autowired
-    public LocationDataApiController(RawLocationPointJdbcService rawLocationPointJdbcService, TripJdbcService tripJdbcService,
+    public LocationDataApiController(RawLocationPointJdbcService rawLocationPointJdbcService,
                                      LocationPointsSimplificationService simplificationService,
                                      UserJdbcService userJdbcService) {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
-        this.tripJdbcService = tripJdbcService;
         this.simplificationService = simplificationService;
         this.userJdbcService = userJdbcService;
     }
