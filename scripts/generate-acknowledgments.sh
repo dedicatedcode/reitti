@@ -36,6 +36,8 @@ fetch_contributors() {
         select(.type == "User") | 
         select(.login != "dependabot[bot]") |
         select(.login != "github-actions[bot]") |
+        select(.login != "weblate") |
+        select(.login != "dgraf-gh") |
         {
             name: (.name // .login),
             role: "Contributor",
