@@ -7,9 +7,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 
 public class TimeUtil {
-    public static LocalDateTime adjustInstant(Instant instant) {
-        return adjustInstant(instant, LocaleContextHolder.getTimeZone().toZoneId());
-    }
     public static LocalDateTime adjustInstant(Instant instant, ZoneId zoneId) {
         return instant.atZone(ZoneId.systemDefault()).withZoneSameInstant(zoneId).toLocalDateTime();
     }

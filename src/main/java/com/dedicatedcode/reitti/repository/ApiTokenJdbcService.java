@@ -173,7 +173,7 @@ public class ApiTokenJdbcService {
     }
 
     public void trackUsage(String token, String requestPath, String remoteIp) {
-        this.jdbcTemplate.update("INSERT INTO api_token_usages(token_id, at, endpoint, ip) SELECT id, now(), ?, ? FROM api_tokens WHERE token = ?",
+        this.jdbcTemplate.update("INSERT INTO api_token_usages(token_id, at, endpoint, ip) SELECT id, now() at time zone 'utc', ?, ? FROM api_tokens WHERE token = ?",
                 requestPath, remoteIp, token);
     }
 

@@ -14,7 +14,10 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
+
+import static com.dedicatedcode.reitti.service.TimeUtil.adjustInstant;
 
 @Controller
 @RequestMapping("/settings/api-tokens")
@@ -33,20 +36,28 @@ public class ApiTokenSettingsController {
     }
 
     @GetMapping
-    public String getPage(@AuthenticationPrincipal User user, Model model) {
+    public String getPage(@AuthenticationPrincipal User user,
+                          @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+                          Model model) {
         model.addAttribute("activeSection", "api-tokens");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
         model.addAttribute("tokens", apiTokenService.getTokensForUser(user).stream()
-                .map(t -> new ApiTokeDTO(t.getId(), t.getToken(), t.getName(), TimeUtil.adjustInstant(t.getCreatedAt()), TimeUtil.adjustInstant(t.getLastUsedAt()))).toList());
-        model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(user, 10)
-                .stream()
-                .map(t -> new ApiTokenUsageDTO(t.token(), t.name(), TimeUtil.adjustInstant(t.at()), t.endpoint(), t.ip()))
-                .toList());
-        model.addAttribute("maxUsagesToShow", 10);
+                .map(t -> new ApiTokeDTO(t.getId(), t.getToken(), t.getName(), adjustInstant(t.getCreatedAt(), timezone), adjustInstant(t.getLastUsedAt(),timezone))).toList());
         return "settings/api-tokens";
     }
 
+    @GetMapping("/usages")
+    public String getTokenUsages(@AuthenticationPrincipal User user,
+                                 @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+                                 Model model) {
+        model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(user, 10)
+                .stream()
+                .map(t -> new ApiTokenUsageDTO(t.token(), t.name(), adjustInstant(t.at(), timezone), t.endpoint(), t.ip()))
+                .toList());
+        model.addAttribute("maxUsagesToShow", 10);
+        return "settings/api-tokens :: api-token-usages";
+    }
     @PostMapping
     public String createToken(@AuthenticationPrincipal User user, @RequestParam String name, Model model) {
         try {

@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/css/main.css">
     <link rel="stylesheet" href="/css/lineicons.css">
     <script src="/js/htmx.min.js"></script>
+    <script src="/js/util.js"></script>
 </head>
 <body class="settings-page">
 <div class="settings-container">
@@ -282,5 +283,8 @@ function updateSharingColor(colorInput) {
         alert('Failed to update color');
     });
 }
+</script>
+<script th:inline="javascript">
+    window.userSettings = /*[[${userSettings}]]*/ {}
 </script>
 </body>
