@@ -603,10 +603,11 @@
 
 .firework-particle {
     position: absolute;
-    width: 4px;
-    height: 4px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     animation: firework-explosion 1.5s ease-out forwards;
+    box-shadow: 0 0 6px currentColor;
 }
 
 @keyframes firework-explosion {
@@ -622,10 +623,11 @@
 
 .firework-trail {
     position: absolute;
-    width: 2px;
-    height: 20px;
+    width: 4px;
+    height: 30px;
     background: linear-gradient(to bottom, transparent, var(--trail-color));
     animation: firework-trail 0.8s ease-out forwards;
+    box-shadow: 0 0 4px var(--trail-color);
 }
 
 @keyframes firework-trail {
