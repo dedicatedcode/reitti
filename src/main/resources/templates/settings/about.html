@@ -9,8 +9,10 @@
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
     <link rel="stylesheet" href="/css/main.css">
     <link rel="stylesheet" href="/css/lineicons.css">
+    <link rel="stylesheet" href="/css/acknowledgments.css">
     <script src="/js/htmx.min.js"></script>
     <script src="/js/util.js"></script>
+    <script src="/js/fireworks.min.js"></script>
 </head>
 <body class="settings-page">
 <div class="settings-container">
@@ -32,10 +34,104 @@
                     <span th:text="${buildTime}">N/A</span>
                 </p>
             </div>
+
+            <!-- Acknowledgments Section -->
+            <div class="acknowledgments-section">
+                <h3 class="acknowledgments-title">
+                    <i class="lni lni-heart"></i>
+                    <span th:text="#{about.acknowledgments.title}">Acknowledgments</span>
+                </h3>
+                <p class="acknowledgments-subtitle" th:text="#{about.acknowledgments.subtitle}">
+                    Reitti wouldn't be possible without the amazing contributions from our community and the incredible open-source projects we build upon.
+                </p>
+
+                <!-- Contributors Section -->
+                <div class="contributors-section" th:if="${!contributors.isEmpty()}">
+                    <h4 class="section-title">
+                        <i class="lni lni-user-4"></i>
+                        <span th:text="#{about.contributors.title}">Contributors</span>
+                    </h4>
+                    <div class="contributors-grid">
+                        <div class="contributor-card" th:each="contributor : ${contributors}">
+                            <div class="contributor-avatar">
+                                <img th:src="${contributor.avatar}" th:alt="${contributor.name}" />
+                                <div class="contributor-badge">
+                                    <i class="lni lni-github"></i>
+                                </div>
+                            </div>
+                            <div class="contributor-info">
+                                <h5 class="contributor-name" th:text="${contributor.name}">Name</h5>
+                                <a th:href="'https://github.com/' + ${contributor.github}" class="contributor-link" target="_blank">
+                                    <i class="lni lni-github"></i>
+                                    <span th:text="${contributor.github}">GitHub</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- Open Source Projects Section -->
+                <div class="projects-section" th:if="${!projects.isEmpty()}">
+                    <h4 class="section-title">
+                        <i class="lni lni-code-1"></i>
+                        <span th:text="#{about.projects.title}">Open Source Projects</span>
+                    </h4>
+                    <div class="projects-grid">
+                        <div class="project-card" th:each="project : ${projects}">
+                            <div class="project-header">
+                                <div class="project-category" th:text="${project.category}">Category</div>
+                                <div class="project-license" th:text="${project.license}">License</div>
+                            </div>
+                            <div class="project-content">
+                                <h5 class="project-name" th:text="${project.name}">Project Name</h5>
+                                <p class="project-description" th:text="${project.description}">Description</p>
+                                <a th:href="${project.url}" class="project-link" target="_blank">
+                                    <i class="lni lni-eye"></i>
+                                    <span th:text="#{about.projects.visit}">Visit Project</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Thank You Message -->
+                <div class="thank-you-message" onclick="startFireworks()">
+                    <div class="thank-you-content">
+                        <i class="lni lni-heart thank-you-icon"></i>
+                        <h4 th:text="#{about.thankyou.title}">Thank You!</h4>
+                        <p th:text="#{about.thankyou.message}">
+                            Every contribution, no matter how small, helps make Reitti better for everyone. 
+                            We're grateful for your support and dedication to the open-source community.
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Fireworks Container -->
+<div id="fireworks-container" class="fireworks-container"></div>
+
 <script th:inline="javascript">
     window.userSettings = /*[[${userSettings}]]*/ {}
+
+    const container = document.getElementById('fireworks-container');
+    let fireworks = new Fireworks.default(container, {
+        particles: 100,
+        explosion: 15,
+    });
+    let running = false;
+    function startFireworks() {
+        if (running) {
+            fireworks.stop();
+            running = false;
+        } else {
+            fireworks.start();
+            running = true;
+
+        }
+    }
 </script>
 </body>

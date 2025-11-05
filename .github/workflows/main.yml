@@ -19,6 +19,12 @@ jobs:
           java-version: '24'
           distribution: 'temurin'
           cache: maven
+      - name: Generate acknowledgments data
+        run: |
+          chmod +x scripts/generate-acknowledgments.sh
+          ./scripts/generate-acknowledgments.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Build
         run: mvn verify -DskipTests
       - name: Login to Docker Hub
