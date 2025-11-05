@@ -1,4 +1,8 @@
 /* Acknowledgments Section Styles */
+:root {
+    --trail-color: #f8f8f8;
+}
+
 .acknowledgments-section {
     margin-top: 2rem;
     background: linear-gradient(135deg, var(--color-background-dark) 0%, var(--color-background-dark-light) 100%);
