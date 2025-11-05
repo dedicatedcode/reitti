@@ -12,7 +12,9 @@
     <link rel="stylesheet" href="/css/lineicons.css">
     <script src="/js/htmx.min.js"></script>
     <script src="/js/leaflet.js"></script>
-    <script src="/js/TileLayer.Grayscale.js"></script></head>
+    <script src="/js/TileLayer.Grayscale.js"></script>
+    <script src="/js/util.js"></script>
+</head>
 <body class="settings-page">
 <div class="settings-container">
     <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
@@ -111,5 +113,8 @@
             initPlaceMaps();
         }
     });
+</script>
+<script th:inline="javascript">
+    window.userSettings = /*[[${userSettings}]]*/ {}
 </script>
 </body>

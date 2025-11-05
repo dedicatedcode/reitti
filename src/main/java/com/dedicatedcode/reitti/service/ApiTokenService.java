@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.model.security.ApiToken;
+import com.dedicatedcode.reitti.model.security.ApiTokenUsage;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ApiTokenJdbcService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,7 +44,7 @@ public class ApiTokenService {
         return this.apiTokenJdbcService.findByUser(currentUser);
     }
 
-    public List<?> getRecentUsagesForUser(User user, int maxRows) {
+    public List<ApiTokenUsage> getRecentUsagesForUser(User user, int maxRows) {
         return this.apiTokenJdbcService.getUsages(user, maxRows);
     }
 

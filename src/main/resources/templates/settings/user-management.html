@@ -13,6 +13,7 @@
     <script src="/js/htmx.min.js"></script>
     <script src="/js/leaflet.js"></script>
     <script src="/js/TileLayer.Grayscale.js"></script>
+    <script src="/js/util.js"></script>
 </head>
 <body class="settings-page">
 <div class="settings-container">
@@ -217,5 +218,9 @@
             setTimeout(initializeHomeLocationMap, 100);
         }
     });
+</script>
+
+<script th:inline="javascript">
+    window.userSettings = /*[[${userSettings}]]*/ {}
 </script>
 </body>

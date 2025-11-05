@@ -16,6 +16,8 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -38,7 +40,10 @@ public class GpxApiController {
         try {
             StreamingResponseBody stream = outputStream -> {
                 try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
-                    gpxExportService.generateGpxContentStreaming(user, start, end, writer);
+                    gpxExportService.generateGpxContentStreaming(user,
+                            ZonedDateTime.of(start.atStartOfDay(), ZoneId.of("UTC")).toInstant(),
+                            ZonedDateTime.of(end.atStartOfDay(), ZoneId.of("UTC")).toInstant(),
+                            writer);
                 } catch (Exception e) {
                     throw new RuntimeException("Error generating GPX file", e);
                 }

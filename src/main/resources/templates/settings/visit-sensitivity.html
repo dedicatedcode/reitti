@@ -15,6 +15,7 @@
     <script src="/js/leaflet.js"></script>
     <script src="/js/TileLayer.Grayscale.js"></script>
     <script src="/js/leaflet.geodesic.2.7.2.js"></script>
+    <script src="/js/util.js"></script>
 </head>
 <body class="settings-page">
 <div class="settings-container">
@@ -74,16 +75,7 @@
 </div>
 
 <script th:inline="javascript">
-
     window.userSettings = /*[[${userSettings}]]*/ {}
-
-    function getUserTimezone() {
-        if (window.userSettings.timezoneOverride) {
-            return window.userSettings.timezoneOverride;
-        } else {
-            return Intl.DateTimeFormat().resolvedOptions().timeZone;
-        }
-    }
 </script>
 </body>
 </html>

@@ -90,6 +90,21 @@
            th:classappend="${activeSection == 'about'} ? 'active' : ''"
            th:title="#{settings.about.description}"
            th:text="#{settings.about}">About</a>
+        
+        <script th:inline="javascript">
+            function appendTimezoneToLinks() {
+                const timezone = getUserTimezone();
+                const links = document.querySelectorAll('.settings-nav a');
+                links.forEach(link => {
+                    if (link.href && !link.href.includes('timezone=')) {
+                        const separator = link.href.includes('?') ? '&' : '?';
+                        link.href = `${link.href}${separator}timezone=${encodeURIComponent(timezone)}`;
+                    }
+                });
+            }
+
+            window.onload = appendTimezoneToLinks;
+        </script>
     </div>
 </body>
 </html>

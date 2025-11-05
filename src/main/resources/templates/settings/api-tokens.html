@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/css/main.css">
     <link rel="stylesheet" href="/css/lineicons.css">
     <script src="/js/htmx.min.js"></script>
+    <script src="/js/util.js"></script>
 </head>
 <body class="settings-page">
 <div class="settings-container">
@@ -73,27 +74,29 @@
                 </div>
 
 
-                <div class="settings-card" th:if="${recentUsages != null && !recentUsages.isEmpty()}">
-                    <h3 th:text="#{tokens.recent.usages.title}">Recent Token Usages</h3>
-                    <p th:text="#{tokens.recent.usages.description(${maxUsagesToShow})}">Showing the last 10 token usages</p>
-                    <table>
-                        <thead>
-                        <tr>
-                            <th th:text="#{tokens.usage.table.token}">Token</th>
-                            <th th:text="#{tokens.usage.table.timestamp}">Timestamp</th>
-                            <th th:text="#{tokens.usage.table.endpoint}">Endpoint</th>
-                            <th th:text="#{tokens.usage.table.ip}">IP Address</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr th:each="usage : ${recentUsages}">
-                            <td th:text="${usage.name()}"></td>
-                            <td th:text="${#temporals.format(usage.at(), 'yyyy-MM-dd HH:mm:ss')}"></td>
-                            <td th:text="${usage.endpoint()}"></td>
-                            <td th:text="${usage.ip()}"></td>
-                        </tr>
-                        </tbody>
-                    </table>
+                <div th:attr="hx-get=@{/settings/api-tokens/usages}" hx-trigger="load, every 10s" hx-vals='js:{"timezone": getUserTimezone()}'>
+                    <div th:fragment="api-token-usages" class="settings-card">
+                        <h3 th:text="#{tokens.recent.usages.title}">Recent Token Usages</h3>
+                        <p th:text="#{tokens.recent.usages.description(${maxUsagesToShow})}">Showing the last 10 token usages</p>
+                        <table>
+                            <thead>
+                            <tr>
+                                <th th:text="#{tokens.usage.table.token}">Token</th>
+                                <th th:text="#{tokens.usage.table.timestamp}">Timestamp</th>
+                                <th th:text="#{tokens.usage.table.endpoint}">Endpoint</th>
+                                <th th:text="#{tokens.usage.table.ip}">IP Address</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="usage : ${recentUsages}">
+                                <td th:text="${usage.name()}"></td>
+                                <td th:text="${#temporals.format(usage.at(), 'yyyy-MM-dd HH:mm:ss')}"></td>
+                                <td th:text="${usage.endpoint()}"></td>
+                                <td th:text="${usage.ip()}"></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
             </div>
@@ -101,4 +104,7 @@
 
     </div>
 </div>
+<script th:inline="javascript">
+    window.userSettings = /*[[${userSettings}]]*/ {}
+</script>
 </body>
