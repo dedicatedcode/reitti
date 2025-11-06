@@ -8,7 +8,6 @@ import com.dedicatedcode.reitti.model.geo.SignificantPlace.PlaceType;
 import com.dedicatedcode.reitti.model.security.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.ZoneId;
 import java.util.Optional;
@@ -19,11 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class SignificantPlaceOverrideJdbcServiceTest {
 
     @Autowired
-    private JdbcTemplate jdbcTemplate;
-    @Autowired
     private SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
-    @Autowired
-    private PointReaderWriter pointReaderWriter;
 
     @Test
     void testFindByUserAndPoint_ExistingOverride() {
@@ -33,9 +28,11 @@ class SignificantPlaceOverrideJdbcServiceTest {
         // Create a GeoPoint
         GeoPoint point = new GeoPoint(40.7128, -74.0060); // Example: New York coordinates
 
-        // Insert an override directly into the database for testing
-        String insertSql = "INSERT INTO significant_places_overrides (user_id, geom, name, category, timezone) VALUES (?, ST_GeomFromText(?, '4326'), ?, ?, ?)";
-        jdbcTemplate.update(insertSql, user.getId(), pointReaderWriter.write(point), "Home Override", "HOME", "America/New_York");
+        // Create a SignificantPlace with the override details
+        SignificantPlace place = new SignificantPlace(1L, "Home Override", "123 Main St", "New York", "US", 40.7128, -74.0060, PlaceType.HOME, ZoneId.of("America/New_York"), false, 1L);
+
+        // Insert the override using the service
+        significantPlaceOverrideJdbcService.insertOverride(user, place);
 
         // Now test the find method
         Optional<PlaceInformationOverride> result = significantPlaceOverrideJdbcService.findByUserAndPoint(user, point);
@@ -103,5 +100,53 @@ class SignificantPlaceOverrideJdbcServiceTest {
         // Verify it no longer exists
         Optional<PlaceInformationOverride> resultAfterClear = significantPlaceOverrideJdbcService.findByUserAndPoint(user, point);
         assertFalse(resultAfterClear.isPresent());
+    }
+
+    @Test
+    void testFindByUserAndPoint_Within5mRadius() {
+        // Create a test user
+        User user = new User(1L, "testuser", "password", "Test User", null, null, null, 1L);
+
+        // Create a SignificantPlace at a specific location
+        SignificantPlace place = new SignificantPlace(1L, "Nearby Override", "456 Nearby St", "Nearby City", "US", 40.7128, -74.0060, PlaceType.WORK, ZoneId.of("America/New_York"), false, 1L);
+        significantPlaceOverrideJdbcService.insertOverride(user, place);
+
+        // Create a GeoPoint very close (within 5m) to the place
+        // Approximate 5m at this latitude: ~0.000045 degrees latitude, ~0.000056 degrees longitude
+        GeoPoint closePoint = new GeoPoint(40.712845, -74.006056); // Approximately 5m away
+
+        // Test that the override is found from the close point
+        Optional<PlaceInformationOverride> result = significantPlaceOverrideJdbcService.findByUserAndPoint(user, closePoint);
+        assertTrue(result.isPresent());
+        assertEquals("Nearby Override", result.get().name());
+    }
+
+    @Test
+    void testInsertOverride_DropsNearbyOverrides() {
+        // Create a test user
+        User user = new User(1L, "testuser", "password", "Test User", null, null, null, 1L);
+
+        // Insert first override
+        SignificantPlace place1 = new SignificantPlace(1L, "First Override", "123 First St", "First City", "US", 40.7128, -74.0060, PlaceType.HOME, ZoneId.of("America/New_York"), false, 1L);
+        significantPlaceOverrideJdbcService.insertOverride(user, place1);
+
+        // Verify first override exists
+        GeoPoint point1 = new GeoPoint(place1.getLatitudeCentroid(), place1.getLongitudeCentroid());
+        Optional<PlaceInformationOverride> result1 = significantPlaceOverrideJdbcService.findByUserAndPoint(user, point1);
+        assertTrue(result1.isPresent());
+
+        // Insert second override very close (within 5m)
+        SignificantPlace place2 = new SignificantPlace(2L, "Second Override", "456 Second St", "Second City", "US", 40.712845, -74.0060, PlaceType.WORK, ZoneId.of("America/New_York"), false, 1L);
+        significantPlaceOverrideJdbcService.insertOverride(user, place2);
+
+        // Verify first override is dropped (since it's within 5m of the new one)
+        Optional<PlaceInformationOverride> result1AfterInsert = significantPlaceOverrideJdbcService.findByUserAndPoint(user, point1);
+        assertFalse(result1AfterInsert.isPresent());
+
+        // Verify second override exists
+        GeoPoint point2 = new GeoPoint(place2.getLatitudeCentroid(), place2.getLongitudeCentroid());
+        Optional<PlaceInformationOverride> result2 = significantPlaceOverrideJdbcService.findByUserAndPoint(user, point2);
+        assertTrue(result2.isPresent());
+        assertEquals("Second Override", result2.get().name());
     }
 }

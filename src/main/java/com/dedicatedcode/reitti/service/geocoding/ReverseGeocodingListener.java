@@ -77,7 +77,7 @@ public class ReverseGeocodingListener {
                         .withCity(city)
                         .withCountryCode(countryCode);
 
-                Optional<PlaceInformationOverride> override = this.significantPlaceOverrideJdbcService.findByUserAndPoint(user, new GeoPoint(place.getLatitudeCentroid(), place.getLongitudeCentroid()));
+                Optional<PlaceInformationOverride> override = this.significantPlaceOverrideJdbcService.findByUserAndPoint(user, place);
                 if (override.isPresent()) {
                     logger.info("Found override for place ID: {} with name: {}, type: {}, timezone: {}", place.getId(), override.get().name(), override.get().category(), override.get().timezone());
                     place = place.withName(override.get().name()).withType(override.get().category()).withTimezone(override.get().timezone());

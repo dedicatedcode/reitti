@@ -32,6 +32,6 @@ public class PointReaderWriter {
     }
 
     public String write(GeoPoint point) {
-        return write(point.latitude(), point.longitude());
+        return write(point.longitude(), point.latitude());
     }
 }

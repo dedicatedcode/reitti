@@ -106,7 +106,7 @@ public class TimelineController {
 
         User user = this.userJdbcService.findByUsername(principal.getName()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         placeService.update(updatedPlace);
-        placeOverrideJdbcService.insertOverride(user, place);
+        placeOverrideJdbcService.insertOverride(user, updatedPlace);
 
         // If we have timeline context, reload the entire timeline with the edited place selected
         if (date != null) {
