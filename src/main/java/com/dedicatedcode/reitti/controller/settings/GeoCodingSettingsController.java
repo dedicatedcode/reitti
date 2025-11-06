@@ -8,6 +8,7 @@ import com.dedicatedcode.reitti.model.geocoding.RemoteGeocodeService;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
+import com.dedicatedcode.reitti.repository.SignificantPlaceOverrideJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,6 +29,7 @@ public class GeoCodingSettingsController {
 
     private final GeocodeServiceJdbcService geocodeServiceJdbcService;
     private final SignificantPlaceJdbcService placeJdbcService;
+    private final SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
     private final UserJdbcService userJdbcService;
     private final RabbitTemplate rabbitTemplate;
     private final MessageSource messageSource;
@@ -37,6 +39,7 @@ public class GeoCodingSettingsController {
 
     public GeoCodingSettingsController(GeocodeServiceJdbcService geocodeServiceJdbcService,
                                        SignificantPlaceJdbcService placeJdbcService,
+                                       SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
                                        UserJdbcService userJdbcService,
                                        RabbitTemplate rabbitTemplate,
                                        MessageSource messageSource,
@@ -44,6 +47,7 @@ public class GeoCodingSettingsController {
                                        @Value("${reitti.geocoding.max-errors}") int maxErrors) {
         this.geocodeServiceJdbcService = geocodeServiceJdbcService;
         this.placeJdbcService = placeJdbcService;
+        this.significantPlaceOverrideJdbcService = significantPlaceOverrideJdbcService;
         this.userJdbcService = userJdbcService;
         this.rabbitTemplate = rabbitTemplate;
         this.messageSource = messageSource;
@@ -168,6 +172,7 @@ public class GeoCodingSettingsController {
                 // Clear geocoding data for all places
                 for (SignificantPlace place : allPlaces) {
                     SignificantPlace clearedPlace = place.withGeocoded(false).withAddress(null);
+                    this.significantPlaceOverrideJdbcService.clear(currentUser, clearedPlace);
                     placeJdbcService.update(clearedPlace);
                 }
 
