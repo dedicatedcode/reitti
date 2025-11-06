@@ -28,7 +28,6 @@ public class MemoryBlockGenerationService {
 
     private static final DateTimeFormatter FULL_DATE_FORMATTER = DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG);
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd MMM");
-    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("dd MMM, HH:mm");
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     private static final long MIN_VISIT_DURATION_SECONDS = 600;
@@ -46,17 +45,19 @@ public class MemoryBlockGenerationService {
     private final I18nService i18n;
     private final ImmichIntegrationService immichIntegrationService;
     private final StorageService storageService;
+    private final HomeDetectionService homeDetectionService;
 
     public MemoryBlockGenerationService(ProcessedVisitJdbcService processedVisitJdbcService,
                                         TripJdbcService tripJdbcService,
                                         I18nService i18nService,
                                         ImmichIntegrationService immichIntegrationService,
-                                        StorageService storageService) {
+                                        StorageService storageService, HomeDetectionService homeDetectionService) {
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.tripJdbcService = tripJdbcService;
         this.i18n = i18nService;
         this.immichIntegrationService = immichIntegrationService;
         this.storageService = storageService;
+        this.homeDetectionService = homeDetectionService;
     }
 
     public List<MemoryBlockPart> generate(User user, Memory memory, ZoneId timeZone) {
@@ -67,8 +68,9 @@ public class MemoryBlockGenerationService {
         List<Trip> allTripsInRange = this.tripJdbcService.findByUserAndTimeOverlap(user, startDate, endDate);
         
         // Step 1: Data Pre-processing & Filtering
-        Optional<ProcessedVisit> accommodation = findAccommodation(allVisitsInRange, startDate, endDate);
-        Optional<ProcessedVisit> home = findHome(allVisitsInRange);
+        Optional<ProcessedVisit> accommodation = homeDetectionService.findAccommodation(allVisitsInRange, startDate, endDate);
+        Optional<ProcessedVisit> homeBefore = homeDetectionService.findAccommodation(this.processedVisitJdbcService.findByUserAndTimeOverlap(user, startDate.minus(7, ChronoUnit.DAYS), startDate), startDate.minus(7, ChronoUnit.DAYS), startDate);
+        Optional<ProcessedVisit> homeAfter = homeDetectionService.findAccommodation(this.processedVisitJdbcService.findByUserAndTimeOverlap(user, endDate, endDate.plus(7, ChronoUnit.DAYS)), endDate, endDate.plus(7, ChronoUnit.DAYS));
 
         // Find first and last accommodation visits
         Instant firstAccommodationArrival = accommodation.flatMap(p -> allVisitsInRange.stream()
@@ -102,8 +104,8 @@ public class MemoryBlockGenerationService {
         List<MemoryBlockPart> blockParts = new ArrayList<>();
         
         // Add introduction text block
-        if (!clusters.isEmpty() && accommodation.isPresent() && home.isPresent() && startDate != null && endDate != null) {
-            String introText = generateIntroductionText(memory, clusters, accommodation.orElse(null), home.orElse(null), startDate, endDate, timeZone);
+        if (!clusters.isEmpty() && accommodation.isPresent() && homeBefore.isPresent()) {
+            String introText = generateIntroductionText(memory, clusters, accommodation.orElse(null), homeBefore.orElse(null), startDate, endDate, timeZone);
             MemoryBlockText introBlock = new MemoryBlockText(null, i18n.translate("memory.generator.headline.text"), introText);
             blockParts.add(introBlock);
         }
@@ -117,10 +119,10 @@ public class MemoryBlockGenerationService {
                 .toList();
 
             if (!tripsToAccommodation.isEmpty()) {
-                String formattedStartDate = formatTime(tripsToAccommodation.getFirst().getStartTime(), timeZone, false);
-                String formattedEndDate = formatTime(tripsToAccommodation.getLast().getEndTime(), timeZone, false);
+                String formattedStartDate = formatTime(tripsToAccommodation.getFirst().getStartTime(), timeZone);
+                String formattedEndDate = formatTime(tripsToAccommodation.getLast().getEndTime(), timeZone);
                 String text = i18n.translate("memory.generator.travel_to_accommodation.text",
-                        home.map(h -> h.getPlace().getCity()).orElse(""),
+                        homeBefore.map(h -> h.getPlace().getCity()).orElse(""),
                         formattedStartDate,
                         accommodation.map(a -> a.getPlace().getCity()).orElse(""),
                         formattedEndDate,
@@ -225,12 +227,12 @@ public class MemoryBlockGenerationService {
 
 
             if (!tripsFromAccommodation.isEmpty()) {
-                String formattedStartDate = formatTime(tripsFromAccommodation.getFirst().getStartTime(), timeZone, false);
-                String formattedEndDate = formatTime(tripsFromAccommodation.getLast().getEndTime(), timeZone, false);
+                String formattedStartDate = formatTime(tripsFromAccommodation.getFirst().getStartTime(), timeZone);
+                String formattedEndDate = formatTime(tripsFromAccommodation.getLast().getEndTime(), timeZone);
                 String text = i18n.translate("memory.generator.travel_from_accommodation.text",
                         accommodation.map(a -> a.getPlace().getCity()).orElse(""),
                         formattedStartDate,
-                        home.map(h -> h.getPlace().getCity()).orElse(""),
+                        homeAfter.map(h -> h.getPlace().getCity()).orElse(""),
                         formattedEndDate,
                         i18n.humanizeDuration(Duration.between(tripsFromAccommodation.getFirst().getStartTime(), tripsFromAccommodation.getLast().getEndTime())),
                         i18n.humanizeDuration(tripsFromAccommodation.stream().map(Trip::getDurationSeconds).reduce(0L, Long::sum))
@@ -241,8 +243,8 @@ public class MemoryBlockGenerationService {
             }
 
 
-            if (home.isPresent()) {
-                MemoryClusterBlock clusterBlock = convertToTripCluster(tripsFromAccommodation, "Journey to " + home.get().getPlace().getCity());
+            if (homeAfter.isPresent()) {
+                MemoryClusterBlock clusterBlock = convertToTripCluster(tripsFromAccommodation, "Journey to " + homeAfter.get().getPlace().getCity());
                 blockParts.add(clusterBlock);
             }
         }
@@ -280,16 +282,6 @@ public class MemoryBlockGenerationService {
         return map;
     }
 
-    private Optional<ProcessedVisit> findHome(List<ProcessedVisit> allVisitsInRange) {
-        if (allVisitsInRange.stream().findFirst().isPresent()) {
-            boolean homeDetected =  allVisitsInRange.stream().findFirst().get().getPlace().equals(allVisitsInRange.getLast().getPlace());
-            if (homeDetected) {
-                return allVisitsInRange.stream().findFirst();
-            }
-        }
-        return Optional.empty();
-    }
-
     private MemoryClusterBlock convertToTripCluster(List<Trip> trips, String title) {
         return new MemoryClusterBlock(null, trips.stream().map(Trip::getId).toList(),
                 title, null, BlockType.CLUSTER_TRIP);
@@ -325,9 +317,9 @@ public class MemoryBlockGenerationService {
         return withYear ? localEnd.format(FULL_DATE_FORMATTER.withLocale(LocaleContextHolder.getLocale())) : localEnd.format(DATE_FORMATTER.withLocale(LocaleContextHolder.getLocale()));
     }
 
-    private static String formatTime(Instant date, ZoneId timeZone, boolean withDay) {
+    private static String formatTime(Instant date, ZoneId timeZone) {
         LocalDateTime localEnd = date.atZone(timeZone).toLocalDateTime();
-        return withDay ? localEnd.format(DATETIME_FORMATTER.withLocale(LocaleContextHolder.getLocale())) : localEnd.format(TIME_FORMATTER.withLocale(LocaleContextHolder.getLocale()));
+        return localEnd.format(TIME_FORMATTER.withLocale(LocaleContextHolder.getLocale()));
     }
 
     /**
@@ -341,61 +333,6 @@ public class MemoryBlockGenerationService {
         return "Location " + clusterNumber;
     }
 
-    /**
-     * Step 1: Find accommodation by analyzing visits during sleeping hours (22:00 - 06:00)
-     */
-    private Optional<ProcessedVisit> findAccommodation(List<ProcessedVisit> visits, Instant memoryStart, Instant memoryEnd) {
-        Map<Long, Long> sleepingHoursDuration = new HashMap<>();
-        
-        for (ProcessedVisit visit : visits) {
-            long durationInSleepingHours = calculateSleepingHoursDuration(visit, memoryStart, memoryEnd);
-            if (durationInSleepingHours > 0) {
-                sleepingHoursDuration.merge(visit.getPlace().getId(), durationInSleepingHours, Long::sum);
-            }
-        }
-        
-        return sleepingHoursDuration.entrySet().stream()
-            .max(Map.Entry.comparingByValue())
-            .flatMap(entry -> visits.stream()
-                .filter(visit -> visit.getPlace().getId().equals(entry.getKey()))
-                .findFirst());
-    }
-    
-    private long calculateSleepingHoursDuration(ProcessedVisit visit, Instant memoryStart, Instant memoryEnd) {
-        ZoneId timeZone = visit.getPlace().getTimezone();
-        if (timeZone == null) {
-            timeZone = ZoneId.systemDefault();
-        }
-        
-        // Constrain visit times to memory boundaries
-        Instant constrainedStart = visit.getStartTime().isBefore(memoryStart) ? memoryStart : visit.getStartTime();
-        Instant constrainedEnd = visit.getEndTime().isAfter(memoryEnd) ? memoryEnd : visit.getEndTime();
-        
-        var startLocal = constrainedStart.atZone(timeZone);
-        var endLocal = constrainedEnd.atZone(timeZone);
-        
-        long totalSleepingDuration = 0;
-        
-        var currentDay = startLocal.toLocalDate();
-        var lastDay = endLocal.toLocalDate();
-        
-        while (!currentDay.isAfter(lastDay)) {
-            var sleepStart = currentDay.atTime(22, 0).atZone(timeZone);
-            var sleepEnd = currentDay.plusDays(1).atTime(6, 0).atZone(timeZone);
-            
-            var overlapStart = sleepStart.isAfter(startLocal) ? sleepStart : startLocal;
-            var overlapEnd = sleepEnd.isBefore(endLocal) ? sleepEnd : endLocal;
-            
-            if (overlapStart.isBefore(overlapEnd)) {
-                totalSleepingDuration += Duration.between(overlapStart, overlapEnd).getSeconds();
-            }
-            
-            currentDay = currentDay.plusDays(1);
-        }
-        
-        return totalSleepingDuration;
-    }
-    
     /**
      * Step 1: Filter visits - remove accommodation and short visits
      */
