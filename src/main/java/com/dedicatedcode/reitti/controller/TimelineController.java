@@ -31,6 +31,7 @@ import java.util.*;
 public class TimelineController {
 
     private final SignificantPlaceJdbcService placeService;
+    private final SignificantPlaceOverrideJdbcService placeOverrideJdbcService;
     private final UserJdbcService userJdbcService;
 
     private final AvatarService avatarService;
@@ -42,7 +43,7 @@ public class TimelineController {
     private final TripJdbcService tripJdbcService;
 
     @Autowired
-    public TimelineController(SignificantPlaceJdbcService placeService,
+    public TimelineController(SignificantPlaceJdbcService placeService, SignificantPlaceOverrideJdbcService placeOverrideJdbcService,
                               UserJdbcService userJdbcService,
                               AvatarService avatarService,
                               ReittiIntegrationService reittiIntegrationService, UserSharingJdbcService userSharingJdbcService,
@@ -51,6 +52,7 @@ public class TimelineController {
                               TransportModeService transportModeService,
                               TripJdbcService tripJdbcService) {
         this.placeService = placeService;
+        this.placeOverrideJdbcService = placeOverrideJdbcService;
         this.userJdbcService = userJdbcService;
         this.avatarService = avatarService;
         this.reittiIntegrationService = reittiIntegrationService;
@@ -102,7 +104,9 @@ public class TimelineController {
             }
         }
 
+        User user = this.userJdbcService.findByUsername(principal.getName()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         placeService.update(updatedPlace);
+        placeOverrideJdbcService.insertOverride(user, updatedPlace);
 
         // If we have timeline context, reload the entire timeline with the edited place selected
         if (date != null) {

@@ -11,6 +11,7 @@ import com.dedicatedcode.reitti.model.geocoding.GeocodingResponse;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
+import com.dedicatedcode.reitti.repository.SignificantPlaceOverrideJdbcService;
 import com.dedicatedcode.reitti.service.PlaceService;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,15 +33,22 @@ import java.util.stream.Collectors;
 public class PlacesSettingsController {
     private final PlaceService placeService;
     private final SignificantPlaceJdbcService placeJdbcService;
+    private final SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
     private final GeocodingResponseJdbcService geocodingResponseJdbcService;
     private final RabbitTemplate rabbitTemplate;
     private final MessageSource messageSource;
     private final boolean dataManagementEnabled;
 
-    public PlacesSettingsController(PlaceService placeService, SignificantPlaceJdbcService placeJdbcService, GeocodingResponseJdbcService geocodingResponseJdbcService, RabbitTemplate rabbitTemplate, MessageSource messageSource,
+    public PlacesSettingsController(PlaceService placeService,
+                                    SignificantPlaceJdbcService placeJdbcService,
+                                    SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
+                                    GeocodingResponseJdbcService geocodingResponseJdbcService,
+                                    RabbitTemplate rabbitTemplate,
+                                    MessageSource messageSource,
                                     @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.placeService = placeService;
         this.placeJdbcService = placeJdbcService;
+        this.significantPlaceOverrideJdbcService = significantPlaceOverrideJdbcService;
         this.geocodingResponseJdbcService = geocodingResponseJdbcService;
         this.rabbitTemplate = rabbitTemplate;
         this.messageSource = messageSource;
@@ -154,6 +162,7 @@ public class PlacesSettingsController {
                 }
 
                 placeJdbcService.update(updatedPlace);
+                significantPlaceOverrideJdbcService.insertOverride(user, updatedPlace);
                 model.addAttribute("successMessage", getMessage("message.success.place.updated"));
                 return editPlace(placeId, page, authentication, model);
             } catch (Exception e) {
@@ -179,7 +188,7 @@ public class PlacesSettingsController {
                 // Clear geocoding data and mark as not geocoded
                 SignificantPlace clearedPlace = significantPlace.withGeocoded(false).withAddress(null);
                 placeJdbcService.update(clearedPlace);
-
+                significantPlaceOverrideJdbcService.clear(user, clearedPlace);
                 // Send SignificantPlaceCreatedEvent to trigger geocoding
                 SignificantPlaceCreatedEvent event = new SignificantPlaceCreatedEvent(
                         user.getUsername(),

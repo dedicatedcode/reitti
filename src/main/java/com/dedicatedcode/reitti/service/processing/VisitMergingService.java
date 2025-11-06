@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.ProcessedVisitCreatedEvent;
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.event.VisitUpdatedEvent;
+import com.dedicatedcode.reitti.model.PlaceInformationOverride;
 import com.dedicatedcode.reitti.model.geo.*;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
@@ -43,6 +44,7 @@ public class VisitMergingService {
     private final PreviewSignificantPlaceJdbcService previewSignificantPlaceJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService;
+    private final SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
     private final GeometryFactory geometryFactory;
     private final RabbitTemplate rabbitTemplate;
     private final UserNotificationService userNotificationService;
@@ -60,6 +62,7 @@ public class VisitMergingService {
                                PreviewSignificantPlaceJdbcService previewSignificantPlaceJdbcService,
                                RawLocationPointJdbcService rawLocationPointJdbcService,
                                PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService,
+                               SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
                                GeometryFactory geometryFactory,
                                UserNotificationService userNotificationService,
                                GeoLocationTimezoneService timezoneService,
@@ -74,6 +77,7 @@ public class VisitMergingService {
         this.previewSignificantPlaceJdbcService = previewSignificantPlaceJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
+        this.significantPlaceOverrideJdbcService = significantPlaceOverrideJdbcService;
         this.geometryFactory = geometryFactory;
         this.userNotificationService = userNotificationService;
         this.timezoneService = timezoneService;
@@ -271,6 +275,16 @@ public class VisitMergingService {
         Optional<ZoneId> timezone = this.timezoneService.getTimezone(significantPlace);
         if (timezone.isPresent()) {
             significantPlace = significantPlace.withTimezone(timezone.get());
+        }
+        // Check for override
+        GeoPoint point = new GeoPoint(significantPlace.getLatitudeCentroid(), significantPlace.getLongitudeCentroid());
+        Optional<PlaceInformationOverride> override = significantPlaceOverrideJdbcService.findByUserAndPoint(user, point);
+        if (override.isPresent()) {
+            logger.info("Found override for user [{}] and location [{}], using override information: {}", user.getUsername(), point, override.get());
+            significantPlace = significantPlace
+                    .withName(override.get().name())
+                    .withType(override.get().category())
+                    .withTimezone(override.get().timezone());
         }
         significantPlace = previewId == null ? this.significantPlaceJdbcService.create(user, significantPlace) : this.previewSignificantPlaceJdbcService.create(user, previewId, significantPlace);
         publishSignificantPlaceCreatedEvent(user, significantPlace, previewId);
