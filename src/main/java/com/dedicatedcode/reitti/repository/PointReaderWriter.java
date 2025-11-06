@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.repository;
 
+import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -28,5 +29,9 @@ public class PointReaderWriter {
 
     public String write(double x, double y) {
         return geometryFactory.createPoint(new Coordinate(x, y)).toString();
+    }
+
+    public String write(GeoPoint point) {
+        return write(point.longitude(), point.latitude());
     }
 }

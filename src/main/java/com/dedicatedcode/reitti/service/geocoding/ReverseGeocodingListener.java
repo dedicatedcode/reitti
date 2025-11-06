@@ -1,10 +1,13 @@
 package com.dedicatedcode.reitti.service.geocoding;
 
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
+import com.dedicatedcode.reitti.model.PlaceInformationOverride;
+import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.PreviewSignificantPlaceJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
+import com.dedicatedcode.reitti.repository.SignificantPlaceOverrideJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.UserNotificationService;
 import org.slf4j.Logger;
@@ -21,17 +24,19 @@ public class ReverseGeocodingListener {
     private final SignificantPlaceJdbcService significantPlaceJdbcService;
     private final PreviewSignificantPlaceJdbcService previewSignificantPlaceJdbcService;
     private final GeocodeServiceManager geocodeServiceManager;
+    private final SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
     private final UserNotificationService userNotificationService;
     private final UserJdbcService userJdbcService;
 
     @Autowired
     public ReverseGeocodingListener(SignificantPlaceJdbcService significantPlaceJdbcService,
                                     PreviewSignificantPlaceJdbcService previewSignificantPlaceJdbcService,
-                                    GeocodeServiceManager geocodeServiceManager,
+                                    GeocodeServiceManager geocodeServiceManager, SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
                                     UserNotificationService userNotificationService, UserJdbcService userJdbcService) {
         this.significantPlaceJdbcService = significantPlaceJdbcService;
         this.previewSignificantPlaceJdbcService = previewSignificantPlaceJdbcService;
         this.geocodeServiceManager = geocodeServiceManager;
+        this.significantPlaceOverrideJdbcService = significantPlaceOverrideJdbcService;
         this.userNotificationService = userNotificationService;
         this.userJdbcService = userJdbcService;
     }
@@ -72,7 +77,11 @@ public class ReverseGeocodingListener {
                         .withCity(city)
                         .withCountryCode(countryCode);
 
-
+                Optional<PlaceInformationOverride> override = this.significantPlaceOverrideJdbcService.findByUserAndPoint(user, place);
+                if (override.isPresent()) {
+                    logger.info("Found override for place ID: {} with name: {}, type: {}, timezone: {}", place.getId(), override.get().name(), override.get().category(), override.get().timezone());
+                    place = place.withName(override.get().name()).withType(override.get().category()).withTimezone(override.get().timezone());
+                }
                 if (event.previewId() == null) {
                     significantPlaceJdbcService.update(place.withGeocoded(true));
                     userNotificationService.placeUpdate(user, place);
