@@ -22,8 +22,8 @@ public class PlaceService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public Page<SignificantPlace> getPlacesForUser(User user, PageRequest pageable) {
-        return significantPlaceJdbcService.findByUser(user, pageable);
+    public Page<SignificantPlace> getPlacesForUser(User user, PageRequest pageable, String search) {
+        return significantPlaceJdbcService.findByUserWithSearch(user, pageable, search);
     }
 
     public PlaceVisitStatistics getVisitStatisticsForPlace(User user, Long placeId) {
@@ -49,4 +49,3 @@ public class PlaceService {
     }
 
 }
-
