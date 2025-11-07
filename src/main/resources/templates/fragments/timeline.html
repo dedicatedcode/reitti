@@ -14,7 +14,7 @@
     </div>
 
     <div class="user-timeline-selection" th:if="${timelineData.users != null && timelineData.users.size() > 1}">
-        <div th:if="${userData}" th:each="userData, iterStat : ${timelineData.users}"
+        <div th:title="${userData.displayName}" th:if="${userData}" th:each="userData, iterStat : ${timelineData.users}"
              class="user-header"
              th:classappend="${iterStat.first} ? 'active' : ''"
              th:data-user-id="${userData.userId}"
