@@ -30,22 +30,8 @@
                     <span th:text="${errorMessage}">Error message</span>
                 </div>
 
-                <div class="pagination-controls">
-                    <span th:text="#{places.page.info(${currentPage + 1}, ${totalPages})}">Page 1 of 1</span>
-                    <div class="pagination-buttons">
-                        <button th:if="${currentPage > 0}"
-                                class="btn"
-                                th:attr="hx-get=@{/settings/places/places-content(page=${currentPage - 1})}"
-                                hx-target="#places-management"
-                                hx-swap="innerHTML"
-                                th:text="#{form.previous}">Previous</button>
-                        <button th:if="${currentPage < totalPages - 1}"
-                                class="btn"
-                                th:attr="hx-get=@{/settings/places/places-content(page=${currentPage + 1})}"
-                                hx-target="#places-management"
-                                hx-swap="innerHTML"
-                                th:text="#{form.next}">Next</button>
-                    </div>
+                <div class="search-container" style="margin-bottom: 20px;">
+                    <input type="text" id="search-input" name="search" th:value="${search}" placeholder="Search places..." style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;" hx-get="/settings/places/places-content" hx-target="#places-management" hx-swap="innerHTML" hx-trigger="input changed delay:300ms" hx-vals='{"page": 0}' />
                 </div>
 
                 <div class="places-grid" th:if="${!isEmpty}">
@@ -63,7 +49,7 @@
                             <div style="display: flex; gap: 10px; margin-top: 10px;">
                                 <button type="button"
                                         class="btn btn-block"
-                                        th:attr="hx-get=@{/settings/places/{id}/edit(id=${place.id()}, page=${currentPage})}"
+                                        th:attr="hx-get=@{/settings/places/{id}/edit(id=${place.id()}, page=${currentPage}, search=${search})}"
                                         hx-target="#places-management"
                                         hx-swap="innerHTML"
                                         th:text="#{places.edit.button}">Edit</button>
@@ -72,6 +58,24 @@
                     </div>
                 </div>
                 <p th:if="${isEmpty}" th:text="#{places.no.places}">No significant places found.</p>
+
+                <div class="pagination-controls" style="text-align: right;">
+                    <span th:text="#{places.page.info(${currentPage + 1}, ${totalPages})}">Page 1 of 1</span>
+                    <div class="pagination-buttons">
+                        <button th:if="${currentPage > 0}"
+                                class="btn"
+                                th:attr="hx-get=@{/settings/places/places-content(page=${currentPage - 1}, search=${search})}"
+                                hx-target="#places-management"
+                                hx-swap="innerHTML"
+                                th:text="#{form.previous}">Previous</button>
+                        <button th:if="${currentPage < totalPages - 1}"
+                                class="btn"
+                                th:attr="hx-get=@{/settings/places/places-content(page=${currentPage + 1}, search=${search})}"
+                                hx-target="#places-management"
+                                hx-swap="innerHTML"
+                                th:text="#{form.next}">Next</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -170,3 +174,4 @@
     window.userSettings = /*[[${userSettings}]]*/ {}
 </script>
 </body>
+</html>

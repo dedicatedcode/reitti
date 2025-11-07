@@ -8,7 +8,7 @@
 
     <div style="margin-bottom: 20px;">
         <button class="btn" 
-                th:attr="hx-get=${context == 'edit' ? '/settings/places/' + place.id() + '/edit?page=' + currentPage : '/settings/places/places-content?page=' + currentPage}"
+                th:attr="hx-get=${context == 'edit' ? '/settings/places/' + place.id() + '/edit?page=' + currentPage + '&search=' + search : '/settings/places/places-content?page=' + currentPage + '&search=' + search}"
                 hx-target="#places-management"
                 hx-swap="innerHTML"
                 th:text="#{places.geocoding.response.back}">Back to Places</button>
@@ -60,7 +60,7 @@
 
     <div style="margin-bottom: 20px;">
         <button class="btn" 
-                th:attr="hx-get=@{/settings/places/places-content(page=${currentPage})}"
+                th:attr="hx-get=@{/settings/places/places-content(page=${currentPage}, search=${search})}"
                 hx-target="#places-management"
                 hx-swap="innerHTML"
                 th:text="#{form.close}">Close</button>
@@ -105,7 +105,7 @@
     <div class="settings-card">
         <h3 th:text="#{places.edit.details.title}">Place Details</h3>
         <form th:id="'edit-place-form-' + ${place.id()}" autocomplete="off"
-              th:attr="hx-post=@{/settings/places/{id}/update(id=${place.id()}, page=${currentPage})}"
+              th:attr="hx-post=@{/settings/places/{id}/update(id=${place.id()}, page=${currentPage}, search=${search})}"
               hx-target="#places-management"
               hx-swap="innerHTML">
             <div class="form-group">
@@ -132,13 +132,13 @@
                 <button type="submit" class="btn" th:text="#{form.update}">Update</button>
                 <button type="button" 
                         class="btn btn-secondary"
-                        th:attr="hx-post=@{/settings/places/{id}/geocode(id=${place.id()}, page=${currentPage})}, hx-confirm=#{places.geocode.confirm}"
+                        th:attr="hx-post=@{/settings/places/{id}/geocode(id=${place.id()}, page=${currentPage}, search=${search})}, hx-confirm=#{places.geocode.confirm}"
                         hx-target="#places-management"
                         hx-swap="innerHTML"
                         th:text="#{places.geocode.button}">Geocode</button>
                 <button type="button" 
                         class="btn btn-secondary"
-                        th:attr="hx-get=@{/settings/places/{id}/geocoding-response(id=${place.id()}, page=${currentPage}, context='edit')}"
+                        th:attr="hx-get=@{/settings/places/{id}/geocoding-response(id=${place.id()}, page=${currentPage}, context='edit', search=${search})}"
                         hx-target="#places-management"
                         hx-swap="innerHTML"
                         th:text="#{places.geocoding.response.button}">View Geocoding</button>

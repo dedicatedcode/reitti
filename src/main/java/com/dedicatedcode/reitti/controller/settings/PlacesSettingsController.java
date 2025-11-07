@@ -61,15 +61,16 @@ public class PlacesSettingsController {
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
 
-        getPlacesContent(user, 0, model);
+        getPlacesContent(user, 0, "", model);
         return "settings/places";
     }
 
     @GetMapping("/places-content")
     public String getPlacesContent(@AuthenticationPrincipal User user,
                                    @RequestParam(defaultValue = "0") int page,
+                                   @RequestParam(defaultValue = "") String search,
                                    Model model) {
-        Page<SignificantPlace> placesPage = placeService.getPlacesForUser(user, PageRequest.of(page, 20));
+        Page<SignificantPlace> placesPage = placeService.getPlacesForUser(user, PageRequest.of(page, 20), search);
 
         // Convert to PlaceInfo objects
         List<PlaceInfo> places = placesPage.getContent().stream()
@@ -89,6 +90,7 @@ public class PlacesSettingsController {
         model.addAttribute("places", places);
         model.addAttribute("isEmpty", places.isEmpty());
         model.addAttribute("placeTypes", SignificantPlace.PlaceType.values());
+        model.addAttribute("search", search);
 
         return "settings/places :: places-content";
     }
@@ -96,6 +98,7 @@ public class PlacesSettingsController {
     @GetMapping("/{placeId}/edit")
     public String editPlace(@PathVariable Long placeId,
                             @RequestParam(defaultValue = "0") int page,
+                            @RequestParam(defaultValue = "") String search,
                             Authentication authentication,
                             Model model) {
 
@@ -122,12 +125,13 @@ public class PlacesSettingsController {
 
             model.addAttribute("place", placeInfo);
             model.addAttribute("currentPage", page);
+            model.addAttribute("search", search);
             model.addAttribute("placeTypes", SignificantPlace.PlaceType.values());
             model.addAttribute("visitStats", visitStats);
 
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("message.error.place.update", e.getMessage()));
-            return getPlacesContent(user, page, model);
+            return getPlacesContent(user, page, search, model);
         }
 
         return "fragments/places :: edit-place-content";
@@ -139,6 +143,7 @@ public class PlacesSettingsController {
                               @RequestParam(required = false) String address,
                               @RequestParam(required = false) String type,
                               @RequestParam(defaultValue = "0") int page,
+                              @RequestParam(defaultValue = "") String search,
                               Authentication authentication,
                               Model model) {
 
@@ -157,17 +162,17 @@ public class PlacesSettingsController {
                         updatedPlace = updatedPlace.withType(placeType);
                     } catch (IllegalArgumentException e) {
                         model.addAttribute("errorMessage", getMessage("message.error.place.update", "Invalid place type"));
-                        return editPlace(placeId, page, authentication, model);
+                        return editPlace(placeId, page, search, authentication, model);
                     }
                 }
 
                 placeJdbcService.update(updatedPlace);
                 significantPlaceOverrideJdbcService.insertOverride(user, updatedPlace);
                 model.addAttribute("successMessage", getMessage("message.success.place.updated"));
-                return editPlace(placeId, page, authentication, model);
+                return editPlace(placeId, page, search, authentication, model);
             } catch (Exception e) {
                 model.addAttribute("errorMessage", getMessage("message.error.place.update", e.getMessage()));
-                return editPlace(placeId, page, authentication, model);
+                return editPlace(placeId, page, search, authentication, model);
             }
         } else {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
@@ -177,6 +182,7 @@ public class PlacesSettingsController {
     @PostMapping("/{placeId}/geocode")
     public String geocodePlace(@PathVariable Long placeId,
                                @RequestParam(defaultValue = "0") int page,
+                               @RequestParam(defaultValue = "") String search,
                                Authentication authentication,
                                Model model) {
 
@@ -207,13 +213,14 @@ public class PlacesSettingsController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
 
-        return getPlacesContent(user, page, model);
+        return getPlacesContent(user, page, search, model);
     }
 
 
     @GetMapping("/{placeId}/geocoding-response")
     public String getGeocodingResponse(@PathVariable Long placeId,
                                        @RequestParam(defaultValue = "0") int page,
+                                       @RequestParam(defaultValue = "") String search,
                                        @RequestParam(defaultValue = "places") String context,
                                        Authentication authentication,
                                        Model model) {
@@ -241,12 +248,13 @@ public class PlacesSettingsController {
 
             model.addAttribute("place", placeInfo);
             model.addAttribute("currentPage", page);
+            model.addAttribute("search", search);
             model.addAttribute("context", context);
             model.addAttribute("geocodingResponses", geocodingResponses);
 
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("message.error.place.update", e.getMessage()));
-            return getPlacesContent(user, page, model);
+            return getPlacesContent(user, page, search, model);
         }
 
         return "fragments/places :: geocoding-response-content";
