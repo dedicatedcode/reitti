@@ -140,11 +140,11 @@
         if (urlParams.has('date')) {
             return urlParams.get('date');
         } else if (window.userSettings.uiMode === 'SHARED_LIVE_MODE_ONLY') {
-            return new Date().toISOString().split('T')[0];
+            return getCurrentLocalDate();
         } else if (window.userSettings.newestData) {
             return window.userSettings.newestData.split('T')[0];
         } else {
-            return new Date().toISOString().split('T')[0];
+            return getCurrentLocalDate();
         }
     }
 
@@ -310,7 +310,7 @@
         }
 
         // Set date picker to URL date or today's date
-        const formattedDate = initialDate || new Date().toISOString().split('T')[0];
+        const formattedDate = initialDate || getCurrentLocalDate();
 
         // Function to update URL with date parameter
         function updateUrlWithDate(date) {
@@ -741,22 +741,18 @@
                 return; // Exit if auto-update mode was disabled
             }
             
-            const today = new Date();
-            const todayString = today.toISOString().split('T')[0]; // YYYY-MM-DD format
-            const currentSelectedDate = getSelectedDate();
-            
             // If the selected date is not today, switch to today
-            if (currentSelectedDate !== todayString) {
+            if (!isSelectedDateToday()) {
                 console.log('Auto-update: Switching to today\'s date');
                 if (window.horizontalDatePicker) {
-                    window.horizontalDatePicker.setDate(today);
+                    window.horizontalDatePicker.setDate(new Date());
                 }
             }
         }, 30000); // 30 seconds
     }
 
     function isSelectedDateToday() {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getCurrentLocalDate();
         const selectedDate = getSelectedDate();
         return selectedDate === today;
     }
@@ -871,7 +867,7 @@
                 
                 // Check if the event has a date field and it matches today
                 if (eventData.date) {
-                    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+                    const today = getCurrentLocalDate(); // YYYY-MM-DD format
                     const eventDate = eventData.date;
                     
                     // If event date matches today and we're in auto-update mode, schedule reload

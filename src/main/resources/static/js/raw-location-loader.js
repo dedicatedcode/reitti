@@ -303,7 +303,7 @@ class RawLocationLoader {
      * Check if the selected date is today
      */
     isSelectedDateToday() {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getCurrentLocalDate();
         const selectedDate = this.getSelectedDate();
         return selectedDate === today;
     }
@@ -316,7 +316,7 @@ class RawLocationLoader {
         if (urlParams.has('date')) {
             return urlParams.get('date');
         } else {
-            return new Date().toISOString().split('T')[0];
+            return getCurrentLocalDate();
         }
     }
 }
