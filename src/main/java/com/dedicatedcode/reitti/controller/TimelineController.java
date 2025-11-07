@@ -205,7 +205,7 @@ public class TimelineController {
         String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", user.getId(), date, timezone);
         String currentUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", user.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", user.getId()));
         String currentUserInitials = this.avatarService.generateInitials(user.getDisplayName());
-        allUsersData.add(new UserTimelineData(user.getId() + "", user.getUsername(), currentUserInitials, currentUserAvatarUrl, null, currentUserEntries, currentUserRawLocationPointsUrl));
+        allUsersData.add(new UserTimelineData(user.getId() + "", user.getDisplayName(), currentUserInitials, currentUserAvatarUrl, null, currentUserEntries, currentUserRawLocationPointsUrl));
 
         if (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN")) {
             allUsersData.addAll(this.reittiIntegrationService.getTimelineData(user, selectedDate, userTimezone));
@@ -263,7 +263,7 @@ public class TimelineController {
         String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), selectedStartDate, selectedEndDate, timezone);
         String currentUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", user.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", user.getId()));
         String currentUserInitials = this.avatarService.generateInitials(user.getDisplayName());
-        allUsersData.add(new UserTimelineData(user.getId() + "", user.getUsername(), currentUserInitials, currentUserAvatarUrl, null, currentUserEntries, currentUserRawLocationPointsUrl));
+        allUsersData.add(new UserTimelineData(user.getId() + "", user.getDisplayName(), currentUserInitials, currentUserAvatarUrl, null, currentUserEntries, currentUserRawLocationPointsUrl));
 
         if (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN")) {
             allUsersData.addAll(this.reittiIntegrationService.getTimelineDataRange(user, selectedStartDate, selectedEndDate, userTimezone));
