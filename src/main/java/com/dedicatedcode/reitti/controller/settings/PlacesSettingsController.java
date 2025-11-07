@@ -90,7 +90,7 @@ public class PlacesSettingsController {
         model.addAttribute("isEmpty", places.isEmpty());
         model.addAttribute("placeTypes", SignificantPlace.PlaceType.values());
 
-        return "fragments/places :: places-content";
+        return "settings/places :: places-content";
     }
 
     @GetMapping("/{placeId}/edit")

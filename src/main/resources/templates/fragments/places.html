@@ -2,61 +2,6 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 
-<!-- Places Content Fragment -->
-<div th:fragment="places-content">
-    <h2 th:text="#{places.title}">Significant Places</h2>
-
-    <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
-        <span th:text="${successMessage}">Success message</span>
-    </div>
-    <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
-        <span th:text="${errorMessage}">Error message</span>
-    </div>
-
-    <div class="pagination-controls">
-        <span th:text="#{places.page.info(${currentPage + 1}, ${totalPages})}">Page 1 of 1</span>
-        <div class="pagination-buttons">
-            <button th:if="${currentPage > 0}" 
-                    class="btn"
-                    th:attr="hx-get=@{/settings/places/places-content(page=${currentPage - 1})}"
-                    hx-target="#places-management"
-                    hx-swap="innerHTML"
-                    th:text="#{form.previous}">Previous</button>
-            <button th:if="${currentPage < totalPages - 1}" 
-                    class="btn"
-                    th:attr="hx-get=@{/settings/places/places-content(page=${currentPage + 1})}"
-                    hx-target="#places-management"
-                    hx-swap="innerHTML"
-                    th:text="#{form.next}">Next</button>
-        </div>
-    </div>
-
-    <div class="places-grid" th:if="${!isEmpty}">
-        <div class="place-stats-card" th:each="place : ${places}">
-            <div class="place-map-container">
-                <div class="place-map" th:id="'map-' + ${place.id()}" th:data-lat="${place.latitude()}" th:data-lng="${place.longitude()}" ></div>
-            </div>
-            <div class="place-details text-align-left">
-                <div class="place-info">
-                    <div><strong th:text="#{places.name.label}">Name:</strong> <span th:text="${place.name()}"></span></div>
-                    <div><strong th:text="#{places.address.label}">Address:</strong> <span th:text="${place.address() ?: #messages.msg('places.address.not.available')}"></span></div>
-                    <div><strong th:text="#{places.category.label}">Category:</strong> <span th:text="#{${place.type().messageKey}}"></span></div>
-                    <div><strong th:text="#{places.coordinates.label}">Coordinates:</strong> <span th:text="${place.latitude() + ', ' + place.longitude()}"></span></div>
-                </div>
-                <div style="display: flex; gap: 10px; margin-top: 10px;">
-                    <button type="button" 
-                            class="btn btn-block"
-                            th:attr="hx-get=@{/settings/places/{id}/edit(id=${place.id()}, page=${currentPage})}"
-                            hx-target="#places-management"
-                            hx-swap="innerHTML"
-                            th:text="#{places.edit.button}">Edit</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <p th:if="${isEmpty}" th:text="#{places.no.places}">No significant places found.</p>
-</div>
-
 <!-- Geocoding Response Content Fragment -->
 <div th:fragment="geocoding-response-content">
     <h2 th:text="#{places.geocoding.response.title(${place.name()})}">Geocoding Response for Place</h2>
