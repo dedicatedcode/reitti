@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -51,6 +52,29 @@ public class SignificantPlaceJdbcService {
                 "LIMIT ? OFFSET ? ";
         List<SignificantPlace> content = jdbcTemplate.query(sql, significantPlaceRowMapper,
                 user.getId(), pageable.getPageSize(), pageable.getOffset());
+
+        return new Page<>(content, pageable, total != null ? total : 0);
+    }
+
+    public Page<SignificantPlace> findByUserWithSearch(User user, PageRequest pageable, String search) {
+        String searchCondition = (search != null && !search.trim().isEmpty()) ? "AND (name ILIKE ? OR address ILIKE ?)" : "";
+        String countSql = "SELECT COUNT(*) FROM significant_places WHERE user_id = ? " + searchCondition;
+        List<Object> countParams = new ArrayList<>();
+        countParams.add(user.getId());
+        if (search != null && !search.trim().isEmpty()) {
+            countParams.add("%" + search.trim() + "%");
+            countParams.add("%" + search.trim() + "%");
+        }
+        Integer total = jdbcTemplate.queryForObject(countSql, Integer.class, countParams.toArray());
+
+        String sql = "SELECT sp.id, sp.address, sp.country_code, sp.city, sp.type, sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id, ST_AsText(sp.geom) as geom, sp.timezone, sp.geocoded, sp.version" +
+                " FROM significant_places sp " +
+                "WHERE sp.user_id = ? " + searchCondition + " ORDER BY sp.id " +
+                "LIMIT ? OFFSET ? ";
+        List<Object> params = new ArrayList<>(countParams);
+        params.add(pageable.getPageSize());
+        params.add(pageable.getOffset());
+        List<SignificantPlace> content = jdbcTemplate.query(sql, significantPlaceRowMapper, params.toArray());
 
         return new Page<>(content, pageable, total != null ? total : 0);
     }
