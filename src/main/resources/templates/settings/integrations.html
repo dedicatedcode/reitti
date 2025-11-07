@@ -88,6 +88,38 @@
                                 </div>
                             </div>
 
+                            <div class="integration-section">
+                                <h3 th:text="#{integrations.overland.title}">📍 Overland Setup</h3>
+                                <p th:text="#{integrations.overland.description}">Overland is a GPS logger for Android devices that sends location data in GeoJSON format.</p>
+                                <p><strong>Homepage:</strong> 
+                                    <a href="https://overland.p3k.app/" target="_blank" rel="noopener noreferrer" style="color: var(--color-accent); text-decoration: underline;">https://overland.p3k.app/</a>
+                                </p>
+
+                                <div class="setup-steps">
+                                    <h4 th:text="#{integrations.setup.instructions}">Setup Instructions:</h4>
+                                    <ol>
+                                        <li>Install Overland</li>
+                                        <li>Open Overland and go to the <strong>Settings</strong> tab</li>
+                                        <li><strong>Important:</strong> Tap the <strong>Request Permission</strong> button to grant location access - Overland will not track anything without this permission</li>
+                                        <li>Tap on <strong>Receiver Endpoint</strong></li>
+                                        <li th:if="${hasToken}">Set the Endpoint URL to: <code th:text="${serverUrl + '/api/v1/ingest/overland?token=' + firstToken}">https://your-domain.com/api/v1/ingest/overland?token=YOUR_TOKEN</code></li>
+                                        <li th:unless="${hasToken}">Set the Endpoint URL to: <code th:text="${serverUrl + '/api/v1/ingest/overland?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/ingest/overland?token=YOUR_TOKEN</code></li>
+                                        <li>Leave the <strong>Device ID</strong> field empty or set a custom identifier</li>
+                                        <li>Leave the <strong>Access Token</strong> field empty (we use the token in the URL)</li>
+                                        <li>Configure tracking settings:
+                                            <ul>
+                                                <li><strong>Desired Accuracy:</strong> Best (for high accuracy) or 100m (for battery saving)</li>
+                                                <li><strong>Points per Batch:</strong> 50-200 (lower for unreliable connections)</li>
+                                                <li><strong>Significant Location:</strong> Disabled for continuous tracking</li>
+                                            </ul>
+                                        </li>
+                                        <li>Go to the <strong>Tracker</strong> tab and turn tracking <strong>On</strong></li>
+                                        <li>Adjust the sending interval slider (1 second to 30 minutes)</li>
+                                        <li>The app will start sending location data automatically</li>
+                                    </ol>
+                                </div>
+                            </div>
+
                             <div class="alert alert-info">
                                 <strong th:text="#{integrations.mobile.help.title}">Need Help?</strong><br>
                                 <span th:text="#{integrations.mobile.help.description}">For detailed setup instructions and tips, visit our comprehensive guide:</span>

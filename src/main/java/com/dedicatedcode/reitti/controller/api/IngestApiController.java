@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller.api;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.dto.OverlandLocationRequest;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.io.Serializable;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -76,6 +78,48 @@ public class IngestApiController {
             logger.error("Error processing Owntracks data", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error processing Owntracks data: " + e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/overland")
+    public ResponseEntity<?> receiveOverlandData(@RequestBody OverlandLocationRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        User user = this.userJdbcService.findByUsername(userDetails.getUsername()).orElseThrow(() -> new UsernameNotFoundException(userDetails.getUsername()));
+        
+        try {
+            if (request.getLocations() == null || request.getLocations().isEmpty()) {
+                logger.debug("Ignoring Overland request with no locations for user {}", user.getUsername());
+                return ResponseEntity.ok(Map.of(
+                        "result", "ok"
+                ));
+            }
+            
+            // Convert Overland locations to our LocationPoint format
+            List<LocationPoint> locationPoints = request.getLocations().stream()
+                    .map(OverlandLocationRequest.OverlandLocation::toLocationPoint)
+                    .filter(point -> point != null && point.getTimestamp() != null && point.getAccuracyMeters() != null)
+                    .toList();
+            
+            if (locationPoints.isEmpty()) {
+                logger.warn("No valid location points found in Overland request for user {}", user.getUsername());
+                return ResponseEntity.ok(Map.of(
+                        "result", "ok"
+                ));
+            }
+            
+            this.batchProcessor.sendToQueue(user, locationPoints);
+            logger.debug("Successfully received and queued {} Overland location points for user {}",
+                    locationPoints.size(), user.getUsername());
+            
+            return ResponseEntity.ok(Map.of(
+                    "result", "ok"
+            ));
+            
+        } catch (Exception e) {
+            logger.error("Error processing Overland data", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error processing Overland data: " + e.getMessage()));
         }
     }
 }
