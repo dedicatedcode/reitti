@@ -1061,8 +1061,8 @@ body.auto-update-mode .datepicker-toggle-btn {
 
 .logo {
     width: auto;
-    height: 32px;
-    padding: 6px 8px 0px;
+    height: 28px;
+    padding: 6px 8px 3px;
     vertical-align: bottom;
     opacity: 0.8;
     transition: opacity 0.2s ease-in-out;
@@ -1170,7 +1170,6 @@ body.auto-update-mode .datepicker-toggle-btn {
 
 .settings-content-area {
     flex: 1;
-    padding: 30px;
     overflow-y: auto;
     font-family: initial;
 }

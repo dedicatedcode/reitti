@@ -4,17 +4,12 @@
 <div th:fragment="main-navigation(activeSection)" class="navigation-container">
     <div class="navbar">
         <span><img class="logo" th:src="@{/img/logo.svg}" alt="reitti logo" title="reitti" src="/img/logo.svg"></span>
-        <a href="/" class="nav-link" th:title="#{nav.timeline}"><i class="lni lni-route-1"></i></a>
-        <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/memories" class="nav-link"
-           th:title="#{nav.memories}"><i class="lni lni-agenda"></i></a>
-        <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/statistics" class="nav-link"
-           th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
-        <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/settings" class="nav-link" th:classappend="${activeSection == 'settings'} ? 'active' : ''"
-           th:title="#{nav.settings.tooltip}"><i class="lni lni-gear-1"></i></a>
-        <a th:if="${activeSection == 'index'}" type="button" class="nav-link" id="auto-update-btn" onclick="toggleAutoUpdate()" title="Auto Update"><i
-                class="lni lni-play"></i></a>
-        <a th:if="${activeSection == 'index'}" type="button" class="nav-link" onclick="toggleFullscreen()" title="Toggle Fullscreen"><i
-                class="lni lni-arrow-all-direction"></i></a>
+        <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER', 'ROLE_MAGIC_LINK_FULL_ACCESS')" href="/" class="nav-link" th:title="#{nav.timeline}"><i class="lni lni-route-1"></i></a>
+        <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/memories" class="nav-link" th:classappend="${activeSection == 'index'} ? 'active' : ''"th:title="#{nav.memories}"><i class="lni lni-agenda"></i></a>
+        <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/statistics" class="nav-link" th:classappend="${activeSection == 'statistics'} ? 'active' : ''" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
+        <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/settings" class="nav-link" th:classappend="${activeSection == 'settings'} ? 'active' : ''" th:title="#{nav.settings.tooltip}"><i class="lni lni-gear-1"></i></a>
+        <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER', 'ROLE_MAGIC_LINK_FULL_ACCESS')" th:if="${activeSection == 'index'}" type="button" class="nav-link" id="auto-update-btn" onclick="toggleAutoUpdate()" title="Auto Update"><i class="lni lni-play"></i></a>
+        <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER', 'ROLE_MAGIC_LINK_FULL_ACCESS')" th:if="${activeSection == 'index'}" type="button" class="nav-link" onclick="toggleFullscreen()" title="Toggle Fullscreen"><i class="lni lni-arrow-all-direction"></i></a>
         <form th:action="@{/logout}" method="post">
             <button type="submit" class="nav-link" th:title="#{nav.logout.tooltip}"><i
                     class="lni lni-exit"></i>
