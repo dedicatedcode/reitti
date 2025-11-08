@@ -44,22 +44,8 @@
     <div class="time" id="auto-update-time"></div>
 </div>
 
+<div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('index')}"></div>
 <div class="timeline">
-
-    <div class="navbar">
-        <span><img class="logo" th:src="@{/img/logo.svg}" alt="reitti logo" title="reitti" src="/img/logo.svg"></span>
-        <a href="/" class="nav-link active" th:title="#{nav.timeline}"><i class="lni lni-route-1"></i></a>
-        <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/memories" class="nav-link" th:title="#{nav.memories}"><i class="lni lni-agenda"></i></a>
-        <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/statistics" class="nav-link" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
-        <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" href="/settings" class="nav-link" th:title="#{nav.settings.tooltip}"><i class="lni lni-gear-1"></i></a>
-        <a type="button" class="nav-link" id="auto-update-btn" onclick="toggleAutoUpdate()" title="Auto Update"><i class="lni lni-play"></i></a>
-        <a type="button" class="nav-link" onclick="toggleFullscreen()" title="Toggle Fullscreen"><i class="lni lni-arrow-all-direction"></i></a>
-        <form th:action="@{/logout}" method="post" >
-            <button type="submit" class="nav-link" th:title="#{nav.logout.tooltip}"><i
-                    class="lni lni-exit"></i>
-            </button>
-        </form>
-    </div>
     <div class="timeline-container"
          hx-get="/timeline/content/range"
          hx-trigger="load, dateChanged from:body"
@@ -639,15 +625,18 @@
     }
     function toggleAutoUpdate() {
         const btn = document.getElementById('auto-update-btn');
-        const icon = btn.querySelector('i');
+        const icon = btn ? btn.querySelector('i') : null;
         
         if (!autoUpdateMode) {
             document.body.classList.add('auto-update-mode');
 
             // Enable auto-update mode
             autoUpdateMode = true;
-            icon.className = 'lni lni-pause';
-            btn.title = 'Pause Auto Update';
+
+            if (btn) {
+                icon.className = 'lni lni-pause';
+                btn.title = 'Pause Auto Update';
+            }
 
             // Hide timeline and date picker smoothly
             hideUIElements();
