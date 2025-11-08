@@ -16,7 +16,7 @@
 </head>
 <body class="memories-page">
     <div id="memories-panel" class="memories-overview"></div>
-    <div class="timeline">
+    <div class="navigation-container">
         <div class="navbar">
             <a th:href="@{/}"><img class="logo" th:src="@{/img/logo.svg}" alt="reitti logo" title="reitti" src="/img/logo.svg"></a>
             <a href="/" class="nav-link" th:title="#{nav.timeline}"><i class="lni lni-route-1"></i></a>
@@ -28,7 +28,8 @@
                 </button>
             </form>
         </div>
-
+    </div>
+    <div class="timeline">
         <div class="timeline-container">
             <div id="years-navigation"
                  hx-get="/memories/years-navigation"

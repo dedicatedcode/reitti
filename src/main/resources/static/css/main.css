@@ -467,9 +467,20 @@ tr:hover {
     scrollbar-width: none; /* Firefox */
 }
 
+.navigation-container {
+    position: fixed;
+    top: 0;
+    width: 50%;
+    z-index: 50;
+    overflow-y: auto;
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+}
+
 .timeline-container {
-    font-family: "Serif";
+    font-family: "Serif", serif;
     width: 350px;
+    padding-top: 48px;
     padding-bottom: 250px;
     transition: opacity 0.3s ease;
 }
@@ -477,7 +488,7 @@ tr:hover {
 .timeline-entry {
     color: #bfbfbf;
     padding: 1rem 2rem;
-    transition: color, padding 0.5s ease-in-out;
+    transition: all 0.25s ease-in-out;
     font-weight: lighter;
     pointer-events: all;
     cursor: pointer;
@@ -486,21 +497,19 @@ tr:hover {
 
 .timeline-entry.active {
     color: #f8f8f8;
-    padding: 1rem 0 0 2.5rem;
-    transition: color, padding 0.5s ease-in-out;
+    transition: all 0.25s ease-in-out;
 }
 
 .timeline-entry .entry-description {
     font-family: var(--serif-font);
     font-size: 3rem;
-    transition: font-size 0.5s ease-in-out;
+    transition: all 0.25s ease-in-out;
 }
 
 .timeline-entry.active .entry-description {
     font-family: var(--serif-font);
     font-size: 5rem;
-    transition: font-size 0.5s ease-in-out;
-    position: relative;
+    transition: all 0.25s ease-in-out;
 }
 
 .htmx-indicator {
@@ -1117,6 +1126,14 @@ body.auto-update-mode .datepicker-toggle-btn {
     border-bottom: none;
 }
 
+.settings-page .navigation-container {
+    position: relative;
+    /* hack to make the background appear the same as the settings-nav*/
+    background: linear-gradient(90deg, rgb(17, 17, 17) 0%, rgba(59, 59, 59, 0.49) 76%, rgba(255, 255, 255, 0) 250px);
+    width: 250px;
+    overflow-y: visible;
+}
+
 .settings-page .settings-nav-item {
     display: block;
     text-decoration: none;
@@ -1196,10 +1213,6 @@ body.auto-update-mode .datepicker-toggle-btn {
 
     .timeline-entry.active .entry-description {
         font-size: 1.3rem;
-    }
-
-    .timeline {
-        width: 100%;
     }
 
     .timeline-scroll-indicator {
