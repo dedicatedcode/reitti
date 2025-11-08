@@ -32,6 +32,7 @@
     --color-text-white: #e3e3e3;
     --serif-font: "Fraunces";
     --memories-header-height: 550px;
+    --box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
 }
 
 body {
@@ -74,6 +75,17 @@ body {
     background-color: rgba(255, 255, 255, 0.2);
 }
 
+body.auto-update-mode .navbar {
+    background: #4446;
+    padding: 0;
+    border: 1px solid;
+    box-shadow: var(--box-shadow);
+    margin: 0;
+    border-right: 1px solid var(--color-highlight);
+    border-bottom: 1px solid var(--color-highlight);
+    border-bottom-right-radius: 8px;
+    backdrop-filter: blur(10px);
+}
 
 header {
     position: absolute;
@@ -199,7 +211,7 @@ label {
 
 .toggle-buttons .btn.active {
     background: var(--color-background-dark-light);
-    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
+    box-shadow: var(--box-shadow);
 }
 
 input[type="text"], input[type="password"], input[type="url"], input[type="number"], input[type="date"], select, textarea {
@@ -275,7 +287,7 @@ tr:hover {
     padding: 10px 15px;
     margin-bottom: 15px;
     border-radius: 4px;
-    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
+    box-shadow: var(--box-shadow);
     border: 1px solid;
     color: var(--color-highlight);
 }
@@ -330,7 +342,7 @@ tr:hover {
 
 .queue-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
+    box-shadow: var(--box-shadow);
 }
 
 
@@ -348,7 +360,7 @@ tr:hover {
 
 .upload-option:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
+    box-shadow: var(--box-shadow);
 }
 
 .settings-card h3 {
@@ -369,7 +381,7 @@ tr:hover {
 
 .settings-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
+    box-shadow: var(--box-shadow);
 }
 
 .queue-name {
@@ -899,7 +911,7 @@ body.auto-update-mode .datepicker-toggle-btn {
 
 .place-stats-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
+    box-shadow: var(--box-shadow);
 }
 
 .place-map-container {
@@ -1978,7 +1990,7 @@ button:disabled {
 
 .memories-page .memory-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
+    box-shadow: var(--box-shadow);
 }
 
 .memories-page .memory-card-map-container {
@@ -2039,7 +2051,7 @@ button:disabled {
     width: 100%;
     top: 0;
     z-index: 0;
-    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
+    box-shadow: var(--box-shadow);
 }
 
 .memories-page .memory-blocks-container {
@@ -2173,7 +2185,7 @@ button:disabled {
 
 .block-type-selection:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
+    box-shadow: var(--box-shadow);
 }
 
 .block-type-selection h3 {
