@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/settings/share-access")
 public class ShareAccessController {
 
+    private static final List<MagicLinkAccessLevel> AVAILABLE_ACCESS_LEVELS = List.of(MagicLinkAccessLevel.FULL_ACCESS, MagicLinkAccessLevel.ONLY_LIVE, MagicLinkAccessLevel.ONLY_LIVE_WITH_PHOTOS, MagicLinkAccessLevel.ONLY_LAST_LOCATION);
     private final MagicLinkTokenService magicLinkTokenService;
     private final UserJdbcService userJdbcService;
     private final UserSharingJdbcService userSharingJdbcService;
@@ -55,7 +56,7 @@ public class ShareAccessController {
     public String magicLinksContent(@AuthenticationPrincipal User user, Model model) {
         List<MagicLinkToken> tokens = magicLinkTokenService.getTokensForUser(user);
         model.addAttribute("tokens", tokens);
-        model.addAttribute("accessLevels", List.of(MagicLinkAccessLevel.FULL_ACCESS, MagicLinkAccessLevel.ONLY_LIVE, MagicLinkAccessLevel.ONLY_LIVE_WITH_PHOTOS, MagicLinkAccessLevel.ONLY_LAST_LOCATION));
+        model.addAttribute("accessLevels", AVAILABLE_ACCESS_LEVELS);
         model.addAttribute("activeSection", "sharing");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
@@ -106,7 +107,7 @@ public class ShareAccessController {
             model.addAttribute("magicLinkUrl", magicLinkUrl);
 
             model.addAttribute("tokens", magicLinkTokenService.getTokensForUser(user));
-            model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
+            model.addAttribute("accessLevels", AVAILABLE_ACCESS_LEVELS);
 
             return "settings/share-access :: magic-links-content";
 
@@ -114,7 +115,7 @@ public class ShareAccessController {
             model.addAttribute("errorMessage", i18n.translate("magic.links.create.error", e.getMessage()));
 
             model.addAttribute("tokens", magicLinkTokenService.getTokensForUser(user));
-            model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
+            model.addAttribute("accessLevels", AVAILABLE_ACCESS_LEVELS);
             
             return "settings/share-access :: magic-links-content";
         }
@@ -132,7 +133,7 @@ public class ShareAccessController {
         }
 
         model.addAttribute("tokens", magicLinkTokenService.getTokensForUser(user));
-        model.addAttribute("accessLevels", MagicLinkAccessLevel.values());
+        model.addAttribute("accessLevels", AVAILABLE_ACCESS_LEVELS);
 
         return "settings/share-access :: magic-links-content";
     }
