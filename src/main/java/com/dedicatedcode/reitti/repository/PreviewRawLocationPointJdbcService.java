@@ -57,7 +57,7 @@ public class PreviewRawLocationPointJdbcService {
 
     public List<ClusteredPoint> findClusteredPointsInTimeRangeForUser(
             User user, String previewId, Instant startTime, Instant endTime, int minimumPoints, double distanceInMeters) {
-        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.version , " +
+        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.version , " +
                 "ST_ClusterDBSCAN(rlp.geom, ?, ?) over () AS cluster_id " +
                 "FROM preview_raw_location_points rlp " +
                 "WHERE rlp.user_id = ? AND rlp.timestamp BETWEEN ? AND ? AND preview_id = ?";
@@ -69,7 +69,7 @@ public class PreviewRawLocationPointJdbcService {
                             rs.getTimestamp("timestamp").toInstant(),
                             this.pointReaderWriter.read(rs.getString("geom")),
                             rs.getDouble("accuracy_meters"),
-                            rs.getObject("elevation", Double.class),
+                            rs.getObject("elevation_meters", Double.class),
                             rs.getBoolean("processed"),
                             rs.getLong("version")
                     );

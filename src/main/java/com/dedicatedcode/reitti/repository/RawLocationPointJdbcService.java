@@ -196,6 +196,7 @@ public class RawLocationPointJdbcService {
                     timestamp,
                     geom,
                     accuracy_meters,
+                    elevation_meters,
                     processed,
                     version,
                     ST_Within(geom, ST_MakeEnvelope(?, ?, ?, ?, 4326)) as in_box,
