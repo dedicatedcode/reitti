@@ -78,12 +78,15 @@
                                         <li>Start logging!</li>
                                     </ol>
                                 </div>
+                                <div th:if="${hasToken}">
+                                    <div><a id="gpslogger-config-link" class="btn" th:text="#{integrations.gpslogger.configure}">Configure GPSLogger</a></div>
+                                    <div><small th:text="#{integrations.gpslogger.configure.description}">This will create a new profile 'reitti' with the configured settings.</small></div>
+                                </div>
                             </div>
                             <div class="integration-section">
                                 <h3 th:text="#{integrations.owntracks.title}">🗺️ OwnTracks Setup</h3>
                                 <p th:text="#{integrations.owntracks.description}">OwnTracks is a privacy-focused location tracking app available for iOS and Android.</p>
                                 <p><strong>Download:</strong> <a href="https://owntracks.org/" target="_blank" rel="noopener noreferrer" style="color: var(--color-accent); text-decoration: underline;">https://owntracks.org/</a></p>
-
                                 <div class="setup-steps">
                                     <h4 th:text="#{integrations.setup.instructions}">Setup Instructions:</h4>
                                     <ol>
@@ -98,15 +101,19 @@
                                         <li>The app will automatically start sending location updates</li>
                                     </ol>
                                 </div>
+                                <div th:if="${hasToken}">
+                                    <div><a id="owntracks-config-link" class="btn" th:text="#{integrations.owntracks.configure}">Configure OwnTracks</a></div>
+                                    <div><small th:text="#{integrations.owntracks.configure.description}">This will create a new profile 'reitti' with the configured settings.</small></div>
+                                </div>
                             </div>
 
                             <div class="integration-section">
                                 <h3 th:text="#{integrations.overland.title}">📍 Overland Setup</h3>
                                 <p th:text="#{integrations.overland.description}">Overland is a GPS logger for iOS that sends location data in GeoJSON format.</p>
-                                <p><strong>Homepage:</strong> 
+                                <p>
+                                    <strong>Homepage:</strong>
                                     <a href="https://overland.p3k.app/" target="_blank" rel="noopener noreferrer" style="color: var(--color-accent); text-decoration: underline;">https://overland.p3k.app/</a>
                                 </p>
-
                                 <div class="setup-steps">
                                     <h4 th:text="#{integrations.setup.instructions}">Setup Instructions:</h4>
                                     <ol>
@@ -130,6 +137,11 @@
                                         <li>The app will start sending location data automatically</li>
                                     </ol>
                                 </div>
+                                <div th:if="${hasToken}">
+                                    <div><a id="overland-config-link" class="btn" th:text="#{integrations.overland.configure}">Configure Overland</a></div>
+                                    <div><small th:text="#{integrations.overland.configure.description}">This will create a new profile 'reitti' with the configured settings.</small></div>
+                                </div>
+
                             </div>
 
                             <div class="alert alert-info">
@@ -481,34 +493,52 @@
     </div>
 </div>
 
+<span th:text="${firstToken}" id="current-token" style="display:none;"></span>
 <script th:inline="javascript">
     window.userSettings = /*[[${userSettings}]]*/ {}
     document.addEventListener('DOMContentLoaded', function() {
+        const currentToken = document.getElementById('current-token').textContent;
+        const serverUrl = /*[[${serverUrl}]]*/ '';
         const tokenSelect = document.getElementById('tokenSelect');
+
+        // Set initial hrefs
+        const owntracksConfig = generateOwnTracksConfig(currentToken, serverUrl);
+        const gpsloggerPropertiesUrl = generateGpsLoggerPropertiesUrl(currentToken, serverUrl);
+        const overlandConfigUrl = generateOverlandUrl(currentToken, serverUrl);
+
+        document.getElementById('gpslogger-config-link').href = 'gpslogger://properties/' + gpsloggerPropertiesUrl;
+        document.getElementById('owntracks-config-link').href = 'owntracks:///config?inline=' + owntracksConfig;
+        document.getElementById('overland-config-link').href = overlandConfigUrl;
+
         if (tokenSelect) {
             tokenSelect.addEventListener('change', function() {
                 const selectedToken = this.value;
-                const serverUrl = /*[[${serverUrl}]]*/ '';
-                const baseUrl = serverUrl + '/api/v1/ingest/';
 
-                // Update GPSLogger URL
-                const gpsloggerUrl = document.getElementById('gpslogger-url');
-                if (gpsloggerUrl) {
-                    gpsloggerUrl.textContent = baseUrl + 'owntracks?token=' + selectedToken;
-                }
+                // Update config links
+                const owntracksConfig = generateOwnTracksConfig(selectedToken, serverUrl);
+                const gpsloggerPropertiesUrl = generateGpsLoggerPropertiesUrl(selectedToken, serverUrl);
+                const overlandConfigUrl = generateOverlandUrl(selectedToken, serverUrl);
 
-                // Update OwnTracks URL
-                const owntracksUrl = document.getElementById('owntracks-url');
-                if (owntracksUrl) {
-                    owntracksUrl.textContent = baseUrl + 'owntracks?token=' + selectedToken;
-                }
-
-                // Update Overland URL
-                const overlandUrl = document.getElementById('overland-url');
-                if (overlandUrl) {
-                    overlandUrl.textContent = baseUrl + 'overland?token=' + selectedToken;
-                }
+                document.getElementById('gpslogger-config-link').href = 'gpslogger://properties/' + gpsloggerPropertiesUrl;
+                document.getElementById('owntracks-config-link').href = 'owntracks:///config?inline=' + owntracksConfig;
+                document.getElementById('overland-config-link').href = overlandConfigUrl;
             });
+        }
+
+        function generateOwnTracksConfig(token, serverUrl) {
+            const url = serverUrl + '/api/v1/ingest/owntracks?token=' + token;
+            const json = JSON.stringify({"_type":"configuration","url":url,"tid":"reitti"});
+            return btoa(json);
+        }
+
+        function generateGpsLoggerPropertiesUrl(token, serverUrl) {
+            return serverUrl + '/settings/integrations/reitti.properties?token=' + token;
+        }
+
+        function generateOverlandUrl(token, serverUrl) {
+            const ingestUrl = serverUrl + '/api/v1/ingest/overland?token=' + token;
+            const encodedUrl = encodeURIComponent(ingestUrl);
+            return 'overland://setup?url=' + encodedUrl + '&token=' + token + '&device_id=1&unique_id=yes';
         }
     });
 </script>
