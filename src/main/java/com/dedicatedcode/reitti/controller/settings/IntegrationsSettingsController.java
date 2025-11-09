@@ -63,6 +63,8 @@ public class IntegrationsSettingsController {
             model.addAttribute("hasToken", false);
         }
 
+        model.addAttribute("tokens", tokens);
+
         Optional<OwnTracksRecorderIntegration> recorderIntegration = ownTracksRecorderIntegrationService.getIntegrationForUser(user);
         if (recorderIntegration.isPresent()) {
             model.addAttribute("ownTracksRecorderIntegration", recorderIntegration.get());
@@ -91,6 +93,8 @@ public class IntegrationsSettingsController {
         } else {
             model.addAttribute("hasToken", false);
         }
+
+        model.addAttribute("tokens", tokens);
 
         Optional<OwnTracksRecorderIntegration> recorderIntegration = ownTracksRecorderIntegrationService.getIntegrationForUser(currentUser);
         if (recorderIntegration.isPresent()) {
@@ -206,6 +210,8 @@ public class IntegrationsSettingsController {
             model.addAttribute("hasToken", false);
         }
 
+        model.addAttribute("tokens", tokens);
+
         try {
             OwnTracksRecorderIntegration integration = ownTracksRecorderIntegrationService.saveIntegration(
                     currentUser, baseUrl, username, authUsername, authPassword, deviceId, enabled);
@@ -274,6 +280,8 @@ public class IntegrationsSettingsController {
             model.addAttribute("hasToken", false);
         }
 
+        model.addAttribute("tokens", tokens);
+
         // Build the server URL
 
         model.addAttribute("serverUrl", calculateServerUrl(request));
@@ -299,6 +307,7 @@ public class IntegrationsSettingsController {
         } else {
             model.addAttribute("hasToken", false);
         }
+        model.addAttribute("tokens", tokens);
         model.addAttribute("serverUrl", calculateServerUrl(request));
 
         Optional<OwnTracksRecorderIntegration> recorderIntegration = ownTracksRecorderIntegrationService.getIntegrationForUser(currentUser);
