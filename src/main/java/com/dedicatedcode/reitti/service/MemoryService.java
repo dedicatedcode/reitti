@@ -77,12 +77,12 @@ public class MemoryService {
         return memoryJdbcService.findById(user, id);
     }
 
-    public List<Memory> getMemoriesForUser(User user) {
-        return memoryJdbcService.findAllByUser(user);
+    public List<Memory> getMemoriesForUser(User user, String sortBy, String sortOrder) {
+        return memoryJdbcService.findAllByUser(user, sortBy, sortOrder);
     }
 
-    public List<Memory> getMemoriesForUserAndYear(User user, int year) {
-        return memoryJdbcService.findAllByUserAndYear(user, year);
+    public List<Memory> getMemoriesForUserAndYear(User user, int year, String sortBy, String sortOrder) {
+        return memoryJdbcService.findAllByUserAndYear(user, year, sortBy, sortOrder);
     }
 
     @Transactional

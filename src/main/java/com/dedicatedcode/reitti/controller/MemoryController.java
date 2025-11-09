@@ -74,8 +74,12 @@ public class MemoryController {
     }
 
     @GetMapping("/all")
-    public String getAll(@AuthenticationPrincipal User user, @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone, Model model) {
-        model.addAttribute("memories", this.memoryService.getMemoriesForUser(user).stream().map(m -> {
+    public String getAll(@AuthenticationPrincipal User user,
+                         @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+                         @RequestParam(defaultValue = "startDate") String sortBy,
+                         @RequestParam(defaultValue = "desc") String sortOrder,
+                         Model model) {
+        model.addAttribute("memories", this.memoryService.getMemoriesForUser(user, sortBy, sortOrder).stream().map(m -> {
             String startDateLocal = m.getStartDate().atZone(timezone).toLocalDate().toString();
             String endDateLocal = m.getEndDate().atZone(timezone).toLocalDate().toString();
 
@@ -83,12 +87,19 @@ public class MemoryController {
             return new MemoryOverviewDTO(m, rawLocationUrl);
         }).toList());
         model.addAttribute("year", "all");
+        model.addAttribute("sortBy", sortBy);
+        model.addAttribute("sortOrder", sortOrder);
         return "memories/fragments :: memories-list";
     }
 
     @GetMapping("/year/{year}")
-    public String getYear(@AuthenticationPrincipal User user, @PathVariable int year, @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone, Model model) {
-        model.addAttribute("memories", this.memoryService.getMemoriesForUserAndYear(user, year)
+    public String getYear(@AuthenticationPrincipal User user,
+                          @PathVariable int year,
+                          @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+                          @RequestParam(defaultValue = "startDate") String sortBy,
+                          @RequestParam(defaultValue = "desc") String sortOrder,
+                          Model model) {
+        model.addAttribute("memories", this.memoryService.getMemoriesForUserAndYear(user, year, sortBy, sortOrder)
                 .stream().map(m -> {
                     String startDateLocal = m.getStartDate().atZone(timezone).toLocalDate().toString();
                     String endDateLocal = m.getEndDate().atZone(timezone).toLocalDate().toString();
@@ -97,6 +108,8 @@ public class MemoryController {
                     return new MemoryOverviewDTO(m, rawLocationUrl);
                 }).toList());
         model.addAttribute("year", year);
+        model.addAttribute("sortBy", sortBy);
+        model.addAttribute("sortOrder", sortOrder);
         return "memories/fragments :: memories-list";
     }
 
