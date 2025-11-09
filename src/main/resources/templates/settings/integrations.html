@@ -38,7 +38,17 @@
                                 <strong th:text="#{integrations.tracking.frequency.title}">📍 GPS Tracking Frequency</strong><br>
                                 <span th:text="#{integrations.tracking.frequency.description}">For optimal results, Reitti works best with a continuous stream of GPS locations. Make sure your tracking app records a point at least every 30 seconds to ensure accurate visit and trip detection.</span>
                             </div>
-                            <p th:text="#{integrations.data.ingestion.description}" style="margin-bottom: 20px; color: var(--color-text-white);">Configure mobile apps to automatically send location data to Reitti</p>
+                            <p th:text="#{integrations.data.ingestion.description}">Configure mobile apps to automatically send location data to Reitti</p>
+
+                            <!-- Token Selection Dropdown -->
+                            <div th:if="${hasToken && tokens.size() > 1}" >
+                                <label for="tokenSelect" th:text="#{integrations.token.select.label}">Select API Token:</label>
+                                <select id="tokenSelect" class="form-control" >
+                                    <option th:each="token : ${tokens}" th:value="${token.token}" th:text="${token.name}" th:selected="${tokenStat.index == 0}"></option>
+                                </select>
+                                <small th:text="#{integrations.token.select.help}">Choose the API token to use in the setup URLs below. The selected token will be automatically inserted into the example URLs.</small>
+                            </div>
+
                             <div class="integration-section" style="margin-bottom: 30px;">
                                 <h3 th:text="#{integrations.gpslogger.title}">📱 GPSLogger Setup</h3>
                                 <p th:text="#{integrations.gpslogger.description}">GPSLogger is a free Android app that can automatically log your location and send it to Reitti.</p>
@@ -473,5 +483,35 @@
 
 <script th:inline="javascript">
     window.userSettings = /*[[${userSettings}]]*/ {}
+    document.addEventListener('DOMContentLoaded', function() {
+        const tokenSelect = document.getElementById('tokenSelect');
+        if (tokenSelect) {
+            tokenSelect.addEventListener('change', function() {
+                const selectedToken = this.value;
+                const serverUrl = /*[[${serverUrl}]]*/ '';
+                const baseUrl = serverUrl + '/api/v1/ingest/';
+
+                // Update GPSLogger URL
+                const gpsloggerUrl = document.getElementById('gpslogger-url');
+                if (gpsloggerUrl) {
+                    gpsloggerUrl.textContent = baseUrl + 'owntracks?token=' + selectedToken;
+                }
+
+                // Update OwnTracks URL
+                const owntracksUrl = document.getElementById('owntracks-url');
+                if (owntracksUrl) {
+                    owntracksUrl.textContent = baseUrl + 'owntracks?token=' + selectedToken;
+                }
+
+                // Update Overland URL
+                const overlandUrl = document.getElementById('overland-url');
+                if (overlandUrl) {
+                    overlandUrl.textContent = baseUrl + 'overland?token=' + selectedToken;
+                }
+            });
+        }
+    });
 </script>
+
 </body>
+</html>
