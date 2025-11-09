@@ -75,16 +75,18 @@ body {
     background-color: rgba(255, 255, 255, 0.2);
 }
 
-body.auto-update-mode .navbar {
-    background: #4446;
-    padding: 0;
-    border: 1px solid;
-    box-shadow: var(--box-shadow);
-    margin: 0;
-    border-right: 1px solid var(--color-highlight);
-    border-bottom: 1px solid var(--color-highlight);
-    border-bottom-right-radius: 8px;
-    backdrop-filter: blur(10px);
+@media (min-width: 800px) {
+    body.auto-update-mode .navbar {
+        background: #4446;
+        padding: 0;
+        border: 1px solid;
+        box-shadow: var(--box-shadow);
+        margin: 0;
+        border-right: 1px solid var(--color-highlight);
+        border-bottom: 1px solid var(--color-highlight);
+        border-bottom-right-radius: 8px;
+        backdrop-filter: blur(10px);
+    }
 }
 
 header {
@@ -1250,6 +1252,19 @@ body.auto-update-mode .datepicker-toggle-btn {
         min-width: 0;
     }
 
+    .navigation-container {
+        background-color: rgba(59, 59, 59, 0.68);
+        backdrop-filter: blur(10px);
+
+    }
+    .navigation-container,
+    .settings-page .navigation-container {
+        width: 100%;
+    }
+    .navbar {
+        margin-left: initial;
+        padding: 4px;
+    }
     .settings-container {
         flex-direction: column;
     }
@@ -1258,7 +1273,6 @@ body.auto-update-mode .datepicker-toggle-btn {
         width: 100%;
         display: flex;
         overflow-x: auto;
-        padding: 10px 0;
         border-right: none;
         border-bottom: 1px solid var(--color-highlight);
     }
