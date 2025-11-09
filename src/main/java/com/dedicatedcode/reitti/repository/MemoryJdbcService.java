@@ -115,12 +115,26 @@ public class MemoryJdbcService {
         );
     }
 
+    public List<Memory> findAllByUser(User user, String sortBy, String sortOrder) {
+        String column = mapSortByToColumn(sortBy);
+        String order = "desc".equalsIgnoreCase(sortOrder) ? "DESC" : "ASC";
+        String sql = "SELECT * FROM memory WHERE user_id = ? ORDER BY " + column + " " + order;
+        return jdbcTemplate.query(sql, MEMORY_ROW_MAPPER, user.getId());
+    }
+
     public List<Memory> findAllByUserAndYear(User user, int year) {
         return jdbcTemplate.query(
                 "SELECT * FROM memory WHERE user_id = ? AND (extract(YEAR FROM start_date) = ? OR extract(YEAR FROM end_date) = ?) ORDER BY created_at DESC",
                 MEMORY_ROW_MAPPER,
                 user.getId(), year, year
         );
+    }
+
+    public List<Memory> findAllByUserAndYear(User user, int year, String sortBy, String sortOrder) {
+        String column = mapSortByToColumn(sortBy);
+        String order = "desc".equalsIgnoreCase(sortOrder) ? "DESC" : "ASC";
+        String sql = "SELECT * FROM memory WHERE user_id = ? AND (extract(YEAR FROM start_date) = ? OR extract(YEAR FROM end_date) = ?) ORDER BY " + column + " " + order;
+        return jdbcTemplate.query(sql, MEMORY_ROW_MAPPER, user.getId(), year, year);
     }
 
     public List<Memory> findByDateRange(User user, Instant startDate, Instant endDate) {
@@ -146,5 +160,14 @@ public class MemoryJdbcService {
 
     public Optional<Long> getOwnerId(Memory memory) {
         return Optional.ofNullable(this.jdbcTemplate.queryForObject("SELECT user_id FROM memory WHERE id = ?", Long.class, memory.getId()));
+    }
+
+    private String mapSortByToColumn(String sortBy) {
+        return switch (sortBy) {
+            case "title" -> "LOWER(title)";
+            case "startDate" -> "start_date";
+            case "createdAt" -> "created_at";
+            default -> "start_date"; // Fallback to default
+        };
     }
 }

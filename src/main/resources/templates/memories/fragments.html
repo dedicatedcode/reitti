@@ -17,8 +17,8 @@
             <span th:text="#{memory.block.type.text}">Text Block</span>
             <p th:text="#{memory.block.type.text.description}">Add text content with headlines and paragraphs</p>
         </button>
-        
-        <button type="button" 
+
+        <button type="button"
                 class="block-type-option"
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='VISIT_CLUSTER', position=${position})}"
                 hx-target=".block-type-selection"
@@ -26,8 +26,8 @@
             <span th:text="#{memory.block.type.visit}">Visit Block</span>
             <p th:text="#{memory.block.type.visit.description}">Add a location you visited during this memory</p>
         </button>
-        
-        <button type="button" 
+
+        <button type="button"
                 class="block-type-option"
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='TRIP_CLUSTER', position=${position})}"
                 hx-target=".block-type-selection"
@@ -35,8 +35,8 @@
             <span th:text="#{memory.block.type.trip}">Trip Block</span>
             <p th:text="#{memory.block.type.trip.description}">Add a journey or route from this memory</p>
         </button>
-        
-        <button type="button" 
+
+        <button type="button"
                 class="block-type-option"
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='IMAGE_GALLERY', position=${position})}"
                 hx-target=".block-type-selection"
@@ -45,9 +45,9 @@
             <p th:text="#{memory.block.type.gallery.description}">Add a collection of photos from this memory</p>
         </button>
     </div>
-    
+
     <div class="form-actions">
-        <button type="button" 
+        <button type="button"
                 class="btn btn-secondary"
                 hx-get="/memories/fragments/empty"
                 hx-target=".block-type-selection"
@@ -63,19 +63,19 @@
 <div th:fragment="text-block-form" class="block-form">
     <h3 th:text="#{memory.block.text.new}">Add Text Block</h3>
     <form th:attr="hx-post=@{/memories/{id}/blocks/text(id=${memoryId}, position=${position})}" method="post" hx-target=".block-form" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}">
-        
+
         <div class="form-group">
             <label for="headline" th:text="#{memory.block.text.headline}">Headline</label>
             <input type="text" id="headline" name="headline" class="form-control" th:placeholder="#{memory.block.text.headline.placeholder}">
         </div>
-        
+
         <div class="form-group">
             <label for="content" th:text="#{memory.block.text.content}">Content</label>
             <textarea id="content" name="content" class="form-control" rows="6" th:placeholder="#{memory.block.text.content.placeholder}"></textarea>
         </div>
-        
+
         <div class="form-actions">
-            <button type="button" 
+            <button type="button"
                     class="btn btn-secondary"
                     hx-get="/memories/fragments/empty"
                     hx-target=".block-form"
@@ -171,14 +171,14 @@
 <!-- Image gallery block form -->
 <div th:fragment="image-gallery-block-form" class="block-form gallery-block-form">
     <h3 th:text="#{memory.block.gallery.new}">New Image Gallery Block</h3>
-    
+
     <form th:attr="hx-post=@{/memories/{id}/blocks/image-gallery(id=${memoryId}, position=${position})}" method="post" hx-target=".block-form" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}">
         <div class="gallery-panels">
             <!-- Immich Panel -->
             <div class="gallery-panel immich-panel" th:if="${immichEnabled && isOwner}">
                 <h4 th:text="#{memory.block.gallery.immich.title}">Select from Immich</h4>
                 <div class="immich-photos-container">
-                    <div class="immich-photos-grid" 
+                    <div class="immich-photos-grid"
                          id="immichPhotosGrid"
                          th:attr="hx-get=@{/memories/{id}/blocks/immich-photos(page=0, id=${memoryId})}"
                          hx-target=".immich-photos-container"
@@ -194,11 +194,11 @@
             <div class="gallery-panel upload-panel">
                 <h4 th:text="#{memory.block.gallery.upload.title}">Upload Images</h4>
                 <div class="upload-area">
-                    <input type="file" 
-                           id="fileInput" 
-                           name="files" 
-                           multiple 
-                           accept="image/*" 
+                    <input type="file"
+                           id="fileInput"
+                           name="files"
+                           multiple
+                           accept="image/*"
                            class="form-control"
                            th:attr="hx-post=@{/memories/{id}/blocks/upload-image(id=${memoryId})}"
                            hx-encoding="multipart/form-data"
@@ -250,7 +250,7 @@
     <div th:if="${photos.isEmpty()}" class="no-photos" th:text="#{memory.block.gallery.immich.no.photos}">
         No photos found for this date range
     </div>
-    <div th:each="photo : ${photos}" 
+    <div th:each="photo : ${photos}"
          class="immich-photo-item"
          th:attr="hx-post=@{/memories/{id}/blocks/fetch-immich-photo(id=${memoryId}, assetId=${photo.id})}"
          hx-target="#selectedPhotos"
@@ -261,17 +261,17 @@
         </div>
     </div>
     <div th:if="${totalPages > 1}" class="pagination-controls">
-        <button th:if="${currentPage > 0}" 
-                type="button" 
-                class="btn btn-secondary" 
+        <button th:if="${currentPage > 0}"
+                type="button"
+                class="btn btn-secondary"
                 th:text="#{memory.block.gallery.pagination.previous}"
                 th:attr="hx-get=@{/memories/{id}/blocks/immich-photos(page=${currentPage - 1}, id=${memoryId})}"
                 hx-target=".immich-photos-container"
                 hx-swap="innerHTML">Previous</button>
         <span class="page-info" th:text="${currentPage + 1} + ' / ' + ${totalPages}"></span>
-        <button th:if="${currentPage < totalPages - 1}" 
-                type="button" 
-                class="btn btn-secondary" 
+        <button th:if="${currentPage < totalPages - 1}"
+                type="button"
+                class="btn btn-secondary"
                 th:text="#{memory.block.gallery.pagination.next}"
                 th:attr="hx-get=@{/memories/{id}/blocks/immich-photos(page=${currentPage + 1}, id=${memoryId})}"
                 hx-target=".immich-photos-container"
@@ -314,8 +314,19 @@
 
 
 <div class="memories-overview settings-content-area" th:fragment="memories-list">
+    <!-- Added sorting selection on top -->
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2>Memories</h2>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <label for="sortSelect" style="margin: 0;">Sort by:</label>
+            <select id="sortSelect" class="form-control" style="width: auto; min-width: 200px;" th:attr="hx-target='.memories-overview', hx-swap='outerHTML'">
+                <option th:attr="hx-get=@{'/memories/' + (${year} == 'all' ? '' : 'year/') + ${year} + '?sortBy=startDate&sortOrder=desc'}" th:selected="${sortBy == null || (sortBy == 'startDate' && sortOrder == 'desc')}" th:text="#{sort.option.startDate.newest}">Start Date (Newest First)</option>
+                <option th:attr="hx-get=@{'/memories/' + (${year} == 'all' ? '' : 'year/') + ${year} + '?sortBy=startDate&sortOrder=asc'}" th:selected="${sortBy == 'startDate' && sortOrder == 'asc'}" th:text="#{sort.option.startDate.oldest}">Start Date (Oldest First)</option>
+                <option th:attr="hx-get=@{'/memories/' + (${year} == 'all' ? '' : 'year/') + ${year} + '?sortBy=title&sortOrder=asc'}" th:selected="${sortBy == 'title' && sortOrder == 'asc'}" th:text="#{sort.option.title.asc}">Title (A-Z)</option>
+                <option th:attr="hx-get=@{'/memories/' + (${year} == 'all' ? '' : 'year/') + ${year} + '?sortBy=title&sortOrder=desc'}" th:selected="${sortBy == 'title' && sortOrder == 'desc'}" th:text="#{sort.option.title.desc}">Title (Z-A)</option>
+                <option th:attr="hx-get=@{'/memories/' + (${year} == 'all' ? '' : 'year/') + ${year} + '?sortBy=createdAt&sortOrder=desc'}" th:selected="${sortBy == 'createdAt' && sortOrder == 'desc'}" th:text="#{sort.option.created.newest}">Created (Newest First)</option>
+                <option th:attr="hx-get=@{'/memories/' + (${year} == 'all' ? '' : 'year/') + ${year} + '?sortBy=createdAt&sortOrder=asc'}" th:selected="${sortBy == 'createdAt' && sortOrder == 'asc'}" th:text="#{sort.option.created.oldest}">Created (Oldest First)</option>
+            </select>
+        </div>
         <button th:attr="hx-get=@{/memories/new(year=${year})}" hx-target=".settings-content-area" class="btn btn-primary">Create Memory</button>
     </div>
 
