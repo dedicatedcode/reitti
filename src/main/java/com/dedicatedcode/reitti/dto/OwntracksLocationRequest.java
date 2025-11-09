@@ -142,7 +142,7 @@ public class OwntracksLocationRequest {
             String isoTimestamp = java.time.Instant.ofEpochSecond(timestamp).toString();
             point.setTimestamp(isoTimestamp);
         }
-        
+        point.setElevationMeters(altitude);
         if (accuracy != null) {
             point.setAccuracyMeters(accuracy);
         }

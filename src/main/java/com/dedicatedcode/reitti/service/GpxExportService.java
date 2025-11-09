@@ -56,6 +56,11 @@ public class GpxExportService {
             
             for (RawLocationPoint point : points) {
                 writer.write("      <trkpt lat=\"" + point.getLatitude() + "\" lon=\"" + point.getLongitude() + "\">\n");
+                
+                if (point.getElevationMeters() != null) {
+                    writer.write("        <ele>" + point.getElevationMeters() + "</ele>\n");
+                }
+                
                 writer.write("        <time>" + point.getTimestamp().toString() + "</time>\n");
                 
                 if (point.getAccuracyMeters() != null) {

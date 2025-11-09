@@ -13,6 +13,8 @@ public class RawLocationPoint {
     
     private final Double accuracyMeters;
     
+    private final Double elevationMeters;
+    
     private final Point geom;
 
     private final boolean processed;
@@ -20,19 +22,23 @@ public class RawLocationPoint {
     private final Long version;
 
     public RawLocationPoint() {
-        this(null, null, null, null, false, null);
+        this(null, null, null, null, null, false, null);
     }
     
     public RawLocationPoint(Instant timestamp, Point geom, Double accuracyMeters) {
-        this(null, timestamp, geom, accuracyMeters, false, null);
+        this(null, timestamp, geom, accuracyMeters, null, false, null);
     }
     
-    public RawLocationPoint(Long id, Instant timestamp, Point geom, Double accuracyMeters, boolean processed, Long version) {
+    public RawLocationPoint(Instant timestamp, Point geom, Double accuracyMeters, Double elevationMeters) {
+        this(null, timestamp, geom, accuracyMeters, elevationMeters, false, null);
+    }
+    
+    public RawLocationPoint(Long id, Instant timestamp, Point geom, Double accuracyMeters, Double elevationMeters, boolean processed, Long version) {
         this.id = id;
         this.timestamp = timestamp;
-
         this.geom = geom;
         this.accuracyMeters = accuracyMeters;
+        this.elevationMeters = elevationMeters;
         this.processed = processed;
         this.version = version;
     }
@@ -57,6 +63,10 @@ public class RawLocationPoint {
         return accuracyMeters;
     }
 
+    public Double getElevationMeters() {
+        return elevationMeters;
+    }
+
     public Point getGeom() {
         return geom;
     }
@@ -66,11 +76,11 @@ public class RawLocationPoint {
     }
 
     public RawLocationPoint markProcessed() {
-        return new RawLocationPoint(this.id, this.timestamp, this.geom, this.accuracyMeters, true, this.version);
+        return new RawLocationPoint(this.id, this.timestamp, this.geom, this.accuracyMeters, this.elevationMeters, true, this.version);
     }
 
     public RawLocationPoint withId(Long id) {
-        return new RawLocationPoint(id, timestamp, geom, accuracyMeters, processed, version);
+        return new RawLocationPoint(id, timestamp, geom, accuracyMeters, elevationMeters, processed, version);
     }
 
     public Long getVersion() {

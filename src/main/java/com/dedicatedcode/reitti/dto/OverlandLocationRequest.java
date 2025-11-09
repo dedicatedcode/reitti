@@ -105,6 +105,7 @@ public class OverlandLocationRequest {
             LocationPoint locationPoint = new LocationPoint();
             locationPoint.setLatitude(latitude);
             locationPoint.setLongitude(longitude);
+            locationPoint.setElevationMeters(properties.getAltitude());
             locationPoint.setAccuracyMeters(properties.getHorizontalAccuracy());
             locationPoint.setTimestamp(timestamp);
             return locationPoint;
