@@ -57,8 +57,8 @@ public class VisitDetectionPreviewService {
 
         Timestamp start = Timestamp.from(date.minus(config.getVisitMerging().getSearchDurationInHours() * 2, ChronoUnit.HOURS));
         Timestamp end = Timestamp.from(date.plus(1, ChronoUnit.DAYS).plus(config.getVisitMerging().getSearchDurationInHours() * 2, ChronoUnit.HOURS));
-        this.jdbcTemplate.update("INSERT INTO preview_raw_location_points(accuracy_meters, timestamp, user_id, geom, processed, version, preview_id, preview_created_at) " +
-                "SELECT accuracy_meters, timestamp, user_id, geom, false, version, ?, ? FROM raw_location_points WHERE timestamp > ? AND timestamp <= ? AND user_id = ?",
+        this.jdbcTemplate.update("INSERT INTO preview_raw_location_points(accuracy_meters, timestamp, user_id, elevation_meters, geom, processed, version, preview_id, preview_created_at) " +
+                "SELECT accuracy_meters, timestamp, user_id, elevation_meters, geom, false, version, ?, ? FROM raw_location_points WHERE timestamp > ? AND timestamp <= ? AND user_id = ?",
                 previewId,
                 Timestamp.valueOf(now),
                 start,

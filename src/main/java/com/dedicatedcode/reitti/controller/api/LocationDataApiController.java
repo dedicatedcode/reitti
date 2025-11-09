@@ -238,6 +238,7 @@ public class LocationDataApiController {
         p.setLatitude(point.getLatitude());
         p.setLongitude(point.getLongitude());
         p.setAccuracyMeters(point.getAccuracyMeters());
+        p.setElevationMeters(point.getElevationMeters());
         p.setTimestamp(point.getTimestamp().toString());
         return p;
     }
