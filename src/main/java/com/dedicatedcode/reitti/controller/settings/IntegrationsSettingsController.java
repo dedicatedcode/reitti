@@ -15,11 +15,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @Controller
@@ -59,6 +62,9 @@ public class IntegrationsSettingsController {
         if (!tokens.isEmpty()) {
             model.addAttribute("firstToken", tokens.getFirst().getToken());
             model.addAttribute("hasToken", true);
+            model.addAttribute("owntracksConfig", generateOwnTracksConfig(tokens.getFirst().getToken(), request));
+            model.addAttribute("gpsloggerPropertiesUrl", generateGpsLoggerPropertiesUrl(tokens.getFirst().getToken(), request));
+            model.addAttribute("overlandConfigUrl", generateOverlandUrl(tokens.getFirst().getToken(), request));
         } else {
             model.addAttribute("hasToken", false);
         }
@@ -90,6 +96,9 @@ public class IntegrationsSettingsController {
         if (!tokens.isEmpty()) {
             model.addAttribute("firstToken", tokens.getFirst().getToken());
             model.addAttribute("hasToken", true);
+            model.addAttribute("owntracksConfig", generateOwnTracksConfig(tokens.getFirst().getToken(), request));
+            model.addAttribute("gpsloggerPropertiesUrl", generateGpsLoggerPropertiesUrl(tokens.getFirst().getToken(), request));
+            model.addAttribute("overlandConfigUrl", generateOverlandUrl(tokens.getFirst().getToken(), request));
         } else {
             model.addAttribute("hasToken", false);
         }
@@ -125,6 +134,52 @@ public class IntegrationsSettingsController {
             serverUrl.append(":").append(serverPort);
         }
         return serverUrl.toString();
+    }
+
+    @GetMapping("/reitti.properties")
+    public ResponseEntity<String> getGpsLoggerProperties(@RequestParam String token, HttpServletRequest request) {
+        String serverUrl = calculateServerUrl(request);
+        String url = serverUrl + "/api/v1/ingest/owntracks?token=" + token;
+        String properties = "logToUrl=" + url + "\n" +
+                            "logToUrlMethod=POST\n" +
+                            "logToUrlBody={\"_type\" : \"location\",\"t\": \"u\",\"acc\": \"%ACC\",\"alt\": \"%ALT\",\"batt\": \"%BATT\",\"bs\": \"%ISCHARGING\",\"lat\": \"%LAT\",\"lon\": \"%LON\",\"tst\": \"%TIMESTAMP\",\"vel\": \"%SPD\"}\n" +
+                            "logToUrlHeaders=Content-Type: application/json\n" +
+                            "autoSendEnabled=true\n" +
+                            "autoSendDelay=0\n";
+        return ResponseEntity.ok()
+                .header("Content-Type", "text/plain")
+                .body(properties);
+    }
+
+    @GetMapping("/owntracks-config")
+    public ResponseEntity<String> getOwnTracksConfig(@RequestParam String token, HttpServletRequest request) {
+        String base64 = generateOwnTracksConfig(token, request);
+        return ResponseEntity.ok()
+                .header("Content-Type", "text/plain")
+                .body(base64);
+    }
+
+    private String generateOwnTracksConfig(String token, HttpServletRequest request) {
+        String serverUrl = calculateServerUrl(request);
+        String url = serverUrl + "/api/v1/ingest/owntracks?token=" + token;
+        String json = "{\"_type\":\"configuration\",\"url\":\"" + url + "\",\"tid\":\"reitti\"}";
+        return Base64.getEncoder().encodeToString(json.getBytes());
+    }
+
+    private String generateGpsLoggerPropertiesUrl(String token, HttpServletRequest request) {
+        String serverUrl = calculateServerUrl(request);
+        return serverUrl + "/settings/integrations/gpslogger.properties?token=" + token;
+    }
+
+    private String generateOverlandUrl(String token, HttpServletRequest request) {
+        String serverUrl = calculateServerUrl(request);
+        String ingestUrl = serverUrl + "/api/v1/ingest/overland?token=" + token;
+        try {
+            String encodedUrl = URLEncoder.encode(ingestUrl, StandardCharsets.UTF_8);
+            return "overland://setup?url=" + encodedUrl + "&token=" + token + "&device_id=1&unique_id=yes";
+        } catch (Exception e) {
+            return "";
+        }
     }
 
 
