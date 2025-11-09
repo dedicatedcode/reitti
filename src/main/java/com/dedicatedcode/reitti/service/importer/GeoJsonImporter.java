@@ -190,13 +190,42 @@ public class GeoJsonImporter {
         Double accuracy = null;
         String[] accuracyFields = {"accuracy", "acc", "precision", "hdop"};
         for (String field : accuracyFields) {
-            if (properties.has(field)) {
+            if (properties != null && properties.has(field)) {
                 accuracy = properties.get(field).asDouble();
                 break;
             }
         }
 
         point.setAccuracyMeters(accuracy != null ? accuracy : 50.0); // Default accuracy of 50 meters
+
+        // Try to extract elevation from coordinates (3rd element) or properties
+        Double elevation = null;
+        
+        // First try coordinates array (GeoJSON can have [lon, lat, elevation])
+        if (coordinates.size() >= 3) {
+            try {
+                elevation = coordinates.get(2).asDouble();
+            } catch (Exception e) {
+                // Ignore invalid elevation in coordinates
+            }
+        }
+        
+        // If not found in coordinates, try properties
+        if (elevation == null) {
+            String[] elevationFields = {"elevation", "ele", "altitude", "alt", "height"};
+            for (String field : elevationFields) {
+                if (properties.has(field)) {
+                    try {
+                        elevation = properties.get(field).asDouble();
+                        break;
+                    } catch (Exception e) {
+                        // Ignore invalid elevation values
+                    }
+                }
+            }
+        }
+        
+        point.setElevationMeters(elevation);
 
         return point;
     }

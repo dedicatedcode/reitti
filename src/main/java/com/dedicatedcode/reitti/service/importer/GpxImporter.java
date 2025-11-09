@@ -128,6 +128,20 @@ public class GpxImporter {
         // Set accuracy - GPX doesn't typically include accuracy, so use a default
         point.setAccuracyMeters(10.0); // Default accuracy of 10 meters
         
+        // Get elevation if available
+        NodeList elevationElements = trackPoint.getElementsByTagName("ele");
+        if (elevationElements.getLength() > 0) {
+            String elevationStr = elevationElements.item(0).getTextContent();
+            if (StringUtils.hasText(elevationStr)) {
+                try {
+                    double elevation = Double.parseDouble(elevationStr);
+                    point.setElevationMeters(elevation);
+                } catch (NumberFormatException e) {
+                    // Ignore invalid elevation values
+                }
+            }
+        }
+        
         return point;
     }
 }

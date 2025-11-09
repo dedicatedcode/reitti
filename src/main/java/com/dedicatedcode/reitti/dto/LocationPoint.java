@@ -15,6 +15,8 @@ public class LocationPoint {
     @NotNull
     private Double accuracyMeters;
 
+    private Double elevationMeters;
+
     public Double getLatitude() {
         return latitude;
     }
@@ -47,6 +49,14 @@ public class LocationPoint {
         this.accuracyMeters = accuracyMeters;
     }
 
+    public Double getElevationMeters() {
+        return elevationMeters;
+    }
+
+    public void setElevationMeters(Double elevationMeters) {
+        this.elevationMeters = elevationMeters;
+    }
+
     @Override
     public String toString() {
         return "LocationPoint{" +
@@ -54,6 +64,7 @@ public class LocationPoint {
                 ", longitude=" + longitude +
                 ", timestamp='" + timestamp + '\'' +
                 ", accuracyMeters=" + accuracyMeters +
+                ", elevationMeters=" + elevationMeters +
                 '}';
     }
 }
