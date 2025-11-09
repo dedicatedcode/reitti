@@ -273,8 +273,9 @@ The included `docker-compose.yml` provides a complete setup with:
 
 Configure mobile apps for automatic location tracking:
 
-- **[OwnTracks](https://www.dedicatedcode.com/projects/reitti/integrations/mobile-apps/)**: Privacy-focused location sharing
-- **[GPSLogger](https://www.dedicatedcode.com/projects/reitti/integrations/mobile-apps/)**: Lightweight Android GPS logging
+- **[OwnTracks](https://www.dedicatedcode.com/projects/reitti/integrations/mobile-apps/#owntracks-setup)**: Privacy-focused location sharing
+- **[GPSLogger](https://www.dedicatedcode.com/projects/reitti/integrations/mobile-apps/#gpslogger-setup)**: Lightweight Android GPS logging
+- **[Overland](https://www.dedicatedcode.com/projects/reitti/integrations/mobile-apps/#overland-setup)**: Lightweight IOS GPS logging
 - **[Home-Assistant](https://www.dedicatedcode.com/projects/reitti/integrations/home-assistant/)**: Use Home-Assistant to send location data
 - **[Custom Apps](https://www.dedicatedcode.com/projects/reitti/integrations/custom-file-upload/)**: Use the REST API for custom integrations
 
