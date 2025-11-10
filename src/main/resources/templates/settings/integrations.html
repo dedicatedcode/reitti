@@ -527,7 +527,7 @@
 
         function generateOwnTracksConfig(token, serverUrl) {
             const url = serverUrl + '/api/v1/ingest/owntracks?token=' + token;
-            const json = JSON.stringify({"_type":"configuration","url":url,"tid":"reitti"});
+            const json = JSON.stringify({"_type":"configuration","url":url,"tid":"reitti", "locatorInterval" : 15, "moveModeLocatorInterval" : 15});
             return btoa(json);
         }
 
