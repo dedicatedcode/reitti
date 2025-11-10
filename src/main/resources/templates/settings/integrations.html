@@ -43,8 +43,8 @@
                             <!-- Token Selection Dropdown -->
                             <div th:if="${hasToken && tokens.size() > 1}" >
                                 <label for="tokenSelect" th:text="#{integrations.token.select.label}">Select API Token:</label>
-                                <select id="tokenSelect" class="form-control" >
-                                    <option th:each="token : ${tokens}" th:value="${token.token}" th:text="${token.name}" th:selected="${tokenStat.index == 0}"></option>
+                                <select id="tokenSelect" name="selectedToken" class="form-control" hx-get="/settings/integrations/integrations-content" hx-vals='{"openSection": "data-ingestion"}' hx-target="#integrations" hx-swap="innerHTML" hx-trigger="change">
+                                    <option th:each="token : ${tokens}" th:value="${token.token}" th:text="${token.name}" th:selected="${token.token == selectedToken}"></option>
                                 </select>
                                 <small th:text="#{integrations.token.select.help}">Choose the API token to use in the setup URLs below. The selected token will be automatically inserted into the example URLs.</small>
                             </div>
@@ -59,7 +59,7 @@
                                         <li>Download GPSLogger from the Google Play Store</li>
                                         <li>Open GPSLogger and go to <strong>Logging details → Log to custom URL</strong></li>
                                         <li>Enable "Log to custom URL"</li>
-                                        <li th:if="${hasToken}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + firstToken}">https://your-domain.com/api/v1/location-data</code></li>
+                                        <li th:if="${hasToken}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + selectedToken}">https://your-domain.com/api/v1/location-data</code></li>
                                         <li th:unless="${hasToken}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/location-data</code></li>
                                         <li>Set HTTP Method to <strong>POST</strong></li>
                                         <li>Set HTTP Body to: <code>{
@@ -93,7 +93,7 @@
                                         <li>Download OwnTracks from the App Store or Google Play Store</li>
                                         <li>Open OwnTracks and go to <strong>Settings → Connection</strong></li>
                                         <li>Set Mode to <strong>HTTP</strong></li>
-                                        <li th:if="${hasToken}">Set the Endpoint to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + firstToken}">https://your-domain.com/api/v1/location-data</code></li>
+                                        <li th:if="${hasToken}">Set the Endpoint to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + selectedToken}">https://your-domain.com/api/v1/location-data</code></li>
                                         <li th:unless="${hasToken}">Set the Endpoint to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/location-data</code></li>
                                         <li>Disable <strong>Authentication</strong> (we use the token in the URL instead)</li>
                                         <li>Configure tracking settings as desired. Make sure that Owntracks records a point at least every 30 seconds.</li>
@@ -121,7 +121,7 @@
                                         <li>Open Overland and go to the <strong>Settings</strong> tab</li>
                                         <li><strong>Important:</strong> Tap the <strong>Request Permission</strong> button to grant location access - Overland will not track anything without this permission</li>
                                         <li>Tap on <strong>Receiver Endpoint</strong></li>
-                                        <li th:if="${hasToken}">Set the Endpoint URL to: <code th:text="${serverUrl + '/api/v1/ingest/overland?token=' + firstToken}">https://your-domain.com/api/v1/ingest/overland?token=YOUR_TOKEN</code></li>
+                                        <li th:if="${hasToken}">Set the Endpoint URL to: <code th:text="${serverUrl + '/api/v1/ingest/overland?token=' + selectedToken}">https://your-domain.com/api/v1/ingest/overland?token=YOUR_TOKEN</code></li>
                                         <li th:unless="${hasToken}">Set the Endpoint URL to: <code th:text="${serverUrl + '/api/v1/ingest/overland?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/ingest/overland?token=YOUR_TOKEN</code></li>
                                         <li>Leave the <strong>Device ID</strong> field empty or set a custom identifier</li>
                                         <li>Leave the <strong>Access Token</strong> field empty (we use the token in the URL)</li>
@@ -144,7 +144,7 @@
 
                             </div>
 
-                            <div class="alert alert-info">
+                            <div class="alert alert-info" style="margin-top: 20px">
                                 <strong th:text="#{integrations.mobile.help.title}">Need Help?</strong><br>
                                 <span th:text="#{integrations.mobile.help.description}">For detailed setup instructions and tips, visit our comprehensive guide:</span>
                                 <a href="https://www.dedicatedcode.com/projects/reitti/configurations/mobile-app-integration/"
@@ -358,6 +358,63 @@
                         </div>
                     </details>
                 </div>
+                <script th:inline="javascript">
+                    (function() {
+                        const serverUrl = /*[[${serverUrl}]]*/ '';
+                        const firstToken = /*[[${firstToken}]]*/ '';
+                        const tokenSelect = document.getElementById('tokenSelect');
+                        const currentToken = tokenSelect ? tokenSelect.value : firstToken;
+
+                        if (currentToken == null) {
+                            return;
+                        }
+                        // Set initial hrefs
+                        const owntracksConfig = generateOwnTracksConfig(currentToken, serverUrl);
+                        const gpsloggerPropertiesUrl = generateGpsLoggerPropertiesUrl(currentToken, serverUrl);
+                        const overlandConfigUrl = generateOverlandUrl(currentToken, serverUrl);
+
+                        document.getElementById('gpslogger-config-link').href = 'gpslogger://properties/' + gpsloggerPropertiesUrl;
+                        document.getElementById('owntracks-config-link').href = 'owntracks:///config?inline=' + owntracksConfig;
+                        document.getElementById('overland-config-link').href = overlandConfigUrl;
+
+                        if (tokenSelect) {
+                            tokenSelect.addEventListener('change', function () {
+                                const selectedToken = this.value;
+
+                                // Update config links
+                                const owntracksConfig = generateOwnTracksConfig(selectedToken, serverUrl);
+                                const gpsloggerPropertiesUrl = generateGpsLoggerPropertiesUrl(selectedToken, serverUrl);
+                                const overlandConfigUrl = generateOverlandUrl(selectedToken, serverUrl);
+
+                                document.getElementById('gpslogger-config-link').href = 'gpslogger://properties/' + gpsloggerPropertiesUrl;
+                                document.getElementById('owntracks-config-link').href = 'owntracks:///config?inline=' + owntracksConfig;
+                                document.getElementById('overland-config-link').href = overlandConfigUrl;
+                            });
+                        }
+
+                        function generateOwnTracksConfig(token, serverUrl) {
+                            const url = serverUrl + '/api/v1/ingest/owntracks?token=' + token;
+                            const json = JSON.stringify({
+                                "_type": "configuration",
+                                "url": url,
+                                "tid": "reitti",
+                                "locatorInterval": 15,
+                                "moveModeLocatorInterval": 15
+                            });
+                            return btoa(json);
+                        }
+
+                        function generateGpsLoggerPropertiesUrl(token, serverUrl) {
+                            return serverUrl + '/settings/integrations/reitti.properties?token=' + token;
+                        }
+
+                        function generateOverlandUrl(token, serverUrl) {
+                            const ingestUrl = serverUrl + '/api/v1/ingest/overland?token=' + token;
+                            const encodedUrl = encodeURIComponent(ingestUrl);
+                            return 'overland://setup?url=' + encodedUrl + '&device_id=1&unique_id=yes';
+                        }
+                    })();
+                </script>
             </div>
         </div>
     </div>
@@ -496,51 +553,6 @@
 <span th:text="${firstToken}" id="current-token" style="display:none;"></span>
 <script th:inline="javascript">
     window.userSettings = /*[[${userSettings}]]*/ {}
-    document.addEventListener('DOMContentLoaded', function() {
-        const currentToken = document.getElementById('current-token').textContent;
-        const serverUrl = /*[[${serverUrl}]]*/ '';
-        const tokenSelect = document.getElementById('tokenSelect');
-
-        // Set initial hrefs
-        const owntracksConfig = generateOwnTracksConfig(currentToken, serverUrl);
-        const gpsloggerPropertiesUrl = generateGpsLoggerPropertiesUrl(currentToken, serverUrl);
-        const overlandConfigUrl = generateOverlandUrl(currentToken, serverUrl);
-
-        document.getElementById('gpslogger-config-link').href = 'gpslogger://properties/' + gpsloggerPropertiesUrl;
-        document.getElementById('owntracks-config-link').href = 'owntracks:///config?inline=' + owntracksConfig;
-        document.getElementById('overland-config-link').href = overlandConfigUrl;
-
-        if (tokenSelect) {
-            tokenSelect.addEventListener('change', function() {
-                const selectedToken = this.value;
-
-                // Update config links
-                const owntracksConfig = generateOwnTracksConfig(selectedToken, serverUrl);
-                const gpsloggerPropertiesUrl = generateGpsLoggerPropertiesUrl(selectedToken, serverUrl);
-                const overlandConfigUrl = generateOverlandUrl(selectedToken, serverUrl);
-
-                document.getElementById('gpslogger-config-link').href = 'gpslogger://properties/' + gpsloggerPropertiesUrl;
-                document.getElementById('owntracks-config-link').href = 'owntracks:///config?inline=' + owntracksConfig;
-                document.getElementById('overland-config-link').href = overlandConfigUrl;
-            });
-        }
-
-        function generateOwnTracksConfig(token, serverUrl) {
-            const url = serverUrl + '/api/v1/ingest/owntracks?token=' + token;
-            const json = JSON.stringify({"_type":"configuration","url":url,"tid":"reitti", "locatorInterval" : 15, "moveModeLocatorInterval" : 15});
-            return btoa(json);
-        }
-
-        function generateGpsLoggerPropertiesUrl(token, serverUrl) {
-            return serverUrl + '/settings/integrations/reitti.properties?token=' + token;
-        }
-
-        function generateOverlandUrl(token, serverUrl) {
-            const ingestUrl = serverUrl + '/api/v1/ingest/overland?token=' + token;
-            const encodedUrl = encodeURIComponent(ingestUrl);
-            return 'overland://setup?url=' + encodedUrl + '&token=' + token + '&device_id=1&unique_id=yes';
-        }
-    });
 </script>
 
 </body>
