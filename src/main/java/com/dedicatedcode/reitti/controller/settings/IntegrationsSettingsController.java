@@ -59,13 +59,16 @@ public class IntegrationsSettingsController {
         List<ApiToken> tokens = apiTokenService.getTokensForUser(user);
 
         // Add the first token if available
+        String selectedToken = null;
         if (!tokens.isEmpty()) {
-            model.addAttribute("firstToken", tokens.getFirst().getToken());
+            selectedToken = tokens.getFirst().getToken();
+            model.addAttribute("firstToken", selectedToken);
             model.addAttribute("hasToken", true);
         } else {
             model.addAttribute("hasToken", false);
         }
 
+        model.addAttribute("selectedToken", selectedToken);
         model.addAttribute("tokens", tokens);
 
         Optional<OwnTracksRecorderIntegration> recorderIntegration = ownTracksRecorderIntegrationService.getIntegrationForUser(user);
@@ -84,19 +87,28 @@ public class IntegrationsSettingsController {
 
     @GetMapping("/integrations-content")
     public String getIntegrationsContent(@AuthenticationPrincipal User currentUser,
+                                         @RequestParam(required = false) String selectedToken,
                                          HttpServletRequest request,
                                          Model model,
                                          @RequestParam(required = false) String openSection) {
         List<ApiToken> tokens = apiTokenService.getTokensForUser(currentUser);
 
-        // Add the first token if available
-        if (!tokens.isEmpty()) {
-            model.addAttribute("firstToken", tokens.getFirst().getToken());
+        // Determine the token to use
+        String tokenToUse = null;
+        if (selectedToken != null && tokens.stream().anyMatch(t -> t.getToken().equals(selectedToken))) {
+            tokenToUse = selectedToken;
+        } else if (!tokens.isEmpty()) {
+            tokenToUse = tokens.getFirst().getToken();
+        }
+
+        if (tokenToUse != null) {
+            model.addAttribute("firstToken", tokenToUse);
             model.addAttribute("hasToken", true);
         } else {
             model.addAttribute("hasToken", false);
         }
 
+        model.addAttribute("selectedToken", tokenToUse);
         model.addAttribute("tokens", tokens);
 
         Optional<OwnTracksRecorderIntegration> recorderIntegration = ownTracksRecorderIntegrationService.getIntegrationForUser(currentUser);
