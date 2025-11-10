@@ -133,9 +133,6 @@ public class OwntracksLocationRequest {
         point.setLatitude(latitude);
         point.setLongitude(longitude);
 
-        if (this.t != null && this.t.equals("p")) {
-            timestamp = ZonedDateTime.now().toEpochSecond();
-        }
         // Convert Unix timestamp to ISO8601 format
         if (timestamp != null) {
             // Convert seconds to milliseconds and format as ISO8601
