@@ -2,9 +2,6 @@ package com.dedicatedcode.reitti.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-
 public class OwntracksLocationRequest {
     
     @JsonProperty("_type")
