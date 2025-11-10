@@ -40,7 +40,7 @@
                         </thead>
                         <tbody>
                         <tr th:each="config : ${configs}">
-                            <td th:text="#{${'transportation.mode.' + config.mode().name().toLowerCase()}}"></td>
+                            <td th:text="#{${'transportation.mode.' + config.mode() + '.name'}}"></td>
                             <td>
                                 <form th:attr="hx-post=@{/settings/transportation-modes/{mode}/update(mode=${config.mode()})}"
                                       hx-target="body"
