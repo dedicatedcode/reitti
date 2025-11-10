@@ -18,8 +18,8 @@
     border-radius: 4px;
 }
 
-.timeline-entry.trip.active .edit-icon,
-.timeline-entry.active .place-name-container:hover .edit-icon {
+.timeline-entry.trip.active:hover .edit-icon,
+.timeline-entry.active:hover .place-name-container .edit-icon {
     opacity: 1;
 }
 

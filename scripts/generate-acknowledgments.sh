@@ -33,6 +33,7 @@ fetch_contributors() {
         select(.login != "dependabot[bot]") |
         select(.login != "github-actions[bot]") |
         select(.login != "weblate") |
+        select(.login != "aider-chat-bot") |
         select(.login != "dgraf-gh") |
         {
             name: (.name // .login),

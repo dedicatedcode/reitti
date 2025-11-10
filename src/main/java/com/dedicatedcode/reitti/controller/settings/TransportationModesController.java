@@ -11,8 +11,8 @@ import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.TransportModeJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
-import com.dedicatedcode.reitti.service.processing.TransportModeService;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -33,17 +33,17 @@ public class TransportationModesController {
     private final TripJdbcService tripJdbcService;
     private final TransportModeJdbcService transportModeJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
-    private final TransportModeService transportModeService;
+    private final boolean dataManagementEnabled;
 
     public TransportationModesController(RabbitTemplate rabbitTemplate, TripJdbcService tripJdbcService,
                                          TransportModeJdbcService transportModeJdbcService,
                                          UserSettingsJdbcService userSettingsJdbcService,
-                                         TransportModeService transportModeService) {
+                                         @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.rabbitTemplate = rabbitTemplate;
         this.tripJdbcService = tripJdbcService;
         this.transportModeJdbcService = transportModeJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
-        this.transportModeService = transportModeService;
+        this.dataManagementEnabled = dataManagementEnabled;
     }
 
     @GetMapping
@@ -55,7 +55,7 @@ public class TransportationModesController {
         model.addAttribute("configs", configs);
         model.addAttribute("availableModes", availableModes);
         model.addAttribute("activeSection", "transportation-modes");
-        model.addAttribute("dataManagementEnabled", true);
+        model.addAttribute("dataManagementEnabled", dataManagementEnabled);
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("unitSystem", userSettings.getUnitSystem());
         model.addAttribute("isImperial", userSettings.getUnitSystem() == UnitSystem.IMPERIAL);

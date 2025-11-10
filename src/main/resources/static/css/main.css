@@ -1174,6 +1174,7 @@ body.auto-update-mode .datepicker-toggle-btn {
     flex: 1;
     overflow-y: auto;
     font-family: initial;
+    padding-bottom: 24px;
 }
 
 .settings-page .settings-section {
@@ -1694,7 +1695,6 @@ button:disabled {
 
 .home-location-map {
     height: 300px;
-    width: 100%;
     border: 1px solid #ddd;
     border-radius: 4px;
     margin-top: 10px;
