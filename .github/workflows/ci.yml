@@ -53,7 +53,7 @@ jobs:
         tags: dedicatedcode/reitti:latest
 
     - name: Start docker-compose
-      run: docker-compose -f docker-compose.ci.yml up -d
+      run: docker compose -f docker-compose.ci.yml up -d
       working-directory: e2e
     - name: Wait for app to be ready
       run: |
@@ -75,7 +75,7 @@ jobs:
       working-directory: e2e
 
     - name: Stop docker-compose
-      run: docker-compose -f docker-compose.ci.yml down
+      run: docker compose -f docker-compose.ci.yml down
       working-directory: e2e
 
       if: always()
