@@ -1,17 +1,14 @@
 name: CI
 
-
 on:
   push:
     branches:
       - 218-feature-request-end-to-end-e2e-frontend-testing-framework-2
-
   pull_request:
 
 jobs:
   test:
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -42,27 +39,59 @@ jobs:
       run: mkdir staging && cp target/*.jar staging
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: actions/setup-buildx-action@v3
+
+    - name: Cache Docker layers
+      uses: actions/cache@v4
+      with:
+        path: /tmp/.buildx-cache
+        key: docker-${{ runner.os }}-${{ github.sha }}
+        restore-keys: |
+          docker-${{ runner.os }}-
 
     - name: Build docker image
       uses: docker/build-push-action@v6
       with:
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/amd64
         context: .
         push: false
         tags: dedicatedcode/reitti:latest
+        cache-from: type=local,src=/tmp/.buildx-cache
+        cache-to: type=local,dst=/tmp/.buildx-cache-new,mode=max
+
+    - name: Move Docker cache
+      run: |
+        rm -rf /tmp/.buildx-cache
+        mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
     - name: Start docker-compose
       run: docker compose -f docker-compose.ci.yml up -d
       working-directory: e2e
+
     - name: Wait for app to be ready
       run: |
         timeout 60 bash -c 'until curl -f http://localhost:8080; do sleep 2; done'
       working-directory: e2e
 
+    - name: Cache npm dependencies
+      uses: actions/cache@v4
+      with:
+        path: e2e/node_modules
+        key: npm-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
+        restore-keys: |
+          npm-${{ runner.os }}-
+
     - name: Install dependencies
       run: npm ci
       working-directory: e2e
+
+    - name: Cache Playwright browsers
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
+        restore-keys: |
+          playwright-${{ runner.os }}-
 
     - name: Install Playwright browsers
       run: npx playwright install --with-deps
@@ -74,8 +103,23 @@ jobs:
         BASE_URL: http://localhost:8080
       working-directory: e2e
 
+    - name: Upload Playwright test results
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: playwright-test-results
+        path: e2e/test-results/
+        retention-days: 30
+
+    - name: Upload Playwright report
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: playwright-report
+        path: e2e/playwright-report/
+        retention-days: 30
+
     - name: Stop docker-compose
       run: docker compose -f docker-compose.ci.yml down
       working-directory: e2e
-
       if: always()
