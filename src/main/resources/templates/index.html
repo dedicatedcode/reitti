@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="/css/avatar-marker.css">
     <link th:if="${userSettings.customCssUrl}" rel="stylesheet" th:href="${userSettings.customCssUrl}">
     <script src="/js/HumanizeDuration.js"></script>
-    <script src="/js/horizontal-date-picker.js"></script>
+    <script src="/js/date-picker-combined.js"></script>
     <script src="/js/timeline-scroll-indicator.js"></script>
     <script src="/js/photo-client.js"></script>
     <script src="/js/raw-location-loader.js"></script>
@@ -61,7 +61,7 @@
 <button type="button" class="datepicker-toggle-btn" id="datepicker-toggle-btn" onclick="toggleDatePicker()" title="Hide Date Picker">
     <i class="lni lni-exit-down"></i>
 </button>
-<div id="horizontal-date-picker-container">
+<div id="date-picker-container">
 
 </div>
 
@@ -582,41 +582,66 @@
             dateToUse = new Date(year, month - 1, day);
         }
 
-        // Initialize horizontal date picker
-        window.horizontalDatePicker = new HorizontalDatePicker({
-            container: document.getElementById('horizontal-date-picker-container'),
-            selectedDate: dateToUse,
-            showNavButtons: false,
-            daysToShow: 21,
-            showMonthRow: true,
-            showYearRow: true,
-            yearsToShow: 5,
-            allowFutureDates: false,
-            showTodayButton: true,
-            onDateSelect: (date, formattedDate) => {
-                // Update URL
-                updateUrlWithDate(formattedDate);
-                // Clear any existing date range
-                currentDateRange = null;
-                // Trigger HTMX reload of timeline
-                document.body.dispatchEvent(new CustomEvent('dateChanged'));
-            },
-            onDateRangeSelect: (startDate, endDate, formattedStartDate, formattedEndDate) => {
-                // Store the date range
-                currentDateRange = {
-                    startDate: formattedStartDate,
-                    endDate: formattedEndDate
-                };
-                // Update URL to show range
-                const url = new URL(window.location);
-                url.searchParams.set('startDate', formattedStartDate);
-                url.searchParams.set('endDate', formattedEndDate);
-                url.searchParams.delete('date');
-                window.history.pushState({}, '', url);
-                // Trigger HTMX reload of timeline
-                document.body.dispatchEvent(new CustomEvent('dateChanged'));
-            }
+        window.horizontalDatePicker = new DatePicker('date-picker-container', {
+            daysToShow: 14,
+            prefetchDays: 25,
+            allowRangeSelection: true,
+            singleDateMode: true, // Enable single date mode with locking
+            dateFormat: 'YYYY-MM-DD',
+            startDate: dateToUse,
+
         });
+
+        window.horizontalDatePicker.on('selectionChange', function (data) {
+            console.log(`Selection changed`, data);
+            updateUrlWithDate(data.startDate);
+
+            const startDate = new Date(data.startDate);
+            let endDate;
+            if (data.endDate) {
+                endDate = new Date(data.endDate);
+            } else {
+                switch (data.timeband) {
+                    case 'day': endDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 1); break;
+                    case 'month': endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 1); break;
+                    case 'year': endDate = new Date(startDate.getFullYear() + 1, 0, 1); break
+                }
+            }
+            currentDateRange = {
+                startDate: window.horizontalDatePicker.formatDate(startDate),
+                endDate: window.horizontalDatePicker.formatDate(endDate)
+            };
+            const url = new URL(window.location);
+            url.searchParams.set('startDate', currentDateRange.startDate);
+            url.searchParams.set('endDate', currentDateRange.endDate);
+            url.searchParams.delete('date');
+            window.history.pushState({}, '', url);
+            // Trigger HTMX reload of timeline
+            document.body.dispatchEvent(new CustomEvent('dateChanged'));
+        });
+        // onDateSelect: (date, formattedDate) => {
+        //     // Update URL
+        //     updateUrlWithDate(formattedDate);
+        //     // Clear any existing date range
+        //     currentDateRange = null;
+        //     // Trigger HTMX reload of timeline
+        //     document.body.dispatchEvent(new CustomEvent('dateChanged'));
+        // },
+        //     onDateRangeSelect: (startDate, endDate, formattedStartDate, formattedEndDate) => {
+        //     // Store the date range
+        //     currentDateRange = {
+        //         startDate: formattedStartDate,
+        //         endDate: formattedEndDate
+        //     };
+        //     // Update URL to show range
+        //     const url = new URL(window.location);
+        //     url.searchParams.set('startDate', formattedStartDate);
+        //     url.searchParams.set('endDate', formattedEndDate);
+        //     url.searchParams.delete('date');
+        //     window.history.pushState({}, '', url);
+        //     // Trigger HTMX reload of timeline
+        //     document.body.dispatchEvent(new CustomEvent('dateChanged'));
+        // }
     });
 
 
@@ -646,7 +671,7 @@
             
             // Update the date picker to today
             if (window.horizontalDatePicker) {
-                window.horizontalDatePicker.setDate(new Date());
+                window.horizontalDatePicker.setSelectedRange(new Date(), null);
             }
 
             // Start the timer to check for date changes every 30 seconds
@@ -716,8 +741,7 @@
         icon.className = 'lni lni-play';
         btn.title = 'Auto Update';
         if (window.horizontalDatePicker) {
-            window.horizontalDatePicker.exitRangeMode();
-            window.horizontalDatePicker.setDate(getSelectedDate());
+            window.horizontalDatePicker.setSelectedRange(getSelectedDate());
         }
 
         document.body.classList.remove('auto-update-mode');
@@ -735,7 +759,7 @@
             if (!isSelectedDateToday()) {
                 console.log('Auto-update: Switching to today\'s date');
                 if (window.horizontalDatePicker) {
-                    window.horizontalDatePicker.setDate(new Date());
+                    window.horizontalDatePicker.setSelectedRange(new Date());
                 }
             }
         }, 30000); // 30 seconds
