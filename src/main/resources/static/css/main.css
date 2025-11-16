@@ -833,7 +833,7 @@ body.timeline-hidden.datepicker-hidden .timeline-toggle-btn {
 
 .timeline-toggle-btn,
 .datepicker-toggle-btn {
-    bottom: 188px;
+    bottom: 114px;
 
 }
 
@@ -847,7 +847,7 @@ body.timeline-hidden.datepicker-hidden .timeline-toggle-btn {
     font-size: 1.2rem;
 }
 
-body.datepicker-hidden #horizontal-date-picker-container {
+body.datepicker-hidden #date-picker-container {
     transform: translateY(100%);
     transition: all 0.3s ease-in-out;
 }
@@ -1848,40 +1848,6 @@ button:disabled {
     pointer-events: none;
 }
 
-/* Create Memory FAB */
-.create-memory-fab {
-    position: fixed;
-    bottom: 320px;
-    right: 2rem;
-    z-index: 999;
-    animation: slideInUp 0.3s ease-out;
-}
-
-.fab-button {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1rem 1.5rem;
-    background-color: #ff6c00;
-    color: white;
-    border-radius: 50px;
-    text-decoration: none;
-    box-shadow: 0 4px 12px rgba(255, 108, 0, 0.4);
-    transition: all 0.3s ease;
-    font-weight: 600;
-    font-size: 1rem;
-}
-
-.fab-button:hover {
-    background-color: #e66100;
-    box-shadow: 0 6px 16px rgba(255, 108, 0, 0.5);
-    transform: translateY(-2px);
-}
-
-.fab-button i {
-    font-size: 1.2rem;
-}
-
 @keyframes slideInUp {
     from {
         opacity: 0;
@@ -2414,5 +2380,84 @@ button:disabled {
         transform: translateX(300%);
         width: 30%;
     }
+}
+
+
+.date-picker {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: rgba(59, 59, 59, 0.68);
+    backdrop-filter: blur(10px);
+    z-index: 50;
+    box-shadow: unset;
+    color: white;
+    height: 110px;
+}
+
+.timeband-item:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.timeband-item .primary-text {
+    font-size: 2rem;
+    font-weight: lighter;
+}
+
+.timeband-item.selected {
+    background-color: unset;
+    color: var(--color-highlight);
+    transform: scale(1.05);
+    box-shadow: unset;
+}
+
+.timeband-item.in-range {
+    background-color: rgba(117, 82, 0, 0.49);
+    color: white;
+}
+
+.timeband-item.range-start, .timeband-item.range-end {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    position: relative;
+    background-color: rgba(117, 82, 0, 0.49);
+    color: white;
+}
+
+.timeband-item.range-start:hover::before, .timeband-item.range-end:hover::before {
+    opacity: 1;
+}
+
+.timeband-item.selected::before {
+    content: "\eb47";
+    font-family: 'Lineicons';
+    font-weight: 900;
+    position: absolute;
+    top: 4px;
+    left: unset;
+    transform: unset;
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.9);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: 1;
+    right: 4px;
+}
+
+.timeband-item.locked::before,
+.timeband-item.selected.range-start::before,
+.timeband-item.selected.range-end::before{
+    content: "\ec2a";
+}
+.timeband-item.selected:hover::before {
+    opacity: 1;
+}
+
+.timeband-item.locked {
+
 }
 
