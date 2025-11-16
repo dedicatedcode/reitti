@@ -385,13 +385,13 @@ class SelectionManager {
         const clickedStart = getTimebandStart(itemData.date, timeband);
 
         if (this.datePicker.options.singleDateMode) {
-            this.#handleTimebandSingleDateMode(clickedStart, timeband, itemData);
+            this.#handleTimebandSingleDateMode(clickedStart, timeband);
         } else {
-            this.#handleTimebandRangeMode(clickedStart, timeband, itemData);
+            this.#handleTimebandRangeMode(clickedStart, timeband);
         }
     }
 
-    #handleTimebandSingleDateMode(clickedStart, timeband, itemData) {
+    #handleTimebandSingleDateMode(clickedStart, timeband) {
         if (!this.selectedStartDate) {
             return this.#selectSingleTimebandDate(clickedStart, timeband);
         }
@@ -460,7 +460,7 @@ class SelectionManager {
         this.selectionTimeband = null;
     }
 
-    #handleTimebandRangeMode(clickedStart, timeband, itemData) {
+    #handleTimebandRangeMode(clickedStart, timeband) {
         if (!this.selectedStartDate || (this.selectedStartDate && this.selectedEndDate)) {
             // Start new timeband range
             this.startTimebandRangeSelection(clickedStart, timeband);
@@ -816,9 +816,6 @@ class DatePicker {
         this.render();
         this.#setupScrollListener();
         this.#setupDelegatedItemEvents();
-        if (this.options.startDate) {
-            this.setSelectedRange(this.options.startDate);
-        }
     }
 
     #createContainer() {
@@ -1017,11 +1014,6 @@ class DatePicker {
         );
     }
 
-    #attachItemEvents(element, itemData, index) {
-        // Backward compatibility for custom renderers that expect direct events.
-        this.#prepareItemElement(element, itemData, index);
-    }
-
     #prepareItemElement(el, itemData, index) {
         if (!el) return;
         if (!el.classList.contains('timeband-item')) {
@@ -1045,7 +1037,7 @@ class DatePicker {
             if (!data && el.dataset && el.dataset.time && this.itemByTime) {
                 data = this.itemByTime.get(Number(el.dataset.time)) || null;
             }
-            if (data) this.handleItemClick(data, Number.isNaN(idx) ? undefined : idx);
+            if (data) this.handleItemClick(data);
         };
 
         this._onMouseOver = (e) => {
@@ -1073,7 +1065,7 @@ class DatePicker {
         this.scrollContainer.addEventListener('mouseout', this._onMouseOut, { passive: true });
     }
 
-    handleItemClick(itemData, index) {
+    handleItemClick(itemData) {
         const sm = this.selectionManager;
 
         if (sm.isSelectingRange &&
@@ -1200,7 +1192,6 @@ class DatePicker {
             // Already at max zoom out (YEAR)
             this._wheelChainCount = 0;
             this._wheelChainDir = 0;
-            return;
         } else if (dir < 0) { // zoom in
             if (this.currentTimeband === TIMEBANDS.YEAR) {
                 const target = new Date(date.getFullYear(), 0, 1);
@@ -1215,7 +1206,6 @@ class DatePicker {
             // Already at max zoom in (DAY)
             this._wheelChainCount = 0;
             this._wheelChainDir = 0;
-            return;
         }
     }
 
@@ -2073,7 +2063,6 @@ class DatePicker {
             end: TimebandUtils.getItemRangeEnd(lastItem, this.currentTimeband)
         };
     }
-
 }
 
 /** UMD-style export **/
