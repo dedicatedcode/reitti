@@ -1,10 +1,9 @@
 name: CI
 
 on:
-  push:
-    branches:
-      - 218-feature-request-end-to-end-e2e-frontend-testing-framework-2
   pull_request:
+    branches:
+      - main
 
 jobs:
   test:
