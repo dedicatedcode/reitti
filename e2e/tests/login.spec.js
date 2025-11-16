@@ -27,7 +27,7 @@ test.describe('Login Page Tests', () => {
 
 
         await page.locator('#username').fill('admin');
-        await page.locator('#password').fill('should fail');
+        await page.locator('#password').fill('admin');
 
         await page.locator('button:has-text("Login")').click();
 
