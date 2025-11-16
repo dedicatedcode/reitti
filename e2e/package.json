@@ -1,7 +1,7 @@
 {
-  "name": "date-picker-frontend-tests",
+  "name": "e2e-tests",
   "version": "1.0.0",
-  "description": "Frontend tests for date picker component using Playwright",
+  "description": "Frontend tests",
   "type": "module",
   "scripts": {
     "test": "playwright test",
