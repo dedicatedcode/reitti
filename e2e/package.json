@@ -13,7 +13,8 @@
     "test:docker": "npm run docker:up && sleep 5 && npm run test && npm run docker:down"
   },
   "devDependencies": {
-    "@playwright/test": "^1.40.0"
+    "@playwright/test": "^1.40.0",
+    "@midleman/github-actions-reporter": "^1.10.1"
   },
   "keywords": [
     "playwright",
