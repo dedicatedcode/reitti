@@ -1,0 +1,26 @@
+{
+  "name": "date-picker-frontend-tests",
+  "version": "1.0.0",
+  "description": "Frontend tests for date picker component using Playwright",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "test:docker": "npm run docker:up && sleep 5 && npm run test && npm run docker:down"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  },
+  "keywords": [
+    "playwright",
+    "testing",
+    "frontend",
+    "date-picker"
+  ],
+  "author": "",
+  "license": "MIT"
+}
