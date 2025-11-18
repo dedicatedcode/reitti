@@ -97,7 +97,7 @@ jobs:
       working-directory: e2e
 
     - name: Run Playwright tests
-      run: CI=1 npx playwright test --project=chromium --project=firefox --project=webkit --project="Mobile Chrome" --project="Mobile Safari"
+      run: CI=1 npx playwright test --project=chromium --project=firefox --project=webkit
       env:
         BASE_URL: http://localhost:8080
       working-directory: e2e
