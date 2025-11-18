@@ -93,25 +93,25 @@ public class RawLocationPointJdbcService {
 
     public RawLocationPoint create(User user, RawLocationPoint rawLocationPoint) {
         String sql = "INSERT INTO raw_location_points (user_id, timestamp, accuracy_meters, elevation_meters, geom, processed) " +
-                "VALUES (?, ?, ?, ?, CAST(? AS geometry), ?) RETURNING id";
+                "VALUES (?, ?, ?, ?, ST_GeomFromText(?, '4326'), ?) RETURNING id";
         Long id = jdbcTemplate.queryForObject(sql, Long.class,
                 user.getId(),
                 Timestamp.from(rawLocationPoint.getTimestamp()),
                 rawLocationPoint.getAccuracyMeters(),
                 rawLocationPoint.getElevationMeters(),
-                rawLocationPoint.getGeom().toString(), // Would need PostGIS handling
+                pointReaderWriter.write(rawLocationPoint.getGeom()),
                 rawLocationPoint.isProcessed()
         );
         return rawLocationPoint.withId(id);
     }
 
     public RawLocationPoint update(RawLocationPoint rawLocationPoint) {
-        String sql = "UPDATE raw_location_points SET timestamp = ?, accuracy_meters = ?, elevation_meters = ?, geom = CAST(? AS geometry), processed = ? WHERE id = ?";
+        String sql = "UPDATE raw_location_points SET timestamp = ?, accuracy_meters = ?, elevation_meters = ?, geom = ST_GeomFromText(?, '4326'), processed = ? WHERE id = ?";
         jdbcTemplate.update(sql,
                 Timestamp.from(rawLocationPoint.getTimestamp()),
                 rawLocationPoint.getAccuracyMeters(),
                 rawLocationPoint.getElevationMeters(),
-                rawLocationPoint.getGeom().toString(), // Would need PostGIS handling
+                pointReaderWriter.write(rawLocationPoint.getGeom()),
                 rawLocationPoint.isProcessed(),
                 rawLocationPoint.getId()
         );

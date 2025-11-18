@@ -1,11 +1,10 @@
 package com.dedicatedcode.reitti;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import de.siegmar.fastcsv.reader.CsvReader;
-import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.Point;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -39,7 +38,7 @@ public class TestUtils {
                    pointString = pointString.substring(7);
                    double x = Double.parseDouble(pointString.substring(0, pointString.indexOf(" ")));
                    double y = Double.parseDouble(pointString.substring(pointString.indexOf(" ") + 1, pointString.length() - 1));
-                   Point point = FACTORY.createPoint(new Coordinate(x, y));
+                   GeoPoint point = new GeoPoint(x, y);
                    return new RawLocationPoint(timestamp, point, Double.parseDouble(row.getField(1)));
                }).toList();
     }
