@@ -1537,14 +1537,18 @@ class DatePicker {
         // If a start date is provided, transition to DAY timeband and scroll to it
         if (startDate) {
             const targetDate = clampToStartOfDay(startDate);
+            // Update the start date to ensure items are generated around the target
+            this.options.startDate = targetDate;
+
             // If not already in DAY timeband, transition to it
             if (this.currentTimeband !== TIMEBANDS.DAY) {
                 // Don't emit selection change yet - wait for transition to complete
                 this.pendingSelectionEmit = true;
                 this.transitionToTimeband(TIMEBANDS.DAY, targetDate);
             } else {
-                // Already in DAY timeband, just scroll to the date
-                this.options.startDate = targetDate;
+                // Already in DAY timeband, regenerate items around the target date and scroll
+                this.#generateInitialItems();
+                this.render();
                 this.scrollToCenter(false);
                 this.requestSelectionUpdate();
                 this.emit('selectionChange', this.selectionManager.getSelectedRange());
@@ -2063,6 +2067,7 @@ class DatePicker {
             end: TimebandUtils.getItemRangeEnd(lastItem, this.currentTimeband)
         };
     }
+
 }
 
 /** UMD-style export **/

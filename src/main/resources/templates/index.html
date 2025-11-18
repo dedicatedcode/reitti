@@ -271,41 +271,20 @@
         updateDatePickerToggleButton();
     }
 
+    function updateUrlWithDate(currentDateRange) {
+        const url = new URL(window.location);
+        url.searchParams.set('startDate', currentDateRange.startDate);
+        url.searchParams.set('endDate', currentDateRange.endDate);
+        url.searchParams.delete('date');
+        window.history.pushState({}, '', url);
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         // Restore timeline state on page load
         restoreTimelineState();
         // Restore date picker state on page load
         restoreDatePickerState();
         // Check if date is in URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        let initialDate;
-
-        if (urlParams.has('date')) {
-            initialDate = urlParams.get('date');
-            // Validate date format (YYYY-MM-DD)
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(initialDate)) {
-                initialDate = null;
-            }
-        }
-
-        if (!initialDate) {
-            if (window.userSettings.uiMode === 'SHARED_LIVE_MODE_ONLY') {
-
-            } else if (window.userSettings.newestData) {
-                initialDate = window.userSettings.newestData.split('T')[0]
-            }
-        }
-
-        // Set date picker to URL date or today's date
-        const formattedDate = initialDate || getCurrentLocalDate();
-
-        // Function to update URL with date parameter
-        function updateUrlWithDate(date) {
-            const url = new URL(window.location);
-            url.searchParams.set('date', date);
-            window.history.pushState({}, '', url);
-        }
-
 
         const tilesUrl = window.userSettings.tiles.service;
         const tilesAttribution = window.userSettings.tiles.attribution;
@@ -571,30 +550,21 @@
             }
         });
 
-        loadTimelineData(formattedDate, formattedDate);
 
-        // Parse the initial date properly to ensure correct date picker initialization
-        let dateToUse = new Date();
-        if (initialDate) {
-            // Parse the date from URL parameter (YYYY-MM-DD format)
-            const [year, month, day] = initialDate.split('-').map(Number);
-            // Note: month is 0-indexed in JavaScript Date
-            dateToUse = new Date(year, month - 1, day);
-        }
+        const selectedDates = loadStartingDate(window.userSettings);
+        loadTimelineData(selectedDates[0], selectedDates[1]);
 
         window.horizontalDatePicker = new DatePicker('date-picker-container', {
             daysToShow: 14,
             prefetchDays: 25,
             allowRangeSelection: true,
             singleDateMode: true, // Enable single date mode with locking
-            dateFormat: 'YYYY-MM-DD',
-            startDate: dateToUse,
-
+            dateFormat: 'YYYY-MM-DD'
         });
 
+        debugger
         window.horizontalDatePicker.on('selectionChange', function (data) {
             console.log(`Selection changed`, data);
-            updateUrlWithDate(data.startDate);
 
             const startDate = new Date(data.startDate);
             let endDate;
@@ -611,38 +581,52 @@
                 startDate: window.horizontalDatePicker.formatDate(startDate),
                 endDate: window.horizontalDatePicker.formatDate(endDate)
             };
-            const url = new URL(window.location);
-            url.searchParams.set('startDate', currentDateRange.startDate);
-            url.searchParams.set('endDate', currentDateRange.endDate);
-            url.searchParams.delete('date');
-            window.history.pushState({}, '', url);
+            updateUrlWithDate(currentDateRange);
             // Trigger HTMX reload of timeline
             document.body.dispatchEvent(new CustomEvent('dateChanged'));
         });
-        // onDateSelect: (date, formattedDate) => {
-        //     // Update URL
-        //     updateUrlWithDate(formattedDate);
-        //     // Clear any existing date range
-        //     currentDateRange = null;
-        //     // Trigger HTMX reload of timeline
-        //     document.body.dispatchEvent(new CustomEvent('dateChanged'));
-        // },
-        //     onDateRangeSelect: (startDate, endDate, formattedStartDate, formattedEndDate) => {
-        //     // Store the date range
-        //     currentDateRange = {
-        //         startDate: formattedStartDate,
-        //         endDate: formattedEndDate
-        //     };
-        //     // Update URL to show range
-        //     const url = new URL(window.location);
-        //     url.searchParams.set('startDate', formattedStartDate);
-        //     url.searchParams.set('endDate', formattedEndDate);
-        //     url.searchParams.delete('date');
-        //     window.history.pushState({}, '', url);
-        //     // Trigger HTMX reload of timeline
-        //     document.body.dispatchEvent(new CustomEvent('dateChanged'));
-        // }
+
+        window.horizontalDatePicker.setSelectedRange(selectedDates[0], selectedDates[1]);
     });
+
+    function loadStartingDate() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const newestData = window.userSettings.newestData;
+
+        let startDate = urlParams.get('start-date');
+        let endDate = urlParams.get('end-date');
+        if (startDate) {
+            // Validate date format (YYYY-MM-DD)
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+                startDate = null;
+            }
+        }
+        if (endDate) {
+            // Validate date format (YYYY-MM-DD)
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+                endDate = null;
+            }
+        }
+
+        console.log('Starting date:', startDate, endDate);
+        console.log('Newest data:', newestData);
+
+        if (!startDate && !endDate) {
+            if (window.userSettings.uiMode === 'SHARED_LIVE_MODE_ONLY') {
+                return [getCurrentLocalDate(), getCurrentLocalDate()];
+            } else if (window.userSettings.newestData) {
+                return [window.userSettings.newestData.split('T')[0],];
+            } else {
+                return [getCurrentLocalDate(),getCurrentLocalDate()];
+            }
+        } else if (!startDate && endDate) {
+            return [endDate,endDate];
+        } else if (startDate && !endDate) {
+            return [startDate,startDate];
+        } else {
+            return [startDate,endDate];
+        }
+    }
 
 
     if (window.userSettings.uiMode === "SHARED_LIVE_MODE_ONLY") {
