@@ -59,30 +59,6 @@
                            th:value="${endDate}">
                 </div>
             </div>
-
-            <div class="form-group">
-                <label>Header Type *</label>
-                <div class="radio-group">
-                    <label class="radio-label">
-                        <input type="radio" name="headerType" value="MAP" 
-                               th:checked="${memory.headerType.name() == 'MAP'}">
-                        <span><i class="lni lni-map"></i> Map</span>
-                    </label>
-                    <label class="radio-label">
-                        <input type="radio" name="headerType" value="IMAGE" 
-                               th:checked="${memory.headerType.name() == 'IMAGE'}">
-                        <span><i class="lni lni-image"></i> Image</span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="form-group" id="imageUrlGroup" 
-                 th:style="${memory.headerType.name() == 'IMAGE'} ? 'display: block;' : 'display: none;'">
-                <label for="headerImageUrl">Header Image URL</label>
-                <input type="url" id="headerImageUrl" name="headerImageUrl" class="form-control" 
-                       th:value="${memory.headerImageUrl}" placeholder="https://example.com/image.jpg">
-            </div>
-
             <div class="form-actions">
                 <a class="btn btn-secondary"
                         th:href="@{/memories/{id}(id=${memory.id})}">Cancel</a>

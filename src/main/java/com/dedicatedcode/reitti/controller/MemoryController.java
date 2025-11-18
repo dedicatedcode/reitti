@@ -175,7 +175,6 @@ public class MemoryController {
             @RequestParam(required = false) String description,
             @RequestParam LocalDate startDate,
             @RequestParam LocalDate endDate,
-            @RequestParam(required = false) String headerImageUrl,
             @RequestParam(required = false) String year,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             Model model,
@@ -187,7 +186,6 @@ public class MemoryController {
             model.addAttribute("description", description);
             model.addAttribute("startDate", startDate);
             model.addAttribute("endDate", endDate);
-            model.addAttribute("headerImageUrl", headerImageUrl);
             return "memories/new :: new-memory";
         }
         
@@ -203,7 +201,6 @@ public class MemoryController {
                 model.addAttribute("description", description);
                 model.addAttribute("startDate", startDate);
                 model.addAttribute("endDate", endDate);
-                model.addAttribute("headerImageUrl", headerImageUrl);
                 model.addAttribute("year", year);
 
                 return "memories/new :: new-memory";
@@ -216,7 +213,6 @@ public class MemoryController {
                 model.addAttribute("description", description);
                 model.addAttribute("startDate", startDate);
                 model.addAttribute("endDate", endDate);
-                model.addAttribute("headerImageUrl", headerImageUrl);
                 model.addAttribute("year", year);
 
                 return "memories/new :: new-memory";
@@ -228,7 +224,7 @@ public class MemoryController {
                     start,
                     end,
                     HeaderType.MAP,
-                    headerImageUrl
+                    null
             );
             
             Memory created = memoryService.createMemory(user, memory);
@@ -243,7 +239,6 @@ public class MemoryController {
             model.addAttribute("description", description);
             model.addAttribute("startDate", startDate);
             model.addAttribute("endDate", endDate);
-            model.addAttribute("headerImageUrl", headerImageUrl);
             model.addAttribute("year", year);
 
             return "memories/new :: new-memory";
@@ -272,8 +267,6 @@ public class MemoryController {
             @RequestParam(required = false) String description,
             @RequestParam LocalDate startDate,
             @RequestParam LocalDate endDate,
-            @RequestParam HeaderType headerType,
-            @RequestParam(required = false) String headerImageUrl,
             @RequestParam Long version,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             Model model) {
@@ -328,8 +321,7 @@ public class MemoryController {
                     .withDescription(description != null ? description.trim() : null)
                     .withStartDate(start)
                     .withEndDate(end)
-                    .withHeaderType(headerType)
-                    .withHeaderImageUrl(headerImageUrl)
+                    .withHeaderType(HeaderType.MAP)
                     .withVersion(version);
             
             Memory savedMemory = memoryService.updateMemory(user, updated);
