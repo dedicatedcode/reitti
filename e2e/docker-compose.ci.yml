@@ -1,6 +1,6 @@
 services:
   reitti:
-    image: dedicatedcode/reitti:latest
+    image: dedicatedcode/reitti:ci
     ports:
       - "8080:8080"
     depends_on:

@@ -46,7 +46,7 @@ jobs:
         platforms: linux/amd64
         context: .
         push: false
-        tags: dedicatedcode/reitti:latest
+        tags: dedicatedcode/reitti:ci
 
     - name: Start docker-compose
       run: docker compose -f docker-compose.ci.yml up -d
