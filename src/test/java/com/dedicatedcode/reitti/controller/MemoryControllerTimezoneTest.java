@@ -5,14 +5,15 @@ import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.memory.MemoryDTO;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.MemoryService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.ModelAndView;
 
 import java.time.*;
+import java.time.temporal.ChronoUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -33,8 +34,6 @@ public class MemoryControllerTimezoneTest {
     @Autowired
     private MemoryService memoryService;
 
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @Test
     public void testCreateAndRetrieveMemoryWithDifferentTimezones() throws Exception {
@@ -70,15 +69,15 @@ public class MemoryControllerTimezoneTest {
             assertThat(redirectHeader).isNotNull();
             Long memoryId = Long.parseLong(redirectHeader.substring("/memories/".length()));
             
-            // Retrieve memory DTO with the same timezone
-            MvcResult dtoResult = mockMvc.perform(get("/memories/{id}/dto", memoryId)
+            // Retrieve memory with the same timezone
+            MvcResult viewResult = mockMvc.perform(get("/memories/{id}", memoryId)
                     .with(user(user))
                     .param("timezone", timezone.getId()))
                     .andExpect(status().isOk())
                     .andReturn();
             
-            String jsonResponse = dtoResult.getResponse().getContentAsString();
-            MemoryDTO memoryDTO = objectMapper.readValue(jsonResponse, MemoryDTO.class);
+            ModelAndView modelAndView = viewResult.getModelAndView();
+            MemoryDTO memoryDTO = (MemoryDTO) modelAndView.getModel().get("memory");
             
             // Verify that the local dates match what we sent
             assertThat(memoryDTO.getStartDate().toLocalDate()).isEqualTo(startDate);
@@ -90,21 +89,21 @@ public class MemoryControllerTimezoneTest {
             assertThat(memoryDTO.getStartDate()).isEqualTo(expectedStartDateTime);
             
             // Verify that the end time is at the end of the day in the specified timezone
-            LocalDateTime expectedEndDateTime = endDate.plusDays(1).atStartOfDay().minusNanos(1);
+            LocalDateTime expectedEndDateTime = endDate.plusDays(1).atStartOfDay().minus(1, ChronoUnit.MILLIS);
             assertThat(memoryDTO.getEndDate()).isEqualTo(expectedEndDateTime);
             
             // Test retrieving the same memory with a different timezone
             ZoneId differentTimezone = timezone.equals(ZoneId.of("UTC")) ? 
                 ZoneId.of("Europe/Berlin") : ZoneId.of("UTC");
             
-            MvcResult differentTzResult = mockMvc.perform(get("/memories/{id}/dto", memoryId)
+            MvcResult differentTzResult = mockMvc.perform(get("/memories/{id}", memoryId)
                     .with(user(user))
                     .param("timezone", differentTimezone.getId()))
                     .andExpect(status().isOk())
                     .andReturn();
             
-            String differentTzJson = differentTzResult.getResponse().getContentAsString();
-            MemoryDTO differentTzDTO = objectMapper.readValue(differentTzJson, MemoryDTO.class);
+            ModelAndView differentTzModelAndView = differentTzResult.getModelAndView();
+            MemoryDTO differentTzDTO = (MemoryDTO) differentTzModelAndView.getModel().get("memory");
             
             // Verify that the UTC instants are the same regardless of timezone
             assertThat(memoryDTO.getStartDateAsInstant()).isEqualTo(differentTzDTO.getStartDateAsInstant());
@@ -138,22 +137,24 @@ public class MemoryControllerTimezoneTest {
         Long memoryId = Long.parseLong(redirectHeader.substring("/memories/".length()));
         
         // Retrieve with Berlin timezone
-        MvcResult berlinResult = mockMvc.perform(get("/memories/{id}/dto", memoryId)
+        MvcResult berlinResult = mockMvc.perform(get("/memories/{id}", memoryId)
                 .with(user(user))
                 .param("timezone", berlinTimezone.getId()))
                 .andExpect(status().isOk())
                 .andReturn();
         
-        MemoryDTO berlinDTO = objectMapper.readValue(berlinResult.getResponse().getContentAsString(), MemoryDTO.class);
+        ModelAndView berlinModelAndView = berlinResult.getModelAndView();
+        MemoryDTO berlinDTO = (MemoryDTO) berlinModelAndView.getModel().get("memory");
         
         // Retrieve with UTC
-        MvcResult utcResult = mockMvc.perform(get("/memories/{id}/dto", memoryId)
+        MvcResult utcResult = mockMvc.perform(get("/memories/{id}", memoryId)
                 .with(user(user))
                 .param("timezone", "UTC"))
                 .andExpect(status().isOk())
                 .andReturn();
         
-        MemoryDTO utcDTO = objectMapper.readValue(utcResult.getResponse().getContentAsString(), MemoryDTO.class);
+        ModelAndView utcModelAndView = utcResult.getModelAndView();
+        MemoryDTO utcDTO = (MemoryDTO) utcModelAndView.getModel().get("memory");
         
         // Verify the time difference accounts for DST (Berlin is UTC+2 in summer)
         ZonedDateTime berlinStart = berlinDTO.getStartDate().atZone(berlinTimezone);
@@ -192,13 +193,14 @@ public class MemoryControllerTimezoneTest {
         Long memoryId = Long.parseLong(redirectHeader.substring("/memories/".length()));
         
         // Retrieve the memory
-        MvcResult result = mockMvc.perform(get("/memories/{id}/dto", memoryId)
+        MvcResult result = mockMvc.perform(get("/memories/{id}", memoryId)
                 .with(user(user))
                 .param("timezone", chathamTimezone.getId()))
                 .andExpect(status().isOk())
                 .andReturn();
         
-        MemoryDTO memoryDTO = objectMapper.readValue(result.getResponse().getContentAsString(), MemoryDTO.class);
+        ModelAndView modelAndView = result.getModelAndView();
+        MemoryDTO memoryDTO = (MemoryDTO) modelAndView.getModel().get("memory");
         
         // Verify the date is preserved correctly
         assertThat(memoryDTO.getStartDate().toLocalDate()).isEqualTo(testDate);

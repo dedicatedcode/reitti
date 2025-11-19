@@ -1,5 +1,8 @@
 package com.dedicatedcode.reitti.model.memory;
 
+import com.dedicatedcode.reitti.service.TimeUtil;
+
+import java.sql.Time;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -21,8 +24,8 @@ public class MemoryDTO {
         this.id = memory.getId();
         this.title = memory.getTitle();
         this.description = memory.getDescription();
-        this.startDate = memory.getStartDate().atZone(timezone).toLocalDateTime();
-        this.endDate = memory.getEndDate().atZone(timezone).toLocalDateTime();
+        this.startDate = TimeUtil.adjustInstant(memory.getStartDate(), timezone);
+        this.endDate = TimeUtil.adjustInstant(memory.getEndDate(), timezone);
         this.headerType = memory.getHeaderType();
         this.headerImageUrl = memory.getHeaderImageUrl();
         this.createdAt = memory.getCreatedAt();

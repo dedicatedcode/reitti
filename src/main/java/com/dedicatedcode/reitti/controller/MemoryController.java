@@ -3,11 +3,7 @@ package com.dedicatedcode.reitti.controller;
 import com.dedicatedcode.reitti.controller.error.ForbiddenException;
 import com.dedicatedcode.reitti.controller.error.PageNotFoundException;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
-import com.dedicatedcode.reitti.model.memory.HeaderType;
-import com.dedicatedcode.reitti.model.memory.Memory;
-import com.dedicatedcode.reitti.model.memory.MemoryBlockPart;
-import com.dedicatedcode.reitti.model.memory.MemoryDTO;
-import com.dedicatedcode.reitti.model.memory.MemoryOverviewDTO;
+import com.dedicatedcode.reitti.model.memory.*;
 import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.MagicLinkResourceType;
 import com.dedicatedcode.reitti.model.security.TokenUser;
@@ -32,6 +28,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static com.dedicatedcode.reitti.model.Role.ADMIN;
@@ -138,24 +135,6 @@ public class MemoryController {
         return "memories/view";
     }
 
-    private boolean isOwner(Memory memory, User user) {
-        if (user.getAuthorities().contains(ADMIN.asAuthority()) || user.getAuthorities().contains(USER.asAuthority())) {
-            return this.memoryService.getOwnerId(memory) == user.getId();
-        } else {
-            return false;
-        }
-    }
-
-    private boolean canEdit(Memory memory, User user) {
-        if (user.getAuthorities().contains(ADMIN.asAuthority()) || user.getAuthorities().contains(USER.asAuthority())) {
-            return this.memoryService.getOwnerId(memory) == user.getId();
-        } else {
-            //assume the user is of type TokenUser
-            TokenUser tokenUser = (TokenUser) user;
-            return user.getAuthorities().contains(MagicLinkAccessLevel.MEMORY_EDIT_ACCESS.asAuthority()) && tokenUser.grantsAccessTo(MagicLinkResourceType.MEMORY, memory.getId());
-        }
-    }
-
     @GetMapping("/new")
     public String newMemoryForm(
             @AuthenticationPrincipal User user,
@@ -194,7 +173,7 @@ public class MemoryController {
         
         try {
             Instant start = ZonedDateTime.of(startDate.atStartOfDay(), timezone).toInstant();
-            Instant end = ZonedDateTime.of(endDate.plusDays(1).atStartOfDay().minusNanos(1), timezone).toInstant();
+            Instant end = ZonedDateTime.of(endDate.plusDays(1).atStartOfDay().minus(1, ChronoUnit.MILLIS), timezone).toInstant();
             Instant today = Instant.now();
             
             // Validate dates are not in the future
@@ -459,5 +438,23 @@ public class MemoryController {
         model.addAttribute("memory", memory);
         model.addAttribute("accessLevel", accessLevel);
         return "memories/fragments :: share-result";
+    }
+
+    private boolean isOwner(Memory memory, User user) {
+        if (user.getAuthorities().contains(ADMIN.asAuthority()) || user.getAuthorities().contains(USER.asAuthority())) {
+            return this.memoryService.getOwnerId(memory) == user.getId();
+        } else {
+            return false;
+        }
+    }
+
+    private boolean canEdit(Memory memory, User user) {
+        if (user.getAuthorities().contains(ADMIN.asAuthority()) || user.getAuthorities().contains(USER.asAuthority())) {
+            return this.memoryService.getOwnerId(memory) == user.getId();
+        } else {
+            //assume the user is of type TokenUser
+            TokenUser tokenUser = (TokenUser) user;
+            return user.getAuthorities().contains(MagicLinkAccessLevel.MEMORY_EDIT_ACCESS.asAuthority()) && tokenUser.grantsAccessTo(MagicLinkResourceType.MEMORY, memory.getId());
+        }
     }
 }
