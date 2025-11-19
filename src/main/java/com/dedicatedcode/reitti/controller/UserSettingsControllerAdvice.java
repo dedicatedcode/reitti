@@ -3,8 +3,10 @@ package com.dedicatedcode.reitti.controller;
 import com.dedicatedcode.reitti.dto.UserSettingsDTO;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
+import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
+import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.TilesCustomizationProvider;
@@ -26,13 +28,15 @@ public class UserSettingsControllerAdvice {
     private final UserJdbcService userJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final TilesCustomizationProvider tilesCustomizationProvider;
+    private final RawLocationPointJdbcService rawLocationPointJdbcService;
 
     public UserSettingsControllerAdvice(UserJdbcService userJdbcService,
                                         UserSettingsJdbcService userSettingsJdbcService,
-                                        TilesCustomizationProvider tilesCustomizationProvider) {
+                                        TilesCustomizationProvider tilesCustomizationProvider, RawLocationPointJdbcService rawLocationPointJdbcService) {
         this.userJdbcService = userJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.tilesCustomizationProvider = tilesCustomizationProvider;
+        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
     }
     
     @ModelAttribute("userSettings")
@@ -62,9 +66,13 @@ public class UserSettingsControllerAdvice {
         if (userOptional.isPresent()) {
             User user = userOptional.get();
             UserSettings dbSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
+            Instant latestData = dbSettings.getLatestData();
+            if (latestData == null) {
+                latestData = rawLocationPointJdbcService.findLatest(user).map(RawLocationPoint::getTimestamp).orElse(null);
+            }
             return new UserSettingsDTO(dbSettings.isPreferColoredMap(),
                     dbSettings.getSelectedLanguage(),
-                    dbSettings.getLatestData(),
+                    latestData,
                     dbSettings.getUnitSystem(),
                     dbSettings.getHomeLatitude(),
                     dbSettings.getHomeLongitude(),

@@ -155,7 +155,6 @@ public class SettingsVisitSensitivityController {
         model.addAttribute("activeSection", "visit-sensitivity");
         model.addAttribute("isAdmin", user.getRole() ==  Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
-        model.addAttribute("configurationForm", null);
         model.addAttribute("recalculationAdvised", detectionParameters.stream().anyMatch(this::calculateNeedsConfiguration));
 
         return "settings/visit-sensitivity";

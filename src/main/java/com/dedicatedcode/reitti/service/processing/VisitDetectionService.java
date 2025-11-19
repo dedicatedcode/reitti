@@ -210,7 +210,23 @@ public class VisitDetectionService {
     private GeoPoint weightedCenter(List<RawLocationPoint> clusterPoints) {
         // Find the most likely actual location by identifying the point with highest local density
         // and snapping to the nearest actual measurement point
-        
+
+        long start = System.currentTimeMillis();
+
+        GeoPoint result;
+        // For small clusters, use the original algorithm
+        if (clusterPoints.size() <= 100) {
+            result =  weightedCenterSimple(clusterPoints);
+        } else {
+            // For large clusters, use spatial partitioning for better performance
+            result =  weightedCenterOptimized(clusterPoints);
+        }
+        logger.debug("Weighted center calculation took {}ms for [{}] number of points", System.currentTimeMillis() - start, clusterPoints.size());
+        return result;
+
+    }
+    
+    private GeoPoint weightedCenterSimple(List<RawLocationPoint> clusterPoints) {
         RawLocationPoint bestPoint = null;
         double maxDensityScore = 0;
         
@@ -250,7 +266,100 @@ public class VisitDetectionService {
         if (bestPoint == null) {
             bestPoint = clusterPoints.getFirst();
         }
+
+        return new GeoPoint(bestPoint.getLatitude(), bestPoint.getLongitude());
+    }
+    
+    private GeoPoint weightedCenterOptimized(List<RawLocationPoint> clusterPoints) {
+        // Sample a subset of points for density calculation to improve performance
+        // Use every nth point or random sampling for very large clusters
+        int sampleSize = Math.min(200, clusterPoints.size());
+        List<RawLocationPoint> samplePoints = new ArrayList<>();
         
+        if (clusterPoints.size() <= sampleSize) {
+            samplePoints = clusterPoints;
+        } else {
+            // Take evenly distributed samples
+            int step = clusterPoints.size() / sampleSize;
+            for (int i = 0; i < clusterPoints.size(); i += step) {
+                samplePoints.add(clusterPoints.get(i));
+            }
+        }
+        
+        // Use spatial grid approach to avoid distance calculations
+        // Create a grid based on the bounding box of all points
+        double minLat = clusterPoints.stream().mapToDouble(RawLocationPoint::getLatitude).min().orElse(0);
+        double maxLat = clusterPoints.stream().mapToDouble(RawLocationPoint::getLatitude).max().orElse(0);
+        double minLon = clusterPoints.stream().mapToDouble(RawLocationPoint::getLongitude).min().orElse(0);
+        double maxLon = clusterPoints.stream().mapToDouble(RawLocationPoint::getLongitude).max().orElse(0);
+        
+        // Grid cell size approximately 10 meters (rough approximation)
+        double cellSizeLat = 0.0001; // ~11 meters
+        double cellSizeLon = 0.0001; // varies by latitude but roughly 11 meters
+        
+        // Create grid map for fast neighbor lookup
+        Map<String, List<RawLocationPoint>> grid = new HashMap<>();
+        for (RawLocationPoint point : clusterPoints) {
+            int gridLat = (int) ((point.getLatitude() - minLat) / cellSizeLat);
+            int gridLon = (int) ((point.getLongitude() - minLon) / cellSizeLon);
+            String gridKey = gridLat + "," + gridLon;
+            grid.computeIfAbsent(gridKey, k -> new ArrayList<>()).add(point);
+        }
+        
+        RawLocationPoint bestPoint = null;
+        double maxDensityScore = 0;
+        
+        // Calculate density scores for sample points using grid lookup
+        for (RawLocationPoint candidate : samplePoints) {
+            double accuracy = candidate.getAccuracyMeters() != null && candidate.getAccuracyMeters() > 0 
+                ? candidate.getAccuracyMeters() 
+                : 50.0;
+            
+            // Calculate grid coordinates for candidate
+            int candidateGridLat = (int) ((candidate.getLatitude() - minLat) / cellSizeLat);
+            int candidateGridLon = (int) ((candidate.getLongitude() - minLon) / cellSizeLon);
+            
+            // Search radius in grid cells (conservative estimate)
+            int searchRadiusInCells = Math.max(1, (int) (accuracy / 100000)); // rough conversion
+            
+            double densityScore = 0;
+            int nearbyCount = 0;
+            
+            // Check neighboring grid cells
+            for (int latOffset = -searchRadiusInCells; latOffset <= searchRadiusInCells; latOffset++) {
+                for (int lonOffset = -searchRadiusInCells; lonOffset <= searchRadiusInCells; lonOffset++) {
+                    String neighborKey = (candidateGridLat + latOffset) + "," + (candidateGridLon + lonOffset);
+                    List<RawLocationPoint> neighbors = grid.get(neighborKey);
+                    
+                    if (neighbors != null) {
+                        for (RawLocationPoint neighbor : neighbors) {
+                            if (candidate != neighbor) {
+                                nearbyCount++;
+                                // Simple proximity weight based on grid distance
+                                double gridDistance = Math.sqrt(latOffset * latOffset + lonOffset * lonOffset);
+                                double proximityWeight = Math.max(0, 1.0 - (gridDistance / searchRadiusInCells));
+                                densityScore += proximityWeight;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Combine density with accuracy weight
+            double accuracyWeight = 1.0 / accuracy;
+            densityScore = (densityScore * accuracyWeight) + accuracyWeight;
+            
+            if (densityScore > maxDensityScore) {
+                maxDensityScore = densityScore;
+                bestPoint = candidate;
+            }
+        }
+        
+        // Fallback to first point if no best point found
+        if (bestPoint == null) {
+            bestPoint = clusterPoints.getFirst();
+        }
+
         return new GeoPoint(bestPoint.getLatitude(), bestPoint.getLongitude());
     }
 
