@@ -1,15 +1,15 @@
 package com.dedicatedcode.reitti.model.memory;
 
 public class MemoryOverviewDTO {
-    private final Memory memory;
+    private final MemoryDTO memory;
     private final String rawLocationUrl;
 
-    public MemoryOverviewDTO(Memory memory, String rawLocationUrl) {
+    public MemoryOverviewDTO(MemoryDTO memory, String rawLocationUrl) {
         this.memory = memory;
         this.rawLocationUrl = rawLocationUrl;
     }
 
-    public Memory getMemory() {
+    public MemoryDTO getMemory() {
         return memory;
     }
 

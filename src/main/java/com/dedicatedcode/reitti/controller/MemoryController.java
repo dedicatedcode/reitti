@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.memory.HeaderType;
 import com.dedicatedcode.reitti.model.memory.Memory;
 import com.dedicatedcode.reitti.model.memory.MemoryBlockPart;
+import com.dedicatedcode.reitti.model.memory.MemoryDTO;
 import com.dedicatedcode.reitti.model.memory.MemoryOverviewDTO;
 import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.MagicLinkResourceType;
@@ -84,7 +85,7 @@ public class MemoryController {
             String endDateLocal = m.getEndDate().atZone(timezone).toLocalDate().toString();
 
             String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + startDateLocal + "&endDate=" + endDateLocal;
-            return new MemoryOverviewDTO(m, rawLocationUrl);
+            return new MemoryOverviewDTO(new MemoryDTO(m, timezone), rawLocationUrl);
         }).toList());
         model.addAttribute("year", "all");
         model.addAttribute("sortBy", sortBy);
@@ -105,7 +106,7 @@ public class MemoryController {
                     String endDateLocal = m.getEndDate().atZone(timezone).toLocalDate().toString();
 
                     String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + startDateLocal + "&endDate=" + endDateLocal;
-                    return new MemoryOverviewDTO(m, rawLocationUrl);
+                    return new MemoryOverviewDTO(new MemoryDTO(m, timezone), rawLocationUrl);
                 }).toList());
         model.addAttribute("year", year);
         model.addAttribute("sortBy", sortBy);
@@ -122,7 +123,7 @@ public class MemoryController {
         Memory memory = memoryService.getMemoryById(user, id)
                 .orElseThrow(() -> new PageNotFoundException("Memory not found"));
 
-        model.addAttribute("memory", memory);
+        model.addAttribute("memory", new MemoryDTO(memory, timezone));
 
         List<MemoryBlockPart> blocks = memoryService.getBlockPartsForMemory(user, id, timezone);
         model.addAttribute("blocks", blocks);
@@ -177,6 +178,8 @@ public class MemoryController {
             @RequestParam LocalDate endDate,
             @RequestParam(required = false) String year,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+            @RequestParam(required = false, defaultValue = "MAP") HeaderType headerType,
+            @RequestParam(required = false) String headerImageUrl,
             Model model,
             HttpServletResponse response) {
 
@@ -223,8 +226,8 @@ public class MemoryController {
                     description != null ? description.trim() : null,
                     start,
                     end,
-                    HeaderType.MAP,
-                    null
+                    headerType,
+                    headerImageUrl
             );
             
             Memory created = memoryService.createMemory(user, memory);
@@ -246,14 +249,16 @@ public class MemoryController {
     }
 
     @GetMapping("/{id}/edit")
-    public String editMemoryForm(@AuthenticationPrincipal User user, @PathVariable Long id, @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
-            Model model) {
+    public String editMemoryForm(@AuthenticationPrincipal User user,
+                                 @PathVariable Long id,
+                                 @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+                                 Model model) {
         Memory memory = memoryService.getMemoryById(user, id)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
         if (!canEdit(memory, user)) {
             throw new ForbiddenException("You are not allowed to edit this memory");
         }
-        model.addAttribute("memory", memory);
+        model.addAttribute("memory", new MemoryDTO(memory, timezone));
         model.addAttribute("startDate", memory.getStartDate().atZone(timezone).toLocalDate());
         model.addAttribute("endDate", memory.getEndDate().atZone(timezone).toLocalDate());
         return "memories/edit :: edit-memory";
@@ -269,6 +274,8 @@ public class MemoryController {
             @RequestParam LocalDate endDate,
             @RequestParam Long version,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+            @RequestParam(required = false, defaultValue = "MAP") HeaderType headerType,
+            @RequestParam(required = false) String headerImageUrl,
             Model model) {
         
         Memory memory = memoryService.getMemoryById(user, id)
@@ -283,7 +290,7 @@ public class MemoryController {
         // Add validation similar to create method
         if (title == null || title.trim().isEmpty()) {
             model.addAttribute("error", i18n.translate("memory.validation.title.required"));
-            model.addAttribute("memory", memory);
+            model.addAttribute("memory", new MemoryDTO(memory, timezone));
             
             model.addAttribute("cancelEndpoint", "/memories/" + id);
             model.addAttribute("cancelTarget", ".memory-header");
@@ -298,7 +305,7 @@ public class MemoryController {
             
             if (start.isAfter(today) || end.isAfter(today)) {
                 model.addAttribute("error", i18n.translate("memory.validation.date.future"));
-                model.addAttribute("memory", memory);
+                model.addAttribute("memory", new MemoryDTO(memory, timezone));
                 
                 model.addAttribute("cancelEndpoint", "/memories/" + id);
                 model.addAttribute("cancelTarget", ".memory-header");
@@ -308,7 +315,7 @@ public class MemoryController {
             
             if (end.isBefore(start)) {
                 model.addAttribute("error", i18n.translate("memory.validation.end.date.before.start"));
-                model.addAttribute("memory", memory);
+                model.addAttribute("memory", new MemoryDTO(memory, timezone));
                 
                 model.addAttribute("cancelEndpoint", "/memories/" + id);
                 model.addAttribute("cancelTarget", ".memory-header");
@@ -321,17 +328,18 @@ public class MemoryController {
                     .withDescription(description != null ? description.trim() : null)
                     .withStartDate(start)
                     .withEndDate(end)
-                    .withHeaderType(HeaderType.MAP)
+                    .withHeaderType(headerType)
+                    .withHeaderImageUrl(headerImageUrl)
                     .withVersion(version);
             
             Memory savedMemory = memoryService.updateMemory(user, updated);
-            model.addAttribute("memory", savedMemory);
+            model.addAttribute("memory", new MemoryDTO(savedMemory, timezone));
             
             return "memories/view :: memory-header";
 
         } catch (Exception e) {
             model.addAttribute("error", i18n.translate("memory.validation.start.date.required"));
-            model.addAttribute("memory", memory);
+            model.addAttribute("memory", new MemoryDTO(memory, timezone));
             
             model.addAttribute("cancelEndpoint", "/memories/" + id);
             model.addAttribute("cancelTarget", ".memory-header");
