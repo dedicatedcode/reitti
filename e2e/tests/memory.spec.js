@@ -27,7 +27,7 @@ test.describe('Memory Tests', () => {
 
         await page.locator('button:has-text("Login")').click();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForNavigation();
     });
 
     test('Should create Memory', async ({page}) => {
@@ -39,11 +39,11 @@ test.describe('Memory Tests', () => {
         await page.getByRole('textbox', { name: 'Title *' }).fill('Test Memory');
         await page.getByRole('textbox', { name: 'Description' }).click();
         await page.getByRole('textbox', { name: 'Description' }).fill('One fine description');
-        await page.getByRole('textbox', { name: 'Start Date *' }).fill('2017-03-22');
-        await page.getByRole('textbox', { name: 'End Date *' }).fill('2017-03-23');
+        await page.getByRole('textbox', { name: 'Start Date *' }).fill('2018-03-22');
+        await page.getByRole('textbox', { name: 'End Date *' }).fill('2018-03-23');
         await page.getByRole('button', { name: 'Create Memory' }).click();
         await expect(page.getByText('Test Memory')).toBeVisible();
-        await page.getByText('One fine description').click();
-        await page.getByText('March 21, 2017 - March 23, 2017').click();
+        await expect(page.getByText('One fine description')).toBeVisible();
+        await expect(page.getByText('March 21, 2018 - March 23, 2018')).toBeVisible();
     });
 });

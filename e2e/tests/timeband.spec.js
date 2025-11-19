@@ -27,20 +27,18 @@ test.describe('Date Picker Tests', () => {
 
         await page.locator('button:has-text("Login")').click();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForNavigation();
     });
 
     test('should select single date when startDate is given', async ({page}) => {
-        await page.goto('/?start-date=2018-12-31')
-        await page.waitForLoadState('networkidle');
+        await page.goto('/?start-date=2018-12-30')
         await expect(page.locator('.date-day.range-start')).toBeVisible();
-        await expect(page.locator('.date-day.range-start .day-number')).toHaveText('31');
+        await expect(page.locator('.date-day.range-start .day-number')).toHaveText('30');
         await expect(page.locator('.date-day.range-start .month-year')).toHaveText('Dec 2018');
     });
 
     test('should select latest date when no date is given', async ({page}) => {
         await page.goto('/')
-        await page.waitForLoadState('networkidle');
         await expect(page.locator('.date-day.range-start')).toBeVisible();
         await expect(page.locator('.date-day.range-start .day-number')).toHaveText('31');
         await expect(page.locator('.date-day.range-start .month-year')).toHaveText('Dec 2017');
@@ -48,7 +46,6 @@ test.describe('Date Picker Tests', () => {
 
     test('should select date range', async ({page}) => {
         await page.goto('/?start-date=2018-12-31&end-date=2019-01-01')
-        await page.waitForLoadState('networkidle');
         await expect(page.locator('.date-day.range-start')).toBeVisible();
         await expect(page.locator('.date-day.range-start .day-number')).toHaveText('31');
         await expect(page.locator('.date-day.range-start .month-year')).toHaveText('Dec 2018');

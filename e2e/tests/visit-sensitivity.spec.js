@@ -27,7 +27,7 @@ test.describe('Visit Sensitivity Tests', () => {
 
         await page.locator('button:has-text("Login")').click();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForNavigation();
     });
 
     test('should not duplicate edit form', async ({page}) => {
