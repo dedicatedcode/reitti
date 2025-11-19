@@ -586,9 +586,7 @@
                 }).addTo(memoryMap);
             }
 
-            if (rawLocationLoader === null) {
-                rawLocationLoader = new RawLocationLoader(memoryMap, window.userSettings);
-            }
+            rawLocationLoader = new RawLocationLoader(memoryMap, window.userSettings);
             // Initialize raw location loader for the memory
             if (rawLocationUrl && rawLocationLoader !== null) {
                 const userConfigs = [{

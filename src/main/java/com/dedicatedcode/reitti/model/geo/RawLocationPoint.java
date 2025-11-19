@@ -1,7 +1,5 @@
 package com.dedicatedcode.reitti.model.geo;
 
-import org.locationtech.jts.geom.Point;
-
 import java.time.Instant;
 import java.util.Objects;
 
@@ -15,7 +13,7 @@ public class RawLocationPoint {
     
     private final Double elevationMeters;
     
-    private final Point geom;
+    private final GeoPoint geom;
 
     private final boolean processed;
 
@@ -25,15 +23,15 @@ public class RawLocationPoint {
         this(null, null, null, null, null, false, null);
     }
     
-    public RawLocationPoint(Instant timestamp, Point geom, Double accuracyMeters) {
+    public RawLocationPoint(Instant timestamp, GeoPoint geom, Double accuracyMeters) {
         this(null, timestamp, geom, accuracyMeters, null, false, null);
     }
     
-    public RawLocationPoint(Instant timestamp, Point geom, Double accuracyMeters, Double elevationMeters) {
+    public RawLocationPoint(Instant timestamp, GeoPoint geom, Double accuracyMeters, Double elevationMeters) {
         this(null, timestamp, geom, accuracyMeters, elevationMeters, false, null);
     }
     
-    public RawLocationPoint(Long id, Instant timestamp, Point geom, Double accuracyMeters, Double elevationMeters, boolean processed, Long version) {
+    public RawLocationPoint(Long id, Instant timestamp, GeoPoint geom, Double accuracyMeters, Double elevationMeters, boolean processed, Long version) {
         this.id = id;
         this.timestamp = timestamp;
         this.geom = geom;
@@ -52,11 +50,11 @@ public class RawLocationPoint {
     }
 
     public Double getLatitude() {
-        return this.geom.getY();
+        return this.geom.latitude();
     }
 
     public Double getLongitude() {
-        return this.geom.getCoordinate().getX();
+        return this.geom.longitude();
     }
 
     public Double getAccuracyMeters() {
@@ -67,7 +65,7 @@ public class RawLocationPoint {
         return elevationMeters;
     }
 
-    public Point getGeom() {
+    public GeoPoint getGeom() {
         return geom;
     }
 
