@@ -1,6 +1,6 @@
 import {expect, test} from '@playwright/test';
 
-test.describe('Visit Sensitivity Tests', () => {
+test.describe('Settings - Visit Sensitivity Tests', () => {
     test.beforeEach(async ({page}) => {
         await page.goto('/');
         await page.waitForLoadState('networkidle');
