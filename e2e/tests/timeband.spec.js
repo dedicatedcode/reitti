@@ -81,6 +81,9 @@ test.describe('Date Picker Tests', () => {
         // Scroll one tick up to switch to month range
         await page.mouse.wheel(0, 100);
         await expect(page.getByText('2017Sep')).toBeVisible();
+        await page.waitForTimeout(1000);
+        await page.locator('#date-picker-container').hover();
+
         await page.mouse.wheel(0, 100);
         await expect(page.getByText('2017Sep')).not.toBeVisible();
 
