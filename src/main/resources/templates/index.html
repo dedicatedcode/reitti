@@ -571,9 +571,9 @@
                 endDate = new Date(data.endDate);
             } else {
                 switch (data.timeband) {
-                    case 'day': endDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 1); break;
-                    case 'month': endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 1); break;
-                    case 'year': endDate = new Date(startDate.getFullYear() + 1, 0, 1); break
+                    case 'day': endDate = startDate; break;
+                    case 'month': endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0); break;
+                    case 'year': endDate = new Date(startDate.getFullYear(), 11, 31); break;
                 }
             }
             currentDateRange = {
