@@ -53,4 +53,42 @@ test.describe('Date Picker Tests', () => {
         await expect(page.locator('.date-day.range-end .month-year')).toHaveText('Jan 2019');
     });
 
+
+    test('end date for a day-selection should be the start day', async ({page}) => {
+        await page.goto('/')
+        await expect(page.locator('.date-day.range-start')).toBeVisible();
+        await page.getByText('Fri29Dec').click();
+        await expect(page).toHaveURL(/startDate=2017-12-29&endDate=2017-12-29/);
+    });
+
+    test('end date for a month-selection should be the last day of the month', async ({page}) => {
+        await page.goto('/')
+        await expect(page.locator('.date-day.range-start')).toBeVisible();
+        // Move the mouse over the date picker
+        await page.locator('#date-picker-container').hover();
+        // Scroll one tick up to switch to month range
+        await page.mouse.wheel(0, 100);
+        // Select September 2017
+        await page.getByText('2017Sep').click();
+        await expect(page).toHaveURL(/startDate=2017-09-01&endDate=2017-09-30/);
+    });
+
+    test('end date for a year-selection should be the last day of the year', async ({page}) => {
+        await page.goto('/')
+        await expect(page.locator('.date-day.range-start')).toBeVisible();
+        // Move the mouse over the date picker
+        await page.locator('#date-picker-container').hover();
+        // Scroll one tick up to switch to month range
+        await page.mouse.wheel(0, 100);
+        await expect(page.getByText('2017Sep')).toBeVisible();
+        await page.mouse.wheel(0, 100);
+
+        // Select September 2017
+        await page.locator('div').filter({ hasText: '2016' }).nth(2).click();
+        await expect(page.locator('div').filter({ hasText: '2016' }).nth(2)).toContainClass('selected');
+        await expect(page).toHaveURL(/startDate=2016-01-01&endDate=2016-12-31/);
+    });
+
+
+
 });
