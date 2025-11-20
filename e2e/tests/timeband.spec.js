@@ -82,6 +82,7 @@ test.describe('Date Picker Tests', () => {
         await page.mouse.wheel(0, 100);
         await expect(page.getByText('2017Sep')).toBeVisible();
         await page.mouse.wheel(0, 100);
+        await expect(page.getByText('2017Sep')).not.toBeVisible();
 
         // Select September 2017
         await page.locator('div').filter({ hasText: '2016' }).nth(2).click();
