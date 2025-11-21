@@ -530,6 +530,7 @@
                 const lat = parseFloat(entry.dataset.lat);
                 const lng = parseFloat(entry.dataset.lng);
 
+                debugger
                 if (entry.dataset.path) {
                     const pathData = JSON.parse(entry.dataset.path);
                     const latlngs = pathData.map(coord => [coord.latitude, coord.longitude]);
