@@ -31,7 +31,7 @@ test.describe('Date Picker Tests', () => {
     });
 
     test('should select single date when startDate is given', async ({page}) => {
-        await page.goto('/?start-date=2018-12-30')
+        await page.goto('/?startDate=2018-12-30')
         await expect(page.locator('.date-day.range-start')).toBeVisible();
         await expect(page.locator('.date-day.range-start .day-number')).toHaveText('30');
         await expect(page.locator('.date-day.range-start .month-year')).toHaveText('Dec 2018');
@@ -45,7 +45,7 @@ test.describe('Date Picker Tests', () => {
     });
 
     test('should select date range', async ({page}) => {
-        await page.goto('/?start-date=2018-12-31&end-date=2019-01-01')
+        await page.goto('/?startDate=2018-12-31&endDate=2019-01-01')
         await expect(page.locator('.date-day.range-start')).toBeVisible();
         await expect(page.locator('.date-day.range-start .day-number')).toHaveText('31');
         await expect(page.locator('.date-day.range-start .month-year')).toHaveText('Dec 2018');
