@@ -6,10 +6,14 @@ class RawLocationLoader {
         this.map = map;
         this.userSettings = userSettings;
         this.rawPointPaths = [];
+        this.selectedRangePaths = [];
         this.pulsatingMarkers = [];
         this.currentZoomLevel = null;
         this.userConfigs = [];
         this.isFittingBounds = false;
+        this.allSegments = []; // Store all loaded segments
+        this.selectedStartTime = null;
+        this.selectedEndTime = null;
         // Configuration for map bounds fitting
         this.fitToBoundsConfig = fitToBoundsConfig || {};
         // Listen for map events
@@ -196,6 +200,11 @@ class RawLocationLoader {
                     bounds.extend(fetchBounds);
                 }
             });
+            
+            // Re-render selected range if it exists
+            if (this.selectedStartTime && this.selectedEndTime) {
+                this.renderSelectedRange();
+            }
         });
     }
     
@@ -206,7 +215,15 @@ class RawLocationLoader {
         const bounds = L.latLngBounds();
 
         if (rawPointsData && rawPointsData.segments && rawPointsData.segments.length > 0) {
+            // Store segments with metadata for later filtering
             for (const segment of rawPointsData.segments) {
+                const segmentWithMetadata = {
+                    ...segment,
+                    userConfig: rawPointsData.config,
+                    color: color == null ? '#f1ba63' : color
+                };
+                this.allSegments.push(segmentWithMetadata);
+                
                 const rawPointsPath = L.geodesic([], {
                     color: color == null ? '#f1ba63' : color,
                     weight: 6,
@@ -242,7 +259,84 @@ class RawLocationLoader {
             }
         }
 
+        // Re-render selected range if it exists
+        if (this.selectedStartTime && this.selectedEndTime) {
+            this.renderSelectedRange();
+        }
+
         return bounds;
+    }
+    
+    /**
+     * Set selected time range for highlighting specific segments
+     */
+    setSelectedTimeRange(startTime, endTime) {
+        this.selectedStartTime = startTime;
+        this.selectedEndTime = endTime;
+        return this.renderSelectedRange();
+    }
+    
+    /**
+     * Clear selected time range
+     */
+    clearSelectedTimeRange() {
+        this.selectedStartTime = null;
+        this.selectedEndTime = null;
+        this.clearSelectedRangePaths();
+    }
+    
+    /**
+     * Render segments within the selected time range with different color
+     */
+    renderSelectedRange() {
+        // Clear existing selected range paths
+        this.clearSelectedRangePaths();
+        
+        if (!this.selectedStartTime || !this.selectedEndTime) {
+            return L.latLngBounds();
+        }
+        
+        const bounds = L.latLngBounds();
+        const startTime = new Date(this.selectedStartTime);
+        const endTime = new Date(this.selectedEndTime);
+        
+        // Filter segments that fall within the selected time range
+        for (const segment of this.allSegments) {
+            if (segment.points && segment.points.length > 0) {
+                const segmentStartTime = new Date(segment.points[0].timestamp);
+                const segmentEndTime = new Date(segment.points[segment.points.length - 1].timestamp);
+                
+                // Check if segment overlaps with selected time range
+                if (segmentStartTime <= endTime && segmentEndTime >= startTime) {
+                    const selectedPath = L.geodesic([], {
+                        color: '#ff984f', // Orange color for selected range
+                        weight: 8,
+                        opacity: 1,
+                        lineJoin: 'round',
+                        lineCap: 'round',
+                        steps: 2
+                    });
+                    
+                    const coords = segment.points.map(point => [point.latitude, point.longitude]);
+                    bounds.extend(coords);
+                    selectedPath.setLatLngs(coords);
+                    selectedPath.addTo(this.map);
+                    this.selectedRangePaths.push(selectedPath);
+                }
+            }
+        }
+        
+        return bounds;
+    }
+    
+    /**
+     * Clear selected range paths from the map
+     */
+    clearSelectedRangePaths() {
+        for (const path of this.selectedRangePaths) {
+            path.remove();
+        }
+        this.selectedRangePaths.length = 0;
     }
     
     /**
@@ -253,6 +347,7 @@ class RawLocationLoader {
             path.remove();
         }
         this.rawPointPaths.length = 0;
+        this.allSegments.length = 0; // Clear stored segments
     }
     
     /**

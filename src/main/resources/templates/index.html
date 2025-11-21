@@ -518,19 +518,29 @@
             selectedPath.remove();
             
             if (isCurrentlyActive) {
-                // Deselection: zoom back to original bounds showing all data
+                // Deselection: clear selected time range and zoom back to original bounds
+                rawLocationLoader.clearSelectedTimeRange();
                 if (window.originalBounds && window.originalBounds.isValid()) {
                     map.flyToBounds(window.originalBounds, rawLocationLoader.fitToBoundsConfig);
                 }
             } else {
-                // Selection: zoom to specific entry
+                // Selection: set time range and zoom to specific entry
                 entry.classList.add('active');
                 const newBounds = L.latLngBounds();
 
                 const lat = parseFloat(entry.dataset.lat);
                 const lng = parseFloat(entry.dataset.lng);
+                const startTime = entry.dataset.startTime;
+                const endTime = entry.dataset.endTime;
 
-                debugger
+                // Set selected time range in raw location loader
+                if (startTime && endTime) {
+                    const selectedRangeBounds = rawLocationLoader.setSelectedTimeRange(startTime, endTime);
+                    if (selectedRangeBounds && selectedRangeBounds.isValid()) {
+                        newBounds.extend(selectedRangeBounds);
+                    }
+                }
+
                 if (entry.dataset.path) {
                     const pathData = JSON.parse(entry.dataset.path);
                     const latlngs = pathData.map(coord => [coord.latitude, coord.longitude]);
