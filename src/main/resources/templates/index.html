@@ -596,7 +596,11 @@
             document.body.dispatchEvent(new CustomEvent('dateChanged'));
         });
 
-        window.horizontalDatePicker.setSelectedRange(selectedDates[0], selectedDates[1]);
+        if (selectedDates[0] === selectedDates[1]) {
+            window.horizontalDatePicker.setSelectedRange(selectedDates[0], null);
+        } else {
+            window.horizontalDatePicker.setSelectedRange(selectedDates[0], selectedDates[1]);
+        }
     });
 
     function loadStartingDate() {
