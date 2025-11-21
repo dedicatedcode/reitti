@@ -303,11 +303,14 @@ class RawLocationLoader {
         // Filter segments that fall within the selected time range
         for (const segment of this.allSegments) {
             if (segment.points && segment.points.length > 0) {
-                const segmentStartTime = new Date(segment.points[0].timestamp);
-                const segmentEndTime = new Date(segment.points[segment.points.length - 1].timestamp);
+                // Filter points within the time range
+                const filteredPoints = segment.points.filter(point => {
+                    const pointTime = new Date(point.timestamp);
+                    return pointTime >= startTime && pointTime <= endTime;
+                });
                 
-                // Check if segment overlaps with selected time range
-                if (segmentStartTime <= endTime && segmentEndTime >= startTime) {
+                // Only render if we have points within the time range
+                if (filteredPoints.length > 0) {
                     const selectedPath = L.geodesic([], {
                         color: '#ff984f', // Orange color for selected range
                         weight: 8,
@@ -317,7 +320,7 @@ class RawLocationLoader {
                         steps: 2
                     });
                     
-                    const coords = segment.points.map(point => [point.latitude, point.longitude]);
+                    const coords = filteredPoints.map(point => [point.latitude, point.longitude]);
                     bounds.extend(coords);
                     selectedPath.setLatLngs(coords);
                     selectedPath.addTo(this.map);
