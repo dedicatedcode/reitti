@@ -284,6 +284,7 @@
          hx-get="/memories/all"
          hx-target=".memories-overview"
          hx-trigger="load, click[shouldTrigger(this)]"
+         hx-vals="js:{timezone: getUserTimezone()}"
          hx-swap="outerHTML">
         <div class="entry-description" th:text="#{memory.list.all}">All</div>
     </div>
@@ -291,6 +292,7 @@
          th:attr="hx-get='/memories/year/'+ ${year}, data-year=${year}"
          hx-target=".memories-overview"
          hx-trigger="click[shouldTrigger(this)]"
+         hx-vals="js:{timezone: getUserTimezone()}"
          hx-swap="outerHTML">
         <div class="entry-description" th:text="${year}">2024</div>
     </div>

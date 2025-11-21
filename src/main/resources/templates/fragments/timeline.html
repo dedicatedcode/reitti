@@ -44,7 +44,8 @@
              th:data-id="${entry.id}"
              th:data-lat="${entry.place?.latitudeCentroid}"
              th:data-lng="${entry.place?.longitudeCentroid}"
-             th:data-path="${entry.path}"
+             th:data-start="${entry.startTime}"
+             th:data-end="${entry.endTime}"
              th:data-user-id="${userData.userId}">
             <th:block th:fragment="timeline-entry">
                 <!-- Entry Description -->

@@ -6,10 +6,14 @@ class RawLocationLoader {
         this.map = map;
         this.userSettings = userSettings;
         this.rawPointPaths = [];
+        this.selectedRangePaths = [];
         this.pulsatingMarkers = [];
         this.currentZoomLevel = null;
         this.userConfigs = [];
         this.isFittingBounds = false;
+        this.allSegments = []; // Store all loaded segments
+        this.selectedStartTime = null;
+        this.selectedEndTime = null;
         // Configuration for map bounds fitting
         this.fitToBoundsConfig = fitToBoundsConfig || {};
         // Listen for map events
@@ -196,6 +200,11 @@ class RawLocationLoader {
                     bounds.extend(fetchBounds);
                 }
             });
+            
+            // Re-render selected range if it exists
+            if (this.selectedStartTime && this.selectedEndTime) {
+                this.renderSelectedRange();
+            }
         });
     }
     
@@ -206,7 +215,15 @@ class RawLocationLoader {
         const bounds = L.latLngBounds();
 
         if (rawPointsData && rawPointsData.segments && rawPointsData.segments.length > 0) {
+            // Store segments with metadata for later filtering
             for (const segment of rawPointsData.segments) {
+                const segmentWithMetadata = {
+                    ...segment,
+                    userConfig: rawPointsData.config,
+                    color: color == null ? '#f1ba63' : color
+                };
+                this.allSegments.push(segmentWithMetadata);
+                
                 const rawPointsPath = L.geodesic([], {
                     color: color == null ? '#f1ba63' : color,
                     weight: 6,
@@ -242,7 +259,151 @@ class RawLocationLoader {
             }
         }
 
+        // Re-render selected range if it exists
+        if (this.selectedStartTime && this.selectedEndTime) {
+            this.renderSelectedRange();
+        }
+
         return bounds;
+    }
+    
+    /**
+     * Set selected time range for highlighting specific segments
+     */
+    setSelectedTimeRange(startTime, endTime) {
+        this.selectedStartTime = startTime;
+        this.selectedEndTime = endTime;
+        
+        // Reload data without bounds to get the complete path for the selected range
+        return this.reloadForSelectedRange();
+    }
+    
+    /**
+     * Reload raw location points specifically for selected range (without bounds)
+     */
+    reloadForSelectedRange() {
+        let bounds = L.latLngBounds();
+        const fetchPromises = [];
+
+        for (let i = 0; i < this.userConfigs.length; i++) {
+            const config = this.userConfigs[i];
+            if (config.url) {
+                // Get current zoom level
+                const currentZoom = Math.round(this.map.getZoom());
+                
+                // Build URL without bounding box parameters to get complete path
+                const separator = config.url.includes('?') ? '&' : '?';
+                const urlWithParams = config.url + separator + 'zoom=' + currentZoom;
+                
+                // Create fetch promise for raw location points with index to maintain order
+                const fetchPromise = fetch(urlWithParams).then(response => {
+                    if (!response.ok) {
+                        console.warn('Could not fetch raw location points');
+                        return { points: [], index: i, config: config };
+                    }
+                    return response.json();
+                }).then(rawPointsData => {
+                    return { ...rawPointsData, index: i, config: config };
+                }).catch(error => {
+                    console.warn('Error fetching raw location points:', error);
+                    return { points: [], index: i, config: config };
+                });
+                
+                fetchPromises.push(fetchPromise);
+            }
+        }
+
+        // Wait for all fetch operations to complete, then update map in correct order
+        return Promise.all(fetchPromises).then(results => {
+            this.clearPaths();
+
+            results.sort((a, b) => a.index - b.index);
+            
+            // Process results in order
+            results.forEach(result => {
+                const fetchBounds = this.updateMapWithRawPoints(result, result.config.color);
+                if (fetchBounds.isValid()) {
+                    bounds.extend(fetchBounds);
+                }
+            });
+            
+            // Render selected range and return its bounds
+            const selectedRangeBounds = this.renderSelectedRange();
+            if (selectedRangeBounds && selectedRangeBounds.isValid()) {
+                return selectedRangeBounds;
+            }
+            
+            return bounds;
+        });
+    }
+    
+    /**
+     * Clear selected time range
+     */
+    clearSelectedTimeRange() {
+        this.selectedStartTime = null;
+        this.selectedEndTime = null;
+        this.clearSelectedRangePaths();
+        // Reload with bounds to return to normal view
+        this.reloadForCurrentView(true);
+    }
+    
+    /**
+     * Render segments within the selected time range with different color
+     */
+    renderSelectedRange() {
+        // Clear existing selected range paths
+        this.clearSelectedRangePaths();
+        
+        if (!this.selectedStartTime || !this.selectedEndTime) {
+            return L.latLngBounds();
+        }
+        
+        const bounds = L.latLngBounds();
+        // Extend the time range by 2 minutes (120,000 milliseconds) on each side
+        const startTimeUtc = new Date(this.selectedStartTime).getTime() - 150000;
+        const endTimeUtc = new Date(this.selectedEndTime).getTime() + 150000;
+        
+        // Filter segments that fall within the selected time range
+        for (const segment of this.allSegments) {
+            if (segment.points && segment.points.length > 0) {
+                // Filter points within the time range using UTC timestamps
+                const filteredPoints = segment.points.filter(point => {
+                    const pointTimeUtc = new Date(point.timestamp).getTime();
+                    return pointTimeUtc >= startTimeUtc && pointTimeUtc <= endTimeUtc;
+                });
+                
+                // Only render if we have points within the time range
+                if (filteredPoints.length > 0) {
+                    const selectedPath = L.geodesic([], {
+                        color: '#ff984f', // Orange color for selected range
+                        weight: 8,
+                        opacity: 1,
+                        lineJoin: 'round',
+                        lineCap: 'round',
+                        steps: 2
+                    });
+                    
+                    const coords = filteredPoints.map(point => [point.latitude, point.longitude]);
+                    bounds.extend(coords);
+                    selectedPath.setLatLngs(coords);
+                    selectedPath.addTo(this.map);
+                    this.selectedRangePaths.push(selectedPath);
+                }
+            }
+        }
+        
+        return bounds;
+    }
+    
+    /**
+     * Clear selected range paths from the map
+     */
+    clearSelectedRangePaths() {
+        for (const path of this.selectedRangePaths) {
+            path.remove();
+        }
+        this.selectedRangePaths.length = 0;
     }
     
     /**
@@ -253,6 +414,7 @@ class RawLocationLoader {
             path.remove();
         }
         this.rawPointPaths.length = 0;
+        this.allSegments.length = 0; // Clear stored segments
     }
     
     /**

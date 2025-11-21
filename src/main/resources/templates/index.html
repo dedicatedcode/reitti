@@ -513,33 +513,44 @@
             // Remove active class from all entries
             document.querySelectorAll('.timeline-container .timeline-entry')
                 .forEach(e => e.classList.remove('active'));
-            
+            const isTrip = entry.classList.contains('trip');
             // Remove any selected path
             selectedPath.remove();
             
             if (isCurrentlyActive) {
-                // Deselection: zoom back to original bounds showing all data
+                // Deselection: clear selected time range and zoom back to original bounds
+                rawLocationLoader.clearSelectedTimeRange();
                 if (window.originalBounds && window.originalBounds.isValid()) {
                     map.flyToBounds(window.originalBounds, rawLocationLoader.fitToBoundsConfig);
                 }
             } else {
-                // Selection: zoom to specific entry
+                // Selection: set time range and zoom to specific entry
                 entry.classList.add('active');
                 const newBounds = L.latLngBounds();
 
                 const lat = parseFloat(entry.dataset.lat);
                 const lng = parseFloat(entry.dataset.lng);
+                const startTime = entry.dataset.start;
+                const endTime = entry.dataset.end;
 
-                if (entry.dataset.path) {
-                    const pathData = JSON.parse(entry.dataset.path);
-                    const latlngs = pathData.map(coord => [coord.latitude, coord.longitude]);
-                    latlngs.forEach(latlng => {
-                        newBounds.extend(latlng);
+                // Set selected time range in raw location loader
+                if (isTrip && startTime && endTime) {
+                    rawLocationLoader.setSelectedTimeRange(startTime, endTime).then(selectedRangeBounds => {
+                        if (selectedRangeBounds && selectedRangeBounds.isValid()) {
+                            newBounds.extend(selectedRangeBounds);
+                        }
+                        
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            newBounds.extend([lat, lng]);
+                        }
+
+                        if (newBounds.isValid()) {
+                            map.flyToBounds(newBounds, rawLocationLoader.fitToBoundsConfig);
+                        }
                     });
-                    selectedPath.setLatLngs(latlngs);
-                    selectedPath.addTo(map);
+                    return; // Exit early since we handle bounds in the promise
                 }
-                    
+
                 if (!isNaN(lat) && !isNaN(lng)) {
                     newBounds.extend([lat, lng]);
                 }
@@ -592,8 +603,8 @@
         const urlParams = new URLSearchParams(window.location.search);
         const newestData = window.userSettings.newestData;
 
-        let startDate = urlParams.get('start-date');
-        let endDate = urlParams.get('end-date');
+        let startDate = urlParams.get('startDate');
+        let endDate = urlParams.get('endDate');
         if (startDate) {
             // Validate date format (YYYY-MM-DD)
             if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {

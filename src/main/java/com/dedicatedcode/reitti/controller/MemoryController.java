@@ -211,7 +211,7 @@ public class MemoryController {
             
             Memory created = memoryService.createMemory(user, memory);
             this.memoryService.recalculateMemory(user, created.getId(), timezone);
-            response.setHeader("HX-Redirect", "/memories/" + created.getId());
+            response.setHeader("HX-Redirect", "/memories/" + created.getId() + "?timezone=" + timezone.getId());
             return "memories/fragments :: empty";
 
         } catch (Exception e) {
