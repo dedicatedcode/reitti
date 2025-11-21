@@ -513,7 +513,7 @@
             // Remove active class from all entries
             document.querySelectorAll('.timeline-container .timeline-entry')
                 .forEach(e => e.classList.remove('active'));
-            
+            const isTrip = entry.classList.contains('trip');
             // Remove any selected path
             selectedPath.remove();
             
@@ -530,27 +530,17 @@
 
                 const lat = parseFloat(entry.dataset.lat);
                 const lng = parseFloat(entry.dataset.lng);
-                const startTime = entry.dataset.startTime;
-                const endTime = entry.dataset.endTime;
+                const startTime = entry.dataset.start;
+                const endTime = entry.dataset.end;
 
                 // Set selected time range in raw location loader
-                if (startTime && endTime) {
+                if (isTrip && startTime && endTime) {
                     const selectedRangeBounds = rawLocationLoader.setSelectedTimeRange(startTime, endTime);
                     if (selectedRangeBounds && selectedRangeBounds.isValid()) {
                         newBounds.extend(selectedRangeBounds);
                     }
                 }
 
-                if (entry.dataset.path) {
-                    const pathData = JSON.parse(entry.dataset.path);
-                    const latlngs = pathData.map(coord => [coord.latitude, coord.longitude]);
-                    latlngs.forEach(latlng => {
-                        newBounds.extend(latlng);
-                    });
-                    selectedPath.setLatLngs(latlngs);
-                    selectedPath.addTo(map);
-                }
-                    
                 if (!isNaN(lat) && !isNaN(lng)) {
                     newBounds.extend([lat, lng]);
                 }

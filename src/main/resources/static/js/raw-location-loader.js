@@ -298,8 +298,8 @@ class RawLocationLoader {
         
         const bounds = L.latLngBounds();
         // Extend the time range by 2 minutes (120,000 milliseconds) on each side
-        const startTimeUtc = new Date(this.selectedStartTime).getTime() - 120000;
-        const endTimeUtc = new Date(this.selectedEndTime).getTime() + 120000;
+        const startTimeUtc = new Date(this.selectedStartTime).getTime() - 300000;
+        const endTimeUtc = new Date(this.selectedEndTime).getTime() + 300000;
         
         // Filter segments that fall within the selected time range
         for (const segment of this.allSegments) {
