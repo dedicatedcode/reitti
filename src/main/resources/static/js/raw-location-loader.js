@@ -273,7 +273,68 @@ class RawLocationLoader {
     setSelectedTimeRange(startTime, endTime) {
         this.selectedStartTime = startTime;
         this.selectedEndTime = endTime;
-        return this.renderSelectedRange();
+        
+        // Reload data without bounds to get the complete path for the selected range
+        return this.reloadForSelectedRange();
+    }
+    
+    /**
+     * Reload raw location points specifically for selected range (without bounds)
+     */
+    reloadForSelectedRange() {
+        let bounds = L.latLngBounds();
+        const fetchPromises = [];
+
+        for (let i = 0; i < this.userConfigs.length; i++) {
+            const config = this.userConfigs[i];
+            if (config.url) {
+                // Get current zoom level
+                const currentZoom = Math.round(this.map.getZoom());
+                
+                // Build URL without bounding box parameters to get complete path
+                const separator = config.url.includes('?') ? '&' : '?';
+                const urlWithParams = config.url + separator + 'zoom=' + currentZoom;
+                
+                // Create fetch promise for raw location points with index to maintain order
+                const fetchPromise = fetch(urlWithParams).then(response => {
+                    if (!response.ok) {
+                        console.warn('Could not fetch raw location points');
+                        return { points: [], index: i, config: config };
+                    }
+                    return response.json();
+                }).then(rawPointsData => {
+                    return { ...rawPointsData, index: i, config: config };
+                }).catch(error => {
+                    console.warn('Error fetching raw location points:', error);
+                    return { points: [], index: i, config: config };
+                });
+                
+                fetchPromises.push(fetchPromise);
+            }
+        }
+
+        // Wait for all fetch operations to complete, then update map in correct order
+        return Promise.all(fetchPromises).then(results => {
+            this.clearPaths();
+
+            results.sort((a, b) => a.index - b.index);
+            
+            // Process results in order
+            results.forEach(result => {
+                const fetchBounds = this.updateMapWithRawPoints(result, result.config.color);
+                if (fetchBounds.isValid()) {
+                    bounds.extend(fetchBounds);
+                }
+            });
+            
+            // Render selected range and return its bounds
+            const selectedRangeBounds = this.renderSelectedRange();
+            if (selectedRangeBounds && selectedRangeBounds.isValid()) {
+                return selectedRangeBounds;
+            }
+            
+            return bounds;
+        });
     }
     
     /**
@@ -283,6 +344,8 @@ class RawLocationLoader {
         this.selectedStartTime = null;
         this.selectedEndTime = null;
         this.clearSelectedRangePaths();
+        // Reload with bounds to return to normal view
+        this.reloadForCurrentView(true);
     }
     
     /**

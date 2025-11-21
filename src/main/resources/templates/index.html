@@ -535,10 +535,20 @@
 
                 // Set selected time range in raw location loader
                 if (isTrip && startTime && endTime) {
-                    const selectedRangeBounds = rawLocationLoader.setSelectedTimeRange(startTime, endTime);
-                    if (selectedRangeBounds && selectedRangeBounds.isValid()) {
-                        newBounds.extend(selectedRangeBounds);
-                    }
+                    rawLocationLoader.setSelectedTimeRange(startTime, endTime).then(selectedRangeBounds => {
+                        if (selectedRangeBounds && selectedRangeBounds.isValid()) {
+                            newBounds.extend(selectedRangeBounds);
+                        }
+                        
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            newBounds.extend([lat, lng]);
+                        }
+
+                        if (newBounds.isValid()) {
+                            map.flyToBounds(newBounds, rawLocationLoader.fitToBoundsConfig);
+                        }
+                    });
+                    return; // Exit early since we handle bounds in the promise
                 }
 
                 if (!isNaN(lat) && !isNaN(lng)) {
