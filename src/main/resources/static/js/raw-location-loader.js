@@ -297,16 +297,16 @@ class RawLocationLoader {
         }
         
         const bounds = L.latLngBounds();
-        const startTime = new Date(this.selectedStartTime);
-        const endTime = new Date(this.selectedEndTime);
+        const startTimeUtc = new Date(this.selectedStartTime).getTime();
+        const endTimeUtc = new Date(this.selectedEndTime).getTime();
         
         // Filter segments that fall within the selected time range
         for (const segment of this.allSegments) {
             if (segment.points && segment.points.length > 0) {
-                // Filter points within the time range
+                // Filter points within the time range using UTC timestamps
                 const filteredPoints = segment.points.filter(point => {
-                    const pointTime = new Date(point.timestamp);
-                    return pointTime >= startTime && pointTime <= endTime;
+                    const pointTimeUtc = new Date(point.timestamp).getTime();
+                    return pointTimeUtc >= startTimeUtc && pointTimeUtc <= endTimeUtc;
                 });
                 
                 // Only render if we have points within the time range
