@@ -65,6 +65,12 @@
 
 </div>
 
+<!-- Today FAB button -->
+<button type="button" class="today-fab" id="today-fab" onclick="goToToday()" title="Go to Today" style="display: none;">
+    <i class="lni lni-calendar-days"></i>
+    <span th:text="#{datepicker.today}">Today</span>
+</button>
+
 <script th:inline="javascript">
     // Locale object for JavaScript
     window.locale = {
@@ -260,6 +266,9 @@
             icon.className = 'lni lni-enter-down';
             btn.title = 'Hide Date Picker';
         }
+
+        // Update today FAB visibility when date picker visibility changes
+        updateTodayFabVisibility();
     }
     
     // Restore date picker visibility state from localStorage
@@ -594,6 +603,14 @@
             updateUrlWithDate(currentDateRange);
             // Trigger HTMX reload of timeline
             document.body.dispatchEvent(new CustomEvent('dateChanged'));
+
+            // Check if today FAB should be shown
+            updateTodayFabVisibility();
+        });
+
+        // Listen for date picker view changes to update FAB visibility
+        window.horizontalDatePicker.on('viewChange', function() {
+            updateTodayFabVisibility();
         });
 
         if (selectedDates[0] === selectedDates[1]) {
@@ -601,6 +618,9 @@
         } else {
             window.horizontalDatePicker.setSelectedRange(selectedDates[0], selectedDates[1]);
         }
+
+        // Initial check for today FAB visibility
+        updateTodayFabVisibility();
     });
 
     function loadStartingDate() {
@@ -961,6 +981,34 @@
             });
         } else {
             document.exitFullscreen();
+        }
+    }
+
+    function updateTodayFabVisibility() {
+        const todayFab = document.getElementById('today-fab');
+        if (!todayFab || !window.horizontalDatePicker) return;
+
+        const today = getCurrentLocalDate();
+        const isDatePickerHidden = document.body.classList.contains('datepicker-hidden');
+        const isTodayVisible = window.horizontalDatePicker.isDateVisible(today);
+
+        // Check if today is selected
+        const selectedRange = window.horizontalDatePicker.getSelectedRange();
+        const isTodaySelected = selectedRange && selectedRange.startDate === today &&
+                               (!selectedRange.endDate || selectedRange.endDate === today);
+
+        // Show FAB if date picker is visible and (today is not visible OR today is not selected)
+        if (!isDatePickerHidden && (!isTodayVisible || !isTodaySelected)) {
+            todayFab.style.display = 'flex';
+        } else {
+            todayFab.style.display = 'none';
+        }
+    }
+
+    function goToToday() {
+        if (window.horizontalDatePicker) {
+            const today = getCurrentLocalDate();
+            window.horizontalDatePicker.setSelectedRange(today, null);
         }
     }
 </script>

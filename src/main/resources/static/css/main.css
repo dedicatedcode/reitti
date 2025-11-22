@@ -860,8 +860,13 @@ body.datepicker-hidden .datepicker-toggle-btn {
     backdrop-filter: blur(10px);
 }
 
+body.datepicker-hidden .today-fab {
+    display: none !important;
+}
+
 body.auto-update-mode .timeline-toggle-btn,
-body.auto-update-mode .datepicker-toggle-btn {
+body.auto-update-mode .datepicker-toggle-btn,
+body.auto-update-mode .today-fab {
     display: none;
 }
 
@@ -1309,6 +1314,52 @@ body.auto-update-mode .datepicker-toggle-btn {
     }
     body.timeline-hidden .timeline-toggle-btn {
         bottom: 210px;
+    }
+}
+
+/* Today FAB Styles */
+.today-fab {
+    position: fixed;
+    bottom: 120px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    background: var(--color-background-dark);
+    color: var(--color-highlight);
+    border: 1px solid var(--color-highlight);
+    border-radius: 25px;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+    font-weight: 500;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.today-fab:hover {
+    background: var(--color-highlight);
+    color: var(--color-background-dark);
+    transform: translateX(-50%) translateY(-2px);
+    box-shadow: 0 6px 16px rgba(245, 222, 179, 0.4);
+}
+
+.today-fab i {
+    font-size: 1rem;
+}
+
+@media (max-width: 800px) {
+    .today-fab {
+        bottom: 220px;
+        padding: 6px 12px;
+        font-size: 0.8rem;
+    }
+    
+    .today-fab i {
+        font-size: 0.9rem;
     }
 }
 

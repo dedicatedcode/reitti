@@ -1353,6 +1353,7 @@ class DatePicker {
             this._scrollTimeout = setTimeout(() => {
                 this.handleScroll();
                 this.updateRangeIndicators();
+                this.emit('viewChange');
             }, 50);
         };
 
@@ -1781,6 +1782,8 @@ class DatePicker {
                             centerDate: this.options.startDate
                         });
 
+                        this.emit('viewChange');
+
                         this.requestSelectionUpdate();
 
                         // Emit pending selection change if setSelectedRange triggered this transition
@@ -2066,6 +2069,28 @@ class DatePicker {
             start: TimebandUtils.getItemRangeStart(firstItem, this.currentTimeband),
             end: TimebandUtils.getItemRangeEnd(lastItem, this.currentTimeband)
         };
+    }
+
+    isDateVisible(date) {
+        if (!date) return false;
+        
+        const range = this.getVisibleDateRange();
+        if (!range) return false;
+        
+        const targetDate = clampToStartOfDay(new Date(date));
+        
+        // Check if the date falls within the visible range based on current timeband
+        if (this.currentTimeband === TIMEBANDS.DAY) {
+            return targetDate >= range.start && targetDate <= range.end;
+        } else if (this.currentTimeband === TIMEBANDS.MONTH) {
+            const targetMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+            return targetMonth >= range.start && targetMonth <= range.end;
+        } else if (this.currentTimeband === TIMEBANDS.YEAR) {
+            const targetYear = new Date(targetDate.getFullYear(), 0, 1);
+            return targetYear >= range.start && targetYear <= range.end;
+        }
+        
+        return false;
     }
 
 }
