@@ -1320,8 +1320,9 @@ body.auto-update-mode .today-fab {
 /* Today FAB Styles */
 .today-fab {
     position: fixed;
-    bottom: 130px;
-    right: 20px;
+    bottom: 120px;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 100;
     background: var(--color-background-dark);
     color: var(--color-highlight);
@@ -1342,7 +1343,7 @@ body.auto-update-mode .today-fab {
 .today-fab:hover {
     background: var(--color-highlight);
     color: var(--color-background-dark);
-    transform: translateY(-2px);
+    transform: translateX(-50%) translateY(-2px);
     box-shadow: 0 6px 16px rgba(245, 222, 179, 0.4);
 }
 
@@ -1352,8 +1353,7 @@ body.auto-update-mode .today-fab {
 
 @media (max-width: 800px) {
     .today-fab {
-        bottom: 230px;
-        right: 15px;
+        bottom: 220px;
         padding: 6px 12px;
         font-size: 0.8rem;
     }
