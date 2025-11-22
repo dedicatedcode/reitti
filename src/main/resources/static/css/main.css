@@ -1832,7 +1832,7 @@ button:disabled {
 }
 
 /* Smooth transitions for timeline and date picker */
-.timeline, #horizontal-date-picker-container {
+.timeline, #date-picker-container {
     transition: transform 0.5s ease, opacity 0.5s ease;
 }
 
@@ -1842,7 +1842,7 @@ button:disabled {
     pointer-events: none;
 }
 
-#horizontal-date-picker-container.hidden {
+#date-picker-container.hidden {
     transform: translateY(100%);
     opacity: 0;
     pointer-events: none;
