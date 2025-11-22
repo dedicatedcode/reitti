@@ -1353,6 +1353,7 @@ class DatePicker {
             this._scrollTimeout = setTimeout(() => {
                 this.handleScroll();
                 this.updateRangeIndicators();
+                this.emit('viewChange');
             }, 50);
         };
 
@@ -1780,6 +1781,8 @@ class DatePicker {
                             timeband: this.currentTimeband,
                             centerDate: this.options.startDate
                         });
+
+                        this.emit('viewChange');
 
                         this.requestSelectionUpdate();
 

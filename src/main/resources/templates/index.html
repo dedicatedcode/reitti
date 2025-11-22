@@ -992,8 +992,13 @@
         const isDatePickerHidden = document.body.classList.contains('datepicker-hidden');
         const isTodayVisible = window.horizontalDatePicker.isDateVisible(today);
         
-        // Show FAB if date picker is visible and today is not visible
-        if (!isDatePickerHidden && !isTodayVisible) {
+        // Check if today is selected
+        const selectedRange = window.horizontalDatePicker.getSelectedRange();
+        const isTodaySelected = selectedRange && selectedRange.startDate === today && 
+                               (!selectedRange.endDate || selectedRange.endDate === today);
+        
+        // Show FAB if date picker is visible and (today is not visible OR today is not selected)
+        if (!isDatePickerHidden && (!isTodayVisible || !isTodaySelected)) {
             todayFab.style.display = 'flex';
         } else {
             todayFab.style.display = 'none';
