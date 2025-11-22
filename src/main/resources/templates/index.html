@@ -67,8 +67,8 @@
 
 <!-- Today FAB button -->
 <button type="button" class="today-fab" id="today-fab" onclick="goToToday()" title="Go to Today" style="display: none;">
-    <i class="lni lni-calendar"></i>
-    <span>Today</span>
+    <i class="lni lni-calendar-days"></i>
+    <span th:text="#{datepicker.today}">Today</span>
 </button>
 
 <script th:inline="javascript">
@@ -266,7 +266,7 @@
             icon.className = 'lni lni-enter-down';
             btn.title = 'Hide Date Picker';
         }
-        
+
         // Update today FAB visibility when date picker visibility changes
         updateTodayFabVisibility();
     }
@@ -603,7 +603,7 @@
             updateUrlWithDate(currentDateRange);
             // Trigger HTMX reload of timeline
             document.body.dispatchEvent(new CustomEvent('dateChanged'));
-            
+
             // Check if today FAB should be shown
             updateTodayFabVisibility();
         });
@@ -618,7 +618,7 @@
         } else {
             window.horizontalDatePicker.setSelectedRange(selectedDates[0], selectedDates[1]);
         }
-        
+
         // Initial check for today FAB visibility
         updateTodayFabVisibility();
     });
@@ -987,16 +987,16 @@
     function updateTodayFabVisibility() {
         const todayFab = document.getElementById('today-fab');
         if (!todayFab || !window.horizontalDatePicker) return;
-        
+
         const today = getCurrentLocalDate();
         const isDatePickerHidden = document.body.classList.contains('datepicker-hidden');
         const isTodayVisible = window.horizontalDatePicker.isDateVisible(today);
-        
+
         // Check if today is selected
         const selectedRange = window.horizontalDatePicker.getSelectedRange();
-        const isTodaySelected = selectedRange && selectedRange.startDate === today && 
+        const isTodaySelected = selectedRange && selectedRange.startDate === today &&
                                (!selectedRange.endDate || selectedRange.endDate === today);
-        
+
         // Show FAB if date picker is visible and (today is not visible OR today is not selected)
         if (!isDatePickerHidden && (!isTodayVisible || !isTodaySelected)) {
             todayFab.style.display = 'flex';
