@@ -583,15 +583,16 @@ class SelectionManager {
     }
 
     #getDayHoverText(clicked, selected) {
+        const strings = this.datePicker.options.strings;
         if (this.datePicker.isSameDay(clicked, selected)) {
             if (!this.selectedEndDate) {
-                return this.isDateLocked ? 'Click to unlock date' : 'Click to lock date';
+                return this.isDateLocked ? strings.clickToUnlockDate : strings.clickToLockDate;
             }
-            return 'Click to clear selection';
+            return strings.clickToClearSelection;
         }
 
         if (this.isDateLocked && !this.selectedEndDate) {
-            return 'Click to create range';
+            return strings.clickToCreateRange;
         }
 
         if (this.selectedEndDate) {
@@ -602,15 +603,16 @@ class SelectionManager {
     }
 
     #getMonthHoverText(clicked, selected) {
+        const strings = this.datePicker.options.strings;
         if (this.datePicker.isSameMonth(clicked, selected)) {
             if (!this.selectedEndDate) {
-                return this.isDateLocked ? 'Click to unlock month' : 'Click to lock month';
+                return this.isDateLocked ? strings.clickToUnlockMonth : strings.clickToLockMonth;
             }
-            return 'Click to clear selection';
+            return strings.clickToClearSelection;
         }
 
         if (this.isDateLocked && !this.selectedEndDate) {
-            return 'Click to create range';
+            return strings.clickToCreateRange;
         }
 
         if (this.selectedEndDate) {
@@ -621,15 +623,16 @@ class SelectionManager {
     }
 
     #getYearHoverText(clicked, selected) {
+        const strings = this.datePicker.options.strings;
         if (this.datePicker.isSameYear(clicked, selected)) {
             if (!this.selectedEndDate) {
-                return this.isDateLocked ? 'Click to unlock year' : 'Click to lock year';
+                return this.isDateLocked ? strings.clickToUnlockYear : strings.clickToLockYear;
             }
-            return 'Click to clear selection';
+            return strings.clickToClearSelection;
         }
 
         if (this.isDateLocked && !this.selectedEndDate) {
-            return 'Click to create range';
+            return strings.clickToCreateRange;
         }
 
         if (this.selectedEndDate) {
@@ -640,6 +643,7 @@ class SelectionManager {
     }
 
     #getExistingRangeHoverText(clicked) {
+        const strings = this.datePicker.options.strings;
         const start = new Date(this.selectedStartDate);
         const end = new Date(this.selectedEndDate);
         const timeband = this.datePicker.currentTimeband;
@@ -655,15 +659,15 @@ class SelectionManager {
         }
 
         if (isEndBoundary) {
-            return 'Click to clear selection';
+            return strings.clickToClearSelection;
         }
         if (clicked < start) {
-            return 'Click to expand range backward';
+            return strings.clickToExpandRangeBackward;
         }
         if (clicked > end) {
-            return 'Click to expand range forward';
+            return strings.clickToExpandRangeForward;
         }
-        return 'Click to adjust range start';
+        return strings.clickToAdjustRangeStart;
     }
 
     getHoverTooltipText(itemData) {
@@ -687,11 +691,12 @@ class SelectionManager {
             [start, end] = [end, start];
         }
 
+        const strings = this.datePicker.options.strings;
         if (this.datePicker.isSameDay(start, end)) {
-            return `Select: ${this.datePicker.formatDate(start)}`;
+            return `${strings.select}: ${this.datePicker.formatDate(start)}`;
         }
 
-        return `Select: ${this.datePicker.formatDate(start)} to ${this.datePicker.formatDate(end)}`;
+        return `${strings.select}: ${this.datePicker.formatDate(start)} ${strings.to} ${this.datePicker.formatDate(end)}`;
     }
 
     #getMonthEndDateForTooltip(itemData) {
@@ -756,6 +761,22 @@ class DatePicker {
             renderLeftIndicator: null,
             renderRightIndicator: null,
             renderHoverOverlay: null,
+            locale: undefined,
+            strings: {
+                clickToUnlockDate: 'Click to unlock date',
+                clickToLockDate: 'Click to lock date',
+                clickToClearSelection: 'Click to clear selection',
+                clickToCreateRange: 'Click to create range',
+                clickToExpandRangeBackward: 'Click to expand range backward',
+                clickToExpandRangeForward: 'Click to expand range forward',
+                clickToAdjustRangeStart: 'Click to adjust range start',
+                clickToUnlockMonth: 'Click to unlock month',
+                clickToLockMonth: 'Click to lock month',
+                clickToUnlockYear: 'Click to unlock year',
+                clickToLockYear: 'Click to lock year',
+                select: 'Select',
+                to: 'to'
+            },
             ...options,
         };
 
