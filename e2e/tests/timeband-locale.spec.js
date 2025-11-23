@@ -41,7 +41,7 @@ test.describe('Date Picker Tests', () => {
         const responsePromise = page.waitForResponse('**/timeline/content/range?startDate=2017-02-02&endDate=2017-02-02&timezone=Europe%2FBerlin');
 
         await page.getByRole('button', { name: 'Today' }).click()
-        await expect(page.locator('div').filter({ hasText: 'Do2Feb' }).nth(2)).toContainClass('selected');
+        await expect(page.locator('div').filter({ hasText: 'Thu2Feb' }).nth(2)).toContainClass('selected');
         const response = await responsePromise;
         expect(response.status()).toBe(200);
     })
