@@ -790,11 +790,7 @@ class DatePicker {
         this.hoverOverlay = null;
 
         // For potential virtual scrolling; currently unused but kept for compatibility
-        this.elementPool = [];
         this.visibleElements = new Map();
-        this.lastVisibleRange = { start: -1, end: -1 };
-        this.virtualWrapper = null;
-
         this.timebandConfigs = this.#createTimebandConfigs();
 
         this.init();
@@ -938,9 +934,6 @@ class DatePicker {
         this.scrollContainer.innerHTML = '';
         this.scrollContainer.className = `date-picker-container timeband-${this.currentTimeband}`;
 
-        this.elementPool = [];
-        this.visibleElements.clear();
-        this.lastVisibleRange = { start: -1, end: -1 };
         this.itemByTime = new Map();
 
         const fragment = document.createDocumentFragment();
@@ -1151,55 +1144,11 @@ class DatePicker {
         this.emit('selectionChange', this.selectionManager.getSelectedRange());
     }
 
-    /** Wheel/timeband transitions **/
-
-    handleTimebandTransition(itemData) {
-        if (this.selectionManager.isSelectingRange && this.selectionManager.selectionTimeband) {
-            // Do not auto-drill while user is mid-selection
-            return;
-        }
-
-        if (this.currentTimeband === TIMEBANDS.YEAR) {
-            const targetDate = new Date(itemData.date.getFullYear(), 0, 1);
-            this.transitionToTimeband(TIMEBANDS.MONTH, targetDate);
-        } else if (this.currentTimeband === TIMEBANDS.MONTH) {
-            const d = itemData.date;
-            const targetDate = new Date(d.getFullYear(), d.getMonth(), 1);
-            this.transitionToTimeband(TIMEBANDS.DAY, targetDate);
-        }
-    }
-
-    handleWheelTransition(deltaY, event) {
-        if (this.isTransitioning) return;
-
-        const mouseDate = this.getDateUnderMouse(event);
-        const mousePos = this.getMousePositionInContainer(event);
-        let targetDate;
-
-        if (deltaY > 0) {
-            // Zoom out
-            if (this.currentTimeband === TIMEBANDS.DAY) {
-                this.transitionToTimeband(TIMEBANDS.MONTH, mouseDate, mousePos);
-            } else if (this.currentTimeband === TIMEBANDS.MONTH) {
-                this.transitionToTimeband(TIMEBANDS.YEAR, mouseDate, mousePos);
-            }
-        } else {
-            // Zoom in
-            if (this.currentTimeband === TIMEBANDS.YEAR) {
-                targetDate = new Date(mouseDate.getFullYear(), 0, 1);
-                this.transitionToTimeband(TIMEBANDS.MONTH, targetDate, mousePos);
-            } else if (this.currentTimeband === TIMEBANDS.MONTH) {
-                targetDate = new Date(mouseDate.getFullYear(), mouseDate.getMonth(), 1);
-                this.transitionToTimeband(TIMEBANDS.DAY, targetDate, mousePos);
-            }
-        }
-    }
-
     // Perform one wheel step based on direction and current timeband
     #performWheelStep(dir, mouseDate, mousePos) {
         if (this.isTransitioning) return;
         const date = mouseDate || this.getCenterDate();
-        const pos = (mousePos != null) ? mousePos : Math.floor(this.scrollContainer.clientWidth / 2);
+        const pos = 200;
 
         if (dir > 0) { // zoom out
             if (this.currentTimeband === TIMEBANDS.DAY) {
@@ -1345,7 +1294,6 @@ class DatePicker {
     #setupScrollListener() {
         this._scrollTimeout = null;
         this._wheelTimeout = null;
-        this._lastWheelTime = 0;
         this._horizontalScrollActive = false;
         this._horizontalTimeout = null;
         this._touchStartX = 0;
@@ -1641,9 +1589,6 @@ class DatePicker {
         this.items = [];
         this.itemByTime && this.itemByTime.clear();
         this.itemByTime = null;
-        this.visibleElements && this.visibleElements.clear();
-        this.visibleElements = null;
-        this.elementPool = null;
 
         this._onScroll = null;
         this._onWheel = null;
@@ -1844,14 +1789,6 @@ class DatePicker {
             this._wheelChainMouseDate = null;
             this._wheelChainMousePos = null;
         }
-    }
-
-    getCurrentTimeband() {
-        return this.currentTimeband;
-    }
-
-    setTimeband(timeband, centerDate = null) {
-        this.transitionToTimeband(timeband, centerDate);
     }
 
     scrollToAlignPosition(targetDate, alignPosition, instant = false) {
