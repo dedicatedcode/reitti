@@ -1657,6 +1657,11 @@ class DatePicker {
     }
 
     getDayName(date) {
+        // Use translated day names from window.locale if available
+        if (window.locale && window.locale.days) {
+            return window.locale.days[date.getDay()];
+        }
+        
         this.#ensureFormatters();
         if (this.#fmt && this.#fmt.weekday) return this.#fmt.weekday.format(date);
         return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
@@ -1668,6 +1673,11 @@ class DatePicker {
     }
 
     getMonthName(date) {
+        // Use translated month names from window.locale if available
+        if (window.locale && window.locale.months) {
+            return window.locale.months[date.getMonth()];
+        }
+        
         this.#ensureFormatters();
         if (this.#fmt && this.#fmt.month) return this.#fmt.month.format(date);
         return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
