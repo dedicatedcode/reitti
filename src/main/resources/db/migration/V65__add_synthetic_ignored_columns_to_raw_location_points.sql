@@ -9,5 +9,10 @@ ON raw_location_points(user_id, timestamp, synthetic);
 
 -- Add location density parameters to visit_detection_parameters table
 ALTER TABLE visit_detection_parameters
-ADD COLUMN density_max_interpolation_distance_meters DOUBLE PRECISION DEFAULT 500.0,
-ADD COLUMN density_max_interpolation_gap_minutes INTEGER DEFAULT 120;
+ADD COLUMN density_max_interpolation_distance_meters DOUBLE PRECISION DEFAULT 50.0,
+ADD COLUMN density_max_interpolation_gap_minutes INTEGER DEFAULT 720;
+
+-- Add location density parameters to preview_visit_detection_parameters table
+ALTER TABLE preview_visit_detection_parameters
+ADD COLUMN density_max_interpolation_distance_meters DOUBLE PRECISION DEFAULT 50.0,
+ADD COLUMN density_max_interpolation_gap_minutes INTEGER DEFAULT 720;

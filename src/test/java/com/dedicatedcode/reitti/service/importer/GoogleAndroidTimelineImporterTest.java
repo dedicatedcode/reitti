@@ -31,6 +31,7 @@ class GoogleAndroidTimelineImporterTest {
         DetectionParameter config = new DetectionParameter(-1L,
                 new DetectionParameter.VisitDetection(100, 5, 300, 300),
                 new DetectionParameter.VisitMerging(24,300, 100),
+                new DetectionParameter.LocationDensity(50, 720),
                 null, RecalculationState.DONE);
         when(parametersService.getCurrentConfiguration(any(), any(Instant.class))).thenReturn(config);
         GoogleAndroidTimelineImporter importHandler = new GoogleAndroidTimelineImporter(new ObjectMapper(), new ImportStateHolder(), new ImportBatchProcessor(mock, 100, 15), parametersService);

@@ -41,8 +41,11 @@ class VisitDetectionParametersJdbcServiceTest {
         DetectionParameter.VisitMerging visitMerging = new DetectionParameter.VisitMerging(
                 24L, 1800L, 50L
         );
+        DetectionParameter.LocationDensity locationDensity = new DetectionParameter.LocationDensity(
+                50, 720
+        );
         DetectionParameter detectionParameter = new DetectionParameter(
-                null, visitDetection, visitMerging, Instant.now(), RecalculationState.DONE
+                null, visitDetection, visitMerging, locationDensity, Instant.now(), RecalculationState.DONE
         );
 
         // When
@@ -73,8 +76,11 @@ class VisitDetectionParametersJdbcServiceTest {
         DetectionParameter.VisitMerging visitMerging = new DetectionParameter.VisitMerging(
                 12L, 900L, 25L
         );
+        DetectionParameter.LocationDensity locationDensity = new DetectionParameter.LocationDensity(
+                50, 720
+        );
         DetectionParameter detectionParameter = new DetectionParameter(
-                null, visitDetection, visitMerging, null, RecalculationState.DONE
+                null, visitDetection, visitMerging, locationDensity, null, RecalculationState.DONE
         );
 
         // When
@@ -95,8 +101,11 @@ class VisitDetectionParametersJdbcServiceTest {
         DetectionParameter.VisitMerging initialVisitMerging = new DetectionParameter.VisitMerging(
                 24L, 1800L, 50L
         );
+        DetectionParameter.LocationDensity locationDensity = new DetectionParameter.LocationDensity(
+                50, 720
+        );
         DetectionParameter initialConfig = new DetectionParameter(
-                null, initialVisitDetection, initialVisitMerging, Instant.now(), RecalculationState.DONE
+                null, initialVisitDetection, initialVisitMerging, locationDensity, Instant.now(), RecalculationState.DONE
         );
         visitDetectionParametersJdbcService.saveConfiguration(testUser, initialConfig);
 
@@ -110,9 +119,12 @@ class VisitDetectionParametersJdbcServiceTest {
         DetectionParameter.VisitMerging updatedVisitMerging = new DetectionParameter.VisitMerging(
                 48L, 3600L, 75L
         );
+        DetectionParameter.LocationDensity updatedLocationDensity = new DetectionParameter.LocationDensity(
+                500, 7200
+        );
         Instant newValidSince = Instant.now().plusSeconds(3600).truncatedTo(ChronoUnit.MILLIS);
         DetectionParameter updatedConfig = new DetectionParameter(
-                savedConfig.getId(), updatedVisitDetection, updatedVisitMerging, newValidSince, RecalculationState.DONE
+                savedConfig.getId(), updatedVisitDetection, updatedVisitMerging, updatedLocationDensity, newValidSince, RecalculationState.DONE
         );
         visitDetectionParametersJdbcService.updateConfiguration(updatedConfig);
 
@@ -130,6 +142,8 @@ class VisitDetectionParametersJdbcServiceTest {
         assertThat(result.getVisitMerging().getMaxMergeTimeBetweenSameVisits()).isEqualTo(3600L);
         assertThat(result.getVisitMerging().getMinDistanceBetweenVisits()).isEqualTo(75L);
         assertThat(result.getValidSince()).isEqualTo(newValidSince);
+        assertThat(result.getLocationDensity().getMaxInterpolationDistanceMeters()).isEqualTo(500);
+        assertThat(result.getLocationDensity().getMaxInterpolationGapMinutes()).isEqualTo(7200);
     }
 
     @Test
@@ -141,8 +155,11 @@ class VisitDetectionParametersJdbcServiceTest {
         DetectionParameter.VisitMerging visitMerging = new DetectionParameter.VisitMerging(
                 24L, 1800L, 50L
         );
+        DetectionParameter.LocationDensity locationDensity = new DetectionParameter.LocationDensity(
+                50, 720
+        );
         DetectionParameter detectionParameter = new DetectionParameter(
-                null, visitDetection, visitMerging, Instant.now(), RecalculationState.DONE
+                null, visitDetection, visitMerging, locationDensity, Instant.now(), RecalculationState.DONE
         );
         visitDetectionParametersJdbcService.saveConfiguration(testUser, detectionParameter);
 
@@ -166,8 +183,11 @@ class VisitDetectionParametersJdbcServiceTest {
         DetectionParameter.VisitMerging visitMerging = new DetectionParameter.VisitMerging(
                 24L, 1800L, 50L
         );
+        DetectionParameter.LocationDensity locationDensity = new DetectionParameter.LocationDensity(
+                50, 720
+        );
         DetectionParameter detectionParameter = new DetectionParameter(
-                null, visitDetection, visitMerging, null, RecalculationState.DONE
+                null, visitDetection, visitMerging, locationDensity, null, RecalculationState.DONE
         );
         visitDetectionParametersJdbcService.saveConfiguration(testUser, detectionParameter);
 
@@ -195,12 +215,15 @@ class VisitDetectionParametersJdbcServiceTest {
         DetectionParameter.VisitMerging visitMerging = new DetectionParameter.VisitMerging(
                 24L, 1800L, 50L
         );
+        DetectionParameter.LocationDensity locationDensity = new DetectionParameter.LocationDensity(
+                50, 720
+        );
 
         // Save configurations in different order
-        DetectionParameter config1 = new DetectionParameter(null, visitDetection, visitMerging, now, RecalculationState.DONE);
-        DetectionParameter config2 = new DetectionParameter(null, visitDetection, visitMerging, later, RecalculationState.DONE);
-        DetectionParameter config3 = new DetectionParameter(null, visitDetection, visitMerging, earlier, RecalculationState.DONE);
-        DetectionParameter config4 = new DetectionParameter(null, visitDetection, visitMerging, null, RecalculationState.DONE);
+        DetectionParameter config1 = new DetectionParameter(null, visitDetection, visitMerging, locationDensity, now, RecalculationState.DONE);
+        DetectionParameter config2 = new DetectionParameter(null, visitDetection, visitMerging, locationDensity, later, RecalculationState.DONE);
+        DetectionParameter config3 = new DetectionParameter(null, visitDetection, visitMerging, locationDensity, earlier, RecalculationState.DONE);
+        DetectionParameter config4 = new DetectionParameter(null, visitDetection, visitMerging, locationDensity, null, RecalculationState.DONE);
 
         visitDetectionParametersJdbcService.saveConfiguration(testUser, config1);
         visitDetectionParametersJdbcService.saveConfiguration(testUser, config2);
