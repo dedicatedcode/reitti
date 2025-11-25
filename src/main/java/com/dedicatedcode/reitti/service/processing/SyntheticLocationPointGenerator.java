@@ -68,13 +68,12 @@ public class SyntheticLocationPointGenerator {
             );
             
             // Create synthetic LocationPoint
-            LocationPoint syntheticPoint = new LocationPoint(
-                interpolatedCoords.latitude(),
-                interpolatedCoords.longitude(),
-                currentTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-                interpolatedAccuracy,
-                interpolatedElevation
-            );
+            LocationPoint syntheticPoint = new LocationPoint();
+            syntheticPoint.setLatitude(interpolatedCoords.latitude());
+            syntheticPoint.setLongitude(interpolatedCoords.longitude());
+            syntheticPoint.setTimestamp(currentTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+            syntheticPoint.setAccuracyMeters(interpolatedAccuracy);
+            syntheticPoint.setElevationMeters(interpolatedElevation);
             
             syntheticPoints.add(syntheticPoint);
             
