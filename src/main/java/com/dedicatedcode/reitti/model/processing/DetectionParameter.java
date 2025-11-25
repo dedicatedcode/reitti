@@ -53,25 +53,12 @@ public class DetectionParameter implements Serializable {
     }
 
     public static class VisitDetection implements Serializable {
-        private final long searchDistanceInMeters;
-        private final int minimumAdjacentPoints;
         private final long minimumStayTimeInSeconds;
         private final long maxMergeTimeBetweenSameStayPoints;
 
-        public VisitDetection(long searchDistanceInMeters, int minimumAdjacentPoints,
-                              long minimumStayTimeInSeconds, long maxMergeTimeBetweenSameStayPoints) {
-            this.searchDistanceInMeters = searchDistanceInMeters;
-            this.minimumAdjacentPoints = minimumAdjacentPoints;
+        public VisitDetection(long minimumStayTimeInSeconds, long maxMergeTimeBetweenSameStayPoints) {
             this.minimumStayTimeInSeconds = minimumStayTimeInSeconds;
             this.maxMergeTimeBetweenSameStayPoints = maxMergeTimeBetweenSameStayPoints;
-        }
-
-        public long getSearchDistanceInMeters() {
-            return searchDistanceInMeters;
-        }
-
-        public int getMinimumAdjacentPoints() {
-            return minimumAdjacentPoints;
         }
 
         public long getMinimumStayTimeInSeconds() {

@@ -28,8 +28,6 @@ public class PreviewVisitDetectionParametersJdbcService {
         Instant validSince = validSinceTimestamp != null ? validSinceTimestamp.toInstant() : null;
 
         DetectionParameter.VisitDetection visitDetection = new DetectionParameter.VisitDetection(
-                rs.getLong("detection_search_distance_meters"),
-                rs.getInt("detection_minimum_adjacent_points"),
                 rs.getLong("detection_minimum_stay_time_seconds"),
                 rs.getLong("detection_max_merge_time_between_same_stay_points")
         );

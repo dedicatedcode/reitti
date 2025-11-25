@@ -36,6 +36,7 @@ public class VisitDetectionService {
 
     private final RabbitTemplate rabbitTemplate;
     private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
+    private final int minimumAdjacentPoints = 5;
 
     @Autowired
     public VisitDetectionService(
@@ -110,12 +111,12 @@ public class VisitDetectionService {
             logger.debug("Searching for points in the timerange from [{}] to [{}]", windowStart, windowEnd);
 
             double baseLatitude = affectedVisits.isEmpty() ? 50 : affectedVisits.getFirst().getLatitude();
-            double[] metersAsDegrees = GeoUtils.metersToDegreesAtPosition(detectionParameters.getSearchDistanceInMeters(), baseLatitude);
+            double[] metersAsDegrees = GeoUtils.metersToDegreesAtPosition(50.0, baseLatitude);
             List<ClusteredPoint> clusteredPointsInTimeRangeForUser;
             if (incoming.getPreviewId() == null) {
-                clusteredPointsInTimeRangeForUser = this.rawLocationPointJdbcService.findClusteredPointsInTimeRangeForUser(user, windowStart, windowEnd, detectionParameters.getMinimumAdjacentPoints(), metersAsDegrees[0]);
+                clusteredPointsInTimeRangeForUser = this.rawLocationPointJdbcService.findClusteredPointsInTimeRangeForUser(user, windowStart, windowEnd, minimumAdjacentPoints, metersAsDegrees[0]);
             } else {
-                clusteredPointsInTimeRangeForUser = this.previewRawLocationPointJdbcService.findClusteredPointsInTimeRangeForUser(user, incoming.getPreviewId(), windowStart, windowEnd, detectionParameters.getMinimumAdjacentPoints(), metersAsDegrees[0]);
+                clusteredPointsInTimeRangeForUser = this.previewRawLocationPointJdbcService.findClusteredPointsInTimeRangeForUser(user, incoming.getPreviewId(), windowStart, windowEnd, minimumAdjacentPoints, metersAsDegrees[0]);
             }
 
             Map<Integer, List<RawLocationPoint>> clusteredByLocation = new HashMap<>();

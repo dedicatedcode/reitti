@@ -29,7 +29,7 @@ class GoogleAndroidTimelineImporterTest {
 
         VisitDetectionParametersService parametersService = mock(VisitDetectionParametersService.class);
         DetectionParameter config = new DetectionParameter(-1L,
-                new DetectionParameter.VisitDetection(100, 5, 300, 300),
+                new DetectionParameter.VisitDetection(300, 300),
                 new DetectionParameter.VisitMerging(24,300, 100),
                 new DetectionParameter.LocationDensity(50, 720),
                 null, RecalculationState.DONE);

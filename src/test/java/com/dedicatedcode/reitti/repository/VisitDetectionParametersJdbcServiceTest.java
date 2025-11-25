@@ -36,7 +36,7 @@ class VisitDetectionParametersJdbcServiceTest {
     void shouldSaveAndFindConfiguration() {
         // Given
         DetectionParameter.VisitDetection visitDetection = new DetectionParameter.VisitDetection(
-                100L, 5, 300L, 600L
+                300L, 600L
         );
         DetectionParameter.VisitMerging visitMerging = new DetectionParameter.VisitMerging(
                 24L, 1800L, 50L
@@ -57,8 +57,6 @@ class VisitDetectionParametersJdbcServiceTest {
 
         DetectionParameter savedConfig = detectionParameters.getFirst();
         assertThat(savedConfig.getId()).isNotNull();
-        assertThat(savedConfig.getVisitDetection().getSearchDistanceInMeters()).isEqualTo(100L);
-        assertThat(savedConfig.getVisitDetection().getMinimumAdjacentPoints()).isEqualTo(5L);
         assertThat(savedConfig.getVisitDetection().getMinimumStayTimeInSeconds()).isEqualTo(300L);
         assertThat(savedConfig.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints()).isEqualTo(600L);
         assertThat(savedConfig.getVisitMerging().getSearchDurationInHours()).isEqualTo(24L);
@@ -70,9 +68,7 @@ class VisitDetectionParametersJdbcServiceTest {
     @Test
     void shouldSaveConfigurationWithNullValidSince() {
         // Given
-        DetectionParameter.VisitDetection visitDetection = new DetectionParameter.VisitDetection(
-                200L, 3, 600L, 1200L
-        );
+        DetectionParameter.VisitDetection visitDetection = new DetectionParameter.VisitDetection(600L, 1200L);
         DetectionParameter.VisitMerging visitMerging = new DetectionParameter.VisitMerging(
                 12L, 900L, 25L
         );
@@ -96,7 +92,7 @@ class VisitDetectionParametersJdbcServiceTest {
     void shouldUpdateConfiguration() {
         // Given - save initial configuration
         DetectionParameter.VisitDetection initialVisitDetection = new DetectionParameter.VisitDetection(
-                100L, 5, 300L, 600L
+                300L, 600L
         );
         DetectionParameter.VisitMerging initialVisitMerging = new DetectionParameter.VisitMerging(
                 24L, 1800L, 50L
@@ -114,7 +110,7 @@ class VisitDetectionParametersJdbcServiceTest {
 
         // When - update the configuration
         DetectionParameter.VisitDetection updatedVisitDetection = new DetectionParameter.VisitDetection(
-                150L, 7, 450L, 900L
+                450L, 900L
         );
         DetectionParameter.VisitMerging updatedVisitMerging = new DetectionParameter.VisitMerging(
                 48L, 3600L, 75L
@@ -134,8 +130,6 @@ class VisitDetectionParametersJdbcServiceTest {
 
         DetectionParameter result = detectionParameters.getFirst();
         assertThat(result.getId()).isEqualTo(savedConfig.getId());
-        assertThat(result.getVisitDetection().getSearchDistanceInMeters()).isEqualTo(150L);
-        assertThat(result.getVisitDetection().getMinimumAdjacentPoints()).isEqualTo(7L);
         assertThat(result.getVisitDetection().getMinimumStayTimeInSeconds()).isEqualTo(450L);
         assertThat(result.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints()).isEqualTo(900L);
         assertThat(result.getVisitMerging().getSearchDurationInHours()).isEqualTo(48L);
@@ -150,7 +144,7 @@ class VisitDetectionParametersJdbcServiceTest {
     void shouldDeleteConfiguration() {
         // Given - save configuration with validSince
         DetectionParameter.VisitDetection visitDetection = new DetectionParameter.VisitDetection(
-                100L, 5, 300L, 600L
+                300L, 600L
         );
         DetectionParameter.VisitMerging visitMerging = new DetectionParameter.VisitMerging(
                 24L, 1800L, 50L
@@ -178,7 +172,7 @@ class VisitDetectionParametersJdbcServiceTest {
     void shouldNotDeleteConfigurationWithNullValidSince() {
         // Given - save configuration with null validSince
         DetectionParameter.VisitDetection visitDetection = new DetectionParameter.VisitDetection(
-                100L, 5, 300L, 600L
+                300L, 600L
         );
         DetectionParameter.VisitMerging visitMerging = new DetectionParameter.VisitMerging(
                 24L, 1800L, 50L
@@ -210,7 +204,7 @@ class VisitDetectionParametersJdbcServiceTest {
         Instant later = now.plusSeconds(3600);
 
         DetectionParameter.VisitDetection visitDetection = new DetectionParameter.VisitDetection(
-                100L, 5, 300L, 600L
+                300L, 600L
         );
         DetectionParameter.VisitMerging visitMerging = new DetectionParameter.VisitMerging(
                 24L, 1800L, 50L

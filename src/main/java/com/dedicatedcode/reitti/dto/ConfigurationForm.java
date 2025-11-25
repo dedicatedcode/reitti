@@ -14,8 +14,6 @@ public class ConfigurationForm {
     private Integer sensitivityLevel = 3; // 1-5 scale
     
     // Advanced mode - all Configuration fields
-    private Long searchDistanceInMeters;
-    private Integer minimumAdjacentPoints;
     private Long minimumStayTimeInSeconds;
     private Long maxMergeTimeBetweenSameStayPoints;
     private Long searchDurationInHours;
@@ -34,12 +32,6 @@ public class ConfigurationForm {
     
     public Integer getSensitivityLevel() { return sensitivityLevel; }
     public void setSensitivityLevel(Integer sensitivityLevel) { this.sensitivityLevel = sensitivityLevel; }
-    
-    public Long getSearchDistanceInMeters() { return searchDistanceInMeters; }
-    public void setSearchDistanceInMeters(Long searchDistanceInMeters) { this.searchDistanceInMeters = searchDistanceInMeters; }
-    
-    public Integer getMinimumAdjacentPoints() { return minimumAdjacentPoints; }
-    public void setMinimumAdjacentPoints(Integer minimumAdjacentPoints) { this.minimumAdjacentPoints = minimumAdjacentPoints; }
     
     public Long getMinimumStayTimeInSeconds() { return minimumStayTimeInSeconds; }
     public void setMinimumStayTimeInSeconds(Long minimumStayTimeInSeconds) { this.minimumStayTimeInSeconds = minimumStayTimeInSeconds; }
@@ -65,8 +57,6 @@ public class ConfigurationForm {
         form.setId(config.getId());
         
         // Set advanced mode values
-        form.setSearchDistanceInMeters(config.getVisitDetection().getSearchDistanceInMeters());
-        form.setMinimumAdjacentPoints(config.getVisitDetection().getMinimumAdjacentPoints());
         form.setMinimumStayTimeInSeconds(config.getVisitDetection().getMinimumStayTimeInSeconds());
         form.setMaxMergeTimeBetweenSameStayPoints(config.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints());
         form.setSearchDurationInHours(config.getVisitMerging().getSearchDurationInHours());
@@ -110,9 +100,7 @@ public class ConfigurationForm {
         DetectionParameter.VisitDetection actualDetection = config.getVisitDetection();
         DetectionParameter.VisitMerging actualMerging = config.getVisitMerging();
         
-        return actualDetection.getSearchDistanceInMeters() == expectedDetection.getSearchDistanceInMeters() &&
-               actualDetection.getMinimumAdjacentPoints() == expectedDetection.getMinimumAdjacentPoints() &&
-               actualDetection.getMinimumStayTimeInSeconds() == expectedDetection.getMinimumStayTimeInSeconds() &&
+        return actualDetection.getMinimumStayTimeInSeconds() == expectedDetection.getMinimumStayTimeInSeconds() &&
                actualDetection.getMaxMergeTimeBetweenSameStayPoints() == expectedDetection.getMaxMergeTimeBetweenSameStayPoints() &&
                actualMerging.getSearchDurationInHours() == expectedMerging.getSearchDurationInHours() &&
                actualMerging.getMaxMergeTimeBetweenSameVisits() == expectedMerging.getMaxMergeTimeBetweenSameVisits() &&
@@ -121,11 +109,11 @@ public class ConfigurationForm {
     
     private static DetectionParameter.VisitDetection mapSensitivityToVisitDetection(int level) {
         return switch (level) {
-            case 1 -> new DetectionParameter.VisitDetection(200, 8, 600, 600);   // Low sensitivity
-            case 2 -> new DetectionParameter.VisitDetection(150, 6, 450, 450);
-            case 3 -> new DetectionParameter.VisitDetection(100, 5, 300, 300);   // Medium (baseline)
-            case 4 -> new DetectionParameter.VisitDetection(75, 4, 225, 225);
-            case 5 -> new DetectionParameter.VisitDetection(50, 3, 150, 150);    // High sensitivity
+            case 1 -> new DetectionParameter.VisitDetection(600, 600);   // Low sensitivity
+            case 2 -> new DetectionParameter.VisitDetection(450, 450);
+            case 3 -> new DetectionParameter.VisitDetection(300, 300);   // Medium (baseline)
+            case 4 -> new DetectionParameter.VisitDetection(225, 225);
+            case 5 -> new DetectionParameter.VisitDetection(150, 150);    // High sensitivity
             default -> throw new IllegalArgumentException("Unhandled level [" + level + "] detected!");
         };
     }
@@ -150,8 +138,6 @@ public class ConfigurationForm {
         DetectionParameter.VisitDetection visitDetection = mapSensitivityToVisitDetection(level);
         DetectionParameter.VisitMerging visitMerging = mapSensitivityToVisitMerging(level);
         
-        this.searchDistanceInMeters = visitDetection.getSearchDistanceInMeters();
-        this.minimumAdjacentPoints = visitDetection.getMinimumAdjacentPoints();
         this.minimumStayTimeInSeconds = visitDetection.getMinimumStayTimeInSeconds();
         this.maxMergeTimeBetweenSameStayPoints = visitDetection.getMaxMergeTimeBetweenSameStayPoints();
         this.searchDurationInHours = visitMerging.getSearchDurationInHours();
@@ -172,9 +158,7 @@ public class ConfigurationForm {
         DetectionParameter.VisitDetection originalDetection = original.getVisitDetection();
         DetectionParameter.VisitDetection currentDetection = current.getVisitDetection();
         
-        if (originalDetection.getSearchDistanceInMeters() != currentDetection.getSearchDistanceInMeters() ||
-            originalDetection.getMinimumAdjacentPoints() != currentDetection.getMinimumAdjacentPoints() ||
-            originalDetection.getMinimumStayTimeInSeconds() != currentDetection.getMinimumStayTimeInSeconds() ||
+        if (originalDetection.getMinimumStayTimeInSeconds() != currentDetection.getMinimumStayTimeInSeconds() ||
             originalDetection.getMaxMergeTimeBetweenSameStayPoints() != currentDetection.getMaxMergeTimeBetweenSameStayPoints()) {
             return true;
         }
@@ -204,8 +188,6 @@ public class ConfigurationForm {
         } else {
             // Use advanced mode values
             visitDetection = new DetectionParameter.VisitDetection(
-                searchDistanceInMeters,
-                minimumAdjacentPoints,
                 minimumStayTimeInSeconds,
                 maxMergeTimeBetweenSameStayPoints
             );
