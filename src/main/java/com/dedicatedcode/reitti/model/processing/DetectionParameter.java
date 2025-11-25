@@ -7,13 +7,15 @@ public class DetectionParameter implements Serializable {
     private final Long id;
     private final VisitDetection visitDetection;
     private final VisitMerging visitMerging;
+    private final LocationDensity locationDensity;
     private final Instant validSince;
     private final RecalculationState recalculationState;
 
-    public DetectionParameter(Long id, VisitDetection visitDetection, VisitMerging visitMerging, Instant validSince, RecalculationState recalculationState) {
+    public DetectionParameter(Long id, VisitDetection visitDetection, VisitMerging visitMerging, LocationDensity locationDensity, Instant validSince, RecalculationState recalculationState) {
         this.id = id;
         this.visitDetection = visitDetection;
         this.visitMerging = visitMerging;
+        this.locationDensity = locationDensity;
         this.validSince = validSince;
         this.recalculationState = recalculationState;
     }
@@ -30,6 +32,10 @@ public class DetectionParameter implements Serializable {
         return visitMerging;
     }
 
+    public LocationDensity getLocationDensity() {
+        return locationDensity;
+    }
+
     public Instant getValidSince() {
         return validSince;
     }
@@ -39,7 +45,11 @@ public class DetectionParameter implements Serializable {
     }
 
     public DetectionParameter withRecalculationState(RecalculationState recalculationState) {
-        return new DetectionParameter(this.id, this.visitDetection, this.visitMerging, this.validSince, recalculationState);
+        return new DetectionParameter(this.id, this.visitDetection, this.visitMerging, this.locationDensity, this.validSince, recalculationState);
+    }
+
+    public DetectionParameter withLocationDensity(LocationDensity locationDensity) {
+        return new DetectionParameter(this.id, this.visitDetection, this.visitMerging, locationDensity, this.validSince, this.recalculationState);
     }
 
     public static class VisitDetection implements Serializable {
@@ -95,6 +105,24 @@ public class DetectionParameter implements Serializable {
 
         public long getMinDistanceBetweenVisits() {
             return minDistanceBetweenVisits;
+        }
+    }
+
+    public static class LocationDensity implements Serializable {
+        private final double maxInterpolationDistanceMeters;
+        private final int maxInterpolationGapMinutes;
+
+        public LocationDensity(double maxInterpolationDistanceMeters, int maxInterpolationGapMinutes) {
+            this.maxInterpolationDistanceMeters = maxInterpolationDistanceMeters;
+            this.maxInterpolationGapMinutes = maxInterpolationGapMinutes;
+        }
+
+        public double getMaxInterpolationDistanceMeters() {
+            return maxInterpolationDistanceMeters;
+        }
+
+        public int getMaxInterpolationGapMinutes() {
+            return maxInterpolationGapMinutes;
         }
     }
 }
