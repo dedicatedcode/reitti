@@ -44,7 +44,12 @@ public class VisitDetectionParametersJdbcService {
                 rs.getLong("merging_min_distance_between_visits")
         );
 
-        return new DetectionParameter(id, visitDetection, visitMerging, validSince, recalculationState);
+        DetectionParameter.LocationDensity locationDensity = new DetectionParameter.LocationDensity(
+                rs.getDouble("density_max_interpolation_distance_meters"),
+                rs.getInt("density_max_interpolation_gap_minutes")
+        );
+
+        return new DetectionParameter(id, visitDetection, visitMerging, locationDensity, validSince, recalculationState);
     };
 
 
@@ -79,7 +84,8 @@ public class VisitDetectionParametersJdbcService {
                 user_id, valid_since, detection_search_distance_meters,
                 detection_minimum_adjacent_points, detection_minimum_stay_time_seconds,
                 detection_max_merge_time_between_same_stay_points, merging_search_duration_in_hours,
-                merging_max_merge_time_between_same_visits, merging_min_distance_between_visits, recalculation_state) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                merging_max_merge_time_between_same_visits, merging_min_distance_between_visits,
+                density_max_interpolation_distance_meters, density_max_interpolation_gap_minutes, recalculation_state) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
         
         Timestamp validSinceTimestamp = detectionParameter.getValidSince() != null ?
@@ -95,6 +101,8 @@ public class VisitDetectionParametersJdbcService {
             detectionParameter.getVisitMerging().getSearchDurationInHours(),
             detectionParameter.getVisitMerging().getMaxMergeTimeBetweenSameVisits(),
             detectionParameter.getVisitMerging().getMinDistanceBetweenVisits(),
+            detectionParameter.getLocationDensity().getMaxInterpolationDistanceMeters(),
+            detectionParameter.getLocationDensity().getMaxInterpolationGapMinutes(),
             detectionParameter.getRecalculationState().name()
         );
     }
@@ -111,6 +119,8 @@ public class VisitDetectionParametersJdbcService {
                 merging_search_duration_in_hours = ?,
                 merging_max_merge_time_between_same_visits = ?,
                 merging_min_distance_between_visits = ?,
+                density_max_interpolation_distance_meters = ?,
+                density_max_interpolation_gap_minutes = ?,
                 recalculation_state = ?
             WHERE id = ?
             """;
@@ -127,6 +137,8 @@ public class VisitDetectionParametersJdbcService {
             detectionParameter.getVisitMerging().getSearchDurationInHours(),
             detectionParameter.getVisitMerging().getMaxMergeTimeBetweenSameVisits(),
             detectionParameter.getVisitMerging().getMinDistanceBetweenVisits(),
+            detectionParameter.getLocationDensity().getMaxInterpolationDistanceMeters(),
+            detectionParameter.getLocationDensity().getMaxInterpolationGapMinutes(),
             detectionParameter.getRecalculationState().name(),
             detectionParameter.getId()
         );

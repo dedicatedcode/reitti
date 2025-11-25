@@ -216,8 +216,11 @@ public class ConfigurationForm {
             );
         }
         
+        // Use default location density parameters for now
+        DetectionParameter.LocationDensity locationDensity = new DetectionParameter.LocationDensity(500.0, 120);
+        
         Instant validSinceInstant = validSince != null ? ZonedDateTime.of(validSince.atStartOfDay(), timezone).toInstant() : null;
         
-        return new DetectionParameter(getId(), visitDetection, visitMerging, validSinceInstant, RecalculationState.NEEDED);
+        return new DetectionParameter(getId(), visitDetection, visitMerging, locationDensity, validSinceInstant, RecalculationState.NEEDED);
     }
 }
