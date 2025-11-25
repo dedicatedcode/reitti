@@ -24,18 +24,21 @@ public class LocationDataIngestPipeline {
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final UserNotificationService userNotificationService;
+    private final LocationDataDensityNormalizer densityNormalizer;
 
     @Autowired
     public LocationDataIngestPipeline(GeoPointAnomalyFilter geoPointAnomalyFilter,
                                       UserJdbcService userJdbcService,
                                       RawLocationPointJdbcService rawLocationPointJdbcService,
                                       UserSettingsJdbcService userSettingsJdbcService,
-                                      UserNotificationService userNotificationService) {
+                                      UserNotificationService userNotificationService,
+                                      LocationDataDensityNormalizer densityNormalizer) {
         this.geoPointAnomalyFilter = geoPointAnomalyFilter;
         this.userJdbcService = userJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.userNotificationService = userNotificationService;
+        this.densityNormalizer = densityNormalizer;
     }
 
     public void processLocationData(LocationDataEvent event) {
@@ -51,9 +54,17 @@ public class LocationDataIngestPipeline {
         User user = userOpt.get();
         List<LocationPoint> points = event.getPoints();
         List<LocationPoint> filtered = this.geoPointAnomalyFilter.filterAnomalies(points);
+        
+        // Store real points first
         int updatedRows = rawLocationPointJdbcService.bulkInsert(user, filtered);
+        
+        // Normalize density around each new point
+        for (LocationPoint point : filtered) {
+            densityNormalizer.normalizeAroundPoint(user, point);
+        }
+        
         userSettingsJdbcService.updateNewestData(user, filtered);
         userNotificationService.newRawLocationData(user, filtered);
-        logger.info("Finished storing points [{}] for user [{}] in [{}]ms. Filtered out [{}] points before database and [{}] after database.", filtered.size(), event.getUsername(), System.currentTimeMillis() - start, points.size() - filtered.size(), filtered.size() - updatedRows);
+        logger.info("Finished storing and normalizing points [{}] for user [{}] in [{}]ms. Filtered out [{}] points before database and [{}] after database.", filtered.size(), event.getUsername(), System.currentTimeMillis() - start, points.size() - filtered.size(), filtered.size() - updatedRows);
     }
 }
