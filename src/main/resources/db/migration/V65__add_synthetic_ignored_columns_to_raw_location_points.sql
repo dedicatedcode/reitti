@@ -1,5 +1,8 @@
--- Add synthetic and ignored columns to raw_location_points table
-ALTER TABLE raw_location_points 
+ALTER TABLE raw_location_points
+ADD COLUMN synthetic BOOLEAN DEFAULT FALSE,
+ADD COLUMN ignored BOOLEAN DEFAULT FALSE;
+
+ALTER TABLE preview_raw_location_points
 ADD COLUMN synthetic BOOLEAN DEFAULT FALSE,
 ADD COLUMN ignored BOOLEAN DEFAULT FALSE;
 
