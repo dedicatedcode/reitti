@@ -96,11 +96,6 @@ public class SyntheticLocationPointGenerator {
             return false;
         }
         
-        // Additional checks could be added here:
-        // - Check if time gap is reasonable
-        // - Check if accuracy values are reasonable
-        // - Check if points are not anomalous
-        
         return true;
     }
     

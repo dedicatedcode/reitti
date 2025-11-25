@@ -4,7 +4,6 @@ import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ImportBatchProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
-import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
 import com.dedicatedcode.reitti.service.importer.dto.GoogleTimelineData;
 import com.dedicatedcode.reitti.service.importer.dto.SemanticSegment;
 import com.dedicatedcode.reitti.service.importer.dto.TimelinePathPoint;
@@ -34,9 +33,8 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
 
     public GoogleAndroidTimelineImporter(ObjectMapper objectMapper,
                                          ImportStateHolder stateHolder,
-                                         ImportBatchProcessor batchProcessor,
-                                         VisitDetectionParametersService visitDetectionParametersService) {
-        super(objectMapper, batchProcessor, visitDetectionParametersService);
+                                         ImportBatchProcessor batchProcessor) {
+        super(objectMapper, batchProcessor);
         this.stateHolder = stateHolder;
     }
 
