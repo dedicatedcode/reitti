@@ -110,9 +110,9 @@ public class DetectionParameter implements Serializable {
 
     public static class LocationDensity implements Serializable {
         private final double maxInterpolationDistanceMeters;
-        private final int maxInterpolationGapMinutes;
+        private final long maxInterpolationGapMinutes;
 
-        public LocationDensity(double maxInterpolationDistanceMeters, int maxInterpolationGapMinutes) {
+        public LocationDensity(double maxInterpolationDistanceMeters, long maxInterpolationGapMinutes) {
             this.maxInterpolationDistanceMeters = maxInterpolationDistanceMeters;
             this.maxInterpolationGapMinutes = maxInterpolationGapMinutes;
         }
@@ -121,7 +121,7 @@ public class DetectionParameter implements Serializable {
             return maxInterpolationDistanceMeters;
         }
 
-        public int getMaxInterpolationGapMinutes() {
+        public long getMaxInterpolationGapMinutes() {
             return maxInterpolationGapMinutes;
         }
     }
