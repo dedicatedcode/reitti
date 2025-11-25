@@ -42,4 +42,13 @@ class GeoUtilsTest {
 
         assertEquals(22664.67856, calculatedDistances, 0.01);
     }
+
+    @Test
+    void verifyKnowDistance() {
+        double distance = GeoUtils.distanceInMeters(53.863149, 10.700927, 53.863149, 10.700927);
+        assertEquals(0, distance, 0.001);
+
+        distance = GeoUtils.distanceInMeters(53.86311997086828, 10.697632182858786,53.863101456971975, 10.701659658003141);
+        assertEquals(264.103574, distance, 0.001);
+    }
 }

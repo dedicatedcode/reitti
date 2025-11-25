@@ -32,13 +32,7 @@ class LocationDataDensityNormalizerTest {
     private RawLocationPointJdbcService rawLocationPointService;
 
     @Autowired
-    private VisitDetectionParametersService visitDetectionParametersService;
-
-    @Autowired
     private TestingService testingService;
-
-    @Autowired
-    private LocationDensityConfig config;
 
     private User testUser;
 
@@ -55,7 +49,7 @@ class LocationDataDensityNormalizerTest {
         Instant endTime = startTime.plus(2, ChronoUnit.MINUTES);
 
         RawLocationPoint point1 = createAndSaveRawPoint(startTime, 50.0, 8.0);
-        RawLocationPoint point2 = createAndSaveRawPoint(endTime, 50.001, 8.001);
+        RawLocationPoint point2 = createAndSaveRawPoint(endTime, 50.0001, 8.0001);
 
         // When: Normalize around a new point in between
         LocationPoint newPoint = createLocationPoint(startTime.plus(1, ChronoUnit.MINUTES), 50.0005, 8.0005);

@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti;
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
+import com.dedicatedcode.reitti.service.UserService;
 import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
 import com.dedicatedcode.reitti.service.importer.GpxImporter;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
@@ -49,6 +50,8 @@ public class TestingService {
     private VisitJdbcService visitRepository;
     @Autowired
     private ProcessingPipelineTrigger trigger;
+    @Autowired
+    private UserService userService;
 
     public void importData(String path) {
         User admin = userJdbcService.findById(1L)
@@ -69,7 +72,7 @@ public class TestingService {
     }
 
     public User randomUser() {
-        return this.userJdbcService.createUser(new User(UUID.randomUUID().toString(), "Test User"));
+        return this.userService.createNewUser("test-user_" + UUID.randomUUID().toString(),"Test User", null, null);
     }
 
     public void triggerProcessingPipeline(int timeout) {
