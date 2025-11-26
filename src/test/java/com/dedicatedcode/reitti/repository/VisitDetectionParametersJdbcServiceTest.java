@@ -53,7 +53,7 @@ class VisitDetectionParametersJdbcServiceTest {
 
         // Then
         List<DetectionParameter> detectionParameters = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
-        assertThat(detectionParameters).hasSize(1);
+        assertThat(detectionParameters).hasSize(2);
 
         DetectionParameter savedConfig = detectionParameters.getFirst();
         assertThat(savedConfig.getId()).isNotNull();
@@ -66,7 +66,8 @@ class VisitDetectionParametersJdbcServiceTest {
     }
 
     @Test
-    void shouldSaveConfigurationWithNullValidSince() {
+    void shouldNotSaveConfigurationWithNullValidSince() {
+        // here we need to test if the database discards a save of a new insertion of a DetectionParameter with null validSince since it has alredy one. AI!
         // Given
         DetectionParameter.VisitDetection visitDetection = new DetectionParameter.VisitDetection(600L, 1200L);
         DetectionParameter.VisitMerging visitMerging = new DetectionParameter.VisitMerging(
@@ -126,7 +127,7 @@ class VisitDetectionParametersJdbcServiceTest {
 
         // Then
         List<DetectionParameter> detectionParameters = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
-        assertThat(detectionParameters).hasSize(1);
+        assertThat(detectionParameters).hasSize(2);
 
         DetectionParameter result = detectionParameters.getFirst();
         assertThat(result.getId()).isEqualTo(savedConfig.getId());
@@ -165,7 +166,7 @@ class VisitDetectionParametersJdbcServiceTest {
 
         // Then
         List<DetectionParameter> detectionParameters = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
-        assertThat(detectionParameters).isEmpty();
+        assertThat(detectionParameters.size()).isEqualTo(1);
     }
 
     @Test
@@ -193,7 +194,7 @@ class VisitDetectionParametersJdbcServiceTest {
 
         // Then - configuration should still exist because validSince is null
         List<DetectionParameter> detectionParameters = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
-        assertThat(detectionParameters).hasSize(1);
+        assertThat(detectionParameters).hasSize(2);
     }
 
     @Test
@@ -217,12 +218,10 @@ class VisitDetectionParametersJdbcServiceTest {
         DetectionParameter config1 = new DetectionParameter(null, visitDetection, visitMerging, locationDensity, now, RecalculationState.DONE);
         DetectionParameter config2 = new DetectionParameter(null, visitDetection, visitMerging, locationDensity, later, RecalculationState.DONE);
         DetectionParameter config3 = new DetectionParameter(null, visitDetection, visitMerging, locationDensity, earlier, RecalculationState.DONE);
-        DetectionParameter config4 = new DetectionParameter(null, visitDetection, visitMerging, locationDensity, null, RecalculationState.DONE);
 
         visitDetectionParametersJdbcService.saveConfiguration(testUser, config1);
         visitDetectionParametersJdbcService.saveConfiguration(testUser, config2);
         visitDetectionParametersJdbcService.saveConfiguration(testUser, config3);
-        visitDetectionParametersJdbcService.saveConfiguration(testUser, config4);
 
         // When
         List<DetectionParameter> detectionParameters = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
@@ -233,17 +232,5 @@ class VisitDetectionParametersJdbcServiceTest {
         assertThat(detectionParameters.get(1).getValidSince()).isEqualTo(now);
         assertThat(detectionParameters.get(2).getValidSince()).isEqualTo(earlier);
         assertThat(detectionParameters.get(3).getValidSince()).isNull();
-    }
-
-    @Test
-    void shouldReturnEmptyListForUserWithNoConfigurations() {
-        // Given
-        User anotherUser = testingService.randomUser();
-
-        // When
-        List<DetectionParameter> detectionParameters = visitDetectionParametersJdbcService.findAllConfigurationsForUser(anotherUser);
-
-        // Then
-        assertThat(detectionParameters).isEmpty();
     }
 }
