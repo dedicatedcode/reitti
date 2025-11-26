@@ -49,10 +49,6 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
             List<IOSSemanticSegment> semanticSegments = objectMapper.readValue(parser, new TypeReference<>() {});
             logger.info("Found {} semantic segments", semanticSegments.size());
             for (IOSSemanticSegment semanticSegment : semanticSegments) {
-                //2024-01-01T00:33:18+01:00
-                //2024-01-01T00:33:18+01:00
-
-
                 ZonedDateTime start = ZonedDateTime.parse(semanticSegment.getStartTime(), DateTimeFormatter.ISO_OFFSET_DATE_TIME).withNano(0);
                 ZonedDateTime end = ZonedDateTime.parse(semanticSegment.getEndTime(), DateTimeFormatter.ISO_OFFSET_DATE_TIME).withNano(0);
                 if (semanticSegment.getVisit() != null) {

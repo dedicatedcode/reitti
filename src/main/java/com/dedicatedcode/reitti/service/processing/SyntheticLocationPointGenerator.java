@@ -26,7 +26,7 @@ public class SyntheticLocationPointGenerator {
             double maxDistanceMeters) {
         
         if (!shouldInterpolate(startPoint, endPoint, maxDistanceMeters)) {
-            logger.debug("Skipping interpolation between points: distance too large or other constraints not met");
+            logger.trace("Skipping interpolation between points: distance too large or other constraints not met");
             return List.of();
         }
         
@@ -80,7 +80,7 @@ public class SyntheticLocationPointGenerator {
             currentTime = currentTime.plusSeconds(intervalSeconds);
         }
         
-        logger.debug("Generated {} synthetic points between {} and {}", 
+        logger.trace("Generated {} synthetic points between {} and {}",
             syntheticPoints.size(), startTime, endTime);
         
         return syntheticPoints;
@@ -91,7 +91,7 @@ public class SyntheticLocationPointGenerator {
         double distance = GeoUtils.distanceInMeters(start, end);
         
         if (distance > maxDistance) {
-            logger.debug("Distance {} meters exceeds maximum interpolation distance {} meters", 
+            logger.trace("Distance {} meters exceeds maximum interpolation distance {} meters",
                 distance, maxDistance);
             return false;
         }

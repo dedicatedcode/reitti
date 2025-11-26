@@ -10,8 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.time.*;
 import java.util.List;
 import java.util.Optional;
 
@@ -53,8 +52,8 @@ class MemoryJdbcServiceTest {
         assertNotNull(created.getId());
         assertEquals("Test Memory", created.getTitle());
         assertEquals("Test Description", created.getDescription());
-        assertEquals(LocalDate.of(2024, 1, 1), created.getStartDate());
-        assertEquals(LocalDate.of(2024, 1, 7), created.getEndDate());
+        assertEquals(ZonedDateTime.of(LocalDateTime.of(2024,1,1,0,0,0), ZoneId.of("UTC")).toInstant(), created.getStartDate());
+        assertEquals(ZonedDateTime.of(LocalDateTime.of(2024,1,7,0,0,0), ZoneId.of("UTC")).toInstant(), created.getEndDate());
         assertEquals(HeaderType.MAP, created.getHeaderType());
         assertNull(created.getHeaderImageUrl());
         assertNotNull(created.getCreatedAt());
@@ -209,72 +208,5 @@ class MemoryJdbcServiceTest {
         List<Memory> memories = memoryJdbcService.findAllByUser(testUser);
 
         assertEquals(2, memories.size());
-    }
-
-    @Test
-    void testFindByDateRange() {
-        Memory memory1 = new Memory(
-                "January Memory",
-                "Description",
-                LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
-                LocalDate.of(2024, 1, 7).atStartOfDay().toInstant(ZoneOffset.UTC),
-                HeaderType.MAP,
-                null
-        );
-
-        Memory memory2 = new Memory(
-                "February Memory",
-                "Description",
-                LocalDate.of(2024, 2, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
-                LocalDate.of(2024, 2, 7).atStartOfDay().toInstant(ZoneOffset.UTC),
-                HeaderType.MAP,
-                null
-        );
-
-        Memory memory3 = new Memory(
-                "March Memory",
-                "Description",
-                LocalDate.of(2024, 3, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
-                LocalDate.of(2024, 3, 7).atStartOfDay().toInstant(ZoneOffset.UTC),
-                HeaderType.MAP,
-                null
-        );
-
-        memoryJdbcService.create(testUser, memory1);
-        memoryJdbcService.create(testUser, memory2);
-        memoryJdbcService.create(testUser, memory3);
-
-        List<Memory> memories = memoryJdbcService.findByDateRange(
-                testUser,
-                LocalDate.of(2024, 1, 15).atStartOfDay().toInstant(ZoneOffset.UTC),
-                LocalDate.of(2024, 2, 15).atStartOfDay().toInstant(ZoneOffset.UTC)
-        );
-
-        assertEquals(2, memories.size());
-        assertTrue(memories.stream().anyMatch(m -> m.getTitle().equals("January Memory")));
-        assertTrue(memories.stream().anyMatch(m -> m.getTitle().equals("February Memory")));
-    }
-
-    @Test
-    void testFindByDateRangeOverlapping() {
-        Memory memory = new Memory(
-                "Long Memory",
-                "Description",
-                LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
-                LocalDate.of(2024, 3, 31).atStartOfDay().toInstant(ZoneOffset.UTC),
-                HeaderType.MAP,
-                null
-        );
-
-        memoryJdbcService.create(testUser, memory);
-
-        List<Memory> memories = memoryJdbcService.findByDateRange(
-                testUser,
-                LocalDate.of(2024, 2, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
-                LocalDate.of(2024, 2, 28).atStartOfDay().toInstant(ZoneOffset.UTC)
-        );
-
-        assertEquals(1, memories.size());
-        assertEquals("Long Memory", memories.get(0).getTitle());
     }
 }

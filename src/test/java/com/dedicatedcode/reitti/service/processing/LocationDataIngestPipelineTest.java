@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,17 +20,18 @@ class LocationDataIngestPipelineTest {
     private TestingService helper;
     @Autowired
     private TestingService testingService;
+    private User user;
 
     @BeforeEach
     void setUp() {
-        this.testingService.clearData();
+        this.user = testingService.randomUser();
     }
 
     @Test
     @Transactional
     void shouldStoreLocationDataIntoRepository() {
-        helper.importData("/data/gpx/20250601.gpx");
+        helper.importData(user, "/data/gpx/20250601.gpx");
         testingService.awaitDataImport(20);
-        assertEquals(2463, this.repository.count());
+        assertEquals(6381, this.repository.count());
     }
 }

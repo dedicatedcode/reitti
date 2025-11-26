@@ -44,7 +44,7 @@ public class LocationDataDensityNormalizer {
     
     public void normalizeAroundPoint(User user, LocationPoint newPoint) {
         try {
-            logger.debug("Starting density normalization around point at {} for user {}", 
+            logger.trace("Starting density normalization around point at {} for user {}",
                 newPoint.getTimestamp(), user.getUsername());
             
             // Get user's detection parameters for interpolation limits
@@ -61,7 +61,7 @@ public class LocationDataDensityNormalizer {
             // Sort points by timestamp
             surroundingPoints.sort(Comparator.comparing(RawLocationPoint::getTimestamp));
             
-            logger.debug("Found {} surrounding points in window of {} minutes", 
+            logger.trace("Found {} surrounding points in window of {} minutes",
                 surroundingPoints.size(), densityConfig.getMaxInterpolationGapMinutes());
             
             // Process gaps and excess density
@@ -90,7 +90,7 @@ public class LocationDataDensityNormalizer {
             long gapSeconds = Duration.between(current.getTimestamp(), next.getTimestamp()).getSeconds();
             
             if (gapSeconds > gapThresholdSeconds) {
-                logger.debug("Found gap of {} seconds between {} and {}", 
+                logger.trace("Found gap of {} seconds between {} and {}",
                     gapSeconds, current.getTimestamp(), next.getTimestamp());
                 
                 // Check if gap is within interpolation limits
@@ -136,7 +136,7 @@ public class LocationDataDensityNormalizer {
                 
                 if (toIgnore != null && !toIgnore.isIgnored()) {
                     pointsToIgnore.add(toIgnore.getId());
-                    logger.debug("Marking point {} as ignored due to excess density", toIgnore.getId());
+                    logger.trace("Marking point {} as ignored due to excess density", toIgnore.getId());
                 }
             }
         }

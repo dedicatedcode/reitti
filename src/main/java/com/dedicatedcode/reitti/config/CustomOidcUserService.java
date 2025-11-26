@@ -141,7 +141,7 @@ public class CustomOidcUserService extends OidcUserService {
                 log.warn("No avatar data received from URL: {}", avatarUrl);
             }
         } catch (Exception e) {
-            log.warn("Failed to download avatar from URL: {} for user ID: {}", avatarUrl, userId, e);
+            log.warn("Failed to download avatar from URL: {} for user ID: {}. {}", avatarUrl, userId, e.getMessage());
         }
     }
     

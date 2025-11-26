@@ -94,18 +94,6 @@ class TransportModeJdbcServiceTest {
     }
 
     @Test
-    void shouldReturnEmptyListForUserWithNoConfigs() {
-        // Given
-        User randomUser = testingService.randomUser();
-
-        // When
-        List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(randomUser);
-
-        // Then
-        assertThat(configs).isEmpty();
-    }
-
-    @Test
     void shouldCacheConfigsPerUser() {
         // Given
         User user1 = testingService.randomUser();

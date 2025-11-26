@@ -189,4 +189,8 @@ public class VisitJdbcService {
     public void deleteAllForUserAfter(User user, Instant start) {
         jdbcTemplate.update("DELETE FROM visits WHERE user_id = ?  AND end_time >= ?", user.getId(), Timestamp.from(start));
     }
+
+    public long count() {
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM visits", Long.class);
+    }
 }

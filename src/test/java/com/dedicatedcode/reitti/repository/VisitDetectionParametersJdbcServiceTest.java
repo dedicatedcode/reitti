@@ -8,12 +8,14 @@ import com.dedicatedcode.reitti.model.security.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 @IntegrationTest
 class VisitDetectionParametersJdbcServiceTest {
@@ -67,19 +69,6 @@ class VisitDetectionParametersJdbcServiceTest {
 
     @Test
     void shouldNotSaveConfigurationWithNullValidSinceWhenOneAlreadyExists() {
-        // Given - First save a configuration with null validSince (this creates the default one)
-        DetectionParameter.VisitDetection firstVisitDetection = new DetectionParameter.VisitDetection(300L, 600L);
-        DetectionParameter.VisitMerging firstVisitMerging = new DetectionParameter.VisitMerging(
-                24L, 1800L, 50L
-        );
-        DetectionParameter.LocationDensity firstLocationDensity = new DetectionParameter.LocationDensity(
-                100, 1440
-        );
-        DetectionParameter firstDetectionParameter = new DetectionParameter(
-                null, firstVisitDetection, firstVisitMerging, firstLocationDensity, null, RecalculationState.DONE
-        );
-        visitDetectionParametersJdbcService.saveConfiguration(testUser, firstDetectionParameter);
-
         // Verify first configuration was saved
         List<DetectionParameter> afterFirst = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
         assertThat(afterFirst).hasSize(1);
@@ -96,7 +85,9 @@ class VisitDetectionParametersJdbcServiceTest {
         DetectionParameter secondDetectionParameter = new DetectionParameter(
                 null, secondVisitDetection, secondVisitMerging, secondLocationDensity, null, RecalculationState.DONE
         );
-        visitDetectionParametersJdbcService.saveConfiguration(testUser, secondDetectionParameter);
+
+        assertThatExceptionOfType(DuplicateKeyException.class)
+                .isThrownBy(() -> visitDetectionParametersJdbcService.saveConfiguration(testUser, secondDetectionParameter));
 
         // Then - Should still have only one configuration (the database should discard the second one)
         List<DetectionParameter> detectionParameters = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
@@ -104,7 +95,7 @@ class VisitDetectionParametersJdbcServiceTest {
         assertThat(detectionParameters.getFirst().getValidSince()).isNull();
         // The values should still be from the first configuration, not the second
         assertThat(detectionParameters.getFirst().getVisitDetection().getMinimumStayTimeInSeconds()).isEqualTo(300L);
-        assertThat(detectionParameters.getFirst().getVisitDetection().getMaxMergeTimeBetweenSameStayPoints()).isEqualTo(600L);
+        assertThat(detectionParameters.getFirst().getVisitDetection().getMaxMergeTimeBetweenSameStayPoints()).isEqualTo(300L);
     }
 
     @Test
@@ -189,21 +180,6 @@ class VisitDetectionParametersJdbcServiceTest {
 
     @Test
     void shouldNotDeleteConfigurationWithNullValidSince() {
-        // Given - save configuration with null validSince
-        DetectionParameter.VisitDetection visitDetection = new DetectionParameter.VisitDetection(
-                300L, 600L
-        );
-        DetectionParameter.VisitMerging visitMerging = new DetectionParameter.VisitMerging(
-                24L, 1800L, 50L
-        );
-        DetectionParameter.LocationDensity locationDensity = new DetectionParameter.LocationDensity(
-                50, 720
-        );
-        DetectionParameter detectionParameter = new DetectionParameter(
-                null, visitDetection, visitMerging, locationDensity, null, RecalculationState.DONE
-        );
-        visitDetectionParametersJdbcService.saveConfiguration(testUser, detectionParameter);
-
         List<DetectionParameter> savedConfigs = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
         Long configId = savedConfigs.getFirst().getId();
 
@@ -212,7 +188,8 @@ class VisitDetectionParametersJdbcServiceTest {
 
         // Then - configuration should still exist because validSince is null
         List<DetectionParameter> detectionParameters = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
-        assertThat(detectionParameters).hasSize(2);
+        assertThat(detectionParameters).hasSize(1);
+        assertThat(detectionParameters.getFirst().getValidSince()).isNull();
     }
 
     @Test

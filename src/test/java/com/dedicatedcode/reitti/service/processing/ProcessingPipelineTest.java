@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.Trip;
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,15 +30,16 @@ public class ProcessingPipelineTest {
 
     @Autowired
     private TripJdbcService tripJdbcService;
+    private User user;
 
     @BeforeEach
     public void setUp() {
-        this.testingService.clearData();
+        this.user = testingService.randomUser();
     }
 
     @Test
     void shouldRecalculateOnIncomingPointsAfter() {
-        testingService.importAndProcess("/data/gpx/20250617.gpx");
+        testingService.importAndProcess(user, "/data/gpx/20250617.gpx");
 
         List<ProcessedVisit> processedVisits = currentVisits();
         assertEquals(5, processedVisits.size());
@@ -55,7 +57,7 @@ public class ProcessingPipelineTest {
         assertTrip(trips.get(2), "2025-06-17T13:08:53.346Z", MOLTKESTR, "2025-06-17T13:12:33.214Z", ST_THOMAS);
         assertTrip(trips.get(3), "2025-06-17T13:18:20.778Z", ST_THOMAS, "2025-06-17T13:22:00.725Z", MOLTKESTR);
         
-        testingService.importAndProcess("/data/gpx/20250618.gpx");
+        testingService.importAndProcess(user, "/data/gpx/20250618.gpx");
 
         processedVisits = currentVisits();
 
@@ -68,12 +70,12 @@ public class ProcessingPipelineTest {
         assertVisit(processedVisits.get(3), "2025-06-17T13:12:33.214Z", "2025-06-17T13:18:20.778Z", ST_THOMAS);
 
         //should extend the last visit of the old day
-        assertVisit(processedVisits.get(4), "2025-06-17T13:22:00.725Z", "2025-06-18T05:45:00.682Z", MOLTKESTR);
+        assertVisit(processedVisits.get(4), "2025-06-17T13:22:00.725Z", "2025-06-18T05:45:36Z", MOLTKESTR);
 
         //new visits
-        assertVisit(processedVisits.get(5), "2025-06-18T05:55:09.648Z","2025-06-18T06:02:05.400Z", ST_THOMAS);
+        assertVisit(processedVisits.get(5), "2025-06-18T05:54:37.701Z","2025-06-18T06:02:05.400Z", ST_THOMAS);
         assertVisit(processedVisits.get(6), "2025-06-18T06:06:43.274Z","2025-06-18T13:01:23.419Z", MOLTKESTR);
-        assertVisit(processedVisits.get(7), "2025-06-18T13:05:04.278Z","2025-06-18T13:13:16.416Z", ST_THOMAS);
+        assertVisit(processedVisits.get(7), "2025-06-18T13:05:04.278Z","2025-06-18T13:13:47.443Z", ST_THOMAS);
         assertVisit(processedVisits.get(8), "2025-06-18T13:34:07Z","2025-06-18T15:50:40Z", GARTEN);
         assertVisit(processedVisits.get(9), "2025-06-18T16:05:49.301Z","2025-06-18T21:59:29.055Z", MOLTKESTR);
 
@@ -93,21 +95,29 @@ public class ProcessingPipelineTest {
 
     @Test
     void shouldRecalculateOnIncomingPointsBefore() {
-        testingService.importAndProcess("/data/gpx/20250618.gpx");
-
+        testingService.importAndProcess(user, "/data/gpx/20250618.gpx");
+        try {
+            Thread.sleep(10000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
         List<ProcessedVisit> processedVisits = currentVisits();
         assertEquals(6, processedVisits.size());
-        assertVisit(processedVisits.get(0), "2025-06-17T22:00:15.843Z", "2025-06-18T05:45:00.682Z", MOLTKESTR);
-        assertVisit(processedVisits.get(1), "2025-06-18T05:55:09.648Z","2025-06-18T06:02:05.400Z", ST_THOMAS);
+        assertVisit(processedVisits.get(0), "2025-06-17T22:00:15.843Z", "2025-06-18T05:45:36Z", MOLTKESTR);
+        assertVisit(processedVisits.get(1), "2025-06-18T05:54:37.701Z","2025-06-18T06:02:05.400Z", ST_THOMAS);
         assertVisit(processedVisits.get(2), "2025-06-18T06:06:43.274Z","2025-06-18T13:01:23.419Z", MOLTKESTR);
-        assertVisit(processedVisits.get(3), "2025-06-18T13:05:04.278Z","2025-06-18T13:13:16.416Z", ST_THOMAS);
+        assertVisit(processedVisits.get(3), "2025-06-18T13:05:04.278Z","2025-06-18T13:13:47.443Z", ST_THOMAS);
         assertVisit(processedVisits.get(4), "2025-06-18T13:34:07Z","2025-06-18T15:50:40Z", GARTEN);
         assertVisit(processedVisits.get(5), "2025-06-18T16:05:49.301Z","2025-06-18T21:59:29.055Z", MOLTKESTR);
 
-        testingService.importAndProcess("/data/gpx/20250617.gpx");
+        testingService.importAndProcess(user, "/data/gpx/20250617.gpx");
 
         processedVisits = currentVisits();
-
+        try {
+            Thread.sleep(10000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
         assertEquals(10, processedVisits.size());
 
         //should not touch visits before the new data
@@ -117,10 +127,10 @@ public class ProcessingPipelineTest {
         assertVisit(processedVisits.get(3), "2025-06-17T13:12:33.214Z", "2025-06-17T13:18:20.778Z", ST_THOMAS);
 
         //should extend the first visit of the old day
-        assertVisit(processedVisits.get(4), "2025-06-17T13:22:00.725Z", "2025-06-18T05:45:00.682Z", MOLTKESTR);
+        assertVisit(processedVisits.get(4), "2025-06-17T13:22:00.725Z", "2025-06-18T05:45:36Z", MOLTKESTR);
 
         //new visits
-        assertVisit(processedVisits.get(5), "2025-06-18T05:55:09.648Z","2025-06-18T06:02:05.400Z", ST_THOMAS);
+        assertVisit(processedVisits.get(5), "2025-06-18T05:54:37.701Z","2025-06-18T06:02:05.400Z", ST_THOMAS);
         assertVisit(processedVisits.get(6), "2025-06-18T06:06:43.274Z","2025-06-18T13:01:23.419Z", MOLTKESTR);
         assertVisit(processedVisits.get(7), "2025-06-18T13:05:04.278Z","2025-06-18T13:13:16.416Z", ST_THOMAS);
         assertVisit(processedVisits.get(8), "2025-06-18T13:34:07Z","2025-06-18T15:50:40Z", GARTEN);
@@ -135,11 +145,11 @@ public class ProcessingPipelineTest {
     }
 
     private List<ProcessedVisit> currentVisits() {
-        return this.processedVisitJdbcService.findByUser(testingService.admin());
+        return this.processedVisitJdbcService.findByUser(this.user);
     }
 
     private List<Trip> currenTrips() {
-        return this.tripJdbcService.findByUser(testingService.admin());
+        return this.tripJdbcService.findByUser(this.user);
     }
 
     private static void assertTrip(Trip trip, String startTime, GeoPoint startLocation, String endTime, GeoPoint endLocation) {

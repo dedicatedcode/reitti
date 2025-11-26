@@ -91,7 +91,7 @@ public class ConfigurationForm {
                 return level;
             }
         }
-        return null; // No match found
+        return null;
     }
     
     private static boolean configurationMatches(DetectionParameter config,

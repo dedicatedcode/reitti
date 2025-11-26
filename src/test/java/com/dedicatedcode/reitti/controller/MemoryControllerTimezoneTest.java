@@ -4,7 +4,6 @@ import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.memory.MemoryDTO;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.MemoryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.MockMvc;
@@ -30,10 +29,6 @@ public class MemoryControllerTimezoneTest {
 
     @Autowired
     private TestingService testingService;
-
-    @Autowired
-    private MemoryService memoryService;
-
 
     @Test
     public void testCreateAndRetrieveMemoryWithDifferentTimezones() throws Exception {
@@ -67,7 +62,7 @@ public class MemoryControllerTimezoneTest {
             // Extract memory ID from redirect header
             String redirectHeader = createResult.getResponse().getHeader("HX-Redirect");
             assertThat(redirectHeader).isNotNull();
-            Long memoryId = Long.parseLong(redirectHeader.substring("/memories/".length()));
+            Long memoryId = Long.parseLong(redirectHeader.substring("/memories/".length(), redirectHeader.lastIndexOf("?")));
             
             // Retrieve memory with the same timezone
             MvcResult viewResult = mockMvc.perform(get("/memories/{id}", memoryId)
@@ -134,7 +129,8 @@ public class MemoryControllerTimezoneTest {
                 .andReturn();
         
         String redirectHeader = createResult.getResponse().getHeader("HX-Redirect");
-        Long memoryId = Long.parseLong(redirectHeader.substring("/memories/".length()));
+        assertThat(redirectHeader).isNotNull();
+        Long memoryId = Long.parseLong(redirectHeader.substring("/memories/".length(), redirectHeader.lastIndexOf("?")));
         
         // Retrieve with Berlin timezone
         MvcResult berlinResult = mockMvc.perform(get("/memories/{id}", memoryId)
@@ -190,7 +186,8 @@ public class MemoryControllerTimezoneTest {
                 .andReturn();
         
         String redirectHeader = createResult.getResponse().getHeader("HX-Redirect");
-        Long memoryId = Long.parseLong(redirectHeader.substring("/memories/".length()));
+        assertThat(redirectHeader).isNotNull();
+        Long memoryId = Long.parseLong(redirectHeader.substring("/memories/".length(), redirectHeader.lastIndexOf("?")));
         
         // Retrieve the memory
         MvcResult result = mockMvc.perform(get("/memories/{id}", memoryId)
