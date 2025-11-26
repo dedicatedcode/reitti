@@ -66,27 +66,45 @@ class VisitDetectionParametersJdbcServiceTest {
     }
 
     @Test
-    void shouldNotSaveConfigurationWithNullValidSince() {
-        // here we need to test if the database discards a save of a new insertion of a DetectionParameter with null validSince since it has alredy one. AI!
-        // Given
-        DetectionParameter.VisitDetection visitDetection = new DetectionParameter.VisitDetection(600L, 1200L);
-        DetectionParameter.VisitMerging visitMerging = new DetectionParameter.VisitMerging(
+    void shouldNotSaveConfigurationWithNullValidSinceWhenOneAlreadyExists() {
+        // Given - First save a configuration with null validSince (this creates the default one)
+        DetectionParameter.VisitDetection firstVisitDetection = new DetectionParameter.VisitDetection(300L, 600L);
+        DetectionParameter.VisitMerging firstVisitMerging = new DetectionParameter.VisitMerging(
+                24L, 1800L, 50L
+        );
+        DetectionParameter.LocationDensity firstLocationDensity = new DetectionParameter.LocationDensity(
+                100, 1440
+        );
+        DetectionParameter firstDetectionParameter = new DetectionParameter(
+                null, firstVisitDetection, firstVisitMerging, firstLocationDensity, null, RecalculationState.DONE
+        );
+        visitDetectionParametersJdbcService.saveConfiguration(testUser, firstDetectionParameter);
+
+        // Verify first configuration was saved
+        List<DetectionParameter> afterFirst = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
+        assertThat(afterFirst).hasSize(1);
+        assertThat(afterFirst.getFirst().getValidSince()).isNull();
+
+        // When - Try to save another configuration with null validSince
+        DetectionParameter.VisitDetection secondVisitDetection = new DetectionParameter.VisitDetection(600L, 1200L);
+        DetectionParameter.VisitMerging secondVisitMerging = new DetectionParameter.VisitMerging(
                 12L, 900L, 25L
         );
-        DetectionParameter.LocationDensity locationDensity = new DetectionParameter.LocationDensity(
+        DetectionParameter.LocationDensity secondLocationDensity = new DetectionParameter.LocationDensity(
                 50, 720
         );
-        DetectionParameter detectionParameter = new DetectionParameter(
-                null, visitDetection, visitMerging, locationDensity, null, RecalculationState.DONE
+        DetectionParameter secondDetectionParameter = new DetectionParameter(
+                null, secondVisitDetection, secondVisitMerging, secondLocationDensity, null, RecalculationState.DONE
         );
+        visitDetectionParametersJdbcService.saveConfiguration(testUser, secondDetectionParameter);
 
-        // When
-        visitDetectionParametersJdbcService.saveConfiguration(testUser, detectionParameter);
-
-        // Then
+        // Then - Should still have only one configuration (the database should discard the second one)
         List<DetectionParameter> detectionParameters = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
         assertThat(detectionParameters).hasSize(1);
         assertThat(detectionParameters.getFirst().getValidSince()).isNull();
+        // The values should still be from the first configuration, not the second
+        assertThat(detectionParameters.getFirst().getVisitDetection().getMinimumStayTimeInSeconds()).isEqualTo(300L);
+        assertThat(detectionParameters.getFirst().getVisitDetection().getMaxMergeTimeBetweenSameStayPoints()).isEqualTo(600L);
     }
 
     @Test
