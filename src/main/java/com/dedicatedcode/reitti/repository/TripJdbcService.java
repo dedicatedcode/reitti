@@ -13,7 +13,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -201,6 +200,17 @@ public class TripJdbcService {
     }
 
     public void deleteAll(List<Trip> existingTrips) {
-        //implement this method AI! 
+        if (existingTrips == null || existingTrips.isEmpty()) {
+            return;
+        }
+        
+        List<Long> ids = existingTrips.stream()
+                .map(Trip::getId)
+                .toList();
+        
+        String placeholders = String.join(",", ids.stream().map(id -> "?").toList());
+        String sql = "DELETE FROM trips WHERE id IN (" + placeholders + ")";
+        
+        jdbcTemplate.update(sql, ids.toArray());
     }
 }
