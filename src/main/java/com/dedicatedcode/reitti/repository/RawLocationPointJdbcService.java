@@ -437,6 +437,13 @@ public class RawLocationPointJdbcService {
     }
 
     public void deleteSyntheticByIds(List<Long> toDelete) {
-        //implement this methdo AI!
+        if (toDelete == null || toDelete.isEmpty()) {
+            return;
+        }
+        
+        String placeholders = String.join(",", toDelete.stream().map(id -> "?").toList());
+        String sql = "DELETE FROM raw_location_points WHERE id IN (" + placeholders + ") AND synthetic = true";
+        
+        jdbcTemplate.update(sql, toDelete.toArray());
     }
 }
