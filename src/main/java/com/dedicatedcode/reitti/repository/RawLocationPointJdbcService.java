@@ -433,6 +433,7 @@ public class RawLocationPointJdbcService {
     }
 
     public int bulkUpsertSynthetic(User user, List<LocationPoint> toInsert) {
+        //implement this method AI!
         return 0;
     }
 
