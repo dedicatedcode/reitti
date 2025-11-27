@@ -433,8 +433,36 @@ public class RawLocationPointJdbcService {
     }
 
     public int bulkUpsertSynthetic(User user, List<LocationPoint> toInsert) {
-        //implement this method AI!
-        return 0;
+        if (toInsert.isEmpty()) {
+            return 0;
+        }
+        
+        String sql = """
+            INSERT INTO raw_location_points (user_id, timestamp, accuracy_meters, elevation_meters, geom, processed, synthetic, ignored)
+            VALUES (?, ?, ?, ?, CAST(? AS geometry), false, true, false)
+            ON CONFLICT (user_id, timestamp) DO UPDATE SET
+                accuracy_meters = EXCLUDED.accuracy_meters,
+                elevation_meters = EXCLUDED.elevation_meters,
+                geom = EXCLUDED.geom,
+                processed = false,
+                synthetic = true,
+                ignored = false;
+            """;
+
+        List<Object[]> batchArgs = new ArrayList<>();
+        for (LocationPoint point : toInsert) {
+            ZonedDateTime parse = ZonedDateTime.parse(point.getTimestamp());
+            Timestamp timestamp = Timestamp.from(parse.toInstant());
+            batchArgs.add(new Object[]{
+                    user.getId(),
+                    timestamp,
+                    point.getAccuracyMeters(),
+                    point.getElevationMeters(),
+                    geometryFactory.createPoint(new Coordinate(point.getLongitude(), point.getLatitude())).toString()
+            });
+        }
+        int[] ints = jdbcTemplate.batchUpdate(sql, batchArgs);
+        return Arrays.stream(ints).sum();
     }
 
     public void deleteSyntheticByIds(List<Long> toDelete) {
