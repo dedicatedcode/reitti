@@ -151,6 +151,7 @@ public class TripJdbcService {
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
+    //after this method has inserted all trips, the result Trips.java should also include the given id for the single trips. AI!
     public List<Trip> bulkInsert(User user, List<Trip> tripsToInsert) {
         if (tripsToInsert.isEmpty()) {
             return tripsToInsert;
