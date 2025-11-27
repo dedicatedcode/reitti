@@ -151,9 +151,9 @@ public class TripJdbcService {
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
-    public void bulkInsert(User user, List<Trip> tripsToInsert) {
+    public List<Trip> bulkInsert(User user, List<Trip> tripsToInsert) {
         if (tripsToInsert.isEmpty()) {
-            return;
+            return tripsToInsert;
         }
         
         String sql = """
@@ -178,6 +178,8 @@ public class TripJdbcService {
             .collect(Collectors.toList());
         
         jdbcTemplate.batchUpdate(sql, batchArgs);
+        // here we either need to load them again from the db to get the new ids or change the batch insert AI!
+        return tripsToInsert;
     }
 
     public void deleteAll() {
