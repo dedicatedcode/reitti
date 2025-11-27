@@ -199,4 +199,8 @@ public class TripJdbcService {
     public long count() {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM trips", Long.class);
     }
+
+    public void deleteAll(List<Trip> existingTrips) {
+        //implement this method AI! 
+    }
 }
