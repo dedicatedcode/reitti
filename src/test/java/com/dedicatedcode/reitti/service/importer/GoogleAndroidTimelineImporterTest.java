@@ -34,7 +34,7 @@ class GoogleAndroidTimelineImporterTest {
                 new DetectionParameter.LocationDensity(50, 720),
                 null, RecalculationState.DONE);
         when(parametersService.getCurrentConfiguration(any(), any(Instant.class))).thenReturn(config);
-        GoogleAndroidTimelineImporter importHandler = new GoogleAndroidTimelineImporter(new ObjectMapper(), new ImportStateHolder(), new ImportBatchProcessor(mock, 100, 15));
+        GoogleAndroidTimelineImporter importHandler = new GoogleAndroidTimelineImporter(new ObjectMapper(), new ImportStateHolder(), new ImportBatchProcessor(mock, 100));
         User user = new User("test", "Test User");
         Map<String, Object> result = importHandler.importTimeline(getClass().getResourceAsStream("/data/google/timeline_from_android_randomized.json"), user);
 

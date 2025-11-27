@@ -17,9 +17,7 @@ public class MessageDispatcherService {
     private static final Logger logger = LoggerFactory.getLogger(MessageDispatcherService.class);
 
     private final LocationDataIngestPipeline locationDataIngestPipeline;
-    private final VisitDetectionService visitDetectionService;
-    private final VisitMergingService visitMergingService;
-    private final TripDetectionService tripDetectionService;
+    private final UnifiedLocationProcessingService unifiedLocationProcessingService;
     private final ReverseGeocodingListener reverseGeocodingListener;
     private final ProcessingPipelineTrigger processingPipelineTrigger;
     private final UserSseEmitterService userSseEmitterService;
@@ -28,18 +26,14 @@ public class MessageDispatcherService {
 
     @Autowired
     public MessageDispatcherService(LocationDataIngestPipeline locationDataIngestPipeline,
-                                    VisitDetectionService visitDetectionService,
-                                    VisitMergingService visitMergingService,
-                                    TripDetectionService tripDetectionService,
+                                    UnifiedLocationProcessingService unifiedLocationProcessingService,
                                     ReverseGeocodingListener reverseGeocodingListener,
                                     ProcessingPipelineTrigger processingPipelineTrigger,
                                     UserSseEmitterService userSseEmitterService,
                                     UserJdbcService userJdbcService,
                                     VisitDetectionPreviewService visitDetectionPreviewService) {
         this.locationDataIngestPipeline = locationDataIngestPipeline;
-        this.visitDetectionService = visitDetectionService;
-        this.visitMergingService = visitMergingService;
-        this.tripDetectionService = tripDetectionService;
+        this.unifiedLocationProcessingService = unifiedLocationProcessingService;
         this.reverseGeocodingListener = reverseGeocodingListener;
         this.processingPipelineTrigger = processingPipelineTrigger;
         this.userSseEmitterService = userSseEmitterService;
@@ -52,32 +46,11 @@ public class MessageDispatcherService {
         logger.debug("Dispatching LocationDataEvent for user: {}", event.getUsername());
         locationDataIngestPipeline.processLocationData(event);
     }
-
     @RabbitListener(queues = RabbitMQConfig.STAY_DETECTION_QUEUE, concurrency = "${reitti.events.concurrency}")
     public void handleStayDetection(LocationProcessEvent event) {
         logger.debug("Dispatching LocationProcessEvent for user: {}", event.getUsername());
-        visitDetectionService.detectStayPoints(event);
+        unifiedLocationProcessingService.processLocationEvent(event);
         visitDetectionPreviewService.updatePreviewStatus(event.getPreviewId());
-    }
-
-    @RabbitListener(queues = RabbitMQConfig.MERGE_VISIT_QUEUE, concurrency = "1")
-    public void handleVisitMerging(VisitUpdatedEvent event) {
-        logger.debug("Dispatching VisitUpdatedEvent for user: {}", event.getUsername());
-        visitMergingService.visitUpdated(event);
-        visitDetectionPreviewService.updatePreviewStatus(event.getPreviewId());
-    }
-
-    @RabbitListener(queues = RabbitMQConfig.DETECT_TRIP_QUEUE, concurrency = "${reitti.events.concurrency}")
-    public void handleTripDetection(ProcessedVisitCreatedEvent event) {
-        logger.debug("Dispatching ProcessedVisitCreatedEvent for user: {}", event.getUsername());
-        tripDetectionService.visitCreated(event);
-        visitDetectionPreviewService.updatePreviewStatus(event.getPreviewId());
-    }
-
-    @RabbitListener(queues = RabbitMQConfig.RECALCULATE_TRIP_QUEUE, concurrency = "${reitti.events.concurrency}")
-    public void handleTripDetection(RecalculateTripEvent event) {
-        logger.debug("Dispatching RecalculateTripEvent for user: {}", event.getUsername());
-        tripDetectionService.recalculateTrip(event);
     }
 
     @RabbitListener(queues = RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE, concurrency = "${reitti.events.concurrency}")

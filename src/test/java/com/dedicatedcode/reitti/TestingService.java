@@ -24,10 +24,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class TestingService {
 
     private static final List<String> QUEUES_TO_CHECK = List.of(
-            RabbitMQConfig.MERGE_VISIT_QUEUE,
             RabbitMQConfig.STAY_DETECTION_QUEUE,
             RabbitMQConfig.LOCATION_DATA_QUEUE,
-            RabbitMQConfig.DETECT_TRIP_QUEUE,
             RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE
     );
 
@@ -91,10 +89,10 @@ public class TestingService {
         AtomicInteger stableChecks = new AtomicInteger(0);
 
         // Require multiple consecutive stable checks
-        final int requiredStableChecks = 10;
+        final int requiredStableChecks = 3;
 
         Awaitility.await()
-                .pollInterval(Math.max(1, seconds / 50), TimeUnit.SECONDS)
+                .pollInterval(Math.max(1, seconds / 300), TimeUnit.SECONDS)
                 .atMost(seconds, TimeUnit.SECONDS)
                 .alias("Wait for processing to complete")
                 .until(() -> {

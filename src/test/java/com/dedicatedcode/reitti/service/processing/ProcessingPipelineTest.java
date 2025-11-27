@@ -96,11 +96,7 @@ public class ProcessingPipelineTest {
     @Test
     void shouldRecalculateOnIncomingPointsBefore() {
         testingService.importAndProcess(user, "/data/gpx/20250618.gpx");
-        try {
-            Thread.sleep(10000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+
         List<ProcessedVisit> processedVisits = currentVisits();
         assertEquals(6, processedVisits.size());
         assertVisit(processedVisits.get(0), "2025-06-17T22:00:15.843Z", "2025-06-18T05:45:36Z", MOLTKESTR);
@@ -113,11 +109,7 @@ public class ProcessingPipelineTest {
         testingService.importAndProcess(user, "/data/gpx/20250617.gpx");
 
         processedVisits = currentVisits();
-        try {
-            Thread.sleep(10000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+
         assertEquals(10, processedVisits.size());
 
         //should not touch visits before the new data
@@ -135,6 +127,21 @@ public class ProcessingPipelineTest {
         assertVisit(processedVisits.get(7), "2025-06-18T13:05:04.278Z","2025-06-18T13:13:16.416Z", ST_THOMAS);
         assertVisit(processedVisits.get(8), "2025-06-18T13:34:07Z","2025-06-18T15:50:40Z", GARTEN);
         assertVisit(processedVisits.get(9), "2025-06-18T16:05:49.301Z","2025-06-18T21:59:29.055Z", MOLTKESTR);
+    }
+
+    @Test
+    void shouldCalculateSingleFile() {
+        testingService.importAndProcess(user, "/data/gpx/20250618.gpx");
+
+        List<ProcessedVisit> processedVisits = currentVisits();
+        assertEquals(7, processedVisits.size());
+
+        assertVisit(processedVisits.get(0), "2025-06-17T22:00:15.843Z", "2025-06-18T05:45:36Z", MOLTKESTR);
+        assertVisit(processedVisits.get(1), "2025-06-18T05:54:37.701Z","2025-06-18T06:02:05.400Z", ST_THOMAS);
+        assertVisit(processedVisits.get(2), "2025-06-18T06:06:43.274Z","2025-06-18T13:01:23.419Z", MOLTKESTR);
+        assertVisit(processedVisits.get(3), "2025-06-18T13:05:04.278Z","2025-06-18T13:13:47.443Z", ST_THOMAS);
+        assertVisit(processedVisits.get(4), "2025-06-18T13:34:07Z","2025-06-18T15:50:40Z", GARTEN);
+        assertVisit(processedVisits.get(5), "2025-06-18T16:05:49.301Z","2025-06-18T21:59:29.055Z", MOLTKESTR);
     }
 
     private static void assertVisit(ProcessedVisit processedVisit, String startTime, String endTime, GeoPoint location) {

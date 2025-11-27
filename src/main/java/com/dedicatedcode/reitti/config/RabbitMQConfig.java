@@ -16,13 +16,9 @@ public class RabbitMQConfig {
     public static final String LOCATION_DATA_ROUTING_KEY = "reitti.location.data.v2";
     public static final String STAY_DETECTION_QUEUE = "reitti.visit.detection.v2";
     public static final String STAY_DETECTION_ROUTING_KEY = "reitti.visit.created.v2";
-    public static final String MERGE_VISIT_QUEUE = "reitti.visit.merge.v2";
-    public static final String MERGE_VISIT_ROUTING_KEY = "reitti.visit.merged.v2";
     public static final String SIGNIFICANT_PLACE_QUEUE = "reitti.place.created.v2";
     public static final String SIGNIFICANT_PLACE_ROUTING_KEY = "reitti.place.created.v2";
-    public static final String DETECT_TRIP_QUEUE = "reitti.trip.created.v2";
     public static final String RECALCULATE_TRIP_QUEUE = "reitti.trip.recalculate.v2";
-    public static final String DETECT_TRIP_ROUTING_KEY = "reitti.trip.created.v2";
     public static final String DETECT_TRIP_RECALCULATION_ROUTING_KEY = "reitti.trip.recalculate.v2";
     public static final String TRIGGER_PROCESSING_PIPELINE_QUEUE = "reitti.processing.v2";
     public static final String TRIGGER_PROCESSING_PIPELINE_ROUTING_KEY = "reitti.processing.start.v2";
@@ -54,24 +50,8 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Queue detectTripQueue() {
-        return QueueBuilder.durable(DETECT_TRIP_QUEUE)
-                .withArgument("x-dead-letter-exchange", DLX_NAME)
-                .withArgument("x-dead-letter-routing-key", DLQ_NAME)
-                .build();
-    }
-
-    @Bean
     public Queue recaluclateTripQueue() {
         return QueueBuilder.durable(RECALCULATE_TRIP_QUEUE)
-                .withArgument("x-dead-letter-exchange", DLX_NAME)
-                .withArgument("x-dead-letter-routing-key", DLQ_NAME)
-                .build();
-    }
-
-    @Bean
-    public Queue mergeVisitQueue() {
-        return QueueBuilder.durable(MERGE_VISIT_QUEUE)
                 .withArgument("x-dead-letter-exchange", DLX_NAME)
                 .withArgument("x-dead-letter-routing-key", DLQ_NAME)
                 .build();
@@ -117,16 +97,6 @@ public class RabbitMQConfig {
     @Bean
     public Binding significantPlaceBinding(Queue significantPlaceQueue, TopicExchange exchange) {
         return BindingBuilder.bind(significantPlaceQueue).to(exchange).with(SIGNIFICANT_PLACE_ROUTING_KEY);
-    }
-
-    @Bean
-    public Binding mergeVisitBinding(Queue mergeVisitQueue, TopicExchange exchange) {
-        return BindingBuilder.bind(mergeVisitQueue).to(exchange).with(MERGE_VISIT_ROUTING_KEY);
-    }
-
-    @Bean
-    public Binding detectTripBinding(Queue detectTripQueue, TopicExchange exchange) {
-        return BindingBuilder.bind(detectTripQueue).to(exchange).with(DETECT_TRIP_ROUTING_KEY);
     }
 
     @Bean

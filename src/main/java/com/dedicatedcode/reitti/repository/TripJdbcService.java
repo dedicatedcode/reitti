@@ -178,40 +178,7 @@ public class TripJdbcService {
             .collect(Collectors.toList());
         
         jdbcTemplate.batchUpdate(sql, batchArgs);
-        
-        // Query back the inserted trips to get their IDs
-        String selectSql = """
-            SELECT t.* FROM trips t
-            WHERE t.user_id = ? AND (t.start_visit_id, t.end_visit_id, t.start_time, t.end_time) IN (
-                VALUES (?, ?, ?, ?)
-            )
-            """;
-        
-        List<Object[]> selectArgs = tripsToInsert.stream()
-            .map(trip -> new Object[]{
-                trip.getStartVisit().getId(),
-                trip.getEndVisit().getId(),
-                Timestamp.from(trip.getStartTime()),
-                Timestamp.from(trip.getEndTime())
-            })
-            .collect(Collectors.toList());
-        
-        // Build the VALUES clause dynamically
-        String valuesClause = selectArgs.stream()
-            .map(args -> "(?, ?, ?, ?)")
-            .collect(Collectors.joining(", "));
-        
-        String fullSelectSql = selectSql.replace("(?, ?, ?, ?)", "(" + valuesClause + ")");
-        
-        Object[] params = new Object[1 + selectArgs.size() * 4];
-        params[0] = user.getId();
-        int idx = 1;
-        for (Object[] args : selectArgs) {
-            System.arraycopy(args, 0, params, idx, 4);
-            idx += 4;
-        }
-        
-        return jdbcTemplate.query(fullSelectSql, TRIP_ROW_MAPPER, params);
+        return tripsToInsert;
     }
 
     public void deleteAll() {
