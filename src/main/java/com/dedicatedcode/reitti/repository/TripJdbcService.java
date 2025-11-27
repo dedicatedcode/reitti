@@ -159,7 +159,7 @@ public class TripJdbcService {
         String sql = """
             INSERT INTO trips (user_id, start_visit_id, end_visit_id, start_time, end_time,
                               duration_seconds, estimated_distance_meters, travelled_distance_meters, transport_mode_inferred, version)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING;
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             """;
         
         List<Object[]> batchArgs = tripsToInsert.stream()
@@ -178,7 +178,6 @@ public class TripJdbcService {
             .collect(Collectors.toList());
         
         jdbcTemplate.batchUpdate(sql, batchArgs);
-        // here we either need to load them again from the db to get the new ids or change the batch insert AI!
         return tripsToInsert;
     }
 
