@@ -431,4 +431,12 @@ public class RawLocationPointJdbcService {
         
         return jdbcTemplate.query(sqlBuilder.toString(), rawLocationPointRowMapper, params.toArray());
     }
+
+    public int bulkUpsertSynthetic(User user, List<LocationPoint> toInsert) {
+        return 0;
+    }
+
+    public void deleteSyntheticByIds(List<Long> toDelete) {
+        //implement this methdo AI!
+    }
 }
