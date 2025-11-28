@@ -18,6 +18,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,6 +31,7 @@ public class LocationDataDensityNormalizer {
     private final RawLocationPointJdbcService rawLocationPointService;
     private final SyntheticLocationPointGenerator syntheticGenerator;
     private final VisitDetectionParametersService visitDetectionParametersService;
+    private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
     
     @Autowired
     public LocationDataDensityNormalizer(
@@ -43,6 +46,9 @@ public class LocationDataDensityNormalizer {
     }
     
     public void normalizeAroundPoint(User user, LocationPoint newPoint) {
+        ReentrantLock userLock = userLocks.computeIfAbsent(user.getUsername(), k -> new ReentrantLock());
+        
+        userLock.lock();
         try {
             logger.trace("Starting density normalization around point at {} for user {}",
                 newPoint.getTimestamp(), user.getUsername());
@@ -71,6 +77,8 @@ public class LocationDataDensityNormalizer {
         } catch (Exception e) {
             logger.error("Error during density normalization for user {} around point {}: {}", 
                 user.getUsername(), newPoint.getTimestamp(), e.getMessage(), e);
+        } finally {
+            userLock.unlock();
         }
     }
     
