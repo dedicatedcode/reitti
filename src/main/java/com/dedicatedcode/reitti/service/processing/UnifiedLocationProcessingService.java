@@ -165,12 +165,7 @@ public class UnifiedLocationProcessingService {
 
             // Process all pending tasks
             while ((task = queue.poll()) != null) {
-                try {
-                    processTaskAtomically(task);
-                } catch (Exception e) {
-                    logger.error("Error processing task for user [{}]: {}", username, e.getMessage(), e);
-                    // TODO: Consider implementing retry logic or dead letter queue
-                }
+                processTaskAtomically(task);
             }
         } finally {
             // Clear processing flag
@@ -295,13 +290,15 @@ public class UnifiedLocationProcessingService {
         double metersAsDegrees = GeoUtils.metersToDegreesAtPosition(50.0, baseLatitude);
 
         List<ClusteredPoint> clusteredPoints;
+        int minimumAdjacentPoints = Math.toIntExact(detectionParams.getMinimumStayTimeInSeconds() / 20);
         if (previewId == null) {
             clusteredPoints = rawLocationPointJdbcService.findClusteredPointsInTimeRangeForUser(
-                    user, windowStart, windowEnd, 5, metersAsDegrees);
+                    user, windowStart, windowEnd, minimumAdjacentPoints, metersAsDegrees);
         } else {
             clusteredPoints = previewRawLocationPointJdbcService.findClusteredPointsInTimeRangeForUser(
-                    user, previewId, windowStart, windowEnd, 5, metersAsDegrees);
+                    user, previewId, windowStart, windowEnd, minimumAdjacentPoints, metersAsDegrees);
         }
+        logger.debug("Searching for clustered points in range [{}, {}], minimum adjacent points: {} ", windowStart, windowEnd, minimumAdjacentPoints);
 
         // Cluster by location and time
         Map<Integer, List<RawLocationPoint>> clusteredByLocation = new TreeMap<>();

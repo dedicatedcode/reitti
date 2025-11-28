@@ -64,7 +64,7 @@ public class PreviewRawLocationPointJdbcService {
                 "FROM preview_raw_location_points rlp " +
                 "WHERE rlp.user_id = ? AND rlp.timestamp BETWEEN ? AND ? AND preview_id = ? AND rlp.ignored = false";
 
-        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+        return jdbcTemplate.query(sql, (rs, _) -> {
 
                     RawLocationPoint point = new RawLocationPoint(
                             rs.getLong("id"),
