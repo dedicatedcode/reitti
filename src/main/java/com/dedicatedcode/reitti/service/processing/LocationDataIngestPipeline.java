@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.*;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 public class LocationDataIngestPipeline {
@@ -35,6 +36,7 @@ public class LocationDataIngestPipeline {
     private final int processingIdleStartTime;
     private final ScheduledExecutorService scheduler =Executors.newScheduledThreadPool(2);;
     private final ConcurrentHashMap<String, ScheduledFuture<?>> pendingTriggers = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
     @Autowired
     public LocationDataIngestPipeline(GeoPointAnomalyFilter geoPointAnomalyFilter,
                                       UserJdbcService userJdbcService,
@@ -68,31 +70,38 @@ public class LocationDataIngestPipeline {
     }
 
     public void processLocationData(LocationDataEvent event) {
-        long start = System.currentTimeMillis();
+        ReentrantLock userLock = userLocks.computeIfAbsent(event.getUsername(), k -> new ReentrantLock());
+        
+        userLock.lock();
+        try {
+            long start = System.currentTimeMillis();
 
-        Optional<User> userOpt = userJdbcService.findByUsername(event.getUsername());
+            Optional<User> userOpt = userJdbcService.findByUsername(event.getUsername());
 
-        if (userOpt.isEmpty()) {
-            logger.warn("User not found for name: [{}]", event.getUsername());
-            return;
+            if (userOpt.isEmpty()) {
+                logger.warn("User not found for name: [{}]", event.getUsername());
+                return;
+            }
+
+            User user = userOpt.get();
+            List<LocationPoint> points = event.getPoints();
+            List<LocationPoint> filtered = this.geoPointAnomalyFilter.filterAnomalies(points);
+            
+            // Store real points first
+            int updatedRows = rawLocationPointJdbcService.bulkInsert(user, filtered);
+            
+            // Normalize density around each new point
+            for (LocationPoint point : filtered) {
+                densityNormalizer.normalizeAroundPoint(user, point);
+            }
+            
+            userSettingsJdbcService.updateNewestData(user, filtered);
+            userNotificationService.newRawLocationData(user, filtered);
+            logger.info("Finished storing and normalizing points [{}] for user [{}] in [{}]ms. Filtered out [{}] points before database and [{}] after database.", filtered.size(), event.getUsername(), System.currentTimeMillis() - start, points.size() - filtered.size(), filtered.size() - updatedRows);
+            scheduleProcessingTrigger(user.getUsername());
+        } finally {
+            userLock.unlock();
         }
-
-        User user = userOpt.get();
-        List<LocationPoint> points = event.getPoints();
-        List<LocationPoint> filtered = this.geoPointAnomalyFilter.filterAnomalies(points);
-        
-        // Store real points first
-        int updatedRows = rawLocationPointJdbcService.bulkInsert(user, filtered);
-        
-        // Normalize density around each new point
-        for (LocationPoint point : filtered) {
-            densityNormalizer.normalizeAroundPoint(user, point);
-        }
-        
-        userSettingsJdbcService.updateNewestData(user, filtered);
-        userNotificationService.newRawLocationData(user, filtered);
-        logger.info("Finished storing and normalizing points [{}] for user [{}] in [{}]ms. Filtered out [{}] points before database and [{}] after database.", filtered.size(), event.getUsername(), System.currentTimeMillis() - start, points.size() - filtered.size(), filtered.size() - updatedRows);
-        scheduleProcessingTrigger(user.getUsername());
     }
 
     private void scheduleProcessingTrigger(String username) {
