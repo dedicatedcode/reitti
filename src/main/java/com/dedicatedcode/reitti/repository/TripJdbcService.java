@@ -159,7 +159,7 @@ public class TripJdbcService {
         String sql = """
             INSERT INTO trips (user_id, start_visit_id, end_visit_id, start_time, end_time,
                               duration_seconds, estimated_distance_meters, travelled_distance_meters, transport_mode_inferred, version)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING;
             """;
         
         List<Object[]> batchArgs = tripsToInsert.stream()

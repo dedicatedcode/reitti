@@ -25,11 +25,6 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 /**
@@ -42,16 +37,6 @@ public class UnifiedLocationProcessingService {
 
     private static final Logger logger = LoggerFactory.getLogger(UnifiedLocationProcessingService.class);
 
-    // One work queue per user to maintain event ordering
-    private final ConcurrentHashMap<String, LinkedBlockingQueue<ProcessingTask>> userWorkQueues = new ConcurrentHashMap<>();
-
-    // Flag to ensure only one processor per user at a time
-    private final ConcurrentHashMap<String, AtomicBoolean> userProcessingFlags = new ConcurrentHashMap<>();
-
-    // Thread pool for processing workers (size = number of concurrent users)
-    private final ExecutorService processorExecutor;
-
-    // All the dependencies (injected via constructor)
     private final UserJdbcService userJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService;
@@ -108,13 +93,6 @@ public class UnifiedLocationProcessingService {
         this.timezoneService = timezoneService;
         this.geometryFactory = geometryFactory;
         this.rabbitTemplate = rabbitTemplate;
-
-        // Thread pool sized for concurrent user processing
-        this.processorExecutor = Executors.newCachedThreadPool(r -> {
-            Thread t = new Thread(r, "LocationProcessor");
-            t.setDaemon(true);
-            return t;
-        });
     }
 
     /**
@@ -122,78 +100,11 @@ public class UnifiedLocationProcessingService {
      * Enqueues the event for the user and ensures processing starts.
      */
     public void processLocationEvent(LocationProcessEvent event) {
-        String username = event.getUsername();
-
-        // Add event to user's FIFO queue
-        LinkedBlockingQueue<ProcessingTask> queue = userWorkQueues.computeIfAbsent(
-                username,
-                _ -> new LinkedBlockingQueue<>()
-        );
-
-        queue.offer(new ProcessingTask(event));
-        logger.debug("Enqueued processing task for user [{}], queue size: {}", username, queue.size());
-
-        // Ensure processing is running for this user
-        ensureProcessing(username);
-    }
-
-    /**
-     * Ensures that a processor is running for this user.
-     * Uses atomic flag to prevent multiple processors for same user.
-     */
-    private void ensureProcessing(String username) {
-        AtomicBoolean processingFlag = userProcessingFlags.computeIfAbsent(
-                username,
-                _ -> new AtomicBoolean(false)
-        );
-
-        // Only start new processor if none is running
-        if (processingFlag.compareAndSet(false, true)) {
-            processorExecutor.submit(() -> processUserWorkQueue(username));
-            logger.debug("Started processor for user [{}]", username);
-        }
-    }
-
-    /**
-     * Processes all queued tasks for a user sequentially.
-     * Ensures only one thread processes a user's data at a time.
-     */
-    private void processUserWorkQueue(String username) {
-        try {
-            LinkedBlockingQueue<ProcessingTask> queue = userWorkQueues.get(username);
-            ProcessingTask task;
-
-            // Process all pending tasks
-            while ((task = queue.poll()) != null) {
-                processTaskAtomically(task);
-            }
-        } finally {
-            // Clear processing flag
-            userProcessingFlags.get(username).set(false);
-
-            // Check if more work arrived while we were finishing
-            LinkedBlockingQueue<ProcessingTask> queue = userWorkQueues.get(username);
-            if (queue != null && !queue.isEmpty()) {
-                logger.debug("More work arrived for user [{}], restarting processor", username);
-                ensureProcessing(username);
-            }
-        }
-    }
-
-    /**
-     * Processes the entire pipeline atomically for a single event.
-     * This method ensures deterministic results by processing:
-     * 1. Visit Detection
-     * 2. Visit Merging
-     * 3. Trip Detection
-     * All in one atomic operation per user.
-     */
-    private void processTaskAtomically(ProcessingTask task) {
         long startTime = System.currentTimeMillis();
-        String username = task.event().getUsername();
-        String previewId = task.event().getPreviewId();
+        String username = event.getUsername();
+        String previewId = event.getPreviewId();
 
-        logger.info("Processing location data for user [{}], mode: {}",
+        logger.info("4 - Processing location data for user [{}], mode: {}",
                 username, previewId == null ? "LIVE" : "PREVIEW");
 
         User user = userJdbcService.findByUsername(username)
@@ -201,7 +112,7 @@ public class UnifiedLocationProcessingService {
 
         // STEP 1: Visit Detection
         // ----------------------
-        VisitDetectionResult detectionResult = detectVisits(user, task.event());
+        VisitDetectionResult detectionResult = detectVisits(user, event);
         logger.debug("Detection: {} visits created", detectionResult.visits.size());
 
         // STEP 2: Visit Merging
@@ -209,6 +120,7 @@ public class UnifiedLocationProcessingService {
         VisitMergingResult mergingResult = mergeVisits(
                 user,
                 previewId,
+                event.getTraceId(),
                 detectionResult.searchStart,
                 detectionResult.searchEnd
         );
@@ -221,7 +133,6 @@ public class UnifiedLocationProcessingService {
         TripDetectionResult tripResult = detectTrips(
                 user,
                 previewId,
-                mergingResult.processedVisits,
                 mergingResult.searchStart,
                 mergingResult.searchEnd
         );
@@ -304,7 +215,7 @@ public class UnifiedLocationProcessingService {
         Map<Integer, List<RawLocationPoint>> clusteredByLocation = new TreeMap<>();
         for (ClusteredPoint cp : clusteredPoints) {
             if (cp.getClusterId() != null) {
-                clusteredByLocation.computeIfAbsent(cp.getClusterId(), k -> new ArrayList<>())
+                clusteredByLocation.computeIfAbsent(cp.getClusterId(), _ -> new ArrayList<>())
                         .add(cp.getPoint());
             }
         }
@@ -339,8 +250,7 @@ public class UnifiedLocationProcessingService {
      * STEP 2: Visit Merging
      * Merges nearby visits into ProcessedVisit entities with SignificantPlaces.
      */
-    private VisitMergingResult mergeVisits(User user, String previewId,
-                                           Instant initialStart, Instant initialEnd) {
+    private VisitMergingResult mergeVisits(User user, String previewId, String traceId, Instant initialStart, Instant initialEnd) {
 
         // Get merging parameters
         DetectionParameter.VisitMerging mergeConfig;
@@ -397,7 +307,7 @@ public class UnifiedLocationProcessingService {
         allVisits.sort(Comparator.comparing(Visit::getStartTime));
         // Merge visits chronologically
         List<ProcessedVisit> processedVisits = mergeVisitsChronologically(
-                user, previewId, allVisits, mergeConfig);
+                user, previewId, traceId, allVisits, mergeConfig);
 
         // Save processed visits
         if (previewId == null) {
@@ -414,9 +324,7 @@ public class UnifiedLocationProcessingService {
      * STEP 3: Trip Detection
      * Creates Trip entities between consecutive ProcessedVisits.
      */
-    private TripDetectionResult detectTrips(User user, String previewId,
-                                            List<ProcessedVisit> newProcessedVisits,
-                                            Instant searchStart, Instant searchEnd) {
+    private TripDetectionResult detectTrips(User user, String previewId, Instant searchStart, Instant searchEnd) {
 
         // Expand search for trip detection
         searchStart = searchStart.minus(1, ChronoUnit.DAYS);
@@ -522,7 +430,7 @@ public class UnifiedLocationProcessingService {
     }
 
     private List<ProcessedVisit> mergeVisitsChronologically(
-            User user, String previewId, List<Visit> visits,
+            User user, String previewId, String traceId, List<Visit> visits,
             DetectionParameter.VisitMerging mergeConfiguration) {
         if (visits.isEmpty()) {
             return new ArrayList<>();
@@ -536,11 +444,11 @@ public class UnifiedLocationProcessingService {
         Visit currentVisit = visits.getFirst();
         Instant currentStartTime = currentVisit.getStartTime();
         Instant currentEndTime = currentVisit.getEndTime();
-        SignificantPlace currentPlace = findOrCreateSignificantPlace(user, previewId, currentVisit.getLatitude(), currentVisit.getLongitude(), mergeConfiguration);
+        SignificantPlace currentPlace = findOrCreateSignificantPlace(user, previewId, currentVisit.getLatitude(), currentVisit.getLongitude(), mergeConfiguration, traceId);
 
         for (int i = 1; i < visits.size(); i++) {
             Visit nextVisit = visits.get(i);
-            SignificantPlace nextPlace = findOrCreateSignificantPlace(user, previewId, nextVisit.getLatitude(), nextVisit.getLongitude(), mergeConfiguration);
+            SignificantPlace nextPlace = findOrCreateSignificantPlace(user, previewId, nextVisit.getLatitude(), nextVisit.getLongitude(), mergeConfiguration, traceId);
 
             boolean samePlace = nextPlace.getId().equals(currentPlace.getId());
             boolean withinTimeThreshold = Duration.between(currentEndTime, nextVisit.getStartTime()).getSeconds() <= mergeConfiguration.getMaxMergeTimeBetweenSameVisits();
@@ -716,7 +624,7 @@ public class UnifiedLocationProcessingService {
             int gridLat = (int) ((point.getLatitude() - minLat) / cellSizeLat);
             int gridLon = (int) ((point.getLongitude() - minLon) / cellSizeLon);
             String gridKey = gridLat + "," + gridLon;
-            grid.computeIfAbsent(gridKey, k -> new ArrayList<>()).add(point);
+            grid.computeIfAbsent(gridKey, _ -> new ArrayList<>()).add(point);
         }
 
         RawLocationPoint bestPoint = null;
@@ -838,17 +746,6 @@ public class UnifiedLocationProcessingService {
         return trip;
     }
 
-
-    private SignificantPlace findClosestPlace(Visit visit, List<SignificantPlace> places) {
-        return places.stream()
-                .min(Comparator.comparingDouble(place ->
-                        GeoUtils.distanceInMeters(
-                                visit.getLatitude(), visit.getLongitude(),
-                                place.getLatitudeCentroid(), place.getLongitudeCentroid())))
-                .orElseThrow(() -> new IllegalStateException("No places found"));
-    }
-
-
     private List<SignificantPlace> findNearbyPlaces(User user, String previewId, double latitude, double longitude, DetectionParameter.VisitMerging mergeConfiguration) {
         // Create a point geometry
         Point point = geometryFactory.createPoint(new Coordinate(longitude, latitude));
@@ -862,13 +759,14 @@ public class UnifiedLocationProcessingService {
 
     private SignificantPlace findOrCreateSignificantPlace(User user, String previewId,
                                                           double latitude, double longitude,
-                                                          DetectionParameter.VisitMerging mergeConfig) {
+                                                          DetectionParameter.VisitMerging mergeConfig,
+                                                          String traceId) {
         List<SignificantPlace> nearbyPlaces = findNearbyPlaces(user, previewId, latitude, longitude, mergeConfig);
-        return nearbyPlaces.isEmpty() ? createSignificantPlace(user, latitude, longitude, previewId) : findClosestPlace(latitude, longitude, nearbyPlaces);
+        return nearbyPlaces.isEmpty() ? createSignificantPlace(user, latitude, longitude, previewId, traceId) : findClosestPlace(latitude, longitude, nearbyPlaces);
     }
 
 
-    private SignificantPlace createSignificantPlace(User user, double latitude, double longitude, String previewId) {
+    private SignificantPlace createSignificantPlace(User user, double latitude, double longitude, String previewId, String traceId) {
         SignificantPlace significantPlace = SignificantPlace.create(latitude, longitude);
         Optional<ZoneId> timezone = this.timezoneService.getTimezone(significantPlace);
         if (timezone.isPresent()) {
@@ -885,7 +783,7 @@ public class UnifiedLocationProcessingService {
                     .withTimezone(override.get().timezone());
         }
         significantPlace = previewId == null ? this.significantPlaceJdbcService.create(user, significantPlace) : this.previewSignificantPlaceJdbcService.create(user, previewId, significantPlace);
-        publishSignificantPlaceCreatedEvent(user, significantPlace, previewId);
+        publishSignificantPlaceCreatedEvent(user, significantPlace, previewId, traceId);
         return significantPlace;
     }
 
@@ -906,22 +804,20 @@ public class UnifiedLocationProcessingService {
                 place2.getLatitudeCentroid(), place2.getLongitudeCentroid());
     }
 
-    private void publishSignificantPlaceCreatedEvent(User user, SignificantPlace place, String previewId) {
+    private void publishSignificantPlaceCreatedEvent(User user, SignificantPlace place, String previewId, String traceId) {
         SignificantPlaceCreatedEvent event = new SignificantPlaceCreatedEvent(
                 user.getUsername(),
                 previewId,
                 place.getId(),
                 place.getLatitudeCentroid(),
-                place.getLongitudeCentroid()
+                place.getLongitudeCentroid(),
+                traceId
         );
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.SIGNIFICANT_PLACE_ROUTING_KEY, event);
         logger.info("Published SignificantPlaceCreatedEvent for place ID: {}", place.getId());
     }
 
     // ==================== Result Classes ====================
-
-    private record ProcessingTask(LocationProcessEvent event) {
-    }
 
     private record VisitDetectionResult(List<Visit> visits, Instant searchStart, Instant searchEnd) {
     }

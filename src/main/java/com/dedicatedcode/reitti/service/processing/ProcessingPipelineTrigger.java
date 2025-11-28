@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
@@ -52,7 +53,7 @@ public class ProcessingPipelineTrigger {
         isRunning.set(true);
         try {
             for (User user : userJdbcService.findAll()) {
-                handleDataForUser(user, null);
+                handleDataForUser(user, null, UUID.randomUUID().toString());
             }
         } finally {
             isRunning.set(false);
@@ -66,7 +67,7 @@ public class ProcessingPipelineTrigger {
         try {
             Optional<User> byUsername = this.userJdbcService.findByUsername(event.getUsername());
             if (byUsername.isPresent()) {
-                handleDataForUser(byUsername.get(), event.getPreviewId());
+                handleDataForUser(byUsername.get(), event.getPreviewId(), event.getTraceId());
             } else {
                 log.warn("No user found for username: {}", event.getUsername());
             }
@@ -75,7 +76,7 @@ public class ProcessingPipelineTrigger {
         }
     }
 
-    private void handleDataForUser(User user, String previewId) {
+    private void handleDataForUser(User user, String previewId, String traceId) {
         int totalProcessed = 0;
         
         while (true) {
@@ -104,7 +105,7 @@ public class ProcessingPipelineTrigger {
             this.rabbitTemplate
                     .convertAndSend(RabbitMQConfig.EXCHANGE_NAME,
                             RabbitMQConfig.STAY_DETECTION_ROUTING_KEY,
-                            new LocationProcessEvent(user.getUsername(), earliest, latest, previewId));
+                            new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId));
             
             totalProcessed += currentBatch.size();
         }

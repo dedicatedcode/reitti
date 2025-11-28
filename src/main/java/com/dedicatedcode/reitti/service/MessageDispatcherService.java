@@ -41,34 +41,29 @@ public class MessageDispatcherService {
         this.visitDetectionPreviewService = visitDetectionPreviewService;
     }
 
-    @RabbitListener(queues = RabbitMQConfig.LOCATION_DATA_QUEUE, concurrency = "${reitti.events.concurrency}")
-    public void handleLocationData(LocationDataEvent event) {
-        logger.debug("Dispatching LocationDataEvent for user: {}", event.getUsername());
-        locationDataIngestPipeline.processLocationData(event);
-    }
     @RabbitListener(queues = RabbitMQConfig.STAY_DETECTION_QUEUE, concurrency = "${reitti.events.concurrency}")
     public void handleStayDetection(LocationProcessEvent event) {
-        logger.debug("Dispatching LocationProcessEvent for user: {}", event.getUsername());
+        logger.info("4 - Dispatching LocationProcessEvent: {}", event);
         unifiedLocationProcessingService.processLocationEvent(event);
         visitDetectionPreviewService.updatePreviewStatus(event.getPreviewId());
     }
 
     @RabbitListener(queues = RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE, concurrency = "${reitti.events.concurrency}")
     public void handleSignificantPlaceCreated(SignificantPlaceCreatedEvent event) {
-        logger.debug("Dispatching SignificantPlaceCreatedEvent for place: {}", event.placeId());
+        logger.info("Dispatching SignificantPlaceCreatedEvent: {}", event);
         reverseGeocodingListener.handleSignificantPlaceCreated(event);
         visitDetectionPreviewService.updatePreviewStatus(event.previewId());
     }
 
     @RabbitListener(queues = RabbitMQConfig.USER_EVENT_QUEUE)
     public void handleUserNotificationEvent(SSEEvent event) {
-        logger.debug("Dispatching SSEEvent for user: {}", event.getUserId());
+        logger.debug("Dispatching SSEEvent: {}", event);
         this.userJdbcService.findById(event.getUserId()).ifPresentOrElse(user -> this.userSseEmitterService.sendEventToUser(user, event), () -> logger.warn("User not found for user: {}", event.getUserId()));
     }
 
     @RabbitListener(queues = RabbitMQConfig.TRIGGER_PROCESSING_PIPELINE_QUEUE, concurrency = "${reitti.events.concurrency}")
     public void handleTriggerProcessingEvent(TriggerProcessingEvent event) {
-        logger.debug("Dispatching TriggerProcessingEvent for user: {}", event.getUsername());
+        logger.info("3 - Dispatching TriggerProcessingEvent {}", event);
         processingPipelineTrigger.handle(event);
         visitDetectionPreviewService.updatePreviewStatus(event.getPreviewId());
     }

@@ -75,21 +75,13 @@ public class TestingService {
         awaitDataImport(timeout);
     }
     public void awaitDataImport(int seconds) {
-        // Give the system a moment to start publishing messages
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
-        }
-
         AtomicLong lastRawCount = new AtomicLong(-1);
         AtomicLong lastVisitCount = new AtomicLong(-1);
         AtomicLong lastTripCount = new AtomicLong(-1);
         AtomicInteger stableChecks = new AtomicInteger(0);
 
         // Require multiple consecutive stable checks
-        final int requiredStableChecks = 3;
+        final int requiredStableChecks = 5;
 
         Awaitility.await()
                 .pollInterval(Math.max(1, seconds / 300), TimeUnit.SECONDS)
@@ -150,11 +142,5 @@ public class TestingService {
         importData(user, path);
         awaitDataImport(100);
         triggerProcessingPipeline(100);
-
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
     }
 }

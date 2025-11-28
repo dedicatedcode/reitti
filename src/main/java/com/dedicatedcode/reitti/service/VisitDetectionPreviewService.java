@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -64,7 +65,7 @@ public class VisitDetectionPreviewService {
                 user.getId());
 
         log.debug("Copied preview data user [{}] with previewId [{}] successfully", user.getId(), previewId);
-        TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), previewId);
+        TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), previewId, UUID.randomUUID().toString());
         rabbitTemplate.convertAndSend(
                 RabbitMQConfig.EXCHANGE_NAME,
                 RabbitMQConfig.TRIGGER_PROCESSING_PIPELINE_ROUTING_KEY,
@@ -84,6 +85,7 @@ public class VisitDetectionPreviewService {
         }
         return Instant.now().minusSeconds(READY_THRESHOLD_SECONDS).isAfter(lastUpdate);
     }
+
 
     public void updatePreviewStatus(String previewId) {
         if (previewId != null) {

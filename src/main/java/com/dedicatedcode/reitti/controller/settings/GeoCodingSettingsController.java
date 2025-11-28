@@ -22,6 +22,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @Controller
 @RequestMapping("/settings/geocode-services")
@@ -140,7 +141,8 @@ public class GeoCodingSettingsController {
                             null,
                             place.getId(),
                             place.getLatitudeCentroid(),
-                            place.getLongitudeCentroid()
+                            place.getLongitudeCentroid(),
+                            UUID.randomUUID().toString()
                     );
                     rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.SIGNIFICANT_PLACE_ROUTING_KEY, event);
                 }
@@ -183,7 +185,8 @@ public class GeoCodingSettingsController {
                             null,
                             place.getId(),
                             place.getLatitudeCentroid(),
-                            place.getLongitudeCentroid()
+                            place.getLongitudeCentroid(),
+                            UUID.randomUUID().toString()
                     );
                     rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.SIGNIFICANT_PLACE_ROUTING_KEY, event);
                 }
