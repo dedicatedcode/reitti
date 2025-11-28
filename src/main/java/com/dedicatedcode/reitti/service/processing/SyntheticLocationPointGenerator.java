@@ -14,6 +14,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
+import static java.time.temporal.ChronoUnit.SECONDS;
+
 @Service
 public class SyntheticLocationPointGenerator {
     
@@ -39,7 +41,7 @@ public class SyntheticLocationPointGenerator {
         Instant endTime = endPoint.getTimestamp();
         
         // Generate points at regular intervals, excluding the endpoints
-        Instant currentTime = startTime.plusSeconds(intervalSeconds);
+        Instant currentTime = startTime.plusSeconds(intervalSeconds).truncatedTo(SECONDS);
         
         while (currentTime.isBefore(endTime)) {
             // Calculate interpolation ratio (0.0 to 1.0)
@@ -49,7 +51,7 @@ public class SyntheticLocationPointGenerator {
             
             // Interpolate coordinates
             GeoPoint interpolatedCoords = interpolateCoordinates(
-                startPoint.getGeom(), 
+                startPoint.getGeom(),
                 endPoint.getGeom(), 
                 ratio
             );

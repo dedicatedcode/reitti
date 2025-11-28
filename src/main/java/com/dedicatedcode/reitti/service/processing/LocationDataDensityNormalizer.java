@@ -2,7 +2,6 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.config.LocationDensityConfig;
 import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
@@ -18,7 +17,6 @@ import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 @Service
 public class LocationDataDensityNormalizer {
@@ -60,8 +58,7 @@ public class LocationDataDensityNormalizer {
             TimeRange inputRange = computeTimeRange(newPoints);
 
             // Step 2: Get detection parameters (use the earliest point's time for config lookup)
-            DetectionParameter detectionParams = visitDetectionParametersService
-                    .getCurrentConfiguration(user, inputRange.start);
+            DetectionParameter detectionParams = visitDetectionParametersService.getCurrentConfiguration(user, inputRange.start);
             DetectionParameter.LocationDensity densityConfig = detectionParams.getLocationDensity();
 
             // Step 3: Expand the time range by the interpolation window to catch boundary gaps
@@ -71,29 +68,38 @@ public class LocationDataDensityNormalizer {
                     inputRange.end.plus(window)
             );
 
-            // Step 4: Fetch all existing points in the expanded range (single DB query)
+            // Step 4: Delete all synthetic points in the expanded range
+            rawLocationPointService.deleteSyntheticPointsInRange(user, expandedRange.start, expandedRange.end);
+
+            // Step 5: Fetch all existing points in the expanded range (single DB query)
             List<RawLocationPoint> existingPoints = rawLocationPointService
                     .findByUserAndTimestampBetweenOrderByTimestampAsc(user, expandedRange.start, expandedRange.end);
 
-            logger.trace("Found {} existing points in expanded range [{} - {}]",
+            logger.debug("Found {} existing points in expanded range [{} - {}]",
                     existingPoints.size(), expandedRange.start, expandedRange.end);
 
-            // Step 5: Merge new points with existing points, handling duplicates
-            List<RawLocationPoint> allPoints = mergePoints(existingPoints, newPoints);
+            // Step 7: Sort deterministically by timestamp, then by ID (for repeatability)
+            existingPoints.sort(Comparator
+                    .comparing(RawLocationPoint::getTimestamp)
+                    .thenComparing(p -> p.getGeom().latitude())
+                    .thenComparing(p -> p.getGeom().longitude())
+                    .thenComparing(RawLocationPoint::isSynthetic));
 
-            // Step 6: Sort deterministically by timestamp, then by ID (for repeatability)
-            sortPointsDeterministically(allPoints);
+            logger.trace("Processing {} total points after merge", existingPoints.size());
 
-            logger.trace("Processing {} total points after merge", allPoints.size());
+            // Step 8: Process gaps (generate synthetic points)
+            processGaps(user, existingPoints, densityConfig);
 
-            // Step 7: Process gaps (generate synthetic points)
-            processGaps(user, allPoints, densityConfig);
-
-            // Step 8: Re-fetch and handle excess density
+            // Step 9: Re-fetch and handle excess density
             // We need to re-fetch because synthetic points were just inserted
             List<RawLocationPoint> updatedPoints = rawLocationPointService
                     .findByUserAndTimestampBetweenOrderByTimestampAsc(user, expandedRange.start, expandedRange.end);
-            sortPointsDeterministically(updatedPoints);
+
+            updatedPoints.sort(Comparator
+                    .comparing(RawLocationPoint::getTimestamp)
+                    .thenComparing(p -> p.getGeom().latitude())
+                    .thenComparing(p -> p.getGeom().longitude())
+                    .thenComparing(RawLocationPoint::isSynthetic));
 
             handleExcessDensity(user, updatedPoints);
 
@@ -125,68 +131,6 @@ public class LocationDataDensityNormalizer {
         }
 
         return new TimeRange(minTime, maxTime);
-    }
-
-    /**
-     * Merges existing RawLocationPoints with new LocationPoints.
-     * Handles deduplication based on timestamp matching.
-     */
-    private List<RawLocationPoint> mergePoints(
-            List<RawLocationPoint> existingPoints,
-            List<LocationPoint> newPoints) {
-
-        // Create a set of existing timestamps for O(1) lookup
-        Set<Instant> existingTimestamps = existingPoints.stream()
-                .map(RawLocationPoint::getTimestamp)
-                .collect(Collectors.toSet());
-
-        // Start with all existing points
-        List<RawLocationPoint> merged = new ArrayList<>(existingPoints);
-
-        // Add new points that aren't already in the database
-        for (LocationPoint newPoint : newPoints) {
-            Instant timestamp = Instant.parse(newPoint.getTimestamp());
-            if (!existingTimestamps.contains(timestamp)) {
-                // Create a temporary RawLocationPoint representation
-                // These will be identified by having id = null
-                RawLocationPoint tempPoint = new RawLocationPoint(Instant.parse(newPoint.getTimestamp()),
-                        new GeoPoint(newPoint.getLatitude(),
-                                newPoint.getLongitude()),
-                        newPoint.getAccuracyMeters(),
-                        newPoint.getElevationMeters());
-                merged.add(tempPoint);
-            }
-        }
-
-        return merged;
-    }
-
-    /**
-     * Sorts points deterministically by timestamp, then by ID for stability.
-     * Points without IDs (new points) are sorted by their coordinates as tiebreaker.
-     */
-    private void sortPointsDeterministically(List<RawLocationPoint> points) {
-        points.sort((p1, p2) -> {
-            // Primary sort: timestamp
-            int timestampCompare = p1.getTimestamp().compareTo(p2.getTimestamp());
-            if (timestampCompare != 0) {
-                return timestampCompare;
-            }
-
-            // Secondary sort: by ID if both have IDs
-            if (p1.getId() != null && p2.getId() != null) {
-                return p1.getId().compareTo(p2.getId());
-            }
-
-            // Tertiary sort: persisted points before non-persisted
-            if (p1.getId() != null) return -1;
-            if (p2.getId() != null) return 1;
-
-            // Final tiebreaker: by coordinates (for complete determinism)
-            int latCompare = Double.compare(p1.getLatitude(), p2.getLatitude());
-            if (latCompare != 0) return latCompare;
-            return Double.compare(p1.getLongitude(), p2.getLongitude());
-        });
     }
 
     /**
@@ -328,13 +272,20 @@ public class LocationDataDensityNormalizer {
             return point1;
         }
 
-        // Rule 4: Prefer lower ID (more deterministic than timestamp for repeatability)
-        if (point1.getId() != null && point2.getId() != null) {
-            return point1.getId() < point2.getId() ? point2 : point1;
+        int timestampCompare = point1.getTimestamp().compareTo(point2.getTimestamp());
+        if (timestampCompare != 0) {
+            return timestampCompare < 0 ? point2 : point1;
         }
 
-        // Fallback: prefer earlier timestamp
-        return point1.getTimestamp().isBefore(point2.getTimestamp()) ? point2 : point1;
+        // Tiebreaker: use coordinates (immutable, deterministic)
+        int latCompare = Double.compare(point1.getGeom().latitude(), point2.getGeom().latitude());
+        if (latCompare != 0) {
+            return latCompare < 0 ? point2 : point1;
+        }
+
+        int lonCompare = Double.compare(point1.getGeom().longitude(), point2.getGeom().longitude());
+        return lonCompare < 0 ? point2 : point1;
+
     }
 
     /**

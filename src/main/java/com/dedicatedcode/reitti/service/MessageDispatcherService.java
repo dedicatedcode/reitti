@@ -43,7 +43,7 @@ public class MessageDispatcherService {
 
     @RabbitListener(queues = RabbitMQConfig.STAY_DETECTION_QUEUE, concurrency = "${reitti.events.concurrency}")
     public void handleStayDetection(LocationProcessEvent event) {
-        logger.info("4 - Dispatching LocationProcessEvent: {}", event);
+        logger.info("Dispatching LocationProcessEvent: {}", event);
         unifiedLocationProcessingService.processLocationEvent(event);
         visitDetectionPreviewService.updatePreviewStatus(event.getPreviewId());
     }
@@ -64,7 +64,7 @@ public class MessageDispatcherService {
     @RabbitListener(queues = RabbitMQConfig.TRIGGER_PROCESSING_PIPELINE_QUEUE, concurrency = "${reitti.events.concurrency}")
     public void handleTriggerProcessingEvent(TriggerProcessingEvent event) {
         logger.info("3 - Dispatching TriggerProcessingEvent {}", event);
-        processingPipelineTrigger.handle(event);
+//        processingPipelineTrigger.handle(event);
         visitDetectionPreviewService.updatePreviewStatus(event.getPreviewId());
     }
 }

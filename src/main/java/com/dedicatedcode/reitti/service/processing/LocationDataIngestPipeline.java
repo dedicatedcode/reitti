@@ -49,7 +49,7 @@ public class LocationDataIngestPipeline {
     public void processLocationData(LocationDataEvent event) {
         try {
             long start = System.currentTimeMillis();
-            logger.info("2 - starting processing of event: {}", event);
+            logger.debug("starting processing of event: {}", event);
 
             Optional<User> userOpt = userJdbcService.findByUsername(event.getUsername());
 
@@ -70,7 +70,7 @@ public class LocationDataIngestPipeline {
 
             userSettingsJdbcService.updateNewestData(user, filtered);
             userNotificationService.newRawLocationData(user, filtered);
-            logger.info("2 - Finished storing and normalizing points [{}] for user [{}] in [{}]ms. Filtered out [{}] points before database and [{}] after database.", filtered.size(), event.getUsername(), System.currentTimeMillis() - start, points.size() - filtered.size(), filtered.size() - updatedRows);
+            logger.info("Finished storing and normalizing points [{}] for user [{}] in [{}]ms. Filtered out [{}] points before database and [{}] after database.", filtered.size(), event.getUsername(), System.currentTimeMillis() - start, points.size() - filtered.size(), filtered.size() - updatedRows);
         } catch (Exception e) {
             logger.error("Error during processing of event: {}", event, e);
         }

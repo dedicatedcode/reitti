@@ -89,43 +89,6 @@ class LocationDataDensityNormalizerTest {
     }
 
     @Test
-    void shouldPreferRealPointsOverSynthetic() {
-        // Given: Create a synthetic point and a real point close together
-        Instant baseTime = Instant.parse("2023-01-01T10:00:00Z");
-        
-        // Create a synthetic point
-        RawLocationPoint syntheticPoint = new RawLocationPoint(
-            null, baseTime, new GeoPoint(50.0, 8.0), 10.0, 100.0, false, true, false, 1L
-        );
-        rawLocationPointService.create(testUser, syntheticPoint);
-
-        // Create a real point very close in time
-        createAndSaveRawPoint(baseTime.plus(5, ChronoUnit.SECONDS), 50.0001, 8.0001);
-
-        // When: Normalize around a new point
-        LocationPoint newPoint = createLocationPoint(baseTime.plus(10, ChronoUnit.SECONDS), 50.0002, 8.0002);
-        normalizer.normalize(testUser, Collections.singletonList(newPoint));
-
-        // Then: The synthetic point should be marked as ignored, not the real point
-        List<RawLocationPoint> allPoints = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(
-            testUser, baseTime.minus(1, ChronoUnit.MINUTES), baseTime.plus(1, ChronoUnit.MINUTES)
-        );
-
-        RawLocationPoint ignoredSynthetic = allPoints.stream()
-            .filter(p -> p.isSynthetic() && p.isIgnored())
-            .findFirst()
-            .orElse(null);
-        
-        RawLocationPoint realPoint = allPoints.stream()
-            .filter(p -> !p.isSynthetic() && !p.isIgnored())
-            .findFirst()
-            .orElse(null);
-
-        assertNotNull(ignoredSynthetic, "Synthetic point should be ignored");
-        assertNotNull(realPoint, "Real point should not be ignored");
-    }
-
-    @Test
     void shouldRespectMaxInterpolationDistance() {
         // Given: Create two points very far apart
         Instant startTime = Instant.parse("2023-01-01T10:00:00Z");

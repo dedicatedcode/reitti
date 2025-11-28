@@ -8,6 +8,8 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ImportBatchProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
+import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
+import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -25,7 +27,7 @@ class GoogleAndroidTimelineImporterTest {
 
     @Test
     void shouldParseNewGoogleTakeOutFileFromAndroid() {
-        RabbitTemplate mock = mock(RabbitTemplate.class);
+        LocationDataIngestPipeline mock = mock(LocationDataIngestPipeline.class);
 
         VisitDetectionParametersService parametersService = mock(VisitDetectionParametersService.class);
         DetectionParameter config = new DetectionParameter(-1L,
@@ -34,16 +36,17 @@ class GoogleAndroidTimelineImporterTest {
                 new DetectionParameter.LocationDensity(50, 720),
                 null, RecalculationState.DONE);
         when(parametersService.getCurrentConfiguration(any(), any(Instant.class))).thenReturn(config);
-//        GoogleAndroidTimelineImporter importHandler = new GoogleAndroidTimelineImporter(new ObjectMapper(), new ImportStateHolder(), new ImportBatchProcessor(mock, 100, 5));
-//        User user = new User("test", "Test User");
-//        Map<String, Object> result = importHandler.importTimeline(getClass().getResourceAsStream("/data/google/timeline_from_android_randomized.json"), user);
-//
-//        assertTrue(result.containsKey("success"));
-//        assertTrue((Boolean) result.get("success"));
+        ProcessingPipelineTrigger processingPipeLineTrigger = mock(ProcessingPipelineTrigger.class);
+        GoogleAndroidTimelineImporter importHandler = new GoogleAndroidTimelineImporter(new ObjectMapper(), new ImportStateHolder(), new ImportBatchProcessor(mock, 100, 5, processingPipeLineTrigger));
+        User user = new User("test", "Test User");
+        Map<String, Object> result = importHandler.importTimeline(getClass().getResourceAsStream("/data/google/timeline_from_android_randomized.json"), user);
+
+        assertTrue(result.containsKey("success"));
+        assertTrue((Boolean) result.get("success"));
 
         // Create a spy to retrieve all LocationDataEvents pushed into RabbitMQ
         ArgumentCaptor<LocationDataEvent> eventCaptor = ArgumentCaptor.forClass(LocationDataEvent.class);
-        verify(mock, times(1)).convertAndSend(eq(RabbitMQConfig.EXCHANGE_NAME), eq(RabbitMQConfig.LOCATION_DATA_ROUTING_KEY), eventCaptor.capture());
+        verify(mock, times(1)).processLocationData(eventCaptor.capture());
 
         List<LocationDataEvent> capturedEvents = eventCaptor.getAllValues();
         assertEquals(1, capturedEvents.size());

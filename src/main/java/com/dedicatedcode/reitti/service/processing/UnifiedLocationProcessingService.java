@@ -104,7 +104,7 @@ public class UnifiedLocationProcessingService {
         String username = event.getUsername();
         String previewId = event.getPreviewId();
 
-        logger.info("4 - Processing location data for user [{}], mode: {}",
+        logger.info("Processing location data for user [{}], mode: {}",
                 username, previewId == null ? "LIVE" : "PREVIEW");
 
         User user = userJdbcService.findByUsername(username)
@@ -213,7 +213,7 @@ public class UnifiedLocationProcessingService {
 
         // Cluster by location and time
         Map<Integer, List<RawLocationPoint>> clusteredByLocation = new TreeMap<>();
-        for (ClusteredPoint cp : clusteredPoints) {
+        for (ClusteredPoint cp : clusteredPoints.stream().filter(clusteredPoint -> !clusteredPoint.getPoint().isIgnored()).toList()) {
             if (cp.getClusterId() != null) {
                 clusteredByLocation.computeIfAbsent(cp.getClusterId(), _ -> new ArrayList<>())
                         .add(cp.getPoint());
@@ -740,7 +740,7 @@ public class UnifiedLocationProcessingService {
                 endVisit
         );
         logger.debug("Created trip from {} to {}: travelled distance={}m, mode={}",
-                startVisit.getPlace().getName(), endVisit.getPlace().getName(), Math.round(travelledDistanceMeters), transportMode);
+                startVisit.getPlace().getId(), endVisit.getPlace().getId(), Math.round(travelledDistanceMeters), transportMode);
 
         // Save and return the trip
         return trip;

@@ -161,7 +161,7 @@ public class RawLocationPointJdbcService {
         String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.ignored, rlp.version , " +
                 "ST_ClusterDBSCAN(rlp.geom, ?, ?) over () AS cluster_id " +
                 "FROM raw_location_points rlp " +
-                "WHERE rlp.user_id = ? AND rlp.timestamp BETWEEN ? AND ? AND rlp.ignored = false";
+                "WHERE rlp.user_id = ? AND rlp.timestamp BETWEEN ? AND ?";
 
         return jdbcTemplate.query(sql, (rs, rowNum) -> {
 

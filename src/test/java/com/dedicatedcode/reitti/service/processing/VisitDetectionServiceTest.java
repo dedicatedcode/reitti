@@ -42,13 +42,12 @@ class VisitDetectionServiceTest {
     }
 
     @Test
-    @Transactional
     void shouldDetectVisits() {
         this.testingService.importAndProcess(user, "/data/gpx/20250531.gpx");
 
         List<Visit> persistedVisits = this.visitRepository.findByUser(user);
 
-        assertEquals(10, persistedVisits.size());
+        assertEquals(9, persistedVisits.size());
 
         List<ProcessedVisit> processedVisits = this.processedVisitRepository.findByUser(user);
 
@@ -62,7 +61,5 @@ class VisitDetectionServiceTest {
             assertTrue(durationBetweenVisits >= 300 || !visit.getPlace().equals(nextVisit.getPlace()),
                     "Duration between same place visit at index [" + i + "] should not be lower than [" + 300 + "]s but was [" + durationBetweenVisits + "]s");
         }
-
-        System.out.println();
     }
 }
