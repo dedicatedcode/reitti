@@ -1,9 +1,7 @@
 package com.dedicatedcode.reitti.service.processing;
 
-import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.event.LocationDataEvent;
-import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
@@ -12,10 +10,7 @@ import com.dedicatedcode.reitti.service.UserNotificationService;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -71,9 +66,7 @@ public class LocationDataIngestPipeline {
             int updatedRows = rawLocationPointJdbcService.bulkInsert(user, filtered);
 
             // Normalize density around each new point
-            for (LocationPoint point : filtered) {
-                densityNormalizer.normalizeAroundPoint(user, point);
-            }
+            densityNormalizer.normalize(user, filtered);
 
             userSettingsJdbcService.updateNewestData(user, filtered);
             userNotificationService.newRawLocationData(user, filtered);
