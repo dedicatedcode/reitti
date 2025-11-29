@@ -108,5 +108,12 @@ public class ProcessingPipelineTrigger {
         log.debug("Processed [{}] unprocessed points for user [{}]", totalProcessed, user.getId());
     }
 
-    // I need a method to check if the exeutor service is empty. AI!
+    /**
+     * Checks if the executor service has any pending tasks.
+     * @return true if there are no pending tasks, false otherwise
+     */
+    public boolean isExecutorServiceEmpty() {
+        return ((java.util.concurrent.ThreadPoolExecutor) executorService).getQueue().isEmpty() &&
+               ((java.util.concurrent.ThreadPoolExecutor) executorService).getActiveCount() == 0;
+    }
 }
