@@ -1,5 +1,3 @@
-BEGIN;
--- Step 1: Drop the existing unique constraint
 ALTER TABLE visit_detection_parameters
     DROP CONSTRAINT IF EXISTS user_valid_since_pk;
 
@@ -23,5 +21,3 @@ WHERE ctid IN (
 ALTER TABLE visit_detection_parameters
     ADD CONSTRAINT user_valid_since_pk
         UNIQUE NULLS NOT DISTINCT (user_id, valid_since);
-
-COMMIT;
