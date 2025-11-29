@@ -21,6 +21,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
@@ -33,7 +34,7 @@ public class ProcessingPipelineTrigger {
     private final UserJdbcService userJdbcService;
     private final UnifiedLocationProcessingService unifiedLocationProcessingService;
     private final int batchSize;
-    private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+    private final ThreadPoolExecutor executorService = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
 
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
@@ -108,12 +109,8 @@ public class ProcessingPipelineTrigger {
         log.debug("Processed [{}] unprocessed points for user [{}]", totalProcessed, user.getId());
     }
 
-    /**
-     * Checks if the executor service has any pending tasks.
-     * @return true if there are no pending tasks, false otherwise
-     */
-    public boolean isExecutorServiceEmpty() {
-        return ((java.util.concurrent.ThreadPoolExecutor) executorService).getQueue().isEmpty() &&
-               ((java.util.concurrent.ThreadPoolExecutor) executorService).getActiveCount() == 0;
+    public boolean isIdle() {
+        return executorService.getQueue().isEmpty() &&
+               executorService.getActiveCount() == 0;
     }
 }

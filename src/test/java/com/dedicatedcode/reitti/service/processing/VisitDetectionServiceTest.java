@@ -47,11 +47,11 @@ class VisitDetectionServiceTest {
 
         List<Visit> persistedVisits = this.visitRepository.findByUser(user);
 
-        assertEquals(9, persistedVisits.size());
+        assertEquals(8, persistedVisits.size());
 
         List<ProcessedVisit> processedVisits = this.processedVisitRepository.findByUser(user);
 
-        assertEquals(9, processedVisits.size());
+        assertEquals(8, processedVisits.size());
 
         for (int i = 0; i < processedVisits.size() - 1; i++) {
             ProcessedVisit visit = processedVisits.get(i);

@@ -113,7 +113,7 @@ public class TestingService {
                     lastVisitCount.set(currentVisitCount);
                     lastTripCount.set(currentTripCount);
 
-                    if (countsStable) {
+                    if (countsStable && this.trigger.isIdle()) {
                         return stableChecks.incrementAndGet() >= requiredStableChecks;
                     } else {
                         stableChecks.set(0);
