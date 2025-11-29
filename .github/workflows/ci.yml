@@ -58,8 +58,13 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Run unit tests
         run: mvn test
+        env:
+          DOCKER_HOST: unix:///var/run/docker.sock
 
       - name: Upload coverage reports as artifact
         uses: actions/upload-artifact@v4
@@ -81,6 +86,11 @@ jobs:
         with:
           name: jar-artifact
           path: staging/
+
+      - name: Copy JAR to target directory for Docker build
+        run: |
+          mkdir -p target
+          cp staging/*.jar target/
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
