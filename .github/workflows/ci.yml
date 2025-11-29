@@ -65,6 +65,7 @@ jobs:
         run: mvn test
         env:
           DOCKER_HOST: unix:///var/run/docker.sock
+          SPRING_PROFILES_ACTIVE: test,ci
 
       - name: Upload coverage reports as artifact
         uses: actions/upload-artifact@v4
