@@ -47,7 +47,7 @@ public class LocationDataDensityNormalizer {
             return;
         }
 
-        ReentrantLock userLock = userLocks.computeIfAbsent(user.getUsername(), k -> new ReentrantLock());
+        ReentrantLock userLock = userLocks.computeIfAbsent(user.getUsername(), _ -> new ReentrantLock());
 
         userLock.lock();
         try {

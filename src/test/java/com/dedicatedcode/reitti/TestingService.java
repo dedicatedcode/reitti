@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti;
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
+import com.dedicatedcode.reitti.service.ImportBatchProcessor;
 import com.dedicatedcode.reitti.service.UserService;
 import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
 import com.dedicatedcode.reitti.service.importer.GpxImporter;
@@ -48,6 +49,8 @@ public class TestingService {
     private ProcessingPipelineTrigger trigger;
     @Autowired
     private UserService userService;
+    @Autowired
+    private ImportBatchProcessor importBatchProcessor;
 
     public void importData(User user, String path) {
         InputStream is = getClass().getResourceAsStream(path);
@@ -113,7 +116,7 @@ public class TestingService {
                     lastVisitCount.set(currentVisitCount);
                     lastTripCount.set(currentTripCount);
 
-                    if (countsStable && this.trigger.isIdle()) {
+                    if (countsStable && this.trigger.isIdle() && importBatchProcessor.isIdle()) {
                         return stableChecks.incrementAndGet() >= requiredStableChecks;
                     } else {
                         stableChecks.set(0);
