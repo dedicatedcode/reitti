@@ -2,13 +2,14 @@ package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 
 @Service
 public class LocationPointsSimplificationService {
-    private static final Logger logger = org.slf4j.LoggerFactory.getLogger(LocationPointsSimplificationService.class);
+    private static final Logger logger = LoggerFactory.getLogger(LocationPointsSimplificationService.class);
 
     /**
      * Simplify a list of location points using the Visvalingam-Whyatt algorithm

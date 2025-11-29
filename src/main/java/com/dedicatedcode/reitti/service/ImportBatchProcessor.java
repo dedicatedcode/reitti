@@ -31,7 +31,7 @@ public class ImportBatchProcessor {
     
     public ImportBatchProcessor(
             LocationDataIngestPipeline locationDataIngestPipeline,
-            @Value("${reitti.import.batch-size:100}") int batchSize,
+            @Value("${reitti.import.batch-size:10000}") int batchSize,
             @Value("${reitti.import.processing-idle-start-time:15}") int processingIdleStartTime,
             ProcessingPipelineTrigger processingPipelineTrigger) {
         this.locationDataIngestPipeline = locationDataIngestPipeline;
@@ -51,8 +51,6 @@ public class ImportBatchProcessor {
         logger.debug("Sending batch of {} locations for storing", batch.size());
         locationDataIngestPipeline.processLocationData(event);
         logger.debug("Sending batch of {} locations for processing", batch.size());
-        TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), null, UUID.randomUUID().toString());
-        processingPipelineTrigger.handle(triggerEvent);
         scheduleProcessingTrigger(user.getUsername());
     }
     
@@ -75,6 +73,10 @@ public class ImportBatchProcessor {
         }, processingIdleStartTime, TimeUnit.SECONDS);
         
         pendingTriggers.put(username, newTrigger);
+    }
+
+    public boolean isIdle() {
+        return pendingTriggers.isEmpty() || pendingTriggers.values().stream().allMatch(ScheduledFuture::isDone);
     }
     
     @PreDestroy

@@ -89,7 +89,7 @@ public class SyntheticLocationPointGenerator {
     }
     
     private boolean shouldInterpolate(RawLocationPoint start, RawLocationPoint end, double maxDistance) {
-        // Check if distance between points is within acceptable range
+        // Check if the distance between points is within an acceptable range
         double distance = GeoUtils.distanceInMeters(start, end);
         
         if (distance > maxDistance) {
