@@ -276,7 +276,7 @@ public class SettingsVisitSensitivityController {
                 rawLocationPointJdbcService.markAllAsUnprocessedForUser(user);
                 allConfigurationsForUser.forEach(config -> this.configurationService.updateConfiguration(config.withRecalculationState(RecalculationState.DONE)));
                 log.debug("Starting recalculation of all configurations");
-                processingPipelineTrigger.start();
+                processingPipelineTrigger.start(user);
             } catch (Exception e) {
                 log.error("Error clearing time range", e);
             }

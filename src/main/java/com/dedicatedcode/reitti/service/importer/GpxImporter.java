@@ -62,7 +62,7 @@ public class GpxImporter {
                         
                         // Process in batches to avoid memory issues
                         if (batch.size() >= batchProcessor.getBatchSize()) {
-                            batchProcessor.sendToQueue(user, batch);
+                            batchProcessor.processBatch(user, batch);
                             batch.clear();
                         }
                     }
@@ -74,7 +74,7 @@ public class GpxImporter {
             
             // Process any remaining locations
             if (!batch.isEmpty()) {
-                batchProcessor.sendToQueue(user, batch);
+                batchProcessor.processBatch(user, batch);
             }
             
             logger.info("Successfully imported and queued {} location points from GPX file for user {}",

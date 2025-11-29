@@ -66,7 +66,7 @@ public class GoogleRecordsImporter {
             
             // Process any remaining locations
             if (!batch.isEmpty()) {
-                batchProcessor.sendToQueue(user, batch);
+                batchProcessor.processBatch(user, batch);
             }
             
             logger.info("Successfully imported and queued {} location points from Google Records for user {}", 
@@ -112,7 +112,7 @@ public class GoogleRecordsImporter {
                         processedCount++;
 
                         if (batch.size() >= batchProcessor.getBatchSize()) {
-                            batchProcessor.sendToQueue(user, batch);
+                            batchProcessor.processBatch(user, batch);
                             batch.clear();
                         }
                     }

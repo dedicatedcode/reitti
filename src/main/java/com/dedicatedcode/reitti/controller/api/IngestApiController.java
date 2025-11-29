@@ -68,7 +68,7 @@ public class IngestApiController {
                 return ResponseEntity.ok(Map.of());
             }
 
-            this.batchProcessor.sendToQueue(user, Collections.singletonList(locationPoint));
+            this.batchProcessor.processBatch(user, Collections.singletonList(locationPoint));
             logger.debug("Successfully received and queued Owntracks location point for user {}",
                     user.getUsername());
             
@@ -108,7 +108,7 @@ public class IngestApiController {
                 ));
             }
             
-            this.batchProcessor.sendToQueue(user, locationPoints);
+            this.batchProcessor.processBatch(user, locationPoints);
             logger.debug("Successfully received and queued {} Overland location points for user {}",
                     locationPoints.size(), user.getUsername());
             

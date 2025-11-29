@@ -15,7 +15,7 @@ import java.lang.annotation.RetentionPolicy;
 @ActiveProfiles("test")
 @Import({TestContainerConfiguration.class, TestConfiguration.class})
 @Retention(RetentionPolicy.RUNTIME)
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+//@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @AutoConfigureMockMvc
 public @interface IntegrationTest {
 }

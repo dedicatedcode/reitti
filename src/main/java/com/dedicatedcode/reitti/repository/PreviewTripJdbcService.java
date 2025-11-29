@@ -14,7 +14,6 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -64,9 +63,9 @@ public class PreviewTripJdbcService {
                 Timestamp.from(startTime), Timestamp.from(endTime));
     }
 
-    public void bulkInsert(User user, String previewId, List<Trip> tripsToInsert) {
+    public List<Trip> bulkInsert(User user, String previewId, List<Trip> tripsToInsert) {
         if (tripsToInsert.isEmpty()) {
-            return;
+            return tripsToInsert;
         }
         
         String sql = """
@@ -92,6 +91,21 @@ public class PreviewTripJdbcService {
             .collect(Collectors.toList());
         
         jdbcTemplate.batchUpdate(sql, batchArgs);
+        return tripsToInsert;
     }
 
+    public void deleteAll(List<Trip> existingTrips) {
+        if (existingTrips == null || existingTrips.isEmpty()) {
+            return;
+        }
+
+        List<Long> ids = existingTrips.stream()
+                .map(Trip::getId)
+                .toList();
+
+        String placeholders = String.join(",", ids.stream().map(id -> "?").toList());
+        String sql = "DELETE FROM preview_trips WHERE id IN (" + placeholders + ")";
+
+        jdbcTemplate.update(sql, ids.toArray());
+    }
 }

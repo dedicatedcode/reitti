@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti;
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
+import com.dedicatedcode.reitti.service.UserService;
 import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
 import com.dedicatedcode.reitti.service.importer.GpxImporter;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
@@ -16,20 +17,16 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 public class TestingService {
 
     private static final List<String> QUEUES_TO_CHECK = List.of(
-            RabbitMQConfig.MERGE_VISIT_QUEUE,
-            RabbitMQConfig.STAY_DETECTION_QUEUE,
             RabbitMQConfig.LOCATION_DATA_QUEUE,
-            RabbitMQConfig.DETECT_TRIP_QUEUE,
             RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE
     );
-
-    private final AtomicLong lastRun = new AtomicLong(0);
 
     @Autowired
     private UserJdbcService userJdbcService;
@@ -49,15 +46,15 @@ public class TestingService {
     private VisitJdbcService visitRepository;
     @Autowired
     private ProcessingPipelineTrigger trigger;
+    @Autowired
+    private UserService userService;
 
-    public void importData(String path) {
-        User admin = userJdbcService.findById(1L)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + (Long) 1L));
+    public void importData(User user, String path) {
         InputStream is = getClass().getResourceAsStream(path);
         if (path.endsWith(".gpx")) {
-            gpxImporter.importGpx(is, admin);
+            gpxImporter.importGpx(is, user);
         } else if (path.endsWith(".geojson")) {
-            geoJsonImporter.importGeoJson(is, admin);
+            geoJsonImporter.importGeoJson(is, user);
         } else {
             throw new IllegalStateException("Unsupported file type: " + path);
         }
@@ -69,33 +66,63 @@ public class TestingService {
     }
 
     public User randomUser() {
-        return this.userJdbcService.createUser(new User(UUID.randomUUID().toString(), "Test User"));
+        return this.userService.createNewUser("test-user_" + UUID.randomUUID().toString(),"Test User", null, null);
     }
 
     public void triggerProcessingPipeline(int timeout) {
         trigger.start();
         awaitDataImport(timeout);
     }
-
     public void awaitDataImport(int seconds) {
-        this.lastRun.set(0);
+        AtomicLong lastRawCount = new AtomicLong(-1);
+        AtomicLong lastVisitCount = new AtomicLong(-1);
+        AtomicLong lastTripCount = new AtomicLong(-1);
+        AtomicInteger stableChecks = new AtomicInteger(0);
+
+        // Require multiple consecutive stable checks
+        final int requiredStableChecks = 5;
+
         Awaitility.await()
-                .pollInterval(seconds / 10, TimeUnit.SECONDS)
+                .pollInterval(Math.max(1, seconds / 300), TimeUnit.SECONDS)
                 .atMost(seconds, TimeUnit.SECONDS)
-                .alias("Wait for Queues to be empty").until(() -> {
-                    boolean queuesArEmpty = QUEUES_TO_CHECK.stream().allMatch(name -> this.rabbitAdmin.getQueueInfo(name).getMessageCount() == 0);
-                    if (!queuesArEmpty) {
+                .alias("Wait for processing to complete")
+                .until(() -> {
+                    // Check all queues are empty
+                    boolean queuesAreEmpty = QUEUES_TO_CHECK.stream()
+                            .allMatch(name -> {
+                                var queueInfo = this.rabbitAdmin.getQueueInfo(name);
+                                return queueInfo.getMessageCount() == 0;
+                            });
+
+                    if (!queuesAreEmpty) {
+                        stableChecks.set(0);
                         return false;
                     }
 
-                    long currentCount = rawLocationPointRepository.count();
-                    return currentCount == lastRun.getAndSet(currentCount);
+                    // Check if all counts are stable
+                    long currentRawCount = rawLocationPointRepository.count();
+                    long currentVisitCount = visitRepository.count();
+                    long currentTripCount = tripRepository.count();
+
+                    boolean countsStable =
+                            currentRawCount == lastRawCount.get() &&
+                                    currentVisitCount == lastVisitCount.get() &&
+                                    currentTripCount == lastTripCount.get();
+
+                    lastRawCount.set(currentRawCount);
+                    lastVisitCount.set(currentVisitCount);
+                    lastTripCount.set(currentTripCount);
+
+                    if (countsStable && this.trigger.isIdle()) {
+                        return stableChecks.incrementAndGet() >= requiredStableChecks;
+                    } else {
+                        stableChecks.set(0);
+                        return false;
+                    }
                 });
     }
 
     public void clearData() {
-        //first, purge all messages from rabbit mq
-        lastRun.set(0);
         QUEUES_TO_CHECK.forEach(name -> this.rabbitAdmin.purgeQueue(name));
 
         try {
@@ -110,9 +137,8 @@ public class TestingService {
         this.rawLocationPointRepository.deleteAll();
     }
 
-    public void importAndProcess(String path) {
-        importData(path);
-        awaitDataImport(10);
-        triggerProcessingPipeline(20);
+    public void importAndProcess(User user, String path) {
+        importData(user, path);
+        awaitDataImport(100);
     }
 }

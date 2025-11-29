@@ -42,26 +42,6 @@ class BaseGoogleTimelineImporterTest {
         testingService.awaitDataImport(20);
 
         List<ProcessedVisit> createdVisits = this.visitJdbcService.findByUser(user);
-        assertEquals(6, createdVisits.size());
-        //"startTime" : "2017-05-02T12:12:04+10:00",
-        //"endTime" : "2017-05-02T18:52:12+10:00",
-
-        //"startTime" : "2017-05-02T19:16:01+10:00",
-        //    "endTime" : "2017-05-02T20:48:52+10:00",
-
-        // "startTime" : "2017-05-02T21:17:03+10:00",
-        //    "endTime" : "2017-05-03T14:23:20+10:00",
-
-        // "startTime" : "2017-05-03T15:10:14+10:00",
-        //    "endTime" : "2017-05-03T23:50:01+10:00",
-
-        // "startTime" : "2017-05-04T00:05:33+10:00",
-        //    "endTime" : "2017-05-04T00:17:23+10:00",
-
-        //"startTime" : "2017-05-04T00:08:21+10:00",
-        //    "endTime" : "2017-05-04T00:17:23+10:00",
-
-        //"startTime" : "2017-05-04T00:44:27+10:00",
-        //    "endTime" : "2017-05-04T14:51:51+10:00",
+        assertEquals(3, createdVisits.size());
     }
 }

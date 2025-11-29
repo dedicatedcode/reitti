@@ -4,7 +4,6 @@ import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ImportBatchProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
-import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
 import com.dedicatedcode.reitti.service.importer.dto.ios.IOSSemanticSegment;
 import com.dedicatedcode.reitti.service.importer.dto.ios.IOSVisit;
 import com.fasterxml.jackson.core.JsonFactory;
@@ -32,9 +31,8 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
 
     public GoogleIOSTimelineImporter(ObjectMapper objectMapper,
                                      ImportStateHolder stateHolder,
-                                     ImportBatchProcessor batchProcessor,
-                                     VisitDetectionParametersService parametersService) {
-        super(objectMapper, batchProcessor, parametersService);
+                                     ImportBatchProcessor batchProcessor) {
+        super(objectMapper, batchProcessor);
         this.stateHolder = stateHolder;
     }
 
@@ -51,10 +49,6 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
             List<IOSSemanticSegment> semanticSegments = objectMapper.readValue(parser, new TypeReference<>() {});
             logger.info("Found {} semantic segments", semanticSegments.size());
             for (IOSSemanticSegment semanticSegment : semanticSegments) {
-                //2024-01-01T00:33:18+01:00
-                //2024-01-01T00:33:18+01:00
-
-
                 ZonedDateTime start = ZonedDateTime.parse(semanticSegment.getStartTime(), DateTimeFormatter.ISO_OFFSET_DATE_TIME).withNano(0);
                 ZonedDateTime end = ZonedDateTime.parse(semanticSegment.getEndTime(), DateTimeFormatter.ISO_OFFSET_DATE_TIME).withNano(0);
                 if (semanticSegment.getVisit() != null) {
@@ -78,7 +72,7 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
 
             // Process any remaining locations
             if (!batch.isEmpty()) {
-                batchProcessor.sendToQueue(user, batch);
+                batchProcessor.processBatch(user, batch);
             }
 
             logger.info("Successfully imported and queued {} location points from Google Timeline for user {}",

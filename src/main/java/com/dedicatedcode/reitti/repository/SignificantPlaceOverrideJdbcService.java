@@ -22,7 +22,7 @@ public class SignificantPlaceOverrideJdbcService {
     }
 
     public Optional<PlaceInformationOverride> findByUserAndPoint(User user, GeoPoint point) {
-        double meterInDegrees = GeoUtils.metersToDegreesAtPosition(5.0, point.latitude())[0];
+        double meterInDegrees = GeoUtils.metersToDegreesAtPosition(5.0, point.latitude());
         String sql = "SELECT name, category, timezone FROM significant_places_overrides WHERE user_id = ? AND ST_DWithin(geom, ST_GeomFromText(?, '4326'), ?) ORDER BY ST_Distance(geom, ST_GeomFromText(?, '4326')) ASC LIMIT 1";
         List<PlaceInformationOverride> override = jdbcTemplate.query(sql, (rs, rowNum) -> new PlaceInformationOverride(
                 rs.getString("name"),
@@ -38,7 +38,7 @@ public class SignificantPlaceOverrideJdbcService {
 
     public void insertOverride(User user, SignificantPlace place) {
         GeoPoint point = new GeoPoint(place.getLatitudeCentroid(), place.getLongitudeCentroid());
-        double meterInDegrees = GeoUtils.metersToDegreesAtPosition(5.0, place.getLatitudeCentroid())[0];
+        double meterInDegrees = GeoUtils.metersToDegreesAtPosition(5.0, place.getLatitudeCentroid());
         this.jdbcTemplate.update("DELETE FROM significant_places_overrides WHERE user_id = ? AND ST_DWithin(geom, ST_GeomFromText(?, '4326'), ?)", user.getId(), pointReaderWriter.write(point), meterInDegrees);
         String sql = "INSERT INTO significant_places_overrides (user_id, geom, name, category, timezone) VALUES (?, ST_GeomFromText(?, '4326'), ?, ?, ?)";
         jdbcTemplate.update(sql, user.getId(), pointReaderWriter.write(point), place.getName(), place.getType().name(), place.getTimezone().getId());

@@ -13,7 +13,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -48,20 +47,6 @@ public class TripJdbcService {
             );
         }
     };
-
-    public List<Trip> findByIds(User user, List<Long> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return List.of();
-        }
-        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
-        String sql = "SELECT t.* FROM trips t WHERE t.user_id = ? AND t.id IN (" + placeholders + ")";
-        Object[] params = new Object[ids.size() + 1];
-        params[0] = user.getId();
-        for (int i = 0; i < ids.size(); i++) {
-            params[i + 1] = ids.get(i);
-        }
-        return jdbcTemplate.query(sql, TRIP_ROW_MAPPER, params);
-    }
 
     public List<Trip> findByUser(User user) {
         String sql = "SELECT t.*" +
@@ -166,9 +151,9 @@ public class TripJdbcService {
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
-    public void bulkInsert(User user, List<Trip> tripsToInsert) {
+    public List<Trip> bulkInsert(User user, List<Trip> tripsToInsert) {
         if (tripsToInsert.isEmpty()) {
-            return;
+            return tripsToInsert;
         }
         
         String sql = """
@@ -193,6 +178,7 @@ public class TripJdbcService {
             .collect(Collectors.toList());
         
         jdbcTemplate.batchUpdate(sql, batchArgs);
+        return tripsToInsert;
     }
 
     public void deleteAll() {
@@ -205,16 +191,27 @@ public class TripJdbcService {
         jdbcTemplate.update(sql, user.getId());
     }
 
-    public void deleteAllForUserBetween(User user, Instant start, Instant end) {
-        String sql = "DELETE FROM trips WHERE user_id = ? AND start_time <= ? AND end_time >= ?";
-        jdbcTemplate.update(sql, user.getId(), Timestamp.from(end), Timestamp.from(start));
-    }
-    public void deleteAllForUserAfter(User user, Instant start) {
-        String sql = "DELETE FROM trips WHERE user_id = ? AND end_time >= ?";
-        jdbcTemplate.update(sql, user.getId(), Timestamp.from(start));
-    }
-
     public List<Long> findIdsByUser(User user) {
         return jdbcTemplate.queryForList("SELECT id FROM trips WHERE user_id = ?", Long.class, user.getId());
+    }
+
+    @SuppressWarnings("DataFlowIssue")
+    public long count() {
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM trips", Long.class);
+    }
+
+    public void deleteAll(List<Trip> existingTrips) {
+        if (existingTrips == null || existingTrips.isEmpty()) {
+            return;
+        }
+        
+        List<Long> ids = existingTrips.stream()
+                .map(Trip::getId)
+                .toList();
+        
+        String placeholders = String.join(",", ids.stream().map(id -> "?").toList());
+        String sql = "DELETE FROM trips WHERE id IN (" + placeholders + ")";
+        
+        jdbcTemplate.update(sql, ids.toArray());
     }
 }
