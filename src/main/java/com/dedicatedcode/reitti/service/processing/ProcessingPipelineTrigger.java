@@ -107,4 +107,6 @@ public class ProcessingPipelineTrigger {
 
         log.debug("Processed [{}] unprocessed points for user [{}]", totalProcessed, user.getId());
     }
+
+    // I need a method to check if the exeutor service is empty. AI!
 }
