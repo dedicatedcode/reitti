@@ -36,9 +36,9 @@ public class TestUtils {
 
                    String pointString = row.getField(5);
                    pointString = pointString.substring(7);
-                   double x = Double.parseDouble(pointString.substring(0, pointString.indexOf(" ")));
-                   double y = Double.parseDouble(pointString.substring(pointString.indexOf(" ") + 1, pointString.length() - 1));
-                   GeoPoint point = new GeoPoint(x, y);
+                   double longitude = Double.parseDouble(pointString.substring(0, pointString.indexOf(" ")));
+                   double latitude = Double.parseDouble(pointString.substring(pointString.indexOf(" ") + 1, pointString.length() - 1));
+                   GeoPoint point = new GeoPoint(latitude, longitude);
                    return new RawLocationPoint(timestamp, point, Double.parseDouble(row.getField(1)));
                }).toList();
     }

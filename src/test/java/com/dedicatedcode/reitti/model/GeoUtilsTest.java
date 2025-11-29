@@ -20,19 +20,16 @@ class GeoUtilsTest {
     @Test
     void shouldConvertMetersToDegreesCorrectly() {
         // Test at the equator (0 degrees latitude)
-        double[] degreesAtEquator = GeoUtils.metersToDegreesAtPosition(111320, 0);
-        assertEquals(1.0, degreesAtEquator[0], 0.001); // 1 degree latitude
-        assertEquals(1.0, degreesAtEquator[1], 0.001); // 1 degree longitude at equator
+        double degreesAtEquator = GeoUtils.metersToDegreesAtPosition(111320, 0);
+        assertEquals(1.0, degreesAtEquator, 0.001); // 1 degree longitude at equator
         
         // Test at 60 degrees north
-        double[] degreesAt60North = GeoUtils.metersToDegreesAtPosition(111320, 60);
-        assertEquals(1.0, degreesAt60North[0], 0.001); // 1 degree latitude
-        assertEquals(2.0, degreesAt60North[1], 0.001); // 2 degrees longitude at 60°N (approximately)
+        double  degreesAt60North = GeoUtils.metersToDegreesAtPosition(111320, 60);
+        assertEquals(2.0, degreesAt60North, 0.001); // 2 degrees longitude at 60°N (approximately)
         
         // Test with a smaller distance
-        double[] degreesFor100m = GeoUtils.metersToDegreesAtPosition(100, 45);
-        assertEquals(0.0009, degreesFor100m[0], 0.0001); // About 0.0009 degrees latitude
-        assertEquals(0.00127, degreesFor100m[1], 0.0001); // About 0.00127 degrees longitude at 45°N
+        double degreesFor100m = GeoUtils.metersToDegreesAtPosition(100, 45);
+        assertEquals(0.00127, degreesFor100m, 0.0001); // About 0.00127 degrees longitude at 45°N
     }
 
     @Test
@@ -41,5 +38,14 @@ class GeoUtilsTest {
         double calculatedDistances = GeoUtils.calculateTripDistance(points);
 
         assertEquals(22664.67856, calculatedDistances, 0.01);
+    }
+
+    @Test
+    void verifyKnowDistance() {
+        double distance = GeoUtils.distanceInMeters(53.863149, 10.700927, 53.863149, 10.700927);
+        assertEquals(0, distance, 0.001);
+
+        distance = GeoUtils.distanceInMeters(53.86311997086828, 10.697632182858786,53.863101456971975, 10.701659658003141);
+        assertEquals(264.103574, distance, 0.001);
     }
 }

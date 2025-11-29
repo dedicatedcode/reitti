@@ -28,8 +28,6 @@ public class PreviewVisitDetectionParametersJdbcService {
         Instant validSince = validSinceTimestamp != null ? validSinceTimestamp.toInstant() : null;
 
         DetectionParameter.VisitDetection visitDetection = new DetectionParameter.VisitDetection(
-                rs.getLong("detection_search_distance_meters"),
-                rs.getInt("detection_minimum_adjacent_points"),
                 rs.getLong("detection_minimum_stay_time_seconds"),
                 rs.getLong("detection_max_merge_time_between_same_stay_points")
         );
@@ -40,7 +38,12 @@ public class PreviewVisitDetectionParametersJdbcService {
                 rs.getLong("merging_min_distance_between_visits")
         );
 
-        return new DetectionParameter(id, visitDetection, visitMerging, validSince, RecalculationState.DONE);
+        DetectionParameter.LocationDensity locationDensity = new DetectionParameter.LocationDensity(
+                rs.getDouble("density_max_interpolation_distance_meters"),
+                rs.getInt("density_max_interpolation_gap_minutes")
+        );
+
+        return new DetectionParameter(id, visitDetection, visitMerging, locationDensity, validSince, RecalculationState.DONE);
     };
 
     public DetectionParameter findCurrent(User user, String previewId) {

@@ -19,11 +19,10 @@ public final class GeoUtils {
         double lonDiff = Math.abs(lon2 - lon1);
         
         if (latDiff < 0.01 && lonDiff < 0.01) { // roughly < 1km
-            // Fast approximation for short distances
             double avgLat = Math.toRadians((lat1 + lat2) / 2);
             double latDistance = Math.toRadians(latDiff);
             double lonDistance = Math.toRadians(lonDiff) * Math.cos(avgLat);
-            
+
             return EARTH_RADIUS * Math.sqrt(latDistance * latDistance + lonDistance * lonDistance);
         }
         
@@ -69,14 +68,9 @@ public final class GeoUtils {
      * @param latitude The latitude at which to calculate the conversion
      * @return An array where index 0 is the latitude degrees and index 1 is the longitude degrees
      */
-    public static double[] metersToDegreesAtPosition(double meters, double latitude) {
-        // For latitude: 1 degree = 111,320 meters (approximately constant)
-        double latitudeDegrees = meters / 111320.0;
-        
+    public static double metersToDegreesAtPosition(double meters, double latitude) {
         // For longitude: 1 degree = 111,320 * cos(latitude) meters (varies with latitude)
-        double longitudeDegrees = meters / (111320.0 * Math.cos(Math.toRadians(latitude)));
-        
-        return new double[] { latitudeDegrees, longitudeDegrees };
+        return meters / (111320.0 * Math.cos(Math.toRadians(latitude)));
     }
 
     public static double calculateTripDistance(List<RawLocationPoint> points) {

@@ -391,7 +391,6 @@ public class UserSettingsControllerTest {
                         .param("unit_system", "METRIC")
                         .with(csrf())
                         .with(user(currentUser)))
-                .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: user-form-page"))
                 .andExpect(model().attributeExists("successMessage"))

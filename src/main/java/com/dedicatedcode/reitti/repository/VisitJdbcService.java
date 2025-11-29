@@ -136,7 +136,16 @@ public class VisitJdbcService {
         List<Visit> createdVisits = new ArrayList<>();
         String sql = """
                 INSERT INTO visits (user_id, latitude, longitude, start_time, end_time, duration_seconds, processed, version)
-                VALUES (?, ?, ?, ?, ?, ?, false, 1) ON CONFLICT DO NOTHING;
+                VALUES (?, ?, ?, ?, ?, ?, false, 1) ON CONFLICT (user_id, start_time, end_time) DO UPDATE SET
+                user_id = EXCLUDED.user_id,
+                latitude = EXCLUDED.latitude,
+                longitude = EXCLUDED.longitude,
+                start_time = EXCLUDED.start_time,
+                end_time = EXCLUDED.end_time,
+                duration_seconds = EXCLUDED.duration_seconds,
+                processed = EXCLUDED.processed,
+                id = visits.id,
+                version = visits.version + 1;
                 """;
 
         List<Object[]> batchArgs = visitsToInsert.stream()
@@ -188,5 +197,9 @@ public class VisitJdbcService {
 
     public void deleteAllForUserAfter(User user, Instant start) {
         jdbcTemplate.update("DELETE FROM visits WHERE user_id = ?  AND end_time >= ?", user.getId(), Timestamp.from(start));
+    }
+
+    public long count() {
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM visits", Long.class);
     }
 }

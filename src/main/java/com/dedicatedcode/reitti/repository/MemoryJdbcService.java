@@ -13,7 +13,6 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,7 +25,7 @@ public class MemoryJdbcService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    private static final RowMapper<Memory> MEMORY_ROW_MAPPER = (rs, rowNum) -> new Memory(
+    private static final RowMapper<Memory> MEMORY_ROW_MAPPER = (rs, _) -> new Memory(
             rs.getLong("id"),
             rs.getString("title"),
             rs.getString("description"),
@@ -122,32 +121,11 @@ public class MemoryJdbcService {
         return jdbcTemplate.query(sql, MEMORY_ROW_MAPPER, user.getId());
     }
 
-    public List<Memory> findAllByUserAndYear(User user, int year) {
-        return jdbcTemplate.query(
-                "SELECT * FROM memory WHERE user_id = ? AND (extract(YEAR FROM start_date) = ? OR extract(YEAR FROM end_date) = ?) ORDER BY created_at DESC",
-                MEMORY_ROW_MAPPER,
-                user.getId(), year, year
-        );
-    }
-
     public List<Memory> findAllByUserAndYear(User user, int year, String sortBy, String sortOrder) {
         String column = mapSortByToColumn(sortBy);
         String order = "desc".equalsIgnoreCase(sortOrder) ? "DESC" : "ASC";
         String sql = "SELECT * FROM memory WHERE user_id = ? AND (extract(YEAR FROM start_date) = ? OR extract(YEAR FROM end_date) = ?) ORDER BY " + column + " " + order;
         return jdbcTemplate.query(sql, MEMORY_ROW_MAPPER, user.getId(), year, year);
-    }
-
-    public List<Memory> findByDateRange(User user, Instant startDate, Instant endDate) {
-        return jdbcTemplate.query(
-                "SELECT * FROM memory " +
-                "WHERE user_id = ? " +
-                "AND (end_date <= ? AND start_date >= ?) " +
-                "ORDER BY start_date DESC",
-                MEMORY_ROW_MAPPER,
-                user.getId(),
-                endDate,
-                startDate
-        );
     }
 
     public List<Integer> findDistinctYears(User user) {

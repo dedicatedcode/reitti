@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Controller
@@ -201,7 +202,8 @@ public class PlacesSettingsController {
                         null,
                         significantPlace.getId(),
                         significantPlace.getLatitudeCentroid(),
-                        significantPlace.getLongitudeCentroid()
+                        significantPlace.getLongitudeCentroid(),
+                        UUID.randomUUID().toString()
                 );
                 rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.SIGNIFICANT_PLACE_ROUTING_KEY, event);
 

@@ -22,6 +22,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -199,7 +200,7 @@ public class TransportationModesController {
                 tripJdbcService.findIdsByUser(user).forEach(tripId -> {
                     rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME,
                             RabbitMQConfig.DETECT_TRIP_RECALCULATION_ROUTING_KEY,
-                            new RecalculateTripEvent(user.getUsername(), tripId));
+                            new RecalculateTripEvent(user.getUsername(), tripId, UUID.randomUUID().toString()));
                 });
             });
             

@@ -10,11 +10,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @IntegrationTest
-@Transactional
 class UserJdbcServiceIntegrationTest {
 
     @Autowired
@@ -25,9 +25,10 @@ class UserJdbcServiceIntegrationTest {
 
     @Test
     void testCreateAndFindUser() {
-        User created = userJdbcService.createUser(new User("testuser", "Test User").withPassword("password"));
+        String username = "testuser_" + UUID.randomUUID();
+        User created = userJdbcService.createUser(new User(username, "Test User").withPassword("password"));
         assertNotNull(created.getId());
-        assertEquals("testuser", created.getUsername());
+        assertEquals(username, created.getUsername());
         assertEquals("Test User", created.getDisplayName());
         assertEquals("password", created.getPassword());
         assertEquals(Role.USER, created.getRole());
@@ -37,25 +38,26 @@ class UserJdbcServiceIntegrationTest {
         assertTrue(foundOpt.isPresent());
         User found = foundOpt.get();
         assertEquals(created.getId(), found.getId());
-        assertEquals("testuser", found.getUsername());
+        assertEquals(username, found.getUsername());
         assertEquals("Test User", found.getDisplayName());
         assertEquals(created.getPassword(), found.getPassword());
         assertEquals(Role.USER, found.getRole());
         assertEquals(1L, found.getVersion());
 
-        Optional<User> foundByUsernameOpt = userJdbcService.findByUsername("testuser");
+        Optional<User> foundByUsernameOpt = userJdbcService.findByUsername(username);
         assertTrue(foundByUsernameOpt.isPresent());
         assertEquals(created.getId(), foundByUsernameOpt.get().getId());
     }
 
     @Test
     void testUpdateUser() {
-        User user = userJdbcService.createUser(new User("updateuser", "Update User").withPassword("password"));
-        User userToUpdate = new User(user.getId(), "updateduser", "new password", "Updated User", null, "oidc:1344", Role.ADMIN, user.getVersion());
+        String username = "updateuser_" + UUID.randomUUID();
+        User user = userJdbcService.createUser(new User(username, "Update User").withPassword("password"));
+        User userToUpdate = new User(user.getId(), username, "new password", "Updated User", null, "oidc:1344", Role.ADMIN, user.getVersion());
         User updated = userJdbcService.updateUser(userToUpdate);
 
         assertEquals(user.getId(), updated.getId());
-        assertEquals("updateduser", updated.getUsername());
+        assertEquals(username, updated.getUsername());
         assertEquals("Updated User", updated.getDisplayName());
         assertEquals("new password", updated.getPassword());
         assertEquals("oidc:1344", updated.getExternalId());

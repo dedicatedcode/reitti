@@ -59,11 +59,7 @@
         <div class="config-details">
             <div class="detail-group">
                 <h4 th:text="#{visit.sensitivity.visit.detection}">Visit Detection</h4>
-                <p><strong th:text="#{visit.sensitivity.search.distance}">Search Distance:</strong> 
-                   <span th:text="${previewConfig.visitDetection.searchDistanceInMeters}"></span>m</p>
-                <p><strong th:text="#{visit.sensitivity.min.points}">Minimum Adjacent Points:</strong> 
-                   <span th:text="${previewConfig.visitDetection.minimumAdjacentPoints}"></span></p>
-                <p><strong th:text="#{visit.sensitivity.min.stay.time}">Minimum Stay Time:</strong> 
+                <p><strong th:text="#{visit.sensitivity.min.stay.time}">Minimum Stay Time:</strong>
                    <span th:text="${previewConfig.visitDetection.minimumStayTimeInSeconds}"></span>s</p>
             </div>
             <div class="detail-group">

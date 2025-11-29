@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -39,13 +40,11 @@ public class VisitDetectionPreviewService {
 
         String previewId = UUID.randomUUID().toString();
         this.jdbcTemplate.update("""
-                        INSERT INTO preview_visit_detection_parameters(user_id, valid_since, detection_search_distance_meters, detection_minimum_adjacent_points, detection_minimum_stay_time_seconds,
+                        INSERT INTO preview_visit_detection_parameters(user_id, valid_since, detection_minimum_stay_time_seconds,
                         detection_max_merge_time_between_same_stay_points, merging_search_duration_in_hours, merging_max_merge_time_between_same_visits, merging_min_distance_between_visits, preview_id, preview_created_at)
-                        VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                        VALUES (?,?,?,?,?,?,?,?,?)""",
                 user.getId(),
                 config.getValidSince() != null ? Timestamp.from(config.getValidSince()) : null,
-                config.getVisitDetection().getSearchDistanceInMeters(),
-                config.getVisitDetection().getMinimumAdjacentPoints(),
                 config.getVisitDetection().getMinimumStayTimeInSeconds(),
                 config.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints(),
                 config.getVisitMerging().getSearchDurationInHours(),
@@ -66,7 +65,7 @@ public class VisitDetectionPreviewService {
                 user.getId());
 
         log.debug("Copied preview data user [{}] with previewId [{}] successfully", user.getId(), previewId);
-        TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), previewId);
+        TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), previewId, UUID.randomUUID().toString());
         rabbitTemplate.convertAndSend(
                 RabbitMQConfig.EXCHANGE_NAME,
                 RabbitMQConfig.TRIGGER_PROCESSING_PIPELINE_ROUTING_KEY,
@@ -86,6 +85,7 @@ public class VisitDetectionPreviewService {
         }
         return Instant.now().minusSeconds(READY_THRESHOLD_SECONDS).isAfter(lastUpdate);
     }
+
 
     public void updatePreviewStatus(String previewId) {
         if (previewId != null) {

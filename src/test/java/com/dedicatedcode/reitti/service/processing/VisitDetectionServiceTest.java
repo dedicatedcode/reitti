@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.Visit;
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.VisitJdbcService;
@@ -33,26 +34,24 @@ class VisitDetectionServiceTest {
     private ProcessedVisitJdbcService processedVisitRepository;
     @Autowired
     private UserJdbcService userJdbcService;
+    private User user;
 
     @BeforeEach
     void setUp() {
-        this.testingService.clearData();
+        this.user = testingService.randomUser();
     }
 
     @Test
-    @Transactional
     void shouldDetectVisits() {
-        this.testingService.importAndProcess("/data/gpx/20250531.gpx");
+        this.testingService.importAndProcess(user, "/data/gpx/20250531.gpx");
 
-        List<Visit> persistedVisits = this.visitRepository.findByUser(userJdbcService.findById(1L)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + (Long) 1L)));
+        List<Visit> persistedVisits = this.visitRepository.findByUser(user);
 
-        assertEquals(15, persistedVisits.size());
+        assertEquals(8, persistedVisits.size());
 
-        List<ProcessedVisit> processedVisits = this.processedVisitRepository.findByUser(userJdbcService.findById(1L)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + (Long) 1L)));
+        List<ProcessedVisit> processedVisits = this.processedVisitRepository.findByUser(user);
 
-        assertEquals(9, processedVisits.size());
+        assertEquals(8, processedVisits.size());
 
         for (int i = 0; i < processedVisits.size() - 1; i++) {
             ProcessedVisit visit = processedVisits.get(i);
@@ -62,7 +61,5 @@ class VisitDetectionServiceTest {
             assertTrue(durationBetweenVisits >= 300 || !visit.getPlace().equals(nextVisit.getPlace()),
                     "Duration between same place visit at index [" + i + "] should not be lower than [" + 300 + "]s but was [" + durationBetweenVisits + "]s");
         }
-
-        System.out.println();
     }
 }

@@ -84,7 +84,7 @@ class GeoJsonImporterTest {
         assertEquals(2, result.get("pointsReceived"));
 
         ArgumentCaptor<List<LocationPoint>> captor = ArgumentCaptor.forClass(List.class);
-        verify(batchProcessor).sendToQueue(eq(user), captor.capture());
+        verify(batchProcessor).processBatch(eq(user), captor.capture());
 
         List<LocationPoint> points = captor.getValue();
         assertEquals(2, points.size());
@@ -145,7 +145,7 @@ class GeoJsonImporterTest {
         assertEquals(2, result.get("pointsReceived"));
 
         ArgumentCaptor<List<LocationPoint>> captor = ArgumentCaptor.forClass(List.class);
-        verify(batchProcessor).sendToQueue(eq(user), captor.capture());
+        verify(batchProcessor).processBatch(eq(user), captor.capture());
 
         List<LocationPoint> points = captor.getValue();
         assertEquals(2, points.size());
@@ -187,7 +187,7 @@ class GeoJsonImporterTest {
         assertEquals(1, result.get("pointsReceived"));
 
         ArgumentCaptor<List<LocationPoint>> captor = ArgumentCaptor.forClass(List.class);
-        verify(batchProcessor).sendToQueue(eq(user), captor.capture());
+        verify(batchProcessor).processBatch(eq(user), captor.capture());
 
         List<LocationPoint> points = captor.getValue();
         assertEquals(1, points.size());
@@ -213,7 +213,7 @@ class GeoJsonImporterTest {
 
         assertFalse((Boolean) result.get("success"));
         assertEquals(0, result.get("pointsReceived"));
-        verify(batchProcessor, never()).sendToQueue(any(), any());
+        verify(batchProcessor, never()).processBatch(any(), any());
     }
 
     @Test
@@ -229,7 +229,7 @@ class GeoJsonImporterTest {
 
         assertFalse((Boolean) result.get("success"));
         assertTrue(result.get("error").toString().contains("Invalid GeoJSON"));
-        verify(batchProcessor, never()).sendToQueue(any(), any());
+        verify(batchProcessor, never()).processBatch(any(), any());
         verify(stateHolder).importStarted();
         verify(stateHolder).importFinished();
     }
@@ -249,7 +249,7 @@ class GeoJsonImporterTest {
 
         assertFalse((Boolean) result.get("success"));
         assertTrue(result.get("error").toString().contains("Unsupported GeoJSON type"));
-        verify(batchProcessor, never()).sendToQueue(any(), any());
+        verify(batchProcessor, never()).processBatch(any(), any());
     }
 
     @Test
@@ -279,7 +279,7 @@ class GeoJsonImporterTest {
 
         assertFalse((Boolean) result.get("success"));
         assertEquals(0, result.get("pointsReceived"));
-        verify(batchProcessor, never()).sendToQueue(any(), any());
+        verify(batchProcessor, never()).processBatch(any(), any());
     }
 
     @Test
@@ -305,7 +305,7 @@ class GeoJsonImporterTest {
         assertEquals(1, result.get("pointsReceived"));
 
         ArgumentCaptor<List<LocationPoint>> captor = ArgumentCaptor.forClass(List.class);
-        verify(batchProcessor).sendToQueue(eq(user), captor.capture());
+        verify(batchProcessor).processBatch(eq(user), captor.capture());
 
         List<LocationPoint> points = captor.getValue();
         LocationPoint point = points.get(0);
