@@ -24,7 +24,6 @@ import java.util.concurrent.atomic.AtomicLong;
 public class TestingService {
 
     private static final List<String> QUEUES_TO_CHECK = List.of(
-            RabbitMQConfig.STAY_DETECTION_QUEUE,
             RabbitMQConfig.LOCATION_DATA_QUEUE,
             RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE
     );
@@ -141,6 +140,5 @@ public class TestingService {
     public void importAndProcess(User user, String path) {
         importData(user, path);
         awaitDataImport(100);
-        triggerProcessingPipeline(100);
     }
 }

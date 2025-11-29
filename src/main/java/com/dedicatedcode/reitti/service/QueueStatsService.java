@@ -25,7 +25,6 @@ public class QueueStatsService {
 
     private final List<String> QUEUES = List.of(
             RabbitMQConfig.LOCATION_DATA_QUEUE,
-            RabbitMQConfig.STAY_DETECTION_QUEUE,
             RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE,
             RabbitMQConfig.USER_EVENT_QUEUE
             );
@@ -170,7 +169,6 @@ public class QueueStatsService {
     private String getMessageKeyForQueue(String queueName, String suffix) {
         return switch (queueName) {
             case RabbitMQConfig.LOCATION_DATA_QUEUE -> "queue.location.data." + suffix;
-            case RabbitMQConfig.STAY_DETECTION_QUEUE -> "queue.stay.detection." + suffix;
             case RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE -> "queue.significant.place." + suffix;
             case RabbitMQConfig.USER_EVENT_QUEUE -> "queue.user.event." + suffix;
             default -> "queue.unknown." + suffix;

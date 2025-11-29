@@ -41,7 +41,7 @@ public abstract class BaseGoogleTimelineImporter {
         batch.add(point);
         logger.trace("Created location point at [{}]", point);
         if (batch.size() >= batchProcessor.getBatchSize()) {
-            batchProcessor.sendToQueue(user, batch);
+            batchProcessor.processBatch(user, batch);
             batch.clear();
         }
     }

@@ -70,7 +70,7 @@ public class PreviewVisitJdbcService {
         List<Visit> createdVisits = new ArrayList<>();
         String sql = """
                 INSERT INTO preview_visits (user_id, latitude, longitude, start_time, end_time, duration_seconds, processed, version, preview_id, preview_created_at)
-                VALUES (?, ?, ?, ?, ?, ?, false, 1, ?, now());
+                VALUES (?, ?, ?, ?, ?, ?, false, 1, ?, now()) ON CONFLICT DO NOTHING;
                 """;
 
         List<Object[]> batchArgs = visitsToInsert.stream()

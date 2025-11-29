@@ -37,16 +37,6 @@ jobs:
     - name: Create bundle
       run: mkdir staging && cp target/*.jar staging
 
-    - name: Upload test coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        file: ./target/site/jacoco/jacoco.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
     - name: Upload coverage reports as artifact
       uses: actions/upload-artifact@v4
       with:

@@ -42,7 +42,7 @@ public class ImportBatchProcessor {
         this.pendingTriggers = new ConcurrentHashMap<>();
     }
     
-    public void sendToQueue(User user, List<LocationPoint> batch) {
+    public void processBatch(User user, List<LocationPoint> batch) {
         LocationDataEvent event = new LocationDataEvent(
                 user.getUsername(),
                 new ArrayList<>(batch),
@@ -50,7 +50,7 @@ public class ImportBatchProcessor {
         );
         logger.debug("Sending batch of {} locations for storing", batch.size());
         locationDataIngestPipeline.processLocationData(event);
-
+        logger.debug("Sending batch of {} locations for processing", batch.size());
         TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), null, UUID.randomUUID().toString());
         processingPipelineTrigger.handle(triggerEvent);
         scheduleProcessingTrigger(user.getUsername());
@@ -65,6 +65,9 @@ public class ImportBatchProcessor {
         ScheduledFuture<?> newTrigger = scheduler.schedule(() -> {
             try {
                 logger.debug("Triggered processing for user: {}", username);
+                TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(username, null, UUID.randomUUID().toString());
+                processingPipelineTrigger.handle(triggerEvent);
+
                 pendingTriggers.remove(username);
             } catch (Exception e) {
                 logger.error("Failed to trigger processing for user: {}", username, e);

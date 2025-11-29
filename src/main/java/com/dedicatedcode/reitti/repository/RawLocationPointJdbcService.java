@@ -207,6 +207,8 @@ public class RawLocationPointJdbcService {
                     accuracy_meters,
                     elevation_meters,
                     processed,
+                    ignored,
+                    synthetic,
                     version,
                     ST_Within(geom, ST_MakeEnvelope(?, ?, ?, ?, 4326)) as in_box,
                     LAG(ST_Within(geom, ST_MakeEnvelope(?, ?, ?, ?, 4326)))
@@ -216,6 +218,7 @@ public class RawLocationPointJdbcService {
                 FROM raw_location_points
                 WHERE user_id = ?
                   AND timestamp BETWEEN ? AND ?
+                  AND ignored = false
             )
             SELECT
                 id,

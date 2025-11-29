@@ -50,6 +50,7 @@ public class UnifiedLocationProcessingService {
     private final PreviewSignificantPlaceJdbcService previewSignificantPlaceJdbcService;
     private final SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
     private final VisitDetectionParametersService visitDetectionParametersService;
+    private final PreviewVisitDetectionParametersJdbcService previewVisitDetectionParametersJdbcService;
     private final TransportModeService transportModeService;
     private final UserNotificationService userNotificationService;
     private final GeoLocationTimezoneService timezoneService;
@@ -69,7 +70,7 @@ public class UnifiedLocationProcessingService {
             SignificantPlaceJdbcService significantPlaceJdbcService,
             PreviewSignificantPlaceJdbcService previewSignificantPlaceJdbcService,
             SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
-            VisitDetectionParametersService visitDetectionParametersService,
+            VisitDetectionParametersService visitDetectionParametersService, PreviewVisitDetectionParametersJdbcService previewVisitDetectionParametersJdbcService,
             TransportModeService transportModeService,
             UserNotificationService userNotificationService,
             GeoLocationTimezoneService timezoneService,
@@ -88,6 +89,7 @@ public class UnifiedLocationProcessingService {
         this.previewSignificantPlaceJdbcService = previewSignificantPlaceJdbcService;
         this.significantPlaceOverrideJdbcService = significantPlaceOverrideJdbcService;
         this.visitDetectionParametersService = visitDetectionParametersService;
+        this.previewVisitDetectionParametersJdbcService = previewVisitDetectionParametersJdbcService;
         this.transportModeService = transportModeService;
         this.userNotificationService = userNotificationService;
         this.timezoneService = timezoneService;
@@ -122,8 +124,8 @@ public class UnifiedLocationProcessingService {
                 previewId,
                 event.getTraceId(),
                 detectionResult.searchStart,
-                detectionResult.searchEnd
-        );
+                detectionResult.searchEnd,
+                detectionResult.visits);
         logger.debug("Merging: {} visits merged into {} processed visits",
                 mergingResult.inputVisits.size(),
                 mergingResult.processedVisits.size());
@@ -163,16 +165,14 @@ public class UnifiedLocationProcessingService {
         Instant windowEnd = event.getLatest().plus(1, ChronoUnit.DAYS);
 
         // Get detection parameters
+        DetectionParameter currentConfiguration;
         DetectionParameter.VisitDetection detectionParams;
         if (previewId == null) {
-            detectionParams = visitDetectionParametersService
-                    .getCurrentConfiguration(user, windowStart)
-                    .getVisitDetection();
+            currentConfiguration = visitDetectionParametersService.getCurrentConfiguration(user, windowStart);
         } else {
-            detectionParams = visitDetectionParametersService
-                    .getCurrentConfiguration(user, previewId)
-                    .getVisitDetection();
+            currentConfiguration = previewVisitDetectionParametersJdbcService.findCurrent(user, previewId);
         }
+        detectionParams = currentConfiguration.getVisitDetection();
 
         // Find and delete affected visits
         List<Visit> affectedVisits;
@@ -198,10 +198,10 @@ public class UnifiedLocationProcessingService {
 
         // Get clustered points
         double baseLatitude = affectedVisits.isEmpty() ? 50 : affectedVisits.getFirst().getLatitude();
-        double metersAsDegrees = GeoUtils.metersToDegreesAtPosition(50.0, baseLatitude);
+        double metersAsDegrees = GeoUtils.metersToDegreesAtPosition((double) currentConfiguration.getVisitMerging().getMinDistanceBetweenVisits() / 2, baseLatitude);
 
         List<ClusteredPoint> clusteredPoints;
-        int minimumAdjacentPoints = Math.toIntExact(detectionParams.getMinimumStayTimeInSeconds() / 20);
+        int minimumAdjacentPoints = Math.max(4, Math.toIntExact(detectionParams.getMinimumStayTimeInSeconds() / 20));
         if (previewId == null) {
             clusteredPoints = rawLocationPointJdbcService.findClusteredPointsInTimeRangeForUser(
                     user, windowStart, windowEnd, minimumAdjacentPoints, metersAsDegrees);
@@ -221,8 +221,7 @@ public class UnifiedLocationProcessingService {
         }
 
         // Detect stay points
-        List<StayPoint> stayPoints = detectStayPointsFromTrajectory(
-                clusteredByLocation, detectionParams);
+        List<StayPoint> stayPoints = detectStayPointsFromTrajectory(clusteredByLocation, detectionParams);
 
         // Create visits
         List<Visit> visits = stayPoints.stream()
@@ -250,7 +249,7 @@ public class UnifiedLocationProcessingService {
      * STEP 2: Visit Merging
      * Merges nearby visits into ProcessedVisit entities with SignificantPlaces.
      */
-    private VisitMergingResult mergeVisits(User user, String previewId, String traceId, Instant initialStart, Instant initialEnd) {
+    private VisitMergingResult mergeVisits(User user, String previewId, String traceId, Instant initialStart, Instant initialEnd, List<Visit> allVisits) {
 
         // Get merging parameters
         DetectionParameter.VisitMerging mergeConfig;
@@ -259,8 +258,8 @@ public class UnifiedLocationProcessingService {
                     .getCurrentConfiguration(user, initialStart)
                     .getVisitMerging();
         } else {
-            mergeConfig = visitDetectionParametersService
-                    .getCurrentConfiguration(user, previewId)
+            mergeConfig = previewVisitDetectionParametersJdbcService
+                    .findCurrent(user, previewId)
                     .getVisitMerging();
         }
 
@@ -288,16 +287,6 @@ public class UnifiedLocationProcessingService {
             if (existingProcessedVisits.getLast().getEndTime().isAfter(searchEnd)) {
                 searchEnd = existingProcessedVisits.getLast().getEndTime();
             }
-        }
-
-        // Get all visits in expanded range
-        List<Visit> allVisits;
-        if (previewId == null) {
-            allVisits = visitJdbcService.findByUserAndTimeAfterAndStartTimeBefore(
-                    user, searchStart, searchEnd);
-        } else {
-            allVisits = previewVisitJdbcService.findByUserAndTimeAfterAndStartTimeBefore(
-                    user, previewId, searchStart, searchEnd);
         }
 
         if (allVisits.isEmpty()) {
@@ -515,7 +504,7 @@ public class UnifiedLocationProcessingService {
             return null;  // Indicate to skip
         }
         if (endTime.equals(startTime)) {
-            logger.warn("Skipping zero duration processed visit for place [{}] at [{}]", place.getId(), startTime);
+            logger.warn("Skipping zero duration processed visit for place [{}] from [{} -> {}]", place.getId(), startTime, endTime);
             return null;
         }
         logger.debug("Creating processed visit for place [{}] between [{}] and [{}]", place.getId(), startTime, endTime);
@@ -529,6 +518,7 @@ public class UnifiedLocationProcessingService {
         Instant arrivalTime = clusterPoints.getFirst().getTimestamp();
         Instant departureTime = clusterPoints.getLast().getTimestamp();
 
+        logger.debug("Creating stay point at [{}] with arrival time [{}] and departure time [{}]", result, arrivalTime, departureTime);
         return new StayPoint(result.latitude(), result.longitude(), arrivalTime, departureTime, clusterPoints);
     }
 
@@ -740,7 +730,10 @@ public class UnifiedLocationProcessingService {
                 endVisit
         );
         logger.debug("Created trip from {} to {}: travelled distance={}m, mode={}",
-                startVisit.getPlace().getId(), endVisit.getPlace().getId(), Math.round(travelledDistanceMeters), transportMode);
+                Optional.ofNullable(startVisit.getPlace().getName()).orElse("Unknown Name"),
+                Optional.ofNullable(endVisit.getPlace().getName()).orElse("Unknown Name"),
+                Math.round(travelledDistanceMeters),
+                transportMode);
 
         // Save and return the trip
         return trip;

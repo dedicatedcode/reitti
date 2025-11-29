@@ -1,10 +1,12 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
-import com.dedicatedcode.reitti.event.*;
+import com.dedicatedcode.reitti.event.SSEEvent;
+import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
+import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
-import com.dedicatedcode.reitti.service.processing.*;
+import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -16,8 +18,6 @@ public class MessageDispatcherService {
 
     private static final Logger logger = LoggerFactory.getLogger(MessageDispatcherService.class);
 
-    private final LocationDataIngestPipeline locationDataIngestPipeline;
-    private final UnifiedLocationProcessingService unifiedLocationProcessingService;
     private final ReverseGeocodingListener reverseGeocodingListener;
     private final ProcessingPipelineTrigger processingPipelineTrigger;
     private final UserSseEmitterService userSseEmitterService;
@@ -25,27 +25,16 @@ public class MessageDispatcherService {
     private final VisitDetectionPreviewService visitDetectionPreviewService;
 
     @Autowired
-    public MessageDispatcherService(LocationDataIngestPipeline locationDataIngestPipeline,
-                                    UnifiedLocationProcessingService unifiedLocationProcessingService,
-                                    ReverseGeocodingListener reverseGeocodingListener,
+    public MessageDispatcherService(ReverseGeocodingListener reverseGeocodingListener,
                                     ProcessingPipelineTrigger processingPipelineTrigger,
                                     UserSseEmitterService userSseEmitterService,
                                     UserJdbcService userJdbcService,
                                     VisitDetectionPreviewService visitDetectionPreviewService) {
-        this.locationDataIngestPipeline = locationDataIngestPipeline;
-        this.unifiedLocationProcessingService = unifiedLocationProcessingService;
         this.reverseGeocodingListener = reverseGeocodingListener;
         this.processingPipelineTrigger = processingPipelineTrigger;
         this.userSseEmitterService = userSseEmitterService;
         this.userJdbcService = userJdbcService;
         this.visitDetectionPreviewService = visitDetectionPreviewService;
-    }
-
-    @RabbitListener(queues = RabbitMQConfig.STAY_DETECTION_QUEUE, concurrency = "${reitti.events.concurrency}")
-    public void handleStayDetection(LocationProcessEvent event) {
-        logger.info("Dispatching LocationProcessEvent: {}", event);
-        unifiedLocationProcessingService.processLocationEvent(event);
-        visitDetectionPreviewService.updatePreviewStatus(event.getPreviewId());
     }
 
     @RabbitListener(queues = RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE, concurrency = "${reitti.events.concurrency}")
@@ -63,8 +52,8 @@ public class MessageDispatcherService {
 
     @RabbitListener(queues = RabbitMQConfig.TRIGGER_PROCESSING_PIPELINE_QUEUE, concurrency = "${reitti.events.concurrency}")
     public void handleTriggerProcessingEvent(TriggerProcessingEvent event) {
-        logger.info("3 - Dispatching TriggerProcessingEvent {}", event);
-//        processingPipelineTrigger.handle(event);
+        logger.info("Dispatching TriggerProcessingEvent {}", event);
+        processingPipelineTrigger.handle(event);
         visitDetectionPreviewService.updatePreviewStatus(event.getPreviewId());
     }
 }

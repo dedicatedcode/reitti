@@ -89,7 +89,7 @@ public class OwnTracksRecorderIntegrationService {
                     }
                     
                     if (!validPoints.isEmpty()) {
-                        importBatchProcessor.sendToQueue(user, validPoints);
+                        importBatchProcessor.processBatch(user, validPoints);
                         totalLocationPoints += validPoints.size();
                         logger.info("Imported {} location points for user {}", validPoints.size(), user.getUsername());
                         
@@ -236,7 +236,7 @@ public class OwnTracksRecorderIntegrationService {
                         }
                         
                         if (!validPoints.isEmpty()) {
-                            importBatchProcessor.sendToQueue(user, validPoints);
+                            importBatchProcessor.processBatch(user, validPoints);
                             totalLocationPoints += validPoints.size();
                             logger.debug("Loaded {} location points for user {} from month {}", 
                                        validPoints.size(), user.getUsername(), month);

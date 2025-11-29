@@ -12,7 +12,6 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -66,7 +65,7 @@ public class GeoJsonImporter {
                             processedCount.incrementAndGet();
 
                             if (batch.size() >= batchProcessor.getBatchSize()) {
-                                batchProcessor.sendToQueue(user, batch);
+                                batchProcessor.processBatch(user, batch);
                                 batch.clear();
                             }
                         }
@@ -95,7 +94,7 @@ public class GeoJsonImporter {
 
             // Process any remaining locations
             if (!batch.isEmpty()) {
-                batchProcessor.sendToQueue(user, batch);
+                batchProcessor.processBatch(user, batch);
             }
 
 

@@ -76,7 +76,7 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
 
             // Process any remaining locations
             if (!batch.isEmpty()) {
-                batchProcessor.sendToQueue(user, batch);
+                batchProcessor.processBatch(user, batch);
             }
             
             logger.info("Successfully imported and queued {} location points from Google Timeline for user {}", 
