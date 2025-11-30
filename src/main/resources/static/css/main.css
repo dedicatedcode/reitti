@@ -1180,6 +1180,7 @@ body.auto-update-mode .today-fab {
     overflow-y: auto;
     font-family: initial;
     padding-bottom: 24px;
+    padding-right: 24px;
 }
 
 .settings-page .settings-section {
