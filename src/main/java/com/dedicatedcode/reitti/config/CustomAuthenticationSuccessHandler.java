@@ -41,7 +41,7 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
             User user = userOptional.get();
             UserSettings userSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
             
-            Locale userLocale = Locale.forLanguageTag(userSettings.getSelectedLanguage());
+            Locale userLocale = userSettings.getSelectedLanguage().getLocale();
             localeResolver.setLocale(request, response, userLocale);
         }
         

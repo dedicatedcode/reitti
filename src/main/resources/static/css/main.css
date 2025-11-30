@@ -25,18 +25,49 @@
     src: url('/fonts/fraunces-v37-latin_latin-ext_vietnamese-900.woff2') format('woff2'); /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
 }
 
+@font-face {
+    font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+    font-family: 'Noto Serif SC';
+    font-style: normal;
+    font-weight: 100;
+    src: url('/fonts/noto-serif-sc-chinese-simplified-200-normal.woff2') format('woff2'); /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+}
+
+@font-face {
+    font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+    font-family: 'Noto Serif SC';
+    font-style: normal;
+    font-weight: 400;
+    src: url('/fonts/noto-serif-sc-chinese-simplified-400-normal.woff2') format('woff2'); /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+}
+
+@font-face {
+    font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+    font-family: 'Noto Serif SC';
+    font-style: normal;
+    font-weight: 900;
+    src: url('/fonts/noto-serif-sc-chinese-simplified-900-normal.woff2') format('woff2'); /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+}
+@font-face {
+    font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+    font-family: 'Noto Sans';
+    font-style: normal;
+    font-weight: 400;
+    src: url('../fonts/noto-sans-sc-chinese-simplified-400-normal.woff2') format('woff2'); /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+}
+
 :root {
     --color-highlight: #F5DEB3FF;
     --color-background-dark: #3b3b3b;
     --color-background-dark-light: #5c5c5c;
     --color-text-white: #e3e3e3;
-    --serif-font: "Fraunces";
+    --serif-font: "Fraunces", 'Noto Serif SC', 'PingFang SC', 'Microsoft YaHei', serif;;
     --memories-header-height: 550px;
     --box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
     margin: 0;
     padding: 0;
     height: 100vh;
@@ -492,7 +523,9 @@ tr:hover {
 }
 
 .timeline-container {
-    font-family: "Serif", serif;
+    font-family: var(--serif-font);
+    line-height: 1.5;
+    font-weight: 400;
     width: 350px;
     padding-top: 48px;
     padding-bottom: 250px;
@@ -503,7 +536,6 @@ tr:hover {
     color: #bfbfbf;
     padding: 1rem 2rem;
     transition: all 0.25s ease-in-out;
-    font-weight: lighter;
     pointer-events: all;
     cursor: pointer;
     position: relative;
@@ -515,13 +547,12 @@ tr:hover {
 }
 
 .timeline-entry .entry-description {
-    font-family: var(--serif-font);
     font-size: 3rem;
+    font-weight: lighter;
     transition: all 0.25s ease-in-out;
 }
 
 .timeline-entry.active .entry-description {
-    font-family: var(--serif-font);
     font-size: 5rem;
     transition: all 0.25s ease-in-out;
 }
@@ -1178,7 +1209,6 @@ body.auto-update-mode .today-fab {
 .settings-content-area {
     flex: 1;
     overflow-y: auto;
-    font-family: initial;
     padding-bottom: 24px;
     padding-right: 24px;
 }
@@ -1337,6 +1367,7 @@ body.auto-update-mode .today-fab {
     transition: all 0.3s ease;
     font-size: 0.9rem;
     font-weight: 500;
+    font-family: var(--serif-font);
     backdrop-filter: blur(10px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }

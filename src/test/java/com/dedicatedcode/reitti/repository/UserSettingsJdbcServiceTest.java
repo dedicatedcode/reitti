@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.model.Language;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
@@ -60,7 +61,7 @@ public class UserSettingsJdbcServiceTest {
 
     @Test
     void save_WhenCreatingNewUserSettings_ShouldInsertAndReturnWithId() {
-        UserSettings newSettings = new UserSettings(testUserId1, true, "fi", UnitSystem.METRIC, 60.1699, 24.9384, null, TimeDisplayMode.DEFAULT, null, Instant.now(), null);
+        UserSettings newSettings = new UserSettings(testUserId1, true, Language.FI, UnitSystem.METRIC, 60.1699, 24.9384, null, TimeDisplayMode.DEFAULT, null, Instant.now(), null);
         
         UserSettings savedSettings = userSettingsJdbcService.save(newSettings);
         
@@ -75,14 +76,14 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void save_WhenUpdatingExistingUserSettings_ShouldUpdateAndIncrementVersion() {
         // Create initial settings
-        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", UnitSystem.METRIC, null, null, null, TimeDisplayMode.DEFAULT, null, Instant.now(), null);
+        UserSettings initialSettings = new UserSettings(testUserId1, false, Language.EN, UnitSystem.METRIC, null, null, null, TimeDisplayMode.DEFAULT, null, Instant.now(), null);
         UserSettings savedSettings = userSettingsJdbcService.save(initialSettings);
         
         // Update settings
         UserSettings updatedSettings = new UserSettings(
                 testUserId1,
-                true, 
-                "de",
+                true,
+                Language.DE,
                 UnitSystem.IMPERIAL,
                 52.5200,
                 13.4050,
@@ -104,7 +105,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void findByUserId_WhenUserSettingsExist_ShouldReturnSettings() {
         // Create settings
-        UserSettings newSettings = new UserSettings(testUserId1, true, "fr", UnitSystem.METRIC, 48.8566, 2.3522, null, TimeDisplayMode.DEFAULT, null, Instant.now(), null);
+        UserSettings newSettings = new UserSettings(testUserId1, true, Language.FR, UnitSystem.METRIC, 48.8566, 2.3522, null, TimeDisplayMode.DEFAULT, null, Instant.now(), null);
         userSettingsJdbcService.save(newSettings);
         
         Optional<UserSettings> result = userSettingsJdbcService.findByUserId(testUserId1);
@@ -137,7 +138,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void getOrCreateDefaultSettings_WhenUserSettingsExist_ShouldReturnExisting() {
         // Create existing settings
-        UserSettings existingSettings = new UserSettings(testUserId1, true, "fi", UnitSystem.METRIC, 60.1699, 24.9384, null, TimeDisplayMode.DEFAULT, null, Instant.now(), null);
+        UserSettings existingSettings = new UserSettings(testUserId1, true, Language.FI, UnitSystem.METRIC, 60.1699, 24.9384, null, TimeDisplayMode.DEFAULT, null, Instant.now(), null);
         userSettingsJdbcService.save(existingSettings);
         
         UserSettings result = userSettingsJdbcService.getOrCreateDefaultSettings(testUserId1);

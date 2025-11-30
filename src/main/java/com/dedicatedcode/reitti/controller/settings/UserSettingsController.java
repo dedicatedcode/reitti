@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.controller.settings;
 
-import com.dedicatedcode.reitti.model.AvailableLanguages;
+import com.dedicatedcode.reitti.model.Language;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
@@ -114,7 +114,7 @@ public class UserSettingsController {
             model.addAttribute("localLoginDisabled", localLoginDisabled);
 
             UserSettings userSettings = userSettingsJdbcService.findByUserId(currentUser.getId()).orElse(UserSettings.defaultSettings(currentUser.getId()));
-            model.addAttribute("availableLanguages", AvailableLanguages.values());
+            model.addAttribute("availableLanguages", Language.values());
             model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
             model.addAttribute("selectedUnitSystem", userSettings.getUnitSystem().name());
             model.addAttribute("preferColoredMap", userSettings.isPreferColoredMap());
@@ -181,7 +181,7 @@ public class UserSettingsController {
                              @RequestParam(required = false) String displayName,
                              @RequestParam(required = false)  String password,
                              @RequestParam(defaultValue = "USER") Role role,
-                             @RequestParam(name = "preferred_language") String preferredLanguage,
+                             @RequestParam(name = "preferred_language") Language preferredLanguage,
                              @RequestParam(name = "unit_system", defaultValue = "METRIC") String unitSystem,
                              @RequestParam(defaultValue = "false") boolean preferColoredMap,
                              @RequestParam(required = false) Double homeLatitude,
@@ -271,7 +271,7 @@ public class UserSettingsController {
                              @RequestParam(required = false)  String displayName,
                              @RequestParam(required = false) String password,
                              @RequestParam(defaultValue = "USER") Role role,
-                             @RequestParam String preferred_language,
+                             @RequestParam Language preferred_language,
                              @RequestParam(defaultValue = "METRIC") String unit_system,
                              @RequestParam(defaultValue = "false") boolean preferColoredMap,
                              @RequestParam(required = false) Double homeLatitude,
@@ -348,8 +348,7 @@ public class UserSettingsController {
             
             // If the current user was updated, update the locale
             if (isCurrentUser) {
-                Locale newLocale = Locale.forLanguageTag(preferred_language);
-                localeResolver.setLocale(request, response, newLocale);
+                localeResolver.setLocale(request, response, preferred_language.getLocale());
             }
             
             model.addAttribute("successMessage", getMessage("message.success.user.updated"));
@@ -419,7 +418,7 @@ public class UserSettingsController {
             model.addAttribute("timeDisplayMode", userSettings.getTimeDisplayMode().name());
         } else {
             // Default values for new users
-            model.addAttribute("selectedLanguage", "en");
+            model.addAttribute("selectedLanguage", Language.EN);
             model.addAttribute("selectedUnitSystem", "METRIC");
             model.addAttribute("preferColoredMap", false);
             model.addAttribute("selectedRole", "USER");
@@ -431,7 +430,7 @@ public class UserSettingsController {
         }
 
         model.addAttribute("unitSystems", UnitSystem.values());
-        model.addAttribute("availableLanguages", AvailableLanguages.values());
+        model.addAttribute("availableLanguages", Language.values());
         model.addAttribute("availableTimezones", ZoneId.getAvailableZoneIds().stream().sorted());
         model.addAttribute("availableTimeDisplayModes", TimeDisplayMode.values());
         // Check if user has avatar and custom CSS

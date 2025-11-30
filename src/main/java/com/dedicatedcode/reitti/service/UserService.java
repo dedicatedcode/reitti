@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.service;
 
+import com.dedicatedcode.reitti.model.Language;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
@@ -78,7 +79,7 @@ public class UserService {
                               Role role,
                               UnitSystem unitSystem,
                               boolean preferColoredMap,
-                              String preferredLanguage,
+                              Language preferredLanguage,
                               Double homeLatitude,
                               Double homeLongitude,
                               String timezoneOverride,
