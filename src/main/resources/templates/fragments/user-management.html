@@ -193,11 +193,11 @@
         <div class="form-group">
             <h3 th:text="#{language.title}">Preferred Language</h3>
             <div class="language-selection">
-                <div class="language-buttons">
-                    <label class="btn language-btn">
-                        <input type="radio" name="preferred_language" value="en" th:checked="${selectedLanguage == 'en' || selectedLanguage == null}" style="display: none;">
-                        <span class="language-flag">🇺🇸</span>
-                        <span th:text="#{language.english}" class="language-name">English</span>
+                <div class="language-buttons" th:remove="all-but-first">
+                    <label class="btn language-btn" th:each="language : ${availableLanguages}">
+                        <input type="radio" name="preferred_language" th:value="${language.locale}" value="en" th:checked="${selectedLanguage == language.locale}" style="display: none;">
+                        <span class="language-flag" th:text="${language.symbol}">🇺🇸</span>
+                        <span th:text="#{${language.messageKey}}" class="language-name">English</span>
                     </label>
 
                     <label class="btn language-btn">

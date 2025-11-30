@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller.settings;
 
+import com.dedicatedcode.reitti.model.AvailableLanguages;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
@@ -113,6 +114,7 @@ public class UserSettingsController {
             model.addAttribute("localLoginDisabled", localLoginDisabled);
 
             UserSettings userSettings = userSettingsJdbcService.findByUserId(currentUser.getId()).orElse(UserSettings.defaultSettings(currentUser.getId()));
+            model.addAttribute("availableLanguages", AvailableLanguages.values());
             model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
             model.addAttribute("selectedUnitSystem", userSettings.getUnitSystem().name());
             model.addAttribute("preferColoredMap", userSettings.isPreferColoredMap());
@@ -429,6 +431,7 @@ public class UserSettingsController {
         }
 
         model.addAttribute("unitSystems", UnitSystem.values());
+        model.addAttribute("availableLanguages", AvailableLanguages.values());
         model.addAttribute("availableTimezones", ZoneId.getAvailableZoneIds().stream().sorted());
         model.addAttribute("availableTimeDisplayModes", TimeDisplayMode.values());
         // Check if user has avatar and custom CSS
