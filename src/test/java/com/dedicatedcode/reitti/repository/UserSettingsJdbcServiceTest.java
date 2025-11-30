@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.model.Language;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
@@ -60,13 +61,13 @@ public class UserSettingsJdbcServiceTest {
 
     @Test
     void save_WhenCreatingNewUserSettings_ShouldInsertAndReturnWithId() {
-        UserSettings newSettings = new UserSettings(testUserId1, true, "fi", UnitSystem.METRIC, 60.1699, 24.9384, null, TimeDisplayMode.DEFAULT, null, Instant.now(), null);
+        UserSettings newSettings = new UserSettings(testUserId1, true, Language.FI, UnitSystem.METRIC, 60.1699, 24.9384, null, TimeDisplayMode.DEFAULT, null, Instant.now(), null);
         
         UserSettings savedSettings = userSettingsJdbcService.save(newSettings);
         
         assertThat(savedSettings.getUserId()).isEqualTo(testUserId1);
         assertThat(savedSettings.isPreferColoredMap()).isTrue();
-        assertThat(savedSettings.getSelectedLanguage()).isEqualTo("fi");
+        assertThat(savedSettings.getSelectedLanguage()).isEqualTo(Language.FI);
         assertThat(savedSettings.getHomeLatitude()).isEqualTo(60.1699);
         assertThat(savedSettings.getHomeLongitude()).isEqualTo(24.9384);
         assertThat(savedSettings.getVersion()).isEqualTo(1L);
@@ -75,14 +76,14 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void save_WhenUpdatingExistingUserSettings_ShouldUpdateAndIncrementVersion() {
         // Create initial settings
-        UserSettings initialSettings = new UserSettings(testUserId1, false, "en", UnitSystem.METRIC, null, null, null, TimeDisplayMode.DEFAULT, null, Instant.now(), null);
+        UserSettings initialSettings = new UserSettings(testUserId1, false, Language.EN, UnitSystem.METRIC, null, null, null, TimeDisplayMode.DEFAULT, null, Instant.now(), null);
         UserSettings savedSettings = userSettingsJdbcService.save(initialSettings);
         
         // Update settings
         UserSettings updatedSettings = new UserSettings(
                 testUserId1,
-                true, 
-                "de",
+                true,
+                Language.DE,
                 UnitSystem.IMPERIAL,
                 52.5200,
                 13.4050,
@@ -94,7 +95,7 @@ public class UserSettingsJdbcServiceTest {
         
         assertThat(result.getUserId()).isEqualTo(testUserId1);
         assertThat(result.isPreferColoredMap()).isTrue();
-        assertThat(result.getSelectedLanguage()).isEqualTo("de");
+        assertThat(result.getSelectedLanguage()).isEqualTo(Language.DE);
         assertThat(result.getUnitSystem()).isEqualTo(UnitSystem.IMPERIAL);
         assertThat(result.getHomeLatitude()).isEqualTo(52.5200);
         assertThat(result.getHomeLongitude()).isEqualTo(13.4050);
@@ -104,7 +105,7 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void findByUserId_WhenUserSettingsExist_ShouldReturnSettings() {
         // Create settings
-        UserSettings newSettings = new UserSettings(testUserId1, true, "fr", UnitSystem.METRIC, 48.8566, 2.3522, null, TimeDisplayMode.DEFAULT, null, Instant.now(), null);
+        UserSettings newSettings = new UserSettings(testUserId1, true, Language.FR, UnitSystem.METRIC, 48.8566, 2.3522, null, TimeDisplayMode.DEFAULT, null, Instant.now(), null);
         userSettingsJdbcService.save(newSettings);
         
         Optional<UserSettings> result = userSettingsJdbcService.findByUserId(testUserId1);
@@ -112,7 +113,7 @@ public class UserSettingsJdbcServiceTest {
         assertThat(result).isPresent();
         assertThat(result.get().getUserId()).isEqualTo(testUserId1);
         assertThat(result.get().isPreferColoredMap()).isTrue();
-        assertThat(result.get().getSelectedLanguage()).isEqualTo("fr");
+        assertThat(result.get().getSelectedLanguage()).isEqualTo(Language.FR);
         assertThat(result.get().getHomeLatitude()).isEqualTo(48.8566);
         assertThat(result.get().getHomeLongitude()).isEqualTo(2.3522);
     }
@@ -123,7 +124,7 @@ public class UserSettingsJdbcServiceTest {
         
         assertThat(result.getUserId()).isEqualTo(testUserId1);
         assertThat(result.isPreferColoredMap()).isFalse();
-        assertThat(result.getSelectedLanguage()).isEqualTo("en");
+        assertThat(result.getSelectedLanguage()).isEqualTo(Language.EN);
         assertThat(result.getUnitSystem()).isEqualTo(UnitSystem.METRIC);
         assertThat(result.getHomeLatitude()).isNull();
         assertThat(result.getHomeLongitude()).isNull();
@@ -137,13 +138,13 @@ public class UserSettingsJdbcServiceTest {
     @Test
     void getOrCreateDefaultSettings_WhenUserSettingsExist_ShouldReturnExisting() {
         // Create existing settings
-        UserSettings existingSettings = new UserSettings(testUserId1, true, "fi", UnitSystem.METRIC, 60.1699, 24.9384, null, TimeDisplayMode.DEFAULT, null, Instant.now(), null);
+        UserSettings existingSettings = new UserSettings(testUserId1, true, Language.FI, UnitSystem.METRIC, 60.1699, 24.9384, null, TimeDisplayMode.DEFAULT, null, Instant.now(), null);
         userSettingsJdbcService.save(existingSettings);
         
         UserSettings result = userSettingsJdbcService.getOrCreateDefaultSettings(testUserId1);
         
         assertThat(result.isPreferColoredMap()).isTrue();
-        assertThat(result.getSelectedLanguage()).isEqualTo("fi");
+        assertThat(result.getSelectedLanguage()).isEqualTo(Language.FI);
         assertThat(result.getHomeLatitude()).isEqualTo(60.1699);
         assertThat(result.getHomeLongitude()).isEqualTo(24.9384);
     }
@@ -154,7 +155,7 @@ public class UserSettingsJdbcServiceTest {
 
         assertThat(defaultSettings.getUserId()).isEqualTo(testUserId1);
         assertThat(defaultSettings.isPreferColoredMap()).isFalse();
-        assertThat(defaultSettings.getSelectedLanguage()).isEqualTo("en");
+        assertThat(defaultSettings.getSelectedLanguage()).isEqualTo(Language.EN);
         assertThat(defaultSettings.getUnitSystem()).isEqualTo(UnitSystem.METRIC);
         assertThat(defaultSettings.getHomeLatitude()).isNull();
         assertThat(defaultSettings.getHomeLongitude()).isNull();

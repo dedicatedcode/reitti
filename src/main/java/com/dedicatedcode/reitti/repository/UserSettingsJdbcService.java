@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.model.Language;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.security.User;
@@ -33,7 +34,7 @@ public class UserSettingsJdbcService {
         return new UserSettings(
                 userId,
                 rs.getBoolean("prefer_colored_map"),
-                rs.getString("selected_language"),
+                Language.valueOf(rs.getString("selected_language")),
                 UnitSystem.valueOf(rs.getString("unit_system")),
                 rs.getDouble("home_lat"),
                 rs.getDouble("home_lng"),
@@ -63,7 +64,7 @@ public class UserSettingsJdbcService {
             this.jdbcTemplate.update("INSERT INTO user_settings (user_id, prefer_colored_map, selected_language, unit_system, home_lat, home_lng, time_zone_override, time_display_mode, custom_css, latest_data, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
                     userSettings.getUserId(),
                     userSettings.isPreferColoredMap(),
-                    userSettings.getSelectedLanguage(),
+                    userSettings.getSelectedLanguage().name(),
                     userSettings.getUnitSystem().name(),
                     userSettings.getHomeLatitude(),
                     userSettings.getHomeLongitude(),
@@ -87,7 +88,7 @@ public class UserSettingsJdbcService {
             jdbcTemplate.update(
                     "UPDATE user_settings SET prefer_colored_map = ?, selected_language = ?, unit_system = ?, home_lat = ?, home_lng = ?, time_zone_override = ?, time_display_mode = ?, custom_css = ?, latest_data = GREATEST(latest_data, ?), version = version + 1 WHERE user_id = ?",
                     userSettings.isPreferColoredMap(),
-                    userSettings.getSelectedLanguage(),
+                    userSettings.getSelectedLanguage().name(),
                     userSettings.getUnitSystem().name(),
                     userSettings.getHomeLatitude(),
                     userSettings.getHomeLongitude(),

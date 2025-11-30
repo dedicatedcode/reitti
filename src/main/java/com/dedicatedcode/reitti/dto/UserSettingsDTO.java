@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.dto;
 
+import com.dedicatedcode.reitti.model.Language;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
 
@@ -8,7 +9,7 @@ import java.time.ZoneId;
 
 public record UserSettingsDTO(
         boolean preferColoredMap,
-        String selectedLanguage,
+        Language selectedLanguage,
         Instant newestData,
         UnitSystem unitSystem,
         Double homeLatitude,
