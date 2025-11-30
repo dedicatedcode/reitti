@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.IntegrationTest;
+import com.dedicatedcode.reitti.model.Language;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
@@ -110,7 +111,7 @@ public class UserSettingsControllerTest {
                         .param("displayName", newDisplayName)
                         .param("password", newPassword)
                         .param("role", "USER")
-                        .param("preferred_language", "en")
+                        .param("preferred_language", "EN")
                         .param("unit_system", "METRIC")
                         .with(csrf())
                         .with(user(adminUser)))
@@ -144,7 +145,7 @@ public class UserSettingsControllerTest {
                         .param("displayName", newDisplayName)
                         .param("password", newPassword)
                         .param("role", "USER")
-                        .param("preferred_language", "en")
+                        .param("preferred_language", "EN")
                         .param("unit_system", "METRIC")
                         .with(csrf())
                         .with(user(testUser)))
@@ -170,7 +171,7 @@ public class UserSettingsControllerTest {
                         .param("displayName", "")
                         .param("password", "")
                         .param("role", "USER")
-                        .param("preferred_language", "en")
+                        .param("preferred_language", "EN")
                         .param("unit_system", "METRIC")
                         .with(csrf())
                         .with(user(adminUser)))
@@ -208,7 +209,7 @@ public class UserSettingsControllerTest {
                         .param("displayName", updatedDisplayName)
                         .param("password", updatedPassword)
                         .param("role", "ADMIN")
-                        .param("preferred_language", "en")
+                        .param("preferred_language", "ZH_CN")
                         .param("unit_system", "METRIC")
                         .with(csrf())
                         .with(user(adminUser)))
@@ -387,7 +388,7 @@ public class UserSettingsControllerTest {
                         .param("displayName", displayName)
                         .param("password", password)
                         .param("role", "USER")
-                        .param("preferred_language", "en")
+                        .param("preferred_language", "DE")
                         .param("unit_system", "METRIC")
                         .with(csrf())
                         .with(user(currentUser)))
@@ -415,7 +416,7 @@ public class UserSettingsControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("fragments/user-management :: user-form-page"))
                 .andExpect(model().attributeExists("unitSystems"))
-                .andExpect(model().attribute("selectedLanguage", "en"))
+                .andExpect(model().attribute("selectedLanguage", Language.EN))
                 .andExpect(model().attribute("selectedUnitSystem", "METRIC"))
                 .andExpect(model().attribute("selectedRole", "USER"))
                 .andExpect(model().attribute("isAdmin", true));

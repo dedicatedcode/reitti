@@ -194,39 +194,10 @@
             <h3 th:text="#{language.title}">Preferred Language</h3>
             <div class="language-selection">
                 <div class="language-buttons">
-                    <label class="btn language-btn">
-                        <input type="radio" name="preferred_language" value="en" th:checked="${selectedLanguage == 'en' || selectedLanguage == null}" style="display: none;">
-                        <span class="language-flag">🇺🇸</span>
-                        <span th:text="#{language.english}" class="language-name">English</span>
-                    </label>
-
-                    <label class="btn language-btn">
-                        <input type="radio" name="preferred_language" value="fi" th:checked="${selectedLanguage == 'fi'}" style="display: none;">
-                        <span class="language-flag">🇫🇮</span>
-                        <span th:text="#{language.finnish}" class="language-name">Suomi</span>
-                    </label>
-
-                    <label class="btn language-btn">
-                        <input type="radio" name="preferred_language" value="ptbr" th:checked="${selectedLanguage == 'ptbr'}" style="display: none;">
-                        <span class="language-flag">🇧🇷</span>
-                        <span th:text="#{language.brazilian_portuguese}" class="language-name">Português (Brasil)</span>
-                    </label>
-
-                    <label class="btn language-btn">
-                        <input type="radio" name="preferred_language" value="de" th:checked="${selectedLanguage == 'de'}" style="display: none;">
-                        <span class="language-flag">🇩🇪</span>
-                        <span th:text="#{language.german}" class="language-name">Deutsch</span>
-                    </label>
-
-                    <label class="btn language-btn">
-                        <input type="radio" name="preferred_language" value="fr" th:checked="${selectedLanguage == 'fr'}" style="display: none;">
-                        <span class="language-flag">🇫🇷</span>
-                        <span th:text="#{language.french}" class="language-name">Français</span>
-                    </label>
-                    <label class="btn language-btn">
-                        <input type="radio" name="preferred_language" value="ru" th:checked="${selectedLanguage == 'ru'}" style="display: none;">
-                        <span class="language-flag">🇷🇺</span>
-                        <span th:text="#{language.russian}" class="language-name">Russian</span>
+                    <label class="btn language-btn" th:each="language : ${availableLanguages}">
+                        <input type="radio" name="preferred_language" th:value="${language}" value="en" th:checked="${selectedLanguage == language}" style="display: none;">
+                        <span class="language-flag" th:text="${language.symbol}">🇺🇸</span>
+                        <span th:text="#{${language.messageKey}}" class="language-name">English</span>
                     </label>
                 </div>
             </div>

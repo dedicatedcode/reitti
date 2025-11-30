@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.dto.UserSettingsDTO;
+import com.dedicatedcode.reitti.model.Language;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
@@ -46,7 +47,7 @@ public class UserSettingsControllerAdvice {
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
             // Return default settings for anonymous users
             return new UserSettingsDTO(false,
-                    "en",
+                    Language.EN,
                     Instant.now(),
                     UnitSystem.METRIC,
                     DEFAULT_HOME_LATITUDE,
@@ -85,17 +86,17 @@ public class UserSettingsControllerAdvice {
         }
         // Fallback for authenticated users not found in database
         return new UserSettingsDTO(false,
-                "en",
-                Instant.now(),
-                UnitSystem.METRIC,
-                DEFAULT_HOME_LATITUDE,
-                DEFAULT_HOME_LONGITUDE,
-                tilesCustomizationProvider.getTilesConfiguration(),
-                uiMode,
-                photoMode,
-                TimeDisplayMode.DEFAULT,
-                null,
-                null);
+                                   Language.EN,
+                                   Instant.now(),
+                                   UnitSystem.METRIC,
+                                   DEFAULT_HOME_LATITUDE,
+                                   DEFAULT_HOME_LONGITUDE,
+                                   tilesCustomizationProvider.getTilesConfiguration(),
+                                   uiMode,
+                                   photoMode,
+                                   TimeDisplayMode.DEFAULT,
+                                   null,
+                                   null);
     }
 
     private UserSettingsDTO.UIMode mapUserToUiMode(Authentication authentication) {

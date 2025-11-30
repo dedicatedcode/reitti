@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.model.security;
 
+import com.dedicatedcode.reitti.model.Language;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
 
@@ -11,7 +12,7 @@ public class UserSettings {
     
     private final Long userId;
     private final boolean preferColoredMap;
-    private final String selectedLanguage;
+    private final Language selectedLanguage;
     private final UnitSystem unitSystem;
     private final Double homeLatitude;
     private final Double homeLongitude;
@@ -21,7 +22,7 @@ public class UserSettings {
     private final Instant latestData;
     private final Long version;
 
-    public UserSettings(Long userId, boolean preferColoredMap, String selectedLanguage, UnitSystem unitSystem, Double homeLatitude, Double homeLongitude, ZoneId timeZoneOverride, TimeDisplayMode timeDisplayMode, String customCss, Instant latestData, Long version) {
+    public UserSettings(Long userId, boolean preferColoredMap, Language selectedLanguage, UnitSystem unitSystem, Double homeLatitude, Double homeLongitude, ZoneId timeZoneOverride, TimeDisplayMode timeDisplayMode, String customCss, Instant latestData, Long version) {
         this.userId = userId;
         this.preferColoredMap = preferColoredMap;
         this.selectedLanguage = selectedLanguage;
@@ -36,7 +37,7 @@ public class UserSettings {
     }
 
     public static UserSettings defaultSettings(Long userId) {
-        return new UserSettings(userId, false, "en", UnitSystem.METRIC, null, null, null, TimeDisplayMode.DEFAULT, null, null, null);
+        return new UserSettings(userId, false, Language.EN, UnitSystem.METRIC, null, null, null, TimeDisplayMode.DEFAULT, null, null, null);
     }
     public Long getUserId() {
         return userId;
@@ -46,7 +47,7 @@ public class UserSettings {
         return preferColoredMap;
     }
     
-    public String getSelectedLanguage() {
+    public Language getSelectedLanguage() {
         return selectedLanguage;
     }
     

@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
+import com.dedicatedcode.reitti.model.Language;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
@@ -70,17 +71,17 @@ class UserServiceTest {
     void shouldCreateUserWithPasswordAndCustomSettings() {
         // When
         User user = userService.createNewUser(
-            "adminuser",
-            "Admin User",
-            "password123",
-            Role.ADMIN,
-            UnitSystem.IMPERIAL,
-            true,
-            "en",
-            52.5200,
-            13.4050,
-            "Europe/Berlin",
-            TimeDisplayMode.DEFAULT
+                "adminuser",
+                "Admin User",
+                "password123",
+                Role.ADMIN,
+                UnitSystem.IMPERIAL,
+                true,
+                Language.EN,
+                52.5200,
+                13.4050,
+                "Europe/Berlin",
+                TimeDisplayMode.DEFAULT
         );
 
         // Then
@@ -95,7 +96,7 @@ class UserServiceTest {
         UserSettings settings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
         assertThat(settings.getUnitSystem()).isEqualTo(UnitSystem.IMPERIAL);
         assertThat(settings.isPreferColoredMap()).isTrue();
-        assertThat(settings.getSelectedLanguage()).isEqualTo("en");
+        assertThat(settings.getSelectedLanguage()).isEqualTo(Language.EN);
         assertThat(settings.getHomeLatitude()).isEqualTo(52.5200);
         assertThat(settings.getHomeLongitude()).isEqualTo(13.4050);
         assertThat(settings.getTimeZoneOverride()).isEqualTo(ZoneId.of("Europe/Berlin"));
@@ -119,7 +120,7 @@ class UserServiceTest {
             Role.USER,
             UnitSystem.METRIC,
             false,
-            "de",
+            Language.DE,
             null,
             null,
             null,
