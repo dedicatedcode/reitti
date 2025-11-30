@@ -67,7 +67,7 @@ public class UserSettingsJdbcServiceTest {
         
         assertThat(savedSettings.getUserId()).isEqualTo(testUserId1);
         assertThat(savedSettings.isPreferColoredMap()).isTrue();
-        assertThat(savedSettings.getSelectedLanguage()).isEqualTo("fi");
+        assertThat(savedSettings.getSelectedLanguage()).isEqualTo(Language.FI);
         assertThat(savedSettings.getHomeLatitude()).isEqualTo(60.1699);
         assertThat(savedSettings.getHomeLongitude()).isEqualTo(24.9384);
         assertThat(savedSettings.getVersion()).isEqualTo(1L);
@@ -95,7 +95,7 @@ public class UserSettingsJdbcServiceTest {
         
         assertThat(result.getUserId()).isEqualTo(testUserId1);
         assertThat(result.isPreferColoredMap()).isTrue();
-        assertThat(result.getSelectedLanguage()).isEqualTo("de");
+        assertThat(result.getSelectedLanguage()).isEqualTo(Language.DE);
         assertThat(result.getUnitSystem()).isEqualTo(UnitSystem.IMPERIAL);
         assertThat(result.getHomeLatitude()).isEqualTo(52.5200);
         assertThat(result.getHomeLongitude()).isEqualTo(13.4050);
@@ -113,7 +113,7 @@ public class UserSettingsJdbcServiceTest {
         assertThat(result).isPresent();
         assertThat(result.get().getUserId()).isEqualTo(testUserId1);
         assertThat(result.get().isPreferColoredMap()).isTrue();
-        assertThat(result.get().getSelectedLanguage()).isEqualTo("fr");
+        assertThat(result.get().getSelectedLanguage()).isEqualTo(Language.FR);
         assertThat(result.get().getHomeLatitude()).isEqualTo(48.8566);
         assertThat(result.get().getHomeLongitude()).isEqualTo(2.3522);
     }
@@ -124,7 +124,7 @@ public class UserSettingsJdbcServiceTest {
         
         assertThat(result.getUserId()).isEqualTo(testUserId1);
         assertThat(result.isPreferColoredMap()).isFalse();
-        assertThat(result.getSelectedLanguage()).isEqualTo("en");
+        assertThat(result.getSelectedLanguage()).isEqualTo(Language.EN);
         assertThat(result.getUnitSystem()).isEqualTo(UnitSystem.METRIC);
         assertThat(result.getHomeLatitude()).isNull();
         assertThat(result.getHomeLongitude()).isNull();
@@ -144,7 +144,7 @@ public class UserSettingsJdbcServiceTest {
         UserSettings result = userSettingsJdbcService.getOrCreateDefaultSettings(testUserId1);
         
         assertThat(result.isPreferColoredMap()).isTrue();
-        assertThat(result.getSelectedLanguage()).isEqualTo("fi");
+        assertThat(result.getSelectedLanguage()).isEqualTo(Language.FI);
         assertThat(result.getHomeLatitude()).isEqualTo(60.1699);
         assertThat(result.getHomeLongitude()).isEqualTo(24.9384);
     }
@@ -155,7 +155,7 @@ public class UserSettingsJdbcServiceTest {
 
         assertThat(defaultSettings.getUserId()).isEqualTo(testUserId1);
         assertThat(defaultSettings.isPreferColoredMap()).isFalse();
-        assertThat(defaultSettings.getSelectedLanguage()).isEqualTo("en");
+        assertThat(defaultSettings.getSelectedLanguage()).isEqualTo(Language.EN);
         assertThat(defaultSettings.getUnitSystem()).isEqualTo(UnitSystem.METRIC);
         assertThat(defaultSettings.getHomeLatitude()).isNull();
         assertThat(defaultSettings.getHomeLongitude()).isNull();
