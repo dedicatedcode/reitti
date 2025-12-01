@@ -95,13 +95,12 @@ test.describe('Date Picker Tests', () => {
 
     test('should switch to auto-update mode', async ({page}) => {
         await page.goto('/')
-        await page.getByTitle('Auto Update', { exact: true }).click();
+        await page.getByTitle('Enter Auto-Update Mode', { exact: true }).click();
         await expect(page.locator('#auto-update-overlay')).toBeVisible();
         await expect(page.getByText('Sun31Dec')).not.toBeVisible();
-        await expect(page.getByTitle('Pause Auto Update')).toBeVisible();
-        await page.getByTitle('Pause Auto Update').click();
+        await expect(page.locator('#auto-update-btn')).toBeVisible();
+        await page.locator('#auto-update-btn').click();
         await expect(page.locator('#auto-update-overlay')).not.toBeVisible();
-        await expect(page.getByTitle('Pause Auto Update')).not.toBeVisible();
 
         await expect(page).toHaveURL(/startDate=2017-12-31&endDate=2017-12-31/);
     });

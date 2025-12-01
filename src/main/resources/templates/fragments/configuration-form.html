@@ -37,19 +37,24 @@
                 <div class="sensitivity-buttons-container">
                     <input type="hidden" th:field="*{sensitivityLevel}">
                     <div class="toggle-buttons">
-                        <button type="button" 
+                        <button type="button"
+                                th:text="#{visit.sensitivity.level.very-low}"
                                 th:class="${configurationForm.sensitivityLevel == 1 ? 'btn active' : 'btn'}"
                                 onclick="setSensitivityLevel(1)">Very Low</button>
-                        <button type="button" 
+                        <button type="button"
+                                th:text="#{visit.sensitivity.level.low}"
                                 th:class="${configurationForm.sensitivityLevel == 2 ? 'btn active' : 'btn'}"
                                 onclick="setSensitivityLevel(2)">Low</button>
-                        <button type="button" 
+                        <button type="button"
+                                th:text="#{visit.sensitivity.level.medium}"
                                 th:class="${configurationForm.sensitivityLevel == 3 ? 'btn active' : 'btn'}"
                                 onclick="setSensitivityLevel(3)">Medium</button>
-                        <button type="button" 
+                        <button type="button"
+                                th:text="#{visit.sensitivity.level.high}"
                                 th:class="${configurationForm.sensitivityLevel == 4 ? 'btn active' : 'btn'}"
                                 onclick="setSensitivityLevel(4)">High</button>
-                        <button type="button" 
+                        <button type="button"
+                                th:text="#{visit.sensitivity.level.very-high}"
                                 th:class="${configurationForm.sensitivityLevel == 5 ? 'btn active' : 'btn'}"
                                 onclick="setSensitivityLevel(5)">Very High</button>
                     </div>

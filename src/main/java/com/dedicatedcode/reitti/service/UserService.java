@@ -83,22 +83,24 @@ public class UserService {
                               Double homeLatitude,
                               Double homeLongitude,
                               String timezoneOverride,
-                              TimeDisplayMode timeDisplayMode) {
+                              TimeDisplayMode timeDisplayMode,
+                              String color) {
         User createdUser = userJdbcService.createUser(new User(username, displayName)
                 .withPassword(passwordEncoder.encode(password))
                 .withRole(role));
 
         UserSettings userSettings = new UserSettings(createdUser.getId(),
-                preferColoredMap,
-                preferredLanguage,
-                unitSystem,
-                homeLatitude,
-                homeLongitude,
-                StringUtils.hasText(timezoneOverride) ? ZoneId.of(timezoneOverride) : null,
-                timeDisplayMode,
-                null,
-                null,
-                null);
+                                                     preferColoredMap,
+                                                     preferredLanguage,
+                                                     unitSystem,
+                                                     homeLatitude,
+                                                     homeLongitude,
+                                                     StringUtils.hasText(timezoneOverride) ? ZoneId.of(timezoneOverride) : null,
+                                                     timeDisplayMode,
+                                                     null,
+                                                     null,
+                                                     color,
+                                                     null);
 
 
         saveDefaultVisitDetectionParameters(createdUser);

@@ -9,12 +9,11 @@ import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.AvatarService;
+import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.MessageSource;
-import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,8 +29,9 @@ import org.springframework.web.servlet.LocaleResolver;
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
+import java.util.Map;
 
 import static com.dedicatedcode.reitti.model.Role.ADMIN;
 
@@ -42,13 +42,13 @@ public class UserSettingsController {
     private final UserJdbcService userJdbcService;
     private final UserService userService;
     private final UserSettingsJdbcService userSettingsJdbcService;
-    private final MessageSource messageSource;
     private final LocaleResolver localeResolver;
     private final AvatarService avatarService;
     private final PasswordEncoder passwordEncoder;
     private final boolean localLoginDisabled;
     private final boolean oidcEnabled;
     private final boolean dataManagementEnabled;
+    private final I18nService i18nService;
 
 
     // Avatar constraints
@@ -63,10 +63,11 @@ public class UserSettingsController {
     // CSS file constraints
     private static final long MAX_CSS_SIZE = 1024 * 1024; // 1MB
     private static final String ALLOWED_CSS_CONTENT_TYPE = "text/css";
+    private Map<String, String> defaultColors;
 
     public UserSettingsController(UserJdbcService userJdbcService, UserService userService,
                                   UserSettingsJdbcService userSettingsJdbcService,
-                                  MessageSource messageSource,
+                                  I18nService i18nService,
                                   LocaleResolver localeResolver,
                                   AvatarService avatarService,
                                   PasswordEncoder passwordEncoder,
@@ -76,17 +77,26 @@ public class UserSettingsController {
         this.userJdbcService = userJdbcService;
         this.userService = userService;
         this.userSettingsJdbcService = userSettingsJdbcService;
-        this.messageSource = messageSource;
+        this.i18nService = i18nService;
         this.localeResolver = localeResolver;
         this.avatarService = avatarService;
         this.passwordEncoder = passwordEncoder;
         this.localLoginDisabled = localLoginDisabled;
         this.oidcEnabled = oidcEnabled;
         this.dataManagementEnabled = dataManagementEnabled;
-    }
-
-    private String getMessage(String key, Object... args) {
-        return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
+        this.defaultColors = new HashMap<>();
+        this.defaultColors.put("#f1ba63","Default Gold");
+        this.defaultColors.put("#4a90e2","Ocean Blue");
+        this.defaultColors.put("#7ed321","Fresh Green");
+        this.defaultColors.put("#f5a623","Warm Orange");
+        this.defaultColors.put("#bd10e0","Purple");
+        this.defaultColors.put("#b8e986","Light Green");
+        this.defaultColors.put("#50e3c2","Turquoise");
+        this.defaultColors.put("#e94b3c","Red");
+        this.defaultColors.put("#9013fe","Violet");
+        this.defaultColors.put("#417505","Forest Green");
+        this.defaultColors.put("#d0021b","Crimson");
+        this.defaultColors.put("#8b572a","Brow");
     }
 
     @GetMapping("/users-content")
@@ -129,6 +139,8 @@ public class UserSettingsController {
             model.addAttribute("timeDisplayMode", userSettings.getTimeDisplayMode().name());
             model.addAttribute("availableTimezones", ZoneId.getAvailableZoneIds());
             model.addAttribute("availableTimeDisplayModes", TimeDisplayMode.values());
+            model.addAttribute("defaultColors", defaultColors);
+            model.addAttribute("selectedColor", userSettings.getColor());
             return "fragments/user-management :: user-form-page";
         }
 
@@ -148,20 +160,20 @@ public class UserSettingsController {
 
         // Only admins can delete users
         if (ADMIN != currentUser.getRole()) {
-            model.addAttribute("errorMessage", getMessage("message.error.access.denied"));
+            model.addAttribute("errorMessage", i18nService.translate("message.error.access.denied"));
             return getUserContent(model, currentUser);
         }
 
         // Prevent self-deletion
         if (currentUser.getId().equals(userId)) {
-            model.addAttribute("errorMessage", getMessage("message.error.user.self.delete"));
+            model.addAttribute("errorMessage", i18nService.translate("message.error.user.self.delete"));
         } else {
             try {
                 User user = userJdbcService.findById(userId).orElseThrow();
                 userService.deleteUser(user);
-                model.addAttribute("successMessage", getMessage("message.success.user.deleted"));
+                model.addAttribute("successMessage", i18nService.translate("message.success.user.deleted"));
             } catch (Exception e) {
-                model.addAttribute("errorMessage", getMessage("message.error.user.deletion", e.getMessage()));
+                model.addAttribute("errorMessage", i18nService.translate("message.error.user.deletion", e.getMessage()));
             }
         }
 
@@ -191,6 +203,7 @@ public class UserSettingsController {
                              @RequestParam(required = false) MultipartFile avatar,
                              @RequestParam(required = false) String defaultAvatar,
                              @RequestParam(required = false) MultipartFile customCss,
+                             @RequestParam String color,
                              Authentication authentication,
                              Model model) {
         
@@ -200,7 +213,7 @@ public class UserSettingsController {
 
         // Only admins can create users
         if (ADMIN != currentUser.getRole()) {
-            model.addAttribute("errorMessage", getMessage("message.error.access.denied"));
+            model.addAttribute("errorMessage", i18nService.translate("message.error.access.denied"));
             return getUserContent(model, currentUser);
         }
         try {
@@ -215,7 +228,8 @@ public class UserSettingsController {
                         homeLatitude,
                         homeLongitude,
                         timezoneOverride,
-                        timeDisplayMode);
+                        timeDisplayMode,
+                        color);
                 // Handle avatar - prioritize custom upload over default
                 if (avatar != null && !avatar.isEmpty()) {
                     handleAvatarUpload(avatar, createdUser.getId(), model);
@@ -241,18 +255,19 @@ public class UserSettingsController {
                                 existingSettings.getTimeDisplayMode(),
                                 cssContent,
                                 existingSettings.getLatestData(),
+                                color,
                                 existingSettings.getVersion()
                         );
                         userSettingsJdbcService.save(updatedSettings);
                     }
                 }
                 
-                model.addAttribute("successMessage", getMessage("message.success.user.created"));
+                model.addAttribute("successMessage", i18nService.translate("message.success.user.created"));
             } else {
-                model.addAttribute("errorMessage", getMessage("message.error.user.creation", "All fields must be filled"));
+                model.addAttribute("errorMessage", i18nService.translate("message.error.user.creation", "All fields must be filled"));
             }
         } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("message.error.user.creation", e.getMessage()));
+            model.addAttribute("errorMessage", i18nService.translate("message.error.user.creation", e.getMessage()));
         }
 
         List<User> users = userJdbcService.getAllUsers();
@@ -283,6 +298,7 @@ public class UserSettingsController {
                              @RequestParam(required = false) String removeAvatar,
                              @RequestParam(required = false) MultipartFile customCss,
                              @RequestParam(required = false) String removeCss,
+                             @RequestParam String color,
                              Authentication authentication,
                              HttpServletRequest request,
                              HttpServletResponse response,
@@ -296,7 +312,7 @@ public class UserSettingsController {
 
         // Only admins can edit other users, users can only edit themselves
         if (!isCurrentUser && ADMIN != authenticatedUser.getRole()) {
-            model.addAttribute("errorMessage", getMessage("message.error.access.denied"));
+            model.addAttribute("errorMessage", i18nService.translate("message.error.access.denied"));
             return getUserContent(model, authenticatedUser);
         }
 
@@ -334,7 +350,18 @@ public class UserSettingsController {
             }
             
             UnitSystem unitSystem = UnitSystem.valueOf(unit_system);
-            UserSettings updatedSettings = new UserSettings(userId, preferColoredMap, preferred_language, unitSystem, homeLatitude, homeLongitude, StringUtils.hasText(timezoneOverride) ? ZoneId.of(timezoneOverride) : null, timeDisplayMode, cssContent, existingSettings.getLatestData(), existingSettings.getVersion());
+            UserSettings updatedSettings = new UserSettings(userId,
+                                                            preferColoredMap,
+                                                            preferred_language,
+                                                            unitSystem,
+                                                            homeLatitude,
+                                                            homeLongitude,
+                                                            StringUtils.hasText(timezoneOverride) ? ZoneId.of(timezoneOverride) : null,
+                                                            timeDisplayMode,
+                                                            cssContent,
+                                                            existingSettings.getLatestData(),
+                                                            color,
+                                                            existingSettings.getVersion());
             userSettingsJdbcService.save(updatedSettings);
             
             // Handle avatar operations
@@ -351,7 +378,7 @@ public class UserSettingsController {
                 localeResolver.setLocale(request, response, preferred_language.getLocale());
             }
             
-            model.addAttribute("successMessage", getMessage("message.success.user.updated"));
+            model.addAttribute("successMessage", i18nService.translate("message.success.user.updated"));
 
             // If the current user was updated, update the authentication
             if (isCurrentUser && !currentUsername.equals(username)) {
@@ -360,7 +387,7 @@ public class UserSettingsController {
                 model.addAttribute("newUsername", username);
             }
         } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("message.error.user.update", e.getMessage()));
+            model.addAttribute("errorMessage", i18nService.translate("message.error.user.update", e.getMessage()));
         }
 
         // If admin, return to user list; if regular user, stay on their form
@@ -391,12 +418,12 @@ public class UserSettingsController {
 
         // Only admins can access user forms for other users or create new users
         if (userId != null && !userId.equals(currentUser.getId()) && ADMIN != currentUser.getRole()) {
-            model.addAttribute("errorMessage", getMessage("message.error.access.denied"));
+            model.addAttribute("errorMessage", i18nService.translate("message.error.access.denied"));
             return getUserContent(model, currentUser);
         }
         
         if (userId == null && ADMIN != currentUser.getRole()) {
-            model.addAttribute("errorMessage", getMessage("message.error.access.denied"));
+            model.addAttribute("errorMessage", i18nService.translate("message.error.access.denied"));
             return getUserContent(model, currentUser);
         }
         if (userId != null) {
@@ -416,6 +443,7 @@ public class UserSettingsController {
             model.addAttribute("homeLongitude", userSettings.getHomeLongitude());
             model.addAttribute("timeZoneOverride", userSettings.getTimeZoneOverride());
             model.addAttribute("timeDisplayMode", userSettings.getTimeDisplayMode().name());
+            model.addAttribute("selectedColor", userSettings.getColor());
         } else {
             // Default values for new users
             model.addAttribute("selectedLanguage", Language.EN);
@@ -433,6 +461,8 @@ public class UserSettingsController {
         model.addAttribute("availableLanguages", Language.values());
         model.addAttribute("availableTimezones", ZoneId.getAvailableZoneIds().stream().sorted());
         model.addAttribute("availableTimeDisplayModes", TimeDisplayMode.values());
+        model.addAttribute("defaultColors", defaultColors);
+
         // Check if user has avatar and custom CSS
         if (userId != null) {
             boolean hasAvatar = this.avatarService.getInfo(userId).isPresent();
@@ -457,14 +487,14 @@ public class UserSettingsController {
             try {
                 // Validate file size
                 if (avatar.getSize() > MAX_AVATAR_SIZE) {
-                    model.addAttribute("avatarError", "Avatar file too large. Maximum size is 2MB.");
+                    model.addAttribute("avatarError", i18nService.translate("users.avatar.error.to-large"));
                     return;
                 }
                 
                 // Validate content type
                 String contentType = avatar.getContentType();
                 if (contentType == null || !isAllowedContentType(contentType)) {
-                    model.addAttribute("avatarError", "Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.");
+                    model.addAttribute("avatarError", i18nService.translate("users.avatar.error.invalid-file-type"));
                     return;
                 }
                 
@@ -472,7 +502,7 @@ public class UserSettingsController {
                 this.avatarService.updateAvatar(userId, contentType, imageData);
 
             } catch (IOException e) {
-                model.addAttribute("avatarError", "Error processing avatar file: " + e.getMessage());
+                model.addAttribute("avatarError", i18nService.translate("users.avatar.error.generic", e.getMessage()));
             }
         }
     }
@@ -517,21 +547,21 @@ public class UserSettingsController {
             try {
                 // Validate file size
                 if (cssFile.getSize() > MAX_CSS_SIZE) {
-                    model.addAttribute("cssError", "CSS file too large. Maximum size is 1MB.");
+                    model.addAttribute("cssError", i18nService.translate("users.custom.css.error.to-large"));
                     return null;
                 }
                 
                 // Validate content type
                 String contentType = cssFile.getContentType();
-                if (contentType == null || !ALLOWED_CSS_CONTENT_TYPE.equals(contentType)) {
-                    model.addAttribute("cssError", "Invalid file type. Only CSS files are allowed.");
+                if (!ALLOWED_CSS_CONTENT_TYPE.equals(contentType)) {
+                    model.addAttribute("cssError", i18nService.translate("users.custom.css.error.invalid-file-type"));
                     return null;
                 }
                 
                 // Validate file extension
                 String originalFilename = cssFile.getOriginalFilename();
                 if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".css")) {
-                    model.addAttribute("cssError", "File must have .css extension.");
+                    model.addAttribute("cssError", i18nService.translate("users.custom.css.error.invalid-file-type"));
                     return null;
                 }
                 
@@ -539,7 +569,7 @@ public class UserSettingsController {
                 return new String(cssFile.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
                 
             } catch (IOException e) {
-                model.addAttribute("cssError", "Error processing CSS file: " + e.getMessage());
+                model.addAttribute("cssError", i18nService.translate("users.custom.css.error.generic", e.getMessage()));
                 return null;
             }
         }

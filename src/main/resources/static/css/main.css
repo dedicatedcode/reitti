@@ -64,10 +64,11 @@
     --serif-font: "Fraunces", 'Noto Serif SC', 'PingFang SC', 'Microsoft YaHei', serif;;
     --memories-header-height: 550px;
     --box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
+    --sans-serif-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC",  'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
 }
 
 body {
-    font-family: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    font-family: var(--sans-serif-font);
     margin: 0;
     padding: 0;
     height: 100vh;
@@ -504,7 +505,7 @@ tr:hover {
     width: 50%;
     bottom: 0;
     background: var(--color-background-dark);
-    background: linear-gradient(90deg, rgb(17, 17, 17) 0%, rgba(59, 59, 59, 0.49) 76%, rgba(255, 255, 255, 0) 100%);
+    background: linear-gradient(90deg, rgb(17, 17, 17) 0%, rgba(59, 59, 59, 0.49) 21%, rgba(255, 255, 255, 0) 40%);;
     z-index: 5;
     overflow-y: auto;
     pointer-events: none;
@@ -533,8 +534,8 @@ tr:hover {
 }
 
 .timeline-entry {
-    color: #bfbfbf;
-    padding: 1rem 2rem;
+    color: #e1e1e1;
+    padding: 0 2rem;
     transition: all 0.25s ease-in-out;
     pointer-events: all;
     cursor: pointer;
@@ -542,7 +543,7 @@ tr:hover {
 }
 
 .timeline-entry.active {
-    color: #f8f8f8;
+    color: #e1e1e1;
     transition: all 0.25s ease-in-out;
 }
 
@@ -555,6 +556,10 @@ tr:hover {
 .timeline-entry.active .entry-description {
     font-size: 5rem;
     transition: all 0.25s ease-in-out;
+}
+
+.timeline-entry .place-name-container {
+    text-shadow: 0px 0px 0px white, 2px 2px 0px #24201c, 1px 1px 0 #171414;
 }
 
 .htmx-indicator {
@@ -805,7 +810,6 @@ body.timeline-hidden .timeline-container {
 
 body.timeline-hidden .timeline-toggle-btn {
     position: fixed;
-    bottom: 180px;
     right: auto;
 }
 
@@ -886,7 +890,7 @@ body.datepicker-hidden #date-picker-container {
 body.datepicker-hidden .datepicker-toggle-btn {
     position: fixed;
     bottom: 20px;
-    right: 20px;
+    right: 4px;
     background: rgba(59, 59, 59, 0.9);
     backdrop-filter: blur(10px);
 }
@@ -1211,6 +1215,7 @@ body.auto-update-mode .today-fab {
     overflow-y: auto;
     padding-bottom: 24px;
     padding-right: 24px;
+    line-height: 1.4;
 }
 
 .settings-page .settings-section {
@@ -1244,6 +1249,11 @@ body.auto-update-mode .today-fab {
 @media (max-width: 800px) {
     .timeline-entry {
         padding: 1rem 2rem 0 1rem;
+    }
+
+    .timeline {
+        background: linear-gradient(90deg, rgb(151, 151, 151) 0%, rgba(59, 59, 59, 0.49) 3%, rgba(255, 255, 255, 0) 100%);
+        text-shadow: 0 0 0 white, 2px 2px 0 #24201c, 1px 1px 0 #171414;
     }
 
     .timeline-entry .entry-description {
@@ -1339,13 +1349,6 @@ body.auto-update-mode .today-fab {
     }
 
 
-    .timeline-toggle-btn,
-    .datepicker-toggle-btn {
-        bottom: 210px;
-    }
-    body.timeline-hidden .timeline-toggle-btn {
-        bottom: 210px;
-    }
 }
 
 /* Today FAB Styles */
@@ -1385,7 +1388,6 @@ body.auto-update-mode .today-fab {
 
 @media (max-width: 800px) {
     .today-fab {
-        bottom: 220px;
         padding: 6px 12px;
         font-size: 0.8rem;
     }
