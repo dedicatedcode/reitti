@@ -257,6 +257,46 @@
         </div>
         <div class="separator"></div>
         <div class="form-group">
+            <h3 th:text="#{users.color.theme.label}">Color Theme</h3>
+            <p class="form-description" th:text="#{users.color.theme.description}">Choose your preferred accent color for the interface.</p>
+            
+            <div class="color-picker-section">
+                <div class="color-options">
+                    <label class="color-option" th:each="colorOption : ${{
+                        '#f1ba63': 'Default Gold',
+                        '#4a90e2': 'Ocean Blue', 
+                        '#7ed321': 'Fresh Green',
+                        '#f5a623': 'Warm Orange',
+                        '#bd10e0': 'Purple',
+                        '#b8e986': 'Light Green',
+                        '#50e3c2': 'Turquoise',
+                        '#e94b3c': 'Red',
+                        '#9013fe': 'Violet',
+                        '#417505': 'Forest Green',
+                        '#d0021b': 'Crimson',
+                        '#8b572a': 'Brown'
+                    }}">
+                        <input type="radio" 
+                               name="color" 
+                               th:value="${colorOption.key}" 
+                               th:checked="${selectedColor == colorOption.key || (selectedColor == null && colorOption.key == '#f1ba63')}"
+                               style="display: none;">
+                        <div class="color-swatch" 
+                             th:style="'background-color: ' + ${colorOption.key}"
+                             th:title="${colorOption.value}"></div>
+                    </label>
+                </div>
+                
+                <div class="color-actions">
+                    <button type="button" 
+                            class="btn btn-secondary"
+                            onclick="resetToDefaultColor()"
+                            th:text="#{users.color.theme.reset}">Reset to Default</button>
+                </div>
+            </div>
+        </div>
+        <div class="separator"></div>
+        <div class="form-group">
             <label class="checkbox-container">
                 <input type="checkbox" name="preferColoredMap" th:checked="${preferColoredMap}" class="checkbox-input">
                 <span class="checkbox-checkmark"></span>
@@ -311,6 +351,60 @@
                     th:text="#{form.cancel}">Cancel</button>
         </div>
     </form>
+    <style>
+        .color-picker-section {
+            margin-top: 10px;
+        }
+        
+        .color-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+            gap: 12px;
+            margin-bottom: 15px;
+            max-width: 400px;
+        }
+        
+        .color-option {
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .color-swatch {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 3px solid transparent;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .color-option input:checked + .color-swatch {
+            border-color: var(--color-text-white);
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .color-option:hover .color-swatch {
+            transform: scale(1.05);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+        }
+        
+        .color-actions {
+            margin-top: 10px;
+        }
+        
+        .btn-secondary {
+            background-color: var(--color-bg-secondary);
+            color: var(--color-text-white);
+            border: 1px solid var(--color-border);
+        }
+        
+        .btn-secondary:hover {
+            background-color: var(--color-bg-hover);
+        }
+    </style>
+    
     <script th:inline="javascript">
         document.addEventListener('DOMContentLoaded', () => {
             initializeHomeLocationMap();
@@ -320,6 +414,13 @@
             if (confirm( /*[[#{users.custom.css.remove.confirm}]]*/ 'Are you sure you want to remove the current custom CSS file?')) {
                 document.getElementById('removeCssFlag').value = 'true';
                 document.querySelector('.current-css').style.display = 'none';
+            }
+        }
+        
+        function resetToDefaultColor() {
+            const defaultColorInput = document.querySelector('input[name="color"][value="#f1ba63"]');
+            if (defaultColorInput) {
+                defaultColorInput.checked = true;
             }
         }
     </script>
