@@ -78,7 +78,7 @@ public class ExportDataController {
         
         // Get raw location points for the date range
         List<RawLocationPoint> rawLocationPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(
-            user, startDateTime.toInstant(), endDateTime.toInstant());
+            user, startDateTime.toInstant(), endDateTime.toInstant(), false, true);
         model.addAttribute("rawLocationPoints", rawLocationPoints.stream()
                 .map(p -> new DataLine(TimeUtil.adjustInstant(p.getTimestamp(), timezone), p.getLatitude(), p.getLongitude(), p.getAccuracyMeters(), p.isProcessed()))
                 .toList());
@@ -90,6 +90,7 @@ public class ExportDataController {
     public ResponseEntity<StreamingResponseBody> exportGpx(@AuthenticationPrincipal User user,
                                                            @RequestParam String startDate,
                                                            @RequestParam String endDate,
+                                                           @RequestParam boolean relevantData,
                                                            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
         try {
             LocalDate start = LocalDate.parse(startDate);
@@ -103,7 +104,7 @@ public class ExportDataController {
             
             StreamingResponseBody stream = outputStream -> {
                 try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
-                    gpxExportService.generateGpxContentStreaming(user, startDateTime.toInstant(), endDateTime.toInstant(), writer);
+                    gpxExportService.generateGpxContentStreaming(user, startDateTime.toInstant(), endDateTime.toInstant(), writer, relevantData);
                 } catch (Exception e) {
                     throw new RuntimeException("Error generating GPX file", e);
                 }

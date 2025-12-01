@@ -72,8 +72,7 @@ public class LocationDataDensityNormalizer {
             rawLocationPointService.deleteSyntheticPointsInRange(user, expandedRange.start, expandedRange.end);
 
             // Step 5: Fetch all existing points in the expanded range (single DB query)
-            List<RawLocationPoint> existingPoints = rawLocationPointService
-                    .findByUserAndTimestampBetweenOrderByTimestampAsc(user, expandedRange.start, expandedRange.end);
+            List<RawLocationPoint> existingPoints = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, expandedRange.start, expandedRange.end);
 
             logger.debug("Found {} existing points in expanded range [{} - {}]",
                     existingPoints.size(), expandedRange.start, expandedRange.end);

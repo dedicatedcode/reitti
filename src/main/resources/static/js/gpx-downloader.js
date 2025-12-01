@@ -3,7 +3,7 @@ class GpxDownloader {
         this.isDownloading = false;
     }
 
-    async downloadGpx(startDate, endDate, buttonElement) {
+    async downloadGpx(startDate, endDate, buttonElement, relevantData = false) {
         if (this.isDownloading) {
             return;
         }
@@ -16,7 +16,8 @@ class GpxDownloader {
             const params = new URLSearchParams({
                 startDate: startDate,
                 endDate: endDate,
-                timezone: timezone
+                timezone: timezone,
+                relevantData: relevantData ? 'true' : 'false'
             });
 
             const response = await fetch(`/settings/export-data/gpx?${params}`, {
