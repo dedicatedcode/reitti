@@ -7,6 +7,7 @@ import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.AvatarService;
 import com.dedicatedcode.reitti.service.TimelineService;
@@ -245,6 +246,8 @@ public class TimelineController {
         User user = userJdbcService.findByUsername(principal.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
+        UserSettings userSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
+
         // Convert LocalDate to start and end Instant for the date range in user's timezone
         Instant startOfRange = selectedStartDate.atStartOfDay(userTimezone).toInstant();
         Instant endOfRange = selectedEndDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
@@ -263,7 +266,7 @@ public class TimelineController {
         String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), selectedStartDate, selectedEndDate, timezone);
         String currentUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", user.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", user.getId()));
         String currentUserInitials = this.avatarService.generateInitials(user.getDisplayName());
-        allUsersData.add(new UserTimelineData(user.getId() + "", user.getDisplayName(), currentUserInitials, currentUserAvatarUrl, null, currentUserEntries, currentUserRawLocationPointsUrl));
+        allUsersData.add(new UserTimelineData(user.getId() + "", user.getDisplayName(), currentUserInitials, currentUserAvatarUrl, userSettings.getColor(), currentUserEntries, currentUserRawLocationPointsUrl));
 
         if (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN")) {
             allUsersData.addAll(this.reittiIntegrationService.getTimelineDataRange(user, selectedStartDate, selectedEndDate, userTimezone));

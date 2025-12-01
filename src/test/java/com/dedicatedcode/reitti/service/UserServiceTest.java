@@ -81,7 +81,8 @@ class UserServiceTest {
                 52.5200,
                 13.4050,
                 "Europe/Berlin",
-                TimeDisplayMode.DEFAULT
+                TimeDisplayMode.DEFAULT,
+                "#f1ba63"
         );
 
         // Then
@@ -124,7 +125,8 @@ class UserServiceTest {
             null,
             null,
             null,
-            TimeDisplayMode.DEFAULT
+            TimeDisplayMode.DEFAULT,
+            "#f1ba63"
         );
 
         // Then

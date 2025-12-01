@@ -535,7 +535,7 @@ tr:hover {
 
 .timeline-entry {
     color: #bfbfbf;
-    padding: 1rem 2rem;
+    padding: 0 2rem;
     transition: all 0.25s ease-in-out;
     pointer-events: all;
     cursor: pointer;
@@ -806,7 +806,6 @@ body.timeline-hidden .timeline-container {
 
 body.timeline-hidden .timeline-toggle-btn {
     position: fixed;
-    bottom: 180px;
     right: auto;
 }
 
@@ -887,7 +886,7 @@ body.datepicker-hidden #date-picker-container {
 body.datepicker-hidden .datepicker-toggle-btn {
     position: fixed;
     bottom: 20px;
-    right: 20px;
+    right: 4px;
     background: rgba(59, 59, 59, 0.9);
     backdrop-filter: blur(10px);
 }
@@ -1341,13 +1340,6 @@ body.auto-update-mode .today-fab {
     }
 
 
-    .timeline-toggle-btn,
-    .datepicker-toggle-btn {
-        bottom: 210px;
-    }
-    body.timeline-hidden .timeline-toggle-btn {
-        bottom: 210px;
-    }
 }
 
 /* Today FAB Styles */
@@ -1387,7 +1379,6 @@ body.auto-update-mode .today-fab {
 
 @media (max-width: 800px) {
     .today-fab {
-        bottom: 220px;
         padding: 6px 12px;
         font-size: 0.8rem;
     }

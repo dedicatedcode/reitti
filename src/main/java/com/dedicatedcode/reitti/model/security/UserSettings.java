@@ -20,9 +20,10 @@ public class UserSettings {
     private final TimeDisplayMode timeDisplayMode;
     private final String customCss;
     private final Instant latestData;
+    private final String color;
     private final Long version;
 
-    public UserSettings(Long userId, boolean preferColoredMap, Language selectedLanguage, UnitSystem unitSystem, Double homeLatitude, Double homeLongitude, ZoneId timeZoneOverride, TimeDisplayMode timeDisplayMode, String customCss, Instant latestData, Long version) {
+    public UserSettings(Long userId, boolean preferColoredMap, Language selectedLanguage, UnitSystem unitSystem, Double homeLatitude, Double homeLongitude, ZoneId timeZoneOverride, TimeDisplayMode timeDisplayMode, String customCss, Instant latestData, String color, Long version) {
         this.userId = userId;
         this.preferColoredMap = preferColoredMap;
         this.selectedLanguage = selectedLanguage;
@@ -33,11 +34,12 @@ public class UserSettings {
         this.timeDisplayMode = timeDisplayMode;
         this.customCss = customCss;
         this.latestData = latestData;
+        this.color = color;
         this.version = version;
     }
 
     public static UserSettings defaultSettings(Long userId) {
-        return new UserSettings(userId, false, Language.EN, UnitSystem.METRIC, null, null, null, TimeDisplayMode.DEFAULT, null, null, null);
+        return new UserSettings(userId, false, Language.EN, UnitSystem.METRIC, null, null, null, TimeDisplayMode.DEFAULT, null, null, "#f1ba63", null);
     }
     public Long getUserId() {
         return userId;
@@ -83,6 +85,9 @@ public class UserSettings {
         return customCss;
     }
 
+    public String getColor() {
+        return color;
+    }
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -121,5 +126,9 @@ public class UserSettings {
                 ", latestData=" + latestData +
                 ", version=" + version +
                 '}';
+    }
+
+    public UserSettings withVersion(long version) {
+        return new UserSettings(userId, preferColoredMap, selectedLanguage, unitSystem, homeLatitude, homeLongitude, timeZoneOverride, timeDisplayMode, customCss, latestData, color, version);
     }
 }

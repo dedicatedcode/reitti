@@ -257,6 +257,64 @@
         </div>
         <div class="separator"></div>
         <div class="form-group">
+            <h3 th:text="#{users.color.theme.label}">Color Theme</h3>
+            <p class="form-description" th:text="#{users.color.theme.description}">Choose your preferred accent color for the interface.</p>
+            
+            <div class="color-picker-section">
+                <div class="color-options">
+                    <label class="color-option" th:each="colorOption : ${defaultColors}">
+                        <input type="radio" 
+                               name="color" 
+                               th:value="${colorOption.key}" 
+                               th:checked="${selectedColor == colorOption.key || (selectedColor == null && colorOption.key == '#f1ba63')}"
+                               style="display: none;">
+                        <div class="color-swatch" 
+                             th:style="'background-color: ' + ${colorOption.key}"
+                             th:title="${colorOption.value}"></div>
+                    </label>
+                    
+                    <!-- Custom color option -->
+                    <label class="color-option custom-color-option">
+                        <input type="radio" 
+                               name="color" 
+                               id="customColorRadio"
+                               value=""
+                               style="display: none;">
+                        <div class="color-swatch custom-color-swatch" 
+                             id="customColorSwatch"
+                             th:title="#{users.color.theme.custom}">
+                            <span class="custom-color-icon">+</span>
+                        </div>
+                    </label>
+                </div>
+                
+                <!-- Custom color input -->
+                <div class="custom-color-input-section" id="customColorInputSection" style="display: none;">
+                    <label for="customColorInput" th:text="#{users.color.theme.custom.input}">Custom Color:</label>
+                    <div class="custom-color-input-wrapper">
+                        <input type="color" 
+                               id="customColorInput" 
+                               th:value="${selectedColor != null && !#lists.contains(defaultColors.![key], selectedColor) ? selectedColor : '#f1ba63'}"
+                               onchange="updateCustomColor(this.value)">
+                        <input type="text" 
+                               id="customColorText" 
+                               th:value="${selectedColor != null && !#lists.contains(defaultColors.![key], selectedColor) ? selectedColor : '#f1ba63'}"
+                               placeholder="#f1ba63"
+                               pattern="^#[0-9A-Fa-f]{6}$"
+                               onchange="updateCustomColorFromText(this.value)">
+                    </div>
+                </div>
+                
+                <div class="color-actions">
+                    <button type="button" 
+                            class="btn btn-secondary"
+                            onclick="resetToDefaultColor()"
+                            th:text="#{users.color.theme.reset}">Reset to Default</button>
+                </div>
+            </div>
+        </div>
+        <div class="separator"></div>
+        <div class="form-group">
             <label class="checkbox-container">
                 <input type="checkbox" name="preferColoredMap" th:checked="${preferColoredMap}" class="checkbox-input">
                 <span class="checkbox-checkmark"></span>
@@ -311,6 +369,107 @@
                     th:text="#{form.cancel}">Cancel</button>
         </div>
     </form>
+    <style>
+        .color-picker-section {
+            margin-top: 10px;
+        }
+        
+        .color-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+            gap: 12px;
+            margin-bottom: 15px;
+            max-width: 400px;
+        }
+        
+        .color-option {
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .color-swatch {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 3px solid transparent;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .color-option input:checked + .color-swatch {
+            border-color: var(--color-text-white);
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .color-option:hover .color-swatch {
+            transform: scale(1.05);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+        }
+        
+        .color-actions {
+            margin-top: 10px;
+        }
+        
+        .custom-color-swatch {
+            background: linear-gradient(45deg, #f0f0f0 25%, transparent 25%), 
+                        linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), 
+                        linear-gradient(45deg, transparent 75%, #f0f0f0 75%), 
+                        linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+            background-size: 8px 8px;
+            background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed var(--color-border-default);
+        }
+        
+        .custom-color-icon {
+            font-size: 20px;
+            color: var(--color-text-white);
+            font-weight: bold;
+        }
+        
+        .custom-color-input-section {
+            margin: 15px 0;
+            padding: 15px;
+            background-color: var(--color-bg-secondary);
+            border-radius: 8px;
+            border: 1px solid var(--color-border-default);
+        }
+        
+        .custom-color-input-section label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        
+        .custom-color-input-wrapper {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .custom-color-input-wrapper input[type="color"] {
+            width: 50px;
+            height: 40px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .custom-color-input-wrapper input[type="text"] {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--color-border-default);
+            border-radius: 4px;
+            background-color: var(--color-background-dark);
+            color: var(--color-text-white);
+            font-family: monospace;
+        }
+    </style>
+    
     <script th:inline="javascript">
         document.addEventListener('DOMContentLoaded', () => {
             initializeHomeLocationMap();
@@ -322,6 +481,80 @@
                 document.querySelector('.current-css').style.display = 'none';
             }
         }
+        
+        function resetToDefaultColor() {
+            const defaultColorInput = document.querySelector('input[name="color"][value="#f1ba63"]');
+            if (defaultColorInput) {
+                defaultColorInput.checked = true;
+                hideCustomColorInput();
+            }
+        }
+        
+        function updateCustomColor(color) {
+            const customColorRadio = document.getElementById('customColorRadio');
+            const customColorText = document.getElementById('customColorText');
+            const customColorSwatch = document.getElementById('customColorSwatch');
+            
+            customColorRadio.value = color;
+            customColorRadio.checked = true;
+            customColorText.value = color;
+            customColorSwatch.style.backgroundColor = color;
+            customColorSwatch.innerHTML = '';
+        }
+        
+        function updateCustomColorFromText(color) {
+            if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
+                const customColorInput = document.getElementById('customColorInput');
+                customColorInput.value = color;
+                updateCustomColor(color);
+            }
+        }
+        
+        function showCustomColorInput() {
+            document.getElementById('customColorInputSection').style.display = 'block';
+        }
+        
+        function hideCustomColorInput() {
+            document.getElementById('customColorInputSection').style.display = 'none';
+            const customColorSwatch = document.getElementById('customColorSwatch');
+            customColorSwatch.style.backgroundColor = '';
+            customColorSwatch.innerHTML = '<span class="custom-color-icon">+</span>';
+        }
+        
+        // Initialize custom color functionality
+        (function() {
+                const customColorOption = document.querySelector('.custom-color-option');
+                const selectedColor = /*[[${selectedColor}]]*/ null;
+                const defaultColors = /*[[${defaultColors.![key]}]]*/ [];
+
+                // Check if current color is custom (not in default colors)
+                if (selectedColor && !defaultColors.includes(selectedColor)) {
+                    updateCustomColor(selectedColor);
+                    showCustomColorInput();
+                }
+                
+                // Add click handler for custom color option
+                customColorOption.addEventListener('click', () => {
+                    const customColorRadio = document.getElementById('customColorRadio');
+                    const customColorInput = document.getElementById('customColorInput');
+                    
+                    customColorRadio.checked = true;
+                    showCustomColorInput();
+                    
+                    if (!customColorRadio.value) {
+                        updateCustomColor(customColorInput.value);
+                    }
+                });
+                
+                // Add change handlers for other color options to hide custom input
+                document.querySelectorAll('input[name="color"]:not(#customColorRadio)').forEach(radio => {
+                    radio.addEventListener('change', () => {
+                        if (radio.checked) {
+                            hideCustomColorInput();
+                        }
+                    });
+                });
+        })();
     </script>
 </div>
 

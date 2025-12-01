@@ -203,7 +203,7 @@ class RawLocationLoader {
             
             // Re-render selected range if it exists
             if (this.selectedStartTime && this.selectedEndTime) {
-                this.renderSelectedRange();
+                this.renderSelectedRange(result.config.color);
             }
         });
     }
@@ -261,7 +261,7 @@ class RawLocationLoader {
 
         // Re-render selected range if it exists
         if (this.selectedStartTime && this.selectedEndTime) {
-            this.renderSelectedRange();
+            this.renderSelectedRange(color);
         }
 
         return bounds;
@@ -284,8 +284,9 @@ class RawLocationLoader {
     reloadForSelectedRange() {
         let bounds = L.latLngBounds();
         const fetchPromises = [];
-
+        const mainColor = this.userConfigs[0].color;
         for (let i = 0; i < this.userConfigs.length; i++) {
+
             const config = this.userConfigs[i];
             if (config.url) {
                 // Get current zoom level
@@ -328,7 +329,7 @@ class RawLocationLoader {
             });
             
             // Render selected range and return its bounds
-            const selectedRangeBounds = this.renderSelectedRange();
+            const selectedRangeBounds = this.renderSelectedRange(mainColor);
             if (selectedRangeBounds && selectedRangeBounds.isValid()) {
                 return selectedRangeBounds;
             }
@@ -351,7 +352,7 @@ class RawLocationLoader {
     /**
      * Render segments within the selected time range with different color
      */
-    renderSelectedRange() {
+    renderSelectedRange(color) {
         // Clear existing selected range paths
         this.clearSelectedRangePaths();
         
@@ -376,7 +377,7 @@ class RawLocationLoader {
                 // Only render if we have points within the time range
                 if (filteredPoints.length > 0) {
                     const selectedPath = L.geodesic([], {
-                        color: '#ff984f', // Orange color for selected range
+                        color: lightenHexColor(color, 100), // Orange color for selected range
                         weight: 8,
                         opacity: 1,
                         lineJoin: 'round',
