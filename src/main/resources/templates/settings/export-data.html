@@ -66,7 +66,11 @@
                                    required>
                         </div>
 
-                        <div style="margin-left: auto;">
+                        <div style="margin-left: auto; display: flex; align-items: center; gap: 15px;">
+                            <div th:if="${dataManagementEnabled}" class="form-group" style="margin-bottom: 0; display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="relevantDataOnly" name="relevantDataOnly" style="margin: 0;">
+                                <label for="relevantDataOnly" style="margin: 0; font-size: 14px; color: var(--color-text-white);">Only processing relevant</label>
+                            </div>
                             <button type="button" 
                                     class="btn"
                                     data-gpx-download
@@ -138,8 +142,10 @@
         function handleGpxDownload(buttonElement) {
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
+            const relevantDataCheckbox = document.getElementById('relevantDataOnly');
+            const relevantData = relevantDataCheckbox ? relevantDataCheckbox.checked : false;
 
-            gpxDownloader.downloadGpx(startDate, endDate, buttonElement);
+            gpxDownloader.downloadGpx(startDate, endDate, buttonElement, relevantData);
         }
     </script>
 </div>

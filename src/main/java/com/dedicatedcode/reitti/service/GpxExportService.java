@@ -30,9 +30,10 @@ public class GpxExportService {
      * @param start the start time of the export range
      * @param end the end time of the export range
      * @param writer the writer to which the GPX content will be streamed
+     * @param relevant controls if we export only the relevant data for processing (true) or only the imported data (false)
      * @throws IOException if an I/O error occurs during writing
      */
-    public void generateGpxContentStreaming(User user, Instant start, Instant end, Writer writer) throws IOException {
+    public void generateGpxContentStreaming(User user, Instant start, Instant end, Writer writer, boolean relevant) throws IOException {
         // Write GPX header
         writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         writer.write("<gpx version=\"1.1\" creator=\"Reitti\" xmlns=\"http://www.topografix.com/GPX/1/1\">\n");
@@ -51,7 +52,7 @@ public class GpxExportService {
             Instant nextDate = currentDate.plus(1, ChronoUnit.DAYS);
             
             List<RawLocationPoint> points = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(
-                user, currentDate, nextDate);
+                user, currentDate, nextDate, relevant, !relevant);
             
             for (RawLocationPoint point : points) {
                 writer.write("      <trkpt lat=\"" + point.getLatitude() + "\" lon=\"" + point.getLongitude() + "\">\n");

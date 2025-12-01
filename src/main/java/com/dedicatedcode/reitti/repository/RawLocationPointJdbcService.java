@@ -60,21 +60,21 @@ public class RawLocationPointJdbcService {
                 user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
     }
 
-    public List<RawLocationPoint> findByUserAndDateRange(User user, LocalDateTime startTime, LocalDateTime endTime) {
-        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.ignored, rlp.version " +
-                "FROM raw_location_points rlp " +
-                "WHERE rlp.user_id = ? AND rlp.timestamp BETWEEN ? AND ? " +
-                "ORDER BY rlp.timestamp";
-        return jdbcTemplate.query(sql, rawLocationPointRowMapper,
-                user.getId(), Timestamp.valueOf(startTime), Timestamp.valueOf(endTime));
-    }
-
-    public List<RawLocationPoint> findByUserAndProcessedIsFalseOrderByTimestamp(User user) {
-        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.ignored, rlp.version " +
-                "FROM raw_location_points rlp " +
-                "WHERE rlp.user_id = ? AND rlp.processed = false " +
-                "ORDER BY rlp.timestamp";
-        return jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId());
+    public List<RawLocationPoint> findByUserAndTimestampBetweenOrderByTimestampAsc(
+            User user, Instant startTime, Instant endTime, boolean includeSynthetic, boolean includeIgnored) {
+        StringBuilder sql = new StringBuilder()
+                .append("SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.ignored, rlp.version ")
+                .append("FROM raw_location_points rlp ")
+                .append("WHERE rlp.user_id = ? ");
+        if (!includeSynthetic) {
+            sql.append("AND rlp.synthetic = false ");
+        }
+        if (!includeIgnored) {
+            sql.append("AND rlp.ignored = false ");
+        }
+        sql.append("AND rlp.timestamp BETWEEN ? AND ? ").append("ORDER BY rlp.timestamp");
+        return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper,
+                                  user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
     }
 
     public List<RawLocationPoint> findByUserAndProcessedIsFalseOrderByTimestampWithLimit(User user, int limit, int offset) {
@@ -149,11 +149,6 @@ public class RawLocationPointJdbcService {
                 "ORDER BY rlp.timestamp DESC LIMIT 1";
         List<RawLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId());
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
-    }
-
-    public void deleteById(Long id) {
-        String sql = "DELETE FROM raw_location_points WHERE id = ?";
-        jdbcTemplate.update(sql, id);
     }
 
     public List<ClusteredPoint> findClusteredPointsInTimeRangeForUser(
@@ -306,16 +301,6 @@ public class RawLocationPointJdbcService {
         jdbcTemplate.update(sql, user.getId());
     }
 
-    public void markAllAsUnprocessedForUserAfter(User user, Instant start) {
-        String sql = "UPDATE raw_location_points SET processed = false WHERE user_id = ? AND timestamp > ?";
-        jdbcTemplate.update(sql, user.getId(), Timestamp.from(start));
-    }
-
-    public void markAllAsUnprocessedForUserBetween(User user, Instant start, Instant end) {
-        String sql = "UPDATE raw_location_points SET processed = false WHERE user_id = ? AND timestamp BETWEEN ? AND ?";
-        jdbcTemplate.update(sql, user.getId(), Timestamp.from(start), Timestamp.from(end));
-    }
-
     public void deleteAllForUser(User user) {
         String sql = "DELETE FROM raw_location_points WHERE user_id = ?";
         jdbcTemplate.update(sql, user.getId());
@@ -343,29 +328,6 @@ public class RawLocationPointJdbcService {
         return count != null && count > 0;
     }
 
-    // New methods for density normalization
-    
-    public List<RawLocationPoint> findSurroundingPoints(User user, Instant timestamp, Duration window) {
-        Instant start = timestamp.minus(window);
-        Instant end = timestamp.plus(window);
-        
-        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.ignored, rlp.version " +
-                "FROM raw_location_points rlp " +
-                "WHERE rlp.user_id = ? AND rlp.timestamp BETWEEN ? AND ? " +
-                "ORDER BY rlp.timestamp";
-        return jdbcTemplate.query(sql, rawLocationPointRowMapper,
-                user.getId(), Timestamp.from(start), Timestamp.from(end));
-    }
-    
-    public List<RawLocationPoint> findSyntheticPointsInRange(User user, Instant start, Instant end) {
-        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.ignored, rlp.version " +
-                "FROM raw_location_points rlp " +
-                "WHERE rlp.user_id = ? AND rlp.timestamp BETWEEN ? AND ? AND rlp.synthetic = true " +
-                "ORDER BY rlp.timestamp";
-        return jdbcTemplate.query(sql, rawLocationPointRowMapper,
-                user.getId(), Timestamp.from(start), Timestamp.from(end));
-    }
-    
     public int bulkInsertSynthetic(User user, List<LocationPoint> syntheticPoints) {
         if (syntheticPoints.isEmpty()) {
             return 0;
@@ -408,74 +370,5 @@ public class RawLocationPointJdbcService {
         
         jdbcTemplate.batchUpdate(sql, batchArgs);
     }
-    
-    public List<RawLocationPoint> findByUserAndTimeRangeWithFlags(User user, Instant start, Instant end, Boolean synthetic, Boolean ignored) {
-        StringBuilder sqlBuilder = new StringBuilder();
-        sqlBuilder.append("SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.ignored, rlp.version ");
-        sqlBuilder.append("FROM raw_location_points rlp ");
-        sqlBuilder.append("WHERE rlp.user_id = ? AND rlp.timestamp BETWEEN ? AND ? ");
-        
-        List<Object> params = new ArrayList<>();
-        params.add(user.getId());
-        params.add(Timestamp.from(start));
-        params.add(Timestamp.from(end));
-        
-        if (synthetic != null) {
-            sqlBuilder.append("AND rlp.synthetic = ? ");
-            params.add(synthetic);
-        }
-        
-        if (ignored != null) {
-            sqlBuilder.append("AND rlp.ignored = ? ");
-            params.add(ignored);
-        }
-        
-        sqlBuilder.append("ORDER BY rlp.timestamp");
-        
-        return jdbcTemplate.query(sqlBuilder.toString(), rawLocationPointRowMapper, params.toArray());
-    }
 
-    public int bulkUpsertSynthetic(User user, List<LocationPoint> toInsert) {
-        if (toInsert.isEmpty()) {
-            return 0;
-        }
-        
-        String sql = """
-            INSERT INTO raw_location_points (user_id, timestamp, accuracy_meters, elevation_meters, geom, processed, synthetic, ignored)
-            VALUES (?, ?, ?, ?, CAST(? AS geometry), false, true, false)
-            ON CONFLICT (user_id, timestamp) DO UPDATE SET
-                accuracy_meters = EXCLUDED.accuracy_meters,
-                elevation_meters = EXCLUDED.elevation_meters,
-                geom = EXCLUDED.geom,
-                processed = false,
-                synthetic = true,
-                ignored = false;
-            """;
-
-        List<Object[]> batchArgs = new ArrayList<>();
-        for (LocationPoint point : toInsert) {
-            ZonedDateTime parse = ZonedDateTime.parse(point.getTimestamp());
-            Timestamp timestamp = Timestamp.from(parse.toInstant());
-            batchArgs.add(new Object[]{
-                    user.getId(),
-                    timestamp,
-                    point.getAccuracyMeters(),
-                    point.getElevationMeters(),
-                    geometryFactory.createPoint(new Coordinate(point.getLongitude(), point.getLatitude())).toString()
-            });
-        }
-        int[] ints = jdbcTemplate.batchUpdate(sql, batchArgs);
-        return Arrays.stream(ints).sum();
-    }
-
-    public void deleteSyntheticByIds(List<Long> toDelete) {
-        if (toDelete == null || toDelete.isEmpty()) {
-            return;
-        }
-        
-        String placeholders = String.join(",", toDelete.stream().map(id -> "?").toList());
-        String sql = "DELETE FROM raw_location_points WHERE id IN (" + placeholders + ") AND synthetic = true";
-        
-        jdbcTemplate.update(sql, toDelete.toArray());
-    }
 }
