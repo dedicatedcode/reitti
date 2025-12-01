@@ -34,10 +34,10 @@
 
 <!-- Auto-update overlay -->
 <div id="auto-update-overlay" class="auto-update-overlay">
-    <button sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER', 'ROLE_MAGIC_LINK_FULL_ACCESS')" class="overlay-button exit-button" onclick="disableAutoUpdate()" title="Exit Auto Update">
+    <button sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER', 'ROLE_MAGIC_LINK_FULL_ACCESS')" class="overlay-button exit-button" onclick="disableAutoUpdate()" th:title="#{map.auto-update.disable.title}">
         <i class="lni lni-pause"></i>
     </button>
-    <button class="overlay-button fullscreen-button" onclick="toggleFullscreen()" title="Toggle Fullscreen">
+    <button class="overlay-button fullscreen-button" onclick="toggleFullscreen()" th:title="#{map.fullscreen.toggle.title}" title="Toggle Fullscreen">
         <i class="lni lni-arrow-all-direction"></i>
     </button>
     <div class="date" id="auto-update-date"></div>
@@ -53,12 +53,12 @@
          hx-indicator="#loading-indicator">
         <div id="loading-indicator" class="timeline-entry" th:text="#{timeline.loading}">Loading...</div>
     </div>
-    <button type="button" class="timeline-toggle-btn" id="timeline-toggle-btn" onclick="toggleTimeline()" title="Hide Timeline">
+    <button type="button" class="timeline-toggle-btn" id="timeline-toggle-btn" onclick="toggleTimeline()" th:title="#{timeline.state.hide.title}" title="Hide Timeline">
         <i class="lni lni-exit"></i>
     </button>
 </div>
 
-<button type="button" class="datepicker-toggle-btn" id="datepicker-toggle-btn" onclick="toggleDatePicker()" title="Hide Date Picker">
+<button type="button" class="datepicker-toggle-btn" id="datepicker-toggle-btn" onclick="toggleDatePicker()" th:title="#{datepicker.state.hide.title}" title="Hide Date Picker">
     <i class="lni lni-exit-down"></i>
 </button>
 <div id="date-picker-container">
@@ -66,7 +66,7 @@
 </div>
 
 <!-- Today FAB button -->
-<button type="button" class="today-fab" id="today-fab" onclick="goToToday()" title="Go to Today" style="display: none;">
+<button type="button" class="today-fab" id="today-fab" onclick="goToToday()" th:title="#{datepicker.today.title}" title="Go to Today" style="display: none;">
     <i class="lni lni-calendar-days"></i>
     <span th:text="#{datepicker.today}">Today</span>
 </button>
@@ -103,6 +103,23 @@
         },
         autoupdate: {
           latestLocation:  /*[[#{map.auto-update.latest-location}]]*/ 'Latest location',
+          state: {
+              enable: /*[[#{map.auto-update.enable.title}]]*/ 'Enter Auto-Update Mode',
+              disable: /*[[#{map.auto-update.disable.title}]]*/ 'Leave Auto-Update Mode',
+          }
+        },
+        datepicker: {
+            state : {
+                hide: /*[[#{datepicker.state.hide.title}]]*/ 'Hide Date Picker',
+                show:  /*[[#{datepicker.state.show.title}]]*/ 'Show Date Picker'
+            }
+        },
+        timeline: {
+            state : {
+                hide: /*[[#{timeline.state.hide.title}]]*/ 'Hide Timeline',
+                show:  /*[[#{timeline.state.show.title}]]*/ 'Show Timeline'
+
+            }
         }
     };
 
@@ -222,10 +239,10 @@
         
         if (isHidden) {
             icon.className = 'lni lni-enter';
-            btn.title = 'Show Timeline';
+            btn.title = window.locale.timeline.state.show;
         } else {
             icon.className = 'lni lni-exit';
-            btn.title = 'Hide Timeline';
+            btn.title = window.locale.timeline.state.hide;
         }
     }
     
@@ -261,10 +278,10 @@
         
         if (isHidden) {
             icon.className = 'lni lni-exit-up';
-            btn.title = 'Show Date Picker';
+            btn.title = window.locale.datepicker.state.show;
         } else {
             icon.className = 'lni lni-enter-down';
-            btn.title = 'Hide Date Picker';
+            btn.title = window.locale.datepicker.state.hide;
         }
 
         // Update today FAB visibility when date picker visibility changes
@@ -499,7 +516,6 @@
             return bounds;
         }
 
-        // Helper function to parse duration text (simple implementation)
         function parseDurationText(durationText) {
             // Extract numbers followed by 'h' or 'm'
             const hours = (durationText.match(/(\d+)h/) || [0, 0])[1];
@@ -694,7 +710,7 @@
 
             if (btn) {
                 icon.className = 'lni lni-pause';
-                btn.title = 'Pause Auto Update';
+                btn.title = window.locale.autoupdate.state.disable;
             }
 
             // Hide timeline and date picker smoothly
@@ -773,7 +789,7 @@
         const btn = document.getElementById('auto-update-btn');
         const icon = btn.querySelector('i');
         icon.className = 'lni lni-play';
-        btn.title = 'Auto Update';
+        btn.title = window.locale.autoupdate.state.enable;
         if (window.horizontalDatePicker) {
             window.horizontalDatePicker.setSelectedRange(getSelectedDate());
         }
