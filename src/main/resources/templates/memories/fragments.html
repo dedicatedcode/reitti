@@ -358,6 +358,7 @@
                     <a th:href="@{/memories/{id}(id=${memory.memory.id})}"
                        class="btn btn-block memory-link"
                        th:attr="data-memory-id=${memory.memory.id}"
+                       th:text="#{memory.view.button}"
                        onclick="navigateToMemoryWithTimezone(event, this.dataset.memoryId)">View Memory</a>
                 </div>
             </div>
