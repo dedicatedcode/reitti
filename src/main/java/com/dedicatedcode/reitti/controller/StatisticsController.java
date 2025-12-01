@@ -1,10 +1,10 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.StatisticsService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -18,11 +18,15 @@ import java.util.List;
 @RequestMapping("/statistics")
 public class StatisticsController {
 
-    @Autowired
-    private StatisticsService statisticsService;
-    
-    @Autowired
-    private ObjectMapper objectMapper;
+    private final StatisticsService statisticsService;
+    private final ObjectMapper objectMapper;
+    private final I18nService i18nService;
+
+    public StatisticsController(StatisticsService statisticsService, ObjectMapper objectMapper, I18nService i18nService) {
+        this.statisticsService = statisticsService;
+        this.objectMapper = objectMapper;
+        this.i18nService = i18nService;
+    }
 
     @GetMapping
     public String statistics(Model model) {
@@ -38,7 +42,7 @@ public class StatisticsController {
     @GetMapping("/overall")
     public String overallStatistics(@AuthenticationPrincipal User user, Model model) {
         model.addAttribute("statisticsType", "overall");
-        model.addAttribute("title", "Overall Statistics");
+        model.addAttribute("title", i18nService.translate("statistics.title.overall"));
         model.addAttribute("topVisits", statisticsService.getOverallTopVisits(user));
         
         try {
@@ -55,7 +59,7 @@ public class StatisticsController {
     public String yearStatistics(@PathVariable Integer year, @AuthenticationPrincipal User user, Model model) {
         model.addAttribute("statisticsType", "year");
         model.addAttribute("year", year);
-        model.addAttribute("title", "Statistics for " + year);
+        model.addAttribute("title", i18nService.translate("statistics.title.year", year + ""));
         model.addAttribute("topVisits", statisticsService.getYearTopVisits(user, year));
         
         try {
@@ -82,7 +86,7 @@ public class StatisticsController {
         model.addAttribute("statisticsType", "month");
         model.addAttribute("year", year);
         model.addAttribute("month", month);
-        model.addAttribute("title", java.time.Month.of(month).name() + " " + year);
+        model.addAttribute("title", i18nService.translate("statistics.title.month-year", i18nService.translate("month." + month), year + ""));
         model.addAttribute("topVisits", statisticsService.getMonthTopVisits(user, year, month));
         
         try {
