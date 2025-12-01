@@ -43,7 +43,8 @@ public class GpxApiController {
                     gpxExportService.generateGpxContentStreaming(user,
                             ZonedDateTime.of(start.atStartOfDay(), ZoneId.of("UTC")).toInstant(),
                             ZonedDateTime.of(end.atStartOfDay(), ZoneId.of("UTC")).toInstant(),
-                            writer);
+                            writer,
+                        false);
                 } catch (Exception e) {
                     throw new RuntimeException("Error generating GPX file", e);
                 }
