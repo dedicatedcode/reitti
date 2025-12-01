@@ -262,20 +262,7 @@
             
             <div class="color-picker-section">
                 <div class="color-options">
-                    <label class="color-option" th:each="colorOption : ${{
-                        '#f1ba63': 'Default Gold',
-                        '#4a90e2': 'Ocean Blue', 
-                        '#7ed321': 'Fresh Green',
-                        '#f5a623': 'Warm Orange',
-                        '#bd10e0': 'Purple',
-                        '#b8e986': 'Light Green',
-                        '#50e3c2': 'Turquoise',
-                        '#e94b3c': 'Red',
-                        '#9013fe': 'Violet',
-                        '#417505': 'Forest Green',
-                        '#d0021b': 'Crimson',
-                        '#8b572a': 'Brown'
-                    }}">
+                    <label class="color-option" th:each="colorOption : ${defaultColors}">
                         <input type="radio" 
                                name="color" 
                                th:value="${colorOption.key}" 

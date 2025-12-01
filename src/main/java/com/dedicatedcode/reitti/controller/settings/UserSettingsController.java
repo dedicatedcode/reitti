@@ -29,7 +29,9 @@ import org.springframework.web.servlet.LocaleResolver;
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static com.dedicatedcode.reitti.model.Role.ADMIN;
 
@@ -61,6 +63,7 @@ public class UserSettingsController {
     // CSS file constraints
     private static final long MAX_CSS_SIZE = 1024 * 1024; // 1MB
     private static final String ALLOWED_CSS_CONTENT_TYPE = "text/css";
+    private Map<String, String> defaultColors;
 
     public UserSettingsController(UserJdbcService userJdbcService, UserService userService,
                                   UserSettingsJdbcService userSettingsJdbcService,
@@ -81,6 +84,19 @@ public class UserSettingsController {
         this.localLoginDisabled = localLoginDisabled;
         this.oidcEnabled = oidcEnabled;
         this.dataManagementEnabled = dataManagementEnabled;
+        this.defaultColors = new HashMap<>();
+        this.defaultColors.put("#f1ba63","Default Gold");
+        this.defaultColors.put("#4a90e2","Ocean Blue");
+        this.defaultColors.put("#7ed321","Fresh Green");
+        this.defaultColors.put("#f5a623","Warm Orange");
+        this.defaultColors.put("#bd10e0","Purple");
+        this.defaultColors.put("#b8e986","Light Green");
+        this.defaultColors.put("#50e3c2","Turquoise");
+        this.defaultColors.put("#e94b3c","Red");
+        this.defaultColors.put("#9013fe","Violet");
+        this.defaultColors.put("#417505","Forest Green");
+        this.defaultColors.put("#d0021b","Crimson");
+        this.defaultColors.put("#8b572a","Brow");
     }
 
     @GetMapping("/users-content")
@@ -123,6 +139,7 @@ public class UserSettingsController {
             model.addAttribute("timeDisplayMode", userSettings.getTimeDisplayMode().name());
             model.addAttribute("availableTimezones", ZoneId.getAvailableZoneIds());
             model.addAttribute("availableTimeDisplayModes", TimeDisplayMode.values());
+            model.addAttribute("defaultColors", defaultColors);
             return "fragments/user-management :: user-form-page";
         }
 
@@ -185,6 +202,7 @@ public class UserSettingsController {
                              @RequestParam(required = false) MultipartFile avatar,
                              @RequestParam(required = false) String defaultAvatar,
                              @RequestParam(required = false) MultipartFile customCss,
+                             @RequestParam String color,
                              Authentication authentication,
                              Model model) {
         
@@ -209,7 +227,8 @@ public class UserSettingsController {
                         homeLatitude,
                         homeLongitude,
                         timezoneOverride,
-                        timeDisplayMode);
+                        timeDisplayMode,
+                        color);
                 // Handle avatar - prioritize custom upload over default
                 if (avatar != null && !avatar.isEmpty()) {
                     handleAvatarUpload(avatar, createdUser.getId(), model);
@@ -235,6 +254,7 @@ public class UserSettingsController {
                                 existingSettings.getTimeDisplayMode(),
                                 cssContent,
                                 existingSettings.getLatestData(),
+                                color,
                                 existingSettings.getVersion()
                         );
                         userSettingsJdbcService.save(updatedSettings);
@@ -277,6 +297,7 @@ public class UserSettingsController {
                              @RequestParam(required = false) String removeAvatar,
                              @RequestParam(required = false) MultipartFile customCss,
                              @RequestParam(required = false) String removeCss,
+                             @RequestParam String color,
                              Authentication authentication,
                              HttpServletRequest request,
                              HttpServletResponse response,
@@ -328,7 +349,18 @@ public class UserSettingsController {
             }
             
             UnitSystem unitSystem = UnitSystem.valueOf(unit_system);
-            UserSettings updatedSettings = new UserSettings(userId, preferColoredMap, preferred_language, unitSystem, homeLatitude, homeLongitude, StringUtils.hasText(timezoneOverride) ? ZoneId.of(timezoneOverride) : null, timeDisplayMode, cssContent, existingSettings.getLatestData(), existingSettings.getVersion());
+            UserSettings updatedSettings = new UserSettings(userId,
+                                                            preferColoredMap,
+                                                            preferred_language,
+                                                            unitSystem,
+                                                            homeLatitude,
+                                                            homeLongitude,
+                                                            StringUtils.hasText(timezoneOverride) ? ZoneId.of(timezoneOverride) : null,
+                                                            timeDisplayMode,
+                                                            cssContent,
+                                                            existingSettings.getLatestData(),
+                                                            color,
+                                                            existingSettings.getVersion());
             userSettingsJdbcService.save(updatedSettings);
             
             // Handle avatar operations
@@ -427,6 +459,8 @@ public class UserSettingsController {
         model.addAttribute("availableLanguages", Language.values());
         model.addAttribute("availableTimezones", ZoneId.getAvailableZoneIds().stream().sorted());
         model.addAttribute("availableTimeDisplayModes", TimeDisplayMode.values());
+        model.addAttribute("defaultColors", defaultColors);
+
         // Check if user has avatar and custom CSS
         if (userId != null) {
             boolean hasAvatar = this.avatarService.getInfo(userId).isPresent();

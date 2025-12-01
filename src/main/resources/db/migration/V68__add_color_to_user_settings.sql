@@ -1,0 +1,1 @@
+ALTER TABLE user_settings ADD COLUMN color VARCHAR(255) DEFAULT '#f1ba63';
