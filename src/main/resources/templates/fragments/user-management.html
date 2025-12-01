@@ -522,39 +522,41 @@
         }
         
         // Initialize custom color functionality
-        document.addEventListener('DOMContentLoaded', () => {
-            const customColorOption = document.querySelector('.custom-color-option');
-            const selectedColor = /*[[${selectedColor}]]*/ null;
-            const defaultColors = /*[[${defaultColors.![key]}]]*/ [];
-            
-            // Check if current color is custom (not in default colors)
-            if (selectedColor && !defaultColors.includes(selectedColor)) {
-                updateCustomColor(selectedColor);
-                showCustomColorInput();
-            }
-            
-            // Add click handler for custom color option
-            customColorOption.addEventListener('click', () => {
-                const customColorRadio = document.getElementById('customColorRadio');
-                const customColorInput = document.getElementById('customColorInput');
+        (function() {
+            document.addEventListener('DOMContentLoaded', () => {
+                const customColorOption = document.querySelector('.custom-color-option');
+                const selectedColor = /*[[${selectedColor}]]*/ null;
+                const defaultColors = /*[[${defaultColors.![key]}]]*/ [];
                 
-                customColorRadio.checked = true;
-                showCustomColorInput();
-                
-                if (!customColorRadio.value) {
-                    updateCustomColor(customColorInput.value);
+                // Check if current color is custom (not in default colors)
+                if (selectedColor && !defaultColors.includes(selectedColor)) {
+                    updateCustomColor(selectedColor);
+                    showCustomColorInput();
                 }
-            });
-            
-            // Add change handlers for other color options to hide custom input
-            document.querySelectorAll('input[name="color"]:not(#customColorRadio)').forEach(radio => {
-                radio.addEventListener('change', () => {
-                    if (radio.checked) {
-                        hideCustomColorInput();
+                
+                // Add click handler for custom color option
+                customColorOption.addEventListener('click', () => {
+                    const customColorRadio = document.getElementById('customColorRadio');
+                    const customColorInput = document.getElementById('customColorInput');
+                    
+                    customColorRadio.checked = true;
+                    showCustomColorInput();
+                    
+                    if (!customColorRadio.value) {
+                        updateCustomColor(customColorInput.value);
                     }
                 });
+                
+                // Add change handlers for other color options to hide custom input
+                document.querySelectorAll('input[name="color"]:not(#customColorRadio)').forEach(radio => {
+                    radio.addEventListener('change', () => {
+                        if (radio.checked) {
+                            hideCustomColorInput();
+                        }
+                    });
+                });
             });
-        });
+        })();
     </script>
 </div>
 
