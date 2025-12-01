@@ -15,7 +15,7 @@
             </button>
         </div>
         <div class="date-selection">
-            <label for="preview-date">Preview Date:</label>
+            <label for="preview-date" th:text="#{visit.sensitivity.preview.date}">Preview Date:</label>
             <input type="date" 
                    id="preview-date" 
                    th:value="${previewDate}" 
@@ -415,7 +415,12 @@
                     return Intl.DateTimeFormat().resolvedOptions().timeZone;
                 }
             }
-            
+            const locale =  {
+                preview: {
+                    ready: /*[[#{visit.sensitivity.preview.ready}]]*/ 'Ready',
+                    error: /*[[#{visit.sensitivity.preview.error}]]*/ 'Error',
+                }
+            }
             function checkPreviewStatus() {
                 fetch(`/api/v1/preview/${previewId}/status`)
                     .then(response => response.json())
@@ -423,7 +428,7 @@
                         if (data.ready) {
                             previewReady = true;
                             document.getElementById('preview-status').innerHTML = 
-                                '<i class="lni lni-checkmark-circle"></i><span>Ready</span>';
+                                `<i class="lni lni-checkmark-circle"></i><span>${locale.preview.ready}</span>`;
                             document.getElementById('preview-data-btn').disabled = false;
                             
                             // If preview tab is active, initialize the map
@@ -441,7 +446,7 @@
                     .catch(error => {
                         console.error('Error checking preview status:', error);
                         document.getElementById('preview-status').innerHTML = 
-                            '<i class="lni lni-warning"></i><span>Error</span>';
+                            `<i class="lni lni-warning"></i><span>${locale.preview.error}</span>`;
                     });
             }
 
