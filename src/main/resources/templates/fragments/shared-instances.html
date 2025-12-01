@@ -160,7 +160,7 @@
     <script>
         function editReittiIntegration(id, url, token, color, enabled, version) {
             // Update form title
-            document.getElementById('form-title').textContent = 'Edit Reitti Integration';
+            document.getElementById('form-title').textContent = window.locale?.['integrations.reitti.edit.title'] || 'Edit Reitti Integration';
 
             // Set form action to update
             const form = document.getElementById('reitti-integration-form');
@@ -178,7 +178,7 @@
             document.getElementById('reittiEnabled').checked = enabled;
 
             // Update button text and show cancel button
-            document.getElementById('submit-btn').textContent = 'Update Configuration';
+            document.getElementById('submit-btn').textContent = window.locale?.['integrations.reitti.update'] || 'Update Configuration';
             document.getElementById('cancel-edit-btn').style.display = 'inline-block';
 
             // Clear any previous test results
@@ -190,7 +190,7 @@
 
         function cancelEdit() {
             // Reset form title
-            document.getElementById('form-title').textContent = 'Add New Reitti Integration';
+            document.getElementById('form-title').textContent = window.locale?.['integrations.reitti.add.title'] || 'Add New Reitti Integration';
 
             // Reset form action to create
             const form = document.getElementById('reitti-integration-form');
@@ -208,7 +208,7 @@
             document.getElementById('reittiEnabled').checked = true;
 
             // Reset button text and hide cancel button
-            document.getElementById('submit-btn').textContent = 'Save Configuration';
+            document.getElementById('submit-btn').textContent = window.locale?.['integrations.reitti.save'] || 'Save Configuration';
             document.getElementById('cancel-edit-btn').style.display = 'none';
 
             // Clear any previous test results
@@ -221,12 +221,14 @@
             const resultDiv = document.getElementById('reitti-connection-test-result');
 
             if (!url || !token) {
-                resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">Please fill in both Instance URL and API Token</div>';
+                const message = window.locale?.['integrations.reitti.test.missing.fields'] || 'Please fill in both Instance URL and API Token';
+                resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">' + message + '</div>';
                 return;
             }
 
             // Show loading state
-            resultDiv.innerHTML = '<div style="color: var(--color-text-white);">Testing connection...</div>';
+            const loadingMessage = window.locale?.['integrations.reitti.test.loading'] || 'Testing connection...';
+            resultDiv.innerHTML = '<div style="color: var(--color-text-white);">' + loadingMessage + '</div>';
 
             // Make AJAX request to test connection
             fetch('/settings/integrations/reitti-integrations/test', {
@@ -248,7 +250,8 @@
                     }
                 })
                 .catch(error => {
-                    resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">Connection test failed: ' + error.message + '</div>';
+                    const errorMessage = window.locale?.['integrations.reitti.test.failed'] || 'Connection test failed';
+                    resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + errorMessage + ': ' + error.message + '</div>';
                 });
         });
     </script>
@@ -272,26 +275,26 @@
 
         <div th:if="${remoteInfo}" style="color: var(--color-text-white);">
             <div th:if="${remoteInfo.serverInfo()}" style="margin-bottom: 20px;">
-                <h5 style="margin: 0 0 10px 0; color: var(--color-accent);">🖥️ Server Information</h5>
+                <h5 style="margin: 0 0 10px 0; color: var(--color-accent);">🖥️ <span th:text="#{integrations.reitti.info.server.title}">Server Information</span></h5>
                 <div style="background-color: rgba(255,255,255,0.1); padding: 15px; border-radius: 4px;">
-                    <div><strong>Name:</strong> <span th:text="${remoteInfo.serverInfo().name() ?: 'N/A'}">N/A</span></div>
-                    <div><strong>Version:</strong> <span th:text="${remoteInfo.serverInfo().version() ?: 'N/A'}">N/A</span></div>
-                    <div><strong>System Time:</strong> <span th:text="${remoteInfo.serverInfo().systemTime() ?: 'N/A'}">N/A</span></div>
+                    <div><strong th:text="#{integrations.reitti.info.server.name}">Name:</strong> <span th:text="${remoteInfo.serverInfo().name() ?: 'N/A'}">N/A</span></div>
+                    <div><strong th:text="#{integrations.reitti.info.server.version}">Version:</strong> <span th:text="${remoteInfo.serverInfo().version() ?: 'N/A'}">N/A</span></div>
+                    <div><strong th:text="#{integrations.reitti.info.server.time}">System Time:</strong> <span th:text="${remoteInfo.serverInfo().systemTime() ?: 'N/A'}">N/A</span></div>
                 </div>
             </div>
 
             <div th:if="${remoteInfo.userInfo()}" style="margin-bottom: 20px;">
-                <h5 style="margin: 0 0 10px 0; color: var(--color-accent);">👤 User Information</h5>
+                <h5 style="margin: 0 0 10px 0; color: var(--color-accent);">👤 <span th:text="#{integrations.reitti.info.user.title}">User Information</span></h5>
                 <div style="background-color: rgba(255,255,255,0.1); padding: 15px; border-radius: 4px;">
-                    <div><strong>Username:</strong> <span th:text="${remoteInfo.userInfo().username() ?: 'N/A'}">N/A</span></div>
-                    <div><strong>Display Name:</strong> <span th:text="${remoteInfo.userInfo().displayName() ?: 'N/A'}">N/A</span></div>
-                    <div><strong>User ID:</strong> <span th:text="${remoteInfo.userInfo().id() ?: 'N/A'}">N/A</span></div>
-                    <div><strong>Version:</strong> <span th:text="${remoteInfo.userInfo().version() ?: 'N/A'}">N/A</span></div>
+                    <div><strong th:text="#{integrations.reitti.info.user.username}">Username:</strong> <span th:text="${remoteInfo.userInfo().username() ?: 'N/A'}">N/A</span></div>
+                    <div><strong th:text="#{integrations.reitti.info.user.displayname}">Display Name:</strong> <span th:text="${remoteInfo.userInfo().displayName() ?: 'N/A'}">N/A</span></div>
+                    <div><strong th:text="#{integrations.reitti.info.user.id}">User ID:</strong> <span th:text="${remoteInfo.userInfo().id() ?: 'N/A'}">N/A</span></div>
+                    <div><strong th:text="#{integrations.reitti.info.user.version}">Version:</strong> <span th:text="${remoteInfo.userInfo().version() ?: 'N/A'}">N/A</span></div>
                 </div>
             </div>
 
             <div style="padding: 10px; background-color: rgba(0,255,0,0.1); border-radius: 4px; border-left: 4px solid #00ff00;">
-                <strong>✅ Connection successful!</strong> You can access this user's location data.
+                <strong>✅ <span th:text="#{integrations.reitti.info.connection.success}">Connection successful!</span></strong> <span th:text="#{integrations.reitti.info.connection.access}">You can access this user's location data.</span>
             </div>
         </div>
     </div>
