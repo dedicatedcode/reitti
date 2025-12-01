@@ -62,7 +62,7 @@
                                         <li th:if="${hasToken}" th:utext="#{integrations.gpslogger.step4.with.token(${serverUrl + '/api/v1/ingest/owntracks?token=' + selectedToken})}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + selectedToken}">https://your-domain.com/api/v1/location-data</code></li>
                                         <li th:unless="${hasToken}" th:utext="#{integrations.gpslogger.step4.without.token(${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'})}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/location-data</code></li>
                                         <li th:utext="#{integrations.gpslogger.step5}">Set HTTP Method to <strong>POST</strong></li>
-                                        <li th:utext="#{integrations.gpslogger.step6}">Set HTTP Body to: <code>{
+                                        <li><span th:utext="#{integrations.gpslogger.step6}">Set HTTP Body to:</span> <code>{
                                             "_type" : "location",
                                             "t": "u",
                                             "acc": "%ACC",

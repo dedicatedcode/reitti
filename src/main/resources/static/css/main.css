@@ -1212,7 +1212,7 @@ body.auto-update-mode .today-fab {
     overflow-y: auto;
     padding-bottom: 24px;
     padding-right: 24px;
-    font-family: var(--sans-serif-font)
+    line-height: 1.4;
 }
 
 .settings-page .settings-section {
