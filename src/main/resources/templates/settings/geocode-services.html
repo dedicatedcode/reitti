@@ -115,7 +115,7 @@
                         <div class="form-group">
                             <label for="serviceName" th:text="#{geocoding.service.name}">Service Name</label>
                             <input type="text" id="serviceName" name="name" required
-                                   placeholder="e.g., My Custom Geocoder">
+                                   th:placeholder="#{geocoding.service.name.placeholder}" placeholder="Enter name for the service">
                         </div>
                         <div class="form-group">
                             <label for="serviceUrl" th:text="#{geocoding.service.url}">URL Template</label>
@@ -150,7 +150,7 @@
                         <p th:text="#{geocoding.clear.description}">Clear all existing geocoding data and re-process all
                             significant places</p>
                         <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 10px; margin: 10px 0; color: #856404;">
-                            <strong>⚠️ Warning:</strong> <span th:text="#{geocoding.clear.warning}">This will clear all existing address information and re-geocode all places</span>
+                            <strong>⚠️ <span th:text="#{label.warning}">Warning:</span></strong> <span th:text="#{geocoding.clear.warning}">This will clear all existing address information and re-geocode all places</span>
                         </div>
                         <button class="btn btn-danger"
                                 hx-post="/settings/geocode-services/clear-and-rerun"
