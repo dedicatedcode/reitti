@@ -154,7 +154,7 @@ class RawLocationLoader {
     reloadForCurrentView(withBounds = true) {
         let bounds = L.latLngBounds();
         const fetchPromises = [];
-
+        const color = this.userConfigs[0].color;
         for (let i = 0; i < this.userConfigs.length; i++) {
             const config = this.userConfigs[i];
             if (config.url) {
@@ -203,7 +203,7 @@ class RawLocationLoader {
             
             // Re-render selected range if it exists
             if (this.selectedStartTime && this.selectedEndTime) {
-                this.renderSelectedRange(result.config.color);
+                this.renderSelectedRange(color);
             }
         });
     }
