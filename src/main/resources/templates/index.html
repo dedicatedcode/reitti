@@ -478,7 +478,7 @@
                         // Create marker
                         L.circleMarker([lat, lng], {
                             radius: 5,
-                            fillColor: color ? color : '#ff6c00',
+                            fillColor: lightenHexColor(color, 20),
                             color: '#fff',
                             weight: 1,
                             opacity: 1,
@@ -487,8 +487,8 @@
 
                         // Create circle with calculated radius
                         const circle = L.circle([lat, lng], {
-                            color: color ? color : '#dcae4a',
-                            fillColor: '#ff984f',
+                            color: color,
+                            fillColor: lightenHexColor(color, 20),
                             fillOpacity: 0.1,
                             radius: radius
                         }).addTo(map);

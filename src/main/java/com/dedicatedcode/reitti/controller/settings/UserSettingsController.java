@@ -140,6 +140,7 @@ public class UserSettingsController {
             model.addAttribute("availableTimezones", ZoneId.getAvailableZoneIds());
             model.addAttribute("availableTimeDisplayModes", TimeDisplayMode.values());
             model.addAttribute("defaultColors", defaultColors);
+            model.addAttribute("selectedColor", userSettings.getColor());
             return "fragments/user-management :: user-form-page";
         }
 
@@ -442,6 +443,7 @@ public class UserSettingsController {
             model.addAttribute("homeLongitude", userSettings.getHomeLongitude());
             model.addAttribute("timeZoneOverride", userSettings.getTimeZoneOverride());
             model.addAttribute("timeDisplayMode", userSettings.getTimeDisplayMode().name());
+            model.addAttribute("selectedColor", userSettings.getColor());
         } else {
             // Default values for new users
             model.addAttribute("selectedLanguage", Language.EN);

@@ -523,11 +523,10 @@
         
         // Initialize custom color functionality
         (function() {
-            document.addEventListener('DOMContentLoaded', () => {
                 const customColorOption = document.querySelector('.custom-color-option');
                 const selectedColor = /*[[${selectedColor}]]*/ null;
                 const defaultColors = /*[[${defaultColors.![key]}]]*/ [];
-                
+
                 // Check if current color is custom (not in default colors)
                 if (selectedColor && !defaultColors.includes(selectedColor)) {
                     updateCustomColor(selectedColor);
@@ -555,7 +554,6 @@
                         }
                     });
                 });
-            });
         })();
     </script>
 </div>
