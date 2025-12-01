@@ -329,7 +329,7 @@
                 <option th:attr="hx-get=@{'/memories/' + (${year} == 'all' ? '' : 'year/') + ${year} + '?sortBy=createdAt&sortOrder=asc'}" th:selected="${sortBy == 'createdAt' && sortOrder == 'asc'}" th:text="#{sort.option.created.oldest}">Created (Oldest First)</option>
             </select>
         </div>
-        <button th:attr="hx-get=@{/memories/new(year=${year})}" hx-target=".settings-content-area" class="btn btn-primary">Create Memory</button>
+        <button th:attr="hx-get=@{/memories/new(year=${year})}" hx-target=".settings-content-area" class="btn btn-primary" th:title="#{memory.form.create}">Create Memory</button>
     </div>
 
     <div th:if="${memories.isEmpty()}" class="empty-state">
