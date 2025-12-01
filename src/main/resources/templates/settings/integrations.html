@@ -23,7 +23,7 @@
                 <h2 th:text="#{integrations.title}">Integrations</h2>
 
                 <div th:if="${!hasToken}" style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 15px; margin-bottom: 20px; color: #856404;">
-                    <strong>⚠️ No API Token Available</strong><br>
+                    <strong th:text="#{integrations.no.token.title}">⚠️ No API Token Available</strong><br>
                     <span th:text="#{integrations.no.token.warning}">You need to create an API token first in the "API Tokens" tab before setting up app integrations.</span>
                 </div>
 
@@ -52,17 +52,17 @@
                             <div class="integration-section" style="margin-bottom: 30px;">
                                 <h3 th:text="#{integrations.gpslogger.title}">📱 GPSLogger Setup</h3>
                                 <p th:text="#{integrations.gpslogger.description}">GPSLogger is a free Android app that can automatically log your location and send it to Reitti.</p>
-                                <p><strong>Download:</strong> <a href="https://gpslogger.app/" target="_blank" rel="noopener noreferrer" style="color: var(--color-accent); text-decoration: underline;">https://gpslogger.app/</a></p>
+                                <p><strong th:text="#{integrations.download}">Download:</strong> <a href="https://gpslogger.app/" target="_blank" rel="noopener noreferrer" style="color: var(--color-accent); text-decoration: underline;">https://gpslogger.app/</a></p>
                                 <div class="setup-steps">
                                     <h4 th:text="#{integrations.setup.instructions}">Setup Instructions:</h4>
                                     <ol>
-                                        <li>Download GPSLogger from the Google Play Store</li>
-                                        <li>Open GPSLogger and go to <strong>Logging details → Log to custom URL</strong></li>
-                                        <li>Enable "Log to custom URL"</li>
-                                        <li th:if="${hasToken}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + selectedToken}">https://your-domain.com/api/v1/location-data</code></li>
-                                        <li th:unless="${hasToken}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/location-data</code></li>
-                                        <li>Set HTTP Method to <strong>POST</strong></li>
-                                        <li>Set HTTP Body to: <code>{
+                                        <li th:text="#{integrations.gpslogger.step1}">Download GPSLogger from the Google Play Store</li>
+                                        <li th:utext="#{integrations.gpslogger.step2}">Open GPSLogger and go to <strong>Logging details → Log to custom URL</strong></li>
+                                        <li th:utext="#{integrations.gpslogger.step3}">Enable "Log to custom URL"</li>
+                                        <li th:if="${hasToken}" th:utext="#{integrations.gpslogger.step4.with.token(${serverUrl + '/api/v1/ingest/owntracks?token=' + selectedToken})}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + selectedToken}">https://your-domain.com/api/v1/location-data</code></li>
+                                        <li th:unless="${hasToken}" th:utext="#{integrations.gpslogger.step4.without.token(${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'})}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/location-data</code></li>
+                                        <li th:utext="#{integrations.gpslogger.step5}">Set HTTP Method to <strong>POST</strong></li>
+                                        <li><span th:utext="#{integrations.gpslogger.step6}">Set HTTP Body to:</span> <code>{
                                             "_type" : "location",
                                             "t": "u",
                                             "acc": "%ACC",
@@ -74,8 +74,8 @@
                                             "tst": "%TIMESTAMP",
                                             "vel": "%SPD"
                                             }</code></li>
-                                        <li>Set HTTP header to: <code>Content-Type: application/json</code></li>
-                                        <li>Start logging!</li>
+                                        <li th:utext="#{integrations.gpslogger.step7}">Set HTTP header to: <code>Content-Type: application/json</code></li>
+                                        <li th:text="#{integrations.gpslogger.step8}">Start logging!</li>
                                     </ol>
                                 </div>
                                 <div th:if="${hasToken}">
@@ -86,19 +86,19 @@
                             <div class="integration-section">
                                 <h3 th:text="#{integrations.owntracks.title}">🗺️ OwnTracks Setup</h3>
                                 <p th:text="#{integrations.owntracks.description}">OwnTracks is a privacy-focused location tracking app available for iOS and Android.</p>
-                                <p><strong>Download:</strong> <a href="https://owntracks.org/" target="_blank" rel="noopener noreferrer" style="color: var(--color-accent); text-decoration: underline;">https://owntracks.org/</a></p>
+                                <p><strong th:text="#{integrations.download}">Download:</strong> <a href="https://owntracks.org/" target="_blank" rel="noopener noreferrer" style="color: var(--color-accent); text-decoration: underline;">https://owntracks.org/</a></p>
                                 <div class="setup-steps">
                                     <h4 th:text="#{integrations.setup.instructions}">Setup Instructions:</h4>
                                     <ol>
-                                        <li>Download OwnTracks from the App Store or Google Play Store</li>
-                                        <li>Open OwnTracks and go to <strong>Settings → Connection</strong></li>
-                                        <li>Set Mode to <strong>HTTP</strong></li>
-                                        <li th:if="${hasToken}">Set the Endpoint to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + selectedToken}">https://your-domain.com/api/v1/location-data</code></li>
-                                        <li th:unless="${hasToken}">Set the Endpoint to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/location-data</code></li>
-                                        <li>Disable <strong>Authentication</strong> (we use the token in the URL instead)</li>
-                                        <li>Configure tracking settings as desired. Make sure that Owntracks records a point at least every 30 seconds.</li>
-                                        <li>On the map view, set tracking mode to "Movement"</li>
-                                        <li>The app will automatically start sending location updates</li>
+                                        <li th:text="#{integrations.owntracks.step1}">Download OwnTracks from the App Store or Google Play Store</li>
+                                        <li th:utext="#{integrations.owntracks.step2}">Open OwnTracks and go to <strong>Settings → Connection</strong></li>
+                                        <li th:utext="#{integrations.owntracks.step3}">Set Mode to <strong>HTTP</strong></li>
+                                        <li th:if="${hasToken}" th:utext="#{integrations.owntracks.step4.with.token(${serverUrl + '/api/v1/ingest/owntracks?token=' + selectedToken})}">Set the Endpoint to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + selectedToken}">https://your-domain.com/api/v1/location-data</code></li>
+                                        <li th:unless="${hasToken}" th:utext="#{integrations.owntracks.step4.without.token(${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'})}">Set the Endpoint to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/location-data</code></li>
+                                        <li th:utext="#{integrations.owntracks.step5}">Disable <strong>Authentication</strong> (we use the token in the URL instead)</li>
+                                        <li th:text="#{integrations.owntracks.step6}">Configure tracking settings as desired. Make sure that Owntracks records a point at least every 30 seconds.</li>
+                                        <li th:utext="#{integrations.owntracks.step7}">On the map view, set tracking mode to "Movement"</li>
+                                        <li th:text="#{integrations.owntracks.step8}">The app will automatically start sending location updates</li>
                                     </ol>
                                 </div>
                                 <div th:if="${hasToken}">
@@ -111,30 +111,30 @@
                                 <h3 th:text="#{integrations.overland.title}">📍 Overland Setup</h3>
                                 <p th:text="#{integrations.overland.description}">Overland is a GPS logger for iOS that sends location data in GeoJSON format.</p>
                                 <p>
-                                    <strong>Homepage:</strong>
+                                    <strong th:text="#{integrations.homepage}">Homepage:</strong>
                                     <a href="https://overland.p3k.app/" target="_blank" rel="noopener noreferrer" style="color: var(--color-accent); text-decoration: underline;">https://overland.p3k.app/</a>
                                 </p>
                                 <div class="setup-steps">
                                     <h4 th:text="#{integrations.setup.instructions}">Setup Instructions:</h4>
                                     <ol>
-                                        <li>Install Overland</li>
-                                        <li>Open Overland and go to the <strong>Settings</strong> tab</li>
-                                        <li><strong>Important:</strong> Tap the <strong>Request Permission</strong> button to grant location access - Overland will not track anything without this permission</li>
-                                        <li>Tap on <strong>Receiver Endpoint</strong></li>
-                                        <li th:if="${hasToken}">Set the Endpoint URL to: <code th:text="${serverUrl + '/api/v1/ingest/overland?token=' + selectedToken}">https://your-domain.com/api/v1/ingest/overland?token=YOUR_TOKEN</code></li>
-                                        <li th:unless="${hasToken}">Set the Endpoint URL to: <code th:text="${serverUrl + '/api/v1/ingest/overland?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/ingest/overland?token=YOUR_TOKEN</code></li>
-                                        <li>Leave the <strong>Device ID</strong> field empty or set a custom identifier</li>
-                                        <li>Leave the <strong>Access Token</strong> field empty (we use the token in the URL)</li>
-                                        <li>Configure tracking settings:
+                                        <li th:text="#{integrations.overland.step1}">Install Overland</li>
+                                        <li th:utext="#{integrations.overland.step2}">Open Overland and go to the <strong>Settings</strong> tab</li>
+                                        <li th:utext="#{integrations.overland.step3}"><strong>Important:</strong> Tap the <strong>Request Permission</strong> button to grant location access - Overland will not track anything without this permission</li>
+                                        <li th:utext="#{integrations.overland.step4}">Tap on <strong>Receiver Endpoint</strong></li>
+                                        <li th:if="${hasToken}" th:utext="#{integrations.overland.step5.with.token(${serverUrl + '/api/v1/ingest/overland?token=' + selectedToken})}">Set the Endpoint URL to: <code th:text="${serverUrl + '/api/v1/ingest/overland?token=' + selectedToken}">https://your-domain.com/api/v1/ingest/overland?token=YOUR_TOKEN</code></li>
+                                        <li th:unless="${hasToken}" th:utext="#{integrations.overland.step5.without.token(${serverUrl + '/api/v1/ingest/overland?token=<YOUR TOKEN>'})}">Set the Endpoint URL to: <code th:text="${serverUrl + '/api/v1/ingest/overland?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/ingest/overland?token=YOUR_TOKEN</code></li>
+                                        <li th:utext="#{integrations.overland.step6}">Leave the <strong>Device ID</strong> field empty or set a custom identifier</li>
+                                        <li th:utext="#{integrations.overland.step7}">Leave the <strong>Access Token</strong> field empty (we use the token in the URL)</li>
+                                        <li th:utext="#{integrations.overland.step8}">Configure tracking settings:
                                             <ul>
                                                 <li><strong>Desired Accuracy:</strong> Best (for high accuracy) or 100m (for battery saving)</li>
                                                 <li><strong>Points per Batch:</strong> 50-200 (lower for unreliable connections)</li>
                                                 <li><strong>Significant Location:</strong> Disabled for continuous tracking</li>
                                             </ul>
                                         </li>
-                                        <li>Go to the <strong>Tracker</strong> tab and turn tracking <strong>On</strong></li>
-                                        <li>Adjust the sending interval slider (1 second to 30 minutes)</li>
-                                        <li>The app will start sending location data automatically</li>
+                                        <li th:utext="#{integrations.overland.step9}">Go to the <strong>Tracker</strong> tab and turn tracking <strong>On</strong></li>
+                                        <li th:text="#{integrations.overland.step10}">Adjust the sending interval slider (1 second to 30 minutes)</li>
+                                        <li th:text="#{integrations.overland.step11}">The app will start sending location data automatically</li>
                                     </ol>
                                 </div>
                                 <div th:if="${hasToken}">
@@ -283,12 +283,14 @@
                                         const resultDiv = document.getElementById('recorder-connection-test-result');
 
                                         if (!baseUrl || !username || !deviceId) {
-                                            resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">Please fill in Base URL, Username, and Device ID</div>';
+                                            const message = window.locale?.['integrations.owntracks.recorder.test.missing.fields'] || 'Please fill in Base URL, Username, and Device ID';
+                                            resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">' + message + '</div>';
                                             return;
                                         }
 
                                         // Show loading state
-                                        resultDiv.innerHTML = '<div style="color: var(--color-text-white);">Testing connection...</div>';
+                                        const loadingMessage = window.locale?.['integrations.owntracks.recorder.test.loading'] || 'Testing connection...';
+                                        resultDiv.innerHTML = '<div style="color: var(--color-text-white);">' + loadingMessage + '</div>';
 
                                         // Make AJAX request to test connection
                                         fetch('/settings/integrations/owntracks-recorder-integration/test', {
@@ -313,14 +315,16 @@
                                                 }
                                             })
                                             .catch(error => {
-                                                resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">Connection test failed: ' + error.message + '</div>';
+                                                const errorMessage = window.locale?.['integrations.owntracks.recorder.test.failed'] || 'Connection test failed';
+                                                resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + errorMessage + ': ' + error.message + '</div>';
                                             });
                                     });
 
                                     // Add loading indicator for Load Historical Data button
                                     document.addEventListener('htmx:beforeRequest', function(evt) {
                                         if (evt.detail.elt.id === 'load-historical-btn') {
-                                            evt.detail.elt.innerHTML = '<span style="display: inline-flex; align-items: center; gap: 8px;"><span style="width: 16px; height: 16px; border: 2px solid #ffffff; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></span>Loading Historical Data...</span>';
+                                            const loadingText = window.locale?.['integrations.owntracks.recorder.loading.historical'] || 'Loading Historical Data...';
+                                            evt.detail.elt.innerHTML = '<span style="display: inline-flex; align-items: center; gap: 8px;"><span style="width: 16px; height: 16px; border: 2px solid #ffffff; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></span>' + loadingText + '</span>';
                                             evt.detail.elt.disabled = true;
                                         }
                                     });
@@ -346,7 +350,7 @@
                             <i class="lni lni-photos"></i> <span th:text="#{integrations.photos.title}">Photos</span>
                         </summary>
                         <div id="photos-section" hx-get="/settings/integrations/photos-content" hx-trigger="load" hx-swap="innerHTML">
-                            <!-- Photos content will be loaded here -->
+                            <!-- <span th:text="#{integrations.photos.loading}">Photos content will be loaded here</span> -->
                         </div>
                     </details>
                     <details th:attr="open=${openSection == 'shared-instances' ? 'open' : null}">
@@ -354,7 +358,7 @@
                             <i class="lni lni-network"></i> <span th:text="#{integrations.shared.instances.title}">Shared Instances</span>
                         </summary>
                         <div id="shared-instances-section" hx-get="/settings/integrations/shared-instances-content" hx-trigger="load" hx-swap="innerHTML">
-                            <!-- Shared instances content will be loaded here -->
+                            <!-- <span th:text="#{integrations.shared.instances.loading}">Shared instances content will be loaded here</span> -->
                         </div>
                     </details>
                 </div>
@@ -552,7 +556,13 @@
 
 <span th:text="${firstToken}" id="current-token" style="display:none;"></span>
 <script th:inline="javascript">
-    window.userSettings = /*[[${userSettings}]]*/ {}
+    window.userSettings = /*[[${userSettings}]]*/ {};
+    window.locale = {
+        'integrations.owntracks.recorder.test.missing.fields': /*[[#{integrations.owntracks.recorder.test.missing.fields}]]*/ 'Please fill in Base URL, Username, and Device ID',
+        'integrations.owntracks.recorder.test.loading': /*[[#{integrations.owntracks.recorder.test.loading}]]*/ 'Testing connection...',
+        'integrations.owntracks.recorder.test.failed': /*[[#{integrations.owntracks.recorder.test.failed}]]*/ 'Connection test failed',
+        'integrations.owntracks.recorder.loading.historical': /*[[#{integrations.owntracks.recorder.loading.historical}]]*/ 'Loading Historical Data...'
+    };
 </script>
 
 </body>

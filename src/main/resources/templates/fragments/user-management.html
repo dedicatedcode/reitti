@@ -317,7 +317,7 @@
         });
         
         function removeCurrentCss() {
-            if (confirm('Are you sure you want to remove the current custom CSS file?')) {
+            if (confirm( /*[[#{users.custom.css.remove.confirm}]]*/ 'Are you sure you want to remove the current custom CSS file?')) {
                 document.getElementById('removeCssFlag').value = 'true';
                 document.querySelector('.current-css').style.display = 'none';
             }

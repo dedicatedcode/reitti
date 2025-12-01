@@ -35,34 +35,38 @@
         <form th:attr="hx-post=@{/memories/{id}(id=${memory.id})}" hx-vals="js:{timezone: getUserTimezone()}" method="post" class="memory-form" hx-swap="outerHTML" hx-target=".memory-header">
             <input type="hidden" name="version" th:value="${memory.version}">
             <div class="form-group">
-                <label for="title">Title *</label>
+                <label for="title" th:text="#{memory.form.title.label}">Title *</label>
                 <input type="text" id="title" name="title" required class="form-control" 
-                       th:value="${memory.title}" placeholder="Give your memory a title">
+                       th:value="${memory.title}"
+                       th:placeholder="#{memory.form.title.placeholder}"
+                       placeholder="Give your memory a title">
             </div>
 
             <div class="form-group">
-                <label for="description">Description</label>
+                <label for="description" th:text="#{memory.form.description.label}">Description</label>
                 <textarea id="description" name="description" class="form-control" rows="4" 
-                          placeholder="Add a description (optional)" th:text="${memory.description}"></textarea>
+                          placeholder="Add a description (optional)"
+                          th:placeholder="#{memory.form.description.placeholder}"
+                          th:text="${memory.description}"></textarea>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
-                    <label for="startDate">Start Date *</label>
+                    <label for="startDate" th:text="#{memory.form.start.date.label}">Start Date *</label>
                     <input type="date" id="startDate" name="startDate" required class="form-control" 
                            th:value="${startDate}">
                 </div>
 
                 <div class="form-group">
-                    <label for="endDate">End Date *</label>
+                    <label for="endDate" th:text="#{memory.form.end.date.label}">End Date *</label>
                     <input type="date" id="endDate" name="endDate" required class="form-control" 
                            th:value="${endDate}">
                 </div>
             </div>
             <div class="form-actions">
                 <a class="btn btn-secondary"
-                        th:href="@{/memories/{id}(id=${memory.id})}">Cancel</a>
-                <button type="submit" class="btn btn-primary">Save Changes</button>
+                        th:href="@{/memories/{id}(id=${memory.id})}" th:text="#{memory.form.cancel}">Cancel</a>
+                <button type="submit" class="btn btn-primary" th:text="#{memory.form.update}">Save Changes</button>
             </div>
         </form>
     </div>

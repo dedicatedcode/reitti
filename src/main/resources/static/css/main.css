@@ -64,10 +64,11 @@
     --serif-font: "Fraunces", 'Noto Serif SC', 'PingFang SC', 'Microsoft YaHei', serif;;
     --memories-header-height: 550px;
     --box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
+    --sans-serif-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC",  'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
 }
 
 body {
-    font-family: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    font-family: var(--sans-serif-font);
     margin: 0;
     padding: 0;
     height: 100vh;
@@ -1211,6 +1212,7 @@ body.auto-update-mode .today-fab {
     overflow-y: auto;
     padding-bottom: 24px;
     padding-right: 24px;
+    line-height: 1.4;
 }
 
 .settings-page .settings-section {

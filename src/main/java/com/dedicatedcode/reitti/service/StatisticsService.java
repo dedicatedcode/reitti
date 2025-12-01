@@ -22,16 +22,18 @@ public class StatisticsService {
     private final ProcessedVisitJdbcService processedVisitJdbcService;
 
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final I18nService i18nService;
 
     public StatisticsService(TripJdbcService tripJdbcService,
                              ProcessedVisitJdbcService processedVisitJdbcService,
-                             RawLocationPointJdbcService rawLocationPointJdbcService) {
+                             RawLocationPointJdbcService rawLocationPointJdbcService, I18nService i18nService) {
         this.tripJdbcService = tripJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.i18nService = i18nService;
     }
 
-    private static TransportStatistic mapTransportStatistics(Object[] row) {
+    private TransportStatistic mapTransportStatistics(Object[] row) {
         String transportMode = (String) row[0];
         Double totalDistanceMeters = (Double) row[1];
         Long durationInSeconds = (Long) row[2];
@@ -41,7 +43,7 @@ public class StatisticsService {
         double totalDurationHours = durationInSeconds / 3600.0;
 
         return new TransportStatistic(
-                transportMode != null ? transportMode : "unknown",
+                transportMode != null ? transportMode : i18nService.translate("timeline.transport.UNKNOWN.label"),
                 totalDistanceKm,
                 totalDurationHours,
                 tripCount.intValue()
@@ -137,7 +139,7 @@ public class StatisticsService {
                     // Convert seconds to hours with decimal precision
                     double totalStayTimeHours = totalDurationSeconds / 3600.0;
                     return new VisitStatistic(
-                            placeName != null ? placeName : "Unknown Place",
+                            placeName != null ? placeName : i18nService.translate("places.unknown.label"),
                             totalStayTimeHours,
                             visitCount.intValue(),
                             latitude,
@@ -151,7 +153,7 @@ public class StatisticsService {
         List<Object[]> results = tripJdbcService.findTransportStatisticsByUserAndTimeRange(user, startTime, endTime);
 
         return results.stream()
-                .map(StatisticsService::mapTransportStatistics)
+                .map(this::mapTransportStatistics)
                 .collect(Collectors.toList());
     }
 
@@ -159,7 +161,7 @@ public class StatisticsService {
         List<Object[]> results = tripJdbcService.findTransportStatisticsByUser(user);
 
         return results.stream()
-                .map(StatisticsService::mapTransportStatistics)
+                .map(this::mapTransportStatistics)
                 .collect(Collectors.toList());
     }
 

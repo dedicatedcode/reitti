@@ -33,7 +33,7 @@
                 </div>
 
                 <div class="search-container" style="margin-bottom: 20px;">
-                    <input type="text" id="search-input" name="search" th:value="${search}" placeholder="Search places..." style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;" hx-get="/settings/places/places-content" hx-target="#places-management" hx-swap="innerHTML" hx-trigger="input changed delay:300ms" hx-vals='{"page": 0}' />
+                    <input type="text" id="search-input" name="search" th:value="${search}" th:placeholder="#{places.search.placeholder}" placeholder="Search places..." style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;" hx-get="/settings/places/places-content" hx-target="#places-management" hx-swap="innerHTML" hx-trigger="input changed delay:300ms" hx-vals='{"page": 0}' />
                 </div>
 
                 <div class="places-grid" th:if="${!isEmpty}">
