@@ -69,7 +69,7 @@
                         <div style="margin-left: auto; display: flex; align-items: center; gap: 15px;">
                             <div th:if="${dataManagementEnabled}" class="form-group" style="margin-bottom: 0; display: flex; align-items: center; gap: 8px;">
                                 <input type="checkbox" id="relevantDataOnly" name="relevantDataOnly" style="margin: 0;">
-                                <label for="relevantDataOnly" style="margin: 0; font-size: 14px; color: var(--color-text-white);">Only processing relevant</label>
+                                <label for="relevantDataOnly" style="margin: 0; font-size: 14px; color: var(--color-text-white);" th:text="#{export.gpx.relevant}">Only processing relevant</label>
                             </div>
                             <button type="button" 
                                     class="btn"
@@ -91,7 +91,7 @@
                     <!-- Loading indicator -->
                     <div id="loading-indicator" style="display: none; text-align: center; padding: 40px;">
                         <div style="display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: var(--color-accent); animation: spin 1s ease-in-out infinite;"></div>
-                        <p style="margin-top: 15px; color: var(--color-text-white);">Loading location data...</p>
+                        <p style="margin-top: 15px; color: var(--color-text-white);" th:text="#{export.raw.data.loading}">Loading location data...</p>
                     </div>
 
                     <div id="data-content" th:fragment="data-content">
@@ -100,8 +100,8 @@
                         </div>
 
                         <div th:if="${!rawLocationPoints.isEmpty()}">
-                            <p style="margin-bottom: 15px; color: var(--color-text-white);">
-                                Found <strong th:text="${rawLocationPoints.size()}">0</strong> location points
+                            <p style="margin-bottom: 15px; color: var(--color-text-white);" th:text="#{export.raw.data.found.data(${rawLocationPoints.size()})}">
+                                Found 123234 location points
                             </p>
 
                             <div class="export-data-table-container">
