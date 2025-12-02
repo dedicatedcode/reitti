@@ -21,6 +21,9 @@ const DEFAULT_ITEMS_TO_ADD = {
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 function clampToStartOfDay(date) {
+    if (typeof date === 'string') {
+        return new Date(date + 'T00:00:00');
+    }
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
     return d;
@@ -244,8 +247,10 @@ class SelectionManager {
     }
 
     setSelectedRange(startDate, endDate = null) {
+        console.log('setSelectedRange', startDate, endDate);
         this.selectedStartDate = startDate ? clampToStartOfDay(startDate) : null;
         this.selectedEndDate = endDate ? clampToStartOfDay(endDate) : null;
+        console.log(`selectedStartDate: ${this.selectedStartDate} - selectedEndDate: ${this.selectedEndDate}`);
         this.isSelectingRange = false;
         this.isDateLocked = false;
         this.selectionTimeband = null;

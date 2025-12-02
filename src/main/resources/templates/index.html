@@ -161,7 +161,7 @@
         } else if (window.userSettings.uiMode === 'SHARED_LIVE_MODE_ONLY') {
             return getCurrentLocalDate();
         } else if (window.userSettings.newestData) {
-            return window.userSettings.newestData.split('T')[0];
+            return getAsLocalDate(window.userSettings.newestData);
         } else {
             return getCurrentLocalDate();
         }
@@ -602,11 +602,10 @@
 
         window.horizontalDatePicker.on('selectionChange', function (data) {
             console.log(`Selection changed`, data);
-
-            const startDate = new Date(data.startDate);
+            const startDate = new Date(data.startDate + 'T00:00:00');
             let endDate;
             if (data.endDate) {
-                endDate = new Date(data.endDate);
+                endDate = new Date(data.endDate + 'T00:00:00');
             } else {
                 switch (data.timeband) {
                     case 'day': endDate = startDate; break;
@@ -632,6 +631,7 @@
         });
 
         const startingDate = loadStartingDate();
+        console.log(`Starting date: ${startingDate[0]} - ${startingDate[1]}`)
         window.horizontalDatePicker.setSelectedRange(startingDate[0], startingDate[1]);
     });
 
@@ -704,7 +704,7 @@
             
             // Update the date picker to today
             if (window.horizontalDatePicker) {
-                window.horizontalDatePicker.setSelectedRange(new Date(), null);
+                window.horizontalDatePicker.setSelectedRange(getCurrentLocalDate(), null);
             }
 
             // Start the timer to check for date changes every 30 seconds
@@ -774,7 +774,7 @@
         icon.className = 'lni lni-play';
         btn.title = window.locale.autoupdate.state.enable;
         if (window.horizontalDatePicker) {
-            window.horizontalDatePicker.setSelectedRange(getSelectedDate());
+            window.horizontalDatePicker.setSelectedRange(getSelectedDate(), null);
         }
 
         document.body.classList.remove('auto-update-mode');
@@ -792,7 +792,7 @@
             if (!isSelectedDateToday()) {
                 console.log('Auto-update: Switching to today\'s date');
                 if (window.horizontalDatePicker) {
-                    window.horizontalDatePicker.setSelectedRange(new Date());
+                    window.horizontalDatePicker.setSelectedRange(getCurrentLocalDate());
                 }
             }
         }, 30000); // 30 seconds
@@ -1022,8 +1022,7 @@
 
     function goToToday() {
         if (window.horizontalDatePicker) {
-            const today = getCurrentLocalDate();
-            window.horizontalDatePicker.setSelectedRange(today, null);
+            window.horizontalDatePicker.setSelectedRange(getCurrentLocalDate(), null);
         }
     }
 </script>
