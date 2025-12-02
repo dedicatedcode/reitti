@@ -1,8 +1,8 @@
 import {expect, test} from '@playwright/test';
 
 test.use({
-    locale: 'de-DE',
-    timezoneId: 'Europe/Berlin',
+    locale: 'en-US',
+    timezoneId: 'America/Los_Angeles',
 });
 
 test.describe('Date Picker Tests', () => {

@@ -345,7 +345,6 @@
         });
 
         function loadTimelineData(startDate, endDate) {
-            debugger
             if (startDate && endDate && startDate !== endDate) {
                 // Range mode
                 photoClient.updatePhotosForRange(startDate, endDate, getUserTimezone());
@@ -577,10 +576,6 @@
             }
         });
 
-
-        // const selectedDates = loadStartingDate(window.userSettings);
-        // loadTimelineData(selectedDates[0], selectedDates[1]);
-
         window.horizontalDatePicker = new DatePicker('date-picker-container', {
             daysToShow: 14,
             prefetchDays: 25,
@@ -636,7 +631,8 @@
             updateTodayFabVisibility();
         });
 
-        loadStartingDate();
+        const startingDate = loadStartingDate();
+        window.horizontalDatePicker.setSelectedRange(startingDate[0], startingDate[1]);
     });
 
     function loadStartingDate() {
@@ -663,17 +659,20 @@
 
         if (!startDate && !endDate) {
             if (window.userSettings.uiMode === 'SHARED_LIVE_MODE_ONLY') {
-                return [getCurrentLocalDate(), getCurrentLocalDate()];
+                return [getCurrentLocalDate(), ];
             } else if (window.userSettings.newestData) {
-                return [window.userSettings.newestData.split('T')[0],];
+                return [getAsLocalDate(window.userSettings.newestData),];
             } else {
-                return [getCurrentLocalDate(), getCurrentLocalDate()];
+                return [getCurrentLocalDate(), ];
             }
         } else if (!startDate && endDate) {
-            return [endDate, endDate];
+            return [endDate, ];
         } else if (startDate && !endDate) {
-            return [startDate, startDate];
-        } else {
+            return [startDate, ];
+        } else if (startDate === endDate) {
+            return [startDate, ];
+        }
+        else {
             return [startDate, endDate];
         }
     }
