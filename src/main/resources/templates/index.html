@@ -48,7 +48,7 @@
 <div class="timeline">
     <div class="timeline-container"
          hx-get="/timeline/content/range"
-         hx-trigger="load, dateChanged from:body"
+         hx-trigger="dateChanged from:body"
          hx-vals="js:{startDate: getTimelineParams().startDate, endDate: getTimelineParams().endDate, timezone: getTimelineParams().timezone}"
          hx-indicator="#loading-indicator">
         <div id="loading-indicator" class="timeline-entry" th:text="#{timeline.loading}">Loading...</div>
@@ -145,10 +145,19 @@
     // Initialize raw location loader
     let rawLocationLoader;
 
+    /**
+     * Retrieves the selected date based on the URL parameters or application settings.
+     * If both 'startDate' and 'endDate' are present in the URL, it returns the 'startDate'.
+     * If the UI mode is set to 'SHARED_LIVE_MODE_ONLY', it returns the current local date.
+     * Otherwise, it uses the newest data from the user settings, or defaults to the current local date.
+     *
+     * This method should always return a valid **local** date in the format 'YYYY-MM-DD'.
+     * @return {string} The selected date in the format 'YYYY-MM-DD'.
+     */
     function getSelectedDate() {
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('date')) {
-            return urlParams.get('date');
+        if (urlParams.has('startDate') && urlParams.has('endDate')) {
+            return urlParams.get('startDate');
         } else if (window.userSettings.uiMode === 'SHARED_LIVE_MODE_ONLY') {
             return getCurrentLocalDate();
         } else if (window.userSettings.newestData) {
@@ -176,13 +185,7 @@
                 timezone: timezone
             };
         } else {
-            // Single date mode - use same date for both start and end
-            const selectedDate = getSelectedDate();
-            return {
-                startDate: selectedDate,
-                endDate: selectedDate,
-                timezone: timezone
-            };
+            throw new Error('Invalid date range');
         }
     }
 
@@ -342,6 +345,7 @@
         });
 
         function loadTimelineData(startDate, endDate) {
+            debugger
             if (startDate && endDate && startDate !== endDate) {
                 // Range mode
                 photoClient.updatePhotosForRange(startDate, endDate, getUserTimezone());
@@ -353,17 +357,6 @@
             // Load raw location data using the loader
             rawLocationLoader.loadForDateRange(autoUpdateMode, false);
         }
-
-        const selectedPath = L.geodesic([], {
-            color: '#ff984f',
-            weight: 6,
-            opacity: 1,
-            lineJoin: 'round',
-            lineCap: 'round',
-            steps: 2
-
-        });
-
 
         // Function to initialize raw location loader with user configurations
         function initializeRawLocationLoader() {
@@ -539,9 +532,7 @@
             document.querySelectorAll('.timeline-container .timeline-entry')
                 .forEach(e => e.classList.remove('active'));
             const isTrip = entry.classList.contains('trip');
-            // Remove any selected path
-            selectedPath.remove();
-            
+
             if (isCurrentlyActive) {
                 // Deselection: clear selected time range and zoom back to original bounds
                 rawLocationLoader.clearSelectedTimeRange();
@@ -587,8 +578,8 @@
         });
 
 
-        const selectedDates = loadStartingDate(window.userSettings);
-        loadTimelineData(selectedDates[0], selectedDates[1]);
+        // const selectedDates = loadStartingDate(window.userSettings);
+        // loadTimelineData(selectedDates[0], selectedDates[1]);
 
         window.horizontalDatePicker = new DatePicker('date-picker-container', {
             daysToShow: 14,
@@ -645,14 +636,7 @@
             updateTodayFabVisibility();
         });
 
-        if (selectedDates[0] === selectedDates[1]) {
-            window.horizontalDatePicker.setSelectedRange(selectedDates[0], null);
-        } else {
-            window.horizontalDatePicker.setSelectedRange(selectedDates[0], selectedDates[1]);
-        }
-
-        // Initial check for today FAB visibility
-        updateTodayFabVisibility();
+        loadStartingDate();
     });
 
     function loadStartingDate() {
@@ -681,16 +665,17 @@
             if (window.userSettings.uiMode === 'SHARED_LIVE_MODE_ONLY') {
                 return [getCurrentLocalDate(), getCurrentLocalDate()];
             } else if (window.userSettings.newestData) {
+                // The start date is in UTC format, so convert it to local date and return that AI!
                 return [window.userSettings.newestData.split('T')[0],];
             } else {
-                return [getCurrentLocalDate(),getCurrentLocalDate()];
+                return [getCurrentLocalDate(), getCurrentLocalDate()];
             }
         } else if (!startDate && endDate) {
-            return [endDate,endDate];
+            return [endDate, endDate];
         } else if (startDate && !endDate) {
-            return [startDate,startDate];
+            return [startDate, startDate];
         } else {
-            return [startDate,endDate];
+            return [startDate, endDate];
         }
     }
 
