@@ -665,7 +665,6 @@
             if (window.userSettings.uiMode === 'SHARED_LIVE_MODE_ONLY') {
                 return [getCurrentLocalDate(), getCurrentLocalDate()];
             } else if (window.userSettings.newestData) {
-                // The start date is in UTC format, so convert it to local date and return that AI!
                 return [window.userSettings.newestData.split('T')[0],];
             } else {
                 return [getCurrentLocalDate(), getCurrentLocalDate()];
