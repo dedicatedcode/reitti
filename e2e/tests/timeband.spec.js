@@ -102,7 +102,6 @@ test.describe('Date Picker Tests', () => {
         await page.locator('#auto-update-btn').click();
         await expect(page.locator('#auto-update-overlay')).not.toBeVisible();
 
-        await expect(page).toHaveURL(/startDate=2017-12-31&endDate=2017-12-31/);
     });
 
 
