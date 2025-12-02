@@ -527,9 +527,8 @@ tr:hover {
     font-family: var(--serif-font);
     line-height: 1.5;
     font-weight: 400;
-    width: 350px;
     padding-top: 48px;
-    padding-bottom: 250px;
+    padding-bottom: 110px;
     transition: opacity 0.3s ease;
 }
 
@@ -1583,10 +1582,12 @@ button:disabled {
 
 .user-timeline-section {
     display: none;
+    grid-template-columns: 1fr;
+    justify-items: left;
 }
 
 .user-timeline-section.active {
-    display: initial;
+    display: grid;
 }
 
 .user-timeline-selection {
