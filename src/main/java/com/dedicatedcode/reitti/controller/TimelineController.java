@@ -65,8 +65,8 @@ public class TimelineController {
     }
 
     @GetMapping("/content/range")
-    public String getTimelineContentRange(@RequestParam String startDate,
-                                          @RequestParam String endDate,
+    public String getTimelineContentRange(@RequestParam LocalDate startDate,
+                                          @RequestParam LocalDate endDate,
                                           @RequestParam(required = false, defaultValue = "UTC") String timezone,
                                           Authentication principal, Model model) {
         return getTimelineContentRange(startDate, endDate, timezone, principal, model, null);
@@ -222,16 +222,16 @@ public class TimelineController {
         return "fragments/timeline :: timeline-content";
     }
 
-    private String getTimelineContentRange(String startDate,
-                                           String endDate,
+    private String getTimelineContentRange(LocalDate startDate,
+                                           LocalDate endDate,
                                            String timezone,
                                            Authentication principal, Model model,
                                            Long selectedPlaceId) {
 
         List<String> authorities = principal.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
 
-        LocalDate selectedStartDate = LocalDate.parse(startDate);
-        LocalDate selectedEndDate = LocalDate.parse(endDate);
+        LocalDate selectedStartDate = startDate;
+        LocalDate selectedEndDate = endDate;
         ZoneId userTimezone = ZoneId.of(timezone);
         LocalDate now = LocalDate.now(userTimezone);
 
