@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
+import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
@@ -17,9 +18,10 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class QueueStatsService {
 
+    public static final String STAY_DETECTION_QUEUE = "reitti.visit.detection.v2";
     private final RabbitAdmin rabbitAdmin;
     private final MessageSource messageSource;
-
+    private final ProcessingPipelineTrigger processingPipelineTrigger;
     private static final int LOOKBACK_HOURS = 24;
     private static final long DEFAULT_PROCESSING_TIME = 2000;
 
@@ -34,31 +36,46 @@ public class QueueStatsService {
     private final Map<String, Integer> previousMessageCounts = new ConcurrentHashMap<>();
 
     @Autowired
-    public QueueStatsService(RabbitAdmin rabbitAdmin, MessageSource messageSource) {
+    public QueueStatsService(RabbitAdmin rabbitAdmin, MessageSource messageSource, ProcessingPipelineTrigger processingPipelineTrigger) {
         this.rabbitAdmin = rabbitAdmin;
         this.messageSource = messageSource;
+        this.processingPipelineTrigger = processingPipelineTrigger;
         QUEUES.forEach(queue -> {
             processingHistory.put(queue, new ArrayList<>());
             previousMessageCounts.put(queue, 0);
         });
+        processingHistory.put(STAY_DETECTION_QUEUE, new ArrayList<>());
+        previousMessageCounts.put(STAY_DETECTION_QUEUE, 0);
+
     }
 
     public List<QueueStats> getQueueStats() {
-        return QUEUES.stream().map(name -> {
-            int currentMessageCount = getMessageCount(name);
-            updateProcessingHistory(name, currentMessageCount);
-            
-            long avgProcessingTime = calculateAverageProcessingTime(name);
-            long estimatedTime = currentMessageCount * avgProcessingTime;
-            
-            String displayName = getLocalizedDisplayName(name);
-            String description = getLocalizedDescription(name);
-            
-            return new QueueStats(name, displayName, description, currentMessageCount, formatProcessingTime(estimatedTime), calculateProgress(name, currentMessageCount));
-        }).toList();
+        List<QueueStats> list = QUEUES.stream().map(this::getQueueStats).toList();
+        List<QueueStats> result = new ArrayList<>(list);
+        result.add(getQueueStats(STAY_DETECTION_QUEUE));
+        return result;
     }
 
-    private void updateProcessingHistory(String queueName, int currentMessageCount) {
+    private QueueStats getQueueStats(String name) {
+        int currentMessageCount;
+        if (name.equals(STAY_DETECTION_QUEUE)) {
+            currentMessageCount = this.processingPipelineTrigger.getPendingCount();
+            udpatingStayDetectionQueue(currentMessageCount);
+        } else {
+            currentMessageCount = getMessageCount(name);
+            updateProcessingHistoryFromRabbitMQ(name, currentMessageCount);
+        }
+
+        long avgProcessingTime = calculateAverageProcessingTime(name);
+        long estimatedTime = currentMessageCount * avgProcessingTime;
+
+        String displayName = getLocalizedDisplayName(name);
+        String description = getLocalizedDescription(name);
+
+        return new QueueStats(name, displayName, description, currentMessageCount, formatProcessingTime(estimatedTime), calculateProgress(name, currentMessageCount));
+    }
+
+    private void updateProcessingHistoryFromRabbitMQ(String queueName, int currentMessageCount) {
         Integer previousCount = previousMessageCounts.get(queueName);
         
         if (previousCount != null && currentMessageCount < previousCount) {
@@ -70,6 +87,20 @@ public class QueueStatsService {
         }
         
         previousMessageCounts.put(queueName, currentMessageCount);
+    }
+
+    private void udpatingStayDetectionQueue(int currentMessageCount) {
+        Integer previousCount = previousMessageCounts.get(STAY_DETECTION_QUEUE);
+
+        if (previousCount != null && currentMessageCount < previousCount) {
+            long processingTimePerMessage = estimateProcessingTimePerMessage(STAY_DETECTION_QUEUE);
+            List<ProcessingRecord> history = processingHistory.get(STAY_DETECTION_QUEUE);
+            LocalDateTime now = LocalDateTime.now();
+            history.add(new ProcessingRecord(now, this.processingPipelineTrigger.getPendingCount(), processingTimePerMessage));
+            cleanupOldRecords(history, now);
+        }
+
+        previousMessageCounts.put(STAY_DETECTION_QUEUE, currentMessageCount);
     }
 
     private long estimateProcessingTimePerMessage(String queueName) {
@@ -171,6 +202,7 @@ public class QueueStatsService {
             case RabbitMQConfig.LOCATION_DATA_QUEUE -> "queue.location.data." + suffix;
             case RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE -> "queue.significant.place." + suffix;
             case RabbitMQConfig.USER_EVENT_QUEUE -> "queue.user.event." + suffix;
+            case STAY_DETECTION_QUEUE -> "queue.stay.detection." + suffix;
             default -> "queue.unknown." + suffix;
         };
     }
