@@ -108,4 +108,7 @@ public class ProcessingPipelineTrigger {
         return executorService.getQueue().isEmpty() &&
                executorService.getActiveCount() == 0;
     }
+    public int getPendingCount() {
+        return executorService.getActiveCount() + executorService.getQueue().size();
+    }
 }
