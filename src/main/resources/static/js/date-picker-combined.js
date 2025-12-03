@@ -1414,6 +1414,24 @@ class DatePicker {
             }
         };
 
+        this._onTouchEnd = (e) => {
+            if (!this._touchLock || this._touchLock !== 'y') return;
+
+            const touch = e.changedTouches[0];
+            const deltaY = touch.clientY - this._touchStartY;
+            const threshold = 50; // minimum swipe distance
+
+            if (Math.abs(deltaY) > threshold) {
+                const direction = deltaY > 0 ? 1 : -1; // 1 = zoom out, -1 = zoom in
+                const mouseDate = this.getCenterDate();
+                const mousePos = this.scrollContainer.clientWidth / 2;
+
+                this.#performWheelStep(direction, mouseDate, mousePos);
+            }
+
+            this._touchLock = null;
+        };
+
         // Touch gesture handling to block page scroll while interacting
         this._onTouchStart = (e) => {
             if (!e.touches || e.touches.length === 0) return;
@@ -1444,9 +1462,12 @@ class DatePicker {
         };
 
         this.scrollContainer.addEventListener('scroll', this._onScroll, { passive: true });
+
+
         // Use capture to intercept early and prevent page scroll leaks.
         this.scrollContainer.addEventListener('wheel', this._onWheel, { passive: false, capture: true });
         this.scrollContainer.addEventListener('touchstart', this._onTouchStart, { passive: true });
+        this.scrollContainer.addEventListener('touchend', this._onTouchEnd, { passive: true });
         this.scrollContainer.addEventListener('touchmove', this._onTouchMove, { passive: false, capture: true });
     }
 
@@ -1601,6 +1622,7 @@ class DatePicker {
         this._onMouseOver = null;
         this._onMouseOut = null;
         this._onTouchStart = null;
+        this._onTouchEnd = null;
         this._onTouchMove = null;
 
         // Reset wheel chain state
