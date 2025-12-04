@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPX Test Data Generator</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #2d3748;
+            line-height: 1.5;
+        }
+        
+        .container {
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+        }
+        
+        .main-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+        }
+        
+        .header {
+            background: #f8fafc;
+            color: #4a5568;
+            padding: 8px 16px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .header h1 {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+        
+        .header p {
+            opacity: 0.8;
+            font-size: 12px;
+        }
+        
+        .controls {
+            padding: 12px 16px;
+            background: rgba(248, 250, 252, 0.9);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+            backdrop-filter: blur(10px);
+        }
+        
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .control-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #4a5568;
+            margin-bottom: 6px;
+        }
+        
+        .control-input {
+            padding: 8px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 13px;
+            transition: all 0.3s ease;
+            background: linear-gradient(145deg, #ffffff, #f8fafc);
+            font-family: inherit;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+        }
+        
+        .control-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1), inset 0 2px 4px rgba(0, 0, 0, 0.06);
+            background: linear-gradient(145deg, #ffffff, #f1f5f9);
+        }
+        
+        .control-button {
+            padding: 8px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(145deg, #ffffff, #f8fafc);
+            color: #4a5568;
+            font-family: inherit;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .control-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            transition: left 0.5s;
+        }
+        
+        .control-button:hover {
+            border-color: #667eea;
+            background: linear-gradient(145deg, #667eea, #5a67d8);
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .control-button:hover::before {
+            left: 100%;
+        }
+        
+        .control-button.active {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .control-button.success {
+            background: #48bb78;
+            border-color: #48bb78;
+            color: white;
+        }
+        
+        .control-button.success:hover {
+            background: #38a169;
+            border-color: #38a169;
+        }
+        
+        .control-button.danger {
+            background: #f56565;
+            border-color: #f56565;
+            color: white;
+        }
+        
+        .control-button.danger:hover {
+            background: #e53e3e;
+            border-color: #e53e3e;
+        }
+        
+        .paint-mode-info {
+            font-size: 12px;
+            color: #718096;
+            margin-top: 6px;
+            font-style: italic;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .main-content {
+            display: flex;
+            height: 75vh;
+            min-height: 650px;
+        }
+        
+        .map-container {
+            flex: 3;
+            position: relative;
+        }
+        
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        
+        .points-panel {
+            flex: 1;
+            min-width: 350px;
+            border-left: 1px solid rgba(226, 232, 240, 0.8);
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .speed-legend {
+            padding: 12px 20px;
+            background: rgba(247, 250, 252, 0.9);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+            font-size: 12px;
+        }
+        
+        .speed-legend-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #4a5568;
+        }
+        
+        .speed-legend-items {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .speed-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .speed-color-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .points-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #4a5568, #2d3748);
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .points-summary {
+            padding: 16px 20px;
+            background: rgba(247, 250, 252, 0.9);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+            font-size: 13px;
+            color: #4a5568;
+        }
+        
+        .points-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .point-item {
+            padding: 8px 20px;
+            border-bottom: 1px solid rgba(237, 242, 247, 0.8);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 12px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 32px;
+            border-left: 4px solid #e2e8f0;
+        }
+        
+        .point-item:hover {
+            background: rgba(102, 126, 234, 0.05);
+            transform: translateX(4px);
+        }
+        
+        .point-item.selected {
+            background: rgba(102, 126, 234, 0.1);
+            border-left: 4px solid #667eea !important;
+        }
+        
+        .point-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+        
+        .point-coords {
+            color: #4a5568;
+            font-weight: 500;
+        }
+        
+        .point-time {
+            color: #718096;
+        }
+        
+        .point-speed {
+            font-weight: 500;
+            min-width: 60px;
+            text-align: right;
+        }
+        
+        .point-delete {
+            background: #f56565;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            opacity: 0;
+        }
+        
+        .point-item:hover .point-delete {
+            opacity: 1;
+        }
+        
+        .point-delete:hover {
+            background: #e53e3e;
+            transform: scale(1.1);
+        }
+        
+        .status {
+            padding: 20px;
+            background: rgba(247, 250, 252, 0.9);
+            border-top: 1px solid rgba(226, 232, 240, 0.8);
+            font-size: 14px;
+            color: #4a5568;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .speed-legend-inline {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            font-size: 12px;
+        }
+        
+        .speed-legend-inline .speed-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .speed-legend-inline .speed-color-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .hover-tooltip {
+            position: absolute;
+            background: rgba(26, 32, 44, 0.95);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            pointer-events: none;
+            z-index: 1000;
+            white-space: nowrap;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .speed-indicator {
+            font-size: 12px;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+        
+        .speed-ok { color: #48bb78; }
+        .speed-fast { color: #ed8936; }
+        .speed-unrealistic { color: #f56565; }
+        
+        .track-header {
+            padding: 12px 20px;
+            background: #2d3748;
+            color: white;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .track-header:hover {
+            background: #4a5568;
+        }
+        
+        .track-header.active {
+            background: #667eea;
+            box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3);
+        }
+        
+        .track-header.active:hover {
+            background: #5a67d8;
+        }
+        
+        .track-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 2px solid white;
+        }
+        
+        .track-info {
+            display: flex;
+            align-items: center;
+        }
+        
+        .track-controls {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .track-export-btn {
+            padding: 4px 8px;
+            background: #48bb78;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        
+        .track-export-btn:hover {
+            background: #38a169;
+        }
+        
+        .track-points {
+            display: block;
+        }
+        
+        .track-points.collapsed {
+            display: none;
+        }
+        
+        .collapse-icon {
+            transition: transform 0.3s ease;
+        }
+        
+        .collapsed .collapse-icon {
+            transform: rotate(-90deg);
+        }
+        
+        .range-input {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: #e2e8f0;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        
+        .range-input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .range-input::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
+        }
+        
+        .paint-active {
+            background: #48bb78 !important;
+            border-color: #48bb78 !important;
+            color: white !important;
+            animation: pulse 2s infinite;
+        }
+        
+        .paint-ready {
+            background: #ed8936 !important;
+            border-color: #ed8936 !important;
+            color: white !important;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(72, 187, 120, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(72, 187, 120, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(72, 187, 120, 0); }
+        }
+        
+        
+        /* Scrollbar styling */
+        .points-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .points-list::-webkit-scrollbar-track {
+            background: rgba(237, 242, 247, 0.5);
+        }
+        
+        .points-list::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.3);
+            border-radius: 3px;
+        }
+        
+        .points-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 126, 234, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-container">
+            <div class="header">
+                <h1>GPX Test Data Generator</h1>
+                <p>Click on the map to add points. Right-click points to remove them.</p>
+            </div>
+            
+            <div class="controls">
+                <div class="control-grid">
+                    <div class="control-group">
+                        <label class="control-label" for="startDateTime">Start Date & Time</label>
+                        <input type="datetime-local" id="startDateTime" step="1" class="control-input">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label class="control-label" for="timeInterval">Interval (s)</label>
+                        <input type="number" id="timeInterval" value="30" min="1" max="3600" class="control-input">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label class="control-label" for="maxSpeed">Max Speed (km/h)</label>
+                        <input type="number" id="maxSpeed" value="25" min="1" max="300" class="control-input">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label class="control-label">&nbsp;</label>
+                        <button id="autoModeToggle" class="control-button" onclick="toggleAutoMode()">Auto Mode: OFF</button>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label class="control-label">&nbsp;</label>
+                        <button id="paintModeToggle" class="control-button" onclick="togglePaintMode()">Paint Mode: OFF</button>
+                        <div class="paint-mode-info">Click map to start/stop painting</div>
+                    </div>
+                </div>
+                
+                <div class="control-grid">
+                    <div class="control-group">
+                        <label class="control-label" for="elevation">Elevation (m)</label>
+                        <input type="number" id="elevation" value="10" step="0.1" class="control-input">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label class="control-label" for="elevationVariation">±Variation (m)</label>
+                        <input type="number" id="elevationVariation" value="0" min="0" step="0.1" class="control-input">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label class="control-label" for="accuracySlider">GPS Accuracy: <span id="accuracyValue">5</span>m</label>
+                        <input type="range" id="accuracySlider" min="0" max="100" value="5" class="range-input">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label class="control-label">
+                            <input type="checkbox" id="autoNewTrack" checked style="margin-right: 8px;">
+                            Auto new track on day change
+                        </label>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label class="control-label">&nbsp;</label>
+                        <div class="button-group">
+                            <button onclick="newTrack()" class="control-button">New Track</button>
+                            <button onclick="exportAllGPX()" class="control-button success">Export All</button>
+                            <button onclick="clearAll()" class="control-button danger">Clear All</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        
+        <div class="main-content">
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+            
+            <div class="points-panel">
+                <div class="points-header">
+                    Points (<span id="pointCount">0</span>)
+                </div>
+                <div class="points-summary" id="pointsSummary">
+                    Click on the map to add points
+                </div>
+                <div class="points-list" id="pointsList">
+                </div>
+            </div>
+        </div>
+        
+        <div class="status">
+            <span id="statusText">Ready to create GPX track</span>
+            <div class="speed-legend-inline" id="speedLegendInline">
+                <!-- Speed legend will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="gpx-generator.js"></script>
+</body>
+</html>
