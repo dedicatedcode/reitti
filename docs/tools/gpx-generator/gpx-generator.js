@@ -841,38 +841,66 @@ function parseAndImportGPX(gpxContent, filename) {
     
     // Create tracks for each day
     let importedTracksCount = 0;
+    let isFirstImportedTrack = true;
+    
     Object.keys(pointsByDay).sort().forEach(dayKey => {
         const dayPoints = pointsByDay[dayKey];
         if (dayPoints.length === 0) return;
         
-        // Collapse all existing tracks
-        tracks.forEach(track => {
-            track.collapsed = true;
-        });
+        let track;
+        let trackIndex;
+        let color;
         
-        // Create new track for this day
-        const trackIndex = tracks.length;
-        const color = TRACK_COLORS[trackIndex % TRACK_COLORS.length];
-        const trackName = `${filename.replace('.gpx', '')} - ${dayKey}`;
+        // Check if we can reuse the first empty track
+        if (isFirstImportedTrack && tracks.length > 0 && tracks[0].points.length === 0) {
+            // Reuse the existing empty track
+            track = tracks[0];
+            trackIndex = 0;
+            color = track.color;
+            
+            // Update track properties
+            track.name = `${filename.replace('.gpx', '')} - ${dayKey}`;
+            track.startTime = dayPoints[0].timestamp;
+            track.collapsed = false;
+            
+            // Collapse all other existing tracks
+            tracks.forEach((t, index) => {
+                if (index !== 0) {
+                    t.collapsed = true;
+                }
+            });
+        } else {
+            // Collapse all existing tracks
+            tracks.forEach(track => {
+                track.collapsed = true;
+            });
+            
+            // Create new track for this day
+            trackIndex = tracks.length;
+            color = TRACK_COLORS[trackIndex % TRACK_COLORS.length];
+            const trackName = `${filename.replace('.gpx', '')} - ${dayKey}`;
+            
+            track = {
+                id: trackIndex,
+                name: trackName,
+                points: [],
+                color: color,
+                collapsed: false,
+                startTime: dayPoints[0].timestamp
+            };
+            
+            tracks.push(track);
+            
+            // Create polyline for this track
+            const polyline = L.polyline([], {
+                color: color,
+                weight: 3,
+                opacity: 0.7
+            }).addTo(map);
+            polylines.push(polyline);
+        }
         
-        const track = {
-            id: trackIndex,
-            name: trackName,
-            points: [],
-            color: color,
-            collapsed: false,
-            startTime: dayPoints[0].timestamp
-        };
-        
-        tracks.push(track);
-        
-        // Create polyline for this track
-        const polyline = L.polyline([], {
-            color: color,
-            weight: 3,
-            opacity: 0.7
-        }).addTo(map);
-        polylines.push(polyline);
+        isFirstImportedTrack = false;
         
         // Add points to the track
         dayPoints.forEach((point, pointIndex) => {
