@@ -220,6 +220,13 @@ function onMapClick(e) {
         lastMousePosition = e.latlng; // Store initial position
         
         if (paintActive) {
+            // Add first point immediately
+            const currentTrack = tracks[currentTrackIndex];
+            if (currentTrack && currentTrack.points.length > 0) {
+                addPointWithInterpolation(lastMousePosition.lat, lastMousePosition.lng);
+            } else {
+                addPoint(lastMousePosition.lat, lastMousePosition.lng);
+            }
             // Start automatic painting
             startAutoPainting();
         } else {
@@ -949,9 +956,11 @@ function groupPointsByUTCDay(points) {
 
 function onMapMouseMove(e) {
     // Update mouse position for paint mode
-    if (paintMode && paintActive) {
+    if (paintMode) {
         lastMousePosition = e.latlng;
-        return;
+        if (paintActive) {
+            return; // Don't show preview when actively painting
+        }
     }
     
     const currentTrack = tracks[currentTrackIndex];
