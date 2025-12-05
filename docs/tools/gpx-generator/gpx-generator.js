@@ -787,9 +787,9 @@ function parseAndImportGPX(gpxContent, filename) {
     
     // Extract track points from all tracks and track segments
     const trackPoints = [];
-    const tracks = gpxDoc.querySelectorAll('trk');
+    const gpxTracks = gpxDoc.querySelectorAll('trk');
     
-    tracks.forEach(track => {
+    gpxTracks.forEach(track => {
         const trackSegments = track.querySelectorAll('trkseg');
         trackSegments.forEach(segment => {
             const points = segment.querySelectorAll('trkpt');
