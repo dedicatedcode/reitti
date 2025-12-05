@@ -7,6 +7,36 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --text-primary: #2d3748;
+            --text-secondary: #4a5568;
+            --text-muted: #718096;
+            --border-color: #e2e8f0;
+            --border-color-light: rgba(226, 232, 240, 0.8);
+            --shadow-light: rgba(0, 0, 0, 0.06);
+            --shadow-medium: rgba(0, 0, 0, 0.1);
+            --shadow-heavy: rgba(0, 0, 0, 0.15);
+        }
+        
+        [data-theme="dark"] {
+            --bg-primary: #1a202c;
+            --bg-secondary: #2d3748;
+            --bg-tertiary: #4a5568;
+            --bg-gradient: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            --text-primary: #f7fafc;
+            --text-secondary: #e2e8f0;
+            --text-muted: #a0aec0;
+            --border-color: #4a5568;
+            --border-color-light: rgba(74, 85, 104, 0.8);
+            --shadow-light: rgba(0, 0, 0, 0.2);
+            --shadow-medium: rgba(0, 0, 0, 0.3);
+            --shadow-heavy: rgba(0, 0, 0, 0.4);
+        }
+        
         * {
             margin: 0;
             padding: 0;
@@ -15,10 +45,11 @@
         
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--bg-gradient);
             min-height: 100vh;
-            color: #2d3748;
+            color: var(--text-primary);
             line-height: 1.5;
+            transition: all 0.3s ease;
         }
         
         .container {
@@ -30,10 +61,15 @@
         .main-container {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(20px);
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 25px 50px var(--shadow-heavy);
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.3);
             position: relative;
+        }
+        
+        [data-theme="dark"] .main-container {
+            background: rgba(26, 32, 44, 0.95);
+            border: 1px solid rgba(74, 85, 104, 0.3);
         }
         
         .main-container::before {
@@ -47,10 +83,57 @@
         }
         
         .header {
-            background: #f8fafc;
-            color: #4a5568;
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
             padding: 8px 16px;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-content {
+            flex: 1;
+        }
+        
+        .header-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .theme-toggle {
+            background: var(--bg-primary);
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--text-secondary);
+        }
+        
+        .theme-toggle:hover {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+        
+        .layer-toggle {
+            background: var(--bg-primary);
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--text-secondary);
+        }
+        
+        .layer-toggle:hover {
+            border-color: #48bb78;
+            background: #48bb78;
+            color: white;
         }
         
         .header h1 {
@@ -66,8 +149,8 @@
         
         .controls {
             padding: 12px 16px;
-            background: rgba(248, 250, 252, 0.9);
-            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color-light);
             backdrop-filter: blur(10px);
         }
         
@@ -86,19 +169,20 @@
         .control-label {
             font-size: 12px;
             font-weight: 500;
-            color: #4a5568;
+            color: var(--text-secondary);
             margin-bottom: 6px;
         }
         
         .control-input {
             padding: 8px 12px;
-            border: 2px solid #e2e8f0;
+            border: 2px solid var(--border-color);
             border-radius: 8px;
             font-size: 13px;
             transition: all 0.3s ease;
-            background: linear-gradient(145deg, #ffffff, #f8fafc);
+            background: var(--bg-primary);
+            color: var(--text-primary);
             font-family: inherit;
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+            box-shadow: inset 0 2px 4px var(--shadow-light);
         }
         
         .control-input:focus {
@@ -535,8 +619,14 @@
     <div class="container">
         <div class="main-container">
             <div class="header">
-                <h1>GPX Test Data Generator</h1>
-                <p>Click on the map to add points. Right-click points to remove them.</p>
+                <div class="header-content">
+                    <h1>GPX Test Data Generator</h1>
+                    <p>Click on the map to add points. Right-click points to remove them.</p>
+                </div>
+                <div class="header-controls">
+                    <button id="layerToggle" class="layer-toggle" onclick="toggleMapLayer()">Satellite</button>
+                    <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()">🌙</button>
+                </div>
             </div>
             
             <div class="controls">
@@ -583,6 +673,23 @@
                         <label class="control-label">
                             <input type="checkbox" id="autoNewTrack" checked style="margin-right: 8px;">
                             Auto new track on day change
+                        </label>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label class="control-label">Smoothing Level</label>
+                        <select id="smoothingLevel" class="control-input">
+                            <option value="0">None</option>
+                            <option value="1">Light</option>
+                            <option value="2" selected>Medium</option>
+                            <option value="3">Heavy</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label class="control-label">
+                            <input type="checkbox" id="autoStops" style="margin-right: 8px;">
+                            Add realistic stops
                         </label>
                     </div>
                     

@@ -12,6 +12,9 @@ let lastPaintTime = 0;
 let paintThrottleMs = 100; // Minimum time between paint points
 let paintInterval = null; // Interval for automatic painting
 let lastMousePosition = null; // Store last mouse position for painting
+let currentMapLayer = 'street'; // 'street' or 'satellite'
+let streetLayer, satelliteLayer;
+let stopProbability = 0.05; // 5% chance of adding a stop per point when auto-stops enabled
 
 // Track colors for visual distinction
 const TRACK_COLORS = [
@@ -21,6 +24,7 @@ const TRACK_COLORS = [
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
+    initializeTheme();
     initializeMap();
     initializeDateTime();
     initializeControls();
@@ -29,14 +33,57 @@ document.addEventListener('DOMContentLoaded', function() {
     updateStatus();
 });
 
+function initializeTheme() {
+    // Check for saved theme preference or default to light mode
+    const savedTheme = localStorage.getItem('gpx-generator-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeButton();
+}
+
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('gpx-generator-theme', newTheme);
+    updateThemeButton();
+}
+
+function updateThemeButton() {
+    const button = document.getElementById('themeToggle');
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    button.textContent = currentTheme === 'dark' ? '☀️' : '🌙';
+}
+
+function toggleMapLayer() {
+    if (currentMapLayer === 'street') {
+        map.removeLayer(streetLayer);
+        map.addLayer(satelliteLayer);
+        currentMapLayer = 'satellite';
+        document.getElementById('layerToggle').textContent = 'Street';
+    } else {
+        map.removeLayer(satelliteLayer);
+        map.addLayer(streetLayer);
+        currentMapLayer = 'street';
+        document.getElementById('layerToggle').textContent = 'Satellite';
+    }
+}
+
 function initializeMap() {
     // Initialize Leaflet map
     map = L.map('map').setView([60.1699, 24.9384], 10); // Helsinki as default
     
-    // Add OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // Create map layers
+    streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
+    });
+    
+    satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '© Esri, Maxar, Earthstar Geographics'
+    });
+    
+    // Add default layer
+    streetLayer.addTo(map);
     
     // Add event listeners
     map.on('click', onMapClick);
@@ -255,12 +302,17 @@ function addPoint(lat, lng) {
     
     // Use current datetime input value as timestamp
     const startDateTimeValue = document.getElementById('startDateTime').value;
-    const timestamp = new Date(startDateTimeValue);
+    let timestamp = new Date(startDateTimeValue);
     
     // Check if we need to create a new track due to day change
     if (shouldCreateNewTrackForDayChange(timestamp, currentTrack)) {
         createNewTrack();
         return addPoint(lat, lng); // Recursively add to new track
+    }
+    
+    // Check for realistic stops
+    if (document.getElementById('autoStops').checked && shouldAddStop(currentTrack)) {
+        timestamp = addRealisticStop(timestamp);
     }
     
     // Apply GPS accuracy simulation
@@ -285,6 +337,9 @@ function addPoint(lat, lng) {
     };
     
     currentTrack.points.push(point);
+    
+    // Apply smoothing if enabled
+    applySmoothingToTrack(currentTrack);
     
     // Add marker to map with track color
     const marker = L.marker([adjustedCoords.lat, adjustedCoords.lng], {
@@ -1268,5 +1323,47 @@ function stopAutoPainting() {
         clearInterval(paintInterval);
         paintInterval = null;
     }
+}
+
+// Smoothing algorithm functions
+function applySmoothingToTrack(track) {
+    const smoothingLevel = parseInt(document.getElementById('smoothingLevel').value);
+    if (smoothingLevel === 0 || track.points.length < 3) return;
+    
+    const windowSize = smoothingLevel * 2 + 1; // 3, 5, or 7 points
+    const smoothedPoints = [...track.points];
+    
+    for (let i = Math.floor(windowSize / 2); i < track.points.length - Math.floor(windowSize / 2); i++) {
+        const window = track.points.slice(i - Math.floor(windowSize / 2), i + Math.floor(windowSize / 2) + 1);
+        
+        // Apply weighted moving average
+        let totalWeight = 0;
+        let weightedLat = 0;
+        let weightedLng = 0;
+        
+        window.forEach((point, index) => {
+            const weight = 1 - Math.abs(index - Math.floor(windowSize / 2)) / Math.floor(windowSize / 2);
+            totalWeight += weight;
+            weightedLat += point.lat * weight;
+            weightedLng += point.lng * weight;
+        });
+        
+        smoothedPoints[i].lat = weightedLat / totalWeight;
+        smoothedPoints[i].lng = weightedLng / totalWeight;
+    }
+    
+    track.points = smoothedPoints;
+}
+
+// Realistic stops functions
+function shouldAddStop(track) {
+    if (track.points.length < 5) return false; // Need some points before considering stops
+    return Math.random() < stopProbability;
+}
+
+function addRealisticStop(baseTimestamp) {
+    // Add a random stop duration between 30 seconds and 10 minutes
+    const stopDuration = Math.random() * (10 * 60 - 30) + 30; // 30s to 10min in seconds
+    return new Date(baseTimestamp.getTime() + (stopDuration * 1000));
 }
 
