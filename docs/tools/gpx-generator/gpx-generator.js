@@ -338,9 +338,6 @@ function addPoint(lat, lng) {
     
     currentTrack.points.push(point);
     
-    // Apply smoothing if enabled
-    applySmoothingToTrack(currentTrack);
-    
     // Add marker to map with track color
     const marker = L.marker([adjustedCoords.lat, adjustedCoords.lng], {
         title: `${currentTrack.name} - Point ${pointIndex + 1}`,
@@ -1323,36 +1320,6 @@ function stopAutoPainting() {
         clearInterval(paintInterval);
         paintInterval = null;
     }
-}
-
-// Smoothing algorithm functions
-function applySmoothingToTrack(track) {
-    const smoothingLevel = parseInt(document.getElementById('smoothingLevel').value);
-    if (smoothingLevel === 0 || track.points.length < 3) return;
-    
-    const windowSize = smoothingLevel * 2 + 1; // 3, 5, or 7 points
-    const smoothedPoints = [...track.points];
-    
-    for (let i = Math.floor(windowSize / 2); i < track.points.length - Math.floor(windowSize / 2); i++) {
-        const window = track.points.slice(i - Math.floor(windowSize / 2), i + Math.floor(windowSize / 2) + 1);
-        
-        // Apply weighted moving average
-        let totalWeight = 0;
-        let weightedLat = 0;
-        let weightedLng = 0;
-        
-        window.forEach((point, index) => {
-            const weight = 1 - Math.abs(index - Math.floor(windowSize / 2)) / Math.floor(windowSize / 2);
-            totalWeight += weight;
-            weightedLat += point.lat * weight;
-            weightedLng += point.lng * weight;
-        });
-        
-        smoothedPoints[i].lat = weightedLat / totalWeight;
-        smoothedPoints[i].lng = weightedLng / totalWeight;
-    }
-    
-    track.points = smoothedPoints;
 }
 
 // Realistic stops functions
