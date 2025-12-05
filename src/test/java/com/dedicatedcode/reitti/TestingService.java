@@ -77,9 +77,16 @@ public class TestingService {
         GpxImporter importer = new GpxImporter(new ImportStateHolder(), new ImportProcessor() {
             @Override
             public void processBatch(User user, List<LocationPoint> batch) {
- 
-                //splitup batch in chunks of max 5 elements, call processLocationData for each chunk, after each call call also the trigger.handle method AI!
-                locationDataIngestPipeline.processLocationData(user.getUsername(), new ArrayList<>(batch));
+                // Split batch into chunks of max 5 elements
+                for (int i = 0; i < batch.size(); i += 5) {
+                    int endIndex = Math.min(i + 5, batch.size());
+                    List<LocationPoint> chunk = batch.subList(i, endIndex);
+                    
+                    locationDataIngestPipeline.processLocationData(user.getUsername(), new ArrayList<>(chunk));
+                    
+                    TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), null, UUID.randomUUID().toString());
+                    trigger.handle(triggerEvent);
+                }
             }
 
             @Override
