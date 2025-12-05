@@ -11,6 +11,8 @@ let paintMode = false;
 let paintActive = false; // Whether painting is currently active
 let lastPaintTime = 0;
 let paintThrottleMs = 100; // Minimum time between paint points
+let paintInterval = null; // Interval for automatic painting
+let lastMousePosition = null; // Store last mouse position for painting
 
 // Track colors for visual distinction
 const TRACK_COLORS = [
@@ -215,6 +217,16 @@ function onMapClick(e) {
     if (paintMode) {
         // Toggle paint active state
         paintActive = !paintActive;
+        lastMousePosition = e.latlng; // Store initial position
+        
+        if (paintActive) {
+            // Start automatic painting
+            startAutoPainting();
+        } else {
+            // Stop automatic painting
+            stopAutoPainting();
+        }
+        
         updatePaintModeButton();
         return;
     }
@@ -936,18 +948,9 @@ function groupPointsByUTCDay(points) {
 // New functions for Phase 2 features
 
 function onMapMouseMove(e) {
-    // Handle paint mode
+    // Update mouse position for paint mode
     if (paintMode && paintActive) {
-        const now = Date.now();
-        if (now - lastPaintTime >= paintThrottleMs) {
-            const currentTrack = tracks[currentTrackIndex];
-            if (currentTrack && currentTrack.points.length > 0) {
-                addPointWithInterpolation(e.latlng.lat, e.latlng.lng);
-            } else {
-                addPoint(e.latlng.lat, e.latlng.lng);
-            }
-            lastPaintTime = now;
-        }
+        lastMousePosition = e.latlng;
         return;
     }
     
@@ -1132,6 +1135,13 @@ function formatDistance(meters) {
 function togglePaintMode() {
     paintMode = !paintMode;
     paintActive = false; // Reset paint active state when toggling mode
+    
+    // Stop any active painting when toggling mode off
+    if (!paintMode) {
+        stopAutoPainting();
+        lastMousePosition = null;
+    }
+    
     updatePaintModeButton();
     
     // Change cursor style when paint mode is active
@@ -1156,6 +1166,30 @@ function updatePaintModeButton() {
     } else {
         button.textContent = 'Paint Mode: READY';
         button.className = 'control-button paint-ready';
+    }
+}
+
+function startAutoPainting() {
+    if (paintInterval) {
+        clearInterval(paintInterval);
+    }
+    
+    paintInterval = setInterval(() => {
+        if (paintActive && lastMousePosition) {
+            const currentTrack = tracks[currentTrackIndex];
+            if (currentTrack && currentTrack.points.length > 0) {
+                addPointWithInterpolation(lastMousePosition.lat, lastMousePosition.lng);
+            } else {
+                addPoint(lastMousePosition.lat, lastMousePosition.lng);
+            }
+        }
+    }, 500); // Add point every 500ms
+}
+
+function stopAutoPainting() {
+    if (paintInterval) {
+        clearInterval(paintInterval);
+        paintInterval = null;
     }
 }
 
