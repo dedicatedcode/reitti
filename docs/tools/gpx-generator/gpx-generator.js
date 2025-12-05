@@ -6,11 +6,12 @@ let polylines = [];
 let markers = [];
 let hoverTooltip;
 let previewLine;
-let autoMode = false;
 let paintMode = false;
 let paintActive = false; // Whether painting is currently active
 let lastPaintTime = 0;
 let paintThrottleMs = 100; // Minimum time between paint points
+let paintInterval = null; // Interval for automatic painting
+let lastMousePosition = null; // Store last mouse position for painting
 
 // Track colors for visual distinction
 const TRACK_COLORS = [
@@ -215,6 +216,23 @@ function onMapClick(e) {
     if (paintMode) {
         // Toggle paint active state
         paintActive = !paintActive;
+        lastMousePosition = e.latlng; // Store initial position
+        
+        if (paintActive) {
+            // Add first point immediately
+            const currentTrack = tracks[currentTrackIndex];
+            if (currentTrack && currentTrack.points.length > 0) {
+                addPointWithInterpolation(lastMousePosition.lat, lastMousePosition.lng);
+            } else {
+                addPoint(lastMousePosition.lat, lastMousePosition.lng);
+            }
+            // Start automatic painting
+            startAutoPainting();
+        } else {
+            // Stop automatic painting
+            stopAutoPainting();
+        }
+        
         updatePaintModeButton();
         return;
     }
@@ -541,7 +559,7 @@ function updateStatus() {
     
     const totalPoints = tracks.reduce((sum, track) => sum + track.points.length, 0);
     const maxSpeed = document.getElementById('maxSpeed').value;
-    const modeText = `Auto: ${autoMode ? 'ON' : 'OFF'} • Paint: ${paintStatus} • Speed: ${maxSpeed}km/h • Current: ${tracks[currentTrackIndex]?.name || 'None'}`;
+    const modeText = `Paint: ${paintStatus} • Speed: ${maxSpeed}km/h • Current: ${tracks[currentTrackIndex]?.name || 'None'}`;
     
     if (totalPoints === 0) {
         if (paintMode && paintActive) {
@@ -936,19 +954,26 @@ function groupPointsByUTCDay(points) {
 // New functions for Phase 2 features
 
 function onMapMouseMove(e) {
-    // Handle paint mode
-    if (paintMode && paintActive) {
-        const now = Date.now();
-        if (now - lastPaintTime >= paintThrottleMs) {
-            const currentTrack = tracks[currentTrackIndex];
-            if (currentTrack && currentTrack.points.length > 0) {
-                addPointWithInterpolation(e.latlng.lat, e.latlng.lng);
-            } else {
-                addPoint(e.latlng.lat, e.latlng.lng);
+    // Update mouse position for paint mode
+    if (paintMode) {
+        lastMousePosition = e.latlng;
+        if (paintActive) {
+            // Add point immediately when mouse moves during painting
+            const now = Date.now();
+            if (now - lastPaintTime >= paintThrottleMs) {
+                const currentTrack = tracks[currentTrackIndex];
+                if (currentTrack && currentTrack.points.length > 0) {
+                    addPointWithInterpolation(lastMousePosition.lat, lastMousePosition.lng);
+                } else {
+                    addPoint(lastMousePosition.lat, lastMousePosition.lng);
+                }
+                lastPaintTime = now;
+                
+                // Reset the auto-paint interval since we just added a point
+                resetAutoPaintInterval();
             }
-            lastPaintTime = now;
+            return; // Don't show preview when actively painting
         }
-        return;
     }
     
     const currentTrack = tracks[currentTrackIndex];
@@ -1055,21 +1080,6 @@ function applyGPSNoise(lat, lng, accuracyMeters) {
     };
 }
 
-// Auto-interpolation functions
-function toggleAutoMode() {
-    autoMode = !autoMode;
-    const button = document.getElementById('autoModeToggle');
-    button.textContent = `Auto Mode: ${autoMode ? 'ON' : 'OFF'}`;
-    
-    if (autoMode) {
-        button.className = 'control-button active';
-    } else {
-        button.className = 'control-button';
-    }
-    
-    updateStatus();
-}
-
 function addPointWithInterpolation(targetLat, targetLng) {
     const currentTrack = tracks[currentTrackIndex];
     if (!currentTrack || currentTrack.points.length === 0) {
@@ -1132,6 +1142,13 @@ function formatDistance(meters) {
 function togglePaintMode() {
     paintMode = !paintMode;
     paintActive = false; // Reset paint active state when toggling mode
+    
+    // Stop any active painting when toggling mode off
+    if (!paintMode) {
+        stopAutoPainting();
+        lastMousePosition = null;
+    }
+    
     updatePaintModeButton();
     
     // Change cursor style when paint mode is active
@@ -1156,6 +1173,49 @@ function updatePaintModeButton() {
     } else {
         button.textContent = 'Paint Mode: READY';
         button.className = 'control-button paint-ready';
+    }
+}
+
+function startAutoPainting() {
+    if (paintInterval) {
+        clearInterval(paintInterval);
+    }
+    
+    paintInterval = setInterval(() => {
+        if (paintActive && lastMousePosition) {
+            const currentTrack = tracks[currentTrackIndex];
+            if (currentTrack && currentTrack.points.length > 0) {
+                addPointWithInterpolation(lastMousePosition.lat, lastMousePosition.lng);
+            } else {
+                addPoint(lastMousePosition.lat, lastMousePosition.lng);
+            }
+            lastPaintTime = Date.now();
+        }
+    }, 500); // Add point every 500ms
+}
+
+function resetAutoPaintInterval() {
+    if (paintActive && paintInterval) {
+        // Restart the interval to prevent double-adding points
+        clearInterval(paintInterval);
+        paintInterval = setInterval(() => {
+            if (paintActive && lastMousePosition) {
+                const currentTrack = tracks[currentTrackIndex];
+                if (currentTrack && currentTrack.points.length > 0) {
+                    addPointWithInterpolation(lastMousePosition.lat, lastMousePosition.lng);
+                } else {
+                    addPoint(lastMousePosition.lat, lastMousePosition.lng);
+                }
+                lastPaintTime = Date.now();
+            }
+        }, 500);
+    }
+}
+
+function stopAutoPainting() {
+    if (paintInterval) {
+        clearInterval(paintInterval);
+        paintInterval = null;
     }
 }
 
