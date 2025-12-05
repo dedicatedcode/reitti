@@ -757,25 +757,45 @@ function downloadFile(content, filename, mimeType) {
 }
 
 // GPX file handling functions
-function handleGPXFile(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+function handleGPXFiles(event) {
+    const files = Array.from(event.target.files);
+    if (files.length === 0) return;
     
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            parseAndImportGPX(e.target.result, file.name);
-        } catch (error) {
-            alert('Error parsing GPX file: ' + error.message);
-        }
-    };
-    reader.readAsText(file);
+    let processedFiles = 0;
+    let totalPoints = 0;
+    let totalTracks = 0;
     
-    // Reset the input so the same file can be selected again
+    files.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const result = parseAndImportGPX(e.target.result, file.name, index === 0);
+                totalPoints += result.pointsCount;
+                totalTracks += result.tracksCount;
+                processedFiles++;
+                
+                // Show summary when all files are processed
+                if (processedFiles === files.length) {
+                    alert(`Successfully imported ${files.length} GPX file(s):\n${totalPoints} total points split into ${totalTracks} track(s).`);
+                }
+            } catch (error) {
+                alert(`Error parsing GPX file "${file.name}": ${error.message}`);
+                processedFiles++;
+            }
+        };
+        reader.readAsText(file);
+    });
+    
+    // Reset the input so the same files can be selected again
     event.target.value = '';
 }
 
-function parseAndImportGPX(gpxContent, filename) {
+function handleGPXFile(event) {
+    // Keep backward compatibility
+    handleGPXFiles(event);
+}
+
+function parseAndImportGPX(gpxContent, filename, isFirstFile = true) {
     const parser = new DOMParser();
     const gpxDoc = parser.parseFromString(gpxContent, 'text/xml');
     
@@ -841,7 +861,7 @@ function parseAndImportGPX(gpxContent, filename) {
     
     // Create tracks for each day
     let importedTracksCount = 0;
-    let isFirstImportedTrack = true;
+    let isFirstImportedTrack = isFirstFile;
     
     Object.keys(pointsByDay).sort().forEach(dayKey => {
         const dayPoints = pointsByDay[dayKey];
@@ -958,8 +978,11 @@ function parseAndImportGPX(gpxContent, filename) {
     updatePointsList();
     updateStatus();
     
-    // Show success message
-    alert(`Successfully imported ${trackPoints.length} points from ${filename}, split into ${importedTracksCount} track(s) by day.`);
+    // Return import statistics for summary
+    return {
+        pointsCount: trackPoints.length,
+        tracksCount: importedTracksCount
+    };
 }
 
 function groupPointsByUTCDay(points) {
