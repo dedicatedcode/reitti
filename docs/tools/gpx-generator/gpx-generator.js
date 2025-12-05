@@ -959,6 +959,20 @@ function onMapMouseMove(e) {
     if (paintMode) {
         lastMousePosition = e.latlng;
         if (paintActive) {
+            // Add point immediately when mouse moves during painting
+            const now = Date.now();
+            if (now - lastPaintTime >= paintThrottleMs) {
+                const currentTrack = tracks[currentTrackIndex];
+                if (currentTrack && currentTrack.points.length > 0) {
+                    addPointWithInterpolation(lastMousePosition.lat, lastMousePosition.lng);
+                } else {
+                    addPoint(lastMousePosition.lat, lastMousePosition.lng);
+                }
+                lastPaintTime = now;
+                
+                // Reset the auto-paint interval since we just added a point
+                resetAutoPaintInterval();
+            }
             return; // Don't show preview when actively painting
         }
     }
@@ -1191,8 +1205,27 @@ function startAutoPainting() {
             } else {
                 addPoint(lastMousePosition.lat, lastMousePosition.lng);
             }
+            lastPaintTime = Date.now();
         }
     }, 500); // Add point every 500ms
+}
+
+function resetAutoPaintInterval() {
+    if (paintActive && paintInterval) {
+        // Restart the interval to prevent double-adding points
+        clearInterval(paintInterval);
+        paintInterval = setInterval(() => {
+            if (paintActive && lastMousePosition) {
+                const currentTrack = tracks[currentTrackIndex];
+                if (currentTrack && currentTrack.points.length > 0) {
+                    addPointWithInterpolation(lastMousePosition.lat, lastMousePosition.lng);
+                } else {
+                    addPoint(lastMousePosition.lat, lastMousePosition.lng);
+                }
+                lastPaintTime = Date.now();
+            }
+        }, 500);
+    }
 }
 
 function stopAutoPainting() {
