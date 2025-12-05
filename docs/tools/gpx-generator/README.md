@@ -24,10 +24,14 @@ For full functionality, serve the files through a local HTTP server:
 ```bash
 # Navigate to the gpx-generator directory
 cd docs/tools/gpx-generator
+```
 
+```bash
 # Python 3
 python -m http.server 8000
+```
 
+```bash
 # Python 2 (if needed)
 python -m SimpleHTTPServer 8000
 ```
