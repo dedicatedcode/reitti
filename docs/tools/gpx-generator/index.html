@@ -595,9 +595,11 @@
                         <label class="control-label">&nbsp;</label>
                         <div class="button-group">
                             <button onclick="newTrack()" class="control-button">New Track</button>
+                            <button onclick="document.getElementById('gpxFileInput').click()" class="control-button">Open GPX</button>
                             <button onclick="exportAllGPX()" class="control-button success">Export All</button>
                             <button onclick="clearAll()" class="control-button danger">Clear All</button>
                         </div>
+                        <input type="file" id="gpxFileInput" accept=".gpx" style="display: none;" onchange="handleGPXFile(event)">
                     </div>
                 </div>
             </div>

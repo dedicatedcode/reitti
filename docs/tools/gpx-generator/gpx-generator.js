@@ -738,6 +738,201 @@ function downloadFile(content, filename, mimeType) {
     URL.revokeObjectURL(url);
 }
 
+// GPX file handling functions
+function handleGPXFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            parseAndImportGPX(e.target.result, file.name);
+        } catch (error) {
+            alert('Error parsing GPX file: ' + error.message);
+        }
+    };
+    reader.readAsText(file);
+    
+    // Reset the input so the same file can be selected again
+    event.target.value = '';
+}
+
+function parseAndImportGPX(gpxContent, filename) {
+    const parser = new DOMParser();
+    const gpxDoc = parser.parseFromString(gpxContent, 'text/xml');
+    
+    // Check for parsing errors
+    const parserError = gpxDoc.querySelector('parsererror');
+    if (parserError) {
+        throw new Error('Invalid GPX file format');
+    }
+    
+    // Extract track points from all tracks and track segments
+    const trackPoints = [];
+    const tracks = gpxDoc.querySelectorAll('trk');
+    
+    tracks.forEach(track => {
+        const trackSegments = track.querySelectorAll('trkseg');
+        trackSegments.forEach(segment => {
+            const points = segment.querySelectorAll('trkpt');
+            points.forEach(point => {
+                const lat = parseFloat(point.getAttribute('lat'));
+                const lng = parseFloat(point.getAttribute('lon'));
+                
+                if (isNaN(lat) || isNaN(lng)) return;
+                
+                const timeElement = point.querySelector('time');
+                const elevationElement = point.querySelector('ele');
+                
+                let timestamp = new Date();
+                if (timeElement && timeElement.textContent) {
+                    timestamp = new Date(timeElement.textContent);
+                    if (isNaN(timestamp.getTime())) {
+                        timestamp = new Date();
+                    }
+                }
+                
+                let elevation = parseFloat(document.getElementById('elevation').value);
+                if (elevationElement && elevationElement.textContent) {
+                    const parsedElevation = parseFloat(elevationElement.textContent);
+                    if (!isNaN(parsedElevation)) {
+                        elevation = parsedElevation;
+                    }
+                }
+                
+                trackPoints.push({
+                    lat: lat,
+                    lng: lng,
+                    timestamp: timestamp,
+                    elevation: elevation
+                });
+            });
+        });
+    });
+    
+    if (trackPoints.length === 0) {
+        alert('No valid track points found in the GPX file.');
+        return;
+    }
+    
+    // Sort points by timestamp
+    trackPoints.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    
+    // Group points by UTC day
+    const pointsByDay = groupPointsByUTCDay(trackPoints);
+    
+    // Create tracks for each day
+    let importedTracksCount = 0;
+    Object.keys(pointsByDay).sort().forEach(dayKey => {
+        const dayPoints = pointsByDay[dayKey];
+        if (dayPoints.length === 0) return;
+        
+        // Collapse all existing tracks
+        tracks.forEach(track => {
+            track.collapsed = true;
+        });
+        
+        // Create new track for this day
+        const trackIndex = tracks.length;
+        const color = TRACK_COLORS[trackIndex % TRACK_COLORS.length];
+        const trackName = `${filename.replace('.gpx', '')} - ${dayKey}`;
+        
+        const track = {
+            id: trackIndex,
+            name: trackName,
+            points: [],
+            color: color,
+            collapsed: false,
+            startTime: dayPoints[0].timestamp
+        };
+        
+        tracks.push(track);
+        
+        // Create polyline for this track
+        const polyline = L.polyline([], {
+            color: color,
+            weight: 3,
+            opacity: 0.7
+        }).addTo(map);
+        polylines.push(polyline);
+        
+        // Add points to the track
+        dayPoints.forEach((point, pointIndex) => {
+            const trackPoint = {
+                id: pointIndex,
+                trackId: trackIndex,
+                lat: point.lat,
+                lng: point.lng,
+                originalLat: point.lat,
+                originalLng: point.lng,
+                timestamp: point.timestamp,
+                elevation: point.elevation,
+                accuracy: 0 // Imported points have no accuracy simulation
+            };
+            
+            track.points.push(trackPoint);
+            
+            // Add marker to map
+            const marker = L.marker([point.lat, point.lng], {
+                title: `${track.name} - Point ${pointIndex + 1}`,
+                icon: L.divIcon({
+                    className: 'small-marker',
+                    html: `<div style="background-color: ${color}; width: 8px; height: 8px; border-radius: 50%; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>`,
+                    iconSize: [12, 12],
+                    iconAnchor: [6, 6]
+                })
+            }).addTo(map);
+            
+            // Add right-click context menu for deletion
+            marker.on('contextmenu', function(e) {
+                e.originalEvent.preventDefault();
+                removePoint(trackIndex, pointIndex);
+            });
+            
+            markers.push(marker);
+        });
+        
+        // Update polyline for this track
+        updatePolyline(trackIndex);
+        importedTracksCount++;
+    });
+    
+    // Set current track to the last imported track
+    if (importedTracksCount > 0) {
+        currentTrackIndex = tracks.length - 1;
+        
+        // Fit map to show all imported points
+        if (trackPoints.length > 0) {
+            const group = new L.featureGroup(markers.slice(-trackPoints.length));
+            map.fitBounds(group.getBounds().pad(0.1));
+        }
+    }
+    
+    // Update UI
+    updatePointsList();
+    updateStatus();
+    
+    // Show success message
+    alert(`Successfully imported ${trackPoints.length} points from ${filename}, split into ${importedTracksCount} track(s) by day.`);
+}
+
+function groupPointsByUTCDay(points) {
+    const pointsByDay = {};
+    
+    points.forEach(point => {
+        // Get UTC date string (YYYY-MM-DD)
+        const utcDate = point.timestamp.toISOString().split('T')[0];
+        
+        if (!pointsByDay[utcDate]) {
+            pointsByDay[utcDate] = [];
+        }
+        
+        pointsByDay[utcDate].push(point);
+    });
+    
+    return pointsByDay;
+}
+
 // New functions for Phase 2 features
 
 function onMapMouseMove(e) {
