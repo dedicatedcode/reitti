@@ -1,12 +1,16 @@
 package com.dedicatedcode.reitti;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
+import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
-import com.dedicatedcode.reitti.service.ImportBatchProcessor;
+import com.dedicatedcode.reitti.service.ImportProcessor;
+import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.UserService;
 import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
 import com.dedicatedcode.reitti.service.importer.GpxImporter;
+import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import org.awaitility.Awaitility;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
@@ -15,6 +19,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -50,7 +55,10 @@ public class TestingService {
     @Autowired
     private UserService userService;
     @Autowired
-    private ImportBatchProcessor importBatchProcessor;
+    private ImportProcessor importBatchProcessor;
+
+    @Autowired
+    private LocationDataIngestPipeline locationDataIngestPipeline;
 
     public void importData(User user, String path) {
         InputStream is = getClass().getResourceAsStream(path);
@@ -61,6 +69,31 @@ public class TestingService {
         } else {
             throw new IllegalStateException("Unsupported file type: " + path);
         }
+    }
+
+
+
+    public void processWhileImport(User user, String file) {
+        GpxImporter importer = new GpxImporter(new ImportStateHolder(), new ImportProcessor() {
+            @Override
+            public void processBatch(User user, List<LocationPoint> batch) {
+ 
+                //splitup batch in chunks of max 5 elements, call processLocationData for each chunk, after each call call also the trigger.handle method AI!
+                locationDataIngestPipeline.processLocationData(user.getUsername(), new ArrayList<>(batch));
+            }
+
+            @Override
+            public void scheduleProcessingTrigger(String username) {
+                TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(username, null, UUID.randomUUID().toString());
+                trigger.handle(triggerEvent);
+            }
+
+            @Override
+            public boolean isIdle() {
+                return false;
+            }
+        });
+        importer.importGpx(getClass().getResourceAsStream(file), user);
     }
 
     public User admin() {
@@ -76,6 +109,10 @@ public class TestingService {
         trigger.start();
         awaitDataImport(timeout);
     }
+
+
+
+
     public void awaitDataImport(int seconds) {
         AtomicLong lastRawCount = new AtomicLong(-1);
         AtomicLong lastVisitCount = new AtomicLong(-1);
