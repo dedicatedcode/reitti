@@ -6,7 +6,6 @@ let polylines = [];
 let markers = [];
 let hoverTooltip;
 let previewLine;
-let autoMode = false;
 let paintMode = false;
 let paintActive = false; // Whether painting is currently active
 let lastPaintTime = 0;
@@ -560,7 +559,7 @@ function updateStatus() {
     
     const totalPoints = tracks.reduce((sum, track) => sum + track.points.length, 0);
     const maxSpeed = document.getElementById('maxSpeed').value;
-    const modeText = `Auto: ${autoMode ? 'ON' : 'OFF'} • Paint: ${paintStatus} • Speed: ${maxSpeed}km/h • Current: ${tracks[currentTrackIndex]?.name || 'None'}`;
+    const modeText = `Paint: ${paintStatus} • Speed: ${maxSpeed}km/h • Current: ${tracks[currentTrackIndex]?.name || 'None'}`;
     
     if (totalPoints === 0) {
         if (paintMode && paintActive) {
@@ -1079,21 +1078,6 @@ function applyGPSNoise(lat, lng, accuracyMeters) {
         lat: lat + latOffset,
         lng: lng + lngOffset
     };
-}
-
-// Auto-interpolation functions
-function toggleAutoMode() {
-    autoMode = !autoMode;
-    const button = document.getElementById('autoModeToggle');
-    button.textContent = `Auto Mode: ${autoMode ? 'ON' : 'OFF'}`;
-    
-    if (autoMode) {
-        button.className = 'control-button active';
-    } else {
-        button.className = 'control-button';
-    }
-    
-    updateStatus();
 }
 
 function addPointWithInterpolation(targetLat, targetLng) {
