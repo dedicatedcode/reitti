@@ -160,10 +160,11 @@ public class UnifiedLocationProcessingService {
             traceOutput.append("Duration: ").append(duration).append("ms\n\n");
             
             // Input Visits Table
+            // add a new column to the Input Visits Table with a linkt to google maps. The link follows this pattern https://www.google.com/maps/search/?api=1&query=latitude,longitude AI!
             traceOutput.append("INPUT VISITS (").append(mergingResult.inputVisits.size()).append("):\n");
-            traceOutput.append("┌─────────────────────┬─────────────────────┬──────────┬─────────────┬─────────────┐\n");
-            traceOutput.append("│ Start Time          │ End Time            │ Duration │ Latitude    │ Longitude   │\n");
-            traceOutput.append("├─────────────────────┼─────────────────────┼──────────┼─────────────┼─────────────┤\n");
+            traceOutput.append("┌─────────────────────┬─────────────────────┬───────────┬─────────────┬─────────────┐\n");
+            traceOutput.append("│ Start Time          │ End Time            │ Duration  │ Latitude    │ Longitude   │\n");
+            traceOutput.append("├─────────────────────┼─────────────────────┼───────────┼─────────────┼─────────────┤\n");
             for (Visit visit : mergingResult.inputVisits) {
                 traceOutput.append(String.format("│ %-19s │ %-19s │ %8ds │ %11.6f │ %11.6f │\n",
                     visit.getStartTime().toString().substring(0, 19),
@@ -172,13 +173,13 @@ public class UnifiedLocationProcessingService {
                     visit.getLatitude(),
                     visit.getLongitude()));
             }
-            traceOutput.append("└─────────────────────┴─────────────────────┴──────────┴─────────────┴─────────────┘\n\n");
+            traceOutput.append("└─────────────────────┴─────────────────────┴───────────┴─────────────┴─────────────┘\n\n");
             
             // Processed Visits Table
             traceOutput.append("PROCESSED VISITS (").append(mergingResult.processedVisits.size()).append("):\n");
-            traceOutput.append("┌─────────────────────┬─────────────────────┬──────────┬─────────────┬─────────────┬──────────────────────┐\n");
-            traceOutput.append("│ Start Time          │ End Time            │ Duration │ Latitude    │ Longitude   │ Place Name           │\n");
-            traceOutput.append("├─────────────────────┼─────────────────────┼──────────┼─────────────┼─────────────┼──────────────────────┤\n");
+            traceOutput.append("┌─────────────────────┬─────────────────────┬───────────┬─────────────┬─────────────┬──────────────────────┐\n");
+            traceOutput.append("│ Start Time          │ End Time            │ Duration  │ Latitude    │ Longitude   │ Place Name           │\n");
+            traceOutput.append("├─────────────────────┼─────────────────────┼───────────┼─────────────┼─────────────┼──────────────────────┤\n");
             for (ProcessedVisit visit : mergingResult.processedVisits) {
                 String placeName = visit.getPlace().getName() != null ? visit.getPlace().getName() : "Unnamed Place";
                 if (placeName.length() > 20) placeName = placeName.substring(0, 17) + "...";
@@ -190,13 +191,13 @@ public class UnifiedLocationProcessingService {
                     visit.getPlace().getLongitudeCentroid(),
                     placeName));
             }
-            traceOutput.append("└─────────────────────┴─────────────────────┴──────────┴─────────────┴─────────────┴──────────────────────┘\n\n");
+            traceOutput.append("└─────────────────────┴─────────────────────┴───────────┴─────────────┴─────────────┴──────────────────────┘\n\n");
             
             // Trips Table
             traceOutput.append("TRIPS (").append(tripResult.trips.size()).append("):\n");
-            traceOutput.append("┌─────────────────────┬─────────────────────┬──────────┬──────────┬──────────┬─────────────────┐\n");
-            traceOutput.append("│ Start Time          │ End Time            │ Duration │ Distance │ Traveled │ Transport Mode  │\n");
-            traceOutput.append("├─────────────────────┼─────────────────────┼──────────┼──────────┼──────────┼─────────────────┤\n");
+            traceOutput.append("┌─────────────────────┬─────────────────────┬───────────┬───────────┬───────────┬─────────────────┐\n");
+            traceOutput.append("│ Start Time          │ End Time            │ Duration  │ Distance  │ Traveled  │ Transport Mode  │\n");
+            traceOutput.append("├─────────────────────┼─────────────────────┼───────────┼───────────┼───────────┼─────────────────┤\n");
             for (Trip trip : tripResult.trips) {
                 traceOutput.append(String.format("│ %-19s │ %-19s │ %8ds │ %8.0fm │ %8.0fm │ %-15s │\n",
                     trip.getStartTime().toString().substring(0, 19),
@@ -204,9 +205,9 @@ public class UnifiedLocationProcessingService {
                     trip.getDurationSeconds(),
                     trip.getEstimatedDistanceMeters(),
                     trip.getTravelledDistanceMeters(),
-                    trip.getTransportMode().toString()));
+                    trip.getTransportModeInferred().toString()));
             }
-            traceOutput.append("└─────────────────────┴─────────────────────┴──────────┴──────────┴──────────┴─────────────────┘\n");
+            traceOutput.append("└─────────────────────┴─────────────────────┴───────────┴───────────┴───────────┴─────────────────┘\n");
             
             logger.trace(traceOutput.toString());
         }
