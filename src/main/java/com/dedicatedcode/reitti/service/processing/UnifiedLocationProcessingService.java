@@ -150,6 +150,7 @@ public class UnifiedLocationProcessingService {
         }
 
         long duration = System.currentTimeMillis() - startTime;
+        // when log level is set to trace, enable here a tabular logout of all the data, we need in that order mergingResult.inputVisits, mergingResult.processedVisits, tripResult.trips, detectionResult.searchStart, detectionResult.searchEnd and the start and end of the event.  Else log like before AI!
         logger.info("Completed processing for user [{}] in {}ms: {} visits → {} processed visits → {} trips",
                 username, duration, detectionResult.visits.size(),
                 mergingResult.processedVisits.size(), tripResult.trips.size());
@@ -177,12 +178,10 @@ public class UnifiedLocationProcessingService {
         // Find and delete affected visits
         List<Visit> affectedVisits;
         if (previewId == null) {
-            affectedVisits = visitJdbcService.findByUserAndTimeAfterAndStartTimeBefore(
-                    user, windowStart, windowEnd);
+            affectedVisits = visitJdbcService.findByUserAndTimeAfterAndStartTimeBefore(user, windowStart, windowEnd);
             visitJdbcService.delete(affectedVisits);
         } else {
-            affectedVisits = previewVisitJdbcService.findByUserAndTimeAfterAndStartTimeBefore(
-                    user, previewId, windowStart, windowEnd);
+            affectedVisits = previewVisitJdbcService.findByUserAndTimeAfterAndStartTimeBefore(user, previewId, windowStart, windowEnd);
             previewVisitJdbcService.delete(affectedVisits);
         }
 
