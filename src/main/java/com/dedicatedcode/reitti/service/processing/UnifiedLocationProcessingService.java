@@ -150,7 +150,67 @@ public class UnifiedLocationProcessingService {
         }
 
         long duration = System.currentTimeMillis() - startTime;
-        // when log level is set to trace, enable here a tabular logout of all the data, we need in that order mergingResult.inputVisits, mergingResult.processedVisits, tripResult.trips, detectionResult.searchStart, detectionResult.searchEnd and the start and end of the event.  Else log like before AI!
+        
+        if (logger.isTraceEnabled()) {
+            // Tabular output for trace level logging
+            StringBuilder traceOutput = new StringBuilder();
+            traceOutput.append("\n=== PROCESSING RESULTS FOR USER [").append(username).append("] ===\n");
+            traceOutput.append("Event Period: ").append(event.getEarliest()).append(" → ").append(event.getLatest()).append("\n");
+            traceOutput.append("Search Period: ").append(detectionResult.searchStart).append(" → ").append(detectionResult.searchEnd).append("\n");
+            traceOutput.append("Duration: ").append(duration).append("ms\n\n");
+            
+            // Input Visits Table
+            traceOutput.append("INPUT VISITS (").append(mergingResult.inputVisits.size()).append("):\n");
+            traceOutput.append("┌─────────────────────┬─────────────────────┬──────────┬─────────────┬─────────────┐\n");
+            traceOutput.append("│ Start Time          │ End Time            │ Duration │ Latitude    │ Longitude   │\n");
+            traceOutput.append("├─────────────────────┼─────────────────────┼──────────┼─────────────┼─────────────┤\n");
+            for (Visit visit : mergingResult.inputVisits) {
+                traceOutput.append(String.format("│ %-19s │ %-19s │ %8ds │ %11.6f │ %11.6f │\n",
+                    visit.getStartTime().toString().substring(0, 19),
+                    visit.getEndTime().toString().substring(0, 19),
+                    visit.getDurationSeconds(),
+                    visit.getLatitude(),
+                    visit.getLongitude()));
+            }
+            traceOutput.append("└─────────────────────┴─────────────────────┴──────────┴─────────────┴─────────────┘\n\n");
+            
+            // Processed Visits Table
+            traceOutput.append("PROCESSED VISITS (").append(mergingResult.processedVisits.size()).append("):\n");
+            traceOutput.append("┌─────────────────────┬─────────────────────┬──────────┬─────────────┬─────────────┬──────────────────────┐\n");
+            traceOutput.append("│ Start Time          │ End Time            │ Duration │ Latitude    │ Longitude   │ Place Name           │\n");
+            traceOutput.append("├─────────────────────┼─────────────────────┼──────────┼─────────────┼─────────────┼──────────────────────┤\n");
+            for (ProcessedVisit visit : mergingResult.processedVisits) {
+                String placeName = visit.getPlace().getName() != null ? visit.getPlace().getName() : "Unnamed Place";
+                if (placeName.length() > 20) placeName = placeName.substring(0, 17) + "...";
+                traceOutput.append(String.format("│ %-19s │ %-19s │ %8ds │ %11.6f │ %11.6f │ %-20s │\n",
+                    visit.getStartTime().toString().substring(0, 19),
+                    visit.getEndTime().toString().substring(0, 19),
+                    visit.getDurationSeconds(),
+                    visit.getPlace().getLatitudeCentroid(),
+                    visit.getPlace().getLongitudeCentroid(),
+                    placeName));
+            }
+            traceOutput.append("└─────────────────────┴─────────────────────┴──────────┴─────────────┴─────────────┴──────────────────────┘\n\n");
+            
+            // Trips Table
+            traceOutput.append("TRIPS (").append(tripResult.trips.size()).append("):\n");
+            traceOutput.append("┌─────────────────────┬─────────────────────┬──────────┬──────────┬──────────┬─────────────────┐\n");
+            traceOutput.append("│ Start Time          │ End Time            │ Duration │ Distance │ Traveled │ Transport Mode  │\n");
+            traceOutput.append("├─────────────────────┼─────────────────────┼──────────┼──────────┼──────────┼─────────────────┤\n");
+            for (Trip trip : tripResult.trips) {
+                traceOutput.append(String.format("│ %-19s │ %-19s │ %8ds │ %8.0fm │ %8.0fm │ %-15s │\n",
+                    trip.getStartTime().toString().substring(0, 19),
+                    trip.getEndTime().toString().substring(0, 19),
+                    trip.getDurationSeconds(),
+                    trip.getEstimatedDistanceMeters(),
+                    trip.getTravelledDistanceMeters(),
+                    trip.getTransportMode().toString()));
+            }
+            traceOutput.append("└─────────────────────┴─────────────────────┴──────────┴──────────┴──────────┴─────────────────┘\n");
+            
+            logger.trace(traceOutput.toString());
+        }
+        
         logger.info("Completed processing for user [{}] in {}ms: {} visits → {} processed visits → {} trips",
                 username, duration, detectionResult.visits.size(),
                 mergingResult.processedVisits.size(), tripResult.trips.size());
