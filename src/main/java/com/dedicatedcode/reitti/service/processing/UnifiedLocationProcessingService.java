@@ -160,20 +160,22 @@ public class UnifiedLocationProcessingService {
             traceOutput.append("Duration: ").append(duration).append("ms\n\n");
             
             // Input Visits Table
-            // add a new column to the Input Visits Table with a linkt to google maps. The link follows this pattern https://www.google.com/maps/search/?api=1&query=latitude,longitude AI!
             traceOutput.append("INPUT VISITS (").append(mergingResult.inputVisits.size()).append("):\n");
-            traceOutput.append("┌─────────────────────┬─────────────────────┬───────────┬─────────────┬─────────────┐\n");
-            traceOutput.append("│ Start Time          │ End Time            │ Duration  │ Latitude    │ Longitude   │\n");
-            traceOutput.append("├─────────────────────┼─────────────────────┼───────────┼─────────────┼─────────────┤\n");
+            traceOutput.append("┌─────────────────────┬─────────────────────┬───────────┬─────────────┬─────────────┬──────────────────────────────────────────────────────────────────────┐\n");
+            traceOutput.append("│ Start Time          │ End Time            │ Duration  │ Latitude    │ Longitude   │ Google Maps Link                                                     │\n");
+            traceOutput.append("├─────────────────────┼─────────────────────┼───────────┼─────────────┼─────────────┼──────────────────────────────────────────────────────────────────────┤\n");
             for (Visit visit : mergingResult.inputVisits) {
-                traceOutput.append(String.format("│ %-19s │ %-19s │ %8ds │ %11.6f │ %11.6f │\n",
+                String googleMapsLink = String.format("https://www.google.com/maps/search/?api=1&query=%f,%f", 
+                    visit.getLatitude(), visit.getLongitude());
+                traceOutput.append(String.format("│ %-19s │ %-19s │ %8ds │ %11.6f │ %11.6f │ %-68s │\n",
                     visit.getStartTime().toString().substring(0, 19),
                     visit.getEndTime().toString().substring(0, 19),
                     visit.getDurationSeconds(),
                     visit.getLatitude(),
-                    visit.getLongitude()));
+                    visit.getLongitude(),
+                    googleMapsLink));
             }
-            traceOutput.append("└─────────────────────┴─────────────────────┴───────────┴─────────────┴─────────────┘\n\n");
+            traceOutput.append("└─────────────────────┴─────────────────────┴───────────┴─────────────┴─────────────┴──────────────────────────────────────────────────────────────────────┘\n\n");
             
             // Processed Visits Table
             traceOutput.append("PROCESSED VISITS (").append(mergingResult.processedVisits.size()).append("):\n");
