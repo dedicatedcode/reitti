@@ -46,14 +46,14 @@ public class MessageDispatcherService {
 
     @RabbitListener(queues = RabbitMQConfig.USER_EVENT_QUEUE)
     public void handleUserNotificationEvent(SSEEvent event) {
-        logger.debug("Dispatching SSEEvent: {}", event);
+        logger.trace("Dispatching SSEEvent: {}", event);
         this.userJdbcService.findById(event.getUserId()).ifPresentOrElse(user -> this.userSseEmitterService.sendEventToUser(user, event), () -> logger.warn("User not found for user: {}", event.getUserId()));
     }
 
     @RabbitListener(queues = RabbitMQConfig.TRIGGER_PROCESSING_PIPELINE_QUEUE, concurrency = "${reitti.events.concurrency}")
     public void handleTriggerProcessingEvent(TriggerProcessingEvent event) {
         logger.info("Dispatching TriggerProcessingEvent {}", event);
-        processingPipelineTrigger.handle(event);
+        processingPipelineTrigger.handle(event, false);
         visitDetectionPreviewService.updatePreviewStatus(event.getPreviewId());
     }
 }

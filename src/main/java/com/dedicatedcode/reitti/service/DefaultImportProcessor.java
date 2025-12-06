@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
@@ -18,9 +17,9 @@ import java.util.UUID;
 import java.util.concurrent.*;
 
 @Component
-public class ImportBatchProcessor {
-    
-    private static final Logger logger = LoggerFactory.getLogger(ImportBatchProcessor.class);
+public class DefaultImportProcessor implements ImportProcessor {
+
+    private static final Logger logger = LoggerFactory.getLogger(DefaultImportProcessor.class);
 
     private final LocationDataIngestPipeline locationDataIngestPipeline;
     private final int batchSize;
@@ -28,8 +27,8 @@ public class ImportBatchProcessor {
     private final ProcessingPipelineTrigger processingPipelineTrigger;
     private final ScheduledExecutorService scheduler;
     private final ConcurrentHashMap<String, ScheduledFuture<?>> pendingTriggers;
-    
-    public ImportBatchProcessor(
+
+    public DefaultImportProcessor(
             LocationDataIngestPipeline locationDataIngestPipeline,
             @Value("${reitti.import.batch-size:10000}") int batchSize,
             @Value("${reitti.import.processing-idle-start-time:15}") int processingIdleStartTime,
@@ -41,40 +40,40 @@ public class ImportBatchProcessor {
         this.scheduler = Executors.newScheduledThreadPool(2);
         this.pendingTriggers = new ConcurrentHashMap<>();
     }
-    
+
+    @Override
     public void processBatch(User user, List<LocationPoint> batch) {
-        LocationDataEvent event = new LocationDataEvent(
-                user.getUsername(),
-                new ArrayList<>(batch),
-                UUID.randomUUID().toString()
-        );
         logger.debug("Sending batch of {} locations for storing", batch.size());
-        locationDataIngestPipeline.processLocationData(event);
+        locationDataIngestPipeline.processLocationData(user.getUsername(), new ArrayList<>(batch));
         logger.debug("Sending batch of {} locations for processing", batch.size());
         scheduleProcessingTrigger(user.getUsername());
     }
-    
-    private void scheduleProcessingTrigger(String username) {
-        ScheduledFuture<?> existingTrigger = pendingTriggers.get(username);
-        if (existingTrigger != null && !existingTrigger.isDone()) {
-            existingTrigger.cancel(false);
-        }
-        
-        ScheduledFuture<?> newTrigger = scheduler.schedule(() -> {
-            try {
-                logger.debug("Triggered processing for user: {}", username);
-                TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(username, null, UUID.randomUUID().toString());
-                processingPipelineTrigger.handle(triggerEvent);
 
-                pendingTriggers.remove(username);
-            } catch (Exception e) {
-                logger.error("Failed to trigger processing for user: {}", username, e);
+    @Override
+    public void scheduleProcessingTrigger(String username) {
+        {
+            ScheduledFuture<?> existingTrigger = pendingTriggers.get(username);
+            if (existingTrigger != null && !existingTrigger.isDone()) {
+                existingTrigger.cancel(false);
             }
-        }, processingIdleStartTime, TimeUnit.SECONDS);
-        
-        pendingTriggers.put(username, newTrigger);
+
+            ScheduledFuture<?> newTrigger = scheduler.schedule(() -> {
+                try {
+                    DefaultImportProcessor.logger.debug("Triggered processing for user: {}", username);
+                    TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(username, null, UUID.randomUUID().toString());
+                    processingPipelineTrigger.handle(triggerEvent, false);
+
+                    pendingTriggers.remove(username);
+                } catch (Exception e) {
+                    DefaultImportProcessor.logger.error("Failed to trigger processing for user: {}", username, e);
+                }
+            }, processingIdleStartTime, TimeUnit.SECONDS);
+
+            pendingTriggers.put(username, newTrigger);
+        }
     }
 
+    @Override
     public boolean isIdle() {
         return pendingTriggers.isEmpty() || pendingTriggers.values().stream().allMatch(ScheduledFuture::isDone);
     }

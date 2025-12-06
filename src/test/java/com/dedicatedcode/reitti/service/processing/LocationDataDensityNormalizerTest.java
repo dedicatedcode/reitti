@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -38,6 +39,34 @@ class LocationDataDensityNormalizerTest {
     void setUp() {
         testingService.clearData();
         testUser = testingService.randomUser();
+    }
+
+    @Test
+    void shouldNotHaveIgnoredSyntheticPoints() {
+        List<RawLocationPoint> points = new ArrayList<>();
+        points.add(createAndSaveRawPoint(Instant.parse("2013-04-15T06:31:26.860000Z"), 50.0, 8.0));
+        points.add(createAndSaveRawPoint(Instant.parse("2013-04-15T06:32:31.475000Z"), 50.0, 8.0));
+        points.add(createAndSaveRawPoint(Instant.parse("2013-04-15T06:33:32.406000Z"), 50.0, 8.0));
+        points.add(createAndSaveRawPoint(Instant.parse("2013-04-15T06:34:32.478000Z"), 50.0, 8.0));
+        points.add(createAndSaveRawPoint(Instant.parse("2013-04-15T06:35:32.492000Z"), 50.0, 8.0));
+        points.add(createAndSaveRawPoint(Instant.parse("2013-04-15T06:36:32.566000Z"), 50.0, 8.0));
+
+        normalizer.normalize(testUser, points.stream().map(rlp -> {
+            LocationPoint locationPoint = new LocationPoint();
+            locationPoint.setLatitude(rlp.getLatitude());
+            locationPoint.setLongitude(rlp.getLongitude());
+            locationPoint.setTimestamp(rlp.getTimestamp().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+            locationPoint.setAccuracyMeters(10.0);
+            locationPoint.setElevationMeters(100.0);
+            return locationPoint;
+        }).toList());
+
+        List<RawLocationPoint> storedPoints = this.rawLocationPointService.findByUserAndProcessedIsFalseOrderByTimestampWithLimit(testUser, 1000, 0);
+
+
+        assertEquals(8, storedPoints.size());
+        assertEquals(0, storedPoints.stream().filter(RawLocationPoint::isIgnored).count());
+        assertEquals(2, storedPoints.stream().filter(RawLocationPoint::isSynthetic).count());
     }
 
     @Test

@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.ImportBatchProcessor;
+import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
@@ -27,9 +27,9 @@ public class GoogleRecordsImporter {
     
     private final ObjectMapper objectMapper;
     private final ImportStateHolder stateHolder;
-    private final ImportBatchProcessor batchProcessor;
+    private final DefaultImportProcessor batchProcessor;
     
-    public GoogleRecordsImporter(ObjectMapper objectMapper, ImportStateHolder stateHolder, ImportBatchProcessor batchProcessor) {
+    public GoogleRecordsImporter(ObjectMapper objectMapper, ImportStateHolder stateHolder, DefaultImportProcessor batchProcessor) {
         this.objectMapper = objectMapper;
         this.stateHolder = stateHolder;
         this.batchProcessor = batchProcessor;

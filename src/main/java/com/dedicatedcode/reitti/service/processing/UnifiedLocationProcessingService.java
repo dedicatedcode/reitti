@@ -277,7 +277,8 @@ public class UnifiedLocationProcessingService {
         Map<Integer, List<RawLocationPoint>> clusteredByLocation = new TreeMap<>();
         for (ClusteredPoint cp : clusteredPoints.stream().filter(clusteredPoint -> !clusteredPoint.getPoint().isIgnored()).toList()) {
             if (cp.getClusterId() != null) {
-                clusteredByLocation.computeIfAbsent(cp.getClusterId(), _ -> new ArrayList<>())
+                clusteredByLocation
+                        .computeIfAbsent(cp.getClusterId(), _ -> new ArrayList<>())
                         .add(cp.getPoint());
             }
         }
@@ -443,7 +444,7 @@ public class UnifiedLocationProcessingService {
 
         //split them up when time is x seconds between
         for (List<RawLocationPoint> clusteredByLocation : points.values()) {
-            logger.debug("Start splitting up geospatial cluster with [{}] elements based on minimum time [{}]s between points", clusteredByLocation.size(), visitDetectionParameters.getMinimumStayTimeInSeconds());
+            logger.debug("Start splitting up geospatial cluster with [{}] elements based on minimum time [{}]s between points", clusteredByLocation.size(), visitDetectionParameters.getMaxMergeTimeBetweenSameStayPoints());
             //first sort them by timestamp
             clusteredByLocation.sort(Comparator.comparing(RawLocationPoint::getTimestamp));
 
@@ -472,7 +473,7 @@ public class UnifiedLocationProcessingService {
                 .filter(c -> Duration.between(c.getFirst().getTimestamp(), c.getLast().getTimestamp()).toSeconds() > visitDetectionParameters.getMinimumStayTimeInSeconds())
                 .toList();
 
-        logger.debug("Found {} valid clusters after duration filtering", filteredByMinimumDuration.size());
+        logger.debug("Found {} valid clusters after duration filtering with minimum stay time [{}]s", filteredByMinimumDuration.size(), visitDetectionParameters.getMinimumStayTimeInSeconds());
 
         // Step 3: Convert valid clusters to stay points
         return filteredByMinimumDuration.stream()

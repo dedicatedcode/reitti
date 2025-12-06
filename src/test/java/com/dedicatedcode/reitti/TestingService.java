@@ -77,22 +77,17 @@ public class TestingService {
         GpxImporter importer = new GpxImporter(new ImportStateHolder(), new ImportProcessor() {
             @Override
             public void processBatch(User user, List<LocationPoint> batch) {
-                // Split batch into chunks of max 5 elements
                 for (int i = 0; i < batch.size(); i += 5) {
                     int endIndex = Math.min(i + 5, batch.size());
                     List<LocationPoint> chunk = batch.subList(i, endIndex);
-                    
                     locationDataIngestPipeline.processLocationData(user.getUsername(), new ArrayList<>(chunk));
-                    
                     TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), null, UUID.randomUUID().toString());
-                    trigger.handle(triggerEvent);
+                    trigger.handle(triggerEvent, true);
                 }
             }
 
             @Override
             public void scheduleProcessingTrigger(String username) {
-                TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(username, null, UUID.randomUUID().toString());
-                trigger.handle(triggerEvent);
             }
 
             @Override
@@ -109,16 +104,8 @@ public class TestingService {
     }
 
     public User randomUser() {
-        return this.userService.createNewUser("test-user_" + UUID.randomUUID().toString(),"Test User", null, null);
+        return this.userService.createNewUser("test-user_" + UUID.randomUUID(),"Test User", null, null);
     }
-
-    public void triggerProcessingPipeline(int timeout) {
-        trigger.start();
-        awaitDataImport(timeout);
-    }
-
-
-
 
     public void awaitDataImport(int seconds) {
         AtomicLong lastRawCount = new AtomicLong(-1);
@@ -127,7 +114,7 @@ public class TestingService {
         AtomicInteger stableChecks = new AtomicInteger(0);
 
         // Require multiple consecutive stable checks
-        final int requiredStableChecks = 5;
+        final int requiredStableChecks = 2;
 
         Awaitility.await()
                 .pollInterval(Math.max(1, seconds / 300), TimeUnit.SECONDS)

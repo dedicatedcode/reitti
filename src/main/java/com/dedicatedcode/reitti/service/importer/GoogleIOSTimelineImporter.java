@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.ImportBatchProcessor;
+import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.importer.dto.ios.IOSSemanticSegment;
 import com.dedicatedcode.reitti.service.importer.dto.ios.IOSVisit;
@@ -31,7 +31,7 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
 
     public GoogleIOSTimelineImporter(ObjectMapper objectMapper,
                                      ImportStateHolder stateHolder,
-                                     ImportBatchProcessor batchProcessor) {
+                                     DefaultImportProcessor batchProcessor) {
         super(objectMapper, batchProcessor);
         this.stateHolder = stateHolder;
     }

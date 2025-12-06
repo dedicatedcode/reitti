@@ -1,11 +1,11 @@
 package com.dedicatedcode.reitti.service.importer;
 
-import com.dedicatedcode.reitti.config.RabbitMQConfig;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.processing.RecalculationState;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.ImportBatchProcessor;
+import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
 import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
@@ -13,7 +13,6 @@ import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.time.Instant;
 import java.util.List;
@@ -37,7 +36,7 @@ class GoogleAndroidTimelineImporterTest {
                 null, RecalculationState.DONE);
         when(parametersService.getCurrentConfiguration(any(), any(Instant.class))).thenReturn(config);
         ProcessingPipelineTrigger processingPipeLineTrigger = mock(ProcessingPipelineTrigger.class);
-        GoogleAndroidTimelineImporter importHandler = new GoogleAndroidTimelineImporter(new ObjectMapper(), new ImportStateHolder(), new ImportBatchProcessor(mock, 100, 5, processingPipeLineTrigger));
+        GoogleAndroidTimelineImporter importHandler = new GoogleAndroidTimelineImporter(new ObjectMapper(), new ImportStateHolder(), new DefaultImportProcessor(mock, 100, 5, processingPipeLineTrigger));
         User user = new User("test", "Test User");
         Map<String, Object> result = importHandler.importTimeline(getClass().getResourceAsStream("/data/google/timeline_from_android_randomized.json"), user);
 
@@ -45,19 +44,18 @@ class GoogleAndroidTimelineImporterTest {
         assertTrue((Boolean) result.get("success"));
 
         // Create a spy to retrieve all LocationDataEvents pushed into RabbitMQ
-        ArgumentCaptor<LocationDataEvent> eventCaptor = ArgumentCaptor.forClass(LocationDataEvent.class);
-        verify(mock, times(1)).processLocationData(eventCaptor.capture());
+        ArgumentCaptor<List<LocationPoint>> eventCaptor = ArgumentCaptor.forClass(List.class);
+        verify(mock, times(1)).processLocationData("test", eventCaptor.capture());
 
-        List<LocationDataEvent> capturedEvents = eventCaptor.getAllValues();
+        List<List<LocationPoint>> capturedEvents = eventCaptor.getAllValues();
         assertEquals(1, capturedEvents.size());
 
         // Verify that all events are for the correct user
-        for (LocationDataEvent event : capturedEvents) {
-            assertEquals("test", event.getUsername());
-            assertNotNull(event.getPoints());
-            assertFalse(event.getPoints().isEmpty());
+        for (List<LocationPoint> points : capturedEvents) {
+            assertNotNull(points);
+            assertFalse(points.isEmpty());
 
-            event.getPoints().forEach(point -> assertNotNull(point.getAccuracyMeters()));
+            points.forEach(point -> assertNotNull(point.getAccuracyMeters()));
         }
     }
 }

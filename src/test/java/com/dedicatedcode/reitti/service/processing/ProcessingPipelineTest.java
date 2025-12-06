@@ -131,6 +131,55 @@ public class ProcessingPipelineTest {
         assertVisit(processedVisits.get(5), "2025-06-18T16:02:38Z"      ,"2025-06-18T21:59:29.055Z" , MOLTKESTR);
     }
 
+
+    @Test
+    void shouldCalculateIncludingGapsUnordered() {
+        this.testingService.importAndProcess(user, "/data/gpx/overnight-visit-with-gaps/track_1_2025-12-06_081704.gpx");
+        this.testingService.importAndProcess(user, "/data/gpx/overnight-visit-with-gaps/track_2_2025-12-06_081704.gpx");
+
+        List<ProcessedVisit> processedVisitsInOrder = currentVisits();
+
+        this.testingService.clearData();
+
+        this.testingService.importAndProcess(user, "/data/gpx/overnight-visit-with-gaps/track_2_2025-12-06_081704.gpx");
+        this.testingService.importAndProcess(user, "/data/gpx/overnight-visit-with-gaps/track_1_2025-12-06_081704.gpx");
+
+        List<ProcessedVisit> processedVisitsOutOfOrder = currentVisits();
+
+
+        for (int i = 0; i < processedVisitsOutOfOrder.size(); i++) {
+            ProcessedVisit processedVisit = processedVisitsOutOfOrder.get(i);
+            ProcessedVisit processedVisitInOrder = processedVisitsInOrder.get(i);
+            assertEquals(processedVisitInOrder.getStartTime(), processedVisit.getStartTime());
+            assertEquals(processedVisitInOrder.getEndTime(), processedVisit.getEndTime());
+            assertEquals(processedVisitInOrder.getPlace(), processedVisit.getPlace());
+        }
+    }
+
+    @Test
+    void shouldCalculateIncludingGapsWithIncomingData() {
+        this.testingService.importAndProcess(user, "/data/gpx/overnight-visit-with-gaps/track_1_2025-12-06_081704.gpx");
+        this.testingService.processWhileImport(user, "/data/gpx/overnight-visit-with-gaps/track_2_2025-12-06_081704.gpx");
+
+        List<ProcessedVisit> processedVisitsInOrder = currentVisits();
+
+        this.testingService.clearData();
+
+        this.testingService.importAndProcess(user, "/data/gpx/overnight-visit-with-gaps/track_2_2025-12-06_081704.gpx");
+        this.testingService.importAndProcess(user, "/data/gpx/overnight-visit-with-gaps/track_1_2025-12-06_081704.gpx");
+
+        List<ProcessedVisit> processedVisitsOutOfOrder = currentVisits();
+
+
+        for (int i = 0; i < processedVisitsOutOfOrder.size(); i++) {
+            ProcessedVisit processedVisit = processedVisitsOutOfOrder.get(i);
+            ProcessedVisit processedVisitInOrder = processedVisitsInOrder.get(i);
+            assertEquals(processedVisitInOrder.getStartTime(), processedVisit.getStartTime());
+            assertEquals(processedVisitInOrder.getEndTime(), processedVisit.getEndTime());
+            assertEquals(processedVisitInOrder.getPlace(), processedVisit.getPlace());
+        }
+
+    }
     private static void assertVisit(ProcessedVisit processedVisit, String startTime, String endTime, GeoPoint location) {
         assertEquals(Instant.parse(startTime), processedVisit.getStartTime());
         assertEquals(Instant.parse(endTime), processedVisit.getEndTime());

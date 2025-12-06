@@ -5,7 +5,7 @@ import com.dedicatedcode.reitti.dto.OverlandLocationRequest;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
-import com.dedicatedcode.reitti.service.ImportBatchProcessor;
+import com.dedicatedcode.reitti.service.ImportProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,11 +35,11 @@ public class IngestApiController {
             "message", "Successfully queued Owntracks location point for processing"
     );
 
-    private final ImportBatchProcessor batchProcessor;
+    private final ImportProcessor batchProcessor;
     private final UserJdbcService userJdbcService;
 
     @Autowired
-    public IngestApiController(ImportBatchProcessor batchProcessor, UserJdbcService userJdbcService) {
+    public IngestApiController(ImportProcessor batchProcessor, UserJdbcService userJdbcService) {
         this.userJdbcService = userJdbcService;
         this.batchProcessor = batchProcessor;
     }
