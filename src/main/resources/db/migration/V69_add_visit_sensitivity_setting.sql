@@ -4,7 +4,7 @@ INSERT INTO visit_detection_parameters(user_id, valid_since, detection_minimum_s
                                        merging_min_distance_between_visits, density_max_interpolation_distance_meters,
                                        density_max_interpolation_gap_minutes)
 SELECT id,
-       now(),
+       date_trunc('day', now()),
        300,
        300,
        24,
