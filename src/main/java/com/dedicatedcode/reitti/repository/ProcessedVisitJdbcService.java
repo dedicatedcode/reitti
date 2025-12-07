@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.repository;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
+import org.springframework.jdbc.core.ArgumentPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -13,9 +14,9 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -157,32 +158,6 @@ public class ProcessedVisitJdbcService {
         jdbcTemplate.update(sql, ids.toArray());
     }
 
-
-    public List<ProcessedVisit> findByIds(User user, List<Long> ids) {
-        String placeholders = String.join(",", ids.stream().map(id -> "?").toList());
-        String sql = "SELECT pv.* " +
-                "FROM processed_visits pv " +
-                "WHERE pv.user_id = ? AND pv.id IN (" + placeholders + ")";
-        Object[] params = new Object[ids.size() + 1];
-        params[0] = user.getId();
-        for (int i = 0; i < ids.size(); i++) {
-            params[i + 1] = ids.get(i);
-        }
-        return jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, params);
-    }
-
-    public Optional<ProcessedVisit> findByUserAndStartTimeAndEndTimeAndPlace(User user, Instant startTime, Instant endTime, SignificantPlace place) {
-        String sql = "SELECT pv.* " +
-                "FROM processed_visits pv " +
-                "WHERE pv.user_id = ? AND pv.start_time = ? AND pv.end_time = ? AND pv.place_id = ?";
-        List<ProcessedVisit> results = jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER,
-                user.getId(),
-                Timestamp.from(startTime),
-                Timestamp.from(endTime),
-                place.getId());
-        return Optional.ofNullable(results.isEmpty() ? null : results.getFirst());
-    }
-
     public List<ProcessedVisit> bulkInsert(User user, List<ProcessedVisit> visitsToStore) {
         if (visitsToStore.isEmpty()) {
             return new ArrayList<>();
@@ -190,30 +165,27 @@ public class ProcessedVisitJdbcService {
 
         List<ProcessedVisit> result = new ArrayList<>();
 
-        String sql = """
-                INSERT INTO processed_visits (user_id, place_id, start_time, end_time, duration_seconds)
-                VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING;
-                """;
+        // 1. Build the multi-row INSERT statement structure
+        String valuePlaceholder = "(?, ?, ?, ?, ?)";
+        String valuesPlaceholders = String.join(", ", Collections.nCopies(visitsToStore.size(), valuePlaceholder));
 
-        List<Object[]> batchArgs = visitsToStore.stream()
-                .map(visit -> new Object[]{
-                        user.getId(),
-                        visit.getPlace().getId(),
-                        Timestamp.from(visit.getStartTime()),
-                        Timestamp.from(visit.getEndTime()),
-                        visit.getDurationSeconds()})
-                .collect(Collectors.toList());
+        String sql = "INSERT INTO processed_visits (user_id, place_id, start_time, end_time, duration_seconds)\n" +
+                "VALUES " + valuesPlaceholders + " RETURNING id;";
 
-        int[] updateCounts = jdbcTemplate.batchUpdate(sql, batchArgs);
-        for (int i = 0; i < updateCounts.length; i++) {
-            int updateCount = updateCounts[i];
-            if (updateCount > 0) {
-                Optional<ProcessedVisit> byUserAndStartTimeAndEndTimeAndPlace = this.findByUserAndStartTimeAndEndTimeAndPlace(user, visitsToStore.get(i).getStartTime(), visitsToStore.get(i).getEndTime(), visitsToStore.get(i).getPlace());
-                byUserAndStartTimeAndEndTimeAndPlace.ifPresent(result::add);
-            }
+        List<Object> batchArgs = new ArrayList<>();
+        for (ProcessedVisit visit : visitsToStore) {
+            batchArgs.add(user.getId());
+            batchArgs.add(visit.getPlace().getId());
+            batchArgs.add(Timestamp.from(visit.getStartTime()));
+            batchArgs.add(Timestamp.from(visit.getEndTime()));
+            batchArgs.add(visit.getDurationSeconds());
         }
+
+        List<Long> updateCounts = jdbcTemplate.query(sql, new ArgumentPreparedStatementSetter(batchArgs.toArray()), (resultSet, _) -> resultSet.getLong("id"));
+        updateCounts.stream().map(this::findById).filter(Optional::isPresent).map(Optional::get).forEach(result::add);
         return result;
     }
+
     @SuppressWarnings("SqlWithoutWhere")
     public void deleteAll() {
         String sql = "DELETE FROM processed_visits";
@@ -223,13 +195,4 @@ public class ProcessedVisitJdbcService {
     public void deleteAllForUser(User user) {
         jdbcTemplate.update("DELETE FROM processed_visits WHERE user_id = ?", user.getId());
     }
-
-    public void deleteAllForUserBetween(User user, Instant start, Instant end) {
-        jdbcTemplate.update("DELETE FROM processed_visits WHERE user_id = ?  AND start_time <= ? AND end_time >= ?", user.getId(), Timestamp.from(end), Timestamp.from(start));
-    }
-
-    public void deleteAllForUserAfter(User user, Instant start) {
-        jdbcTemplate.update("DELETE FROM processed_visits WHERE user_id = ?  AND end_time >= ?", user.getId(), Timestamp.from(start));
-    }
-
 }

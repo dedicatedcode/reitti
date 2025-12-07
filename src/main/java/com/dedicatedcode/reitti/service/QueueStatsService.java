@@ -52,7 +52,7 @@ public class QueueStatsService {
     public List<QueueStats> getQueueStats() {
         List<QueueStats> list = QUEUES.stream().map(this::getQueueStats).toList();
         List<QueueStats> result = new ArrayList<>(list);
-        result.add(getQueueStats(STAY_DETECTION_QUEUE));
+        result.add(1, getQueueStats(STAY_DETECTION_QUEUE));
         return result;
     }
 
