@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.ImportBatchProcessor;
+import com.dedicatedcode.reitti.service.ImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,10 +25,12 @@ public class GpxImporter {
     
     private static final Logger logger = LoggerFactory.getLogger(GpxImporter.class);
 
+    private static final int BATCH_SIZE = 1000;
+
     private final ImportStateHolder stateHolder;
-    private final ImportBatchProcessor batchProcessor;
+    private final ImportProcessor batchProcessor;
     
-    public GpxImporter(ImportStateHolder stateHolder, ImportBatchProcessor batchProcessor) {
+    public GpxImporter(ImportStateHolder stateHolder, ImportProcessor batchProcessor) {
         this.stateHolder = stateHolder;
         this.batchProcessor = batchProcessor;
     }
@@ -48,7 +50,7 @@ public class GpxImporter {
             // Get all track points (trkpt) from the GPX file
             NodeList trackPoints = document.getElementsByTagName("trkpt");
             
-            List<LocationPoint> batch = new ArrayList<>(batchProcessor.getBatchSize());
+            List<LocationPoint> batch = new ArrayList<>();
             
             // Process each track point
             for (int i = 0; i < trackPoints.getLength(); i++) {
@@ -61,7 +63,7 @@ public class GpxImporter {
                         processedCount.incrementAndGet();
                         
                         // Process in batches to avoid memory issues
-                        if (batch.size() >= batchProcessor.getBatchSize()) {
+                        if (batch.size() >= BATCH_SIZE) {
                             batchProcessor.processBatch(user, batch);
                             batch.clear();
                         }

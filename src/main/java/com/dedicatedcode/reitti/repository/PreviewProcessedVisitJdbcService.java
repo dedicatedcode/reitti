@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.repository;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
+import org.springframework.jdbc.core.ArgumentPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -13,9 +14,9 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -112,30 +113,25 @@ public class PreviewProcessedVisitJdbcService {
 
         List<ProcessedVisit> result = new ArrayList<>();
 
-        String sql = """
-                INSERT INTO preview_processed_visits (user_id, place_id, start_time, end_time, duration_seconds, preview_id, preview_created_at)
-                VALUES (?, ?, ?, ?, ?, ?, now()) ON CONFLICT DO NOTHING;
-                """;
+        // 1. Build the multi-row INSERT statement structure
+        String valuePlaceholder = "(?, ?, ?, ?, ?, ?, now())";
+        String valuesPlaceholders = String.join(", ", Collections.nCopies(visitsToStore.size(), valuePlaceholder));
 
-        List<Object[]> batchArgs = visitsToStore.stream()
-                .map(visit -> new Object[]{
-                        user.getId(),
-                        visit.getPlace().getId(),
-                        Timestamp.from(visit.getStartTime()),
-                        Timestamp.from(visit.getEndTime()),
-                        visit.getDurationSeconds(),
-                        previewId}
-                        )
-                .collect(Collectors.toList());
+        String sql = "INSERT INTO preview_processed_visits (user_id, place_id, start_time, end_time, duration_seconds, preview_id, preview_created_at)\n" +
+                     "VALUES " + valuesPlaceholders + " RETURNING id;";
 
-        int[] updateCounts = jdbcTemplate.batchUpdate(sql, batchArgs);
-        for (int i = 0; i < updateCounts.length; i++) {
-            int updateCount = updateCounts[i];
-            if (updateCount > 0) {
-                Optional<ProcessedVisit> byUserAndStartTimeAndEndTimeAndPlace = this.findByUserAndStartTimeAndEndTimeAndPlace(user, previewId, visitsToStore.get(i).getStartTime(), visitsToStore.get(i).getEndTime(), visitsToStore.get(i).getPlace());
-                byUserAndStartTimeAndEndTimeAndPlace.ifPresent(result::add);
-            }
+        List<Object> batchArgs = new ArrayList<>();
+        for (ProcessedVisit visit : visitsToStore) {
+            batchArgs.add(user.getId());
+            batchArgs.add(visit.getPlace().getId());
+            batchArgs.add(Timestamp.from(visit.getStartTime()));
+            batchArgs.add(Timestamp.from(visit.getEndTime()));
+            batchArgs.add(visit.getDurationSeconds());
+            batchArgs.add(previewId);
         }
+
+        List<Long> updateCounts = jdbcTemplate.query(sql, new ArgumentPreparedStatementSetter(batchArgs.toArray()),  (resultSet, _) -> resultSet.getLong("id"));
+        updateCounts.stream().map(this::findById).filter(Optional::isPresent).map(Optional::get).forEach(result::add);
         return result;
     }
 }

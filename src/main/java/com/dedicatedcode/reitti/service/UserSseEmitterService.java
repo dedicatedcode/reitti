@@ -60,7 +60,7 @@ public class UserSseEmitterService implements SmartLifecycle {
             for (SseEmitter emitter : new CopyOnWriteArraySet<>(emitters)) {
                 try {
                     emitter.send(SseEmitter.event().data(eventData));
-                    log.debug("Sent event to user: {}", user);
+                    log.trace("Sent event to user: {}", user);
                 } catch (IOException e) {
                     log.error("Error sending event to user {}: {}", user, e.getMessage());
                     emitter.completeWithError(e);

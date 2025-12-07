@@ -170,7 +170,7 @@ public class LocationDataDensityNormalizer {
             long gapSeconds = Duration.between(current.getTimestamp(), next.getTimestamp()).getSeconds();
 
             if (gapSeconds > gapThresholdSeconds && gapSeconds <= maxInterpolationSeconds) {
-                logger.trace("Found gap of {} seconds between {} and {}",
+                logger.debug("Found gap of {} seconds between {} and {}",
                         gapSeconds, current.getTimestamp(), next.getTimestamp());
 
                 List<LocationPoint> syntheticPoints = syntheticGenerator.generateSyntheticPoints(
@@ -185,9 +185,6 @@ public class LocationDataDensityNormalizer {
         }
 
         if (!allSyntheticPoints.isEmpty()) {
-            // Sort synthetic points by timestamp for deterministic insertion order
-            allSyntheticPoints.sort(Comparator.comparing(LocationPoint::getTimestamp));
-
             int inserted = rawLocationPointService.bulkInsertSynthetic(user, allSyntheticPoints);
             logger.debug("Inserted {} synthetic points for user {}", inserted, user.getUsername());
         }
@@ -202,7 +199,7 @@ public class LocationDataDensityNormalizer {
             return;
         }
 
-        int toleranceSeconds = config.getToleranceSeconds();
+        int toleranceSeconds = config.getToleranceSeconds() - 1;
         Set<Long> pointsToIgnore = new LinkedHashSet<>(); // Preserve order for debugging
         Set<Long> alreadyConsidered = new HashSet<>();
 
@@ -212,6 +209,10 @@ public class LocationDataDensityNormalizer {
 
             // Skip points without IDs (not persisted) or already ignored
             if (current.getId() == null || next.getId() == null) {
+                continue;
+            }
+            // Skip synthetic points
+            if (current.isSynthetic() || next.isSynthetic()) {
                 continue;
             }
             if (current.isIgnored() || next.isIgnored()) {

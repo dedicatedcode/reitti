@@ -6,7 +6,7 @@ import com.dedicatedcode.reitti.model.integration.OwnTracksRecorderIntegration;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.OwnTracksRecorderIntegrationJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
-import com.dedicatedcode.reitti.service.ImportBatchProcessor;
+import com.dedicatedcode.reitti.service.ImportProcessor;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,11 +35,11 @@ public class OwnTracksRecorderIntegrationService {
     private final OwnTracksRecorderIntegrationJdbcService jdbcService;
     private final UserJdbcService userJdbcService;
     private final RestTemplate restTemplate;
-    private final ImportBatchProcessor importBatchProcessor;
+    private final ImportProcessor importBatchProcessor;
 
     public OwnTracksRecorderIntegrationService(OwnTracksRecorderIntegrationJdbcService jdbcService,
                                                UserJdbcService userJdbcService,
-                                               ImportBatchProcessor importBatchProcessor) {
+                                               ImportProcessor importBatchProcessor) {
         this.jdbcService = jdbcService;
         this.userJdbcService = userJdbcService;
         this.importBatchProcessor = importBatchProcessor;

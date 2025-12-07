@@ -34,7 +34,7 @@ public class LocationPointsSimplificationService {
             return points;
         }
 
-        logger.debug("Simplifying {} points to {} points for zoom level {}", points.size(), targetPointCount, zoom);
+        logger.trace("Simplifying {} points to {} points for zoom level {}", points.size(), targetPointCount, zoom);
 
         return visvalingamWhyatt(points, targetPointCount);
     }
@@ -176,13 +176,12 @@ public class LocationPointsSimplificationService {
                                                     LocationPoint p3) {
             // Using the cross product formula for triangle area
             // Area = 0.5 * |x1(y2 - y3) + x2(y3 - y1) + x3(y1 - y2)|
-            double area = Math.abs(
+
+            return Math.abs(
                     p1.getLongitude() * (p2.getLatitude() - p3.getLatitude()) +
                             p2.getLongitude() * (p3.getLatitude() - p1.getLatitude()) +
                             p3.getLongitude() * (p1.getLatitude() - p2.getLatitude())
             ) / 2.0;
-
-            return area;
         }
     }
 

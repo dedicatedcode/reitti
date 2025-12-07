@@ -12,6 +12,9 @@ let lastPaintTime = 0;
 let paintThrottleMs = 100; // Minimum time between paint points
 let paintInterval = null; // Interval for automatic painting
 let lastMousePosition = null; // Store last mouse position for painting
+let currentMapLayer = 'street'; // 'street' or 'satellite'
+let streetLayer, satelliteLayer;
+let stopProbability = 0.05; // 5% chance of adding a stop per point when auto-stops enabled
 
 // Track colors for visual distinction
 const TRACK_COLORS = [
@@ -21,6 +24,7 @@ const TRACK_COLORS = [
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
+    initializeTheme();
     initializeMap();
     initializeDateTime();
     initializeControls();
@@ -29,14 +33,57 @@ document.addEventListener('DOMContentLoaded', function() {
     updateStatus();
 });
 
+function initializeTheme() {
+    // Check for saved theme preference or default to light mode
+    const savedTheme = localStorage.getItem('gpx-generator-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeButton();
+}
+
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('gpx-generator-theme', newTheme);
+    updateThemeButton();
+}
+
+function updateThemeButton() {
+    const button = document.getElementById('themeToggle');
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    button.textContent = currentTheme === 'dark' ? '☀️' : '🌙';
+}
+
+function toggleMapLayer() {
+    if (currentMapLayer === 'street') {
+        map.removeLayer(streetLayer);
+        map.addLayer(satelliteLayer);
+        currentMapLayer = 'satellite';
+        document.getElementById('layerToggle').textContent = 'Street';
+    } else {
+        map.removeLayer(satelliteLayer);
+        map.addLayer(streetLayer);
+        currentMapLayer = 'street';
+        document.getElementById('layerToggle').textContent = 'Satellite';
+    }
+}
+
 function initializeMap() {
     // Initialize Leaflet map
     map = L.map('map').setView([60.1699, 24.9384], 10); // Helsinki as default
     
-    // Add OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // Create map layers
+    streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
+    });
+
+    satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '© Esri, Maxar, Earthstar Geographics'
+    });
+
+    // Add default layer
+    streetLayer.addTo(map);
     
     // Add event listeners
     map.on('click', onMapClick);
@@ -217,7 +264,7 @@ function onMapClick(e) {
         // Toggle paint active state
         paintActive = !paintActive;
         lastMousePosition = e.latlng; // Store initial position
-        
+
         if (paintActive) {
             // Add first point immediately
             const currentTrack = tracks[currentTrackIndex];
@@ -232,7 +279,7 @@ function onMapClick(e) {
             // Stop automatic painting
             stopAutoPainting();
         }
-        
+
         updatePaintModeButton();
         return;
     }
@@ -255,7 +302,7 @@ function addPoint(lat, lng) {
     
     // Use current datetime input value as timestamp
     const startDateTimeValue = document.getElementById('startDateTime').value;
-    const timestamp = new Date(startDateTimeValue);
+    let timestamp = new Date(startDateTimeValue);
     
     // Check if we need to create a new track due to day change
     if (shouldCreateNewTrackForDayChange(timestamp, currentTrack)) {
@@ -263,6 +310,11 @@ function addPoint(lat, lng) {
         return addPoint(lat, lng); // Recursively add to new track
     }
     
+    // Check for realistic stops
+    if (document.getElementById('autoStops').checked && shouldAddStop(currentTrack)) {
+        timestamp = addRealisticStop(timestamp);
+    }
+
     // Apply GPS accuracy simulation
     const accuracy = parseFloat(document.getElementById('accuracySlider').value);
     const adjustedCoords = applyGPSNoise(lat, lng, accuracy);
@@ -757,25 +809,45 @@ function downloadFile(content, filename, mimeType) {
 }
 
 // GPX file handling functions
-function handleGPXFile(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+function handleGPXFiles(event) {
+    const files = Array.from(event.target.files);
+    if (files.length === 0) return;
     
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            parseAndImportGPX(e.target.result, file.name);
-        } catch (error) {
-            alert('Error parsing GPX file: ' + error.message);
-        }
-    };
-    reader.readAsText(file);
+    let processedFiles = 0;
+    let totalPoints = 0;
+    let totalTracks = 0;
+
+    files.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const result = parseAndImportGPX(e.target.result, file.name, index === 0);
+                totalPoints += result.pointsCount;
+                totalTracks += result.tracksCount;
+                processedFiles++;
+
+                // Show summary when all files are processed
+                if (processedFiles === files.length) {
+                    alert(`Successfully imported ${files.length} GPX file(s):\n${totalPoints} total points split into ${totalTracks} track(s).`);
+                }
+            } catch (error) {
+                alert(`Error parsing GPX file "${file.name}": ${error.message}`);
+                processedFiles++;
+            }
+        };
+        reader.readAsText(file);
+    });
     
-    // Reset the input so the same file can be selected again
+    // Reset the input so the same files can be selected again
     event.target.value = '';
 }
 
-function parseAndImportGPX(gpxContent, filename) {
+function handleGPXFile(event) {
+    // Keep backward compatibility
+    handleGPXFiles(event);
+}
+
+function parseAndImportGPX(gpxContent, filename, isFirstFile = true) {
     const parser = new DOMParser();
     const gpxDoc = parser.parseFromString(gpxContent, 'text/xml');
     
@@ -787,9 +859,9 @@ function parseAndImportGPX(gpxContent, filename) {
     
     // Extract track points from all tracks and track segments
     const trackPoints = [];
-    const tracks = gpxDoc.querySelectorAll('trk');
+    const gpxTracks = gpxDoc.querySelectorAll('trk');
     
-    tracks.forEach(track => {
+    gpxTracks.forEach(track => {
         const trackSegments = track.querySelectorAll('trkseg');
         trackSegments.forEach(segment => {
             const points = segment.querySelectorAll('trkpt');
@@ -841,38 +913,66 @@ function parseAndImportGPX(gpxContent, filename) {
     
     // Create tracks for each day
     let importedTracksCount = 0;
+    let isFirstImportedTrack = isFirstFile;
+
     Object.keys(pointsByDay).sort().forEach(dayKey => {
         const dayPoints = pointsByDay[dayKey];
         if (dayPoints.length === 0) return;
         
-        // Collapse all existing tracks
-        tracks.forEach(track => {
-            track.collapsed = true;
-        });
-        
-        // Create new track for this day
-        const trackIndex = tracks.length;
-        const color = TRACK_COLORS[trackIndex % TRACK_COLORS.length];
-        const trackName = `${filename.replace('.gpx', '')} - ${dayKey}`;
-        
-        const track = {
-            id: trackIndex,
-            name: trackName,
-            points: [],
-            color: color,
-            collapsed: false,
-            startTime: dayPoints[0].timestamp
-        };
-        
-        tracks.push(track);
-        
-        // Create polyline for this track
-        const polyline = L.polyline([], {
-            color: color,
-            weight: 3,
-            opacity: 0.7
-        }).addTo(map);
-        polylines.push(polyline);
+        let track;
+        let trackIndex;
+        let color;
+
+        // Check if we can reuse the first empty track
+        if (isFirstImportedTrack && tracks.length > 0 && tracks[0].points.length === 0) {
+            // Reuse the existing empty track
+            track = tracks[0];
+            trackIndex = 0;
+            color = track.color;
+
+            // Update track properties
+            track.name = `${filename.replace('.gpx', '')} - ${dayKey}`;
+            track.startTime = dayPoints[0].timestamp;
+            track.collapsed = false;
+
+            // Collapse all other existing tracks
+            tracks.forEach((t, index) => {
+                if (index !== 0) {
+                    t.collapsed = true;
+                }
+            });
+        } else {
+            // Collapse all existing tracks
+            tracks.forEach(track => {
+                track.collapsed = true;
+            });
+
+            // Create new track for this day
+            trackIndex = tracks.length;
+            color = TRACK_COLORS[trackIndex % TRACK_COLORS.length];
+            const trackName = `${filename.replace('.gpx', '')} - ${dayKey}`;
+
+            track = {
+                id: trackIndex,
+                name: trackName,
+                points: [],
+                color: color,
+                collapsed: false,
+                startTime: dayPoints[0].timestamp
+            };
+
+            tracks.push(track);
+
+            // Create polyline for this track
+            const polyline = L.polyline([], {
+                color: color,
+                weight: 3,
+                opacity: 0.7
+            }).addTo(map);
+            polylines.push(polyline);
+        }
+
+        isFirstImportedTrack = false;
         
         // Add points to the track
         dayPoints.forEach((point, pointIndex) => {
@@ -930,8 +1030,11 @@ function parseAndImportGPX(gpxContent, filename) {
     updatePointsList();
     updateStatus();
     
-    // Show success message
-    alert(`Successfully imported ${trackPoints.length} points from ${filename}, split into ${importedTracksCount} track(s) by day.`);
+    // Return import statistics for summary
+    return {
+        pointsCount: trackPoints.length,
+        tracksCount: importedTracksCount
+    };
 }
 
 function groupPointsByUTCDay(points) {
@@ -968,7 +1071,7 @@ function onMapMouseMove(e) {
                     addPoint(lastMousePosition.lat, lastMousePosition.lng);
                 }
                 lastPaintTime = now;
-                
+
                 // Reset the auto-paint interval since we just added a point
                 resetAutoPaintInterval();
             }
@@ -1142,13 +1245,13 @@ function formatDistance(meters) {
 function togglePaintMode() {
     paintMode = !paintMode;
     paintActive = false; // Reset paint active state when toggling mode
-    
+
     // Stop any active painting when toggling mode off
     if (!paintMode) {
         stopAutoPainting();
         lastMousePosition = null;
     }
-    
+
     updatePaintModeButton();
     
     // Change cursor style when paint mode is active
@@ -1180,7 +1283,7 @@ function startAutoPainting() {
     if (paintInterval) {
         clearInterval(paintInterval);
     }
-    
+
     paintInterval = setInterval(() => {
         if (paintActive && lastMousePosition) {
             const currentTrack = tracks[currentTrackIndex];
@@ -1217,5 +1320,17 @@ function stopAutoPainting() {
         clearInterval(paintInterval);
         paintInterval = null;
     }
+}
+
+// Realistic stops functions
+function shouldAddStop(track) {
+    if (track.points.length < 5) return false; // Need some points before considering stops
+    return Math.random() < stopProbability;
+}
+
+function addRealisticStop(baseTimestamp) {
+    // Add a random stop duration between 30 seconds and 10 minutes
+    const stopDuration = Math.random() * (10 * 60 - 30) + 30; // 30s to 10min in seconds
+    return new Date(baseTimestamp.getTime() + (stopDuration * 1000));
 }
 

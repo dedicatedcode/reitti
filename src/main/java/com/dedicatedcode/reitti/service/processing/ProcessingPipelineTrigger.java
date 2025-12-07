@@ -54,24 +54,24 @@ public class ProcessingPipelineTrigger {
             return;
         }
         for (User user : userJdbcService.findAll()) {
-            handleDataForUser(user, null, UUID.randomUUID().toString());
+            handleDataForUser(user, null, UUID.randomUUID().toString(), false);
         }
     }
 
     public void start(User user) {
-        handleDataForUser(user, null, UUID.randomUUID().toString());
+        handleDataForUser(user, null, UUID.randomUUID().toString(), false);
     }
 
-    public void handle(TriggerProcessingEvent event) {
+    public void handle(TriggerProcessingEvent event, boolean immediate) {
         Optional<User> byUsername = this.userJdbcService.findByUsername(event.getUsername());
         if (byUsername.isPresent()) {
-            handleDataForUser(byUsername.get(), event.getPreviewId(), event.getTraceId());
+            handleDataForUser(byUsername.get(), event.getPreviewId(), event.getTraceId(), immediate);
         } else {
             log.warn("No user found for username: {}", event.getUsername());
         }
     }
 
-    private void handleDataForUser(User user, String previewId, String traceId) {
+    private void handleDataForUser(User user, String previewId, String traceId, boolean immediate) {
         int totalProcessed = 0;
 
         while (true) {
@@ -97,7 +97,11 @@ public class ProcessingPipelineTrigger {
                 rawLocationPointJdbcService.bulkUpdateProcessedStatus(currentBatch);
             }
 
-            executorService.submit(() -> unifiedLocationProcessingService.processLocationEvent(new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId)));
+            if (!immediate) {
+                executorService.submit(() -> unifiedLocationProcessingService.processLocationEvent(new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId)));
+            } else {
+                unifiedLocationProcessingService.processLocationEvent(new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId));
+            }
             totalProcessed += currentBatch.size();
         }
 

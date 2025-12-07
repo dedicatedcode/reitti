@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.ImportBatchProcessor;
+import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.importer.dto.GoogleTimelineData;
 import com.dedicatedcode.reitti.service.importer.dto.SemanticSegment;
@@ -33,7 +33,7 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
 
     public GoogleAndroidTimelineImporter(ObjectMapper objectMapper,
                                          ImportStateHolder stateHolder,
-                                         ImportBatchProcessor batchProcessor) {
+                                         DefaultImportProcessor batchProcessor) {
         super(objectMapper, batchProcessor);
         this.stateHolder = stateHolder;
     }
