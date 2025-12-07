@@ -45,7 +45,7 @@ class GoogleAndroidTimelineImporterTest {
 
         // Create a spy to retrieve all LocationDataEvents pushed into RabbitMQ
         ArgumentCaptor<List<LocationPoint>> eventCaptor = ArgumentCaptor.forClass(List.class);
-        verify(mock, times(1)).processLocationData("test", eventCaptor.capture());
+        verify(mock, times(1)).processLocationData(eq("test"), eventCaptor.capture());
 
         List<List<LocationPoint>> capturedEvents = eventCaptor.getAllValues();
         assertEquals(1, capturedEvents.size());

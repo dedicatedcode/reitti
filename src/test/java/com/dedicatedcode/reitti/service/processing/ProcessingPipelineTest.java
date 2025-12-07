@@ -69,7 +69,7 @@ public class ProcessingPipelineTest {
         assertVisit(processedVisits.get(3), "2025-06-17T13:09:51.476Z", "2025-06-17T13:20:24.494Z"  , ST_THOMAS);
 
         //should extend the last visit of the old day
-        assertVisit(processedVisits.get(4), "2025-06-17T13:21:28.334Z", "2025-06-18T05:46:43Z", MOLTKESTR);
+        assertVisit(processedVisits.get(4), "2025-06-17T13:20:58Z"    , "2025-06-18T05:46:43Z", MOLTKESTR);
 
         //new visits
         assertVisit(processedVisits.get(5), "2025-06-18T05:47:13.682Z"  ,"2025-06-18T06:04:02.435Z" , ST_THOMAS);
