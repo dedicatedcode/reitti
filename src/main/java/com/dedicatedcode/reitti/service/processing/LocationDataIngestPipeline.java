@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,20 +47,19 @@ public class LocationDataIngestPipeline {
     public void shutdown() {
     }
 
-    public void processLocationData(LocationDataEvent event) {
+    public void processLocationData(String username, List<LocationPoint> points ) {
         try {
             long start = System.currentTimeMillis();
-            logger.debug("starting processing of event: {}", event);
+            logger.debug("starting processing");
 
-            Optional<User> userOpt = userJdbcService.findByUsername(event.getUsername());
+            Optional<User> userOpt = userJdbcService.findByUsername(username);
 
             if (userOpt.isEmpty()) {
-                logger.warn("User not found for name: [{}]", event.getUsername());
+                logger.warn("User not found for name: [{}]", username);
                 return;
             }
 
             User user = userOpt.get();
-            List<LocationPoint> points = event.getPoints();
             List<LocationPoint> filtered = this.geoPointAnomalyFilter.filterAnomalies(points);
 
             // Store real points first
@@ -70,9 +70,10 @@ public class LocationDataIngestPipeline {
 
             userSettingsJdbcService.updateNewestData(user, filtered);
             userNotificationService.newRawLocationData(user, filtered);
-            logger.info("Finished storing and normalizing points [{}] for user [{}] in [{}]ms. Filtered out [{}] points before database and [{}] after database.", filtered.size(), event.getUsername(), System.currentTimeMillis() - start, points.size() - filtered.size(), filtered.size() - updatedRows);
+            logger.info("Finished storing and normalizing points [{}] for user [{}] in [{}]ms. Filtered out [{}] points before database and [{}] after database.", filtered.size(), user, System.currentTimeMillis() - start, points.size() - filtered.size(), filtered.size() - updatedRows);
         } catch (Exception e) {
-            logger.error("Error during processing of event: {}", event, e);
+            logger.error("Error during processing: ", e);
         }
     }
+
 }

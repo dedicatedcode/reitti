@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.ImportBatchProcessor;
+import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,9 +27,9 @@ public class GeoJsonImporter {
     
     private final ObjectMapper objectMapper;
     private final ImportStateHolder stateHolder;
-    private final ImportBatchProcessor batchProcessor;
+    private final DefaultImportProcessor batchProcessor;
     
-    public GeoJsonImporter(ObjectMapper objectMapper, ImportStateHolder stateHolder, ImportBatchProcessor batchProcessor) {
+    public GeoJsonImporter(ObjectMapper objectMapper, ImportStateHolder stateHolder, DefaultImportProcessor batchProcessor) {
         this.objectMapper = objectMapper;
         this.stateHolder = stateHolder;
         this.batchProcessor = batchProcessor;

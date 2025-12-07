@@ -1,12 +1,16 @@
 package com.dedicatedcode.reitti;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
+import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
-import com.dedicatedcode.reitti.service.ImportBatchProcessor;
+import com.dedicatedcode.reitti.service.ImportProcessor;
+import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.UserService;
 import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
 import com.dedicatedcode.reitti.service.importer.GpxImporter;
+import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import org.awaitility.Awaitility;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
@@ -15,6 +19,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -50,7 +55,10 @@ public class TestingService {
     @Autowired
     private UserService userService;
     @Autowired
-    private ImportBatchProcessor importBatchProcessor;
+    private ImportProcessor importBatchProcessor;
+
+    @Autowired
+    private LocationDataIngestPipeline locationDataIngestPipeline;
 
     public void importData(User user, String path) {
         InputStream is = getClass().getResourceAsStream(path);
@@ -63,19 +71,42 @@ public class TestingService {
         }
     }
 
+
+
+    public void processWhileImport(User user, String file) {
+        GpxImporter importer = new GpxImporter(new ImportStateHolder(), new ImportProcessor() {
+            @Override
+            public void processBatch(User user, List<LocationPoint> batch) {
+                for (int i = 0; i < batch.size(); i += 5) {
+                    int endIndex = Math.min(i + 5, batch.size());
+                    List<LocationPoint> chunk = batch.subList(i, endIndex);
+                    locationDataIngestPipeline.processLocationData(user.getUsername(), new ArrayList<>(chunk));
+                    TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), null, UUID.randomUUID().toString());
+                    trigger.handle(triggerEvent, true);
+                }
+            }
+
+            @Override
+            public void scheduleProcessingTrigger(String username) {
+            }
+
+            @Override
+            public boolean isIdle() {
+                return false;
+            }
+        });
+        importer.importGpx(getClass().getResourceAsStream(file), user);
+    }
+
     public User admin() {
         return this.userJdbcService.findById(1L)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + (Long) 1L));
     }
 
     public User randomUser() {
-        return this.userService.createNewUser("test-user_" + UUID.randomUUID().toString(),"Test User", null, null);
+        return this.userService.createNewUser("test-user_" + UUID.randomUUID(),"Test User", null, null);
     }
 
-    public void triggerProcessingPipeline(int timeout) {
-        trigger.start();
-        awaitDataImport(timeout);
-    }
     public void awaitDataImport(int seconds) {
         AtomicLong lastRawCount = new AtomicLong(-1);
         AtomicLong lastVisitCount = new AtomicLong(-1);
@@ -83,7 +114,7 @@ public class TestingService {
         AtomicInteger stableChecks = new AtomicInteger(0);
 
         // Require multiple consecutive stable checks
-        final int requiredStableChecks = 5;
+        final int requiredStableChecks = 2;
 
         Awaitility.await()
                 .pollInterval(Math.max(1, seconds / 300), TimeUnit.SECONDS)

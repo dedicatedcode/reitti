@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.ImportBatchProcessor;
+import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,7 +29,7 @@ class GeoJsonImporterTest {
     private ImportStateHolder stateHolder;
 
     @Mock
-    private ImportBatchProcessor batchProcessor;
+    private DefaultImportProcessor batchProcessor;
 
     @Mock
     private User user;

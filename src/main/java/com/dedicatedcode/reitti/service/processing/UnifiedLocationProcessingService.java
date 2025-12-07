@@ -150,6 +150,69 @@ public class UnifiedLocationProcessingService {
         }
 
         long duration = System.currentTimeMillis() - startTime;
+        
+        if (logger.isTraceEnabled()) {
+            // Tabular output for trace level logging
+            StringBuilder traceOutput = new StringBuilder();
+            traceOutput.append("\n=== PROCESSING RESULTS FOR USER [").append(username).append("] ===\n");
+            traceOutput.append("Event Period: ").append(event.getEarliest()).append(" → ").append(event.getLatest()).append("\n");
+            traceOutput.append("Search Period: ").append(detectionResult.searchStart).append(" → ").append(detectionResult.searchEnd).append("\n");
+            traceOutput.append("Duration: ").append(duration).append("ms\n\n");
+            
+            // Input Visits Table
+            traceOutput.append("INPUT VISITS (").append(mergingResult.inputVisits.size()).append("):\n");
+            traceOutput.append("┌─────────────────────┬─────────────────────┬───────────┬─────────────┬─────────────┬──────────────────────────────────────────────────────────────────────┐\n");
+            traceOutput.append("│ Start Time          │ End Time            │ Duration  │ Latitude    │ Longitude   │ Google Maps Link                                                     │\n");
+            traceOutput.append("├─────────────────────┼─────────────────────┼───────────┼─────────────┼─────────────┼──────────────────────────────────────────────────────────────────────┤\n");
+            for (Visit visit : mergingResult.inputVisits) {
+                String googleMapsLink = "https://www.google.com/maps/search/?api=1&query=" + visit.getLatitude() + "," + visit.getLongitude();
+                traceOutput.append(String.format("│ %-19s │ %-19s │ %8ds │ %11.6f │ %11.6f │ %-68s │\n",
+                    visit.getStartTime().toString().substring(0, 19),
+                    visit.getEndTime().toString().substring(0, 19),
+                    visit.getDurationSeconds(),
+                    visit.getLatitude(),
+                    visit.getLongitude(),
+                    googleMapsLink));
+            }
+            traceOutput.append("└─────────────────────┴─────────────────────┴───────────┴─────────────┴─────────────┴──────────────────────────────────────────────────────────────────────┘\n\n");
+            
+            // Processed Visits Table
+            traceOutput.append("PROCESSED VISITS (").append(mergingResult.processedVisits.size()).append("):\n");
+            traceOutput.append("┌─────────────────────┬─────────────────────┬───────────┬─────────────┬─────────────┬──────────────────────┐\n");
+            traceOutput.append("│ Start Time          │ End Time            │ Duration  │ Latitude    │ Longitude   │ Place Name           │\n");
+            traceOutput.append("├─────────────────────┼─────────────────────┼───────────┼─────────────┼─────────────┼──────────────────────┤\n");
+            for (ProcessedVisit visit : mergingResult.processedVisits) {
+                String placeName = visit.getPlace().getName() != null ? visit.getPlace().getName() : "Unnamed Place";
+                if (placeName.length() > 20) placeName = placeName.substring(0, 17) + "...";
+                traceOutput.append(String.format("│ %-19s │ %-19s │ %8ds │ %11.6f │ %11.6f │ %-20s │\n",
+                    visit.getStartTime().toString().substring(0, 19),
+                    visit.getEndTime().toString().substring(0, 19),
+                    visit.getDurationSeconds(),
+                    visit.getPlace().getLatitudeCentroid(),
+                    visit.getPlace().getLongitudeCentroid(),
+                    placeName));
+            }
+            traceOutput.append("└─────────────────────┴─────────────────────┴───────────┴─────────────┴─────────────┴──────────────────────┘\n\n");
+            
+            // Trips Table
+            traceOutput.append("TRIPS (").append(tripResult.trips.size()).append("):\n");
+            traceOutput.append("┌─────────────────────┬─────────────────────┬───────────┬───────────┬───────────┬─────────────────┐\n");
+            traceOutput.append("│ Start Time          │ End Time            │ Duration  │ Distance  │ Traveled  │ Transport Mode  │\n");
+            traceOutput.append("├─────────────────────┼─────────────────────┼───────────┼───────────┼───────────┼─────────────────┤\n");
+            for (Trip trip : tripResult.trips) {
+                traceOutput.append(String.format("│ %-19s │ %-19s │ %8ds │ %8.0fm │ %8.0fm │ %-15s │\n",
+                    trip.getStartTime().toString().substring(0, 19),
+                    trip.getEndTime().toString().substring(0, 19),
+                    trip.getDurationSeconds(),
+                    trip.getEstimatedDistanceMeters(),
+                    trip.getTravelledDistanceMeters(),
+                    trip.getTransportModeInferred().toString()));
+            }
+            traceOutput.append("└─────────────────────┴─────────────────────┴───────────┴───────────┴───────────┴─────────────────┘\n");
+            
+            logger.trace(traceOutput.toString());
+        }
+        
         logger.info("Completed processing for user [{}] in {}ms: {} visits → {} processed visits → {} trips",
                 username, duration, detectionResult.visits.size(),
                 mergingResult.processedVisits.size(), tripResult.trips.size());
@@ -177,16 +240,14 @@ public class UnifiedLocationProcessingService {
         // Find and delete affected visits
         List<Visit> affectedVisits;
         if (previewId == null) {
-            affectedVisits = visitJdbcService.findByUserAndTimeAfterAndStartTimeBefore(
-                    user, windowStart, windowEnd);
+            affectedVisits = visitJdbcService.findByUserAndTimeAfterAndStartTimeBefore(user, windowStart, windowEnd);
             visitJdbcService.delete(affectedVisits);
         } else {
-            affectedVisits = previewVisitJdbcService.findByUserAndTimeAfterAndStartTimeBefore(
-                    user, previewId, windowStart, windowEnd);
+            affectedVisits = previewVisitJdbcService.findByUserAndTimeAfterAndStartTimeBefore(user, previewId, windowStart, windowEnd);
             previewVisitJdbcService.delete(affectedVisits);
         }
 
-        // Expand window based on deleted visits
+        // Expand the window based on deleted visits
         if (!affectedVisits.isEmpty()) {
             if (affectedVisits.getFirst().getStartTime().isBefore(windowStart)) {
                 windowStart = affectedVisits.getFirst().getStartTime();
@@ -215,7 +276,8 @@ public class UnifiedLocationProcessingService {
         Map<Integer, List<RawLocationPoint>> clusteredByLocation = new TreeMap<>();
         for (ClusteredPoint cp : clusteredPoints.stream().filter(clusteredPoint -> !clusteredPoint.getPoint().isIgnored()).toList()) {
             if (cp.getClusterId() != null) {
-                clusteredByLocation.computeIfAbsent(cp.getClusterId(), _ -> new ArrayList<>())
+                clusteredByLocation
+                        .computeIfAbsent(cp.getClusterId(), _ -> new ArrayList<>())
                         .add(cp.getPoint());
             }
         }
@@ -234,13 +296,6 @@ public class UnifiedLocationProcessingService {
                         false
                 ))
                 .toList();
-
-        // Save visits
-        if (previewId == null) {
-            visits = visitJdbcService.bulkInsert(user, visits);
-        } else {
-            visits = previewVisitJdbcService.bulkInsert(user, previewId, visits);
-        }
 
         return new VisitDetectionResult(visits, windowStart, windowEnd);
     }
@@ -264,8 +319,8 @@ public class UnifiedLocationProcessingService {
         }
 
         // Expand search window for merging
-        Instant searchStart = initialStart.minus(mergeConfig.getSearchDurationInHours(), ChronoUnit.HOURS);
-        Instant searchEnd = initialEnd.plus(mergeConfig.getSearchDurationInHours(), ChronoUnit.HOURS);
+        Instant searchStart = initialStart;
+        Instant searchEnd = initialEnd;
 
         // Delete existing processed visits in range
         List<ProcessedVisit> existingProcessedVisits;
@@ -293,7 +348,7 @@ public class UnifiedLocationProcessingService {
             return new VisitMergingResult(List.of(), List.of(), searchStart, searchEnd);
         }
 
-        allVisits.sort(Comparator.comparing(Visit::getStartTime));
+        allVisits = allVisits.stream().sorted(Comparator.comparing(Visit::getStartTime)).toList();
         // Merge visits chronologically
         List<ProcessedVisit> processedVisits = mergeVisitsChronologically(
                 user, previewId, traceId, allVisits, mergeConfig);
@@ -381,7 +436,7 @@ public class UnifiedLocationProcessingService {
 
         //split them up when time is x seconds between
         for (List<RawLocationPoint> clusteredByLocation : points.values()) {
-            logger.debug("Start splitting up geospatial cluster with [{}] elements based on minimum time [{}]s between points", clusteredByLocation.size(), visitDetectionParameters.getMinimumStayTimeInSeconds());
+            logger.debug("Start splitting up geospatial cluster with [{}] elements based on minimum time [{}]s between points", clusteredByLocation.size(), visitDetectionParameters.getMaxMergeTimeBetweenSameStayPoints());
             //first sort them by timestamp
             clusteredByLocation.sort(Comparator.comparing(RawLocationPoint::getTimestamp));
 
@@ -410,7 +465,7 @@ public class UnifiedLocationProcessingService {
                 .filter(c -> Duration.between(c.getFirst().getTimestamp(), c.getLast().getTimestamp()).toSeconds() > visitDetectionParameters.getMinimumStayTimeInSeconds())
                 .toList();
 
-        logger.debug("Found {} valid clusters after duration filtering", filteredByMinimumDuration.size());
+        logger.debug("Found {} valid clusters after duration filtering with minimum stay time [{}]s", filteredByMinimumDuration.size(), visitDetectionParameters.getMinimumStayTimeInSeconds());
 
         // Step 3: Convert valid clusters to stay points
         return filteredByMinimumDuration.stream()
@@ -437,6 +492,11 @@ public class UnifiedLocationProcessingService {
 
         for (int i = 1; i < visits.size(); i++) {
             Visit nextVisit = visits.get(i);
+
+            if (nextVisit.getStartTime().isBefore(currentEndTime)) {
+                logger.debug("Skipping visit [{}] because it starts before the end time of the previous one [{}]", nextVisit, currentEndTime);
+                continue;
+            }
             SignificantPlace nextPlace = findOrCreateSignificantPlace(user, previewId, nextVisit.getLatitude(), nextVisit.getLongitude(), mergeConfiguration, traceId);
 
             boolean samePlace = nextPlace.getId().equals(currentPlace.getId());

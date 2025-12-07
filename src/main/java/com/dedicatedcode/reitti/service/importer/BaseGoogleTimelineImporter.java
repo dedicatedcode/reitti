@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.ImportBatchProcessor;
+import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,10 +17,10 @@ public abstract class BaseGoogleTimelineImporter {
     private static final Logger logger = LoggerFactory.getLogger(BaseGoogleTimelineImporter.class);
 
     protected final ObjectMapper objectMapper;
-    protected final ImportBatchProcessor batchProcessor;
+    protected final DefaultImportProcessor batchProcessor;
 
     public BaseGoogleTimelineImporter(ObjectMapper objectMapper,
-                                      ImportBatchProcessor batchProcessor) {
+                                      DefaultImportProcessor batchProcessor) {
         this.objectMapper = objectMapper;
         this.batchProcessor = batchProcessor;
     }
