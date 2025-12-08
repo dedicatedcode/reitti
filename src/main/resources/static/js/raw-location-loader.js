@@ -240,11 +240,6 @@ class RawLocationLoader {
             }
         }
 
-        // Also extend the bounds to the latest location in case no segments have been returned
-        if (rawPointsData.latest) {
-            bounds.extend([rawPointsData.latest.latitude, rawPointsData.latest.longitude])
-        }
-
         // Add avatar marker for the latest point if in auto-update mode and today is selected
         if (autoUpdateMode && this.isSelectedDateToday() && rawPointsData.latest) {
             const latestPoint = rawPointsData.latest;
