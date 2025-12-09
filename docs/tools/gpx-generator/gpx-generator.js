@@ -3,7 +3,9 @@ let map;
 let tracks = []; // Array of track objects
 let currentTrackIndex = 0;
 let polylines = [];
-let markers = [];
+let markers = []; // Keep for compatibility, but will use canvas
+let markerCanvas;
+let markerCanvasLayer;
 let hoverTooltip;
 let previewLine;
 let paintMode = false;
@@ -22,6 +24,9 @@ const TRACK_COLORS = [
     '#1abc9c', '#34495e', '#e67e22', '#95a5a6', '#d35400'
 ];
 
+// Global edit mode state
+let editModeEnabled = false;
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     initializeTheme();
@@ -31,7 +36,31 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeKeyboardShortcuts();
     createNewTrack(); // Create the first track
     updateStatus();
+    
+    // Start in view mode (edit disabled)
+    editModeEnabled = false;
 });
+
+// Functions to control edit mode from HTML
+window.enableEditMode = function() {
+    editModeEnabled = true;
+    updateStatus(); // Update status when edit mode changes
+};
+
+window.disableEditMode = function() {
+    editModeEnabled = false;
+    // Stop paint mode when disabling edit mode
+    if (paintMode) {
+        paintMode = false;
+        paintActive = false;
+        stopAutoPainting();
+        updatePaintModeButton();
+        if (map) {
+            map.getContainer().style.cursor = '';
+        }
+    }
+    updateStatus(); // Update status when edit mode changes
+};
 
 function initializeTheme() {
     // Check for saved theme preference or default to light mode
@@ -85,10 +114,15 @@ function initializeMap() {
     // Add default layer
     streetLayer.addTo(map);
     
+    // Initialize canvas marker layer
+    initializeCanvasMarkers();
+    
     // Add event listeners
     map.on('click', onMapClick);
     map.on('mousemove', onMapMouseMove);
     map.on('mouseout', onMapMouseOut);
+    map.on('zoom', redrawMarkers);
+    map.on('move', redrawMarkers);
     
     // Polylines will be created per track
     polylines = [];
@@ -260,6 +294,11 @@ function newTrack() {
 }
 
 function onMapClick(e) {
+    // Prevent point addition if edit mode is disabled
+    if (!editModeEnabled) {
+        return;
+    }
+    
     if (paintMode) {
         // Toggle paint active state
         paintActive = !paintActive;
@@ -338,27 +377,23 @@ function addPoint(lat, lng) {
     
     currentTrack.points.push(point);
     
-    // Add marker to map with track color
-    const marker = L.marker([adjustedCoords.lat, adjustedCoords.lng], {
-        title: `${currentTrack.name} - Point ${pointIndex + 1}`,
-        icon: L.divIcon({
-            className: 'small-marker',
-            html: `<div style="background-color: ${currentTrack.color}; width: 8px; height: 8px; border-radius: 50%; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>`,
-            iconSize: [12, 12],
-            iconAnchor: [6, 6]
-        })
-    }).addTo(map);
+    // Store marker data for canvas rendering
+    const markerData = {
+        lat: adjustedCoords.lat,
+        lng: adjustedCoords.lng,
+        color: currentTrack.color,
+        trackIndex: currentTrackIndex,
+        pointIndex: pointIndex,
+        title: `${currentTrack.name} - Point ${pointIndex + 1}`
+    };
     
-    // Add right-click context menu for deletion
-    marker.on('contextmenu', function(e) {
-        e.originalEvent.preventDefault();
-        removePoint(currentTrackIndex, pointIndex);
-    });
-    
-    markers.push(marker);
+    markers.push(markerData);
     
     // Update polyline for current track
     updatePolyline(currentTrackIndex);
+    
+    // Redraw markers to include the new point
+    redrawMarkers();
     
     // Update datetime input to next interval for next point
     const timeInterval = parseInt(document.getElementById('timeInterval').value);
@@ -390,27 +425,34 @@ function removePoint(trackIndex, pointIndex) {
     // Find the marker to remove
     const point = track.points[pointIndex];
     const markerIndex = markers.findIndex(marker => {
-        const markerLatLng = marker.getLatLng();
-        return Math.abs(markerLatLng.lat - point.lat) < 0.000001 && 
-               Math.abs(markerLatLng.lng - point.lng) < 0.000001;
+        return marker.trackIndex === trackIndex && marker.pointIndex === pointIndex;
     });
     
-    // Remove marker from map
+    // Remove marker from array
     if (markerIndex >= 0) {
-        map.removeLayer(markers[markerIndex]);
         markers.splice(markerIndex, 1);
     }
     
     // Remove from track
     track.points.splice(pointIndex, 1);
     
-    // Reassign IDs to remaining points in track
+    // Reassign IDs to remaining points in track and update marker data
     for (let i = pointIndex; i < track.points.length; i++) {
         track.points[i].id = i;
     }
     
+    // Update marker indices for remaining points in this track
+    markers.forEach(marker => {
+        if (marker.trackIndex === trackIndex && marker.pointIndex > pointIndex) {
+            marker.pointIndex--;
+        }
+    });
+    
     // Update polyline for this track
     updatePolyline(trackIndex);
+    
+    // Redraw markers
+    redrawMarkers();
     
     // Update UI
     updatePointsList();
@@ -614,7 +656,10 @@ function updateStatus() {
     const modeText = `Paint: ${paintStatus} • Speed: ${maxSpeed}km/h • Current: ${tracks[currentTrackIndex]?.name || 'None'}`;
     
     if (totalPoints === 0) {
-        if (paintMode && paintActive) {
+        if (!editModeEnabled) {
+            statusText.textContent = 'View mode - switch to edit mode to add points';
+            pointsSummary.textContent = 'Switch to edit mode to start creating tracks';
+        } else if (paintMode && paintActive) {
             statusText.textContent = 'Painting active - move mouse to add points (±: adjust speed)';
             pointsSummary.textContent = 'Move mouse over the map to paint points';
         } else if (paintMode) {
@@ -625,12 +670,20 @@ function updateStatus() {
             pointsSummary.textContent = 'Click on the map to add points';
         }
     } else if (totalPoints === 1) {
-        statusText.textContent = '1 point added - click to add more points';
+        if (!editModeEnabled) {
+            statusText.textContent = '1 point - switch to edit mode to add more';
+        } else {
+            statusText.textContent = '1 point added - click to add more points';
+        }
         pointsSummary.innerHTML = `<strong>1 point</strong> in ${tracks.length} track(s) • ${modeText}`;
     } else {
         const duration = calculateTotalDuration();
         const totalDistance = calculateTotalDistance();
-        statusText.textContent = `${totalPoints} points in ${tracks.length} track(s) - Total duration: ${formatDuration(duration)}`;
+        if (!editModeEnabled) {
+            statusText.textContent = `${totalPoints} points in ${tracks.length} track(s) - viewing mode`;
+        } else {
+            statusText.textContent = `${totalPoints} points in ${tracks.length} track(s) - Total duration: ${formatDuration(duration)}`;
+        }
         pointsSummary.innerHTML = `<strong>${totalPoints} points</strong> • ${formatDistance(totalDistance)} • ${formatDuration(duration)} • ${modeText}`;
     }
 }
@@ -682,13 +735,15 @@ function clearAll() {
         // Clear tracks array
         tracks = [];
         
-        // Remove all markers
-        markers.forEach(marker => map.removeLayer(marker));
+        // Clear markers array
         markers = [];
         
         // Remove all polylines
         polylines.forEach(polyline => map.removeLayer(polyline));
         polylines = [];
+        
+        // Clear canvas
+        redrawMarkers();
         
         // Create first track
         createNewTrack();
@@ -908,8 +963,8 @@ function parseAndImportGPX(gpxContent, filename, isFirstFile = true) {
     // Sort points by timestamp
     trackPoints.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
     
-    // Group points by UTC day
-    const pointsByDay = groupPointsByUTCDay(trackPoints);
+    // Group points by local timezone day
+    const pointsByDay = groupPointsByLocalDay(trackPoints);
     
     // Create tracks for each day
     let importedTracksCount = 0;
@@ -990,24 +1045,17 @@ function parseAndImportGPX(gpxContent, filename, isFirstFile = true) {
             
             track.points.push(trackPoint);
             
-            // Add marker to map
-            const marker = L.marker([point.lat, point.lng], {
-                title: `${track.name} - Point ${pointIndex + 1}`,
-                icon: L.divIcon({
-                    className: 'small-marker',
-                    html: `<div style="background-color: ${color}; width: 8px; height: 8px; border-radius: 50%; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>`,
-                    iconSize: [12, 12],
-                    iconAnchor: [6, 6]
-                })
-            }).addTo(map);
+            // Store marker data for canvas rendering
+            const markerData = {
+                lat: point.lat,
+                lng: point.lng,
+                color: color,
+                trackIndex: trackIndex,
+                pointIndex: pointIndex,
+                title: `${track.name} - Point ${pointIndex + 1}`
+            };
             
-            // Add right-click context menu for deletion
-            marker.on('contextmenu', function(e) {
-                e.originalEvent.preventDefault();
-                removePoint(trackIndex, pointIndex);
-            });
-            
-            markers.push(marker);
+            markers.push(markerData);
         });
         
         // Update polyline for this track
@@ -1021,13 +1069,20 @@ function parseAndImportGPX(gpxContent, filename, isFirstFile = true) {
         
         // Fit map to show all imported points
         if (trackPoints.length > 0) {
-            const group = new L.featureGroup(markers.slice(-trackPoints.length));
-            map.fitBounds(group.getBounds().pad(0.1));
+            const bounds = L.latLngBounds();
+            trackPoints.forEach(point => {
+                bounds.extend([point.lat, point.lng]);
+            });
+            map.fitBounds(bounds.pad(0.1));
         }
     }
     
     // Update UI
     updatePointsList();
+    
+    // Redraw all markers
+    redrawMarkers();
+    
     updateStatus();
     
     // Return import statistics for summary
@@ -1037,18 +1092,19 @@ function parseAndImportGPX(gpxContent, filename, isFirstFile = true) {
     };
 }
 
-function groupPointsByUTCDay(points) {
+function groupPointsByLocalDay(points) {
     const pointsByDay = {};
     
     points.forEach(point => {
-        // Get UTC date string (YYYY-MM-DD)
-        const utcDate = point.timestamp.toISOString().split('T')[0];
+        // Get local date string (YYYY-MM-DD) using the browser's timezone
+        const localDate = new Date(point.timestamp.getTime() - (point.timestamp.getTimezoneOffset() * 60000));
+        const localDateString = localDate.toISOString().split('T')[0];
         
-        if (!pointsByDay[utcDate]) {
-            pointsByDay[utcDate] = [];
+        if (!pointsByDay[localDateString]) {
+            pointsByDay[localDateString] = [];
         }
         
-        pointsByDay[utcDate].push(point);
+        pointsByDay[localDateString].push(point);
     });
     
     return pointsByDay;
@@ -1057,6 +1113,13 @@ function groupPointsByUTCDay(points) {
 // New functions for Phase 2 features
 
 function onMapMouseMove(e) {
+    // Don't show preview or allow painting if edit mode is disabled
+    if (!editModeEnabled) {
+        hideHoverTooltip();
+        previewLine.setLatLngs([]);
+        return;
+    }
+    
     // Update mouse position for paint mode
     if (paintMode) {
         lastMousePosition = e.latlng;
@@ -1243,6 +1306,11 @@ function formatDistance(meters) {
 
 // Paint mode functions
 function togglePaintMode() {
+    // Don't allow paint mode if edit mode is disabled
+    if (!editModeEnabled) {
+        return;
+    }
+    
     paintMode = !paintMode;
     paintActive = false; // Reset paint active state when toggling mode
 
@@ -1332,5 +1400,111 @@ function addRealisticStop(baseTimestamp) {
     // Add a random stop duration between 30 seconds and 10 minutes
     const stopDuration = Math.random() * (10 * 60 - 30) + 30; // 30s to 10min in seconds
     return new Date(baseTimestamp.getTime() + (stopDuration * 1000));
+}
+
+// Canvas marker implementation for better performance
+function initializeCanvasMarkers() {
+    // Create canvas element
+    markerCanvas = document.createElement('canvas');
+    markerCanvas.style.position = 'absolute';
+    markerCanvas.style.top = '0';
+    markerCanvas.style.left = '0';
+    markerCanvas.style.pointerEvents = 'none';
+    markerCanvas.style.zIndex = '400'; // Above map tiles but below controls
+    
+    // Create custom Leaflet layer for canvas
+    markerCanvasLayer = L.Layer.extend({
+        onAdd: function(map) {
+            this._map = map;
+            map.getPanes().overlayPane.appendChild(markerCanvas);
+            this._reset();
+            map.on('viewreset', this._reset, this);
+            map.on('zoom', this._reset, this);
+            map.on('move', this._reset, this);
+        },
+        
+        onRemove: function(map) {
+            map.getPanes().overlayPane.removeChild(markerCanvas);
+            map.off('viewreset', this._reset, this);
+            map.off('zoom', this._reset, this);
+            map.off('move', this._reset, this);
+        },
+        
+        _reset: function() {
+            const size = this._map.getSize();
+            const topLeft = this._map.containerPointToLayerPoint([0, 0]);
+            
+            markerCanvas.style.left = topLeft.x + 'px';
+            markerCanvas.style.top = topLeft.y + 'px';
+            markerCanvas.width = size.x;
+            markerCanvas.height = size.y;
+            
+            redrawMarkers();
+        }
+    });
+    
+    // Add canvas layer to map
+    new markerCanvasLayer().addTo(map);
+    
+    // Add click handler for marker interaction
+    map.getContainer().addEventListener('contextmenu', handleMarkerContextMenu);
+}
+
+function redrawMarkers() {
+    if (!markerCanvas) return;
+    
+    const ctx = markerCanvas.getContext('2d');
+    ctx.clearRect(0, 0, markerCanvas.width, markerCanvas.height);
+    
+    // Draw all markers
+    markers.forEach(markerData => {
+        const point = map.latLngToContainerPoint([markerData.lat, markerData.lng]);
+        drawMarker(ctx, point.x, point.y, markerData.color);
+    });
+}
+
+function drawMarker(ctx, x, y, color) {
+    const radius = 4;
+    const borderWidth = 2;
+    
+    // Draw white border
+    ctx.beginPath();
+    ctx.arc(x, y, radius + borderWidth, 0, 2 * Math.PI);
+    ctx.fillStyle = 'white';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    
+    // Draw colored center
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, 2 * Math.PI);
+    ctx.fillStyle = color;
+    ctx.fill();
+}
+
+function handleMarkerContextMenu(e) {
+    if (!editModeEnabled) return;
+    
+    e.preventDefault();
+    
+    const containerPoint = map.mouseEventToContainerPoint(e);
+    const tolerance = 10; // pixels
+    
+    // Find marker near click point
+    for (let i = 0; i < markers.length; i++) {
+        const markerData = markers[i];
+        const markerPoint = map.latLngToContainerPoint([markerData.lat, markerData.lng]);
+        
+        const distance = Math.sqrt(
+            Math.pow(containerPoint.x - markerPoint.x, 2) + 
+            Math.pow(containerPoint.y - markerPoint.y, 2)
+        );
+        
+        if (distance <= tolerance) {
+            removePoint(markerData.trackIndex, markerData.pointIndex);
+            break;
+        }
+    }
 }
 
