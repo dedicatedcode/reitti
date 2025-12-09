@@ -48,7 +48,7 @@ public class OwnTracksRecorderIntegrationService {
 
     @Scheduled(cron = "${reitti.imports.owntracks-recorder.schedule}")
     void importNewData() {
-        logger.debug("Starting OwnTracks Recorder data import");
+        logger.trace("Starting OwnTracks Recorder data import");
         
         List<User> allUsers = userJdbcService.findAll();
         int processedIntegrations = 0;
@@ -114,7 +114,7 @@ public class OwnTracksRecorderIntegrationService {
             }
         }
         
-        logger.debug("OwnTracks Recorder import completed: processed {} integrations, imported {} location points",
+        logger.trace("OwnTracks Recorder import completed: processed {} integrations, imported {} location points",
                    processedIntegrations, totalLocationPoints);
     }
 

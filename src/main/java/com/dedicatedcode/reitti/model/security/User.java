@@ -120,4 +120,11 @@ public class User implements UserDetails {
         return Objects.hashCode(id);
     }
 
+    @Override
+    public String toString() {
+        return "User{" +
+                "id=" + id +
+                ", username='" + username + '\'' +
+                '}';
+    }
 }
