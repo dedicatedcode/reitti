@@ -1079,6 +1079,10 @@ function parseAndImportGPX(gpxContent, filename, isFirstFile = true) {
     
     // Update UI
     updatePointsList();
+    
+    // Redraw all markers
+    redrawMarkers();
+    
     updateStatus();
     
     // Return import statistics for summary
