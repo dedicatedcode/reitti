@@ -1,0 +1,65 @@
+name: Build GPX Generator Docker Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Docker image tag (default: latest)'
+        required: false
+        default: 'latest'
+        type: string
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: dedicatedcode/reitti-gpx-generator
+          tags: |
+            type=raw,value=${{ inputs.tag || 'latest' }}
+            type=sha,prefix={{branch}}-
+            type=ref,event=branch
+            type=ref,event=pr
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: docs/tools/gpx-generator
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate summary
+        run: |
+          echo "## Docker Image Built Successfully! 🐳" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`dedicatedcode/reitti-gpx-generator:${{ inputs.tag || 'latest' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Usage" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "docker run -p 8080:80 dedicatedcode/reitti-gpx-generator:${{ inputs.tag || 'latest' }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Then open http://localhost:8080 in your browser." >> $GITHUB_STEP_SUMMARY
