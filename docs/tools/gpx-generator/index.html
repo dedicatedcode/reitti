@@ -806,9 +806,6 @@
                         <button id="modeToggle" class="mode-toggle" onclick="toggleEditMode()">
                             <span>📍</span> View Mode
                         </button>
-                        <button id="editDrawerToggle" class="control-button" onclick="toggleEditDrawer()" style="display: none;">
-                            ⚙️ Edit Controls
-                        </button>
                     </div>
                     
                     <div class="header-divider"></div>
@@ -966,14 +963,16 @@
         function toggleEditMode() {
             isEditMode = !isEditMode;
             const modeToggle = document.getElementById('modeToggle');
-            const editDrawerToggle = document.getElementById('editDrawerToggle');
             const headerDescription = document.getElementById('headerDescription');
             
             if (isEditMode) {
                 modeToggle.innerHTML = '<span>✏️</span> Edit Mode';
                 modeToggle.classList.add('edit-mode');
-                editDrawerToggle.style.display = 'block';
                 headerDescription.textContent = 'Click on the map to add points. Right-click points to remove them.';
+                // Open the edit drawer automatically
+                if (!isEditDrawerOpen) {
+                    toggleEditDrawer();
+                }
                 // Enable map interactions for editing
                 if (window.map) {
                     window.map.dragging.enable();
@@ -983,21 +982,26 @@
                     window.map.boxZoom.enable();
                     window.map.keyboard.enable();
                 }
+                // Enable point addition (this will be handled in gpx-generator.js)
+                if (window.enableEditMode) {
+                    window.enableEditMode();
+                }
             } else {
                 modeToggle.innerHTML = '<span>📍</span> View Mode';
                 modeToggle.classList.remove('edit-mode');
-                editDrawerToggle.style.display = 'none';
                 headerDescription.textContent = 'Interactive tool for creating and editing GPS tracks';
                 // Close edit drawer if open
                 if (isEditDrawerOpen) {
                     toggleEditDrawer();
                 }
+                // Disable point addition (this will be handled in gpx-generator.js)
+                if (window.disableEditMode) {
+                    window.disableEditMode();
+                }
             }
         }
         
         function toggleEditDrawer() {
-            if (!isEditMode) return;
-            
             isEditDrawerOpen = !isEditDrawerOpen;
             const drawer = document.getElementById('editDrawer');
             
@@ -1025,9 +1029,28 @@
         
         // Initialize the page in view mode
         document.addEventListener('DOMContentLoaded', function() {
-            // Set initial state
-            toggleEditMode(); // This will set to edit mode
-            toggleEditMode(); // This will set back to view mode (initial state)
+            // Ensure we start in view mode
+            isEditMode = false;
+            isEditDrawerOpen = false;
+            
+            // Set up initial UI state
+            const modeToggle = document.getElementById('modeToggle');
+            const headerDescription = document.getElementById('headerDescription');
+            
+            modeToggle.innerHTML = '<span>📍</span> View Mode';
+            modeToggle.classList.remove('edit-mode');
+            headerDescription.textContent = 'Interactive tool for creating and editing GPS tracks';
+            
+            // Ensure drawer is closed
+            const drawer = document.getElementById('editDrawer');
+            drawer.classList.remove('open');
+            
+            // Disable edit mode in the map (this will be handled in gpx-generator.js)
+            setTimeout(() => {
+                if (window.disableEditMode) {
+                    window.disableEditMode();
+                }
+            }, 100);
         });
     </script>
 </body>
