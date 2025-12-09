@@ -951,8 +951,8 @@ function parseAndImportGPX(gpxContent, filename, isFirstFile = true) {
     // Sort points by timestamp
     trackPoints.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
     
-    // Group points by UTC day
-    const pointsByDay = groupPointsByUTCDay(trackPoints);
+    // Group points by local timezone day
+    const pointsByDay = groupPointsByLocalDay(trackPoints);
     
     // Create tracks for each day
     let importedTracksCount = 0;
@@ -1080,18 +1080,19 @@ function parseAndImportGPX(gpxContent, filename, isFirstFile = true) {
     };
 }
 
-function groupPointsByUTCDay(points) {
+function groupPointsByLocalDay(points) {
     const pointsByDay = {};
     
     points.forEach(point => {
-        // Get UTC date string (YYYY-MM-DD)
-        const utcDate = point.timestamp.toISOString().split('T')[0];
+        // Get local date string (YYYY-MM-DD) using the browser's timezone
+        const localDate = new Date(point.timestamp.getTime() - (point.timestamp.getTimezoneOffset() * 60000));
+        const localDateString = localDate.toISOString().split('T')[0];
         
-        if (!pointsByDay[utcDate]) {
-            pointsByDay[utcDate] = [];
+        if (!pointsByDay[localDateString]) {
+            pointsByDay[localDateString] = [];
         }
         
-        pointsByDay[utcDate].push(point);
+        pointsByDay[localDateString].push(point);
     });
     
     return pointsByDay;
