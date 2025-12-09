@@ -22,6 +22,9 @@ const TRACK_COLORS = [
     '#1abc9c', '#34495e', '#e67e22', '#95a5a6', '#d35400'
 ];
 
+// Global edit mode state
+let editModeEnabled = false;
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     initializeTheme();
@@ -31,7 +34,19 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeKeyboardShortcuts();
     createNewTrack(); // Create the first track
     updateStatus();
+    
+    // Start in view mode (edit disabled)
+    editModeEnabled = false;
 });
+
+// Functions to control edit mode from HTML
+window.enableEditMode = function() {
+    editModeEnabled = true;
+};
+
+window.disableEditMode = function() {
+    editModeEnabled = false;
+};
 
 function initializeTheme() {
     // Check for saved theme preference or default to light mode
@@ -260,6 +275,11 @@ function newTrack() {
 }
 
 function onMapClick(e) {
+    // Prevent point addition if edit mode is disabled
+    if (!editModeEnabled) {
+        return;
+    }
+    
     if (paintMode) {
         // Toggle paint active state
         paintActive = !paintActive;
@@ -614,7 +634,10 @@ function updateStatus() {
     const modeText = `Paint: ${paintStatus} • Speed: ${maxSpeed}km/h • Current: ${tracks[currentTrackIndex]?.name || 'None'}`;
     
     if (totalPoints === 0) {
-        if (paintMode && paintActive) {
+        if (!editModeEnabled) {
+            statusText.textContent = 'View mode - switch to edit mode to add points';
+            pointsSummary.textContent = 'Switch to edit mode to start creating tracks';
+        } else if (paintMode && paintActive) {
             statusText.textContent = 'Painting active - move mouse to add points (±: adjust speed)';
             pointsSummary.textContent = 'Move mouse over the map to paint points';
         } else if (paintMode) {
@@ -625,12 +648,20 @@ function updateStatus() {
             pointsSummary.textContent = 'Click on the map to add points';
         }
     } else if (totalPoints === 1) {
-        statusText.textContent = '1 point added - click to add more points';
+        if (!editModeEnabled) {
+            statusText.textContent = '1 point - switch to edit mode to add more';
+        } else {
+            statusText.textContent = '1 point added - click to add more points';
+        }
         pointsSummary.innerHTML = `<strong>1 point</strong> in ${tracks.length} track(s) • ${modeText}`;
     } else {
         const duration = calculateTotalDuration();
         const totalDistance = calculateTotalDistance();
-        statusText.textContent = `${totalPoints} points in ${tracks.length} track(s) - Total duration: ${formatDuration(duration)}`;
+        if (!editModeEnabled) {
+            statusText.textContent = `${totalPoints} points in ${tracks.length} track(s) - viewing mode`;
+        } else {
+            statusText.textContent = `${totalPoints} points in ${tracks.length} track(s) - Total duration: ${formatDuration(duration)}`;
+        }
         pointsSummary.innerHTML = `<strong>${totalPoints} points</strong> • ${formatDistance(totalDistance)} • ${formatDuration(duration)} • ${modeText}`;
     }
 }
@@ -1057,6 +1088,13 @@ function groupPointsByUTCDay(points) {
 // New functions for Phase 2 features
 
 function onMapMouseMove(e) {
+    // Don't show preview or allow painting if edit mode is disabled
+    if (!editModeEnabled) {
+        hideHoverTooltip();
+        previewLine.setLatLngs([]);
+        return;
+    }
+    
     // Update mouse position for paint mode
     if (paintMode) {
         lastMousePosition = e.latlng;
@@ -1243,6 +1281,11 @@ function formatDistance(meters) {
 
 // Paint mode functions
 function togglePaintMode() {
+    // Don't allow paint mode if edit mode is disabled
+    if (!editModeEnabled) {
+        return;
+    }
+    
     paintMode = !paintMode;
     paintActive = false; // Reset paint active state when toggling mode
 
