@@ -42,10 +42,22 @@ document.addEventListener('DOMContentLoaded', function() {
 // Functions to control edit mode from HTML
 window.enableEditMode = function() {
     editModeEnabled = true;
+    updateStatus(); // Update status when edit mode changes
 };
 
 window.disableEditMode = function() {
     editModeEnabled = false;
+    // Stop paint mode when disabling edit mode
+    if (paintMode) {
+        paintMode = false;
+        paintActive = false;
+        stopAutoPainting();
+        updatePaintModeButton();
+        if (map) {
+            map.getContainer().style.cursor = '';
+        }
+    }
+    updateStatus(); // Update status when edit mode changes
 };
 
 function initializeTheme() {

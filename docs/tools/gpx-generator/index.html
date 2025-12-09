@@ -973,15 +973,6 @@
                 if (!isEditDrawerOpen) {
                     toggleEditDrawer();
                 }
-                // Enable map interactions for editing
-                if (window.map) {
-                    window.map.dragging.enable();
-                    window.map.touchZoom.enable();
-                    window.map.doubleClickZoom.enable();
-                    window.map.scrollWheelZoom.enable();
-                    window.map.boxZoom.enable();
-                    window.map.keyboard.enable();
-                }
                 // Enable point addition (this will be handled in gpx-generator.js)
                 if (window.enableEditMode) {
                     window.enableEditMode();
