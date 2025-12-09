@@ -33,7 +33,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: dedicatedcode/reitti-gpx-creator
+          images: dedicatedcode/reitti-gpx-generator
           tags: |
             type=raw,value=${{ inputs.tag || 'latest' }}
             type=sha,prefix={{branch}}-
@@ -43,7 +43,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: docs/tools/gpx-generator
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -55,11 +55,11 @@ jobs:
         run: |
           echo "## Docker Image Built Successfully! 🐳" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Image:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.tag || 'latest' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`dedicatedcode/reitti-gpx-generator:${{ inputs.tag || 'latest' }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Usage" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "docker run -p 8080:80 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.tag || 'latest' }}" >> $GITHUB_STEP_SUMMARY
+          echo "docker run -p 8080:80 dedicatedcode/reitti-gpx-generator:${{ inputs.tag || 'latest' }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Then open http://localhost:8080 in your browser." >> $GITHUB_STEP_SUMMARY
