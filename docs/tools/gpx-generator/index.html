@@ -370,6 +370,18 @@
             background: linear-gradient(145deg, #ffffff, #f1f5f9);
         }
         
+        [data-theme="dark"] .control-input {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border-color: var(--border-color);
+        }
+        
+        [data-theme="dark"] .control-input:focus {
+            background: var(--bg-tertiary);
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2), inset 0 2px 4px var(--shadow-light);
+        }
+        
         .control-button {
             padding: 8px 16px;
             border: 2px solid #e2e8f0;
