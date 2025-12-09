@@ -3,7 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX Test Data Generator</title>
+    <title>GPX Test Data Generator - Create and Edit GPS Tracks</title>
+    <meta name="description" content="Interactive GPX track generator and editor. Create realistic GPS test data with customizable speed, elevation, and timing. Perfect for testing location-based applications.">
+    <meta name="keywords" content="GPX, GPS, track generator, test data, location testing, GPS simulation, route planning">
+    <meta name="author" content="Reitti Project">
+    <meta property="og:title" content="GPX Test Data Generator">
+    <meta property="og:description" content="Interactive tool to create and edit GPX tracks for testing location-based applications">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="GPX Test Data Generator">
+    <meta name="twitter:description" content="Interactive tool to create and edit GPX tracks for testing location-based applications">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
@@ -65,6 +74,174 @@
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.3);
             position: relative;
+        }
+        
+        .edit-drawer {
+            position: fixed;
+            left: -400px;
+            top: 0;
+            width: 380px;
+            height: 100vh;
+            background: var(--bg-primary);
+            border-right: 1px solid var(--border-color);
+            box-shadow: 4px 0 20px var(--shadow-medium);
+            transition: left 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        
+        .edit-drawer.open {
+            left: 0;
+        }
+        
+        .edit-drawer-header {
+            padding: 16px 20px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .edit-drawer-close {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            padding: 4px;
+            border-radius: 4px;
+        }
+        
+        .edit-drawer-close:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .edit-drawer-content {
+            padding: 20px;
+        }
+        
+        .drawer-section {
+            margin-bottom: 24px;
+        }
+        
+        .drawer-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .mode-toggle {
+            background: var(--bg-primary);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .mode-toggle.edit-mode {
+            border-color: #48bb78;
+            background: #48bb78;
+            color: white;
+        }
+        
+        .mode-toggle:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--shadow-medium);
+        }
+        
+        .about-dialog {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        
+        .about-dialog.open {
+            display: flex;
+        }
+        
+        .about-content {
+            background: var(--bg-primary);
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 600px;
+            margin: 20px;
+            box-shadow: 0 20px 60px var(--shadow-heavy);
+            border: 1px solid var(--border-color);
+        }
+        
+        .about-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .about-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .about-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            padding: 4px;
+            border-radius: 4px;
+        }
+        
+        .about-close:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .about-text {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        .about-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .about-link:hover {
+            text-decoration: underline;
+        }
+        
+        .header-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .header-divider {
+            width: 1px;
+            height: 24px;
+            background: var(--border-color);
+            margin: 0 8px;
         }
         
         [data-theme="dark"] .main-container {
@@ -621,80 +798,105 @@
             <div class="header">
                 <div class="header-content">
                     <h1>GPX Test Data Generator</h1>
-                    <p>Click on the map to add points. Right-click points to remove them.</p>
+                    <p id="headerDescription">Interactive tool for creating and editing GPS tracks</p>
                 </div>
                 <div class="header-controls">
-                    <button id="layerToggle" class="layer-toggle" onclick="toggleMapLayer()">Satellite</button>
-                    <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()">🌙</button>
+                    <div class="header-section">
+                        <button id="modeToggle" class="mode-toggle" onclick="toggleEditMode()">
+                            <span>📍</span> View Mode
+                        </button>
+                        <button id="editDrawerToggle" class="control-button" onclick="toggleEditDrawer()" style="display: none;">
+                            ⚙️ Edit Controls
+                        </button>
+                    </div>
+                    
+                    <div class="header-divider"></div>
+                    
+                    <div class="header-section">
+                        <button onclick="document.getElementById('gpxFileInput').click()" class="control-button">📁 Import</button>
+                        <button onclick="exportAllGPX()" class="control-button success">💾 Export</button>
+                        <button onclick="clearAll()" class="control-button danger">🗑️ Clear</button>
+                    </div>
+                    
+                    <div class="header-divider"></div>
+                    
+                    <div class="header-section">
+                        <button onclick="openAboutDialog()" class="control-button">ℹ️ About</button>
+                        <button id="layerToggle" class="layer-toggle" onclick="toggleMapLayer()">🛰️ Satellite</button>
+                        <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()">🌙</button>
+                    </div>
                 </div>
             </div>
             
-            <div class="controls">
-                <div class="control-grid">
-                    <div class="control-group">
-                        <label class="control-label" for="startDateTime">Start Date & Time</label>
-                        <input type="datetime-local" id="startDateTime" step="1" class="control-input">
-                    </div>
-                    
-                    <div class="control-group">
-                        <label class="control-label" for="timeInterval">Interval (s)</label>
-                        <input type="number" id="timeInterval" value="30" min="1" max="3600" class="control-input">
-                    </div>
-                    
-                    <div class="control-group">
-                        <label class="control-label" for="maxSpeed">Max Speed (km/h)</label>
-                        <input type="number" id="maxSpeed" value="25" min="1" max="300" class="control-input">
-                    </div>
-                    
-                    <div class="control-group">
-                        <label class="control-label">&nbsp;</label>
-                        <button id="paintModeToggle" class="control-button" onclick="togglePaintMode()">Paint Mode: OFF</button>
-                        <div class="paint-mode-info">Click map to start/stop painting</div>
-                    </div>
+            <!-- Edit Drawer -->
+            <div class="edit-drawer" id="editDrawer">
+                <div class="edit-drawer-header">
+                    <span>Edit Controls</span>
+                    <button class="edit-drawer-close" onclick="toggleEditDrawer()">×</button>
                 </div>
-                
-                <div class="control-grid">
-                    <div class="control-group">
-                        <label class="control-label" for="elevation">Elevation (m)</label>
-                        <input type="number" id="elevation" value="10" step="0.1" class="control-input">
-                    </div>
-                    
-                    <div class="control-group">
-                        <label class="control-label" for="elevationVariation">±Variation (m)</label>
-                        <input type="number" id="elevationVariation" value="0" min="0" step="0.1" class="control-input">
-                    </div>
-                    
-                    <div class="control-group">
-                        <label class="control-label" for="accuracySlider">GPS Accuracy: <span id="accuracyValue">5</span>m</label>
-                        <input type="range" id="accuracySlider" min="0" max="100" value="5" class="range-input">
-                    </div>
-                    
-                    <div class="control-group">
-                        <label class="control-label">
-                            <input type="checkbox" id="autoNewTrack" checked style="margin-right: 8px;">
-                            Auto new track on day change
-                        </label>
-                    </div>
-                    
-                    <div class="control-group">
-                        <label class="control-label">
-                            <input type="checkbox" id="autoStops" style="margin-right: 8px;">
-                            Add realistic stops
-                        </label>
-                    </div>
-                    
-                    <div class="control-group">
-                        <label class="control-label">&nbsp;</label>
-                        <div class="button-group">
-                            <button onclick="newTrack()" class="control-button">New Track</button>
-                            <button onclick="document.getElementById('gpxFileInput').click()" class="control-button">Open GPX</button>
-                            <button onclick="exportAllGPX()" class="control-button success">Export All</button>
-                            <button onclick="clearAll()" class="control-button danger">Clear All</button>
+                <div class="edit-drawer-content">
+                    <div class="drawer-section">
+                        <div class="drawer-section-title">Track Settings</div>
+                        <div class="control-group">
+                            <label class="control-label" for="startDateTime">Start Date & Time</label>
+                            <input type="datetime-local" id="startDateTime" step="1" class="control-input">
                         </div>
-                        <input type="file" id="gpxFileInput" accept=".gpx" multiple style="display: none;" onchange="handleGPXFiles(event)">
+                        <div class="control-group">
+                            <label class="control-label" for="timeInterval">Interval (seconds)</label>
+                            <input type="number" id="timeInterval" value="30" min="1" max="3600" class="control-input">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label" for="maxSpeed">Max Speed (km/h)</label>
+                            <input type="number" id="maxSpeed" value="25" min="1" max="300" class="control-input">
+                        </div>
+                    </div>
+                    
+                    <div class="drawer-section">
+                        <div class="drawer-section-title">Elevation & GPS</div>
+                        <div class="control-group">
+                            <label class="control-label" for="elevation">Elevation (m)</label>
+                            <input type="number" id="elevation" value="10" step="0.1" class="control-input">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label" for="elevationVariation">±Variation (m)</label>
+                            <input type="number" id="elevationVariation" value="0" min="0" step="0.1" class="control-input">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label" for="accuracySlider">GPS Accuracy: <span id="accuracyValue">5</span>m</label>
+                            <input type="range" id="accuracySlider" min="0" max="100" value="5" class="range-input">
+                        </div>
+                    </div>
+                    
+                    <div class="drawer-section">
+                        <div class="drawer-section-title">Options</div>
+                        <div class="control-group">
+                            <label class="control-label">
+                                <input type="checkbox" id="autoNewTrack" checked style="margin-right: 8px;">
+                                Auto new track on day change
+                            </label>
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">
+                                <input type="checkbox" id="autoStops" style="margin-right: 8px;">
+                                Add realistic stops
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="drawer-section">
+                        <div class="drawer-section-title">Drawing Tools</div>
+                        <div class="control-group">
+                            <button id="paintModeToggle" class="control-button" onclick="togglePaintMode()">🎨 Paint Mode: OFF</button>
+                            <div class="paint-mode-info">Click map to start/stop painting</div>
+                        </div>
+                        <div class="control-group">
+                            <button onclick="newTrack()" class="control-button">➕ New Track</button>
+                        </div>
                     </div>
                 </div>
             </div>
+            
+            <input type="file" id="gpxFileInput" accept=".gpx" multiple style="display: none;" onchange="handleGPXFiles(event)">
         
         <div class="main-content">
             <div class="map-container">
@@ -721,7 +923,111 @@
         </div>
     </div>
 
+    <!-- About Dialog -->
+    <div class="about-dialog" id="aboutDialog">
+        <div class="about-content">
+            <div class="about-header">
+                <h2 class="about-title">About GPX Generator</h2>
+                <button class="about-close" onclick="closeAboutDialog()">×</button>
+            </div>
+            <div class="about-text">
+                <p>This interactive GPX generator is designed for creating realistic GPS test data for location-based applications. It's particularly useful for testing and development of GPS tracking systems, route planning applications, and location analytics tools.</p>
+                
+                <p><strong>Features:</strong></p>
+                <ul style="margin: 12px 0; padding-left: 20px;">
+                    <li>Interactive map-based point creation</li>
+                    <li>Realistic speed and elevation simulation</li>
+                    <li>Customizable GPS accuracy and timing</li>
+                    <li>Multiple track support with export capabilities</li>
+                    <li>Paint mode for continuous track drawing</li>
+                </ul>
+                
+                <p><strong>Use Cases:</strong></p>
+                <ul style="margin: 12px 0; padding-left: 20px;">
+                    <li>Testing location-based mobile applications</li>
+                    <li>Creating sample data for GPS analytics</li>
+                    <li>Simulating user movement patterns</li>
+                    <li>Generating test routes for navigation systems</li>
+                </ul>
+                
+                <p>This tool is part of the <a href="https://github.com/dedicatedcode/reitti" target="_blank" rel="noopener" class="about-link">Reitti project</a> - an open-source location tracking and analytics platform.</p>
+            </div>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="gpx-generator.js"></script>
+    <script>
+        // Initialize edit mode state
+        let isEditMode = false;
+        let isEditDrawerOpen = false;
+        
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            const modeToggle = document.getElementById('modeToggle');
+            const editDrawerToggle = document.getElementById('editDrawerToggle');
+            const headerDescription = document.getElementById('headerDescription');
+            
+            if (isEditMode) {
+                modeToggle.innerHTML = '<span>✏️</span> Edit Mode';
+                modeToggle.classList.add('edit-mode');
+                editDrawerToggle.style.display = 'block';
+                headerDescription.textContent = 'Click on the map to add points. Right-click points to remove them.';
+                // Enable map interactions for editing
+                if (window.map) {
+                    window.map.dragging.enable();
+                    window.map.touchZoom.enable();
+                    window.map.doubleClickZoom.enable();
+                    window.map.scrollWheelZoom.enable();
+                    window.map.boxZoom.enable();
+                    window.map.keyboard.enable();
+                }
+            } else {
+                modeToggle.innerHTML = '<span>📍</span> View Mode';
+                modeToggle.classList.remove('edit-mode');
+                editDrawerToggle.style.display = 'none';
+                headerDescription.textContent = 'Interactive tool for creating and editing GPS tracks';
+                // Close edit drawer if open
+                if (isEditDrawerOpen) {
+                    toggleEditDrawer();
+                }
+            }
+        }
+        
+        function toggleEditDrawer() {
+            if (!isEditMode) return;
+            
+            isEditDrawerOpen = !isEditDrawerOpen;
+            const drawer = document.getElementById('editDrawer');
+            
+            if (isEditDrawerOpen) {
+                drawer.classList.add('open');
+            } else {
+                drawer.classList.remove('open');
+            }
+        }
+        
+        function openAboutDialog() {
+            document.getElementById('aboutDialog').classList.add('open');
+        }
+        
+        function closeAboutDialog() {
+            document.getElementById('aboutDialog').classList.remove('open');
+        }
+        
+        // Close about dialog when clicking outside
+        document.getElementById('aboutDialog').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeAboutDialog();
+            }
+        });
+        
+        // Initialize the page in view mode
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set initial state
+            toggleEditMode(); // This will set to edit mode
+            toggleEditMode(); // This will set back to view mode (initial state)
+        });
+    </script>
 </body>
 </html>
