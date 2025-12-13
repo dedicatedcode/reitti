@@ -167,7 +167,7 @@ public class GpxSender {
                     if (i == 0) {
                         // First point gets current time
                         adjustedTime = startTime;
-                    } else if (i > 0 && trackPoints.get(i-1).timestamp != null && point.timestamp != null) {
+                    } else if (trackPoints.get(i - 1).timestamp != null && point.timestamp != null) {
                         // Calculate time difference from previous point and add to previous adjusted time
                         TrackPoint prevPoint = trackPoints.get(i-1);
                         long durationFromPrev = point.timestamp.getEpochSecond() - prevPoint.timestamp.getEpochSecond();
@@ -214,7 +214,7 @@ public class GpxSender {
                 }
                 
                 // Wait before sending next point (except for the last one)
-                if (i < trackPoints.size() - 1 && !useOriginalTime) {
+                if (i < trackPoints.size() - 1) {
                     Thread.sleep(intervalSeconds * 1000L);
                 }
             }
