@@ -48,8 +48,9 @@ public class GpxSender {
 
     public static void main(String[] args) {
         if (args.length < 1) {
-            System.err.println("Usage: java -jar gpx-sender.jar <gpx-file> --url <reitti-url> --token <api-token> [--interval <seconds>]");
+            System.err.println("Usage: java -jar gpx-sender.jar <gpx-file> --url <reitti-url> --token <api-token> [--interval <seconds>] [--original-time]");
             System.err.println("Example: java -jar gpx-sender.jar track.gpx --url http://localhost:8080 --token your-api-token --interval 15");
+            System.err.println("         java -jar gpx-sender.jar track.gpx --url http://localhost:8080 --token your-api-token --original-time");
             System.exit(1);
         }
 
@@ -57,6 +58,7 @@ public class GpxSender {
         String reittiUrl = null;
         String apiToken = null;
         int intervalSeconds = 15;
+        boolean useOriginalTime = false;
 
         // Parse named parameters
         for (int i = 1; i < args.length; i++) {
@@ -75,6 +77,10 @@ public class GpxSender {
                     if (i + 1 < args.length) {
                         intervalSeconds = Integer.parseInt(args[++i]);
                     }
+                    break;
+                case "--original-time":
+                case "-ot":
+                    useOriginalTime = true;
                     break;
                 default:
                     System.err.println("Unknown parameter: " + args[i]);
@@ -96,9 +102,13 @@ public class GpxSender {
 
             System.out.println("Loaded " + trackPoints.size() + " track points from " + gpxFile);
             System.out.println("Sending to: " + reittiUrl);
-            System.out.println("Interval: " + intervalSeconds + " seconds");
+            if (useOriginalTime) {
+                System.out.println("Using original timestamps from GPX file");
+            } else {
+                System.out.println("Interval: " + intervalSeconds + " seconds");
+            }
 
-            sendTrackPoints(trackPoints, reittiUrl, apiToken, intervalSeconds);
+            sendTrackPoints(trackPoints, reittiUrl, apiToken, intervalSeconds, useOriginalTime);
 
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
@@ -135,7 +145,7 @@ public class GpxSender {
         return trackPoints;
     }
 
-    private static void sendTrackPoints(List<TrackPoint> trackPoints, String reittiUrl, String apiToken, int intervalSeconds) throws Exception {
+    private static void sendTrackPoints(List<TrackPoint> trackPoints, String reittiUrl, String apiToken, int intervalSeconds, boolean useOriginalTime) throws Exception {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         
@@ -147,19 +157,25 @@ public class GpxSender {
             for (int i = 0; i < trackPoints.size(); i++) {
                 TrackPoint point = trackPoints.get(i);
                 
-                // Calculate adjusted timestamp - start from now and preserve original intervals
+                // Calculate timestamp based on mode
                 Instant adjustedTime;
-                if (i == 0) {
-                    // First point gets current time
-                    adjustedTime = startTime;
-                } else if (i > 0 && trackPoints.get(i-1).timestamp != null && point.timestamp != null) {
-                    // Calculate time difference from previous point and add to previous adjusted time
-                    TrackPoint prevPoint = trackPoints.get(i-1);
-                    long durationFromPrev = point.timestamp.getEpochSecond() - prevPoint.timestamp.getEpochSecond();
-                    adjustedTime = startTime.plusSeconds((long) i * intervalSeconds);
+                if (useOriginalTime) {
+                    // Use original timestamp from GPX file
+                    adjustedTime = point.timestamp != null ? point.timestamp : startTime.plusSeconds((long) i * intervalSeconds);
                 } else {
-                    // Fallback: distribute points evenly from start time
-                    adjustedTime = startTime.plusSeconds((long) i * intervalSeconds);
+                    // Calculate adjusted timestamp - start from now and preserve original intervals
+                    if (i == 0) {
+                        // First point gets current time
+                        adjustedTime = startTime;
+                    } else if (i > 0 && trackPoints.get(i-1).timestamp != null && point.timestamp != null) {
+                        // Calculate time difference from previous point and add to previous adjusted time
+                        TrackPoint prevPoint = trackPoints.get(i-1);
+                        long durationFromPrev = point.timestamp.getEpochSecond() - prevPoint.timestamp.getEpochSecond();
+                        adjustedTime = startTime.plusSeconds((long) i * intervalSeconds);
+                    } else {
+                        // Fallback: distribute points evenly from start time
+                        adjustedTime = startTime.plusSeconds((long) i * intervalSeconds);
+                    }
                 }
                 
                 // Create Owntracks message
@@ -198,7 +214,7 @@ public class GpxSender {
                 }
                 
                 // Wait before sending next point (except for the last one)
-                if (i < trackPoints.size() - 1) {
+                if (i < trackPoints.size() - 1 && !useOriginalTime) {
                     Thread.sleep(intervalSeconds * 1000L);
                 }
             }
