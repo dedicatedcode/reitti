@@ -804,9 +804,9 @@ public class UnifiedLocationProcessingService {
         Point point = geometryFactory.createPoint(new Coordinate(longitude, latitude));
         // Find places within the merge distance
         if (previewId == null) {
-            return significantPlaceJdbcService.findNearbyPlaces(user.getId(), point, GeoUtils.metersToDegreesAtPosition(mergeConfiguration.getMinDistanceBetweenVisits() / 2.0, latitude));
+            return significantPlaceJdbcService.findNearbyPlaces(user.getId(), point, GeoUtils.metersToDegreesAtPosition(mergeConfiguration.getMinDistanceBetweenVisits(), latitude));
         } else {
-            return previewSignificantPlaceJdbcService.findNearbyPlaces(user.getId(), point, GeoUtils.metersToDegreesAtPosition(mergeConfiguration.getMinDistanceBetweenVisits() / 2.0, latitude), previewId);
+            return previewSignificantPlaceJdbcService.findNearbyPlaces(user.getId(), point, GeoUtils.metersToDegreesAtPosition(mergeConfiguration.getMinDistanceBetweenVisits(), latitude), previewId);
         }
     }
 
