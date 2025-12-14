@@ -111,4 +111,8 @@ public class UserSettingsJdbcService {
     public void deleteFor(User user) {
         this.jdbcTemplate.update("DELETE FROM user_settings WHERE user_id = ?", user.getId());
     }
+
+    public void deleteNewestData(User user) {
+        this.jdbcTemplate.update("UPDATE user_settings SET latest_data = NULL WHERE user_id = ?", user.getId());
+    }
 }
