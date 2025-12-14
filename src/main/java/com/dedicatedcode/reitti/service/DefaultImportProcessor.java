@@ -27,6 +27,7 @@ public class DefaultImportProcessor implements ImportProcessor {
     private final ProcessingPipelineTrigger processingPipelineTrigger;
     private final ScheduledExecutorService scheduler;
     private final ConcurrentHashMap<String, ScheduledFuture<?>> pendingTriggers;
+    private final ExecutorService importExecutors = Executors.newSingleThreadExecutor();
 
     public DefaultImportProcessor(
             LocationDataIngestPipeline locationDataIngestPipeline,
@@ -43,10 +44,13 @@ public class DefaultImportProcessor implements ImportProcessor {
 
     @Override
     public void processBatch(User user, List<LocationPoint> batch) {
-        logger.debug("Sending batch of {} locations for storing", batch.size());
-        locationDataIngestPipeline.processLocationData(user.getUsername(), new ArrayList<>(batch));
-        logger.debug("Sending batch of {} locations for processing", batch.size());
-        scheduleProcessingTrigger(user.getUsername());
+        logger.trace("Sending batch of [{}] locations for user [{}] into executor queue", batch.size(), user.getUsername());
+        this.importExecutors.submit(() -> {
+            logger.debug("Sending batch of {} locations for storing", batch.size());
+            locationDataIngestPipeline.processLocationData(user.getUsername(), new ArrayList<>(batch));
+            logger.debug("Sending batch of {} locations for processing", batch.size());
+            scheduleProcessingTrigger(user.getUsername());
+        });
     }
 
     @Override
@@ -62,7 +66,6 @@ public class DefaultImportProcessor implements ImportProcessor {
                     DefaultImportProcessor.logger.debug("Triggered processing for user: {}", username);
                     TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(username, null, UUID.randomUUID().toString());
                     processingPipelineTrigger.handle(triggerEvent, false);
-
                     pendingTriggers.remove(username);
                 } catch (Exception e) {
                     DefaultImportProcessor.logger.error("Failed to trigger processing for user: {}", username, e);

@@ -2,10 +2,7 @@ package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
-import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
-import com.dedicatedcode.reitti.repository.TripJdbcService;
-import com.dedicatedcode.reitti.repository.VisitJdbcService;
+import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
@@ -25,13 +22,16 @@ public class ManageDataController {
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final ProcessingPipelineTrigger processingPipelineTrigger;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final UserSettingsJdbcService userSettingsJdbcService;
     private final MessageSource messageSource;
 
     public ManageDataController(@Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                                 VisitJdbcService visitJdbcService,
                                 TripJdbcService tripJdbcService,
                                 ProcessedVisitJdbcService processedVisitJdbcService,
-                                ProcessingPipelineTrigger processingPipelineTrigger, RawLocationPointJdbcService rawLocationPointJdbcService,
+                                ProcessingPipelineTrigger processingPipelineTrigger,
+                                RawLocationPointJdbcService rawLocationPointJdbcService,
+                                UserSettingsJdbcService userSettingsJdbcService,
                                 MessageSource messageSource) {
         this.dataManagementEnabled = dataManagementEnabled;
         this.visitJdbcService = visitJdbcService;
@@ -39,6 +39,7 @@ public class ManageDataController {
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.processingPipelineTrigger = processingPipelineTrigger;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.userSettingsJdbcService = userSettingsJdbcService;
         this.messageSource = messageSource;
     }
 
@@ -122,6 +123,7 @@ public class ManageDataController {
     }
 
     private void removeAllDataExceptPlaces(User user) {
+        this.userSettingsJdbcService.deleteNewestData(user);
         tripJdbcService.deleteAllForUser(user);
         processedVisitJdbcService.deleteAllForUser(user);
         visitJdbcService.deleteAllForUser(user);
