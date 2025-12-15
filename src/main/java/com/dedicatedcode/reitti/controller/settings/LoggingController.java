@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.controller.settings;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.logging.LoggingService;
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -30,6 +31,12 @@ public class LoggingController {
                              @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.loggingService = loggingService;
         this.dataManagementEnabled = dataManagementEnabled;
+    }
+    
+    @PostConstruct
+    public void init() {
+        // Add shutdown hook as fallback in case @PreDestroy is not called
+        Runtime.getRuntime().addShutdownHook(new Thread(this::cleanup));
     }
     
     @GetMapping
@@ -73,14 +80,17 @@ public class LoggingController {
         loggingService.getLogAppender().addListener(listener);
         
         emitter.onCompletion(() -> {
+            emitters.remove(emitter);
             loggingService.getLogAppender().removeListener(listener);
         });
         
         emitter.onTimeout(() -> {
+            emitters.remove(emitter);
             loggingService.getLogAppender().removeListener(listener);
         });
         
         emitter.onError((ex) -> {
+            emitters.remove(emitter);
             loggingService.getLogAppender().removeListener(listener);
         });
         
