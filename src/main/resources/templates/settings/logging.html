@@ -95,50 +95,60 @@
                 <div id="statusMessage" class="status-message"></div>
 
                 <div class="settings-card">
-                    <div class="log-controls">
-                        <div>
-                            <label for="loggerClass">Logger Class:</label>
-                            <input type="text" id="loggerClass" name="logger" 
-                                   placeholder="Leave empty for ROOT logger"
-                                   style="width: 200px;">
+                    <form id="logLevelForm" class="form-group">
+                        <div class="form-row">
+                            <div class="form-control">
+                                <label for="loggerClass">Logger Class:</label>
+                                <input type="text" id="loggerClass" name="logger" class="input-field"
+                                       placeholder="Leave empty for ROOT logger">
+                            </div>
+                            
+                            <div class="form-control">
+                                <label for="logLevel">Log Level:</label>
+                                <select id="logLevel" name="level" class="select-field"
+                                        hx-post="/settings/logging/level"
+                                        hx-trigger="change"
+                                        hx-include="#loggerClass"
+                                        hx-swap="none"
+                                        hx-on="htmx:afterRequest: handleResponse(event)">
+                                    <option value="TRACE">TRACE</option>
+                                    <option value="DEBUG">DEBUG</option>
+                                    <option value="INFO" selected>INFO</option>
+                                    <option value="WARN">WARN</option>
+                                    <option value="ERROR">ERROR</option>
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                    
+                    <form id="bufferSizeForm" class="form-group">
+                        <div class="form-row">
+                            <div class="form-control">
+                                <label for="bufferSize">Buffer Size:</label>
+                                <input type="number" id="bufferSize" name="size" class="input-field"
+                                       th:value="${currentBufferSize}"
+                                       th:max="${maxBufferSize}"
+                                       min="100" step="100">
+                            </div>
+                            
+                            <div class="form-control">
+                                <button type="submit" class="btn btn-primary"
+                                        hx-post="/settings/logging/buffer"
+                                        hx-include="#bufferSize"
+                                        hx-swap="none"
+                                        hx-on="htmx:afterRequest: handleResponse(event)">
+                                    Update Buffer
+                                    <span class="htmx-indicator">...</span>
+                                </button>
+                            </div>
                         </div>
                         
-                        <div>
-                            <label for="logLevel">Log Level:</label>
-                            <select id="logLevel" name="level"
-                                    hx-post="/settings/logging/level"
-                                    hx-trigger="change"
-                                    hx-include="#loggerClass"
-                                    hx-swap="none"
-                                    hx-on="htmx:afterRequest: handleResponse(event)">
-                                <option value="TRACE">TRACE</option>
-                                <option value="DEBUG">DEBUG</option>
-                                <option value="INFO" selected>INFO</option>
-                                <option value="WARN">WARN</option>
-                                <option value="ERROR">ERROR</option>
-                            </select>
+                        <div class="form-row">
+                            <div class="form-control">
+                                <small class="form-text" th:text="'Max buffer size: ' + ${maxBufferSize}">Max buffer size: 10000</small>
+                            </div>
                         </div>
-                        
-                        <div>
-                            <label for="bufferSize">Buffer Size:</label>
-                            <input type="number" id="bufferSize" name="size" 
-                                   th:value="${currentBufferSize}"
-                                   th:max="${maxBufferSize}"
-                                   min="100" step="100">
-                            <button class="btn" type="button"
-                                    hx-post="/settings/logging/buffer"
-                                    hx-include="#bufferSize"
-                                    hx-swap="none"
-                                    hx-on="htmx:afterRequest: handleResponse(event)">
-                                Update Buffer
-                                <span class="htmx-indicator">...</span>
-                            </button>
-                        </div>
-                        
-                        <div>
-                            <small th:text="'Max buffer size: ' + ${maxBufferSize}">Max buffer size: 10000</small>
-                        </div>
-                    </div>
+                    </form>
                 </div>
 
                 <div class="settings-card">
