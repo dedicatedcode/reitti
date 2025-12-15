@@ -183,7 +183,7 @@
                                 <button type="button" class="btn btn-danger"
                                         th:if="${logger.name != 'ROOT'}"
                                         hx-post="/settings/logging/remove"
-                                        th:hx-vals="'logger=' + ${logger.name}"
+                                        th:hx-vals="${'{&quot;logger&quot;:&quot;' + logger.name + '&quot;}'}"
                                         hx-target="#loggingSettingsCard"
                                         hx-swap="outerHTML"
                                         hx-confirm="#{logging.confirm.remove}">
