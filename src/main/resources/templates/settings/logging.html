@@ -155,14 +155,13 @@
                                 </button>
                             </div>
                     </form>
-                </div>
-
-                <div class="settings-card" th:if="${configuredLoggers != null and !configuredLoggers.isEmpty()}">
+                    <divider></divider>
                     <h3 th:text="#{logging.configured.loggers}">Configured Loggers</h3>
                     <div class="configured-loggers">
                         <div class="logger-item" th:each="logger : ${configuredLoggers}">
                             <div class="logger-info">
                                 <span class="logger-name" th:text="${logger.name}">Logger Name</span>
+                                <input type="hidden" th:value="${logger.name}">
                             </div>
                             <div class="logger-actions">
                                 <select class="select-field logger-level-select" th:data-logger="${logger.name}">
