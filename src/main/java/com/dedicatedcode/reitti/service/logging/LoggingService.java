@@ -66,4 +66,11 @@ public class LoggingService {
     public InMemoryLogAppender getLogAppender() {
         return logAppender;
     }
+
+    public String getCurrentLogLevel() {
+        LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
+        Logger rootLogger = context.getLogger(Logger.ROOT_LOGGER_NAME);
+        Level level = rootLogger.getLevel();
+        return level != null ? level.toString() : "INFO";
+    }
 }
