@@ -55,26 +55,7 @@
         .htmx-request .htmx-indicator {
             display: inline;
         }
-        
-        .status-message {
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 3px;
-            display: none;
-        }
-        
-        .status-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .status-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
+
         .autoscroll-control {
             margin-bottom: 10px;
             display: flex;
@@ -95,15 +76,14 @@
                 <div id="statusMessage" class="status-message"></div>
 
                 <div class="settings-card">
-                    <form id="logLevelForm" class="form-group">
-                        <div class="form-row">
-                            <div class="form-control">
+                    <form id="logLevelForm">
+                            <div class="form-group">
                                 <label for="loggerClass" th:text="#{logging.logger.class}">Logger Class:</label>
                                 <input type="text" id="loggerClass" name="logger" class="input-field"
                                        th:placeholder="#{logging.logger.placeholder}">
                             </div>
                             
-                            <div class="form-control">
+                            <div class="form-group">
                                 <label for="logLevel" th:text="#{logging.log.level}">Log Level:</label>
                                 <select id="logLevel" name="level" class="select-field"
                                         hx-post="/settings/logging/level"
@@ -111,6 +91,7 @@
                                         hx-include="#loggerClass"
                                         hx-swap="none"
                                         hx-on="htmx:afterRequest: handleResponse(event)">
+
                                     <option value="TRACE" th:text="#{logging.level.trace}">TRACE</option>
                                     <option value="DEBUG" th:text="#{logging.level.debug}">DEBUG</option>
                                     <option value="INFO" selected th:text="#{logging.level.info}">INFO</option>
@@ -118,20 +99,19 @@
                                     <option value="ERROR" th:text="#{logging.level.error}">ERROR</option>
                                 </select>
                             </div>
-                        </div>
                     </form>
                     
-                    <form id="bufferSizeForm" class="form-group">
-                        <div class="form-row">
-                            <div class="form-control">
+                    <form id="bufferSizeForm">
+                            <div class="form-group">
                                 <label for="bufferSize" th:text="#{logging.buffer.size}">Buffer Size:</label>
                                 <input type="number" id="bufferSize" name="size" class="input-field"
                                        th:value="${currentBufferSize}"
                                        th:max="${maxBufferSize}"
                                        min="100" step="100">
+                                <small class="form-text" th:text="#{logging.buffer.max.size(${maxBufferSize})}">Max buffer size: 10000</small>
                             </div>
                             
-                            <div class="form-control">
+                            <div class="form-group">
                                 <button type="submit" class="btn btn-primary"
                                         hx-post="/settings/logging/buffer"
                                         hx-include="#bufferSize"
@@ -141,13 +121,6 @@
                                     <span class="htmx-indicator">...</span>
                                 </button>
                             </div>
-                        </div>
-                        
-                        <div class="form-row">
-                            <div class="form-control">
-                                <small class="form-text" th:text="#{logging.buffer.max.size(${maxBufferSize})}">Max buffer size: 10000</small>
-                            </div>
-                        </div>
                     </form>
                 </div>
 
