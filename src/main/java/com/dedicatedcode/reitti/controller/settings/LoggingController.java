@@ -91,7 +91,9 @@ public class LoggingController {
     public ResponseEntity<String> setLogLevel(@RequestParam("logger") String logger, 
                                             @RequestParam("level") String level) {
         try {
-            loggingService.setLoggerLevel(logger, level);
+            // Handle empty logger as ROOT
+            String loggerName = (logger == null || logger.trim().isEmpty()) ? "ROOT" : logger.trim();
+            loggingService.setLoggerLevel(loggerName, level);
             return ResponseEntity.ok("Log level updated");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error updating log level: " + e.getMessage());

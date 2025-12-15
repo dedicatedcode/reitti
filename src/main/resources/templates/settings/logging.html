@@ -12,10 +12,109 @@
     <script src="/js/htmx.min.js"></script>
     <script src="/js/util.js"></script>
     <style>
+        .log-controls {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .log-controls label {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        
+        .log-controls select,
+        .log-controls input[type="text"],
+        .log-controls input[type="number"],
+        .log-controls button {
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        
+        .log-controls button {
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        
+        .log-controls button:hover {
+            background: #0056b3;
+        }
+        
         .log-output {
-            font-family: 'monospaced';
-            font-size: 1em;
-            line-height: 1.5rem;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 15px;
+            border-radius: 5px;
+            height: 600px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+        }
+        
+        .log-line {
+            margin: 0;
+            padding: 2px 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        
+        .log-line:nth-child(even) {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+        
+        .log-line.warn {
+            color: #ffa500;
+        }
+        
+        .log-line.error {
+            color: #ff6b6b;
+        }
+        
+        .log-line.fatal {
+            color: #ff0000;
+            font-weight: bold;
+        }
+        
+        .htmx-indicator {
+            display: none;
+        }
+        
+        .htmx-request .htmx-indicator {
+            display: inline;
+        }
+        
+        .status-message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+            display: none;
+        }
+        
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .autoscroll-control {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
     </style>
 </head>
@@ -33,11 +132,18 @@
                 <div class="settings-card">
                     <div class="log-controls">
                         <div>
-                            <label for="logLevel">Global Log Level:</label>
+                            <label for="loggerClass">Logger Class:</label>
+                            <input type="text" id="loggerClass" name="logger" 
+                                   placeholder="Leave empty for ROOT logger"
+                                   style="width: 200px;">
+                        </div>
+                        
+                        <div>
+                            <label for="logLevel">Log Level:</label>
                             <select id="logLevel" name="level"
                                     hx-post="/settings/logging/level"
                                     hx-trigger="change"
-                                    hx-include="#loggerInput"
+                                    hx-include="#loggerClass"
                                     hx-swap="none"
                                     hx-on="htmx:afterRequest: handleResponse(event)">
                                 <option value="TRACE">TRACE</option>
@@ -46,7 +152,6 @@
                                 <option value="WARN">WARN</option>
                                 <option value="ERROR">ERROR</option>
                             </select>
-                            <input type="hidden" id="loggerInput" name="logger" value="ROOT">
                         </div>
                         
                         <div>
@@ -72,6 +177,10 @@
                 </div>
 
                 <div class="settings-card">
+                    <div class="autoscroll-control">
+                        <input type="checkbox" id="autoscrollToggle" checked>
+                        <label for="autoscrollToggle">Auto-scroll to new messages</label>
+                    </div>
                     <div class="log-output" id="logOutput">
                         <div class="log-line">Connecting to log stream...</div>
                     </div>
@@ -105,20 +214,45 @@
     
     // Set up SSE connection for log streaming
     const logOutput = document.getElementById('logOutput');
+    const autoscrollToggle = document.getElementById('autoscrollToggle');
     const eventSource = new EventSource('/settings/logging/stream');
+    
+    function shouldAutoscroll() {
+        return autoscrollToggle.checked;
+    }
+    
+    function scrollToBottom() {
+        if (shouldAutoscroll()) {
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+    }
+    
+    function addLogLevelClass(logHtml) {
+        // Add CSS classes based on log level
+        if (logHtml.includes('[WARN]')) {
+            return logHtml.replace('<div class="log-line">', '<div class="log-line warn">');
+        } else if (logHtml.includes('[ERROR]')) {
+            return logHtml.replace('<div class="log-line">', '<div class="log-line error">');
+        } else if (logHtml.includes('[FATAL]')) {
+            return logHtml.replace('<div class="log-line">', '<div class="log-line fatal">');
+        }
+        return logHtml;
+    }
     
     eventSource.onopen = function() {
         logOutput.innerHTML = '<div class="log-line">Connected to log stream</div>';
+        scrollToBottom();
     };
     
     eventSource.addEventListener('log', function(event) {
-        logOutput.insertAdjacentHTML('beforeend', event.data);
-        logOutput.scrollTop = logOutput.scrollHeight;
+        const coloredLogHtml = addLogLevelClass(event.data);
+        logOutput.insertAdjacentHTML('beforeend', coloredLogHtml);
+        scrollToBottom();
     });
     
     eventSource.onerror = function(event) {
-        logOutput.innerHTML += '<div class="log-line">Error: Connection to log stream lost</div>';
-        logOutput.scrollTop = logOutput.scrollHeight;
+        logOutput.innerHTML += '<div class="log-line error">Error: Connection to log stream lost</div>';
+        scrollToBottom();
     };
     
     // Clean up on page unload
