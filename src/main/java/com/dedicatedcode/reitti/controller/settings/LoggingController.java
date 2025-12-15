@@ -3,7 +3,6 @@ package com.dedicatedcode.reitti.controller.settings;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.logging.LoggingService;
-import jakarta.annotation.PreDestroy;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -13,17 +12,11 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Consumer;
-
 @Controller
 @RequestMapping("/settings/logging")
 public class LoggingController {
     
     private final LoggingService loggingService;
-    private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
     private final boolean dataManagementEnabled;
 
     public LoggingController(LoggingService loggingService,
@@ -46,48 +39,7 @@ public class LoggingController {
     
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamLogs() {
-        SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
-        emitters.add(emitter);
-        try {
-            List<String> snapshot = loggingService.getLogSnapshot();
-            for (String logLine : snapshot) {
-                emitter.send(SseEmitter.event()
-                        .name("log")
-                        .data(formatLogLineForHtml(logLine)));
-            }
-        } catch (IOException e) {
-            emitter.completeWithError(e);
-            return emitter;
-        }
-        
-        Consumer<String> listener = logLine -> {
-            try {
-                emitter.send(SseEmitter.event()
-                        .name("log")
-                        .data(formatLogLineForHtml(logLine)));
-            } catch (IOException e) {
-                emitter.completeWithError(e);
-            }
-        };
-        
-        loggingService.getLogAppender().addListener(listener);
-        
-        emitter.onCompletion(() -> {
-            emitters.remove(emitter);
-            loggingService.getLogAppender().removeListener(listener);
-        });
-        
-        emitter.onTimeout(() -> {
-            emitters.remove(emitter);
-            loggingService.getLogAppender().removeListener(listener);
-        });
-        
-        emitter.onError((ex) -> {
-            emitters.remove(emitter);
-            loggingService.getLogAppender().removeListener(listener);
-        });
-        
-        return emitter;
+        return loggingService.createLogStream();
     }
     
     @PostMapping("/update")
@@ -116,24 +68,4 @@ public class LoggingController {
         }
     }
     
-    @PreDestroy
-    public void cleanup() {
-        for (SseEmitter emitter : emitters) {
-            try {
-                emitter.complete();
-            } catch (Exception ignored) {}
-        }
-        emitters.clear();
-    }
-    
-    private String formatLogLineForHtml(String logLine) {
-        String escaped = logLine
-                .replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;")
-                .replace("'", "&#39;");
-        
-        return "<div class=\"log-line\">" + escaped + "</div>";
-    }
 }
