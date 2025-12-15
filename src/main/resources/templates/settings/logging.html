@@ -116,7 +116,10 @@
                 <div id="statusMessage" class="status-message"></div>
 
                 <div class="settings-card">
-                    <form id="loggingSettingsForm">
+                    <form id="loggingSettingsForm"
+                          hx-post="/settings/logging/update"
+                          hx-swap="none"
+                          hx-on="htmx:afterRequest: handleResponse(event)">
                             <div class="form-group">
                                 <label for="loggerClass" th:text="#{logging.logger.class}">Logger Class:</label>
                                 <input type="text" id="loggerClass" name="logger" class="input-field"
@@ -146,11 +149,7 @@
                             </div>
                             
                             <div class="form-group">
-                                <button type="submit" class="btn btn-primary"
-                                        hx-post="/settings/logging/update"
-                                        hx-include="this"
-                                        hx-swap="none"
-                                        hx-on="htmx:afterRequest: handleResponse(event)">
+                                <button type="submit" class="btn btn-primary">
                                     <span th:text="#{logging.update}">Update</span>
                                     <span class="htmx-indicator">...</span>
                                 </button>
