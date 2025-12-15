@@ -37,7 +37,7 @@
                             <select id="logLevel" name="level"
                                     hx-post="/settings/logging/level"
                                     hx-trigger="change"
-                                    hx-include="this"
+                                    hx-include="#loggerInput"
                                     hx-swap="none"
                                     hx-on="htmx:afterRequest: handleResponse(event)">
                                 <option value="TRACE">TRACE</option>
@@ -46,7 +46,7 @@
                                 <option value="WARN">WARN</option>
                                 <option value="ERROR">ERROR</option>
                             </select>
-                            <input type="hidden" name="logger" value="ROOT">
+                            <input type="hidden" id="loggerInput" name="logger" value="ROOT">
                         </div>
                         
                         <div>
