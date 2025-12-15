@@ -108,7 +108,7 @@
                     <form id="loggingSettingsForm"
                           hx-post="/settings/logging/update"
                           hx-swap="none"
-                          hx-on="htmx:afterRequest: handleResponse(event)">
+                          hx-on="htmx:afterRequest: handleFormResponse(event)">
                             <div class="form-group">
                                 <label for="loggerClass" th:text="#{logging.logger.class}">Logger Class:</label>
                                 <input type="text" id="loggerClass" name="logger" class="input-field"
@@ -221,6 +221,17 @@
         setTimeout(() => {
             statusDiv.style.display = 'none';
         }, 3000);
+    }
+    
+    function handleFormResponse(event) {
+        handleResponse(event);
+        
+        // If successful, reload the page to refresh the logger table
+        if (event.detail.xhr.status === 200) {
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        }
     }
     
     // Set up SSE connection for log streaming
