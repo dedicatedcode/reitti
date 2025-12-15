@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.service.logging.LoggingService;
+import jakarta.annotation.PreDestroy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -21,7 +22,7 @@ import java.util.function.Consumer;
 public class LoggingController {
     
     private final LoggingService loggingService;
-
+    private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
     @Autowired
     public LoggingController(LoggingService loggingService) {
         this.loggingService = loggingService;
@@ -40,7 +41,7 @@ public class LoggingController {
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamLogs() {
         SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
-
+        emitters.add(emitter);
         try {
             List<String> snapshot = loggingService.getLogSnapshot();
             for (String logLine : snapshot) {
@@ -78,6 +79,11 @@ public class LoggingController {
         });
         
         return emitter;
+    }
+
+    @PreDestroy
+    public void destroy() {
+        emitters.forEach(SseEmitter::complete);
     }
     
     @PostMapping("/level")
