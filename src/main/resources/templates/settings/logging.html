@@ -146,8 +146,7 @@
                                     <span class="logger-name" th:text="${logger.name}">Logger Name</span>
                                 </td>
                                 <td>
-                                    <form style="display: inline-block; margin: 0;"
-                                          hx-post="/settings/logging/update"
+                                    <form hx-post="/settings/logging/update"
                                           hx-swap="none"
                                           hx-on="htmx:afterRequest: handleResponse(event)">
                                         <input type="hidden" name="logger" th:value="${logger.name}">
@@ -159,14 +158,14 @@
                                             <option value="WARN" th:text="#{logging.level.warn}" th:selected="${logger.level == 'WARN'}">WARN</option>
                                             <option value="ERROR" th:text="#{logging.level.error}" th:selected="${logger.level == 'ERROR'}">ERROR</option>
                                         </select>
-                                        <button type="submit" class="btn btn-secondary btn-sm">
+                                        <button type="submit" class="btn btn-secondary">
                                             <span th:text="#{logging.update}">Update</span>
                                             <span class="htmx-indicator">...</span>
                                         </button>
                                     </form>
                                 </td>
                                 <td>
-                                    <button type="button" class="btn btn-danger btn-sm"
+                                    <button type="button" class="btn btn-danger"
                                             th:if="${logger.name != 'ROOT'}"
                                             hx-post="/settings/logging/remove"
                                             th:hx-vals="'logger=' + ${logger.name}"
