@@ -90,12 +90,20 @@
 <div class="settings-container">
     <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
     <div class="settings-content-area">
+
         <div id="logging" class="settings-section active">
             <div th:fragment="logging-content">
                 <h2 th:text="#{logging.title}">Log Viewer</h2>
-
-                <div id="statusMessage" class="status-message"></div>
-
+                <div class="settings-card">
+                    <div class="autoscroll-control">
+                        <input type="checkbox" id="autoscrollToggle" checked>
+                        <label for="autoscrollToggle" th:text="#{logging.autoscroll}">Auto-scroll to new messages</label>
+                    </div>
+                    <div class="log-output" id="logOutput">
+                        <div class="log-line" th:text="#{logging.connecting}">Connecting to log stream...</div>
+                    </div>
+                </div>
+                <div id="statusMessage" class="alert alert-success" style="display: none"></div>
                 <div class="settings-card">
                     <form id="loggingSettingsForm"
                           hx-post="/settings/logging/update"
@@ -187,15 +195,7 @@
                     </table>
                 </div>
 
-                <div class="settings-card">
-                    <div class="autoscroll-control">
-                        <input type="checkbox" id="autoscrollToggle" checked>
-                        <label for="autoscrollToggle" th:text="#{logging.autoscroll}">Auto-scroll to new messages</label>
-                    </div>
-                    <div class="log-output" id="logOutput">
-                        <div class="log-line" th:text="#{logging.connecting}">Connecting to log stream...</div>
-                    </div>
-                </div>
+
             </div>
         </div>
     </div>
@@ -209,11 +209,11 @@
         
         if (event.detail.xhr.status === 200) {
             statusDiv.textContent = /*[[#{logging.settings.updated}]]*/ 'Settings updated successfully';
-            statusDiv.className = 'status-message status-success';
+            statusDiv.className = 'alert alert-success';
             statusDiv.style.display = 'block';
         } else {
             statusDiv.textContent = /*[[#{logging.error}]]*/ 'Error: ' + event.detail.xhr.responseText;
-            statusDiv.className = 'status-message status-error';
+            statusDiv.className = 'alert alert-error';
             statusDiv.style.display = 'block';
         }
         
