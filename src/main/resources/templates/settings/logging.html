@@ -63,19 +63,26 @@
             gap: 5px;
         }
         
-        .configured-loggers {
+        .configured-loggers-table {
+            width: 100%;
+            border-collapse: collapse;
             margin-top: 15px;
         }
         
-        .logger-item {
-            display: flex;
-            margin-bottom: 8px;
+        .configured-loggers-table th,
+        .configured-loggers-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
         }
         
-        .logger-info {
-            display: flex;
-            flex-direction: column;
-            flex-grow: 1;
+        .configured-loggers-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        
+        .configured-loggers-table tbody tr:hover {
+            background-color: #f9f9f9;
         }
 
         .logger-name {
@@ -83,15 +90,13 @@
             font-family: monospace;
         }
         
-        .logger-level {
+        .current-level {
             color: #666;
-            font-size: 0.9em;
-        }
-        
-        .logger-actions {
-            display: flex;
-            gap: 10px;
-            align-items: center;
+            font-weight: bold;
+            padding: 4px 8px;
+            background-color: #e9ecef;
+            border-radius: 3px;
+            font-size: 0.875em;
         }
         
         .logger-level-select {
@@ -101,6 +106,7 @@
         .btn-sm {
             padding: 5px 10px;
             font-size: 0.875em;
+            margin-right: 5px;
         }
     </style>
 </head>
@@ -157,40 +163,57 @@
                     </form>
                     <divider></divider>
                     <h3 th:text="#{logging.configured.loggers}">Configured Loggers</h3>
-                    <div class="configured-loggers">
-                        <form class="logger-item" th:each="logger : ${configuredLoggers}"
-                              hx-post="/settings/logging/update"
-                              hx-swap="none"
-                              hx-on="htmx:afterRequest: handleResponse(event)">
-                            <div class="logger-info">
-                                <span class="logger-name" th:text="${logger.name}">Logger Name</span>
-                                <input type="hidden" name="logger" th:value="${logger.name}">
-                                <input type="hidden" name="size" th:value="${currentBufferSize}">
-                            </div>
-                            <div class="logger-actions">
-                                <select class="select-field logger-level-select" name="level">
-                                    <option value="TRACE" th:text="#{logging.level.trace}" th:selected="${logger.level == 'TRACE'}">TRACE</option>
-                                    <option value="DEBUG" th:text="#{logging.level.debug}" th:selected="${logger.level == 'DEBUG'}">DEBUG</option>
-                                    <option value="INFO" th:text="#{logging.level.info}" th:selected="${logger.level == 'INFO'}">INFO</option>
-                                    <option value="WARN" th:text="#{logging.level.warn}" th:selected="${logger.level == 'WARN'}">WARN</option>
-                                    <option value="ERROR" th:text="#{logging.level.error}" th:selected="${logger.level == 'ERROR'}">ERROR</option>
-                                </select>
-                                <button type="submit" class="btn btn-secondary btn-sm">
-                                    <span th:text="#{logging.update}">Update</span>
-                                    <span class="htmx-indicator">...</span>
-                                </button>
-                                <button type="button" class="btn btn-danger btn-sm"
-                                        th:if="${logger.name != 'ROOT'}"
-                                        hx-post="/settings/logging/remove"
-                                        th:hx-vals="'logger=' + ${logger.name}"
-                                        hx-swap="none"
-                                        hx-confirm="#{logging.confirm.remove}"
-                                        hx-on="htmx:afterRequest: handleLoggerRemoval(event)">
-                                    <span th:text="#{logging.remove}">Remove</span>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+                    <table class="configured-loggers-table">
+                        <thead>
+                            <tr>
+                                <th th:text="#{logging.logger.name}">Logger Name</th>
+                                <th th:text="#{logging.current.level}">Current Level</th>
+                                <th th:text="#{logging.new.level}">New Level</th>
+                                <th th:text="#{logging.actions}">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="logger : ${configuredLoggers}">
+                                <td>
+                                    <span class="logger-name" th:text="${logger.name}">Logger Name</span>
+                                </td>
+                                <td>
+                                    <span class="current-level" th:text="${logger.level}">Current Level</span>
+                                </td>
+                                <td>
+                                    <form style="display: inline-block; margin: 0;"
+                                          hx-post="/settings/logging/update"
+                                          hx-swap="none"
+                                          hx-on="htmx:afterRequest: handleResponse(event)">
+                                        <input type="hidden" name="logger" th:value="${logger.name}">
+                                        <input type="hidden" name="size" th:value="${currentBufferSize}">
+                                        <select class="select-field logger-level-select" name="level">
+                                            <option value="TRACE" th:text="#{logging.level.trace}" th:selected="${logger.level == 'TRACE'}">TRACE</option>
+                                            <option value="DEBUG" th:text="#{logging.level.debug}" th:selected="${logger.level == 'DEBUG'}">DEBUG</option>
+                                            <option value="INFO" th:text="#{logging.level.info}" th:selected="${logger.level == 'INFO'}">INFO</option>
+                                            <option value="WARN" th:text="#{logging.level.warn}" th:selected="${logger.level == 'WARN'}">WARN</option>
+                                            <option value="ERROR" th:text="#{logging.level.error}" th:selected="${logger.level == 'ERROR'}">ERROR</option>
+                                        </select>
+                                </td>
+                                <td>
+                                        <button type="submit" class="btn btn-secondary btn-sm">
+                                            <span th:text="#{logging.update}">Update</span>
+                                            <span class="htmx-indicator">...</span>
+                                        </button>
+                                    </form>
+                                    <button type="button" class="btn btn-danger btn-sm"
+                                            th:if="${logger.name != 'ROOT'}"
+                                            hx-post="/settings/logging/remove"
+                                            th:hx-vals="'logger=' + ${logger.name}"
+                                            hx-swap="none"
+                                            hx-confirm="#{logging.confirm.remove}"
+                                            hx-on="htmx:afterRequest: handleLoggerRemoval(event)">
+                                        <span th:text="#{logging.remove}">Remove</span>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
 
                 <div class="settings-card">
