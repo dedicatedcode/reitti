@@ -77,6 +77,12 @@
             font-size: 0.875em;
             margin-right: 5px;
         }
+        
+        .logger-level-form {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
     </style>
 </head>
 <body class="settings-page">
@@ -146,7 +152,8 @@
                                     <span class="logger-name" th:text="${logger.name}">Logger Name</span>
                                 </td>
                                 <td>
-                                    <form hx-post="/settings/logging/update"
+                                    <form class="logger-level-form"
+                                          hx-post="/settings/logging/update"
                                           hx-swap="none"
                                           hx-on="htmx:afterRequest: handleResponse(event)">
                                         <input type="hidden" name="logger" th:value="${logger.name}">
