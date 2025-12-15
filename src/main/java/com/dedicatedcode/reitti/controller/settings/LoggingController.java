@@ -3,7 +3,6 @@ package com.dedicatedcode.reitti.controller.settings;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.logging.LoggingService;
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -31,12 +30,6 @@ public class LoggingController {
                              @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.loggingService = loggingService;
         this.dataManagementEnabled = dataManagementEnabled;
-    }
-    
-    @PostConstruct
-    public void init() {
-        // Add shutdown hook as fallback in case @PreDestroy is not called
-        Runtime.getRuntime().addShutdownHook(new Thread(this::cleanup));
     }
     
     @GetMapping
@@ -125,13 +118,10 @@ public class LoggingController {
     
     @PreDestroy
     public void cleanup() {
-        // Close all SSE connections to prevent blocking shutdown
         for (SseEmitter emitter : emitters) {
             try {
                 emitter.complete();
-            } catch (Exception e) {
-                // Ignore exceptions during cleanup
-            }
+            } catch (Exception ignored) {}
         }
         emitters.clear();
     }
