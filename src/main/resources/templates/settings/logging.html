@@ -113,8 +113,7 @@
                         <div class="form-group">
                             <label for="loggerClass" th:text="#{logging.logger.class}">Logger Class:</label>
                             <input type="text" id="loggerClass" name="logger" class="input-field"
-                                   th:placeholder="#{logging.logger.placeholder}"
-                                   value="com.dedicatedcode.reitti">
+                                   th:placeholder="#{logging.logger.placeholder}">
                             <small class="form-text" th:text="#{logging.logger.help}">Leave empty to configure the root (global) logger</small>
                         </div>
 
@@ -186,7 +185,7 @@
                                         th:hx-vals="${'{&quot;logger&quot;:&quot;' + logger.name + '&quot;}'}"
                                         hx-target="#loggingSettingsCard"
                                         hx-swap="outerHTML"
-                                        hx-confirm="#{logging.confirm.remove}">
+                                        th:hx-confirm="#{logging.confirm.remove}">
                                     <span th:text="#{logging.remove}">Remove</span>
                                 </button>
                             </td>
