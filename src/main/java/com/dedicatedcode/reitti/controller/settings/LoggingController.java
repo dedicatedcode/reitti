@@ -35,6 +35,7 @@ public class LoggingController {
         model.addAttribute("isAdmin", true);
         model.addAttribute("currentBufferSize", loggingService.getCurrentBufferSize());
         model.addAttribute("maxBufferSize", loggingService.getMaxBufferSize());
+        model.addAttribute("currentLogLevel", loggingService.getCurrentLogLevel());
         return "settings/logging";
     }
     
@@ -86,28 +87,19 @@ public class LoggingController {
         emitters.forEach(SseEmitter::complete);
     }
     
-    @PostMapping("/level")
+    @PostMapping("/update")
     @ResponseBody
-    public ResponseEntity<String> setLogLevel(@RequestParam("logger") String logger, 
-                                            @RequestParam("level") String level) {
+    public ResponseEntity<String> updateLoggingSettings(@RequestParam("logger") String logger,
+                                                       @RequestParam("level") String level,
+                                                       @RequestParam("size") int size) {
         try {
             // Handle empty logger as ROOT
             String loggerName = (logger == null || logger.trim().isEmpty()) ? "ROOT" : logger.trim();
             loggingService.setLoggerLevel(loggerName, level);
-            return ResponseEntity.ok("Log level updated");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error updating log level: " + e.getMessage());
-        }
-    }
-    
-    @PostMapping("/buffer")
-    @ResponseBody
-    public ResponseEntity<String> setBufferSize(@RequestParam("size") int size) {
-        try {
             loggingService.setBufferSize(size);
-            return ResponseEntity.ok("Buffer size updated");
+            return ResponseEntity.ok("Logging settings updated");
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error updating buffer size: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Error updating logging settings: " + e.getMessage());
         }
     }
     
