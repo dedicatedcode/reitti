@@ -174,11 +174,7 @@
                                     <option value="ERROR" th:text="#{logging.level.error}" th:selected="${logger.level == 'ERROR'}">ERROR</option>
                                 </select>
                                 <button type="button" class="btn btn-secondary btn-sm update-logger-btn"
-                                        th:data-logger="${logger.name}"
-                                        hx-post="/settings/logging/update"
-                                        hx-vals='{"size": "[[${currentBufferSize}]]"}'
-                                        hx-swap="none"
-                                        hx-on="htmx:afterRequest: handleResponse(event)">
+                                        th:data-logger="${logger.name}">
                                     <span th:text="#{logging.update}">Update</span>
                                 </button>
                                 <button type="button" class="btn btn-danger btn-sm"
@@ -282,16 +278,51 @@
     // Handle logger level updates
     document.addEventListener('click', function(event) {
         if (event.target.classList.contains('update-logger-btn')) {
+            event.preventDefault();
+            
             const loggerName = event.target.getAttribute('data-logger');
             const selectElement = document.querySelector(`select[data-logger="${loggerName}"]`);
             const newLevel = selectElement.value;
+            const currentSize = /*[[${currentBufferSize}]]*/ 1000;
             
-            // Update the hx-vals to include the logger and level
-            event.target.setAttribute('hx-vals', JSON.stringify({
-                logger: loggerName,
-                level: newLevel,
-                size: /*[[${currentBufferSize}]]*/ 1000
-            }));
+            // Create form data
+            const formData = new FormData();
+            formData.append('logger', loggerName);
+            formData.append('level', newLevel);
+            formData.append('size', currentSize);
+            
+            // Make the request manually
+            fetch('/settings/logging/update', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.text();
+                } else {
+                    throw new Error('Network response was not ok');
+                }
+            })
+            .then(data => {
+                const statusDiv = document.getElementById('statusMessage');
+                statusDiv.textContent = /*[[#{logging.settings.updated}]]*/ 'Settings updated successfully';
+                statusDiv.className = 'status-message status-success';
+                statusDiv.style.display = 'block';
+                
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 3000);
+            })
+            .catch(error => {
+                const statusDiv = document.getElementById('statusMessage');
+                statusDiv.textContent = /*[[#{logging.error}]]*/ 'Error updating logger';
+                statusDiv.className = 'status-message status-error';
+                statusDiv.style.display = 'block';
+                
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 3000);
+            });
         }
     });
     
