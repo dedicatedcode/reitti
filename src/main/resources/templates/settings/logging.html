@@ -90,7 +90,7 @@
     <div class="settings-content-area">
         <div id="logging" class="settings-section active">
             <div th:fragment="logging-content">
-                <h2>Log Viewer</h2>
+                <h2 th:text="#{logging.title}">Log Viewer</h2>
 
                 <div id="statusMessage" class="status-message"></div>
 
@@ -98,24 +98,24 @@
                     <form id="logLevelForm" class="form-group">
                         <div class="form-row">
                             <div class="form-control">
-                                <label for="loggerClass">Logger Class:</label>
+                                <label for="loggerClass" th:text="#{logging.logger.class}">Logger Class:</label>
                                 <input type="text" id="loggerClass" name="logger" class="input-field"
-                                       placeholder="Leave empty for ROOT logger">
+                                       th:placeholder="#{logging.logger.placeholder}">
                             </div>
                             
                             <div class="form-control">
-                                <label for="logLevel">Log Level:</label>
+                                <label for="logLevel" th:text="#{logging.log.level}">Log Level:</label>
                                 <select id="logLevel" name="level" class="select-field"
                                         hx-post="/settings/logging/level"
                                         hx-trigger="change"
                                         hx-include="#loggerClass"
                                         hx-swap="none"
                                         hx-on="htmx:afterRequest: handleResponse(event)">
-                                    <option value="TRACE">TRACE</option>
-                                    <option value="DEBUG">DEBUG</option>
-                                    <option value="INFO" selected>INFO</option>
-                                    <option value="WARN">WARN</option>
-                                    <option value="ERROR">ERROR</option>
+                                    <option value="TRACE" th:text="#{logging.level.trace}">TRACE</option>
+                                    <option value="DEBUG" th:text="#{logging.level.debug}">DEBUG</option>
+                                    <option value="INFO" selected th:text="#{logging.level.info}">INFO</option>
+                                    <option value="WARN" th:text="#{logging.level.warn}">WARN</option>
+                                    <option value="ERROR" th:text="#{logging.level.error}">ERROR</option>
                                 </select>
                             </div>
                         </div>
@@ -124,7 +124,7 @@
                     <form id="bufferSizeForm" class="form-group">
                         <div class="form-row">
                             <div class="form-control">
-                                <label for="bufferSize">Buffer Size:</label>
+                                <label for="bufferSize" th:text="#{logging.buffer.size}">Buffer Size:</label>
                                 <input type="number" id="bufferSize" name="size" class="input-field"
                                        th:value="${currentBufferSize}"
                                        th:max="${maxBufferSize}"
@@ -137,7 +137,7 @@
                                         hx-include="#bufferSize"
                                         hx-swap="none"
                                         hx-on="htmx:afterRequest: handleResponse(event)">
-                                    Update Buffer
+                                    <span th:text="#{logging.buffer.update}">Update Buffer</span>
                                     <span class="htmx-indicator">...</span>
                                 </button>
                             </div>
@@ -145,7 +145,7 @@
                         
                         <div class="form-row">
                             <div class="form-control">
-                                <small class="form-text" th:text="'Max buffer size: ' + ${maxBufferSize}">Max buffer size: 10000</small>
+                                <small class="form-text" th:text="#{logging.buffer.max.size(${maxBufferSize})}">Max buffer size: 10000</small>
                             </div>
                         </div>
                     </form>
@@ -154,10 +154,10 @@
                 <div class="settings-card">
                     <div class="autoscroll-control">
                         <input type="checkbox" id="autoscrollToggle" checked>
-                        <label for="autoscrollToggle">Auto-scroll to new messages</label>
+                        <label for="autoscrollToggle" th:text="#{logging.autoscroll}">Auto-scroll to new messages</label>
                     </div>
                     <div class="log-output" id="logOutput">
-                        <div class="log-line">Connecting to log stream...</div>
+                        <div class="log-line" th:text="#{logging.connecting}">Connecting to log stream...</div>
                     </div>
                 </div>
             </div>
@@ -172,11 +172,11 @@
         const statusDiv = document.getElementById('statusMessage');
         
         if (event.detail.xhr.status === 200) {
-            statusDiv.textContent = 'Settings updated successfully';
+            statusDiv.textContent = /*[[#{logging.settings.updated}]]*/ 'Settings updated successfully';
             statusDiv.className = 'status-message status-success';
             statusDiv.style.display = 'block';
         } else {
-            statusDiv.textContent = 'Error: ' + event.detail.xhr.responseText;
+            statusDiv.textContent = /*[[#{logging.error}]]*/ 'Error: ' + event.detail.xhr.responseText;
             statusDiv.className = 'status-message status-error';
             statusDiv.style.display = 'block';
         }
@@ -215,7 +215,7 @@
     }
     
     eventSource.onopen = function() {
-        logOutput.innerHTML = '<div class="log-line">Connected to log stream</div>';
+        logOutput.innerHTML = '<div class="log-line">' + /*[[#{logging.connected}]]*/ 'Connected to log stream' + '</div>';
         scrollToBottom();
     };
     
@@ -226,7 +226,7 @@
     });
     
     eventSource.onerror = function(event) {
-        logOutput.innerHTML += '<div class="log-line error">Error: Connection to log stream lost</div>';
+        logOutput.innerHTML += '<div class="log-line error">' + /*[[#{logging.connection.lost}]]*/ 'Error: Connection to log stream lost' + '</div>';
         scrollToBottom();
     };
     
