@@ -9,6 +9,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 @Service
 public class LoggingService {
@@ -72,5 +74,61 @@ public class LoggingService {
         Logger rootLogger = context.getLogger(Logger.ROOT_LOGGER_NAME);
         Level level = rootLogger.getLevel();
         return level != null ? level.toString() : "INFO";
+    }
+    
+    public List<LoggerInfo> getAllConfiguredLoggers() {
+        LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
+        List<LoggerInfo> loggers = new ArrayList<>();
+        
+        // Add root logger
+        Logger rootLogger = context.getLogger(Logger.ROOT_LOGGER_NAME);
+        Level rootLevel = rootLogger.getLevel();
+        if (rootLevel != null) {
+            loggers.add(new LoggerInfo("ROOT", rootLevel.toString()));
+        }
+        
+        // Add all other configured loggers
+        for (Logger logger : context.getLoggerList()) {
+            if (logger.getLevel() != null && !Logger.ROOT_LOGGER_NAME.equals(logger.getName())) {
+                loggers.add(new LoggerInfo(logger.getName(), logger.getLevel().toString()));
+            }
+        }
+        
+        return loggers.stream()
+                .sorted((a, b) -> {
+                    // ROOT logger first, then alphabetically
+                    if ("ROOT".equals(a.getName())) return -1;
+                    if ("ROOT".equals(b.getName())) return 1;
+                    return a.getName().compareTo(b.getName());
+                })
+                .collect(Collectors.toList());
+    }
+    
+    public void removeLogger(String loggerName) {
+        if ("ROOT".equals(loggerName)) {
+            throw new IllegalArgumentException("Cannot remove ROOT logger");
+        }
+        
+        LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
+        Logger logger = context.getLogger(loggerName);
+        logger.setLevel(null); // Reset to inherit from parent
+    }
+    
+    public static class LoggerInfo {
+        private final String name;
+        private final String level;
+        
+        public LoggerInfo(String name, String level) {
+            this.name = name;
+            this.level = level;
+        }
+        
+        public String getName() {
+            return name;
+        }
+        
+        public String getLevel() {
+            return level;
+        }
     }
 }
