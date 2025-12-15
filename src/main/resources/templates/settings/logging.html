@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{settings.title}">Settings - Reitti</title>
+    <link rel="icon" th:href="@{/img/logo.svg}">
+    <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
+    <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/lineicons.css">
+    <script src="/js/htmx.min.js"></script>
+    <script src="/js/util.js"></script>
+    <style>
+        .log-controls {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .log-controls label {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        
+        .log-controls select,
+        .log-controls input[type="number"],
+        .log-controls button {
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        
+        .log-controls button {
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        
+        .log-controls button:hover {
+            background: #0056b3;
+        }
+        
+        .log-output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 15px;
+            border-radius: 5px;
+            height: 600px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+        }
+        
+        .log-line {
+            margin: 0;
+            padding: 2px 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        
+        .log-line:nth-child(even) {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+        
+        .htmx-indicator {
+            display: none;
+        }
+        
+        .htmx-request .htmx-indicator {
+            display: inline;
+        }
+        
+        .status-message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+            display: none;
+        }
+        
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body class="settings-page">
+<div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('settings')}"></div>
+<div class="settings-container">
+    <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
+    <div class="settings-content-area">
+        <div id="logging" class="settings-section active">
+            <div th:fragment="logging-content">
+                <h2>Log Viewer</h2>
+
+                <div id="statusMessage" class="status-message"></div>
+
+                <div class="settings-card">
+                    <div class="log-controls">
+                        <div>
+                            <label for="logLevel">Global Log Level:</label>
+                            <select id="logLevel" name="level"
+                                    hx-post="/settings/logging/level"
+                                    hx-trigger="change"
+                                    hx-include="this"
+                                    hx-swap="none"
+                                    hx-on="htmx:afterRequest: handleResponse(event)">
+                                <option value="TRACE">TRACE</option>
+                                <option value="DEBUG">DEBUG</option>
+                                <option value="INFO" selected>INFO</option>
+                                <option value="WARN">WARN</option>
+                                <option value="ERROR">ERROR</option>
+                            </select>
+                            <input type="hidden" name="logger" value="ROOT">
+                        </div>
+                        
+                        <div>
+                            <label for="bufferSize">Buffer Size:</label>
+                            <input type="number" id="bufferSize" name="size" 
+                                   th:value="${currentBufferSize}"
+                                   th:max="${maxBufferSize}"
+                                   min="100" step="100">
+                            <button type="button"
+                                    hx-post="/settings/logging/buffer"
+                                    hx-include="#bufferSize"
+                                    hx-swap="none"
+                                    hx-on="htmx:afterRequest: handleResponse(event)">
+                                Update Buffer
+                                <span class="htmx-indicator">...</span>
+                            </button>
+                        </div>
+                        
+                        <div>
+                            <small th:text="'Max buffer size: ' + ${maxBufferSize}">Max buffer size: 10000</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-card">
+                    <div class="log-output" id="logOutput"
+                         hx-get="/settings/logging/stream"
+                         hx-trigger="load"
+                         hx-swap="innerHTML">
+                        <div class="log-line">Connecting to log stream...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    window.userSettings = /*[[${userSettings}]]*/ {}
+    
+    function handleResponse(event) {
+        const statusDiv = document.getElementById('statusMessage');
+        
+        if (event.detail.xhr.status === 200) {
+            statusDiv.textContent = 'Settings updated successfully';
+            statusDiv.className = 'status-message status-success';
+            statusDiv.style.display = 'block';
+        } else {
+            statusDiv.textContent = 'Error: ' + event.detail.xhr.responseText;
+            statusDiv.className = 'status-message status-error';
+            statusDiv.style.display = 'block';
+        }
+        
+        // Hide message after 3 seconds
+        setTimeout(() => {
+            statusDiv.style.display = 'none';
+        }, 3000);
+    }
+    
+    // Auto-scroll log output to bottom when new content arrives
+    document.body.addEventListener('htmx:afterSwap', function(event) {
+        if (event.target.id === 'logOutput') {
+            event.target.scrollTop = event.target.scrollHeight;
+        }
+    });
+    
+    // Handle SSE events
+    document.body.addEventListener('htmx:sseMessage', function(event) {
+        if (event.detail.type === 'log') {
+            const logOutput = document.getElementById('logOutput');
+            logOutput.insertAdjacentHTML('beforeend', event.detail.data);
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+    });
+</script>
+</body>
+</html>
