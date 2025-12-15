@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.service.logging.LoggingService;
-import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -83,11 +82,9 @@ public class LoggingController {
     
     @PostMapping("/level")
     @ResponseBody
-    public ResponseEntity<String> setLogLevel(@RequestBody JsonNode request) {
+    public ResponseEntity<String> setLogLevel(@RequestParam("logger") String logger, 
+                                            @RequestParam("level") String level) {
         try {
-            String logger = request.get("logger").asText();
-            String level = request.get("level").asText();
-            
             loggingService.setLoggerLevel(logger, level);
             return ResponseEntity.ok("Log level updated");
         } catch (Exception e) {
@@ -97,9 +94,8 @@ public class LoggingController {
     
     @PostMapping("/buffer")
     @ResponseBody
-    public ResponseEntity<String> setBufferSize(@RequestBody JsonNode request) {
+    public ResponseEntity<String> setBufferSize(@RequestParam("size") int size) {
         try {
-            int size = request.get("size").asInt();
             loggingService.setBufferSize(size);
             return ResponseEntity.ok("Buffer size updated");
         } catch (Exception e) {
