@@ -104,7 +104,96 @@
                     </div>
                 </div>
                 <div id="statusMessage" class="alert alert-success" style="display: none"></div>
-                <div id="loggingSettingsCard" th:replace="~{settings/logging :: logging-settings-card}"></div>
+
+                <div id="loggingSettingsCard" th:fragment="logging-settings-card" class="settings-card">
+                    <form id="loggingSettingsForm"
+                          hx-post="/settings/logging/update"
+                          hx-target="#loggingSettingsCard"
+                          hx-swap="outerHTML">
+                        <div class="form-group">
+                            <label for="loggerClass" th:text="#{logging.logger.class}">Logger Class:</label>
+                            <input type="text" id="loggerClass" name="logger" class="input-field"
+                                   th:placeholder="#{logging.logger.placeholder}"
+                                   value="com.dedicatedcode.reitti">
+                            <small class="form-text" th:text="#{logging.logger.help}">Leave empty to configure the root (global) logger</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="logLevel" th:text="#{logging.log.level}">Log Level:</label>
+                            <select id="logLevel" name="level" class="select-field">
+                                <option value="TRACE" th:text="#{logging.level.trace}" th:selected="${currentLogLevel == 'TRACE'}">TRACE</option>
+                                <option value="DEBUG" th:text="#{logging.level.debug}" th:selected="${currentLogLevel == 'DEBUG'}">DEBUG</option>
+                                <option value="INFO" th:text="#{logging.level.info}" th:selected="${currentLogLevel == 'INFO'}">INFO</option>
+                                <option value="WARN" th:text="#{logging.level.warn}" th:selected="${currentLogLevel == 'WARN'}">WARN</option>
+                                <option value="ERROR" th:text="#{logging.level.error}" th:selected="${currentLogLevel == 'ERROR'}">ERROR</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="bufferSize" th:text="#{logging.buffer.size}">Buffer Size:</label>
+                            <input type="number" id="bufferSize" name="size" class="input-field"
+                                   th:value="${currentBufferSize}"
+                                   th:max="${maxBufferSize}"
+                                   min="100" step="100">
+                            <small class="form-text" th:text="#{logging.buffer.max.size(${maxBufferSize})}">Max buffer size: 10000</small>
+                        </div>
+
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary">
+                                <span th:text="#{logging.update}">Update</span>
+                                <span class="htmx-indicator">...</span>
+                            </button>
+                        </div>
+                    </form>
+                    <h3 th:text="#{logging.configured.loggers}">Configured Loggers</h3>
+                    <table>
+                        <thead>
+                        <tr>
+                            <th th:text="#{logging.log.name}">Logger Name</th>
+                            <th th:text="#{logging.log.level}">Log Level</th>
+                            <th th:text="#{logging.actions}">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="logger : ${configuredLoggers}">
+                            <td>
+                                <span class="logger-name" th:text="${logger.name}">Logger Name</span>
+                            </td>
+                            <td>
+                                <form class="logger-level-form"
+                                      hx-post="/settings/logging/update"
+                                      hx-target="#loggingSettingsCard"
+                                      hx-swap="outerHTML">
+                                    <input type="hidden" name="logger" th:value="${logger.name}">
+                                    <input type="hidden" name="size" th:value="${currentBufferSize}">
+                                    <select class="select-field logger-level-select" name="level">
+                                        <option value="TRACE" th:text="#{logging.level.trace}" th:selected="${logger.level == 'TRACE'}">TRACE</option>
+                                        <option value="DEBUG" th:text="#{logging.level.debug}" th:selected="${logger.level == 'DEBUG'}">DEBUG</option>
+                                        <option value="INFO" th:text="#{logging.level.info}" th:selected="${logger.level == 'INFO'}">INFO</option>
+                                        <option value="WARN" th:text="#{logging.level.warn}" th:selected="${logger.level == 'WARN'}">WARN</option>
+                                        <option value="ERROR" th:text="#{logging.level.error}" th:selected="${logger.level == 'ERROR'}">ERROR</option>
+                                    </select>
+                                    <button type="submit" class="btn btn-secondary">
+                                        <span th:text="#{logging.update}">Update</span>
+                                        <span class="htmx-indicator">...</span>
+                                    </button>
+                                </form>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-danger"
+                                        th:if="${logger.name != 'ROOT'}"
+                                        hx-post="/settings/logging/remove"
+                                        th:hx-vals="'logger=' + ${logger.name}"
+                                        hx-target="#loggingSettingsCard"
+                                        hx-swap="outerHTML"
+                                        hx-confirm="#{logging.confirm.remove}">
+                                    <span th:text="#{logging.remove}">Remove</span>
+                                </button>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
 
 
             </div>
@@ -166,97 +255,5 @@
     
     
 </script>
-
-<div th:fragment="logging-settings-card" class="settings-card">
-    <form id="loggingSettingsForm"
-          hx-post="/settings/logging/update"
-          hx-target="#loggingSettingsCard"
-          hx-swap="outerHTML">
-            <div class="form-group">
-                <label for="loggerClass" th:text="#{logging.logger.class}">Logger Class:</label>
-                <input type="text" id="loggerClass" name="logger" class="input-field"
-                       th:placeholder="#{logging.logger.placeholder}"
-                       value="com.dedicatedcode.reitti">
-                <small class="form-text" th:text="#{logging.logger.help}">Leave empty to configure the root (global) logger</small>
-            </div>
-            
-            <div class="form-group">
-                <label for="logLevel" th:text="#{logging.log.level}">Log Level:</label>
-                <select id="logLevel" name="level" class="select-field">
-                    <option value="TRACE" th:text="#{logging.level.trace}" th:selected="${currentLogLevel == 'TRACE'}">TRACE</option>
-                    <option value="DEBUG" th:text="#{logging.level.debug}" th:selected="${currentLogLevel == 'DEBUG'}">DEBUG</option>
-                    <option value="INFO" th:text="#{logging.level.info}" th:selected="${currentLogLevel == 'INFO'}">INFO</option>
-                    <option value="WARN" th:text="#{logging.level.warn}" th:selected="${currentLogLevel == 'WARN'}">WARN</option>
-                    <option value="ERROR" th:text="#{logging.level.error}" th:selected="${currentLogLevel == 'ERROR'}">ERROR</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="bufferSize" th:text="#{logging.buffer.size}">Buffer Size:</label>
-                <input type="number" id="bufferSize" name="size" class="input-field"
-                       th:value="${currentBufferSize}"
-                       th:max="${maxBufferSize}"
-                       min="100" step="100">
-                <small class="form-text" th:text="#{logging.buffer.max.size(${maxBufferSize})}">Max buffer size: 10000</small>
-            </div>
-            
-            <div class="form-group">
-                <button type="submit" class="btn btn-primary">
-                    <span th:text="#{logging.update}">Update</span>
-                    <span class="htmx-indicator">...</span>
-                </button>
-            </div>
-    </form>
-    <divider></divider>
-    <h3 th:text="#{logging.configured.loggers}">Configured Loggers</h3>
-    <table>
-        <thead>
-            <tr>
-                <th th:text="#{logging.log.name}">Logger Name</th>
-                <th th:text="#{logging.log.level}">Log Level</th>
-                <th th:text="#{logging.actions}">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:each="logger : ${configuredLoggers}">
-                <td>
-                    <span class="logger-name" th:text="${logger.name}">Logger Name</span>
-                </td>
-                <td>
-                    <form class="logger-level-form"
-                          hx-post="/settings/logging/update"
-                          hx-target="#loggingSettingsCard"
-                          hx-swap="outerHTML">
-                        <input type="hidden" name="logger" th:value="${logger.name}">
-                        <input type="hidden" name="size" th:value="${currentBufferSize}">
-                        <select class="select-field logger-level-select" name="level">
-                            <option value="TRACE" th:text="#{logging.level.trace}" th:selected="${logger.level == 'TRACE'}">TRACE</option>
-                            <option value="DEBUG" th:text="#{logging.level.debug}" th:selected="${logger.level == 'DEBUG'}">DEBUG</option>
-                            <option value="INFO" th:text="#{logging.level.info}" th:selected="${logger.level == 'INFO'}">INFO</option>
-                            <option value="WARN" th:text="#{logging.level.warn}" th:selected="${logger.level == 'WARN'}">WARN</option>
-                            <option value="ERROR" th:text="#{logging.level.error}" th:selected="${logger.level == 'ERROR'}">ERROR</option>
-                        </select>
-                        <button type="submit" class="btn btn-secondary">
-                            <span th:text="#{logging.update}">Update</span>
-                            <span class="htmx-indicator">...</span>
-                        </button>
-                    </form>
-                </td>
-                <td>
-                    <button type="button" class="btn btn-danger"
-                            th:if="${logger.name != 'ROOT'}"
-                            hx-post="/settings/logging/remove"
-                            th:hx-vals="'logger=' + ${logger.name}"
-                            hx-target="#loggingSettingsCard"
-                            hx-swap="outerHTML"
-                            hx-confirm="#{logging.confirm.remove}">
-                        <span th:text="#{logging.remove}">Remove</span>
-                    </button>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-
 </body>
 </html>

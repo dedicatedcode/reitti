@@ -11,15 +11,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @Service
 public class LoggingService {
-    
+
+    private static final org.slf4j.Logger log = LoggerFactory.getLogger(LoggingService.class);
     private final LoggingProperties loggingProperties;
     private final InMemoryLogAppender logAppender;
     private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
@@ -71,10 +72,6 @@ public class LoggingService {
         return logAppender.getSnapshot();
     }
     
-    public InMemoryLogAppender getLogAppender() {
-        return logAppender;
-    }
-
     public String getCurrentLogLevel() {
         LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
         Logger rootLogger = context.getLogger(Logger.ROOT_LOGGER_NAME);
@@ -103,9 +100,9 @@ public class LoggingService {
         return loggers.stream()
                 .sorted((a, b) -> {
                     // ROOT logger first, then alphabetically
-                    if ("ROOT".equals(a.getName())) return -1;
-                    if ("ROOT".equals(b.getName())) return 1;
-                    return a.getName().compareTo(b.getName());
+                    if ("ROOT".equals(a.name())) return -1;
+                    if ("ROOT".equals(b.name())) return 1;
+                    return a.name().compareTo(b.name());
                 })
                 .collect(Collectors.toList());
     }
@@ -158,7 +155,7 @@ public class LoggingService {
             logAppender.removeListener(listener);
         });
         
-        emitter.onError((ex) -> {
+        emitter.onError((ignored) -> {
             emitters.remove(emitter);
             logAppender.removeListener(listener);
         });
@@ -168,6 +165,7 @@ public class LoggingService {
     
     @PreDestroy
     public void cleanup() {
+        System.out.println("Closing SSE emitters");;
         for (SseEmitter emitter : emitters) {
             try {
                 emitter.complete();
@@ -186,22 +184,7 @@ public class LoggingService {
         
         return "<div class=\"log-line\">" + escaped + "</div>";
     }
-    
-    public static class LoggerInfo {
-        private final String name;
-        private final String level;
-        
-        public LoggerInfo(String name, String level) {
-            this.name = name;
-            this.level = level;
-        }
-        
-        public String getName() {
-            return name;
-        }
-        
-        public String getLevel() {
-            return level;
-        }
+
+    public record LoggerInfo(String name, String level) {
     }
 }
