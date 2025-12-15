@@ -69,13 +69,7 @@
         
         .logger-item {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            margin-bottom: 10px;
-            background: #f9f9f9;
+            margin-bottom: 8px;
         }
         
         .logger-info {
@@ -83,7 +77,7 @@
             flex-direction: column;
             flex-grow: 1;
         }
-        
+
         .logger-name {
             font-weight: bold;
             font-family: monospace;
@@ -170,7 +164,6 @@
                         <div class="logger-item" th:each="logger : ${configuredLoggers}">
                             <div class="logger-info">
                                 <span class="logger-name" th:text="${logger.name}">Logger Name</span>
-                                <span class="logger-level" th:text="${logger.level}">Level</span>
                             </div>
                             <div class="logger-actions">
                                 <select class="select-field logger-level-select" th:data-logger="${logger.name}">
