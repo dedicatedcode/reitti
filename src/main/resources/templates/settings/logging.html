@@ -65,10 +65,7 @@
                 </div>
 
                 <div class="settings-card">
-                    <div class="log-output" id="logOutput"
-                         hx-get="/settings/logging/stream"
-                         hx-trigger="load"
-                         hx-swap="innerHTML">
+                    <div class="log-output" id="logOutput">
                         <div class="log-line">Connecting to log stream...</div>
                     </div>
                 </div>
@@ -99,20 +96,27 @@
         }, 3000);
     }
     
-    // Auto-scroll log output to bottom when new content arrives
-    document.body.addEventListener('htmx:afterSwap', function(event) {
-        if (event.target.id === 'logOutput') {
-            event.target.scrollTop = event.target.scrollHeight;
-        }
+    // Set up SSE connection for log streaming
+    const logOutput = document.getElementById('logOutput');
+    const eventSource = new EventSource('/settings/logging/stream');
+    
+    eventSource.onopen = function() {
+        logOutput.innerHTML = '<div class="log-line">Connected to log stream</div>';
+    };
+    
+    eventSource.addEventListener('log', function(event) {
+        logOutput.insertAdjacentHTML('beforeend', event.data);
+        logOutput.scrollTop = logOutput.scrollHeight;
     });
     
-    // Handle SSE events
-    document.body.addEventListener('htmx:sseMessage', function(event) {
-        if (event.detail.type === 'log') {
-            const logOutput = document.getElementById('logOutput');
-            logOutput.insertAdjacentHTML('beforeend', event.detail.data);
-            logOutput.scrollTop = logOutput.scrollHeight;
-        }
+    eventSource.onerror = function(event) {
+        logOutput.innerHTML += '<div class="log-line">Error: Connection to log stream lost</div>';
+        logOutput.scrollTop = logOutput.scrollHeight;
+    };
+    
+    // Clean up on page unload
+    window.addEventListener('beforeunload', function() {
+        eventSource.close();
     });
 </script>
 </body>
