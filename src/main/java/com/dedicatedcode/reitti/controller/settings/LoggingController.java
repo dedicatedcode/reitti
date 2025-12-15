@@ -1,11 +1,13 @@
 package com.dedicatedcode.reitti.controller.settings;
 
+import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.logging.LoggingService;
 import jakarta.annotation.PreDestroy;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -18,21 +20,23 @@ import java.util.function.Consumer;
 
 @Controller
 @RequestMapping("/settings/logging")
-@PreAuthorize("hasRole('ADMIN')")
 public class LoggingController {
     
     private final LoggingService loggingService;
     private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
-    @Autowired
-    public LoggingController(LoggingService loggingService) {
+    private final boolean dataManagementEnabled;
+
+    public LoggingController(LoggingService loggingService,
+                             @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.loggingService = loggingService;
+        this.dataManagementEnabled = dataManagementEnabled;
     }
     
     @GetMapping
-    public String loggingPage(Model model) {
+    public String loggingPage(@AuthenticationPrincipal User user, Model model) {
         model.addAttribute("activeSection", "logging");
-        model.addAttribute("dataManagementEnabled", false);
-        model.addAttribute("isAdmin", true);
+        model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+        model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("currentBufferSize", loggingService.getCurrentBufferSize());
         model.addAttribute("maxBufferSize", loggingService.getMaxBufferSize());
         model.addAttribute("currentLogLevel", loggingService.getCurrentLogLevel());
@@ -82,11 +86,6 @@ public class LoggingController {
         
         return emitter;
     }
-
-    @PreDestroy
-    public void destroy() {
-        emitters.forEach(SseEmitter::complete);
-    }
     
     @PostMapping("/update")
     @ResponseBody
@@ -94,7 +93,6 @@ public class LoggingController {
                                                        @RequestParam("level") String level,
                                                        @RequestParam("size") int size) {
         try {
-            // Handle empty logger as ROOT
             String loggerName = (logger == null || logger.trim().isEmpty()) ? "ROOT" : logger.trim();
             loggingService.setLoggerLevel(loggerName, level);
             loggingService.setBufferSize(size);
@@ -116,7 +114,6 @@ public class LoggingController {
     }
     
     private String formatLogLineForHtml(String logLine) {
-        // Escape HTML and preserve formatting
         String escaped = logLine
                 .replace("&", "&amp;")
                 .replace("<", "&lt;")
