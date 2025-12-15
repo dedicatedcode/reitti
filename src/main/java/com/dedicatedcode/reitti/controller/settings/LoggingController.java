@@ -43,28 +43,55 @@ public class LoggingController {
     }
     
     @PostMapping("/update")
-    @ResponseBody
-    public ResponseEntity<String> updateLoggingSettings(@RequestParam("logger") String logger,
-                                                       @RequestParam("level") String level,
-                                                       @RequestParam("size") int size) {
+    public String updateLoggingSettings(@RequestParam("logger") String logger,
+                                       @RequestParam("level") String level,
+                                       @RequestParam("size") int size,
+                                       @AuthenticationPrincipal User user,
+                                       Model model) {
         try {
             String loggerName = (logger == null || logger.trim().isEmpty()) ? "ROOT" : logger.trim();
             loggingService.setLoggerLevel(loggerName, level);
             loggingService.setBufferSize(size);
-            return ResponseEntity.ok("Logging settings updated");
+            
+            // Refresh model attributes for the fragment
+            model.addAttribute("currentBufferSize", loggingService.getCurrentBufferSize());
+            model.addAttribute("maxBufferSize", loggingService.getMaxBufferSize());
+            model.addAttribute("currentLogLevel", loggingService.getCurrentLogLevel());
+            model.addAttribute("configuredLoggers", loggingService.getAllConfiguredLoggers());
+            
+            return "settings/logging :: logging-settings-card";
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error updating logging settings: " + e.getMessage());
+            // For errors, we could return an error fragment or handle differently
+            model.addAttribute("error", "Error updating logging settings: " + e.getMessage());
+            model.addAttribute("currentBufferSize", loggingService.getCurrentBufferSize());
+            model.addAttribute("maxBufferSize", loggingService.getMaxBufferSize());
+            model.addAttribute("currentLogLevel", loggingService.getCurrentLogLevel());
+            model.addAttribute("configuredLoggers", loggingService.getAllConfiguredLoggers());
+            return "settings/logging :: logging-settings-card";
         }
     }
     
     @PostMapping("/remove")
-    @ResponseBody
-    public ResponseEntity<String> removeLogger(@RequestParam("logger") String logger) {
+    public String removeLogger(@RequestParam("logger") String logger,
+                              @AuthenticationPrincipal User user,
+                              Model model) {
         try {
             loggingService.removeLogger(logger);
-            return ResponseEntity.ok("Logger removed");
+            
+            // Refresh model attributes for the fragment
+            model.addAttribute("currentBufferSize", loggingService.getCurrentBufferSize());
+            model.addAttribute("maxBufferSize", loggingService.getMaxBufferSize());
+            model.addAttribute("currentLogLevel", loggingService.getCurrentLogLevel());
+            model.addAttribute("configuredLoggers", loggingService.getAllConfiguredLoggers());
+            
+            return "settings/logging :: logging-settings-card";
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error removing logger: " + e.getMessage());
+            model.addAttribute("error", "Error removing logger: " + e.getMessage());
+            model.addAttribute("currentBufferSize", loggingService.getCurrentBufferSize());
+            model.addAttribute("maxBufferSize", loggingService.getMaxBufferSize());
+            model.addAttribute("currentLogLevel", loggingService.getCurrentLogLevel());
+            model.addAttribute("configuredLoggers", loggingService.getAllConfiguredLoggers());
+            return "settings/logging :: logging-settings-card";
         }
     }
     
