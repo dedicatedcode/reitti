@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.controller;
+package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.service.logging.LoggingService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -22,8 +22,7 @@ import java.util.function.Consumer;
 public class LoggingController {
     
     private final LoggingService loggingService;
-    private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
-    
+
     @Autowired
     public LoggingController(LoggingService loggingService) {
         this.loggingService = loggingService;
@@ -42,9 +41,7 @@ public class LoggingController {
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamLogs() {
         SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
-        emitters.add(emitter);
-        
-        // Send existing log buffer first
+
         try {
             List<String> snapshot = loggingService.getLogSnapshot();
             for (String logLine : snapshot) {
@@ -53,20 +50,16 @@ public class LoggingController {
                         .data(formatLogLineForHtml(logLine)));
             }
         } catch (IOException e) {
-            emitters.remove(emitter);
             emitter.completeWithError(e);
             return emitter;
         }
         
-        // Set up listener for new log events
         Consumer<String> listener = logLine -> {
             try {
                 emitter.send(SseEmitter.event()
                         .name("log")
                         .data(formatLogLineForHtml(logLine)));
             } catch (IOException e) {
-                emitters.remove(emitter);
-                loggingService.getLogAppender().removeListener(this);
                 emitter.completeWithError(e);
             }
         };
@@ -74,17 +67,14 @@ public class LoggingController {
         loggingService.getLogAppender().addListener(listener);
         
         emitter.onCompletion(() -> {
-            emitters.remove(emitter);
             loggingService.getLogAppender().removeListener(listener);
         });
         
         emitter.onTimeout(() -> {
-            emitters.remove(emitter);
             loggingService.getLogAppender().removeListener(listener);
         });
         
         emitter.onError((ex) -> {
-            emitters.remove(emitter);
             loggingService.getLogAppender().removeListener(listener);
         });
         
