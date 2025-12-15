@@ -113,6 +113,19 @@ public class LoggingController {
         }
     }
     
+    @PreDestroy
+    public void cleanup() {
+        // Close all SSE connections to prevent blocking shutdown
+        for (SseEmitter emitter : emitters) {
+            try {
+                emitter.complete();
+            } catch (Exception e) {
+                // Ignore exceptions during cleanup
+            }
+        }
+        emitters.clear();
+    }
+    
     private String formatLogLineForHtml(String logLine) {
         String escaped = logLine
                 .replace("&", "&amp;")
