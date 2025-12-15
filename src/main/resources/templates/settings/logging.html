@@ -76,7 +76,7 @@
                 <div id="statusMessage" class="status-message"></div>
 
                 <div class="settings-card">
-                    <form id="logLevelForm">
+                    <form id="loggingSettingsForm">
                             <div class="form-group">
                                 <label for="loggerClass" th:text="#{logging.logger.class}">Logger Class:</label>
                                 <input type="text" id="loggerClass" name="logger" class="input-field"
@@ -85,23 +85,15 @@
                             
                             <div class="form-group">
                                 <label for="logLevel" th:text="#{logging.log.level}">Log Level:</label>
-                                <select id="logLevel" name="level" class="select-field"
-                                        hx-post="/settings/logging/level"
-                                        hx-trigger="change"
-                                        hx-include="#loggerClass"
-                                        hx-swap="none"
-                                        hx-on="htmx:afterRequest: handleResponse(event)">
-
-                                    <option value="TRACE" th:text="#{logging.level.trace}">TRACE</option>
-                                    <option value="DEBUG" th:text="#{logging.level.debug}">DEBUG</option>
-                                    <option value="INFO" selected th:text="#{logging.level.info}">INFO</option>
-                                    <option value="WARN" th:text="#{logging.level.warn}">WARN</option>
-                                    <option value="ERROR" th:text="#{logging.level.error}">ERROR</option>
+                                <select id="logLevel" name="level" class="select-field">
+                                    <option value="TRACE" th:text="#{logging.level.trace}" th:selected="${currentLogLevel == 'TRACE'}">TRACE</option>
+                                    <option value="DEBUG" th:text="#{logging.level.debug}" th:selected="${currentLogLevel == 'DEBUG'}">DEBUG</option>
+                                    <option value="INFO" th:text="#{logging.level.info}" th:selected="${currentLogLevel == 'INFO'}">INFO</option>
+                                    <option value="WARN" th:text="#{logging.level.warn}" th:selected="${currentLogLevel == 'WARN'}">WARN</option>
+                                    <option value="ERROR" th:text="#{logging.level.error}" th:selected="${currentLogLevel == 'ERROR'}">ERROR</option>
                                 </select>
                             </div>
-                    </form>
-                    
-                    <form id="bufferSizeForm">
+
                             <div class="form-group">
                                 <label for="bufferSize" th:text="#{logging.buffer.size}">Buffer Size:</label>
                                 <input type="number" id="bufferSize" name="size" class="input-field"
@@ -113,11 +105,11 @@
                             
                             <div class="form-group">
                                 <button type="submit" class="btn btn-primary"
-                                        hx-post="/settings/logging/buffer"
-                                        hx-include="#bufferSize"
+                                        hx-post="/settings/logging/update"
+                                        hx-include="this"
                                         hx-swap="none"
                                         hx-on="htmx:afterRequest: handleResponse(event)">
-                                    <span th:text="#{logging.buffer.update}">Update Buffer</span>
+                                    <span th:text="#{logging.update}">Update</span>
                                     <span class="htmx-indicator">...</span>
                                 </button>
                             </div>
