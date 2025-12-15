@@ -62,6 +62,52 @@
             align-items: center;
             gap: 5px;
         }
+        
+        .configured-loggers {
+            margin-top: 15px;
+        }
+        
+        .logger-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            background: #f9f9f9;
+        }
+        
+        .logger-info {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+        
+        .logger-name {
+            font-weight: bold;
+            font-family: monospace;
+        }
+        
+        .logger-level {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .logger-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .logger-level-select {
+            min-width: 100px;
+        }
+        
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 0.875em;
+        }
     </style>
 </head>
 <body class="settings-page">
@@ -80,7 +126,9 @@
                             <div class="form-group">
                                 <label for="loggerClass" th:text="#{logging.logger.class}">Logger Class:</label>
                                 <input type="text" id="loggerClass" name="logger" class="input-field"
-                                       th:placeholder="#{logging.logger.placeholder}">
+                                       th:placeholder="#{logging.logger.placeholder}"
+                                       value="com.dedicatedcode.reitti">
+                                <small class="form-text" th:text="#{logging.logger.help}">Leave empty to configure the root (global) logger</small>
                             </div>
                             
                             <div class="form-group">
@@ -114,6 +162,44 @@
                                 </button>
                             </div>
                     </form>
+                </div>
+
+                <div class="settings-card" th:if="${configuredLoggers != null and !configuredLoggers.isEmpty()}">
+                    <h3 th:text="#{logging.configured.loggers}">Configured Loggers</h3>
+                    <div class="configured-loggers">
+                        <div class="logger-item" th:each="logger : ${configuredLoggers}">
+                            <div class="logger-info">
+                                <span class="logger-name" th:text="${logger.name}">Logger Name</span>
+                                <span class="logger-level" th:text="${logger.level}">Level</span>
+                            </div>
+                            <div class="logger-actions">
+                                <select class="select-field logger-level-select" th:data-logger="${logger.name}">
+                                    <option value="TRACE" th:text="#{logging.level.trace}" th:selected="${logger.level == 'TRACE'}">TRACE</option>
+                                    <option value="DEBUG" th:text="#{logging.level.debug}" th:selected="${logger.level == 'DEBUG'}">DEBUG</option>
+                                    <option value="INFO" th:text="#{logging.level.info}" th:selected="${logger.level == 'INFO'}">INFO</option>
+                                    <option value="WARN" th:text="#{logging.level.warn}" th:selected="${logger.level == 'WARN'}">WARN</option>
+                                    <option value="ERROR" th:text="#{logging.level.error}" th:selected="${logger.level == 'ERROR'}">ERROR</option>
+                                </select>
+                                <button type="button" class="btn btn-secondary btn-sm update-logger-btn"
+                                        th:data-logger="${logger.name}"
+                                        hx-post="/settings/logging/update"
+                                        hx-vals='{"size": "[[${currentBufferSize}]]"}'
+                                        hx-swap="none"
+                                        hx-on="htmx:afterRequest: handleResponse(event)">
+                                    <span th:text="#{logging.update}">Update</span>
+                                </button>
+                                <button type="button" class="btn btn-danger btn-sm"
+                                        th:if="${logger.name != 'ROOT'}"
+                                        hx-post="/settings/logging/remove"
+                                        th:hx-vals="'logger=' + ${logger.name}"
+                                        hx-swap="none"
+                                        hx-confirm="#{logging.confirm.remove}"
+                                        hx-on="htmx:afterRequest: handleLoggerRemoval(event)">
+                                    <span th:text="#{logging.remove}">Remove</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="settings-card">
@@ -199,6 +285,31 @@
     window.addEventListener('beforeunload', function() {
         eventSource.close();
     });
+    
+    // Handle logger level updates
+    document.addEventListener('click', function(event) {
+        if (event.target.classList.contains('update-logger-btn')) {
+            const loggerName = event.target.getAttribute('data-logger');
+            const selectElement = document.querySelector(`select[data-logger="${loggerName}"]`);
+            const newLevel = selectElement.value;
+            
+            // Update the hx-vals to include the logger and level
+            event.target.setAttribute('hx-vals', JSON.stringify({
+                logger: loggerName,
+                level: newLevel,
+                size: /*[[${currentBufferSize}]]*/ 1000
+            }));
+        }
+    });
+    
+    function handleLoggerRemoval(event) {
+        if (event.detail.xhr.status === 200) {
+            // Reload the page to refresh the logger list
+            window.location.reload();
+        } else {
+            handleResponse(event);
+        }
+    }
 </script>
 </body>
 </html>

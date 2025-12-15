@@ -36,6 +36,7 @@ public class LoggingController {
         model.addAttribute("currentBufferSize", loggingService.getCurrentBufferSize());
         model.addAttribute("maxBufferSize", loggingService.getMaxBufferSize());
         model.addAttribute("currentLogLevel", loggingService.getCurrentLogLevel());
+        model.addAttribute("configuredLoggers", loggingService.getAllConfiguredLoggers());
         return "settings/logging";
     }
     
@@ -100,6 +101,17 @@ public class LoggingController {
             return ResponseEntity.ok("Logging settings updated");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error updating logging settings: " + e.getMessage());
+        }
+    }
+    
+    @PostMapping("/remove")
+    @ResponseBody
+    public ResponseEntity<String> removeLogger(@RequestParam("logger") String logger) {
+        try {
+            loggingService.removeLogger(logger);
+            return ResponseEntity.ok("Logger removed");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error removing logger: " + e.getMessage());
         }
     }
     
