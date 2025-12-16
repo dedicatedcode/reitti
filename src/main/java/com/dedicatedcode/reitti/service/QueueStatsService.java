@@ -231,5 +231,4 @@ public class QueueStatsService {
     }
 
     private record ProcessingRecord(LocalDateTime timestamp, long numberOfMessages, long processingTimeMs) { }
-
 }
