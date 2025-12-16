@@ -11,13 +11,16 @@ import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
 import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -43,9 +46,8 @@ class GoogleAndroidTimelineImporterTest {
         assertTrue(result.containsKey("success"));
         assertTrue((Boolean) result.get("success"));
 
-        // Create a spy to retrieve all LocationDataEvents pushed into RabbitMQ
         ArgumentCaptor<List<LocationPoint>> eventCaptor = ArgumentCaptor.forClass(List.class);
-        verify(mock, times(1)).processLocationData(eq("test"), eventCaptor.capture());
+        await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> verify(mock, times(1)).processLocationData(eq("test"), eventCaptor.capture()));
 
         List<List<LocationPoint>> capturedEvents = eventCaptor.getAllValues();
         assertEquals(1, capturedEvents.size());

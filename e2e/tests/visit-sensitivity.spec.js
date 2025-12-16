@@ -33,17 +33,17 @@ test.describe('Settings - Visit Sensitivity Tests', () => {
     test('should not duplicate edit form', async ({page}) => {
         await page.locator('#nav-settings').click();
         await page.getByRole('link', {name: 'Visit Sensitivity'}).click();
-        await page.getByRole('button', {name: 'Edit'}).click();
+        await page.getByRole('button', {name: 'Edit'}).first().click();
         await expect(page.locator('#edit-form')).toBeVisible();
         await page.getByRole('button', {name: 'Simple'}).click();
-        await page.getByRole('button', {name: 'Edit'}).click();
+        await page.getByRole('button', {name: 'Edit'}).first().click();
         await expect(page.locator('#edit-form')).toBeVisible(); //this will fail if the edit form is duplicated
     });
 
     test('should display simple edit form', async ({page}) => {
         await page.locator('#nav-settings').click();
         await page.getByRole('link', {name: 'Visit Sensitivity'}).click();
-        await page.getByRole('button', {name: 'Edit'}).click();
+        await page.getByRole('button', {name: 'Edit'}).first().click();
         await expect(page.locator('#edit-form')).toBeVisible();
         await page.getByRole('button', {name: 'Simple'}).click();
         await expect(page.locator('#edit-form')).toBeVisible();
@@ -52,7 +52,7 @@ test.describe('Settings - Visit Sensitivity Tests', () => {
     test('should display advanced edit form', async ({page}) => {
         await page.locator('#nav-settings').click();
         await page.getByRole('link', {name: 'Visit Sensitivity'}).click();
-        await page.getByRole('button', {name: 'Edit'}).click();
+        await page.getByRole('button', {name: 'Edit'}).first().click();
         await expect(page.locator('#edit-form')).toBeVisible();
         await page.getByRole('button', {name: 'Advanced'}).click();
         await expect(page.locator('#edit-form')).toBeVisible();
@@ -62,7 +62,7 @@ test.describe('Settings - Visit Sensitivity Tests', () => {
     test('should display recalculation advise', async ({page}) => {
         await page.locator('#nav-settings').click();
         await page.getByRole('link', {name: 'Visit Sensitivity'}).click();
-        await page.getByRole('button', {name: 'Edit'}).click();
+        await page.getByRole('button', {name: 'Edit'}).first().click();
         await expect(page.locator('#edit-form')).toBeVisible();
         await page.getByRole('button', {name: 'Advanced'}).click();
         await expect(page.locator('#edit-form')).toBeVisible();
