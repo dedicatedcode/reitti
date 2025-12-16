@@ -91,10 +91,10 @@ public class ProcessingPipelineTrigger {
             log.debug("Scheduling stay detection event for user [{}] and points between [{}] and [{}]", user.getId(), earliest, latest);
 
             currentBatch.forEach(RawLocationPoint::markProcessed);
-            if (previewId != null) {
-                previewRawLocationPointJdbcService.bulkUpdateProcessedStatus(currentBatch);
-            } else {
+            if (previewId == null) {
                 rawLocationPointJdbcService.bulkUpdateProcessedStatus(currentBatch);
+            } else {
+                previewRawLocationPointJdbcService.bulkUpdateProcessedStatus(currentBatch);
             }
 
             if (!immediate) {
