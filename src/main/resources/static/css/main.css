@@ -1594,17 +1594,9 @@ button:disabled {
     padding-left: 42px;
 }
 
-.user-timeline-section .no-entries{
+.user-timeline-section .no-entries {
     color: white;
     padding: 48px;
-}
-
-.user-timeline-selection .avatar {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    border: 2px solid white;
-    object-fit: cover;
 }
 
 .user-header {
@@ -1687,21 +1679,21 @@ button:disabled {
 .avatar::after {
     content: attr(alt);
     color: white;
-    font-size: 2.4rem;
+    font-size: 2.1rem;
     top: 0;
     position: absolute;
     background: var(--color-background-dark);
     left: 0;
     width: 100%;
     height: 100%;
-    padding-top: 5px;
+    padding-top: 7px;
     font-weight: initial;
     font-family: var(--serif-font);
 }
 
 .avatar.small::after {
     font-size: 1.1rem;
-    padding: 6px 3px;
+    padding: 4px;
 }
 
 .avatar:not(:has(img))::after {
