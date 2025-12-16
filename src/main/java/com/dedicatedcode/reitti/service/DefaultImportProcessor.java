@@ -27,7 +27,7 @@ public class DefaultImportProcessor implements ImportProcessor {
     private final ProcessingPipelineTrigger processingPipelineTrigger;
     private final ScheduledExecutorService scheduler;
     private final ConcurrentHashMap<String, ScheduledFuture<?>> pendingTriggers;
-    private final ExecutorService importExecutors = Executors.newSingleThreadExecutor();
+    private final ThreadPoolExecutor importExecutors = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
 
     public DefaultImportProcessor(
             LocationDataIngestPipeline locationDataIngestPipeline,
@@ -84,12 +84,17 @@ public class DefaultImportProcessor implements ImportProcessor {
     
     @PreDestroy
     public void shutdown() {
+        importExecutors.shutdown();
         scheduler.shutdown();
         try {
+            if (!importExecutors.awaitTermination(5, TimeUnit.SECONDS)) {
+                importExecutors.shutdownNow();
+            }
             if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
                 scheduler.shutdownNow();
             }
         } catch (InterruptedException e) {
+            importExecutors.shutdownNow();
             scheduler.shutdownNow();
             Thread.currentThread().interrupt();
         }
@@ -97,5 +102,9 @@ public class DefaultImportProcessor implements ImportProcessor {
 
     public int getBatchSize() {
         return batchSize;
+    }
+
+    public int getPendingTaskCount() {
+        return importExecutors.getQueue().size();
     }
 }

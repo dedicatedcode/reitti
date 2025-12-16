@@ -12,8 +12,6 @@ import org.springframework.context.annotation.Configuration;
 public class RabbitMQConfig {
 
     public static final String EXCHANGE_NAME = "reitti-exchange";
-    public static final String LOCATION_DATA_QUEUE = "reitti.location.data.v2";
-    public static final String LOCATION_DATA_ROUTING_KEY = "reitti.location.data.v2";
     public static final String SIGNIFICANT_PLACE_QUEUE = "reitti.place.created.v2";
     public static final String SIGNIFICANT_PLACE_ROUTING_KEY = "reitti.place.created.v2";
     public static final String RECALCULATE_TRIP_QUEUE = "reitti.trip.recalculate.v2";
@@ -37,14 +35,6 @@ public class RabbitMQConfig {
     @Bean
     TopicExchange deadLetterExchange() {
         return new TopicExchange(DLX_NAME);
-    }
-
-    @Bean
-    public Queue locationDataQueue() {
-    return QueueBuilder.durable(LOCATION_DATA_QUEUE)
-            .withArgument("x-dead-letter-exchange", DLX_NAME)
-            .withArgument("x-dead-letter-routing-key", DLQ_NAME)
-            .build();
     }
 
     @Bean
@@ -77,11 +67,6 @@ public class RabbitMQConfig {
                 .withArgument("x-dead-letter-exchange", DLX_NAME)
                 .withArgument("x-dead-letter-routing-key", DLQ_NAME)
                 .build();
-    }
-
-    @Bean
-    public Binding locationDataBinding(Queue locationDataQueue, TopicExchange exchange) {
-        return BindingBuilder.bind(locationDataQueue).to(exchange).with(LOCATION_DATA_ROUTING_KEY);
     }
 
     @Bean

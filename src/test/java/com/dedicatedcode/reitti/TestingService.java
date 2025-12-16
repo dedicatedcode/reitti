@@ -30,7 +30,6 @@ import java.util.concurrent.atomic.AtomicLong;
 public class TestingService {
 
     private static final List<String> QUEUES_TO_CHECK = List.of(
-            RabbitMQConfig.LOCATION_DATA_QUEUE,
             RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE
     );
 
