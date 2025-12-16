@@ -136,7 +136,8 @@ public class UnifiedLocationProcessingService {
                 user,
                 previewId,
                 mergingResult.searchStart,
-                mergingResult.searchEnd
+                mergingResult.searchEnd,
+                mergingResult.processedVisits
         );
         logger.debug("Trip detection: {} trips created", tripResult.trips.size());
 
@@ -368,7 +369,7 @@ public class UnifiedLocationProcessingService {
      * STEP 3: Trip Detection
      * Creates Trip entities between consecutive ProcessedVisits.
      */
-    private TripDetectionResult detectTrips(User user, String previewId, Instant searchStart, Instant searchEnd) {
+    private TripDetectionResult detectTrips(User user, String previewId, Instant searchStart, Instant searchEnd, List<ProcessedVisit> processedVisits) {
 
         // Expand search for trip detection
         searchStart = searchStart.minus(1, ChronoUnit.DAYS);

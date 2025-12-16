@@ -44,11 +44,12 @@ public class DefaultImportProcessor implements ImportProcessor {
 
     @Override
     public void processBatch(User user, List<LocationPoint> batch) {
-        logger.trace("Sending batch of [{}] locations for user [{}] into executor queue", batch.size(), user.getUsername());
+        logger.debug("Sending batch of [{}] locations for user [{}] into executor queue", batch.size(), user.getUsername());
+        List<LocationPoint> points = new ArrayList<>(batch);
         this.importExecutors.submit(() -> {
-            logger.debug("Sending batch of {} locations for storing", batch.size());
-            locationDataIngestPipeline.processLocationData(user.getUsername(), new ArrayList<>(batch));
-            logger.debug("Sending batch of {} locations for processing", batch.size());
+            logger.trace("Sending batch of {} locations for storing", points.size());
+            locationDataIngestPipeline.processLocationData(user.getUsername(), points);
+            logger.trace("Sending batch of {} locations for processing", points.size());
             scheduleProcessingTrigger(user.getUsername());
         });
     }

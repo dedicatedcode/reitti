@@ -47,7 +47,7 @@ public class LocationDataIngestPipeline {
     public void shutdown() {
     }
 
-    public void processLocationData(String username, List<LocationPoint> points ) {
+    public void processLocationData(String username, List<LocationPoint> points) {
         try {
             long start = System.currentTimeMillis();
             logger.debug("starting processing");
