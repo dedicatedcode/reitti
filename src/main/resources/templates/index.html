@@ -15,11 +15,19 @@
     <link rel="stylesheet" href="/css/inline-edit.css">
     <link rel="stylesheet" href="/css/avatar-marker.css">
     <link th:if="${userSettings.customCssUrl}" rel="stylesheet" th:href="${userSettings.customCssUrl}">
+    <style>
+        .canvas-visit-tooltip {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
     <script src="/js/HumanizeDuration.js"></script>
     <script src="/js/date-picker-combined.js"></script>
     <script src="/js/timeline-scroll-indicator.js"></script>
     <script src="/js/photo-client.js"></script>
     <script src="/js/raw-location-loader.js"></script>
+    <script src="/js/canvas-visit-renderer.js"></script>
     <script src="/js/htmx.min.js"></script>
     <script src="/js/leaflet.js"></script>
     <script src="/js/TileLayer.Grayscale.js"></script>
@@ -142,8 +150,9 @@
     // Initialize the map
     const map = L.map('map', {zoomControl: false, attributionControl: false}).setView([window.userSettings.homeLatitude, window.userSettings.homeLongitude], 12);
 
-    // Initialize raw location loader
+    // Initialize raw location loader and canvas visit renderer
     let rawLocationLoader;
+    let canvasVisitRenderer;
 
     /**
      * Retrieves the selected date based on the URL parameters or application settings.
@@ -338,6 +347,9 @@
 
         // Initialize raw location loader with user configurations
         initializeRawLocationLoader();
+        
+        // Initialize canvas visit renderer
+        canvasVisitRenderer = new CanvasVisitRenderer(map);
 
         // Listen for map move/zoom events to update photo markers
         map.on('moveend zoomend', () => {
@@ -407,9 +419,9 @@
             });
 
             let hasValidCoords = false;
+            const allVisits = [];
 
             // Group places by coordinates to avoid duplicate markers
-
             let timelineUserSections = document.querySelectorAll('.user-timeline-section ');
 
             for (const timelineUserSection of timelineUserSections) {
@@ -435,7 +447,8 @@
                                 lng: lng,
                                 totalDurationMs: 0,
                                 visits: [],
-                                place: { name: placeName, address: '' }
+                                place: { name: placeName, address: '' },
+                                color: color
                             });
                         }
 
@@ -452,59 +465,20 @@
                         bounds.extend([lat, lng]);
                         hasValidCoords = true;
                     }
-
-
-                    // Draw markers for grouped places
-                    placeGroups.forEach((group) => {
-                        const { lat, lng, totalDurationMs, visits, place } = group;
-
-                        // Calculate radius using logarithmic scale
-                        const durationHours = totalDurationMs / (1000 * 60 * 60);
-                        const baseRadius = 15;
-                        const maxRadius = 100;
-                        const minRadius = 15;
-
-                        const logScale = Math.log(1 + durationHours) / Math.log(1 + 24);
-                        const radius = Math.min(maxRadius, Math.max(minRadius, baseRadius + (logScale * (maxRadius - baseRadius))));
-
-                        // Create marker
-                        L.circleMarker([lat, lng], {
-                            radius: 5,
-                            fillColor: lightenHexColor(color, 20),
-                            color: '#fff',
-                            weight: 1,
-                            opacity: 1,
-                            fillOpacity: 0.8
-                        }).addTo(map);
-
-                        // Create circle with calculated radius
-                        const circle = L.circle([lat, lng], {
-                            color: color,
-                            fillColor: lightenHexColor(color, 20),
-                            fillOpacity: 0.1,
-                            radius: radius
-                        }).addTo(map);
-
-                        const totalDurationText = humanizeDuration(totalDurationMs, {units: ["h", "m"], round: true});
-                        const visitCount = visits.length;
-                        const visitText = visitCount === 1 ? 'visit' : 'visits';
-
-                        let tooltip = L.tooltip([lat, lng], {
-                            content: `<div class="visit-title">${place.name}</div>
-                             <div class="visit-description">
-                                 ${visitCount} ${visitText} - Total: ${totalDurationText}
-                             </div>`,
-                            className: 'visit-popup',
-                            permanent: false
-                        });
-
-                        bounds.extend([lat, lng])
-
-                        circle.bindTooltip(tooltip);
-                    });
                 });
 
+                // Add grouped places to visits array for canvas rendering
+                placeGroups.forEach((group) => {
+                    allVisits.push(group);
+                    bounds.extend([group.lat, group.lng]);
+                });
             }
+
+            // Update canvas renderer with all visits
+            if (canvasVisitRenderer) {
+                canvasVisitRenderer.setVisits(allVisits);
+            }
+
             return bounds;
         }
 
@@ -513,6 +487,27 @@
             const hours = (durationText.match(/(\d+)h/) || [0, 0])[1];
             const minutes = (durationText.match(/(\d+)m/) || [0, 0])[1];
             return (parseInt(hours) * 60 + parseInt(minutes)) * 60 * 1000; // Convert to milliseconds
+        }
+
+        function lightenHexColor(hex, percent) {
+            // Remove # if present
+            hex = hex.replace('#', '');
+        
+            // Parse RGB values
+            const r = parseInt(hex.substr(0, 2), 16);
+            const g = parseInt(hex.substr(2, 2), 16);
+            const b = parseInt(hex.substr(4, 2), 16);
+        
+            // Lighten each component
+            const newR = Math.min(255, Math.floor(r + (255 - r) * (percent / 100)));
+            const newG = Math.min(255, Math.floor(g + (255 - g) * (percent / 100)));
+            const newB = Math.min(255, Math.floor(b + (255 - b) * (percent / 100)));
+        
+            // Convert back to hex
+            return '#' + 
+                newR.toString(16).padStart(2, '0') +
+                newG.toString(16).padStart(2, '0') +
+                newB.toString(16).padStart(2, '0');
         }
 
         // Handle clicks on timeline entries
