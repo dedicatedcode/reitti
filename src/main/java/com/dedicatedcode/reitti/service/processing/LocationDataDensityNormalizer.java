@@ -170,7 +170,7 @@ public class LocationDataDensityNormalizer {
             long gapSeconds = Duration.between(current.getTimestamp(), next.getTimestamp()).getSeconds();
 
             if (gapSeconds > gapThresholdSeconds && gapSeconds <= maxInterpolationSeconds) {
-                logger.debug("Found gap of {} seconds between {} and {}",
+                logger.trace("Found gap of {} seconds between {} and {}",
                         gapSeconds, current.getTimestamp(), next.getTimestamp());
 
                 List<LocationPoint> syntheticPoints = syntheticGenerator.generateSyntheticPoints(

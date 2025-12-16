@@ -43,6 +43,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/login", "/access", "/error").permitAll()
                         .requestMatchers("/settings/integrations/reitti.properties").hasAnyRole(Role.ADMIN.name(), Role.API_ACCESS.name(), Role.USER.name())
+                        .requestMatchers("/settings/logging", "/settings/logging/**").hasRole(Role.ADMIN.name())
                         .requestMatchers("/settings/**").hasAnyRole(Role.ADMIN.name(), Role.USER.name())
                         .requestMatchers("/api/v1/photos/**").hasAnyRole(Role.ADMIN.name(),
                                 Role.USER.name(),

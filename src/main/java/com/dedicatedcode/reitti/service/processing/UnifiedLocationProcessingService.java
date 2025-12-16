@@ -136,7 +136,8 @@ public class UnifiedLocationProcessingService {
                 user,
                 previewId,
                 mergingResult.searchStart,
-                mergingResult.searchEnd
+                mergingResult.searchEnd,
+                mergingResult.processedVisits
         );
         logger.debug("Trip detection: {} trips created", tripResult.trips.size());
 
@@ -368,28 +369,9 @@ public class UnifiedLocationProcessingService {
      * STEP 3: Trip Detection
      * Creates Trip entities between consecutive ProcessedVisits.
      */
-    private TripDetectionResult detectTrips(User user, String previewId, Instant searchStart, Instant searchEnd) {
+    private TripDetectionResult detectTrips(User user, String previewId, Instant searchStart, Instant searchEnd, List<ProcessedVisit> processedVisits) {
 
-        // Expand search for trip detection
-        searchStart = searchStart.minus(1, ChronoUnit.DAYS);
-        searchEnd = searchEnd.plus(1, ChronoUnit.DAYS);
-
-        // Get all processed visits in range
-        List<ProcessedVisit> allProcessedVisits;
-        if (previewId == null) {
-            allProcessedVisits = processedVisitJdbcService.findByUserAndTimeOverlap(
-                    user, searchStart, searchEnd);
-        } else {
-            allProcessedVisits = previewProcessedVisitJdbcService.findByUserAndTimeOverlap(
-                    user, previewId, searchStart, searchEnd);
-        }
-
-        if (allProcessedVisits.size() < 2) {
-            return new TripDetectionResult(List.of());
-        }
-
-        // Sort chronologically
-        allProcessedVisits.sort(Comparator.comparing(ProcessedVisit::getStartTime));
+        processedVisits.sort(Comparator.comparing(ProcessedVisit::getStartTime));
 
         // Delete existing trips in range
         if (previewId == null) {
@@ -404,9 +386,9 @@ public class UnifiedLocationProcessingService {
 
         // Create trips between consecutive visits
         List<Trip> trips = new ArrayList<>();
-        for (int i = 0; i < allProcessedVisits.size() - 1; i++) {
-            ProcessedVisit startVisit = allProcessedVisits.get(i);
-            ProcessedVisit endVisit = allProcessedVisits.get(i + 1);
+        for (int i = 0; i < processedVisits.size() - 1; i++) {
+            ProcessedVisit startVisit = processedVisits.get(i);
+            ProcessedVisit endVisit = processedVisits.get(i + 1);
 
             Trip trip = createTripBetweenVisits(user, previewId, startVisit, endVisit);
             if (trip != null) {

@@ -1,0 +1,2 @@
+ALTER TABLE preview_visit_detection_parameters ALTER COLUMN density_max_interpolation_gap_minutes SET DEFAULT 1440;
+ALTER TABLE visit_detection_parameters ALTER COLUMN density_max_interpolation_gap_minutes SET DEFAULT 1440;

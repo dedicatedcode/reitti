@@ -11,7 +11,6 @@ import java.util.concurrent.TimeUnit;
 
 public interface ImportProcessor {
     void processBatch(User user, List<LocationPoint> batch);
-
     void scheduleProcessingTrigger(String username);
     boolean isIdle();
 }
