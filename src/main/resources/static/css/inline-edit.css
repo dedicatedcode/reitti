@@ -37,7 +37,6 @@
 .place-name-container.editing {
     border-radius: 3px;
     font-size: 1rem;
-    float: left;
     min-width: 700px;
 }
 
@@ -72,7 +71,6 @@
     .place-name-container.editing {
         border-radius: 3px;
         font-size: 1rem;
-        float: left;
         min-width: 0;
     }
 
@@ -81,8 +79,16 @@
     }
 
 
+    .timeline-entry .trip-transport-mode-container .edit-icon,
+    .timeline-entry .place-name-container .edit-icon {
+        display: none;
+
+    }
+
+    .timeline-entry.active .trip-transport-mode-container .edit-icon,
     .timeline-entry.active .place-name-container .edit-icon {
         opacity: 1;
+        display: inline-block;
     }
 
     .edit-icon {
