@@ -527,8 +527,8 @@ tr:hover {
     font-family: var(--serif-font);
     line-height: 1.5;
     font-weight: 400;
-    padding-top: 48px;
-    padding-bottom: 110px;
+    padding-top: 64px;
+    padding-bottom: 140px;
     transition: opacity 0.3s ease;
 }
 
