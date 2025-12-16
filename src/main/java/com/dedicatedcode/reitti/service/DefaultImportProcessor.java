@@ -95,7 +95,6 @@ public class DefaultImportProcessor implements ImportProcessor {
         }
     }
 
-    
     public int getBatchSize() {
         return batchSize;
     }

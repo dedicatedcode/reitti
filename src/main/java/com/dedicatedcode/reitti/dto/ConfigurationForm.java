@@ -199,7 +199,7 @@ public class ConfigurationForm {
         }
         
         // Use default location density parameters for now
-        DetectionParameter.LocationDensity locationDensity = new DetectionParameter.LocationDensity(500.0, 120);
+        DetectionParameter.LocationDensity locationDensity = new DetectionParameter.LocationDensity(50.0, 1440);
         
         Instant validSinceInstant = validSince != null ? ZonedDateTime.of(validSince.atStartOfDay(), timezone).toInstant() : null;
         
