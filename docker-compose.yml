@@ -21,11 +21,6 @@ services:
       POSTGIS_PASSWORD: reitti
       POSTGIS_DB: reittidb
       POSTGIS_HOST: postgis
-      # Use internal proxy endpoint for tiles
-      TILES_URL: /api/tiles/{z}/{x}/{y}.png
-      TILES_ATTRIBUTION: "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors"
-      # Internal cache service URL
-      TILE_CACHE_URL: http://tile-cache
   postgis:
     image: postgis/postgis:17-3.5-alpine
     environment:

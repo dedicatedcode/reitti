@@ -75,7 +75,7 @@ services:
       - "8084:80"
     command: |
       sh -c "
-      cat > /etc/varnish/default.vcl << 'EOF'
+      cat > /tmp/default.vcl << 'EOF'
       vcl 4.1;
       backend default {
         .host = \"tile.openstreetmap.org\";
@@ -94,7 +94,7 @@ services:
         }
       }
       EOF
-      varnishd -F -f /etc/varnish/default.vcl -s malloc,1G -a :80"
+      varnishd -F -f /tmp/default.vcl -s malloc,1G -a :80"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "varnishadm", "ping"]
