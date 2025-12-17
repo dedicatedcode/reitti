@@ -412,7 +412,7 @@
                 window.timelineScrollIndicator.init();
             }
         });
-        // Function to update map markers from timeline entries
+        // Function to update map markers from processed visits API
         function updateMapFromTimeline() {
             const bounds = L.latLngBounds();
 
@@ -423,76 +423,88 @@
                 }
             });
 
-            let hasValidCoords = false;
             const allVisits = [];
+            
+            // Get current map bounds for API request
+            const mapBounds = map.getBounds();
+            const params = getTimelineParams();
+            
+            // Get user configurations for colors
+            const userConfigs = new Map();
+            const timelineUserSections = document.querySelectorAll('.user-timeline-section');
+            
+            timelineUserSections.forEach(container => {
+                const userId = container.dataset.userId;
+                const color = container.dataset.baseColor;
+                userConfigs.set(userId, { color: color });
+            });
 
-            // Group places by coordinates to avoid duplicate markers
-            let timelineUserSections = document.querySelectorAll('.user-timeline-section ');
+            // Fetch processed visits for each user
+            const fetchPromises = [];
+            timelineUserSections.forEach(container => {
+                const userId = container.dataset.userId;
+                const url = `/api/v1/visits/${userId}`;
+                const urlParams = new URLSearchParams({
+                    startDate: params.startDate,
+                    endDate: params.endDate,
+                    timezone: params.timezone,
+                    minLat: mapBounds.getSouth(),
+                    maxLat: mapBounds.getNorth(),
+                    minLng: mapBounds.getWest(),
+                    maxLng: mapBounds.getEast()
+                });
 
-            for (const timelineUserSection of timelineUserSections) {
-                const color = timelineUserSection?.dataset.baseColor;
-                const timelineEntries = timelineUserSection.querySelectorAll('.timeline-entry[data-lat][data-lng]');
+                fetchPromises.push(
+                    fetch(`${url}?${urlParams}`)
+                        .then(response => response.json())
+                        .then(data => ({ userId, data, color: userConfigs.get(userId)?.color }))
+                        .catch(error => {
+                            console.error(`Error fetching visits for user ${userId}:`, error);
+                            return { userId, data: { places: [] }, color: userConfigs.get(userId)?.color };
+                        })
+                );
+            });
 
-                const placeGroups = new Map();
-
-                timelineEntries.forEach(entryElement => {
-                    const lat = parseFloat(entryElement.dataset.lat);
-                    const lng = parseFloat(entryElement.dataset.lng);
-
-                    if (!isNaN(lat) && !isNaN(lng) && entryElement.classList.contains('visit')) {
-                        const coordKey = `${lat.toFixed(6)},${lng.toFixed(6)}`;
-
-                        if (!placeGroups.has(coordKey)) {
-                            // Extract place name from the timeline entry
-                            const placeNameElement = entryElement.querySelector('.place-name');
-                            const placeName = placeNameElement ? placeNameElement.textContent : 'Unknown Place';
-
-                            placeGroups.set(coordKey, {
-                                lat: lat,
-                                lng: lng,
-                                totalDurationMs: 0,
-                                visits: [],
-                                place: { name: placeName, address: '' },
-                                color: color
-                            });
-                        }
-
-                        const group = placeGroups.get(coordKey);
-                        // Calculate duration from time range text
-                        const durationElement = entryElement.querySelector('.entry-duration');
-                        if (durationElement) {
-                            const durationText = durationElement.textContent;
-                            const durationMs = parseDurationText(durationText);
-                            group.totalDurationMs += durationMs;
-                        }
-                        group.visits.push({ id: entryElement.dataset.id });
-
-                        bounds.extend([lat, lng]);
-                        hasValidCoords = true;
+            Promise.all(fetchPromises).then(results => {
+                results.forEach(({ userId, data, color }) => {
+                    if (data.places) {
+                        data.places.forEach(placeSummary => {
+                            const place = placeSummary.place;
+                            if (place.latitudeCentroid && place.longitudeCentroid) {
+                                const visitData = {
+                                    lat: place.latitudeCentroid,
+                                    lng: place.longitudeCentroid,
+                                    totalDurationMs: placeSummary.totalDurationSeconds * 1000,
+                                    visits: placeSummary.visits.map(v => ({ id: v.id })),
+                                    place: {
+                                        name: place.name || 'Unknown Place',
+                                        address: place.address || ''
+                                    },
+                                    color: color
+                                };
+                                
+                                allVisits.push(visitData);
+                                bounds.extend([place.latitudeCentroid, place.longitudeCentroid]);
+                            }
+                        });
                     }
                 });
 
-                // Add grouped places to visits array for canvas rendering
-                placeGroups.forEach((group) => {
-                    allVisits.push(group);
-                    bounds.extend([group.lat, group.lng]);
-                });
-            }
-
-            // Update canvas renderer with all visits
-            if (canvasVisitRenderer) {
-                canvasVisitRenderer.setVisits(allVisits);
-            }
+                // Update canvas renderer with all visits
+                if (canvasVisitRenderer) {
+                    canvasVisitRenderer.setVisits(allVisits);
+                }
+            }).catch(error => {
+                console.error('Error fetching processed visits:', error);
+                // Fallback to empty visits if API fails
+                if (canvasVisitRenderer) {
+                    canvasVisitRenderer.setVisits([]);
+                }
+            });
 
             return bounds;
         }
 
-        function parseDurationText(durationText) {
-            // Extract numbers followed by 'h' or 'm'
-            const hours = (durationText.match(/(\d+)h/) || [0, 0])[1];
-            const minutes = (durationText.match(/(\d+)m/) || [0, 0])[1];
-            return (parseInt(hours) * 60 + parseInt(minutes)) * 60 * 1000; // Convert to milliseconds
-        }
 
         function lightenHexColor(hex, percent) {
             // Remove # if present
