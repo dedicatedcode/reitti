@@ -204,9 +204,10 @@ public class TimelineController {
         List<TimelineEntry> currentUserEntries = this.timelineService.buildTimelineEntries(user, userTimezone, selectedDate, startOfDay, endOfDay);
 
         String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", user.getId(), date, timezone);
+        String currentUserProcessedVisitsUrl = String.format("/api/v1/visits/%d?date=%s&timezone=%s", user.getId(), date, timezone);
         String currentUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", user.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", user.getId()));
         String currentUserInitials = this.avatarService.generateInitials(user.getDisplayName());
-        allUsersData.add(new UserTimelineData(user.getId() + "", user.getDisplayName(), currentUserInitials, currentUserAvatarUrl, null, currentUserEntries, currentUserRawLocationPointsUrl));
+        allUsersData.add(new UserTimelineData(user.getId() + "", user.getDisplayName(), currentUserInitials, currentUserAvatarUrl, null, currentUserEntries, currentUserRawLocationPointsUrl, currentUserProcessedVisitsUrl));
 
         if (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN")) {
             allUsersData.addAll(this.reittiIntegrationService.getTimelineData(user, selectedDate, userTimezone));
@@ -264,9 +265,10 @@ public class TimelineController {
         }
 
         String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), selectedStartDate, selectedEndDate, timezone);
+        String currentUserProcessedVisitsUrl = String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), selectedStartDate, selectedEndDate, timezone);
         String currentUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", user.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", user.getId()));
         String currentUserInitials = this.avatarService.generateInitials(user.getDisplayName());
-        allUsersData.add(new UserTimelineData(user.getId() + "", user.getDisplayName(), currentUserInitials, currentUserAvatarUrl, userSettings.getColor(), currentUserEntries, currentUserRawLocationPointsUrl));
+        allUsersData.add(new UserTimelineData(user.getId() + "", user.getDisplayName(), currentUserInitials, currentUserAvatarUrl, userSettings.getColor(), currentUserEntries, currentUserRawLocationPointsUrl, currentUserProcessedVisitsUrl));
 
         if (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN")) {
             allUsersData.addAll(this.reittiIntegrationService.getTimelineDataRange(user, selectedStartDate, selectedEndDate, userTimezone));
@@ -292,6 +294,7 @@ public class TimelineController {
                     return sharedWithUserOpt.map(sharedWithUser -> {
                         List<TimelineEntry> userTimelineEntries = this.timelineService.buildTimelineEntries(sharedWithUser, userTimezone, selectedDate, startOfDay, endOfDay);
                         String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?date=%s&timezone=%s", sharedWithUser.getId(), selectedDate, userTimezone.getId());
+                        String currentUserProcessedVisitsUrl = String.format("/api/v1/visits/%d?date=%s&timezone=%s", sharedWithUser.getId(), selectedDate, userTimezone.getId());
                         String currentUserAvatarUrl = this.avatarService.getInfo(sharedWithUser.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", sharedWithUser.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", sharedWithUser.getId()));
                         String currentUserInitials = this.avatarService.generateInitials(sharedWithUser.getDisplayName());
 
@@ -301,7 +304,8 @@ public class TimelineController {
                                 currentUserAvatarUrl,
                                 u.getColor(),
                                 userTimelineEntries,
-                                currentUserRawLocationPointsUrl);
+                                currentUserRawLocationPointsUrl,
+                                currentUserProcessedVisitsUrl);
                     });
                 })
                 .filter(Optional::isPresent)
@@ -320,6 +324,7 @@ public class TimelineController {
                         
                         List<TimelineEntry> userTimelineEntries = this.timelineService.buildTimelineEntries(sharedWithUser, userTimezone, startDate, startOfRange, endOfRange);
                         String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
+                        String currentUserProcessedVisitsUrl = String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
                         String currentUserAvatarUrl = this.avatarService.getInfo(sharedWithUser.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", sharedWithUser.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", sharedWithUser.getId()));
                         String currentUserInitials = this.avatarService.generateInitials(sharedWithUser.getDisplayName());
 
@@ -329,7 +334,8 @@ public class TimelineController {
                                 currentUserAvatarUrl,
                                 u.getColor(),
                                 userTimelineEntries,
-                                currentUserRawLocationPointsUrl);
+                                currentUserRawLocationPointsUrl,
+                                currentUserProcessedVisitsUrl);
                     });
                 })
                 .filter(Optional::isPresent)

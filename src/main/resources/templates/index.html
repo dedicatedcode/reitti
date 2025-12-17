@@ -443,19 +443,24 @@
             const fetchPromises = [];
             timelineUserSections.forEach(container => {
                 const userId = container.dataset.userId;
-                const url = `/api/v1/visits/${userId}`;
+                const baseUrl = container.dataset.processedVisitsUrl;
+                
+                if (!baseUrl) {
+                    console.warn(`No processed visits URL found for user ${userId}`);
+                    return;
+                }
+                
                 const urlParams = new URLSearchParams({
-                    startDate: params.startDate,
-                    endDate: params.endDate,
-                    timezone: params.timezone,
                     minLat: mapBounds.getSouth(),
                     maxLat: mapBounds.getNorth(),
                     minLng: mapBounds.getWest(),
                     maxLng: mapBounds.getEast()
                 });
 
+                const fullUrl = baseUrl.includes('?') ? `${baseUrl}&${urlParams}` : `${baseUrl}?${urlParams}`;
+
                 fetchPromises.push(
-                    fetch(`${url}?${urlParams}`)
+                    fetch(fullUrl)
                         .then(response => response.json())
                         .then(data => ({ userId, data, color: userConfigs.get(userId)?.color }))
                         .catch(error => {
