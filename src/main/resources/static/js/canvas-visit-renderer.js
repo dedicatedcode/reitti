@@ -52,21 +52,21 @@ class CanvasVisitRenderer {
         // Calculate radius using logarithmic scale
         const durationHours = visit.totalDurationMs / (1000 * 60 * 60);
         const baseRadius = 15;
-        const maxRadius = 100;
+        const maxRadius = 50;
         const minRadius = 15;
         
         const logScale = Math.log(1 + durationHours) / Math.log(1 + 24);
         const radius = Math.min(maxRadius, Math.max(minRadius, baseRadius + (logScale * (maxRadius - baseRadius))));
-        
+
         // Create outer circle (visit area)
         const outerCircle = L.circle([visit.lat, visit.lng], {
-            radius: radius * 10, // Convert to meters (approximate)
-            fillColor: this.lightenHexColor(visit.color, 20),
+            radius: radius * 5, // Convert to meters (approximate)
+            fillColor:  this.lightenHexColor(visit.color, 20),
             fillOpacity: 0.1,
             color: visit.color,
             weight: 1,
             renderer: this.canvasRenderer,
-            interactive: false // Make non-interactive to avoid interfering with inner marker
+            interactive: true // Make non-interactive to avoid interfering with inner marker
         });
         
         // Create inner marker
@@ -86,16 +86,20 @@ class CanvasVisitRenderer {
         
         const tooltipContent = `
             <div style="font-weight: bold; margin-bottom: 4px;">${visit.place.name}</div>
-            <div>${visitCount} ${visitText} - Total: ${totalDurationText}</div>
+            <div>${visitCount} ${visitText} — Total: ${totalDurationText}</div>
         `;
-        
-        // Bind tooltip to inner marker
-        innerMarker.bindTooltip(tooltipContent, {
-            direction: 'top',
-            offset: [0, -10],
-            className: 'canvas-visit-tooltip'
+        let tooltip = L.tooltip({
+            content: `<div class="visit-title">${visit.place.name}</div>
+                             <div class="visit-description">
+                                 ${visitCount} ${visitText} - Total: ${totalDurationText}
+                             </div>`,
+            className: 'visit-popup',
+            permanent: false
         });
-        
+        // Bind tooltip to inner marker
+        innerMarker.bindTooltip(tooltip);
+        outerCircle.bindTooltip(tooltip);
+
         // Add both circles to map
         this.map.addLayer(outerCircle);
         this.map.addLayer(innerMarker);
@@ -107,11 +111,10 @@ class CanvasVisitRenderer {
     lightenHexColor(hex, percent) {
         // Remove # if present
         hex = hex.replace('#', '');
-        
         // Parse RGB values
-        const r = parseInt(hex.substr(0, 2), 16);
-        const g = parseInt(hex.substr(2, 2), 16);
-        const b = parseInt(hex.substr(4, 2), 16);
+        const r = parseInt(hex.slice(0, 2), 16);
+        const g = parseInt(hex.slice(2, 4), 16);
+        const b = parseInt(hex.slice(4, 6), 16);
         
         // Lighten each component
         const newR = Math.min(255, Math.floor(r + (255 - r) * (percent / 100)));
