@@ -21,6 +21,11 @@ services:
       POSTGIS_PASSWORD: reitti
       POSTGIS_DB: reittidb
       POSTGIS_HOST: postgis
+      # Use internal proxy endpoint for tiles
+      TILES_URL: /api/tiles/{z}/{x}/{y}.png
+      TILES_ATTRIBUTION: "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors"
+      # Internal cache service URL
+      TILE_CACHE_URL: http://tile-cache
   postgis:
     image: postgis/postgis:17-3.5-alpine
     environment:
@@ -69,7 +74,7 @@ services:
       VARNISH_SIZE: 1G
     command: |
       sh -c "
-      cat > /etc/varnish/default.vcl << 'EOF'
+      cat > /tmp/default.vcl << 'EOF'
       vcl 4.1;
       backend default {
         .host = \"tile.openstreetmap.org\";
@@ -88,7 +93,7 @@ services:
         }
       }
       EOF
-      varnishd -F -f /etc/varnish/default.vcl -s malloc,1G -a :80"
+      varnishd -F -f /tmp/default.vcl -s malloc,1G -a :80"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "varnishadm", "ping"]
