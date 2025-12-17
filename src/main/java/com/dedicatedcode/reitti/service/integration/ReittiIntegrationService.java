@@ -66,7 +66,8 @@ public class ReittiIntegrationService {
                                 "/reitti-integration/avatar/" + integration.getId(),
                                 integration.getColor(),
                                 timelineEntries,
-                                String.format("/reitti-integration/raw-location-points/%d?date=%s&timezone=%s", integration.getId(), selectedDate, userTimezone));
+                                String.format("/reitti-integration/raw-location-points/%d?date=%s&timezone=%s", integration.getId(), selectedDate, userTimezone),
+                                String.format("/reitti-integration/visits/%d?date=%s&timezone=%s", integration.getId(), selectedDate, userTimezone));
                     } catch (RequestFailedException e) {
                         log.error("couldn't fetch user info for [{}]", integration, e);
                         update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
@@ -95,7 +96,8 @@ public class ReittiIntegrationService {
                                 "/reitti-integration/avatar/" + integration.getId(),
                                 integration.getColor(),
                                 timelineEntries,
-                                String.format("/reitti-integration/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone));
+                                String.format("/reitti-integration/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone),
+                                String.format("/reitti-integration/visits/%d?startDate=%s&endDate=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone));
                     } catch (RequestFailedException e) {
                         log.error("couldn't fetch user info for [{}]", integration, e);
                         update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
@@ -142,6 +144,52 @@ public class ReittiIntegrationService {
         }
     }
 
+    public ProcessedVisitResponse getVisits(User user, Long integrationId, String startDate, String endDate, Integer zoom, String timezone) {
+        return this.jdbcService
+                .findByIdAndUser(integrationId,user)
+                .stream().filter(integration -> integration.isEnabled() && VALID_INTEGRATION_STATUS.contains(integration.getStatus()))
+                .map(integration -> {
+
+                    log.debug("Fetching visit data for [{}]", integration);
+                    try {
+                        HttpHeaders headers = new HttpHeaders();
+                        headers.set("X-API-TOKEN", integration.getToken());
+                        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+                        String remoteUrl = integration.getUrl().endsWith("/") ?
+                                integration.getUrl() + "api/v1/visits?startDate={startDate}&endDate={endDate}&timezone={timezone}&zoom={zoom}" :
+                                integration.getUrl() + "/api/v1/visits?startDate={startDate}&endDate={endDate}&timezone={timezone}&zoom={zoom}";
+                        ResponseEntity<Map> remoteResponse = restTemplate.exchange(
+                                remoteUrl,
+                                HttpMethod.GET,
+                                entity,
+                                Map.class,
+                                startDate,
+                                endDate,
+                                timezone,
+                                zoom
+                        );
+
+                        if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null && remoteResponse.getBody().containsKey("place")) {
+                            update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
+                            return (ProcessedVisitResponse) remoteResponse.getBody();
+                        } else if (remoteResponse.getStatusCode().is4xxClientError()) {
+                            throw new RequestFailedException(remoteUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
+                        } else {
+                            throw new RequestTemporaryFailedException(remoteUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
+                        }
+                    } catch (RequestFailedException e) {
+                        log.error("couldn't fetch user info for [{}]", integration, e);
+                        update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
+                    } catch (RequestTemporaryFailedException e) {
+                        log.warn("couldn't temporarily fetch user info for [{}]", integration, e);
+                        update(integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
+                    }
+                    return null;
+                })
+                .filter(Objects::nonNull)
+                .findFirst().orElse(null);
+    }
     public List<LocationPoint> getRawLocationData(User user, Long integrationId, String startDate, String endDate, Integer zoom, String timezone) {
         return this.jdbcService
                 .findByIdAndUser(integrationId,user)
@@ -425,4 +473,5 @@ public class ReittiIntegrationService {
     public Optional<Long> getUserIdForSubscription(String subscriptionId) {
         return Optional.ofNullable(this.userForSubscriptions.get(subscriptionId));
     }
+
 }

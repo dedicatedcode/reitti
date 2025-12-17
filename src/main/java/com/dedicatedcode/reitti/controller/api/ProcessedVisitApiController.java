@@ -45,12 +45,8 @@ public class ProcessedVisitApiController {
                                                               @RequestParam(required = false) String date,
                                                               @RequestParam(required = false) String startDate,
                                                               @RequestParam(required = false) String endDate,
-                                                              @RequestParam(required = false, defaultValue = "UTC") String timezone,
-                                                              @RequestParam(required = false) Double minLat,
-                                                              @RequestParam(required = false) Double maxLat,
-                                                              @RequestParam(required = false) Double minLng,
-                                                              @RequestParam(required = false) Double maxLng) {
-        return this.getProcessedVisits(user, user.getId(), date, startDate, endDate, timezone, minLat, maxLat, minLng, maxLng);
+                                                              @RequestParam(required = false, defaultValue = "UTC") String timezone) {
+        return this.getProcessedVisits(user, user.getId(), date, startDate, endDate, timezone);
     }
 
     @GetMapping("/visits/{userId}")
@@ -59,11 +55,7 @@ public class ProcessedVisitApiController {
                                                 @RequestParam(required = false) String date,
                                                 @RequestParam(required = false) String startDate,
                                                 @RequestParam(required = false) String endDate,
-                                                @RequestParam(required = false, defaultValue = "UTC") String timezone,
-                                                @RequestParam(required = false) Double minLat,
-                                                @RequestParam(required = false) Double maxLat,
-                                                @RequestParam(required = false) Double minLng,
-                                                @RequestParam(required = false) Double maxLng) {
+                                                @RequestParam(required = false, defaultValue = "UTC") String timezone) {
         try {
             ZoneId userTimezone = ZoneId.of(timezone);
             Instant startOfRange = null;
@@ -122,13 +114,6 @@ public class ProcessedVisitApiController {
             // Fetch processed visits in the time range
             List<ProcessedVisit> visits = processedVisitJdbcService.findByUserAndTimeOverlap(
                 userToFetchDataFrom, startOfRange, endOfRange);
-
-            // Filter by bounding box if provided
-            if (minLat != null && maxLat != null && minLng != null && maxLng != null) {
-                visits = visits.stream()
-                    .filter(visit -> isPlaceInBox(visit.getPlace(), minLat, maxLat, minLng, maxLng))
-                    .toList();
-            }
 
             // Group visits by place and create response
             Map<SignificantPlace, List<ProcessedVisit>> visitsByPlace = visits.stream()
