@@ -79,8 +79,7 @@ services:
       vcl 4.1;
       backend default {
         .host = \"tile.openstreetmap.org\";
-        .port = \"443\";
-        .ssl = true;
+        .port = \"80\";
       }
       sub vcl_recv {
         set req.http.host = \"tile.openstreetmap.org\";
