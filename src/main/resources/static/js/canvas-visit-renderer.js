@@ -66,7 +66,7 @@ class CanvasVisitRenderer {
             color: visit.color,
             weight: 1,
             renderer: this.canvasRenderer,
-            interactive: true // Make non-interactive to avoid interfering with inner marker
+            interactive: false // Make non-interactive to avoid interfering with inner marker
         });
         
         // Create inner marker
@@ -76,7 +76,8 @@ class CanvasVisitRenderer {
             fillOpacity: 1,
             color: '#fff',
             weight: 1,
-            renderer: this.canvasRenderer
+            renderer: this.canvasRenderer,
+            interactive: true
         });
         
         // Create tooltip content
@@ -96,9 +97,8 @@ class CanvasVisitRenderer {
             className: 'visit-popup',
             permanent: false
         });
-        // Bind tooltip to inner marker
+        // Bind tooltip only to inner marker (outer circle is non-interactive)
         innerMarker.bindTooltip(tooltip);
-        outerCircle.bindTooltip(tooltip);
 
         // Add both circles to map
         this.map.addLayer(outerCircle);

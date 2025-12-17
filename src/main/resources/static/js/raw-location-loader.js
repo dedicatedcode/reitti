@@ -19,7 +19,7 @@ class RawLocationLoader {
         
         // Create canvas renderer for raw location paths with lower pane
         this.canvasRenderer = L.canvas({ 
-            pane: 'overlayPane',
+            pane: 'tilePane', // Use tilePane for lower z-index
             padding: 0.1 
         });
         
