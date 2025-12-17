@@ -40,7 +40,7 @@ public class ProcessedVisitApiController {
         this.userJdbcService = userJdbcService;
     }
 
-    @GetMapping("/processed-visits")
+    @GetMapping("/visits")
     public ResponseEntity<?> getProcessedVisitsForCurrentUser(@AuthenticationPrincipal User user,
                                                               @RequestParam(required = false) String date,
                                                               @RequestParam(required = false) String startDate,
@@ -53,7 +53,7 @@ public class ProcessedVisitApiController {
         return this.getProcessedVisits(user, user.getId(), date, startDate, endDate, timezone, minLat, maxLat, minLng, maxLng);
     }
 
-    @GetMapping("/processed-visits/{userId}")
+    @GetMapping("/visits/{userId}")
     public ResponseEntity<?> getProcessedVisits(@AuthenticationPrincipal User user,
                                                 @PathVariable Long userId,
                                                 @RequestParam(required = false) String date,
@@ -127,7 +127,7 @@ public class ProcessedVisitApiController {
             if (minLat != null && maxLat != null && minLng != null && maxLng != null) {
                 visits = visits.stream()
                     .filter(visit -> isPlaceInBox(visit.getPlace(), minLat, maxLat, minLng, maxLng))
-                    .collect(Collectors.toList());
+                    .toList();
             }
 
             // Group visits by place and create response
