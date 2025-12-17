@@ -3,7 +3,6 @@ package com.dedicatedcode.reitti.service;
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
@@ -19,14 +18,15 @@ import java.util.concurrent.ConcurrentHashMap;
 public class QueueStatsService {
 
     public static final String STAY_DETECTION_QUEUE = "reitti.visit.detection.v2";
+    public static final String LOCATION_DATA_QUEUE = "reitti.location.data.v2";
     private final RabbitAdmin rabbitAdmin;
     private final MessageSource messageSource;
     private final ProcessingPipelineTrigger processingPipelineTrigger;
+    private final DefaultImportProcessor defaultImportProcessor;
     private static final int LOOKBACK_HOURS = 24;
     private static final long DEFAULT_PROCESSING_TIME = 2000;
 
     private final List<String> QUEUES = List.of(
-            RabbitMQConfig.LOCATION_DATA_QUEUE,
             RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE,
             RabbitMQConfig.USER_EVENT_QUEUE
             );
@@ -35,23 +35,29 @@ public class QueueStatsService {
     
     private final Map<String, Integer> previousMessageCounts = new ConcurrentHashMap<>();
 
-    @Autowired
-    public QueueStatsService(RabbitAdmin rabbitAdmin, MessageSource messageSource, ProcessingPipelineTrigger processingPipelineTrigger) {
+    public QueueStatsService(RabbitAdmin rabbitAdmin,
+                             MessageSource messageSource,
+                             ProcessingPipelineTrigger processingPipelineTrigger,
+                             DefaultImportProcessor defaultImportProcessor) {
         this.rabbitAdmin = rabbitAdmin;
         this.messageSource = messageSource;
         this.processingPipelineTrigger = processingPipelineTrigger;
+        this.defaultImportProcessor = defaultImportProcessor;
         QUEUES.forEach(queue -> {
             processingHistory.put(queue, new ArrayList<>());
             previousMessageCounts.put(queue, 0);
         });
         processingHistory.put(STAY_DETECTION_QUEUE, new ArrayList<>());
         previousMessageCounts.put(STAY_DETECTION_QUEUE, 0);
+        processingHistory.put(LOCATION_DATA_QUEUE, new ArrayList<>());
+        previousMessageCounts.put(LOCATION_DATA_QUEUE, 0);
 
     }
 
     public List<QueueStats> getQueueStats() {
         List<QueueStats> list = QUEUES.stream().map(this::getQueueStats).toList();
         List<QueueStats> result = new ArrayList<>(list);
+        result.add(0, getQueueStats(LOCATION_DATA_QUEUE));
         result.add(1, getQueueStats(STAY_DETECTION_QUEUE));
         return result;
     }
@@ -60,7 +66,10 @@ public class QueueStatsService {
         int currentMessageCount;
         if (name.equals(STAY_DETECTION_QUEUE)) {
             currentMessageCount = this.processingPipelineTrigger.getPendingCount();
-            udpatingStayDetectionQueue(currentMessageCount);
+            updatingStayDetectionQueue(currentMessageCount);
+        }else if (name.equals(LOCATION_DATA_QUEUE)) {
+            currentMessageCount = this.defaultImportProcessor.getPendingTaskCount();
+            updatingLocationDataQueue(currentMessageCount);
         } else {
             currentMessageCount = getMessageCount(name);
             updateProcessingHistoryFromRabbitMQ(name, currentMessageCount);
@@ -89,7 +98,7 @@ public class QueueStatsService {
         previousMessageCounts.put(queueName, currentMessageCount);
     }
 
-    private void udpatingStayDetectionQueue(int currentMessageCount) {
+    private void updatingStayDetectionQueue(int currentMessageCount) {
         Integer previousCount = previousMessageCounts.get(STAY_DETECTION_QUEUE);
 
         if (previousCount != null && currentMessageCount < previousCount) {
@@ -101,6 +110,20 @@ public class QueueStatsService {
         }
 
         previousMessageCounts.put(STAY_DETECTION_QUEUE, currentMessageCount);
+    }
+
+    private void updatingLocationDataQueue(int currentMessageCount) {
+        Integer previousCount = previousMessageCounts.get(LOCATION_DATA_QUEUE);
+
+        if (previousCount != null && currentMessageCount < previousCount) {
+            long processingTimePerMessage = estimateProcessingTimePerMessage(LOCATION_DATA_QUEUE);
+            List<ProcessingRecord> history = processingHistory.get(LOCATION_DATA_QUEUE);
+            LocalDateTime now = LocalDateTime.now();
+            history.add(new ProcessingRecord(now, this.defaultImportProcessor.getPendingTaskCount(), processingTimePerMessage));
+            cleanupOldRecords(history, now);
+        }
+
+        previousMessageCounts.put(LOCATION_DATA_QUEUE, currentMessageCount);
     }
 
     private long estimateProcessingTimePerMessage(String queueName) {
@@ -199,14 +222,13 @@ public class QueueStatsService {
     
     private String getMessageKeyForQueue(String queueName, String suffix) {
         return switch (queueName) {
-            case RabbitMQConfig.LOCATION_DATA_QUEUE -> "queue.location.data." + suffix;
             case RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE -> "queue.significant.place." + suffix;
             case RabbitMQConfig.USER_EVENT_QUEUE -> "queue.user.event." + suffix;
             case STAY_DETECTION_QUEUE -> "queue.stay.detection." + suffix;
+            case LOCATION_DATA_QUEUE -> "queue.location.data." + suffix;
             default -> "queue.unknown." + suffix;
         };
     }
 
     private record ProcessingRecord(LocalDateTime timestamp, long numberOfMessages, long processingTimeMs) { }
-
 }

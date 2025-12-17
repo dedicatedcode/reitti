@@ -58,4 +58,15 @@ public class ReittiIntegrationController {
                                                   @RequestParam(required = false) Integer zoom) {
         return ResponseEntity.ok(Map.of("points", reittiIntegrationService.getRawLocationData(user, integrationId, startDate, endDate, zoom, timezone)));
     }
+
+    @GetMapping(value = "/visits/{integrationId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> getVisits(@AuthenticationPrincipal User user,
+                                                  @PathVariable Long integrationId,
+                                                  @RequestParam String startDate,
+                                                  @RequestParam String endDate,
+                                                  @RequestParam(required = false, defaultValue = "UTC") String timezone,
+                                                  @RequestParam(required = false) Integer zoom) {
+        return ResponseEntity.ok(reittiIntegrationService.getVisits(user, integrationId, startDate, endDate, zoom, timezone));
+    }
 }

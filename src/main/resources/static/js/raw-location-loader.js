@@ -16,6 +16,13 @@ class RawLocationLoader {
         this.selectedEndTime = null;
         // Configuration for map bounds fitting
         this.fitToBoundsConfig = fitToBoundsConfig || {};
+        
+        // Create canvas renderer for raw location paths with lower pane
+        this.canvasRenderer = L.canvas({ 
+            pane: 'tilePane', // Use tilePane for lower z-index
+            padding: 0.1 
+        });
+        
         // Listen for map events
         this.setupMapEventListeners();
     }
@@ -230,7 +237,8 @@ class RawLocationLoader {
                     opacity: 0.9,
                     lineJoin: 'round',
                     lineCap: 'round',
-                    steps: 2
+                    steps: 2,
+                    renderer: this.canvasRenderer
                 });
                 const rawPointsCoords = segment.points.map(point => [point.latitude, point.longitude]);
                 bounds.extend(rawPointsCoords)
@@ -377,7 +385,8 @@ class RawLocationLoader {
                         opacity: 1,
                         lineJoin: 'round',
                         lineCap: 'round',
-                        steps: 2
+                        steps: 2,
+                        renderer: this.canvasRenderer
                     });
                     
                     const coords = filteredPoints.map(point => [point.latitude, point.longitude]);

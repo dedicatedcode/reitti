@@ -66,6 +66,43 @@ services:
       - "8083:8083"
     volumes:
       - ot-recorder-data:/store
+
+  tile-cache:
+    image: nginx:alpine
+    environment:
+      NGINX_CACHE_SIZE: 1g
+    ports:
+      - "8084:80"
+    command: |
+      sh -c "
+      mkdir -p /var/cache/nginx/tiles
+      cat > /etc/nginx/nginx.conf << 'EOF'
+      events {
+        worker_connections 1024;
+      }
+      http {
+        proxy_cache_path /var/cache/nginx/tiles levels=1:2 keys_zone=tiles:10m max_size=1g inactive=30d use_temp_path=off;
+        
+        server {
+          listen 80;
+          location / {
+            proxy_pass https://tile.openstreetmap.org/;
+            proxy_set_header Host tile.openstreetmap.org;
+            proxy_set_header User-Agent "Reitti/1.0";
+            proxy_cache tiles;
+            proxy_cache_valid 200 30d;
+            proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+          }
+        }
+      }
+      EOF
+      nginx -g 'daemon off;'"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/0/0/0.png"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 volumes:
   postgis-data:
   redis-data:

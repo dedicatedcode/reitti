@@ -33,7 +33,8 @@ public class UserSettingsControllerAdvice {
 
     public UserSettingsControllerAdvice(UserJdbcService userJdbcService,
                                         UserSettingsJdbcService userSettingsJdbcService,
-                                        TilesCustomizationProvider tilesCustomizationProvider, RawLocationPointJdbcService rawLocationPointJdbcService) {
+                                        TilesCustomizationProvider tilesCustomizationProvider,
+                                        RawLocationPointJdbcService rawLocationPointJdbcService) {
         this.userJdbcService = userJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.tilesCustomizationProvider = tilesCustomizationProvider;

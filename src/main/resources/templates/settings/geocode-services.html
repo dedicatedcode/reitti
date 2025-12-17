@@ -141,8 +141,10 @@
                                 hx-target="#geocode-services"
                                 hx-swap="innerHTML"
                                 th:attr="hx-confirm=#{geocoding.run.confirm}"
-                                th:text="#{geocoding.run.button}">
-                            Start Geocoding
+                                hx-indicator="#run-geocode-spinner">
+                            <span class="button-text" th:text="#{geocoding.run.button}">Start Geocoding</span>
+                            <span id="run-geocode-spinner" class="htmx-indicator"><i class="lni lni-is-spinning lni-spinner-2-sacle"></i></span>
+
                         </button>
                     </div>
                     <div class="action-card">
@@ -157,8 +159,9 @@
                                 hx-target="#geocode-services"
                                 hx-swap="innerHTML"
                                 th:attr="hx-confirm=#{geocoding.clear.confirm}"
-                                th:text="#{geocoding.clear.button}">
-                            Clear and Re-geocode
+                                hx-indicator="#clear-re-geocode-spinner">
+                            <span class="button-text" th:text="#{geocoding.clear.button}">Clear and Re-geocode</span>
+                            <span id="clear-re-geocode-spinner" class="htmx-indicator"><i class="lni lni-is-spinning lni-spinner-2-sacle"></i></span>
                         </button>
                     </div>
                 </div>

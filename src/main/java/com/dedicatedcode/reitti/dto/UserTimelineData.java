@@ -9,6 +9,7 @@ public record UserTimelineData(
         String userAvatarUrl,
         String baseColor,
         List<TimelineEntry> entries,
-        String rawLocationPointsUrl
+        String rawLocationPointsUrl,
+        String processedVisitsUrl
 ) {
 }
