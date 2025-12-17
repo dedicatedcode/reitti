@@ -1,4 +1,4 @@
-FROM eclipse-temurin:24.0.2_12-jre-alpine
+FROM eclipse-temurin:25-jre-alpine-3.22
 
 LABEL maintainer="dedicatedcode"
 LABEL org.opencontainers.image.source="https://github.com/dedicatedcode/reitti"
