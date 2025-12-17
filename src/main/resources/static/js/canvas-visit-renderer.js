@@ -93,11 +93,9 @@ class CanvasVisitRenderer {
             className: 'visit-popup',
             permanent: false
         });
-        // Bind tooltip only to inner marker (outer circle is non-interactive)
         innerMarker.bindTooltip(tooltip);
         outerCircle.bindTooltip(tooltip);
 
-        // Add both circles to map
         this.map.addLayer(outerCircle);
         this.map.addLayer(innerMarker);
         
