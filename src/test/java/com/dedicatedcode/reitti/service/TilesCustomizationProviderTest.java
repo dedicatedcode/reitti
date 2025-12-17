@@ -2,8 +2,6 @@ package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.dto.UserSettingsDTO;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -18,7 +16,7 @@ class TilesCustomizationProviderTest {
         String customAttribution = "Custom Attribution";
         
         TilesCustomizationProvider provider = new TilesCustomizationProvider(
-            defaultService, defaultAttribution, customService, customAttribution
+                null, defaultService, defaultAttribution, customService, customAttribution
         );
 
         // When
@@ -36,9 +34,9 @@ class TilesCustomizationProviderTest {
         String defaultAttribution = "Default Attribution";
         String customService = "";
         String customAttribution = "Custom Attribution";
-        
+
         TilesCustomizationProvider provider = new TilesCustomizationProvider(
-            defaultService, defaultAttribution, customService, customAttribution
+                null, defaultService, defaultAttribution, customService, customAttribution
         );
 
         // When
@@ -58,7 +56,7 @@ class TilesCustomizationProviderTest {
         String customAttribution = "";
         
         TilesCustomizationProvider provider = new TilesCustomizationProvider(
-            defaultService, defaultAttribution, customService, customAttribution
+                null, defaultService, defaultAttribution, customService, customAttribution
         );
 
         // When
@@ -78,7 +76,7 @@ class TilesCustomizationProviderTest {
         String customAttribution = null;
         
         TilesCustomizationProvider provider = new TilesCustomizationProvider(
-            defaultService, defaultAttribution, customService, customAttribution
+                null, defaultService, defaultAttribution, customService, customAttribution
         );
 
         // When
@@ -98,7 +96,7 @@ class TilesCustomizationProviderTest {
         String customAttribution = "\t\n";
         
         TilesCustomizationProvider provider = new TilesCustomizationProvider(
-            defaultService, defaultAttribution, customService, customAttribution
+                null, defaultService, defaultAttribution, customService, customAttribution
         );
 
         // When
@@ -118,7 +116,7 @@ class TilesCustomizationProviderTest {
         String customAttribution = "";
         
         TilesCustomizationProvider provider = new TilesCustomizationProvider(
-            defaultService, defaultAttribution, customService, customAttribution
+                null, defaultService, defaultAttribution, customService, customAttribution
         );
 
         // When
@@ -138,7 +136,7 @@ class TilesCustomizationProviderTest {
         String customAttribution = "";
         
         TilesCustomizationProvider provider = new TilesCustomizationProvider(
-            defaultService, defaultAttribution, customService, customAttribution
+                null, defaultService, defaultAttribution, customService, customAttribution
         );
 
         // When
@@ -158,7 +156,7 @@ class TilesCustomizationProviderTest {
         String customAttribution = "Custom Attribution";
         
         TilesCustomizationProvider provider = new TilesCustomizationProvider(
-            defaultService, defaultAttribution, customService, customAttribution
+                null, defaultService, defaultAttribution, customService, customAttribution
         );
 
         // When
@@ -166,6 +164,27 @@ class TilesCustomizationProviderTest {
 
         // Then
         assertThat(result.service()).isEqualTo(defaultService);
+        assertThat(result.attribution()).isEqualTo(customAttribution);
+    }
+
+    @Test
+    void shouldReturnCacheUrlIfSet() {
+        // Given
+        String cacheUrl = "http://tiles.cache/hot/";
+        String defaultService = "https://default.tiles.com/{z}/{x}/{y}.png";
+        String defaultAttribution = "Default Attribution";
+        String customService = "";
+        String customAttribution = "Custom Attribution";
+
+        TilesCustomizationProvider provider = new TilesCustomizationProvider(
+                cacheUrl, defaultService, defaultAttribution, customService, customAttribution
+        );
+
+        // When
+        UserSettingsDTO.TilesCustomizationDTO result = provider.getTilesConfiguration();
+
+        // Then
+        assertThat(result.service()).isEqualTo("/api/v1/tiles/{z}/{x}/{y}.png");
         assertThat(result.attribution()).isEqualTo(customAttribution);
     }
 }

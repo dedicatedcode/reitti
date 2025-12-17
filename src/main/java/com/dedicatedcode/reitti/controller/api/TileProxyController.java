@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.controller.api;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -17,18 +18,16 @@ import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/api/v1/tiles")
+@ConditionalOnProperty(name = "reitti.ui.tiles.cache.url")
 public class TileProxyController {
     private static final Logger log = LoggerFactory.getLogger(TileProxyController.class);
 
     private final RestTemplate restTemplate;
     private final String tileCacheUrl;
 
-    public TileProxyController(@Value("${reitti.tile.cache.url:http://tile-cache}") String tileCacheUrl) {
+    public TileProxyController(@Value("${reitti.ui.tiles.cache.url:http://tile-cache}") String tileCacheUrl) {
         this.tileCacheUrl = tileCacheUrl;
         this.restTemplate = new RestTemplate();
-//        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
-//        factory.setConnectTimeout(5000);
-//        factory.setReadTimeout(10000);
     }
 
     @GetMapping("/{z}/{x}/{y}.png")

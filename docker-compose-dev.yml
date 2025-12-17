@@ -86,7 +86,7 @@ services:
         server {
           listen 80;
           location / {
-            proxy_pass https://tile.openstreetmap.org;
+            proxy_pass https://tile.openstreetmap.org/hot/;
             proxy_set_header Host tile.openstreetmap.org;
             proxy_set_header User-Agent "Reitti/1.0";
             proxy_cache tiles;
