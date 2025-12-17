@@ -68,35 +68,40 @@ services:
       - ot-recorder-data:/store
 
   tile-cache:
-    image: varnish:7.4
+    image: nginx:alpine
     environment:
-      VARNISH_SIZE: 1G
+      NGINX_CACHE_SIZE: 1g
     ports:
       - "8084:80"
     command: |
       sh -c "
-      cat > /tmp/default.vcl << 'EOF'
-      vcl 4.1;
-      backend default {
-        .host = \"tile.openstreetmap.org\";
-        .port = \"80\";
+      mkdir -p /var/cache/nginx/tiles
+      cat > /etc/nginx/nginx.conf << 'EOF'
+      events {
+        worker_connections 1024;
       }
-      sub vcl_recv {
-        set req.http.host = \"tile.openstreetmap.org\";
-        set req.http.User-Agent = \"Reitti/1.0\";
-      }
-      sub vcl_backend_response {
-        if (beresp.status == 200) {
-          set beresp.ttl = 30d;
-        } elsif (beresp.status == 404) {
-          set beresp.ttl = 1h;
+      http {
+        proxy_cache_path /var/cache/nginx/tiles levels=1:2 keys_zone=tiles:10m max_size=1g inactive=30d use_temp_path=off;
+        
+        server {
+          listen 80;
+          location / {
+            proxy_pass https://tile.openstreetmap.org;
+            proxy_set_header Host tile.openstreetmap.org;
+            proxy_set_header User-Agent \"Reitti/1.0\";
+            proxy_cache tiles;
+            proxy_cache_valid 200 30d;
+            proxy_cache_valid 404 1h;
+            proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+            add_header X-Cache-Status \$upstream_cache_status;
+          }
         }
       }
       EOF
-      varnishd -F -f /tmp/default.vcl -s malloc,1G -a :80"
+      nginx -g 'daemon off;'"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "varnishadm", "ping"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/0/0/0.png"]
       interval: 30s
       timeout: 10s
       retries: 3
