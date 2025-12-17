@@ -11,6 +11,8 @@ services:
         restart: true
       redis:
         condition: service_healthy
+      tile-cache:
+        condition: service_healthy
     volumes:
      - reitti-data:/data/
     environment:
@@ -60,6 +62,39 @@ services:
       - REGION=de #set your main country code here to save space or drop this line to fetch the whole index.
     volumes:
       - photon-data:/photon/data
+
+  tile-cache:
+    image: varnish:7.4
+    environment:
+      VARNISH_SIZE: 1G
+    command: |
+      sh -c "
+      cat > /etc/varnish/default.vcl << 'EOF'
+      vcl 4.1;
+      backend default {
+        .host = \"tile.openstreetmap.org\";
+        .port = \"443\";
+        .ssl = true;
+      }
+      sub vcl_recv {
+        set req.http.host = \"tile.openstreetmap.org\";
+        set req.http.User-Agent = \"Reitti/1.0\";
+      }
+      sub vcl_backend_response {
+        if (beresp.status == 200) {
+          set beresp.ttl = 30d;
+        } elsif (beresp.status == 404) {
+          set beresp.ttl = 1h;
+        }
+      }
+      EOF
+      varnishd -F -f /etc/varnish/default.vcl -s malloc,1G -a :80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "varnishadm", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 volumes:
   postgis-data:
   rabbitmq-data:

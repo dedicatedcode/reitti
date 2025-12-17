@@ -63,7 +63,7 @@ public class UserSettingsController {
     // CSS file constraints
     private static final long MAX_CSS_SIZE = 1024 * 1024; // 1MB
     private static final String ALLOWED_CSS_CONTENT_TYPE = "text/css";
-    private Map<String, String> defaultColors;
+    private final Map<String, String> defaultColors = new HashMap<>();
 
     public UserSettingsController(UserJdbcService userJdbcService, UserService userService,
                                   UserSettingsJdbcService userSettingsJdbcService,
@@ -84,7 +84,6 @@ public class UserSettingsController {
         this.localLoginDisabled = localLoginDisabled;
         this.oidcEnabled = oidcEnabled;
         this.dataManagementEnabled = dataManagementEnabled;
-        this.defaultColors = new HashMap<>();
         this.defaultColors.put("#f1ba63","Default Gold");
         this.defaultColors.put("#4a90e2","Ocean Blue");
         this.defaultColors.put("#7ed321","Fresh Green");
