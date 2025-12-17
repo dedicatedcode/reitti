@@ -348,8 +348,13 @@
         // Initialize raw location loader with user configurations
         initializeRawLocationLoader();
         
-        // Initialize canvas visit renderer
+        // Initialize canvas visit renderer with higher z-index to render above raw location data
         canvasVisitRenderer = new CanvasVisitRenderer(map);
+        
+        // Ensure visit renderer is above raw location data by setting higher z-index
+        if (canvasVisitRenderer.canvasRenderer && canvasVisitRenderer.canvasRenderer.getPane()) {
+            canvasVisitRenderer.canvasRenderer.getPane().style.zIndex = 450;
+        }
 
         // Listen for map move/zoom events to update photo markers
         map.on('moveend zoomend', () => {
