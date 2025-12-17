@@ -66,15 +66,15 @@ class CanvasVisitRenderer {
             color: visit.color,
             weight: 1,
             renderer: this.canvasRenderer,
-            interactive: false // Make non-interactive to avoid interfering with inner marker
+            interactive: true
         });
         
         // Create inner marker
         const innerMarker = L.circleMarker([visit.lat, visit.lng], {
             radius: 5,
-            fillColor: this.lightenHexColor(visit.color, 20),
             fillOpacity: 1,
-            color: '#fff',
+            fillColor: this.lightenHexColor(visit.color, 80),
+            color: '#000',
             weight: 1,
             renderer: this.canvasRenderer,
             interactive: true
@@ -85,10 +85,6 @@ class CanvasVisitRenderer {
         const visitCount = visit.visits.length;
         const visitText = visitCount === 1 ? 'visit' : 'visits';
         
-        const tooltipContent = `
-            <div style="font-weight: bold; margin-bottom: 4px;">${visit.place.name}</div>
-            <div>${visitCount} ${visitText} — Total: ${totalDurationText}</div>
-        `;
         let tooltip = L.tooltip({
             content: `<div class="visit-title">${visit.place.name}</div>
                              <div class="visit-description">
@@ -99,6 +95,7 @@ class CanvasVisitRenderer {
         });
         // Bind tooltip only to inner marker (outer circle is non-interactive)
         innerMarker.bindTooltip(tooltip);
+        outerCircle.bindTooltip(tooltip);
 
         // Add both circles to map
         this.map.addLayer(outerCircle);
