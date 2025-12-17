@@ -7,27 +7,27 @@ import org.springframework.util.StringUtils;
 
 @Service
 public class TilesCustomizationProvider {
-    private final String defaultService;
-    private final String defaultAttribution;
-
-    private final String customService;
-    private final String customAttribution;
+    private final UserSettingsDTO.TilesCustomizationDTO tilesConfiguration;
 
     public TilesCustomizationProvider(
+            @Value("${reitti.ui.tile.cache.url:null}") String cacheUrl,
             @Value("${reitti.ui.tiles.default.service}") String defaultService,
             @Value("${reitti.ui.tiles.default.attribution}") String defaultAttribution,
             @Value("${reitti.ui.tiles.custom.service:}") String customService,
             @Value("${reitti.ui.tiles.custom.attribution:}") String customAttribution) {
-        this.defaultService = defaultService;
-        this.defaultAttribution = defaultAttribution;
-        this.customService = customService;
-        this.customAttribution = customAttribution;
+        String serviceUrl;
+        if (StringUtils.hasText(cacheUrl)) {
+            serviceUrl = "/api/v1/tiles/{z}/{x}/{y}.png";
+        } else if (StringUtils.hasText(customService)) {
+            serviceUrl = customService;
+        } else {
+            serviceUrl = defaultService;
+        }
+        String attribution = StringUtils.hasText(customAttribution) ? customAttribution : defaultAttribution;
+        this.tilesConfiguration = new UserSettingsDTO.TilesCustomizationDTO(serviceUrl, attribution);
     }
 
     public UserSettingsDTO.TilesCustomizationDTO getTilesConfiguration() {
-        return new UserSettingsDTO.TilesCustomizationDTO(
-                StringUtils.hasText(customService) ? customService : defaultService,
-                StringUtils.hasText(customAttribution) ? customAttribution : defaultAttribution
-        );
+        return this.tilesConfiguration;
     }
 }

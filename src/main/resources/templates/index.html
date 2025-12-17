@@ -15,11 +15,19 @@
     <link rel="stylesheet" href="/css/inline-edit.css">
     <link rel="stylesheet" href="/css/avatar-marker.css">
     <link th:if="${userSettings.customCssUrl}" rel="stylesheet" th:href="${userSettings.customCssUrl}">
+    <style>
+        .canvas-visit-tooltip {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
     <script src="/js/HumanizeDuration.js"></script>
     <script src="/js/date-picker-combined.js"></script>
     <script src="/js/timeline-scroll-indicator.js"></script>
     <script src="/js/photo-client.js"></script>
     <script src="/js/raw-location-loader.js"></script>
+    <script src="/js/canvas-visit-renderer.js"></script>
     <script src="/js/htmx.min.js"></script>
     <script src="/js/leaflet.js"></script>
     <script src="/js/TileLayer.Grayscale.js"></script>
@@ -142,8 +150,9 @@
     // Initialize the map
     const map = L.map('map', {zoomControl: false, attributionControl: false}).setView([window.userSettings.homeLatitude, window.userSettings.homeLongitude], 12);
 
-    // Initialize raw location loader
+    // Initialize raw location loader and canvas visit renderer
     let rawLocationLoader;
+    let canvasVisitRenderer;
 
     /**
      * Retrieves the selected date based on the URL parameters or application settings.
@@ -338,6 +347,14 @@
 
         // Initialize raw location loader with user configurations
         initializeRawLocationLoader();
+        
+        // Initialize canvas visit renderer with higher z-index to render above raw location data
+        canvasVisitRenderer = new CanvasVisitRenderer(map);
+        
+        // Ensure visit renderer is above raw location data by setting higher z-index
+        if (canvasVisitRenderer.canvasRenderer && canvasVisitRenderer.canvasRenderer.getPane()) {
+            canvasVisitRenderer.canvasRenderer.getPane().style.zIndex = 450;
+        }
 
         // Listen for map move/zoom events to update photo markers
         map.on('moveend zoomend', () => {
@@ -395,7 +412,7 @@
                 window.timelineScrollIndicator.init();
             }
         });
-        // Function to update map markers from timeline entries
+        // Function to update map markers from processed visits API
         function updateMapFromTimeline() {
             const bounds = L.latLngBounds();
 
@@ -406,113 +423,112 @@
                 }
             });
 
-            let hasValidCoords = false;
+            const allVisits = [];
+            
+            // Get current map bounds for API request
+            const mapBounds = map.getBounds();
 
-            // Group places by coordinates to avoid duplicate markers
+            // Get user configurations for colors
+            const userConfigs = new Map();
+            const timelineUserSections = document.querySelectorAll('.user-timeline-section');
+            
+            timelineUserSections.forEach(container => {
+                const userId = container.dataset.userId;
+                const color = container.dataset.baseColor;
+                userConfigs.set(userId, { color: color });
+            });
 
-            let timelineUserSections = document.querySelectorAll('.user-timeline-section ');
-
-            for (const timelineUserSection of timelineUserSections) {
-                const color = timelineUserSection?.dataset.baseColor;
-                const timelineEntries = timelineUserSection.querySelectorAll('.timeline-entry[data-lat][data-lng]');
-
-                const placeGroups = new Map();
-
-                timelineEntries.forEach(entryElement => {
-                    const lat = parseFloat(entryElement.dataset.lat);
-                    const lng = parseFloat(entryElement.dataset.lng);
-
-                    if (!isNaN(lat) && !isNaN(lng) && entryElement.classList.contains('visit')) {
-                        const coordKey = `${lat.toFixed(6)},${lng.toFixed(6)}`;
-
-                        if (!placeGroups.has(coordKey)) {
-                            // Extract place name from the timeline entry
-                            const placeNameElement = entryElement.querySelector('.place-name');
-                            const placeName = placeNameElement ? placeNameElement.textContent : 'Unknown Place';
-
-                            placeGroups.set(coordKey, {
-                                lat: lat,
-                                lng: lng,
-                                totalDurationMs: 0,
-                                visits: [],
-                                place: { name: placeName, address: '' }
-                            });
-                        }
-
-                        const group = placeGroups.get(coordKey);
-                        // Calculate duration from time range text
-                        const durationElement = entryElement.querySelector('.entry-duration');
-                        if (durationElement) {
-                            const durationText = durationElement.textContent;
-                            const durationMs = parseDurationText(durationText);
-                            group.totalDurationMs += durationMs;
-                        }
-                        group.visits.push({ id: entryElement.dataset.id });
-
-                        bounds.extend([lat, lng]);
-                        hasValidCoords = true;
-                    }
-
-
-                    // Draw markers for grouped places
-                    placeGroups.forEach((group) => {
-                        const { lat, lng, totalDurationMs, visits, place } = group;
-
-                        // Calculate radius using logarithmic scale
-                        const durationHours = totalDurationMs / (1000 * 60 * 60);
-                        const baseRadius = 15;
-                        const maxRadius = 100;
-                        const minRadius = 15;
-
-                        const logScale = Math.log(1 + durationHours) / Math.log(1 + 24);
-                        const radius = Math.min(maxRadius, Math.max(minRadius, baseRadius + (logScale * (maxRadius - baseRadius))));
-
-                        // Create marker
-                        L.circleMarker([lat, lng], {
-                            radius: 5,
-                            fillColor: lightenHexColor(color, 20),
-                            color: '#fff',
-                            weight: 1,
-                            opacity: 1,
-                            fillOpacity: 0.8
-                        }).addTo(map);
-
-                        // Create circle with calculated radius
-                        const circle = L.circle([lat, lng], {
-                            color: color,
-                            fillColor: lightenHexColor(color, 20),
-                            fillOpacity: 0.1,
-                            radius: radius
-                        }).addTo(map);
-
-                        const totalDurationText = humanizeDuration(totalDurationMs, {units: ["h", "m"], round: true});
-                        const visitCount = visits.length;
-                        const visitText = visitCount === 1 ? 'visit' : 'visits';
-
-                        let tooltip = L.tooltip([lat, lng], {
-                            content: `<div class="visit-title">${place.name}</div>
-                             <div class="visit-description">
-                                 ${visitCount} ${visitText} - Total: ${totalDurationText}
-                             </div>`,
-                            className: 'visit-popup',
-                            permanent: false
-                        });
-
-                        bounds.extend([lat, lng])
-
-                        circle.bindTooltip(tooltip);
-                    });
+            // Fetch processed visits for each user
+            const fetchPromises = [];
+            timelineUserSections.forEach(container => {
+                const userId = container.dataset.userId;
+                const baseUrl = container.dataset.processedVisitsUrl;
+                
+                if (!baseUrl) {
+                    console.warn(`No processed visits URL found for user ${userId}`);
+                    return;
+                }
+                
+                const urlParams = new URLSearchParams({
+                    minLat: mapBounds.getSouth(),
+                    maxLat: mapBounds.getNorth(),
+                    minLng: mapBounds.getWest(),
+                    maxLng: mapBounds.getEast()
                 });
 
-            }
+                const fullUrl = baseUrl.includes('?') ? `${baseUrl}&${urlParams}` : `${baseUrl}?${urlParams}`;
+
+                fetchPromises.push(
+                    fetch(fullUrl)
+                        .then(response => response.json())
+                        .then(data => ({ userId, data, color: userConfigs.get(userId)?.color }))
+                        .catch(error => {
+                            console.error(`Error fetching visits for user ${userId}:`, error);
+                            return { userId, data: { places: [] }, color: userConfigs.get(userId)?.color };
+                        })
+                );
+            });
+
+            Promise.all(fetchPromises).then(results => {
+                results.forEach(({ userId, data, color }) => {
+                    if (data.places) {
+                        data.places.forEach(placeSummary => {
+                            const place = placeSummary.place;
+                            if (place.latitudeCentroid && place.longitudeCentroid) {
+                                const visitData = {
+                                    lat: place.latitudeCentroid,
+                                    lng: place.longitudeCentroid,
+                                    totalDurationMs: placeSummary.totalDurationSeconds * 1000,
+                                    visits: placeSummary.visits.map(v => ({ id: v.id })),
+                                    place: {
+                                        name: place.name || 'Unknown Place',
+                                        address: place.address || ''
+                                    },
+                                    color: color
+                                };
+                                
+                                allVisits.push(visitData);
+                                bounds.extend([place.latitudeCentroid, place.longitudeCentroid]);
+                            }
+                        });
+                    }
+                });
+
+                // Update canvas renderer with all visits
+                if (canvasVisitRenderer) {
+                    canvasVisitRenderer.setVisits(allVisits);
+                }
+            }).catch(error => {
+                console.error('Error fetching processed visits:', error);
+                // Fallback to empty visits if API fails
+                if (canvasVisitRenderer) {
+                    canvasVisitRenderer.setVisits([]);
+                }
+            });
+
             return bounds;
         }
 
-        function parseDurationText(durationText) {
-            // Extract numbers followed by 'h' or 'm'
-            const hours = (durationText.match(/(\d+)h/) || [0, 0])[1];
-            const minutes = (durationText.match(/(\d+)m/) || [0, 0])[1];
-            return (parseInt(hours) * 60 + parseInt(minutes)) * 60 * 1000; // Convert to milliseconds
+
+        function lightenHexColor(hex, percent) {
+            // Remove # if present
+            hex = hex.replace('#', '');
+        
+            // Parse RGB values
+            const r = parseInt(hex.substr(0, 2), 16);
+            const g = parseInt(hex.substr(2, 2), 16);
+            const b = parseInt(hex.substr(4, 2), 16);
+        
+            // Lighten each component
+            const newR = Math.min(255, Math.floor(r + (255 - r) * (percent / 100)));
+            const newG = Math.min(255, Math.floor(g + (255 - g) * (percent / 100)));
+            const newB = Math.min(255, Math.floor(b + (255 - b) * (percent / 100)));
+        
+            // Convert back to hex
+            return '#' + 
+                newR.toString(16).padStart(2, '0') +
+                newG.toString(16).padStart(2, '0') +
+                newB.toString(16).padStart(2, '0');
         }
 
         // Handle clicks on timeline entries
