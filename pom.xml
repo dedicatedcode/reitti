@@ -14,7 +14,7 @@
     <name>reitti</name>
     <description>Reitti application</description>
     <properties>
-        <java.version>24</java.version>
+        <java.version>25</java.version>
         <argLine/>
         <testcontainers.version>2.0.2</testcontainers.version>
     </properties>
