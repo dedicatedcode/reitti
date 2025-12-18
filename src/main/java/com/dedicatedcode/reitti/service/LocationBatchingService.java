@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
+import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +12,6 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PreDestroy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +51,7 @@ public class LocationBatchingService {
             // Check if we should flush this batch immediately
             if (existingBatch.shouldFlush(maxBatchSize, maxWaitTimeMs)) {
                 flushBatch(username, existingBatch);
-                return new UserBatch(user); // Return new empty batch
+                return new UserBatch(user);
             }
             
             return existingBatch;
