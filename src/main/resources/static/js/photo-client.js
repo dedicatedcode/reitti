@@ -156,11 +156,15 @@ class PhotoClient {
             this.showPhotoModal(photo);
         });
 
-        // Add to cluster group instead of directly to map
+        // TEMPORARY: Add directly to map to test if clustering is the issue
+        marker.addTo(this.map);
+        this.photoMarkers.push(marker);
+        console.log('Added photo marker directly to map at', photo.latitude, photo.longitude);
+
+        // Also try adding to cluster group
         if (this.markerClusterGroup) {
             this.markerClusterGroup.addLayer(marker);
-            this.photoMarkers.push(marker);
-            console.log('Added photo marker at', photo.latitude, photo.longitude, 'Total markers in cluster:', this.markerClusterGroup.getLayers().length);
+            console.log('Also added to cluster group. Total markers in cluster:', this.markerClusterGroup.getLayers().length);
         } else {
             console.error('Cluster group not available when trying to add marker');
         }
@@ -451,6 +455,11 @@ class PhotoClient {
      * Clear all photo markers from the map
      */
     clearPhotoMarkers() {
+        // Clear markers from both map and cluster group
+        this.photoMarkers.forEach(marker => {
+            this.map.removeLayer(marker);
+        });
+        
         if (this.markerClusterGroup) {
             this.markerClusterGroup.clearLayers();
             // Ensure cluster group stays on the map after clearing
