@@ -38,11 +38,12 @@ class PhotoClient {
             return;
         }
         
-        // Get current map bounds
+        // Get current map bounds and zoom level
         const bounds = this.map.getBounds();
+        const zoom = this.map.getZoom();
         
         // Filter photos that are within the current bounds and have valid coordinates
-        const visiblePhotos = this.photos.filter(photo => {
+        let visiblePhotos = this.photos.filter(photo => {
             if (!photo.latitude || !photo.longitude) {
                 return false;
             }
@@ -51,7 +52,25 @@ class PhotoClient {
             return bounds.contains(photoLatLng);
         });
         
-        // Group photos by location (with small tolerance for GPS precision)
+        // Apply zoom-based filtering to reduce photo count at lower zoom levels
+        if (zoom < 15) {
+            // At lower zoom levels, show fewer photos by sampling
+            let sampleRate;
+            if (zoom >= 12) {
+                sampleRate = 0.7; // Show 70% of photos
+            } else if (zoom >= 10) {
+                sampleRate = 0.4; // Show 40% of photos
+            } else {
+                sampleRate = 0.2; // Show 20% of photos
+            }
+            
+            // Sort by timestamp and take evenly distributed samples
+            visiblePhotos.sort((a, b) => new Date(a.takenAt) - new Date(b.takenAt));
+            const step = Math.max(1, Math.floor(1 / sampleRate));
+            visiblePhotos = visiblePhotos.filter((photo, index) => index % step === 0);
+        }
+        
+        // Group photos by location (with zoom-based tolerance for GPS precision)
         const photoGroups = this.groupPhotosByLocation(visiblePhotos);
         
         // Create markers for photo groups
