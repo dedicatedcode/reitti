@@ -92,10 +92,13 @@ class PhotoClient {
             return;
         }
         
-        // Ensure cluster group exists
+        // Ensure cluster group exists and is on the map
         if (!this.markerClusterGroup) {
             console.log('Cluster group not initialized, initializing now');
             this.initializeClusterGroup();
+        } else if (!this.map.hasLayer(this.markerClusterGroup)) {
+            console.log('Cluster group not on map, re-adding it');
+            this.map.addLayer(this.markerClusterGroup);
         }
         
         // Filter photos that have valid coordinates
@@ -450,6 +453,10 @@ class PhotoClient {
     clearPhotoMarkers() {
         if (this.markerClusterGroup) {
             this.markerClusterGroup.clearLayers();
+            // Ensure cluster group stays on the map after clearing
+            if (!this.map.hasLayer(this.markerClusterGroup)) {
+                this.map.addLayer(this.markerClusterGroup);
+            }
         }
         this.photoMarkers = [];
     }
