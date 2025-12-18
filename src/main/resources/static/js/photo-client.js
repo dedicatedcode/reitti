@@ -67,7 +67,19 @@ class PhotoClient {
      */
     groupPhotosByLocation(photos) {
         const groups = [];
-        const tolerance = 0.0003; // ~10 meters tolerance
+        const zoom = this.map.getZoom();
+        
+        // Adjust tolerance based on zoom level
+        let tolerance;
+        if (zoom >= 15) {
+            tolerance = 0.0003; // ~10 meters at high zoom
+        } else if (zoom >= 12) {
+            tolerance = 0.001;  // ~30 meters at medium zoom
+        } else if (zoom >= 10) {
+            tolerance = 0.005;  // ~150 meters at low zoom
+        } else {
+            tolerance = 0.02;   // ~600 meters at very low zoom
+        }
         
         photos.forEach(photo => {
             let foundGroup = false;

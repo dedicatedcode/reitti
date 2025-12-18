@@ -4,7 +4,8 @@
 class CanvasVisitRenderer {
     constructor(map) {
         this.map = map;
-        this.visits = [];
+        this.allVisits = [];
+        this.visibleVisits = [];
         this.visitMarkers = [];
         this.canvasRenderer = null;
         
@@ -20,17 +21,22 @@ class CanvasVisitRenderer {
         
         // Add the canvas renderer to the map
         this.map.addLayer(this.canvasRenderer);
+        
+        // Listen for zoom changes to update visible visits
+        this.map.on('zoomend', () => {
+            this.updateVisibleVisits();
+        });
     }
     
     setVisits(visits) {
         this.clearVisits();
-        this.visits = visits;
-        this.createVisitMarkers();
+        this.allVisits = visits;
+        this.updateVisibleVisits();
     }
     
     addVisit(visit) {
-        this.visits.push(visit);
-        this.createVisitMarker(visit);
+        this.allVisits.push(visit);
+        this.updateVisibleVisits();
     }
     
     clearVisits() {
@@ -39,11 +45,47 @@ class CanvasVisitRenderer {
             this.map.removeLayer(marker);
         });
         this.visitMarkers = [];
-        this.visits = [];
+        this.allVisits = [];
+        this.visibleVisits = [];
+    }
+    
+    updateVisibleVisits() {
+        const zoom = this.map.getZoom();
+        
+        // Filter visits based on zoom level and duration
+        let minDurationMs;
+        if (zoom >= 15) {
+            minDurationMs = 5 * 60 * 1000; // 5 minutes at high zoom
+        } else if (zoom >= 12) {
+            minDurationMs = 30 * 60 * 1000; // 30 minutes at medium zoom
+        } else if (zoom >= 10) {
+            minDurationMs = 2 * 60 * 60 * 1000; // 2 hours at low zoom
+        } else {
+            minDurationMs = 6 * 60 * 60 * 1000; // 6+ hours at very low zoom
+        }
+        
+        this.visibleVisits = this.allVisits.filter(visit => 
+            visit.totalDurationMs >= minDurationMs
+        );
+        
+        this.renderVisibleVisits();
+    }
+    
+    renderVisibleVisits() {
+        // Clear existing markers
+        this.visitMarkers.forEach(marker => {
+            this.map.removeLayer(marker);
+        });
+        this.visitMarkers = [];
+        
+        // Create markers for visible visits
+        this.visibleVisits.forEach(visit => {
+            this.createVisitMarker(visit);
+        });
     }
     
     createVisitMarkers() {
-        this.visits.forEach(visit => {
+        this.visibleVisits.forEach(visit => {
             this.createVisitMarker(visit);
         });
     }
