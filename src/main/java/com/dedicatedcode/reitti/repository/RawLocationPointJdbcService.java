@@ -6,6 +6,8 @@ import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -25,7 +27,7 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class RawLocationPointJdbcService {
-
+    private static final Logger logger = LoggerFactory.getLogger(RawLocationPointJdbcService.class);
     private final JdbcTemplate jdbcTemplate;
     private final RowMapper<RawLocationPoint> rawLocationPointRowMapper;
     private final PointReaderWriter pointReaderWriter;
@@ -192,37 +194,25 @@ public class RawLocationPointJdbcService {
             double minLon,
             double maxLon,
             int maxPoints) {
+        long start = System.nanoTime();
 
-        // First, count how many relevant points we have
         String countSql = """
-        WITH box_filtered_points AS (
-            SELECT
-                ST_Within(geom, ST_MakeEnvelope(?, ?, ?, ?, 4326)) as in_box,
-                LAG(ST_Within(geom, ST_MakeEnvelope(?, ?, ?, ?, 4326)))
-                    OVER (ORDER BY timestamp) as prev_in_box,
-                LEAD(ST_Within(geom, ST_MakeEnvelope(?, ?, ?, ?, 4326)))
-                    OVER (ORDER BY timestamp) as next_in_box
+            SELECT COUNT(*)
             FROM raw_location_points
             WHERE user_id = ?
+              AND ST_Within(geom, ST_MakeEnvelope(?, ?, ?, ?, 4326))
               AND timestamp BETWEEN ?::timestamp AND ?::timestamp
               AND ignored = false
-        )
-        SELECT COUNT(*)
-        FROM box_filtered_points
-        WHERE in_box = true
-           OR prev_in_box = true
-           OR next_in_box = true
         """;
 
         Long relevantPointCount = jdbcTemplate.queryForObject(countSql, Long.class,
-                                                              minLon, minLat, maxLon, maxLat,
-                                                              minLon, minLat, maxLon, maxLat,
                                                               minLon, minLat, maxLon, maxLat,
                                                               user.getId(),
                                                               Timestamp.from(startTime),
                                                               Timestamp.from(endTime)
         );
 
+        logger.debug("took [{}]ms to count relevant points", (System.nanoTime() - start) / 1_000_000);
         // If we have fewer points than the budget, return all without sampling
         if (relevantPointCount <= maxPoints) {
             String sql = """
