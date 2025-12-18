@@ -475,11 +475,11 @@
                     if (data.places) {
                         data.places.forEach(placeSummary => {
                             const place = placeSummary.place;
-                            if (place.latitudeCentroid && place.longitudeCentroid) {
+                            if (place.lat && place.lng) {
                                 const visitData = {
-                                    lat: place.latitudeCentroid,
-                                    lng: place.longitudeCentroid,
-                                    totalDurationMs: placeSummary.totalDurationSeconds * 1000,
+                                    lat: place.lat,
+                                    lng: place.lng,
+                                    totalDurationMs: placeSummary.totalDurationMs,
                                     visits: placeSummary.visits.map(v => ({ id: v.id })),
                                     place: {
                                         name: place.name || 'Unknown Place',
@@ -489,7 +489,7 @@
                                 };
                                 
                                 allVisits.push(visitData);
-                                bounds.extend([place.latitudeCentroid, place.longitudeCentroid]);
+                                bounds.extend([place.lat, place.lng]);
                             }
                         });
                     }
