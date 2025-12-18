@@ -51,7 +51,7 @@ class PhotoClient {
         try {
             const response = await fetch(`/api/v1/photos/immich/range?timezone=${timezone}&startDate=${start}&endDate=${end}`);
             if (!response.ok) {
-                console.warn('Could not fetch photos for date:', date);
+                console.warn('Could not fetch photos for date range:', start, 'to', end);
                 this.photos = [];
             } else {
                 this.photos = await response.json();
