@@ -46,9 +46,17 @@ class PhotoClient {
                     iconAnchor: [iconSizeNum / 2, iconSizeNum / 2]
                 });
             },
-            spiderfyOnMaxZoom: true,
+            spiderfyOnMaxZoom: false,
             showCoverageOnHover: false,
-            zoomToBoundsOnClick: true
+            zoomToBoundsOnClick: false
+        });
+        
+        // Add cluster click handler to show gallery
+        this.markerClusterGroup.on('clusterclick', (event) => {
+            const cluster = event.layer;
+            const childMarkers = cluster.getAllChildMarkers();
+            const photos = childMarkers.map(marker => marker.options.photoData);
+            this.showPhotoGridModal(photos);
         });
         
         this.map.addLayer(this.markerClusterGroup);
@@ -139,16 +147,9 @@ class PhotoClient {
             photoData: photo  // Store photo data for cluster icon creation
         });
 
-        // Add click handler - show gallery at high zoom, single photo at low zoom
+        // Add click handler to show single photo
         marker.on('click', () => {
-            const currentZoom = this.map.getZoom();
-            if (currentZoom >= 15) {
-                // At high zoom levels, show the photo gallery
-                this.showPhotoGridModal([photo]);
-            } else {
-                // At lower zoom levels, show single photo
-                this.showPhotoModal(photo);
-            }
+            this.showPhotoModal(photo);
         });
 
         // Add to cluster group instead of directly to map
