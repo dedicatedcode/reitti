@@ -212,7 +212,7 @@ public class RawLocationPointJdbcService {
                                                               Timestamp.from(endTime)
         );
 
-        logger.debug("took [{}]ms to count relevant points", (System.nanoTime() - start) / 1_000_000);
+        logger.trace("took [{}]ms to count relevant points", (System.nanoTime() - start) / 1_000_000);
         // If we have fewer points than the budget, return all without sampling
         if (relevantPointCount <= maxPoints) {
             String sql = """
