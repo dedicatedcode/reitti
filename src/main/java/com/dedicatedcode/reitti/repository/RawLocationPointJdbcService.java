@@ -6,6 +6,8 @@ import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -25,7 +27,7 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class RawLocationPointJdbcService {
-
+    private static final Logger logger = LoggerFactory.getLogger(RawLocationPointJdbcService.class);
     private final JdbcTemplate jdbcTemplate;
     private final RowMapper<RawLocationPoint> rawLocationPointRowMapper;
     private final PointReaderWriter pointReaderWriter;
@@ -190,10 +192,31 @@ public class RawLocationPointJdbcService {
             double minLat,
             double maxLat,
             double minLon,
-            double maxLon) {
+            double maxLon,
+            int maxPoints) {
+        long start = System.nanoTime();
 
-        String sql = """
-            WITH all_points AS (
+        String countSql = """
+            SELECT COUNT(*)
+            FROM raw_location_points
+            WHERE user_id = ?
+              AND ST_Within(geom, ST_MakeEnvelope(?, ?, ?, ?, 4326))
+              AND timestamp BETWEEN ?::timestamp AND ?::timestamp
+              AND ignored = false
+        """;
+
+        Long relevantPointCount = jdbcTemplate.queryForObject(countSql, Long.class,
+                                                              minLon, minLat, maxLon, maxLat,
+                                                              user.getId(),
+                                                              Timestamp.from(startTime),
+                                                              Timestamp.from(endTime)
+        );
+
+        logger.trace("took [{}]ms to count relevant points", (System.nanoTime() - start) / 1_000_000);
+        // If we have fewer points than the budget, return all without sampling
+        if (relevantPointCount <= maxPoints) {
+            String sql = """
+            WITH box_filtered_points AS (
                 SELECT
                     id,
                     user_id,
@@ -212,7 +235,7 @@ public class RawLocationPointJdbcService {
                         OVER (ORDER BY timestamp) as next_in_box
                 FROM raw_location_points
                 WHERE user_id = ?
-                  AND timestamp BETWEEN ? AND ?
+                  AND timestamp BETWEEN ?::timestamp AND ?::timestamp
                   AND ignored = false
             )
             SELECT
@@ -226,27 +249,155 @@ public class RawLocationPointJdbcService {
                 synthetic,
                 ignored,
                 version
-            FROM all_points
+            FROM box_filtered_points
             WHERE in_box = true
                OR prev_in_box = true
                OR next_in_box = true
             ORDER BY timestamp
             """;
 
-        return jdbcTemplate.query(
-                sql,
-                rawLocationPointRowMapper,
-                // ST_MakeEnvelope params for in_box
-                minLon, minLat, maxLon, maxLat,
-                // ST_MakeEnvelope params for prev_in_box
-                minLon, minLat, maxLon, maxLat,
-                // ST_MakeEnvelope params for next_in_box
-                minLon, minLat, maxLon, maxLat,
-                // WHERE clause params
-                user.getId(),
-                Timestamp.from(startTime),
-                Timestamp.from(endTime)
+            return jdbcTemplate.query(sql, rawLocationPointRowMapper,
+                                      minLon, minLat, maxLon, maxLat,
+                                      minLon, minLat, maxLon, maxLat,
+                                      minLon, minLat, maxLon, maxLat,
+                                      user.getId(),
+                                      Timestamp.from(startTime),
+                                      Timestamp.from(endTime)
+            );
+        }
+
+        // Otherwise, apply sampling
+        Duration period = Duration.between(startTime, endTime);
+        long intervalMinutes = Math.max(1, period.toMinutes() / maxPoints);
+
+        String sql = """
+        WITH box_filtered_points AS (
+            SELECT
+                id,
+                user_id,
+                timestamp,
+                geom,
+                accuracy_meters,
+                elevation_meters,
+                processed,
+                ignored,
+                synthetic,
+                version,
+                ST_Within(geom, ST_MakeEnvelope(?, ?, ?, ?, 4326)) as in_box,
+                LAG(ST_Within(geom, ST_MakeEnvelope(?, ?, ?, ?, 4326)))
+                    OVER (ORDER BY timestamp) as prev_in_box,
+                LEAD(ST_Within(geom, ST_MakeEnvelope(?, ?, ?, ?, 4326)))
+                    OVER (ORDER BY timestamp) as next_in_box
+            FROM raw_location_points
+            WHERE user_id = ?
+              AND timestamp BETWEEN ?::timestamp AND ?::timestamp
+              AND ignored = false
+        ),
+        relevant_points AS (
+            SELECT *
+            FROM box_filtered_points
+            WHERE in_box = true
+               OR prev_in_box = true
+               OR next_in_box = true
+        ),
+        sampled_points AS (
+            SELECT DISTINCT ON (
+                date_trunc('hour', timestamp) + 
+                (EXTRACT(minute FROM timestamp)::int / %d) * interval '%d minutes'
+            )
+            id,
+            user_id,
+            timestamp,
+            geom,
+            accuracy_meters,
+            elevation_meters,
+            processed,
+            ignored,
+            synthetic,
+            version
+            FROM relevant_points
+            ORDER BY 
+                date_trunc('hour', timestamp) + 
+                (EXTRACT(minute FROM timestamp)::int / %d) * interval '%d minutes',
+                timestamp
+        )
+        SELECT
+            id,
+            user_id,
+            timestamp,
+            ST_AsText(geom) as geom,
+            accuracy_meters,
+            elevation_meters,
+            processed,
+            synthetic,
+            ignored,
+            version
+        FROM sampled_points
+        ORDER BY timestamp
+        """.formatted(intervalMinutes, intervalMinutes, intervalMinutes, intervalMinutes);
+
+        return jdbcTemplate.query(sql, rawLocationPointRowMapper,
+                                  minLon, minLat, maxLon, maxLat,
+                                  minLon, minLat, maxLon, maxLat,
+                                  minLon, minLat, maxLon, maxLat,
+                                  user.getId(),
+                                  Timestamp.from(startTime),
+                                  Timestamp.from(endTime)
         );
+    }
+
+    public List<RawLocationPoint> findSimplifiedRouteForPeriod(
+            User user,
+            Instant startTime,
+            Instant endTime,
+            int maxPoints) {
+
+        // Calculate sampling interval based on time range and desired point count
+        Duration period = Duration.between(startTime, endTime);
+        long intervalMinutes = Math.max(1, period.toMinutes() / maxPoints);
+
+        String sql = """
+        WITH sampled_points AS (
+            SELECT DISTINCT ON (
+                date_trunc('hour', timestamp) +
+                (EXTRACT(minute FROM timestamp)::int / %d) * interval '%d minutes'
+            )
+            id,
+            timestamp,
+            geom,
+            accuracy_meters,
+            elevation_meters,
+            processed,
+            synthetic,
+            ignored,
+            version
+            FROM raw_location_points
+            WHERE user_id = ?
+              AND timestamp BETWEEN ? AND ?
+              AND ignored = false
+            ORDER BY
+                date_trunc('hour', timestamp) +
+                (EXTRACT(minute FROM timestamp)::int / %d) * interval '%d minutes',
+                timestamp
+        )
+        SELECT
+            id,
+            accuracy_meters,
+            elevation_meters,
+            timestamp,
+            ST_AsText(geom) as geom,
+            processed,
+            synthetic,
+            ignored,
+            version
+        FROM sampled_points
+        ORDER BY timestamp
+        """.formatted(intervalMinutes, intervalMinutes, intervalMinutes, intervalMinutes);
+
+        return jdbcTemplate.query(sql,
+                                  rawLocationPointRowMapper,
+                                  user.getId(),
+                                  Timestamp.from(startTime), Timestamp.from(endTime));
     }
 
     public long countByUser(User user) {

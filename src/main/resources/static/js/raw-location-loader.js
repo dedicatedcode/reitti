@@ -230,19 +230,34 @@ class RawLocationLoader {
                     color: color == null ? '#f1ba63' : color
                 };
                 this.allSegments.push(segmentWithMetadata);
-                
-                const rawPointsPath = L.geodesic([], {
-                    color: color == null ? '#f1ba63' : color,
-                    weight: 6,
-                    opacity: 0.9,
-                    lineJoin: 'round',
-                    lineCap: 'round',
-                    steps: 2,
-                    renderer: this.canvasRenderer
-                });
+
+
                 const rawPointsCoords = segment.points.map(point => [point.latitude, point.longitude]);
+
+                // Use polyline for segments with many points (>100), geodesic for fewer points
+                let rawPointsPath;
+                if (segment.points.length > 100) {
+                    rawPointsPath = L.polyline(rawPointsCoords, {
+                        color: color == null ? '#f1ba63' : color,
+                        weight: 6,
+                        opacity: 0.9,
+                        lineJoin: 'round',
+                        lineCap: 'round',
+                        renderer: this.canvasRenderer
+                    });
+                } else {
+                    rawPointsPath = L.geodesic(rawPointsCoords, {
+                        color: color == null ? '#f1ba63' : color,
+                        weight: 6,
+                        opacity: 0.9,
+                        lineJoin: 'round',
+                        lineCap: 'round',
+                        steps: 2,
+                        renderer: this.canvasRenderer
+                    });
+                }
+
                 bounds.extend(rawPointsCoords)
-                rawPointsPath.setLatLngs(rawPointsCoords);
                 rawPointsPath.addTo(this.map);
                 this.rawPointPaths.push(rawPointsPath)
             }

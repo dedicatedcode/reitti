@@ -99,7 +99,7 @@ services:
       nginx -g 'daemon off;'"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/0/0/0.png"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/0/0/0.png"]
       interval: 30s
       timeout: 10s
       retries: 3
