@@ -32,6 +32,7 @@
     <script src="/js/leaflet.js"></script>
     <script src="/js/TileLayer.Grayscale.js"></script>
     <script src="/js/leaflet.geodesic.2.7.2.js"></script>
+    <script src="/js/leaflet.markercluster.js"></script>
     <script src="/js/util.js"></script>
 </head>
 <body>
@@ -507,28 +508,6 @@
             });
 
             return bounds;
-        }
-
-
-        function lightenHexColor(hex, percent) {
-            // Remove # if present
-            hex = hex.replace('#', '');
-        
-            // Parse RGB values
-            const r = parseInt(hex.substr(0, 2), 16);
-            const g = parseInt(hex.substr(2, 2), 16);
-            const b = parseInt(hex.substr(4, 2), 16);
-        
-            // Lighten each component
-            const newR = Math.min(255, Math.floor(r + (255 - r) * (percent / 100)));
-            const newG = Math.min(255, Math.floor(g + (255 - g) * (percent / 100)));
-            const newB = Math.min(255, Math.floor(b + (255 - b) * (percent / 100)));
-        
-            // Convert back to hex
-            return '#' + 
-                newR.toString(16).padStart(2, '0') +
-                newG.toString(16).padStart(2, '0') +
-                newB.toString(16).padStart(2, '0');
         }
 
         // Handle clicks on timeline entries

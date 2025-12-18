@@ -168,7 +168,7 @@ class TilesCustomizationProviderTest {
     }
 
     @Test
-    void shouldReturnCacheUrlIfSet() {
+    void shouldReturnCacheUrlIfSetAndCustomServiceEmpty() {
         // Given
         String cacheUrl = "http://tiles.cache/hot/";
         String defaultService = "https://default.tiles.com/{z}/{x}/{y}.png";
@@ -185,6 +185,27 @@ class TilesCustomizationProviderTest {
 
         // Then
         assertThat(result.service()).isEqualTo("/api/v1/tiles/{z}/{x}/{y}.png");
+        assertThat(result.attribution()).isEqualTo(customAttribution);
+    }
+
+    @Test
+    void shouldPreferCustomServiceOverCacheUrlIfSet() {
+        // Given
+        String cacheUrl = "http://tiles.cache/hot/";
+        String defaultService = "https://default.tiles.com/{z}/{x}/{y}.png";
+        String defaultAttribution = "Default Attribution";
+        String customService = "https://custom.tiles.com/{z}/{x}/{y}.png";
+        String customAttribution = "Custom Attribution";
+
+        TilesCustomizationProvider provider = new TilesCustomizationProvider(
+                cacheUrl, defaultService, defaultAttribution, customService, customAttribution
+        );
+
+        // When
+        UserSettingsDTO.TilesCustomizationDTO result = provider.getTilesConfiguration();
+
+        // Then
+        assertThat(result.service()).isEqualTo("https://custom.tiles.com/{z}/{x}/{y}.png");
         assertThat(result.attribution()).isEqualTo(customAttribution);
     }
 }

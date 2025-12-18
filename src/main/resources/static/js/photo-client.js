@@ -4,6 +4,70 @@ class PhotoClient {
         this.photoMarkers = [];
         this.photos = [];
         this.enabled = enabled;
+        this.markerClusterGroup = null;
+        
+        if (this.enabled) {
+            this.initializeClusterGroup();
+        }
+    }
+    
+    initializeClusterGroup() {
+        this.markerClusterGroup = L.markerClusterGroup({
+            maxClusterRadius: (zoom) => {
+                // Adjust cluster radius based on zoom level
+                if (zoom >= 15) return 20;  // Small clusters at high zoom
+                if (zoom >= 12) return 40;  // Medium clusters
+                if (zoom >= 10) return 60;  // Larger clusters
+                return 80;                  // Large clusters at low zoom
+            },
+            iconCreateFunction: (cluster) => {
+                const count = cluster.getChildCount();
+                const iconSize = getComputedStyle(document.documentElement)
+                    .getPropertyValue('--photo-marker-size').trim();
+                const iconSizeNum = parseInt(iconSize) || 50;
+                
+                // Get the first photo from the cluster to use as the representative image
+                const firstMarker = cluster.getAllChildMarkers()[0];
+                const firstPhoto = firstMarker.options.photoData;
+                
+                const iconHtml = `
+                    <div class="photo-marker-icon" style="width: ${iconSize}; height: ${iconSize};">
+                        <img src="${firstPhoto.thumbnailUrl}" 
+                             alt="Cluster of ${count} photos"
+                             onerror="this.style.display='none'; this.parentElement.innerHTML='📷';">
+                        <div class="photo-count-indicator">${count}</div>
+                    </div>
+                `;
+                
+                return L.divIcon({
+                    html: iconHtml,
+                    className: 'photo-marker photo-cluster-marker',
+                    iconSize: [iconSizeNum, iconSizeNum],
+                    iconAnchor: [iconSizeNum / 2, iconSizeNum / 2]
+                });
+            },
+            spiderfyOnMaxZoom: false,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: false
+        });
+        
+        // Add cluster click handler to show gallery
+        this.markerClusterGroup.on('clusterclick', (event) => {
+            const cluster = event.layer;
+            const childMarkers = cluster.getAllChildMarkers();
+            const photos = childMarkers.map(marker => marker.options.photoData);
+            this.showPhotoGridModal(photos);
+        });
+        
+        this.map.addLayer(this.markerClusterGroup);
+        
+        // Set a higher z-index to ensure photos appear above other layers
+        if (this.markerClusterGroup.getPane) {
+            const pane = this.markerClusterGroup.getPane();
+            if (pane) {
+                pane.style.zIndex = 500;
+            }
+        }
     }
 
     async updatePhotosForRange(start, end, timezone) {
@@ -13,13 +77,11 @@ class PhotoClient {
         try {
             const response = await fetch(`/api/v1/photos/immich/range?timezone=${timezone}&startDate=${start}&endDate=${end}`);
             if (!response.ok) {
-                console.warn('Could not fetch photos for date:', date);
                 this.photos = [];
             } else {
                 this.photos = await response.json();
             }
         } catch (error) {
-            console.warn('Error fetching photos:', error);
             this.photos = [];
         }
         
@@ -38,85 +100,38 @@ class PhotoClient {
             return;
         }
         
-        // Get current map bounds
-        const bounds = this.map.getBounds();
+        // Ensure cluster group exists and is on the map
+        if (!this.markerClusterGroup) {
+            this.initializeClusterGroup();
+        } else if (!this.map.hasLayer(this.markerClusterGroup)) {
+            this.map.addLayer(this.markerClusterGroup);
+        }
         
-        // Filter photos that are within the current bounds and have valid coordinates
-        const visiblePhotos = this.photos.filter(photo => {
-            if (!photo.latitude || !photo.longitude) {
-                return false;
-            }
-            
-            const photoLatLng = L.latLng(photo.latitude, photo.longitude);
-            return bounds.contains(photoLatLng);
+        // Filter photos that have valid coordinates
+        const validPhotos = this.photos.filter(photo => {
+            return photo.latitude && photo.longitude;
         });
         
-        // Group photos by location (with small tolerance for GPS precision)
-        const photoGroups = this.groupPhotosByLocation(visiblePhotos);
-        
-        // Create markers for photo groups
-        photoGroups.forEach(group => {
-            this.createPhotoGroupMarker(group);
+        // Create markers for all valid photos and add to cluster group
+        validPhotos.forEach(photo => {
+            this.createPhotoMarker(photo);
         });
     }
 
     /**
-     * Group photos by location with tolerance for GPS precision
-     * @param {Array} photos - Array of photo objects
-     * @returns {Array} Array of photo groups
+     * Create a marker for a single photo
+     * @param {Object} photo - Photo object
      */
-    groupPhotosByLocation(photos) {
-        const groups = [];
-        const tolerance = 0.0003; // ~10 meters tolerance
-        
-        photos.forEach(photo => {
-            let foundGroup = false;
-            
-            for (let group of groups) {
-                const latDiff = Math.abs(group.latitude - photo.latitude);
-                const lngDiff = Math.abs(group.longitude - photo.longitude);
-                
-                if (latDiff < tolerance && lngDiff < tolerance) {
-                    group.photos.push(photo);
-                    foundGroup = true;
-                    break;
-                }
-            }
-            
-            if (!foundGroup) {
-                groups.push({
-                    latitude: photo.latitude,
-                    longitude: photo.longitude,
-                    photos: [photo]
-                });
-            }
-        });
-        
-        return groups;
-    }
-
-    /**
-     * Create a marker for a photo group
-     * @param {Object} group - Photo group object with latitude, longitude, and photos array
-     */
-    createPhotoGroupMarker(group) {
+    createPhotoMarker(photo) {
         const iconSize = getComputedStyle(document.documentElement)
             .getPropertyValue('--photo-marker-size').trim();
-        const iconSizeNum = parseInt(iconSize);
-        const primaryPhoto = group.photos[0];
-        const photoCount = group.photos.length;
-        
-        // Create count indicator if more than one photo
-        const countIndicator = photoCount > 1 ? `
-            <div class="photo-count-indicator">+${photoCount - 1}</div>
-        ` : '';
+        const iconSizeNum = parseInt(iconSize) || 50; // fallback to 50px
         
         const iconHtml = `
             <div class="photo-marker-icon" style="width: ${iconSize}; height: ${iconSize};">
-                <img src="${primaryPhoto.thumbnailUrl}" 
-                     alt="${primaryPhoto.fileName || 'Photo'}"
+                <img src="${photo.thumbnailUrl}" 
+                     alt="${photo.fileName || 'Photo'}"
                      onerror="this.style.display='none'; this.parentElement.innerHTML='📷';">
-                ${countIndicator}
             </div>
         `;
 
@@ -127,18 +142,23 @@ class PhotoClient {
             iconAnchor: [iconSizeNum / 2, iconSizeNum / 2]
         });
 
-        const marker = L.marker([group.latitude, group.longitude], {
-            icon: customIcon
+        const marker = L.marker([photo.latitude, photo.longitude], {
+            icon: customIcon,
+            photoData: photo  // Store photo data for cluster icon creation
         });
 
-        // Add click handler to show photo grid
+        // Add click handler to show single photo
         marker.on('click', () => {
-            this.showPhotoGridModal(group.photos);
+            this.showPhotoModal(photo);
         });
 
-        marker.addTo(this.map);
-        this.photoMarkers.push(marker);
+        // Add to cluster group instead of directly to map
+        if (this.markerClusterGroup) {
+            this.markerClusterGroup.addLayer(marker);
+            this.photoMarkers.push(marker);
+        }
     }
+
 
     /**
      * Show photo grid modal
@@ -424,9 +444,13 @@ class PhotoClient {
      * Clear all photo markers from the map
      */
     clearPhotoMarkers() {
-        this.photoMarkers.forEach(marker => {
-            this.map.removeLayer(marker);
-        });
+        if (this.markerClusterGroup) {
+            this.markerClusterGroup.clearLayers();
+            // Ensure cluster group stays on the map after clearing
+            if (!this.map.hasLayer(this.markerClusterGroup)) {
+                this.map.addLayer(this.markerClusterGroup);
+            }
+        }
         this.photoMarkers = [];
     }
 
