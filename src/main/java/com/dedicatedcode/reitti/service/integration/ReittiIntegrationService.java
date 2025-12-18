@@ -159,20 +159,20 @@ public class ReittiIntegrationService {
                         String remoteUrl = integration.getUrl().endsWith("/") ?
                                 integration.getUrl() + "api/v1/visits?startDate={startDate}&endDate={endDate}&timezone={timezone}&zoom={zoom}" :
                                 integration.getUrl() + "/api/v1/visits?startDate={startDate}&endDate={endDate}&timezone={timezone}&zoom={zoom}";
-                        ResponseEntity<Map> remoteResponse = restTemplate.exchange(
+                        ResponseEntity<ProcessedVisitResponse> remoteResponse = restTemplate.exchange(
                                 remoteUrl,
                                 HttpMethod.GET,
                                 entity,
-                                Map.class,
+                                ProcessedVisitResponse.class,
                                 startDate,
                                 endDate,
                                 timezone,
                                 zoom
                         );
 
-                        if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null && remoteResponse.getBody().containsKey("place")) {
+                        if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null) {
                             update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
-                            return (ProcessedVisitResponse) remoteResponse.getBody();
+                            return remoteResponse.getBody();
                         } else if (remoteResponse.getStatusCode().is4xxClientError()) {
                             throw new RequestFailedException(remoteUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
                         } else {
@@ -216,9 +216,9 @@ public class ReittiIntegrationService {
                                 zoom
                         );
 
-                        if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null && remoteResponse.getBody().containsKey("points")) {
+                        if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null && remoteResponse.getBody().containsKey("segments")) {
                             update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
-                            return (List<LocationPoint>) remoteResponse.getBody().get("points");
+                            return (List<LocationPoint>) remoteResponse.getBody().get("segments");
                         } else if (remoteResponse.getStatusCode().is4xxClientError()) {
                             throw new RequestFailedException(rawLocationDataUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
                         } else {
