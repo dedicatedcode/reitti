@@ -43,6 +43,15 @@ class PhotoClient {
         
         this.map.addLayer(this.markerClusterGroup);
         console.log('Photo cluster group initialized and added to map');
+        console.log('Map has cluster group layer:', this.map.hasLayer(this.markerClusterGroup));
+        
+        // Set a higher z-index to ensure photos appear above other layers
+        if (this.markerClusterGroup.getPane) {
+            const pane = this.markerClusterGroup.getPane();
+            if (pane) {
+                pane.style.zIndex = 500;
+            }
+        }
     }
 
     async updatePhotosForRange(start, end, timezone) {
@@ -102,6 +111,13 @@ class PhotoClient {
         });
         
         console.log('Created', validPhotos.length, 'photo markers');
+        
+        // Debug cluster group state
+        if (this.markerClusterGroup) {
+            console.log('Cluster group layers count:', this.markerClusterGroup.getLayers().length);
+            console.log('Cluster group is on map:', this.map.hasLayer(this.markerClusterGroup));
+            console.log('Cluster group bounds:', this.markerClusterGroup.getBounds());
+        }
     }
 
     /**
@@ -141,7 +157,7 @@ class PhotoClient {
         if (this.markerClusterGroup) {
             this.markerClusterGroup.addLayer(marker);
             this.photoMarkers.push(marker);
-            console.log('Added photo marker at', photo.latitude, photo.longitude);
+            console.log('Added photo marker at', photo.latitude, photo.longitude, 'Total markers in cluster:', this.markerClusterGroup.getLayers().length);
         } else {
             console.error('Cluster group not available when trying to add marker');
         }
