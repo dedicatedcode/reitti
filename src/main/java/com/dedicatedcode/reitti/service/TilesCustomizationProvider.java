@@ -16,10 +16,10 @@ public class TilesCustomizationProvider {
             @Value("${reitti.ui.tiles.custom.service:}") String customService,
             @Value("${reitti.ui.tiles.custom.attribution:}") String customAttribution) {
         String serviceUrl;
-        if (StringUtils.hasText(cacheUrl)) {
-            serviceUrl = "/api/v1/tiles/{z}/{x}/{y}.png";
-        } else if (StringUtils.hasText(customService)) {
+        if (StringUtils.hasText(customService)) {
             serviceUrl = customService;
+        } else if (StringUtils.hasText(cacheUrl)) {
+            serviceUrl = "/api/v1/tiles/{z}/{x}/{y}.png";
         } else {
             serviceUrl = defaultService;
         }
