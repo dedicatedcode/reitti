@@ -159,11 +159,11 @@ public class ReittiIntegrationService {
                         String remoteUrl = integration.getUrl().endsWith("/") ?
                                 integration.getUrl() + "api/v1/visits?startDate={startDate}&endDate={endDate}&timezone={timezone}&zoom={zoom}" :
                                 integration.getUrl() + "/api/v1/visits?startDate={startDate}&endDate={endDate}&timezone={timezone}&zoom={zoom}";
-                        ResponseEntity<ProcessedVisitResponse> remoteResponse = restTemplate.exchange(
+                        ResponseEntity<Map> remoteResponse = restTemplate.exchange(
                                 remoteUrl,
                                 HttpMethod.GET,
                                 entity,
-                                ProcessedVisitResponse.class,
+                                Map.class,
                                 startDate,
                                 endDate,
                                 timezone,
@@ -172,7 +172,7 @@ public class ReittiIntegrationService {
 
                         if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null) {
                             update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
-                            return remoteResponse.getBody();
+                            return parseVisitResponse(remoteResponse.getBody());
                         } else if (remoteResponse.getStatusCode().is4xxClientError()) {
                             throw new RequestFailedException(remoteUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
                         } else {
@@ -472,6 +472,78 @@ public class ReittiIntegrationService {
 
     public Optional<Long> getUserIdForSubscription(String subscriptionId) {
         return Optional.ofNullable(this.userForSubscriptions.get(subscriptionId));
+    }
+
+    @SuppressWarnings("unchecked")
+    private ProcessedVisitResponse parseVisitResponse(Map<String, Object> responseBody) {
+        List<Map<String, Object>> placesData = (List<Map<String, Object>>) responseBody.get("places");
+        if (placesData == null) {
+            return new ProcessedVisitResponse(Collections.emptyList());
+        }
+        
+        List<ProcessedVisitResponse.PlaceVisitSummary> places = placesData.stream()
+                .map(this::parsePlaceVisitSummary)
+                .toList();
+        
+        return new ProcessedVisitResponse(places);
+    }
+    
+    @SuppressWarnings("unchecked")
+    private ProcessedVisitResponse.PlaceVisitSummary parsePlaceVisitSummary(Map<String, Object> placeData) {
+        // Parse place info
+        Map<String, Object> placeInfo = (Map<String, Object>) placeData.get("place");
+        ProcessedVisitResponse.PlaceInfo place = new ProcessedVisitResponse.PlaceInfo(
+                getLongValue(placeInfo, "id"),
+                (String) placeInfo.get("name"),
+                (String) placeInfo.get("address"),
+                (String) placeInfo.get("city"),
+                (String) placeInfo.get("countryCode"),
+                getDoubleValue(placeInfo, "latitudeCentroid"),
+                getDoubleValue(placeInfo, "longitudeCentroid"),
+                (String) placeInfo.get("type")
+        );
+        
+        // Parse visits
+        List<Map<String, Object>> visitsData = (List<Map<String, Object>>) placeData.get("visits");
+        List<ProcessedVisitResponse.VisitDetail> visits = visitsData.stream()
+                .map(visitData -> new ProcessedVisitResponse.VisitDetail(
+                        getLongValue(visitData, "id"),
+                        (String) visitData.get("startTime"),
+                        (String) visitData.get("endTime"),
+                        getLongValue(visitData, "durationSeconds")
+                ))
+                .toList();
+        
+        // Parse summary data
+        long totalDurationMs = getLongValue(placeData, "totalDurationSeconds") * 1000; // Convert to milliseconds
+        int visitCount = getIntValue(placeData, "visitCount");
+        String color = "#3388ff"; // Default color, could be extracted from response if available
+        
+        return new ProcessedVisitResponse.PlaceVisitSummary(place, visits, totalDurationMs, visitCount, color);
+    }
+    
+    private Long getLongValue(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return null;
+    }
+    
+    private Double getDoubleValue(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        return null;
+    }
+    
+    private Integer getIntValue(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        return 0;
     }
 
 }

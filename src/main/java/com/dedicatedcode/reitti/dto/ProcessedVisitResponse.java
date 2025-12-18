@@ -1,26 +1,83 @@
 package com.dedicatedcode.reitti.dto;
 
-import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
-import com.dedicatedcode.reitti.model.geo.SignificantPlace;
-
 import java.util.List;
 
 public class ProcessedVisitResponse {
     
-    public static class PlaceVisitSummary {
-        private final SignificantPlace place;
-        private final List<VisitDetail> visits;
-        private final long totalDurationSeconds;
-        private final int visitCount;
+    public static class PlaceInfo {
+        private final Long id;
+        private final String name;
+        private final String address;
+        private final String city;
+        private final String countryCode;
+        private final Double lat;
+        private final Double lng;
+        private final String type;
         
-        public PlaceVisitSummary(SignificantPlace place, List<VisitDetail> visits, long totalDurationSeconds, int visitCount) {
-            this.place = place;
-            this.visits = visits;
-            this.totalDurationSeconds = totalDurationSeconds;
-            this.visitCount = visitCount;
+        public PlaceInfo(Long id, String name, String address, String city, String countryCode, Double lat, Double lng, String type) {
+            this.id = id;
+            this.name = name;
+            this.address = address;
+            this.city = city;
+            this.countryCode = countryCode;
+            this.lat = lat;
+            this.lng = lng;
+            this.type = type;
         }
         
-        public SignificantPlace getPlace() {
+        public Long getId() {
+            return id;
+        }
+        
+        public String getName() {
+            return name;
+        }
+        
+        public String getAddress() {
+            return address;
+        }
+        
+        public String getCity() {
+            return city;
+        }
+        
+        public String getCountryCode() {
+            return countryCode;
+        }
+        
+        public Double getLat() {
+            return lat;
+        }
+        
+        public Double getLng() {
+            return lng;
+        }
+        
+        public String getType() {
+            return type;
+        }
+    }
+    
+    public static class PlaceVisitSummary {
+        private final PlaceInfo place;
+        private final List<VisitDetail> visits;
+        private final long totalDurationMs;
+        private final int visitCount;
+        private final String color;
+        private final Double lat;
+        private final Double lng;
+        
+        public PlaceVisitSummary(PlaceInfo place, List<VisitDetail> visits, long totalDurationMs, int visitCount, String color) {
+            this.place = place;
+            this.visits = visits;
+            this.totalDurationMs = totalDurationMs;
+            this.visitCount = visitCount;
+            this.color = color;
+            this.lat = place.getLat();
+            this.lng = place.getLng();
+        }
+        
+        public PlaceInfo getPlace() {
             return place;
         }
         
@@ -28,12 +85,24 @@ public class ProcessedVisitResponse {
             return visits;
         }
         
-        public long getTotalDurationSeconds() {
-            return totalDurationSeconds;
+        public long getTotalDurationMs() {
+            return totalDurationMs;
         }
         
         public int getVisitCount() {
             return visitCount;
+        }
+        
+        public String getColor() {
+            return color;
+        }
+        
+        public Double getLat() {
+            return lat;
+        }
+        
+        public Double getLng() {
+            return lng;
         }
     }
     
@@ -43,11 +112,11 @@ public class ProcessedVisitResponse {
         private final String endTime;
         private final long durationSeconds;
         
-        public VisitDetail(ProcessedVisit visit) {
-            this.id = visit.getId();
-            this.startTime = visit.getStartTime().toString();
-            this.endTime = visit.getEndTime().toString();
-            this.durationSeconds = visit.getDurationSeconds();
+        public VisitDetail(Long id, String startTime, String endTime, long durationSeconds) {
+            this.id = id;
+            this.startTime = startTime;
+            this.endTime = endTime;
+            this.durationSeconds = durationSeconds;
         }
         
         public Long getId() {
