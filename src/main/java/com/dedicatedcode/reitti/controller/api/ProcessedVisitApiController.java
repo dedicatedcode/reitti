@@ -124,18 +124,39 @@ public class ProcessedVisitApiController {
                     SignificantPlace place = entry.getKey();
                     List<ProcessedVisit> placeVisits = entry.getValue();
                     
+                    // Create PlaceInfo DTO
+                    ProcessedVisitResponse.PlaceInfo placeInfo = new ProcessedVisitResponse.PlaceInfo(
+                        place.getId(),
+                        place.getName(),
+                        place.getAddress(),
+                        place.getCity(),
+                        place.getCountryCode(),
+                        place.getLatitudeCentroid(),
+                        place.getLongitudeCentroid(),
+                        place.getType() != null ? place.getType().toString() : null
+                    );
+                    
+                    // Create VisitDetail DTOs
                     List<ProcessedVisitResponse.VisitDetail> visitDetails = placeVisits.stream()
-                        .map(ProcessedVisitResponse.VisitDetail::new)
+                        .map(visit -> new ProcessedVisitResponse.VisitDetail(
+                            visit.getId(),
+                            visit.getStartTime().toString(),
+                            visit.getEndTime().toString(),
+                            visit.getDurationSeconds()
+                        ))
                         .collect(Collectors.toList());
                     
-                    long totalDuration = placeVisits.stream()
+                    long totalDurationMs = placeVisits.stream()
                         .mapToLong(ProcessedVisit::getDurationSeconds)
-                        .sum();
+                        .sum() * 1000; // Convert to milliseconds
+                    
+                    // Generate a color for the place (you might want to implement a proper color generation strategy)
+                    String color = generateColorForPlace(place);
                     
                     return new ProcessedVisitResponse.PlaceVisitSummary(
-                        place, visitDetails, totalDuration, placeVisits.size());
+                        placeInfo, visitDetails, totalDurationMs, placeVisits.size(), color);
                 })
-                .sorted((a, b) -> Long.compare(b.getTotalDurationSeconds(), a.getTotalDurationSeconds()))
+                .sorted((a, b) -> Long.compare(b.getTotalDurationMs(), a.getTotalDurationMs()))
                 .collect(Collectors.toList());
 
             return ResponseEntity.ok(new ProcessedVisitResponse(placeSummaries));
@@ -160,5 +181,26 @@ public class ProcessedVisitApiController {
                place.getLatitudeCentroid() <= maxLat &&
                place.getLongitudeCentroid() >= minLng &&
                place.getLongitudeCentroid() <= maxLng;
+    }
+    
+    private String generateColorForPlace(SignificantPlace place) {
+        // Simple color generation based on place ID
+        // You can implement a more sophisticated color generation strategy
+        if (place.getId() == null) {
+            return "#3388ff";
+        }
+        
+        // Generate a color based on the place ID
+        int hash = place.getId().hashCode();
+        int r = (hash & 0xFF0000) >> 16;
+        int g = (hash & 0x00FF00) >> 8;
+        int b = hash & 0x0000FF;
+        
+        // Ensure colors are not too dark
+        r = Math.max(r, 100);
+        g = Math.max(g, 100);
+        b = Math.max(b, 100);
+        
+        return String.format("#%02x%02x%02x", r, g, b);
     }
 }
