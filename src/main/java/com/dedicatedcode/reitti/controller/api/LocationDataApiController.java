@@ -17,10 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 
@@ -127,7 +124,7 @@ public class LocationDataApiController {
                 start = System.nanoTime();
                 result = segments.stream().map(s -> {
                     List<LocationPoint> simplifiedPoints = simplificationService.simplifyPoints(s, zoom);
-                    return new RawLocationDataResponse.Segment(simplifiedPoints);
+                    return new RawLocationDataResponse.Segment(s);
                 }).toList();
                 logger.trace("Simplified segments in [{}]ms", (System.nanoTime() - start) / 1_000_000);
             } else {
@@ -186,11 +183,13 @@ public class LocationDataApiController {
     private List<List<LocationPoint>> loadSegmentsInBoundingBoxAndTime(User user, Double minLat, Double maxLat, Double minLng, Double maxLng, Instant startOfRange, Instant endOfRange) {
         List<RawLocationPoint> pointsInBoxWithNeighbors;
         long start = System.nanoTime();
-        if (minLat == null || maxLat == null || minLng == null || maxLng == null) {
+        if (Duration.between(startOfRange, endOfRange).toDays() > 30 && minLat == null && maxLat == null && minLng == null && maxLng == null) {
+            pointsInBoxWithNeighbors = rawLocationPointJdbcService.findSimplifiedRouteForPeriod(user, startOfRange, endOfRange, 10000);
+        } else if (minLat == null || maxLat == null || minLng == null || maxLng == null) {
             pointsInBoxWithNeighbors = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, startOfRange, endOfRange);
             logger.trace("Loaded points in time range from database in [{}]ms", (System.nanoTime() - start) / 1_000_000);
         } else {
-            pointsInBoxWithNeighbors = this.rawLocationPointJdbcService.findPointsInBoxWithNeighbors(user, startOfRange, endOfRange, minLat, maxLat, minLng, maxLng);
+            pointsInBoxWithNeighbors = this.rawLocationPointJdbcService.findPointsInBoxWithNeighbors(user, startOfRange, endOfRange, minLat, maxLat, minLng, maxLng, 10000);
             logger.trace("Loaded points in box with neighbors from database in [{}]ms", (System.nanoTime() - start) / 1_000_000);
         }
         return extractPathSegments(pointsInBoxWithNeighbors, minLat, maxLat, minLng, maxLng);
