@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.ImportProcessor;
+import com.dedicatedcode.reitti.service.LocationBatchingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,16 +38,17 @@ public class IngestApiController {
 
     private final ImportProcessor batchProcessor;
     private final UserJdbcService userJdbcService;
+    private final LocationBatchingService locationBatchingService;
 
     @Autowired
-    public IngestApiController(ImportProcessor batchProcessor, UserJdbcService userJdbcService) {
+    public IngestApiController(ImportProcessor batchProcessor, UserJdbcService userJdbcService, LocationBatchingService locationBatchingService) {
         this.userJdbcService = userJdbcService;
         this.batchProcessor = batchProcessor;
+        this.locationBatchingService = locationBatchingService;
     }
     
     @PostMapping("/owntracks")
     public ResponseEntity<?> receiveOwntracksData(@RequestBody OwntracksLocationRequest request) {
-        // Only process location updates
         if (!request.isLocationUpdate()) {
             logger.debug("Ignoring non-location Owntracks message of type: {}", request.getType());
             return ResponseEntity.ok(Map.of(
@@ -68,7 +70,7 @@ public class IngestApiController {
                 return ResponseEntity.ok(Map.of());
             }
 
-            this.batchProcessor.processBatch(user, Collections.singletonList(locationPoint));
+            this.locationBatchingService.addLocationPoint(user, locationPoint);
             logger.debug("Successfully received and queued Owntracks location point for user {}",
                     user.getUsername());
             
@@ -108,7 +110,10 @@ public class IngestApiController {
                 ));
             }
             
-            this.batchProcessor.processBatch(user, locationPoints);
+            // Add each location point to the batching service
+            for (LocationPoint point : locationPoints) {
+                this.locationBatchingService.addLocationPoint(user, point);
+            }
             logger.debug("Successfully received and queued {} Overland location points for user {}",
                     locationPoints.size(), user.getUsername());
             

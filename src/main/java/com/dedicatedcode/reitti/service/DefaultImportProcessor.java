@@ -87,7 +87,7 @@ public class DefaultImportProcessor implements ImportProcessor {
         importExecutors.shutdown();
         scheduler.shutdown();
         try {
-            if (!importExecutors.awaitTermination(5, TimeUnit.SECONDS)) {
+            if (!importExecutors.awaitTermination(30, TimeUnit.SECONDS)) {
                 importExecutors.shutdownNow();
             }
             if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
