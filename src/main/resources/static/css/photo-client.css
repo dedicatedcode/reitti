@@ -257,3 +257,51 @@
     cursor: help;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
+/* Photo cluster styles */
+.photo-cluster {
+    background-color: rgba(110, 204, 57, 0.8);
+    border-radius: 50%;
+    text-align: center;
+    color: white;
+    font-weight: bold;
+    border: 2px solid rgba(110, 204, 57, 1);
+}
+
+.photo-cluster-small {
+    background-color: rgba(181, 226, 140, 0.8);
+    border-color: rgba(181, 226, 140, 1);
+}
+
+.photo-cluster-medium {
+    background-color: rgba(110, 204, 57, 0.8);
+    border-color: rgba(110, 204, 57, 1);
+}
+
+.photo-cluster-large {
+    background-color: rgba(69, 117, 180, 0.8);
+    border-color: rgba(69, 117, 180, 1);
+}
+
+.photo-cluster-inner {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    line-height: 1;
+}
+
+/* Adjust cluster sizes */
+.photo-cluster-small .photo-cluster-inner {
+    font-size: 10px;
+}
+
+.photo-cluster-medium .photo-cluster-inner {
+    font-size: 12px;
+}
+
+.photo-cluster-large .photo-cluster-inner {
+    font-size: 14px;
+    font-weight: bold;
+}

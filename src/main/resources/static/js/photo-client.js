@@ -4,6 +4,44 @@ class PhotoClient {
         this.photoMarkers = [];
         this.photos = [];
         this.enabled = enabled;
+        this.markerClusterGroup = null;
+        
+        if (this.enabled) {
+            this.initializeClusterGroup();
+        }
+    }
+    
+    initializeClusterGroup() {
+        this.markerClusterGroup = L.markerClusterGroup({
+            maxClusterRadius: (zoom) => {
+                // Adjust cluster radius based on zoom level
+                if (zoom >= 15) return 20;  // Small clusters at high zoom
+                if (zoom >= 12) return 40;  // Medium clusters
+                if (zoom >= 10) return 60;  // Larger clusters
+                return 80;                  // Large clusters at low zoom
+            },
+            iconCreateFunction: (cluster) => {
+                const count = cluster.getChildCount();
+                let className = 'photo-cluster-small';
+                
+                if (count > 10) {
+                    className = 'photo-cluster-large';
+                } else if (count > 5) {
+                    className = 'photo-cluster-medium';
+                }
+                
+                return L.divIcon({
+                    html: `<div class="photo-cluster-inner">${count}</div>`,
+                    className: `photo-cluster ${className}`,
+                    iconSize: [40, 40]
+                });
+            },
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: true
+        });
+        
+        this.map.addLayer(this.markerClusterGroup);
     }
 
     async updatePhotosForRange(start, end, timezone) {
@@ -38,116 +76,31 @@ class PhotoClient {
             return;
         }
         
-        // Get current map bounds and zoom level
-        const bounds = this.map.getBounds();
-        const zoom = this.map.getZoom();
-        
-        // Filter photos that are within the current bounds and have valid coordinates
-        let visiblePhotos = this.photos.filter(photo => {
-            if (!photo.latitude || !photo.longitude) {
-                return false;
-            }
-            
-            const photoLatLng = L.latLng(photo.latitude, photo.longitude);
-            return bounds.contains(photoLatLng);
+        // Filter photos that have valid coordinates
+        const validPhotos = this.photos.filter(photo => {
+            return photo.latitude && photo.longitude;
         });
         
-        // Apply zoom-based filtering to reduce photo count at lower zoom levels
-        if (zoom < 15) {
-            // At lower zoom levels, show fewer photos by sampling
-            let sampleRate;
-            if (zoom >= 12) {
-                sampleRate = 0.7; // Show 70% of photos
-            } else if (zoom >= 10) {
-                sampleRate = 0.4; // Show 40% of photos
-            } else {
-                sampleRate = 0.2; // Show 20% of photos
-            }
-            
-            // Sort by timestamp and take evenly distributed samples
-            visiblePhotos.sort((a, b) => new Date(a.takenAt) - new Date(b.takenAt));
-            const step = Math.max(1, Math.floor(1 / sampleRate));
-            visiblePhotos = visiblePhotos.filter((photo, index) => index % step === 0);
-        }
-        
-        // Group photos by location (with zoom-based tolerance for GPS precision)
-        const photoGroups = this.groupPhotosByLocation(visiblePhotos);
-        
-        // Create markers for photo groups
-        photoGroups.forEach(group => {
-            this.createPhotoGroupMarker(group);
+        // Create markers for all valid photos and add to cluster group
+        validPhotos.forEach(photo => {
+            this.createPhotoMarker(photo);
         });
     }
 
     /**
-     * Group photos by location with tolerance for GPS precision
-     * @param {Array} photos - Array of photo objects
-     * @returns {Array} Array of photo groups
+     * Create a marker for a single photo
+     * @param {Object} photo - Photo object
      */
-    groupPhotosByLocation(photos) {
-        const groups = [];
-        const zoom = this.map.getZoom();
-        
-        // Adjust tolerance based on zoom level
-        let tolerance;
-        if (zoom >= 15) {
-            tolerance = 0.0003; // ~10 meters at high zoom
-        } else if (zoom >= 12) {
-            tolerance = 0.001;  // ~30 meters at medium zoom
-        } else if (zoom >= 10) {
-            tolerance = 0.005;  // ~150 meters at low zoom
-        } else {
-            tolerance = 0.02;   // ~600 meters at very low zoom
-        }
-        
-        photos.forEach(photo => {
-            let foundGroup = false;
-            
-            for (let group of groups) {
-                const latDiff = Math.abs(group.latitude - photo.latitude);
-                const lngDiff = Math.abs(group.longitude - photo.longitude);
-                
-                if (latDiff < tolerance && lngDiff < tolerance) {
-                    group.photos.push(photo);
-                    foundGroup = true;
-                    break;
-                }
-            }
-            
-            if (!foundGroup) {
-                groups.push({
-                    latitude: photo.latitude,
-                    longitude: photo.longitude,
-                    photos: [photo]
-                });
-            }
-        });
-        
-        return groups;
-    }
-
-    /**
-     * Create a marker for a photo group
-     * @param {Object} group - Photo group object with latitude, longitude, and photos array
-     */
-    createPhotoGroupMarker(group) {
+    createPhotoMarker(photo) {
         const iconSize = getComputedStyle(document.documentElement)
             .getPropertyValue('--photo-marker-size').trim();
         const iconSizeNum = parseInt(iconSize);
-        const primaryPhoto = group.photos[0];
-        const photoCount = group.photos.length;
-        
-        // Create count indicator if more than one photo
-        const countIndicator = photoCount > 1 ? `
-            <div class="photo-count-indicator">+${photoCount - 1}</div>
-        ` : '';
         
         const iconHtml = `
             <div class="photo-marker-icon" style="width: ${iconSize}; height: ${iconSize};">
-                <img src="${primaryPhoto.thumbnailUrl}" 
-                     alt="${primaryPhoto.fileName || 'Photo'}"
+                <img src="${photo.thumbnailUrl}" 
+                     alt="${photo.fileName || 'Photo'}"
                      onerror="this.style.display='none'; this.parentElement.innerHTML='📷';">
-                ${countIndicator}
             </div>
         `;
 
@@ -158,18 +111,20 @@ class PhotoClient {
             iconAnchor: [iconSizeNum / 2, iconSizeNum / 2]
         });
 
-        const marker = L.marker([group.latitude, group.longitude], {
+        const marker = L.marker([photo.latitude, photo.longitude], {
             icon: customIcon
         });
 
-        // Add click handler to show photo grid
+        // Add click handler to show photo modal
         marker.on('click', () => {
-            this.showPhotoGridModal(group.photos);
+            this.showPhotoModal(photo);
         });
 
-        marker.addTo(this.map);
+        // Add to cluster group instead of directly to map
+        this.markerClusterGroup.addLayer(marker);
         this.photoMarkers.push(marker);
     }
+
 
     /**
      * Show photo grid modal
@@ -455,9 +410,9 @@ class PhotoClient {
      * Clear all photo markers from the map
      */
     clearPhotoMarkers() {
-        this.photoMarkers.forEach(marker => {
-            this.map.removeLayer(marker);
-        });
+        if (this.markerClusterGroup) {
+            this.markerClusterGroup.clearLayers();
+        }
         this.photoMarkers = [];
     }
 
