@@ -46,7 +46,6 @@ public class IngestApiController {
     
     @PostMapping("/owntracks")
     public ResponseEntity<?> receiveOwntracksData(@RequestBody OwntracksLocationRequest request) {
-        // Only process location updates
         if (!request.isLocationUpdate()) {
             logger.debug("Ignoring non-location Owntracks message of type: {}", request.getType());
             return ResponseEntity.ok(Map.of(
