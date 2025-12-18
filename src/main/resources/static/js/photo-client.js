@@ -22,18 +22,28 @@ class PhotoClient {
             },
             iconCreateFunction: (cluster) => {
                 const count = cluster.getChildCount();
-                let className = 'photo-cluster-small';
+                const iconSize = getComputedStyle(document.documentElement)
+                    .getPropertyValue('--photo-marker-size').trim();
+                const iconSizeNum = parseInt(iconSize) || 50;
                 
-                if (count > 10) {
-                    className = 'photo-cluster-large';
-                } else if (count > 5) {
-                    className = 'photo-cluster-medium';
-                }
+                // Get the first photo from the cluster to use as the representative image
+                const firstMarker = cluster.getAllChildMarkers()[0];
+                const firstPhoto = firstMarker.options.photoData;
+                
+                const iconHtml = `
+                    <div class="photo-marker-icon" style="width: ${iconSize}; height: ${iconSize};">
+                        <img src="${firstPhoto.thumbnailUrl}" 
+                             alt="Cluster of ${count} photos"
+                             onerror="this.style.display='none'; this.parentElement.innerHTML='📷';">
+                        <div class="photo-count-indicator">${count}</div>
+                    </div>
+                `;
                 
                 return L.divIcon({
-                    html: `<div class="photo-cluster-inner">${count}</div>`,
-                    className: `photo-cluster ${className}`,
-                    iconSize: [40, 40]
+                    html: iconHtml,
+                    className: 'photo-marker photo-cluster-marker',
+                    iconSize: [iconSizeNum, iconSizeNum],
+                    iconAnchor: [iconSizeNum / 2, iconSizeNum / 2]
                 });
             },
             spiderfyOnMaxZoom: true,
@@ -42,8 +52,6 @@ class PhotoClient {
         });
         
         this.map.addLayer(this.markerClusterGroup);
-        console.log('Photo cluster group initialized and added to map');
-        console.log('Map has cluster group layer:', this.map.hasLayer(this.markerClusterGroup));
         
         // Set a higher z-index to ensure photos appear above other layers
         if (this.markerClusterGroup.getPane) {
@@ -56,21 +64,16 @@ class PhotoClient {
 
     async updatePhotosForRange(start, end, timezone) {
         if (!this.enabled) {
-            console.log('Photo client disabled, skipping photo fetch');
             return;
         }
         try {
-            console.log('Fetching photos for range:', start, 'to', end);
             const response = await fetch(`/api/v1/photos/immich/range?timezone=${timezone}&startDate=${start}&endDate=${end}`);
             if (!response.ok) {
-                console.warn('Could not fetch photos for date range:', start, 'to', end);
                 this.photos = [];
             } else {
                 this.photos = await response.json();
-                console.log('Fetched', this.photos.length, 'photos');
             }
         } catch (error) {
-            console.warn('Error fetching photos:', error);
             this.photos = [];
         }
         
@@ -82,22 +85,17 @@ class PhotoClient {
      * Update photo markers based on current map bounds
      */
     updatePhotoMarkers() {
-        console.log('Updating photo markers, photos count:', this.photos.length);
-        
         // Clear existing markers
         this.clearPhotoMarkers();
         
         if (!this.photos || this.photos.length === 0) {
-            console.log('No photos to display');
             return;
         }
         
         // Ensure cluster group exists and is on the map
         if (!this.markerClusterGroup) {
-            console.log('Cluster group not initialized, initializing now');
             this.initializeClusterGroup();
         } else if (!this.map.hasLayer(this.markerClusterGroup)) {
-            console.log('Cluster group not on map, re-adding it');
             this.map.addLayer(this.markerClusterGroup);
         }
         
@@ -106,21 +104,10 @@ class PhotoClient {
             return photo.latitude && photo.longitude;
         });
         
-        console.log('Valid photos with coordinates:', validPhotos.length);
-        
         // Create markers for all valid photos and add to cluster group
         validPhotos.forEach(photo => {
             this.createPhotoMarker(photo);
         });
-        
-        console.log('Created', validPhotos.length, 'photo markers');
-        
-        // Debug cluster group state
-        if (this.markerClusterGroup) {
-            console.log('Cluster group layers count:', this.markerClusterGroup.getLayers().length);
-            console.log('Cluster group is on map:', this.map.hasLayer(this.markerClusterGroup));
-            console.log('Cluster group bounds:', this.markerClusterGroup.getBounds());
-        }
     }
 
     /**
@@ -148,7 +135,8 @@ class PhotoClient {
         });
 
         const marker = L.marker([photo.latitude, photo.longitude], {
-            icon: customIcon
+            icon: customIcon,
+            photoData: photo  // Store photo data for cluster icon creation
         });
 
         // Add click handler to show photo modal
@@ -160,9 +148,6 @@ class PhotoClient {
         if (this.markerClusterGroup) {
             this.markerClusterGroup.addLayer(marker);
             this.photoMarkers.push(marker);
-            console.log('Added photo marker at', photo.latitude, photo.longitude);
-        } else {
-            console.error('Cluster group not available when trying to add marker');
         }
     }
 
