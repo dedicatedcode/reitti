@@ -139,9 +139,16 @@ class PhotoClient {
             photoData: photo  // Store photo data for cluster icon creation
         });
 
-        // Add click handler to show photo modal
+        // Add click handler - show gallery at high zoom, single photo at low zoom
         marker.on('click', () => {
-            this.showPhotoModal(photo);
+            const currentZoom = this.map.getZoom();
+            if (currentZoom >= 15) {
+                // At high zoom levels, show the photo gallery
+                this.showPhotoGridModal([photo]);
+            } else {
+                // At lower zoom levels, show single photo
+                this.showPhotoModal(photo);
+            }
         });
 
         // Add to cluster group instead of directly to map
