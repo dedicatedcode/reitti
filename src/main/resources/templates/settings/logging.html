@@ -211,7 +211,6 @@
         reconnectFailed: /*[[#{logging.reconnect.failed}]]*/ 'Failed to reconnect after'
     };
     
-    // Set up SSE connection for log streaming
     const logOutput = document.getElementById('logOutput');
     const autoscrollToggle = document.getElementById('autoscrollToggle');
     let eventSource;
@@ -230,7 +229,6 @@
     }
     
     function addLogLevelClass(logHtml) {
-        // Add CSS classes based on log level
         if (logHtml.includes('[WARN]')) {
             return logHtml.replace('<div class="log-line">', '<div class="log-line warn">');
         } else if (logHtml.includes('[ERROR]')) {
@@ -247,7 +245,7 @@
         eventSource.onopen = function() {
             logOutput.innerHTML = `<div class="log-line">${messages.connected}</div>`;
             scrollToBottom();
-            reconnectAttempts = 0; // Reset reconnect attempts on successful connection
+            reconnectAttempts = 0;
         };
         
         eventSource.addEventListener('log', function(event) {
@@ -264,7 +262,7 @@
             
             if (reconnectAttempts < maxReconnectAttempts) {
                 reconnectAttempts++;
-                const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000); // Exponential backoff, max 30 seconds
+                const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000);
                 logOutput.innerHTML += `<div class="log-line">${messages.reconnecting} ${delay / 1000} seconds... (attempt ${reconnectAttempts}/${maxReconnectAttempts})</div>`;
                 scrollToBottom();
                 
@@ -276,10 +274,8 @@
         };
     }
     
-    // Initial connection
     connectEventSource();
     
-    // Clean up on page unload
     window.addEventListener('beforeunload', function() {
         if (reconnectTimeout) {
             clearTimeout(reconnectTimeout);

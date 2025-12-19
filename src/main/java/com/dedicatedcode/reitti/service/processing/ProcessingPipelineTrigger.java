@@ -75,34 +75,39 @@ public class ProcessingPipelineTrigger {
         int totalProcessed = 0;
 
         while (true) {
-            List<RawLocationPoint> currentBatch;
-            if (previewId == null) {
-                currentBatch = rawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestampWithLimit(user, batchSize, 0);
-            } else {
-                currentBatch = previewRawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestampWithLimit(user, previewId, batchSize, 0);
-            }
-            
-            if (currentBatch.isEmpty()) {
-                break;
-            }
-            
-            Instant earliest = currentBatch.getFirst().getTimestamp();
-            Instant latest = currentBatch.getLast().getTimestamp();
-            log.debug("Scheduling stay detection event for user [{}] and points between [{}] and [{}]", user.getId(), earliest, latest);
 
-            currentBatch.forEach(RawLocationPoint::markProcessed);
-            if (previewId == null) {
-                rawLocationPointJdbcService.bulkUpdateProcessedStatus(currentBatch);
-            } else {
-                previewRawLocationPointJdbcService.bulkUpdateProcessedStatus(currentBatch);
-            }
+            try {
+                List<RawLocationPoint> currentBatch;
+                if (previewId == null) {
+                    currentBatch = rawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestampWithLimit(user, batchSize, 0);
+                } else {
+                    currentBatch = previewRawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestampWithLimit(user, previewId, batchSize, 0);
+                }
 
-            if (!immediate) {
-                executorService.submit(() -> unifiedLocationProcessingService.processLocationEvent(new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId)));
-            } else {
-                unifiedLocationProcessingService.processLocationEvent(new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId));
+                if (currentBatch.isEmpty()) {
+                    break;
+                }
+
+                Instant earliest = currentBatch.getFirst().getTimestamp();
+                Instant latest = currentBatch.getLast().getTimestamp();
+                log.debug("Scheduling stay detection event for user [{}] and points between [{}] and [{}]", user.getId(), earliest, latest);
+
+                currentBatch.forEach(RawLocationPoint::markProcessed);
+                if (previewId == null) {
+                    rawLocationPointJdbcService.bulkUpdateProcessedStatus(currentBatch);
+                } else {
+                    previewRawLocationPointJdbcService.bulkUpdateProcessedStatus(currentBatch);
+                }
+
+                if (!immediate) {
+                    executorService.submit(() -> unifiedLocationProcessingService.processLocationEvent(new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId)));
+                } else {
+                    unifiedLocationProcessingService.processLocationEvent(new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId));
+                }
+                totalProcessed += currentBatch.size();
+            } catch (Exception e) {
+                log.error("Error processing batch for user [{}]", user.getId(), e);
             }
-            totalProcessed += currentBatch.size();
         }
 
         log.debug("Processed [{}] unprocessed points for user [{}]", totalProcessed, user.getId());
