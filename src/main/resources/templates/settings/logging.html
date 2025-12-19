@@ -203,11 +203,20 @@
 <script th:inline="javascript">
     window.userSettings = /*[[${userSettings}]]*/ {}
     
+    // Localized messages
+    const messages = {
+        connected: /*[[#{logging.connected}]]*/ 'Connected to log stream',
+        connectionLost: /*[[#{logging.connection.lost}]]*/ 'Error: Connection to log stream lost',
+        reconnecting: /*[[#{logging.reconnecting}]]*/ 'Attempting to reconnect in',
+        reconnectFailed: /*[[#{logging.reconnect.failed}]]*/ 'Failed to reconnect after'
+    };
     
-    // Set up SSE connection for log streaming
     const logOutput = document.getElementById('logOutput');
     const autoscrollToggle = document.getElementById('autoscrollToggle');
-    const eventSource = new EventSource('/settings/logging/stream');
+    let eventSource;
+    let reconnectAttempts = 0;
+    let maxReconnectAttempts = 50;
+    let reconnectTimeout;
     
     function shouldAutoscroll() {
         return autoscrollToggle.checked;
@@ -220,7 +229,6 @@
     }
     
     function addLogLevelClass(logHtml) {
-        // Add CSS classes based on log level
         if (logHtml.includes('[WARN]')) {
             return logHtml.replace('<div class="log-line">', '<div class="log-line warn">');
         } else if (logHtml.includes('[ERROR]')) {
@@ -231,25 +239,50 @@
         return logHtml;
     }
     
-    eventSource.onopen = function() {
-        logOutput.innerHTML = '<div class="log-line">' + /*[[#{logging.connected}]]*/ 'Connected to log stream' + '</div>';
-        scrollToBottom();
-    };
+    function connectEventSource() {
+        eventSource = new EventSource('/settings/logging/stream');
+        
+        eventSource.onopen = function() {
+            logOutput.innerHTML = `<div class="log-line">${messages.connected}</div>`;
+            scrollToBottom();
+            reconnectAttempts = 0;
+        };
+        
+        eventSource.addEventListener('log', function(event) {
+            const coloredLogHtml = addLogLevelClass(event.data);
+            logOutput.insertAdjacentHTML('beforeend', coloredLogHtml);
+            scrollToBottom();
+        });
+        
+        eventSource.onerror = function(event) {
+            logOutput.innerHTML += `<div class="log-line error">${messages.connectionLost}</div>`;
+            scrollToBottom();
+            
+            eventSource.close();
+            
+            if (reconnectAttempts < maxReconnectAttempts) {
+                reconnectAttempts++;
+                const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000);
+                logOutput.innerHTML += `<div class="log-line">${messages.reconnecting} ${delay / 1000} seconds... (attempt ${reconnectAttempts}/${maxReconnectAttempts})</div>`;
+                scrollToBottom();
+                
+                reconnectTimeout = setTimeout(connectEventSource, delay);
+            } else {
+                logOutput.innerHTML += `<div class="log-line error">${messages.reconnectFailed} ${maxReconnectAttempts} attempts. Please refresh the page.</div>`;
+                scrollToBottom();
+            }
+        };
+    }
     
-    eventSource.addEventListener('log', function(event) {
-        const coloredLogHtml = addLogLevelClass(event.data);
-        logOutput.insertAdjacentHTML('beforeend', coloredLogHtml);
-        scrollToBottom();
-    });
+    connectEventSource();
     
-    eventSource.onerror = function(event) {
-        logOutput.innerHTML += '<div class="log-line error">' + /*[[#{logging.connection.lost}]]*/ 'Error: Connection to log stream lost' + '</div>';
-        scrollToBottom();
-    };
-    
-    // Clean up on page unload
     window.addEventListener('beforeunload', function() {
-        eventSource.close();
+        if (reconnectTimeout) {
+            clearTimeout(reconnectTimeout);
+        }
+        if (eventSource) {
+            eventSource.close();
+        }
     });
     
     

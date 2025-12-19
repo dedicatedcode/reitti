@@ -26,6 +26,11 @@ public class SetupFilter implements Filter {
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
 
+        if (localLoginDisabled) {
+            chain.doFilter(request, response);
+            return;
+        }
+
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
 
@@ -43,7 +48,7 @@ public class SetupFilter implements Filter {
         }
 
         // Check if admin has empty password
-        if (hasAdminWithEmptyPassword() && (!localLoginDisabled)) {
+        if (hasAdminWithEmptyPassword()) {
             httpResponse.sendRedirect("/setup");
             return;
         }
