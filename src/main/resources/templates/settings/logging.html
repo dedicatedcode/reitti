@@ -207,7 +207,10 @@
     // Set up SSE connection for log streaming
     const logOutput = document.getElementById('logOutput');
     const autoscrollToggle = document.getElementById('autoscrollToggle');
-    const eventSource = new EventSource('/settings/logging/stream');
+    let eventSource;
+    let reconnectAttempts = 0;
+    let maxReconnectAttempts = 10;
+    let reconnectTimeout;
     
     function shouldAutoscroll() {
         return autoscrollToggle.checked;
@@ -231,25 +234,52 @@
         return logHtml;
     }
     
-    eventSource.onopen = function() {
-        logOutput.innerHTML = '<div class="log-line">' + /*[[#{logging.connected}]]*/ 'Connected to log stream' + '</div>';
-        scrollToBottom();
-    };
+    function connectEventSource() {
+        eventSource = new EventSource('/settings/logging/stream');
+        
+        eventSource.onopen = function() {
+            logOutput.innerHTML = '<div class="log-line">' + /*[[#{logging.connected}]]*/ 'Connected to log stream' + '</div>';
+            scrollToBottom();
+            reconnectAttempts = 0; // Reset reconnect attempts on successful connection
+        };
+        
+        eventSource.addEventListener('log', function(event) {
+            const coloredLogHtml = addLogLevelClass(event.data);
+            logOutput.insertAdjacentHTML('beforeend', coloredLogHtml);
+            scrollToBottom();
+        });
+        
+        eventSource.onerror = function(event) {
+            logOutput.innerHTML += '<div class="log-line error">' + /*[[#{logging.connection.lost}]]*/ 'Error: Connection to log stream lost' + '</div>';
+            scrollToBottom();
+            
+            eventSource.close();
+            
+            if (reconnectAttempts < maxReconnectAttempts) {
+                reconnectAttempts++;
+                const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000); // Exponential backoff, max 30 seconds
+                logOutput.innerHTML += '<div class="log-line">' + /*[[#{logging.reconnecting}]]*/ 'Attempting to reconnect in ' + (delay / 1000) + ' seconds... (attempt ' + reconnectAttempts + '/' + maxReconnectAttempts + ')' + '</div>';
+                scrollToBottom();
+                
+                reconnectTimeout = setTimeout(connectEventSource, delay);
+            } else {
+                logOutput.innerHTML += '<div class="log-line error">' + /*[[#{logging.reconnect.failed}]]*/ 'Failed to reconnect after ' + maxReconnectAttempts + ' attempts. Please refresh the page.' + '</div>';
+                scrollToBottom();
+            }
+        };
+    }
     
-    eventSource.addEventListener('log', function(event) {
-        const coloredLogHtml = addLogLevelClass(event.data);
-        logOutput.insertAdjacentHTML('beforeend', coloredLogHtml);
-        scrollToBottom();
-    });
-    
-    eventSource.onerror = function(event) {
-        logOutput.innerHTML += '<div class="log-line error">' + /*[[#{logging.connection.lost}]]*/ 'Error: Connection to log stream lost' + '</div>';
-        scrollToBottom();
-    };
+    // Initial connection
+    connectEventSource();
     
     // Clean up on page unload
     window.addEventListener('beforeunload', function() {
-        eventSource.close();
+        if (reconnectTimeout) {
+            clearTimeout(reconnectTimeout);
+        }
+        if (eventSource) {
+            eventSource.close();
+        }
     });
     
     
