@@ -203,6 +203,13 @@
 <script th:inline="javascript">
     window.userSettings = /*[[${userSettings}]]*/ {}
     
+    // Localized messages
+    const messages = {
+        connected: /*[[#{logging.connected}]]*/ 'Connected to log stream',
+        connectionLost: /*[[#{logging.connection.lost}]]*/ 'Error: Connection to log stream lost',
+        reconnecting: /*[[#{logging.reconnecting}]]*/ 'Attempting to reconnect in',
+        reconnectFailed: /*[[#{logging.reconnect.failed}]]*/ 'Failed to reconnect after'
+    };
     
     // Set up SSE connection for log streaming
     const logOutput = document.getElementById('logOutput');
@@ -238,7 +245,7 @@
         eventSource = new EventSource('/settings/logging/stream');
         
         eventSource.onopen = function() {
-            logOutput.innerHTML = '<div class="log-line">' + /*[[#{logging.connected}]]*/ 'Connected to log stream' + '</div>';
+            logOutput.innerHTML = `<div class="log-line">${messages.connected}</div>`;
             scrollToBottom();
             reconnectAttempts = 0; // Reset reconnect attempts on successful connection
         };
@@ -250,7 +257,7 @@
         });
         
         eventSource.onerror = function(event) {
-            logOutput.innerHTML += '<div class="log-line error">' + /*[[#{logging.connection.lost}]]*/ 'Error: Connection to log stream lost' + '</div>';
+            logOutput.innerHTML += `<div class="log-line error">${messages.connectionLost}</div>`;
             scrollToBottom();
             
             eventSource.close();
@@ -258,12 +265,12 @@
             if (reconnectAttempts < maxReconnectAttempts) {
                 reconnectAttempts++;
                 const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000); // Exponential backoff, max 30 seconds
-                logOutput.innerHTML += '<div class="log-line">' + /*[[#{logging.reconnecting}]]*/ 'Attempting to reconnect in ' + (delay / 1000) + ' seconds... (attempt ' + reconnectAttempts + '/' + maxReconnectAttempts + ')' + '</div>';
+                logOutput.innerHTML += `<div class="log-line">${messages.reconnecting} ${delay / 1000} seconds... (attempt ${reconnectAttempts}/${maxReconnectAttempts})</div>`;
                 scrollToBottom();
                 
                 reconnectTimeout = setTimeout(connectEventSource, delay);
             } else {
-                logOutput.innerHTML += '<div class="log-line error">' + /*[[#{logging.reconnect.failed}]]*/ 'Failed to reconnect after ' + maxReconnectAttempts + ' attempts. Please refresh the page.' + '</div>';
+                logOutput.innerHTML += `<div class="log-line error">${messages.reconnectFailed} ${maxReconnectAttempts} attempts. Please refresh the page.</div>`;
                 scrollToBottom();
             }
         };
