@@ -521,7 +521,7 @@ function updatePointsList() {
             html += `
                 <div class="point-item" id="${pointId}" onclick="selectPoint(${trackIndex}, ${pointIndex})" style="border-left-color: ${speedColor}">
                     <div class="point-content">
-                        <div class="point-coords">${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}</div>
+                        <div class="point-coords">${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}</div>
                         <div class="point-time">${formatCompactTimestamp(point.timestamp)}</div>
                         <div class="point-speed" style="color: ${speedColor}">${speedText}</div>
                     </div>
@@ -596,7 +596,20 @@ function formatTimestamp(timestamp) {
 }
 
 function formatCompactTimestamp(timestamp) {
-    return timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const today = new Date();
+    const pointDate = new Date(timestamp);
+    
+    // Check if it's the same date as today
+    const isToday = pointDate.toDateString() === today.toDateString();
+    
+    if (isToday) {
+        return pointDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    } else {
+        // Include date for different days
+        const dateStr = pointDate.toLocaleDateString([], { month: '2-digit', day: '2-digit' });
+        const timeStr = pointDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return `${dateStr} ${timeStr}`;
+    }
 }
 
 function updateSpeedLegend() {
@@ -1506,5 +1519,65 @@ function handleMarkerContextMenu(e) {
             break;
         }
     }
+}
+
+// Time shifting functions
+function shiftTrackTime(amount, unit) {
+    if (tracks.length === 0 || currentTrackIndex >= tracks.length) {
+        alert('No track selected to shift time.');
+        return;
+    }
+    
+    const currentTrack = tracks[currentTrackIndex];
+    if (currentTrack.points.length === 0) {
+        alert('Current track has no points to shift.');
+        return;
+    }
+    
+    // Calculate milliseconds to shift
+    let shiftMs = 0;
+    if (unit === 'hour') {
+        shiftMs = amount * 60 * 60 * 1000; // hours to milliseconds
+    } else if (unit === 'day') {
+        shiftMs = amount * 24 * 60 * 60 * 1000; // days to milliseconds
+    }
+    
+    // Shift all points in the current track
+    currentTrack.points.forEach(point => {
+        point.timestamp = new Date(point.timestamp.getTime() + shiftMs);
+    });
+    
+    // Update track start time
+    if (currentTrack.points.length > 0) {
+        currentTrack.startTime = new Date(currentTrack.points[0].timestamp);
+    }
+    
+    // Update the datetime input to reflect the new time of the last point
+    if (currentTrack.points.length > 0) {
+        const lastPoint = currentTrack.points[currentTrack.points.length - 1];
+        const timeInterval = parseInt(document.getElementById('timeInterval').value);
+        const nextTimestamp = new Date(lastPoint.timestamp.getTime() + (timeInterval * 1000));
+        
+        // Format for datetime-local input
+        const year = nextTimestamp.getFullYear();
+        const month = String(nextTimestamp.getMonth() + 1).padStart(2, '0');
+        const day = String(nextTimestamp.getDate()).padStart(2, '0');
+        const hours = String(nextTimestamp.getHours()).padStart(2, '0');
+        const minutes = String(nextTimestamp.getMinutes()).padStart(2, '0');
+        const seconds = String(nextTimestamp.getSeconds()).padStart(2, '0');
+        
+        const datetimeString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+        document.getElementById('startDateTime').value = datetimeString;
+    }
+    
+    // Update UI
+    updatePointsList();
+    updateStatus();
+    
+    // Show confirmation
+    const unitText = unit === 'hour' ? 'hour' : 'day';
+    const direction = amount > 0 ? 'forward' : 'backward';
+    const absAmount = Math.abs(amount);
+    alert(`Shifted ${currentTrack.name} ${direction} by ${absAmount} ${unitText}${absAmount > 1 ? 's' : ''}.`);
 }
 
