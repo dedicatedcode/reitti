@@ -1578,6 +1578,5 @@ function shiftTrackTime(amount, unit) {
     const unitText = unit === 'hour' ? 'hour' : 'day';
     const direction = amount > 0 ? 'forward' : 'backward';
     const absAmount = Math.abs(amount);
-    alert(`Shifted ${currentTrack.name} ${direction} by ${absAmount} ${unitText}${absAmount > 1 ? 's' : ''}.`);
 }
 
