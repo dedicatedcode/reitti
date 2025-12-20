@@ -38,7 +38,7 @@ Reitti is a comprehensive personal location tracking and analysis application th
 ### Data Import & Integration
 - **Multiple Import Formats**: Support for GPX files, Google Takeout JSON, Google Timeline Exports and GeoJSON files
 - **Real-time Data Ingestion**: Live location updates via OwnTracks and GPSLogger mobile apps
-- **Batch Processing**: Efficient handling of large location datasets with queue-based processing
+- **Batch Processing**: Efficient handling of large location datasets with direct processing
 - **API Integration**: RESTful API for programmatic data access and ingestion
 
 ### Photo Management
@@ -66,7 +66,7 @@ Reitti is a comprehensive personal location tracking and analysis application th
 ### Privacy & Self-hosting
 - **Complete Data Control**: Your location data never leaves your server
 - **Self-hosted Solution**: Deploy on your own infrastructure
-- **Asynchronous Processing**: Handle large datasets efficiently with RabbitMQ-based processing
+- **Asynchronous Processing**: Handle large datasets efficiently with direct processing and RabbitMQ-based task scheduling
 
 ## Getting Started
 
@@ -76,7 +76,7 @@ Reitti is a comprehensive personal location tracking and analysis application th
 - Maven 3.6 or higher
 - Docker and Docker Compose
 - PostgreSQL database with spatial extensions (PostGIS)
-- RabbitMQ for message processing
+- RabbitMQ for task scheduling
 - Redis for caching
 
 ### Quick Start with Docker
@@ -94,7 +94,7 @@ The easiest way to get started is using Docker Compose:
    
    Pay special attention to the Photon `REGION`. This should match your main location.
    
-4. Start all services (PostgreSQL, RabbitMQ, Redis and Reitti)
+4. Start all services (PostgreSQL, RabbitMQ for task scheduling, Redis and Reitti)
    ```bash
    docker compose up -d
    ```
@@ -186,7 +186,7 @@ docker run -p 8080:8080 \
 
 The included `docker-compose.yml` provides a complete setup with:
 - PostgreSQL with PostGIS extensions
-- RabbitMQ for message processing
+- RabbitMQ for task scheduling
 - Redis for caching and session storage
 - Reitti application with proper networking
 - Persistent data volumes
@@ -201,11 +201,11 @@ The included `docker-compose.yml` provides a complete setup with:
 | `POSTGIS_DB`                   | PostgreSQL database name                                                                                                                                                        | reittidb            | reittidb                                  |
 | `POSTGIS_USER`                 | Database username                                                                                                                                                               | reitti              | reitti                                    |
 | `POSTGIS_PASSWORD`             | Database password                                                                                                                                                               | reitti              | reitti                                    |
-| `RABBITMQ_HOST`                | RabbitMQ host                                                                                                                                                                   | rabbitmq            | rabbitmq                                  |
-| `RABBITMQ_PORT`                | RabbitMQ port                                                                                                                                                                   | 5672                | 5672                                      |
-| `RABBITMQ_USER`                | RabbitMQ username                                                                                                                                                               | reitti              | reitti                                    |
-| `RABBITMQ_PASSWORD`            | RabbitMQ password                                                                                                                                                               | reitti              | reitti                                    |
-| `RABBITMQ_VHOST`               | RabbitMQ vhost                                                                                                                                                                  | /                   | reitti                                    |
+| `RABBITMQ_HOST`                | RabbitMQ host for task scheduling                                                                                                                                               | rabbitmq            | rabbitmq                                  |
+| `RABBITMQ_PORT`                | RabbitMQ port for task scheduling                                                                                                                                               | 5672                | 5672                                      |
+| `RABBITMQ_USER`                | RabbitMQ username for task scheduling                                                                                                                                           | reitti              | reitti                                    |
+| `RABBITMQ_PASSWORD`            | RabbitMQ password for task scheduling                                                                                                                                           | reitti              | reitti                                    |
+| `RABBITMQ_VHOST`               | RabbitMQ vhost for task scheduling                                                                                                                                              | /                   | reitti                                    |
 | `REDIS_HOST`                   | Redis host                                                                                                                                                                      | redis               | redis                                     |
 | `REDIS_PORT`                   | Redis port                                                                                                                                                                      | 6379                | 6379                                      |
 | `REDIS_USERNAME`               | Redis username (optional)                                                                                                                                                       |                     | username                                  |
@@ -456,7 +456,7 @@ To enable PKCE for the OIDC Client, you need to set `OIDC_AUTHENTICATION_METHOD`
 - Use standard PostgreSQL backup tools (such as `pg_dump` or physical volume snapshots) to back up your database.
 - Back up the entire storage directory/volume used by Reitti for file storage.
 - Ensure backups are performed regularly and stored securely.
-- No backup is needed for RabbitMQ, Redis, Photon.
+- No backup is needed for RabbitMQ (task scheduling), Redis, Photon.
 
 **Restore:**
 - In case of disaster recovery, restore both the PostGIS database and the storage path to recover all user data and history.
