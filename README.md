@@ -249,12 +249,7 @@ The included `docker-compose.yml` provides a complete setup with:
    - Real-time mobile app integration (OwnTracks, GPSLogger)
    - REST API endpoints
 
-2. **Queue Processing**: Data is queued in RabbitMQ for asynchronous processing:
-   - Raw location points are validated and stored
-   - Processing jobs are distributed across workers
-   - Queue status is monitored in real-time
-
-3. **Analysis & Detection**: Processing workers analyze the data to:
+2. **Analysis & Detection**: The application directly processes the data to:
    - Detect significant places where you spend time
    - Identify trips between locations
    - Determine transport modes (walking, cycling, driving)
@@ -265,7 +260,12 @@ The included `docker-compose.yml` provides a complete setup with:
    - Temporal indexing for timeline operations
    - User data isolation and security
 
-5. **Visualization**: Web interface displays processed data as:
+3. **Task Scheduling**: RabbitMQ is used for scheduling background tasks:
+   - Reverse geocoding requests
+   - User notifications
+   - Other asynchronous operations
+
+4. **Visualization**: Web interface displays processed data as:
    - Interactive timeline with visits and trips
    - Map visualization with location markers
    - Photo integration showing images taken at locations
