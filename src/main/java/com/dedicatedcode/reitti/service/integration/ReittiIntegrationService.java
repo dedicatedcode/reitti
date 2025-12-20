@@ -498,8 +498,8 @@ public class ReittiIntegrationService {
                 (String) placeInfo.get("address"),
                 (String) placeInfo.get("city"),
                 (String) placeInfo.get("countryCode"),
-                getDoubleValue(placeInfo, "latitudeCentroid"),
-                getDoubleValue(placeInfo, "longitudeCentroid"),
+                getDoubleValue(placeInfo, "lat"),
+                getDoubleValue(placeInfo, "lng"),
                 (String) placeInfo.get("type")
         );
         
@@ -515,7 +515,7 @@ public class ReittiIntegrationService {
                 .toList();
         
         // Parse summary data
-        long totalDurationMs = getLongValue(placeData, "totalDurationSeconds") * 1000; // Convert to milliseconds
+        long totalDurationMs = getLongValue(placeData, "totalDurationMs"); // Convert to milliseconds
         int visitCount = getIntValue(placeData, "visitCount");
         String color = "#3388ff"; // Default color, could be extracted from response if available
         

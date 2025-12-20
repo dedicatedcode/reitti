@@ -542,16 +542,16 @@
         }
         
         .point-item {
-            padding: 8px 20px;
+            padding: 6px 20px;
             border-bottom: 1px solid rgba(237, 242, 247, 0.8);
             cursor: pointer;
             transition: all 0.3s ease;
-            font-size: 12px;
+            font-size: 10px;
             position: relative;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            min-height: 32px;
+            min-height: 28px;
             border-left: 4px solid #e2e8f0;
         }
         
@@ -568,7 +568,7 @@
         .point-content {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
             flex: 1;
             font-family: 'Monaco', 'Menlo', monospace;
         }
@@ -576,15 +576,17 @@
         .point-coords {
             color: #4a5568;
             font-weight: 500;
+            min-width: 120px;
         }
         
         .point-time {
             color: #718096;
+            min-width: 80px;
         }
         
         .point-speed {
             font-weight: 500;
-            min-width: 60px;
+            min-width: 45px;
             text-align: right;
         }
         
@@ -901,6 +903,21 @@
                         </div>
                         <div class="control-group">
                             <button onclick="newTrack()" class="control-button">➕ New Track</button>
+                        </div>
+                    </div>
+                    
+                    <div class="drawer-section">
+                        <div class="drawer-section-title">Time Adjustment</div>
+                        <div class="control-group">
+                            <label class="control-label">Shift Current Track</label>
+                            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                                <button onclick="shiftTrackTime(-1, 'hour')" class="control-button" style="flex: 1; font-size: 11px;">-1h</button>
+                                <button onclick="shiftTrackTime(1, 'hour')" class="control-button" style="flex: 1; font-size: 11px;">+1h</button>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button onclick="shiftTrackTime(-1, 'day')" class="control-button" style="flex: 1; font-size: 11px;">-1d</button>
+                                <button onclick="shiftTrackTime(1, 'day')" class="control-button" style="flex: 1; font-size: 11px;">+1d</button>
+                            </div>
                         </div>
                     </div>
                 </div>
