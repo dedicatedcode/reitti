@@ -450,7 +450,7 @@ To enable PKCE for the OIDC Client, you need to set `OIDC_AUTHENTICATION_METHOD`
 - **Backup Requirements:** 
   - The PostGIS database needs to be backed up regularly. This database contains all user location data, analysis results, and other persistent information.
   - The storage path used by Reitti needs to be backed up regularly. This contains uploaded files.
-- **Stateless Services:** All other components (RabbitMQ, Redis, Photon, etc.) are stateless and do not store any important data. These can be redeployed or restarted without risk of data loss.
+- **Stateless Services:** All other components (RabbitMQ for task scheduling, Redis, Photon, etc.) are stateless and do not store any important data. These can be redeployed or restarted without risk of data loss.
 
 **Recommended Backup Strategy:**
 - Use standard PostgreSQL backup tools (such as `pg_dump` or physical volume snapshots) to back up your database.
