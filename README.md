@@ -38,7 +38,7 @@ Reitti is a comprehensive personal location tracking and analysis application th
 ### Data Import & Integration
 - **Multiple Import Formats**: Support for GPX files, Google Takeout JSON, Google Timeline Exports and GeoJSON files
 - **Real-time Data Ingestion**: Live location updates via OwnTracks and GPSLogger mobile apps
-- **Batch Processing**: Efficient handling of large location datasets with queue-based processing
+- **Batch Processing**: Efficient handling of large location datasets with direct processing
 - **API Integration**: RESTful API for programmatic data access and ingestion
 
 ### Photo Management
@@ -66,7 +66,7 @@ Reitti is a comprehensive personal location tracking and analysis application th
 ### Privacy & Self-hosting
 - **Complete Data Control**: Your location data never leaves your server
 - **Self-hosted Solution**: Deploy on your own infrastructure
-- **Asynchronous Processing**: Handle large datasets efficiently with RabbitMQ-based processing
+- **Asynchronous Processing**: Handle large datasets efficiently with direct processing and RabbitMQ-based task scheduling
 
 ## Getting Started
 
@@ -76,7 +76,7 @@ Reitti is a comprehensive personal location tracking and analysis application th
 - Maven 3.6 or higher
 - Docker and Docker Compose
 - PostgreSQL database with spatial extensions (PostGIS)
-- RabbitMQ for message processing
+- RabbitMQ
 - Redis for caching
 
 ### Quick Start with Docker
@@ -186,7 +186,7 @@ docker run -p 8080:8080 \
 
 The included `docker-compose.yml` provides a complete setup with:
 - PostgreSQL with PostGIS extensions
-- RabbitMQ for message processing
+- RabbitMQ for task scheduling
 - Redis for caching and session storage
 - Reitti application with proper networking
 - Persistent data volumes
@@ -249,12 +249,7 @@ The included `docker-compose.yml` provides a complete setup with:
    - Real-time mobile app integration (OwnTracks, GPSLogger)
    - REST API endpoints
 
-2. **Queue Processing**: Data is queued in RabbitMQ for asynchronous processing:
-   - Raw location points are validated and stored
-   - Processing jobs are distributed across workers
-   - Queue status is monitored in real-time
-
-3. **Analysis & Detection**: Processing workers analyze the data to:
+2. **Analysis & Detection**: The application directly processes the data to:
    - Detect significant places where you spend time
    - Identify trips between locations
    - Determine transport modes (walking, cycling, driving)
@@ -265,7 +260,12 @@ The included `docker-compose.yml` provides a complete setup with:
    - Temporal indexing for timeline operations
    - User data isolation and security
 
-5. **Visualization**: Web interface displays processed data as:
+3. **Task Scheduling**: RabbitMQ is used for scheduling background tasks:
+   - Reverse geocoding requests
+   - User notifications
+   - Other asynchronous operations
+
+4. **Visualization**: Web interface displays processed data as:
    - Interactive timeline with visits and trips
    - Map visualization with location markers
    - Photo integration showing images taken at locations
@@ -450,13 +450,13 @@ To enable PKCE for the OIDC Client, you need to set `OIDC_AUTHENTICATION_METHOD`
 - **Backup Requirements:** 
   - The PostGIS database needs to be backed up regularly. This database contains all user location data, analysis results, and other persistent information.
   - The storage path used by Reitti needs to be backed up regularly. This contains uploaded files.
-- **Stateless Services:** All other components (RabbitMQ, Redis, Photon, etc.) are stateless and do not store any important data. These can be redeployed or restarted without risk of data loss.
+- **Stateless Services:** All other components (RabbitMQ for task scheduling, Redis, Photon, etc.) are stateless and do not store any important data. These can be redeployed or restarted without risk of data loss.
 
 **Recommended Backup Strategy:**
 - Use standard PostgreSQL backup tools (such as `pg_dump` or physical volume snapshots) to back up your database.
 - Back up the entire storage directory/volume used by Reitti for file storage.
 - Ensure backups are performed regularly and stored securely.
-- No backup is needed for RabbitMQ, Redis, Photon.
+- No backup is needed for RabbitMQ (task scheduling), Redis, Photon.
 
 **Restore:**
 - In case of disaster recovery, restore both the PostGIS database and the storage path to recover all user data and history.
