@@ -76,7 +76,7 @@ Reitti is a comprehensive personal location tracking and analysis application th
 - Maven 3.6 or higher
 - Docker and Docker Compose
 - PostgreSQL database with spatial extensions (PostGIS)
-- RabbitMQ for task scheduling
+- RabbitMQ
 - Redis for caching
 
 ### Quick Start with Docker
@@ -94,7 +94,7 @@ The easiest way to get started is using Docker Compose:
    
    Pay special attention to the Photon `REGION`. This should match your main location.
    
-4. Start all services (PostgreSQL, RabbitMQ for task scheduling, Redis and Reitti)
+4. Start all services (PostgreSQL, RabbitMQ, Redis and Reitti)
    ```bash
    docker compose up -d
    ```
@@ -201,11 +201,11 @@ The included `docker-compose.yml` provides a complete setup with:
 | `POSTGIS_DB`                   | PostgreSQL database name                                                                                                                                                        | reittidb            | reittidb                                  |
 | `POSTGIS_USER`                 | Database username                                                                                                                                                               | reitti              | reitti                                    |
 | `POSTGIS_PASSWORD`             | Database password                                                                                                                                                               | reitti              | reitti                                    |
-| `RABBITMQ_HOST`                | RabbitMQ host for task scheduling                                                                                                                                               | rabbitmq            | rabbitmq                                  |
-| `RABBITMQ_PORT`                | RabbitMQ port for task scheduling                                                                                                                                               | 5672                | 5672                                      |
-| `RABBITMQ_USER`                | RabbitMQ username for task scheduling                                                                                                                                           | reitti              | reitti                                    |
-| `RABBITMQ_PASSWORD`            | RabbitMQ password for task scheduling                                                                                                                                           | reitti              | reitti                                    |
-| `RABBITMQ_VHOST`               | RabbitMQ vhost for task scheduling                                                                                                                                              | /                   | reitti                                    |
+| `RABBITMQ_HOST`                | RabbitMQ host                                                                                                                                                                   | rabbitmq            | rabbitmq                                  |
+| `RABBITMQ_PORT`                | RabbitMQ port                                                                                                                                                                   | 5672                | 5672                                      |
+| `RABBITMQ_USER`                | RabbitMQ username                                                                                                                                                               | reitti              | reitti                                    |
+| `RABBITMQ_PASSWORD`            | RabbitMQ password                                                                                                                                                               | reitti              | reitti                                    |
+| `RABBITMQ_VHOST`               | RabbitMQ vhost                                                                                                                                                                  | /                   | reitti                                    |
 | `REDIS_HOST`                   | Redis host                                                                                                                                                                      | redis               | redis                                     |
 | `REDIS_PORT`                   | Redis port                                                                                                                                                                      | 6379                | 6379                                      |
 | `REDIS_USERNAME`               | Redis username (optional)                                                                                                                                                       |                     | username                                  |
