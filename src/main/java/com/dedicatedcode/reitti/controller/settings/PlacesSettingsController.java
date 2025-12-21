@@ -7,6 +7,7 @@ import com.dedicatedcode.reitti.model.AvailableCountry;
 import com.dedicatedcode.reitti.model.Page;
 import com.dedicatedcode.reitti.model.PageRequest;
 import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geocoding.GeocodingResponse;
 import com.dedicatedcode.reitti.model.security.User;
@@ -175,7 +176,7 @@ public class PlacesSettingsController {
                     }
                 }
 
-                // TODO: Parse polygonData and update polygon
+                // Parse the data in the form of [{"lat":53.863610437441515,"lng":10.700447559356691},{"lat":53.86357245523754,"lng":10.702464580535889},{"lat":53.862698855028654,"lng":10.702078342437744},{"lat":53.86261022790135,"lng":10.700275897979736}] as geoPoints and set it for the place AI! 
                 // For now, we'll just update the basic fields
 
                 placeJdbcService.update(updatedPlace);
