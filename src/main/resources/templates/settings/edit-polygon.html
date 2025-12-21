@@ -148,6 +148,9 @@
     <script th:inline="javascript">
         // Place data from server
         const placeData = /*[[${place}]]*/ {};
+        
+        // User settings from server
+        window.userSettings = /*[[${userSettings}]]*/ {};
 
         // Initialize the map
         const map = L.map('map', {
@@ -155,11 +158,17 @@
             attributionControl: true
         }).setView([placeData.lat, placeData.lng], 16);
 
-        // Add tile layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // Add tile layer based on user settings
+        const tilesUrl = window.userSettings.tiles.service;
+        const tilesAttribution = window.userSettings.tiles.attribution;
+
+        const tileLayer = window.userSettings.preferColoredMap ? L.tileLayer : L.tileLayer.grayscale;
+        tileLayer(tilesUrl, {
             maxZoom: 19,
-            attribution: '© OpenStreetMap contributors'
+            attribution: tilesAttribution
         }).addTo(map);
+        
+        L.control.attribution({position: 'topright'}).addAttribution(tilesAttribution).addTo(map);
 
         // Initialize polygon editor
         const polygonEditor = new PolygonEditor(map, placeData.lat, placeData.lng, placeData.name);
