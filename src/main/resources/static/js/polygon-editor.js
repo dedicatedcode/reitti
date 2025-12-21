@@ -206,7 +206,10 @@ class PolygonEditor {
     loadExistingPolygon(polygonData) {
         if (polygonData && polygonData.length >= 3) {
             polygonData.forEach(point => {
-                this.addPolygonPoint(L.latLng(point.lat, point.lng));
+                // Handle both GeoPoint format (latitude/longitude) and simple lat/lng format
+                const lat = point.latitude || point.lat;
+                const lng = point.longitude || point.lng;
+                this.addPolygonPoint(L.latLng(lat, lng));
             });
         }
     }

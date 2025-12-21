@@ -164,12 +164,16 @@
         // Initialize polygon editor
         const polygonEditor = new PolygonEditor(map, placeData.lat, placeData.lng, placeData.name);
 
+        // Load existing polygon if it exists
+        if (placeData.polygon && placeData.polygon.length >= 3) {
+            polygonEditor.loadExistingPolygon(placeData.polygon);
+        }
+
         // Save button handler
         document.getElementById('save-btn').addEventListener('click', function() {
             polygonEditor.savePolygon();
         });
 
-        // TODO: Load existing polygon if it exists
         // TODO: Load nearby places for context
         // const nearbyPlaces = /*[[${nearbyPlaces}]]*/ [];
         // polygonEditor.loadNearbyPlaces(nearbyPlaces);
