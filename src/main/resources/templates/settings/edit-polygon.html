@@ -14,7 +14,6 @@
             padding: 0;
             height: 100vh;
             overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
         
         #map {
@@ -31,9 +30,10 @@
             top: 20px;
             left: 20px;
             width: 320px;
-            background: white;
+            background: var(--color-background-dark);
+            border: 1px solid var(--color-highlight);
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            box-shadow: var(--box-shadow);
             z-index: 1000;
             max-height: calc(100vh - 120px);
             overflow-y: auto;
@@ -41,97 +41,30 @@
         
         .sidebar-header {
             padding: 20px;
-            border-bottom: 1px solid #e5e7eb;
+            border-bottom: 1px solid var(--color-highlight);
         }
         
         .sidebar-title {
             font-size: 18px;
             font-weight: 600;
             margin: 0 0 8px 0;
-            color: #111827;
+            color: var(--color-highlight);
         }
         
         .sidebar-subtitle {
             font-size: 14px;
-            color: #6b7280;
+            color: var(--color-text-white);
             margin: 0;
+            opacity: 0.8;
         }
         
         .sidebar-content {
             padding: 20px;
         }
         
-        .form-group {
-            margin-bottom: 16px;
-        }
-        
-        .form-label {
-            display: block;
-            font-size: 14px;
-            font-weight: 500;
-            color: #374151;
-            margin-bottom: 6px;
-        }
-        
-        .form-input {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 14px;
-            box-sizing: border-box;
-        }
-        
-        .form-input:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-        
-        .form-select {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 14px;
-            background: white;
-            box-sizing: border-box;
-        }
-        
         .polygon-actions {
-            border-top: 1px solid #e5e7eb;
+            border-top: 1px solid var(--color-highlight);
             padding: 16px 20px;
-        }
-        
-        .btn {
-            display: inline-block;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 500;
-            text-decoration: none;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .btn-danger {
-            background: #ef4444;
-            color: white;
-        }
-        
-        .btn-danger:hover {
-            background: #dc2626;
-        }
-        
-        .btn-secondary {
-            background: #6b7280;
-            color: white;
-            margin-right: 8px;
-        }
-        
-        .btn-secondary:hover {
-            background: #4b5563;
         }
         
         .bottom-actions {
@@ -139,9 +72,10 @@
             bottom: 20px;
             left: 20px;
             right: 20px;
-            background: white;
+            background: var(--color-background-dark);
+            border: 1px solid var(--color-highlight);
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            box-shadow: var(--box-shadow);
             padding: 16px;
             z-index: 1000;
             display: flex;
@@ -149,43 +83,24 @@
         }
         
         .btn-primary {
-            background: #3b82f6;
-            color: white;
             flex: 1;
         }
         
-        .btn-primary:hover {
-            background: #2563eb;
-        }
-        
-        .btn-primary:disabled {
-            background: #9ca3af;
-            cursor: not-allowed;
-        }
-        
         .polygon-info {
-            background: #f3f4f6;
+            background: var(--color-background-dark-light);
             border-radius: 6px;
             padding: 12px;
             font-size: 13px;
-            color: #4b5563;
+            color: var(--color-text-white);
             margin-bottom: 16px;
-        }
-        
-        .error-message {
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            color: #dc2626;
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 16px;
-            font-size: 14px;
+            opacity: 0.9;
         }
         
         .coordinates-display {
             font-size: 12px;
-            color: #6b7280;
+            color: var(--color-text-white);
             margin-top: 4px;
+            opacity: 0.7;
         }
     </style>
     <script src="/js/leaflet.js"></script>
@@ -218,18 +133,18 @@
                 <input type="hidden" name="polygonData" id="polygonData">
                 
                 <div class="form-group">
-                    <label class="form-label" th:text="#{place.name}">Name</label>
-                    <input type="text" name="name" class="form-input" th:value="${place.name}" required>
+                    <label th:text="#{place.name}">Name</label>
+                    <input type="text" name="name" th:value="${place.name}" required>
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label" th:text="#{place.address}">Address</label>
-                    <input type="text" name="address" class="form-input" th:value="${place.address}">
+                    <label th:text="#{place.address}">Address</label>
+                    <input type="text" name="address" th:value="${place.address}">
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label" th:text="#{place.type}">Type</label>
-                    <select name="type" class="form-select">
+                    <label th:text="#{place.type}">Type</label>
+                    <select name="type">
                         <option th:each="placeType : ${placeTypes}" 
                                 th:value="${placeType}" 
                                 th:text="#{${placeType.messageKey}}"
@@ -250,7 +165,7 @@
     </div>
     
     <div class="bottom-actions">
-        <a th:href="${returnUrl}" class="btn btn-secondary" th:text="#{cancel}">Cancel</a>
+        <a th:href="${returnUrl}" class="btn" th:text="#{cancel}">Cancel</a>
         <button type="button" id="save-btn" class="btn btn-primary" th:text="#{save}">Save</button>
     </div>
 
