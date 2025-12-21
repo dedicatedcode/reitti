@@ -412,6 +412,9 @@
                 }
                 window.timelineScrollIndicator = new TimelineScrollIndicator();
                 window.timelineScrollIndicator.init();
+                
+                // Update edit place links with current URL
+                updateEditPlaceLinks();
             }
         });
         // Function to update map markers from processed visits API
@@ -1020,6 +1023,18 @@
         if (window.horizontalDatePicker) {
             window.horizontalDatePicker.setSelectedRange(getCurrentLocalDate(), null);
         }
+    }
+
+    function updateEditPlaceLinks() {
+        const currentUrl = window.location.href;
+        const editLinks = document.querySelectorAll('.timeline-container .edit-icon[href*="/settings/places/"]');
+        
+        editLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            const url = new URL(href, window.location.origin);
+            url.searchParams.set('returnUrl', currentUrl);
+            link.setAttribute('href', url.toString());
+        });
     }
 </script>
 </body>
