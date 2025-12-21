@@ -1,68 +1,8 @@
 package com.dedicatedcode.reitti.dto;
 
-import com.dedicatedcode.reitti.model.geo.GeoPoint;
-
 import java.util.List;
 
 public class ProcessedVisitResponse {
-    
-    public static class PlaceInfo {
-        private final Long id;
-        private final String name;
-        private final String address;
-        private final String city;
-        private final String countryCode;
-        private final Double lat;
-        private final Double lng;
-        private final String type;
-        private final List<GeoPoint> polygon;
-        
-        public PlaceInfo(Long id, String name, String address, String city, String countryCode, Double lat, Double lng, String type, List<GeoPoint> polygon) {
-            this.id = id;
-            this.name = name;
-            this.address = address;
-            this.city = city;
-            this.countryCode = countryCode;
-            this.lat = lat;
-            this.lng = lng;
-            this.type = type;
-            this.polygon = polygon;
-        }
-        
-        public Long getId() {
-            return id;
-        }
-        
-        public String getName() {
-            return name;
-        }
-        
-        public String getAddress() {
-            return address;
-        }
-        
-        public String getCity() {
-            return city;
-        }
-        
-        public String getCountryCode() {
-            return countryCode;
-        }
-        
-        public Double getLat() {
-            return lat;
-        }
-        
-        public Double getLng() {
-            return lng;
-        }
-        
-        public String getType() {
-            return type;
-        }
-
-        public List<GeoPoint> getPolygon() { return polygon; }
-    }
     
     public static class PlaceVisitSummary {
         private final PlaceInfo place;
@@ -79,8 +19,8 @@ public class ProcessedVisitResponse {
             this.totalDurationMs = totalDurationMs;
             this.visitCount = visitCount;
             this.color = color;
-            this.lat = place.getLat();
-            this.lng = place.getLng();
+            this.lat = place.lat();
+            this.lng = place.lng();
         }
         
         public PlaceInfo getPlace() {
