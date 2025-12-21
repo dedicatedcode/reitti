@@ -258,6 +258,6 @@ public enum AvailableCountry {
     }
 
     public String getCode() {
-        return this.name();
+        return this.name().toLowerCase();
     }
 }
