@@ -108,21 +108,27 @@
                 <input type="hidden" name="polygonData" id="polygonData">
                 
                 <div class="form-group">
-                    <label th:text="#{places.name.label}">Name</label>
-                    <input type="text" name="name" th:value="${place.name()}" required>
+                    <label for="name" th:text="#{places.name.label}">Name</label>
+                    <input id="name" type="text" name="name" th:value="${place.name()}" required>
                 </div>
                 
                 <div class="form-group">
-                    <label th:text="#{places.address.label}">Address</label>
-                    <input type="text" name="address" th:value="${place.address()}">
+                    <label for="address" th:text="#{places.address.label}">Address</label>
+                    <input id="address" type="text" name="address" th:value="${place.address()}">
                 </div>
                 <div class="form-group">
-                    <label th:text="#{places.city.label}">City</label>
-                    <input type="text" name="address" th:value="${place.city()}">
+                    <label for="city" th:text="#{places.city.label}">City</label>
+                    <input id="city" type="text" name="address" th:value="${place.city()}">
                 </div>
                 <div class="form-group">
-                    <label th:text="#{places.country.label}">Country</label>
-                    //add a select box for the country,the country codes are translated by the message property country.af.label for example. Add Countries as an Enum AvailableCountry to have that reused and pull this in from the controller. AI!
+                    <label for="country" th:text="#{places.country.label}">Country</label>
+                    <select id="country" name="countryCode">
+                        <option value="" th:text="#{form.select.placeholder}">Select...</option>
+                        <option th:each="country : ${availableCountries}"
+                                th:value="${country.code}"
+                                th:text="#{${country.messageKey}}"
+                                th:selected="${country.code == place.countryCode()}">Country</option>
+                    </select>
                 </div>
 
                 <div class="form-group">
