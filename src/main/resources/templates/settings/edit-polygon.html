@@ -254,25 +254,20 @@
     </div>
 
     <script th:inline="javascript">
+        // Place data from server
+        const placeData = /*[[${place}]]*/ {};
+
         // Initialize the map
         const map = L.map('map', {
             zoomControl: true,
             attributionControl: true
-        }).setView([/*[[${place.lat()}]]*/ 0, /*[[${place.lng()}]]*/ 0], 16);
+        }).setView([placeData.lat, placeData.lng], 16);
 
         // Add tile layer
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
-
-        // Place data
-        const placeData = {
-            id: /*[[${place.id}]]*/ 0,
-            name: /*[[${place.name}]]*/ '',
-            lat: /*[[${place.lat}]]*/ 0,
-            lng: /*[[${place.lng}]]*/ 0
-        };
 
         // Initialize polygon editor
         const polygonEditor = new PolygonEditor(map, placeData.lat, placeData.lng, placeData.name);
