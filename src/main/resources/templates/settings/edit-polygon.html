@@ -35,7 +35,6 @@
             border-radius: 8px;
             box-shadow: var(--box-shadow);
             z-index: 1000;
-            max-height: calc(100vh - 120px);
             overflow-y: auto;
         }
         
@@ -61,12 +60,6 @@
         .sidebar-content {
             padding: 20px;
         }
-        
-        .polygon-actions {
-            border-top: 1px solid var(--color-highlight);
-            padding: 16px 20px;
-        }
-        
         
         .polygon-info {
             background: var(--color-background-dark-light);
@@ -143,7 +136,7 @@
                             th:text="#{polygon.remove}">Remove Polygon</button>
                 </form>
                 
-                <div style="margin-top: 16px; display: flex; gap: 12px;">
+                <div>
                     <a th:href="${returnUrl}" class="btn btn-default" th:text="#{cancel}">Cancel</a>
                     <button type="button" id="save-btn" class="btn btn-default btn-block" th:text="#{save}">Save</button>
                 </div>
