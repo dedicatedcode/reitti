@@ -12,6 +12,7 @@ class PolygonEditor {
         this.polygonMarkers = [];
         this.polygonLayer = null;
         this.previewLine = null;
+        this.isDragging = false;
         
         this.init();
     }
@@ -34,7 +35,10 @@ class PolygonEditor {
 
         // Add click handler for adding polygon points
         this.map.on('click', (e) => {
-            this.addPolygonPoint(e.latlng);
+            // Don't add point if we're dragging
+            if (!this.isDragging) {
+                this.addPolygonPoint(e.latlng);
+            }
         });
         
         // Keyboard shortcuts
@@ -59,7 +63,8 @@ class PolygonEditor {
             fillColor: '#ef4444',
             color: '#dc2626',
             weight: 2,
-            fillOpacity: 0.8
+            fillOpacity: 0.8,
+            draggable: true
         }).addTo(this.map);
         
         marker.bindTooltip(`Point ${this.polygonPoints.length}`, {
@@ -71,6 +76,28 @@ class PolygonEditor {
         marker.on('click', (e) => {
             L.DomEvent.stopPropagation(e);
             this.removePolygonPoint(this.polygonPoints.indexOf(latlng));
+        });
+        
+        // Add drag handlers to update polygon when point is moved
+        marker.on('dragstart', (e) => {
+            this.isDragging = true;
+        });
+        
+        marker.on('drag', (e) => {
+            const index = this.polygonMarkers.indexOf(marker);
+            if (index >= 0) {
+                this.polygonPoints[index] = e.target.getLatLng();
+                this.updatePolygonDisplay();
+            }
+        });
+        
+        marker.on('dragend', (e) => {
+            this.isDragging = false;
+            const index = this.polygonMarkers.indexOf(marker);
+            if (index >= 0) {
+                this.polygonPoints[index] = e.target.getLatLng();
+                this.updatePolygonDisplay();
+            }
         });
         
         this.polygonMarkers.push(marker);
