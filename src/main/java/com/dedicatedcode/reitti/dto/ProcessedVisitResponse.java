@@ -1,5 +1,7 @@
 package com.dedicatedcode.reitti.dto;
 
+import com.dedicatedcode.reitti.model.geo.GeoPoint;
+
 import java.util.List;
 
 public class ProcessedVisitResponse {
@@ -13,8 +15,9 @@ public class ProcessedVisitResponse {
         private final Double lat;
         private final Double lng;
         private final String type;
+        private final List<GeoPoint> polygon;
         
-        public PlaceInfo(Long id, String name, String address, String city, String countryCode, Double lat, Double lng, String type) {
+        public PlaceInfo(Long id, String name, String address, String city, String countryCode, Double lat, Double lng, String type, List<GeoPoint> polygon) {
             this.id = id;
             this.name = name;
             this.address = address;
@@ -23,6 +26,7 @@ public class ProcessedVisitResponse {
             this.lat = lat;
             this.lng = lng;
             this.type = type;
+            this.polygon = polygon;
         }
         
         public Long getId() {
@@ -56,6 +60,8 @@ public class ProcessedVisitResponse {
         public String getType() {
             return type;
         }
+
+        public List<GeoPoint> getPolygon() { return polygon; }
     }
     
     public static class PlaceVisitSummary {

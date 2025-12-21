@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service.integration;
 
 import com.dedicatedcode.reitti.dto.*;
+import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.integration.ReittiIntegration;
 import com.dedicatedcode.reitti.model.security.RemoteUser;
 import com.dedicatedcode.reitti.model.security.User;
@@ -492,6 +493,8 @@ public class ReittiIntegrationService {
     private ProcessedVisitResponse.PlaceVisitSummary parsePlaceVisitSummary(Map<String, Object> placeData) {
         // Parse place info
         Map<String, Object> placeInfo = (Map<String, Object>) placeData.get("place");
+        List<GeoPoint> polygon = mapToPolygon(placeInfo.get("polygon"));
+
         ProcessedVisitResponse.PlaceInfo place = new ProcessedVisitResponse.PlaceInfo(
                 getLongValue(placeInfo, "id"),
                 (String) placeInfo.get("name"),
@@ -500,7 +503,8 @@ public class ReittiIntegrationService {
                 (String) placeInfo.get("countryCode"),
                 getDoubleValue(placeInfo, "lat"),
                 getDoubleValue(placeInfo, "lng"),
-                (String) placeInfo.get("type")
+                (String) placeInfo.get("type"),
+                polygon
         );
         
         // Parse visits
@@ -520,6 +524,23 @@ public class ReittiIntegrationService {
         String color = "#3388ff"; // Default color, could be extracted from response if available
         
         return new ProcessedVisitResponse.PlaceVisitSummary(place, visits, totalDurationMs, visitCount, color);
+    }
+
+    private List<GeoPoint> mapToPolygon(Object polygonObj) {
+        if (polygonObj == null) {
+            return null;
+        }
+        // The remote JSON is deserialized by RestTemplate into a List of LinkedHashMap
+        List<Map<String, Object>> rawList = (List<Map<String, Object>>) polygonObj;
+        List<GeoPoint> polygon = new ArrayList<>(rawList.size());
+        for (Map<String, Object> pointMap : rawList) {
+            Double lat = getDoubleValue(pointMap, "latitude");
+            Double lng = getDoubleValue(pointMap, "longitude");
+            if (lat != null && lng != null) {
+                polygon.add(GeoPoint.from(lat, lng));
+            }
+        }
+        return polygon;
     }
     
     private Long getLongValue(Map<String, Object> map, String key) {

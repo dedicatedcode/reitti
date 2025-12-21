@@ -133,7 +133,8 @@ public class ProcessedVisitApiController {
                         place.getCountryCode(),
                         place.getLatitudeCentroid(),
                         place.getLongitudeCentroid(),
-                        place.getType() != null ? place.getType().toString() : null
+                        place.getType() != null ? place.getType().toString() : null,
+                        place.getPolygon()
                     );
                     
                     // Create VisitDetail DTOs
