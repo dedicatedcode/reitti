@@ -8,6 +8,9 @@ import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKTReader;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Component
 public class PointReaderWriter {
 
@@ -51,5 +54,52 @@ public class PointReaderWriter {
 
     public String write(GeoPoint point) {
         return write(point.longitude(), point.latitude());
+    }
+
+    public String polygonToWkt(List<GeoPoint> polygon) {
+        if (polygon == null || polygon.isEmpty()) {
+            return null;
+        }
+
+        StringBuilder wkt = new StringBuilder("POLYGON((");
+        for (int i = 0; i < polygon.size(); i++) {
+            GeoPoint point = polygon.get(i);
+            wkt.append(point.longitude()).append(" ").append(point.latitude());
+            if (i < polygon.size() - 1) {
+                wkt.append(", ");
+            }
+        }
+
+        // Close the polygon by adding the first point again if not already closed
+        GeoPoint first = polygon.getFirst();
+        GeoPoint last = polygon.getLast();
+        if (!first.equals(last)) {
+            wkt.append(", ").append(first.longitude()).append(" ").append(first.latitude());
+        }
+
+        wkt.append("))");
+        return wkt.toString();
+    }
+
+    public List<GeoPoint> wktToPolygon(String wkt) {
+        if (wkt == null || wkt.trim().isEmpty()) {
+            return null;
+        }
+
+        // Parse WKT format: POLYGON((lon1 lat1, lon2 lat2, ...))
+        String coordinates = wkt.substring(wkt.indexOf("((") + 2, wkt.lastIndexOf("))"));
+        String[] points = coordinates.split(",");
+
+        List<GeoPoint> polygon = new ArrayList<>();
+        for (String point : points) {
+            String[] coords = point.trim().split("\\s+");
+            if (coords.length >= 2) {
+                double longitude = Double.parseDouble(coords[0]);
+                double latitude = Double.parseDouble(coords[1]);
+                polygon.add(GeoPoint.from(latitude, longitude));
+            }
+        }
+
+        return polygon.isEmpty() ? null : polygon;
     }
 }

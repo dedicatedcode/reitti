@@ -23,33 +23,49 @@ public class SignificantPlaceJdbcService {
 
     private final JdbcTemplate jdbcTemplate;
     private final PointReaderWriter  pointReaderWriter;
+    private final RowMapper<SignificantPlace> significantPlaceRowMapper;
 
     public SignificantPlaceJdbcService(JdbcTemplate jdbcTemplate, PointReaderWriter pointReaderWriter) {
         this.jdbcTemplate = jdbcTemplate;
         this.pointReaderWriter = pointReaderWriter;
+        this.significantPlaceRowMapper = (rs, _) -> new SignificantPlace(
+                rs.getLong("id"),
+                rs.getString("name"),
+                rs.getString("address"),
+                rs.getString("city"),
+                rs.getString("country_code"),
+                rs.getDouble("latitude_centroid"),
+                rs.getDouble("longitude_centroid"),
+                pointReaderWriter.wktToPolygon(rs.getString("polygon")),
+                SignificantPlace.PlaceType.valueOf(rs.getString("type")),
+                rs.getString("timezone") != null ? ZoneId.of(rs.getString("timezone")) : null,
+                rs.getBoolean("geocoded"),
+                rs.getLong("version"));
     }
-
-    private final RowMapper<SignificantPlace> significantPlaceRowMapper = (rs, _) -> new SignificantPlace(
-            rs.getLong("id"),
-            rs.getString("name"),
-            rs.getString("address"),
-            rs.getString("city"),
-            rs.getString("country_code"),
-            rs.getDouble("latitude_centroid"),
-            rs.getDouble("longitude_centroid"),
-            SignificantPlace.PlaceType.valueOf(rs.getString("type")),
-            rs.getString("timezone") != null ? ZoneId.of(rs.getString("timezone")) : null,
-            rs.getBoolean("geocoded"),
-            rs.getLong("version"));
 
     public Page<SignificantPlace> findByUser(User user, PageRequest pageable) {
         String countSql = "SELECT COUNT(*) FROM significant_places WHERE user_id = ?";
         Integer total = jdbcTemplate.queryForObject(countSql, Integer.class, user.getId());
 
-        String sql = "SELECT sp.id, sp.address, sp.country_code, sp.city, sp.type, sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id, ST_AsText(sp.geom) as geom, sp.timezone, sp.geocoded, sp.version" +
-                " FROM significant_places sp " +
-                "WHERE sp.user_id = ? ORDER BY sp.id " +
-                "LIMIT ? OFFSET ? ";
+        String sql = """
+                SELECT sp.id,
+                       sp.address,
+                       sp.country_code,
+                       sp.city,
+                       sp.type,
+                       sp.latitude_centroid,
+                       sp.longitude_centroid,
+                       sp.name,
+                       sp.user_id,
+                       ST_AsText(sp.geom) as geom,
+                       ST_AsText(sp.polygon) as polygon,
+                       sp.timezone,
+                       sp.geocoded,
+                       sp.version
+                 FROM significant_places sp
+                   WHERE sp.user_id = ? ORDER BY sp.id
+                 LIMIT ? OFFSET ?
+                """;
         List<SignificantPlace> content = jdbcTemplate.query(sql, significantPlaceRowMapper,
                 user.getId(), pageable.getPageSize(), pageable.getOffset());
 
@@ -67,7 +83,20 @@ public class SignificantPlaceJdbcService {
         }
         Integer total = jdbcTemplate.queryForObject(countSql, Integer.class, countParams.toArray());
 
-        String sql = "SELECT sp.id, sp.address, sp.country_code, sp.city, sp.type, sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id, ST_AsText(sp.geom) as geom, sp.timezone, sp.geocoded, sp.version" +
+        String sql = "SELECT sp.id,\n" +
+                "                       sp.address,\n" +
+                "                       sp.country_code,\n" +
+                "                       sp.city,\n" +
+                "                       sp.type,\n" +
+                "                       sp.latitude_centroid,\n" +
+                "                       sp.longitude_centroid,\n" +
+                "                       sp.name,\n" +
+                "                       sp.user_id,\n" +
+                "                       ST_AsText(sp.geom) as geom,\n" +
+                "                       ST_AsText(sp.polygon) as polygon,\n" +
+                "                       sp.timezone,\n" +
+                "                       sp.geocoded,\n" +
+                "                       sp.version" +
                 " FROM significant_places sp " +
                 "WHERE sp.user_id = ? " + searchCondition + " ORDER BY sp.id " +
                 "LIMIT ? OFFSET ? ";
@@ -80,52 +109,102 @@ public class SignificantPlaceJdbcService {
     }
 
     public List<SignificantPlace> findNearbyPlaces(Long userId, Point point, double distanceInMeters) {
-        String sql = "SELECT sp.id, sp.address, sp.country_code, sp.city, sp.type, sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id, ST_AsText(sp.geom) as geom, sp.timezone, sp.geocoded, sp.version " +
-                "FROM significant_places sp " +
-                "WHERE sp.user_id = ? " +
-                "AND ST_DWithin(sp.geom, ST_GeomFromText(?, '4326'), ?)";
+        String sql = """
+        SELECT sp.id,
+               sp.address,
+               sp.country_code,
+               sp.city,
+               sp.type,
+               sp.latitude_centroid,
+               sp.longitude_centroid,
+               sp.name,
+               sp.user_id,
+               ST_AsText(sp.geom) as geom,
+               ST_AsText(sp.polygon) as polygon,
+               sp.timezone,
+               sp.geocoded,
+               sp.version
+        FROM significant_places sp
+        WHERE sp.user_id = ?
+        AND ST_DWithin(
+            COALESCE(sp.polygon, ST_Buffer(sp.geom, ?)),
+            ST_GeomFromText(?, '4326'),
+            0
+        )
+        """;
+
         return jdbcTemplate.query(sql, significantPlaceRowMapper,
-                userId, point.toString(), distanceInMeters);
+                                  userId, distanceInMeters, point.toString());
     }
 
     public SignificantPlace create(User user, SignificantPlace place) {
-        String sql = "INSERT INTO significant_places (user_id, name, latitude_centroid, longitude_centroid, timezone, geom) " +
-                "VALUES (?, ?, ?, ?, ?, ST_GeomFromText(?, '4326')) RETURNING id";
+
+        String sql = "INSERT INTO significant_places (user_id, name, latitude_centroid, longitude_centroid, timezone, geom, polygon) " +
+                "VALUES (?, ?, ?, ?, ?, ST_GeomFromText(?, '4326'), " +
+                "CASE WHEN ?::text IS NOT NULL THEN ST_GeomFromText(?, '4326')  END) RETURNING id";
+        ;
+
+        String polygonWkt = this.pointReaderWriter.polygonToWkt(place.getPolygon());
+
         Long id = jdbcTemplate.queryForObject(sql, Long.class,
                 user.getId(),
                 place.getName(),
                 place.getLatitudeCentroid(),
                 place.getLongitudeCentroid(),
                 place.getTimezone().getId(),
-                this.pointReaderWriter.write(place.getLongitudeCentroid(), place.getLatitudeCentroid())
+                this.pointReaderWriter.write(place.getLongitudeCentroid(), place.getLatitudeCentroid()),
+                polygonWkt,
+                polygonWkt
         );
         return findById(id).orElseThrow();
     }
 
     @CacheEvict(cacheNames = "significant-places", key = "#place.id")
     public SignificantPlace update(SignificantPlace place) {
-        String sql = "UPDATE significant_places SET name = ?, address = ?, city = ?, country_code = ?, type = ?, latitude_centroid = ?, longitude_centroid = ?, geom = ST_GeomFromText(?, '4326'), timezone = ?, geocoded = ? WHERE id = ?";
+        String sql = "UPDATE significant_places SET name = ?, address = ?, city = ?, country_code = ?, type = ?, " +
+                "latitude_centroid = ?, longitude_centroid = ?, geom = ST_GeomFromText(?, '4326'), " +
+                "polygon = CASE WHEN ?::text IS NOT NULL THEN ST_GeomFromText(?, '4326')  END, " +
+                "timezone = ?, geocoded = ? WHERE id = ?";
+
+        String polygonWkt = this.pointReaderWriter.polygonToWkt(place.getPolygon());
+
         jdbcTemplate.update(sql,
-                place.getName(),
-                place.getAddress(),
-                place.getCity(),
-                place.getCountryCode(),
-                place.getType().name(),
-                place.getLatitudeCentroid(),
-                place.getLongitudeCentroid(),
-                this.pointReaderWriter.write(place.getLongitudeCentroid(), place.getLatitudeCentroid()),
-                place.getTimezone() != null ? place.getTimezone().getId() : null,
-                place.isGeocoded(),
-                place.getId()
+                            place.getName(),
+                            place.getAddress(),
+                            place.getCity(),
+                            place.getCountryCode(),
+                            place.getType().name(),
+                            place.getLatitudeCentroid(),
+                            place.getLongitudeCentroid(),
+                            this.pointReaderWriter.write(place.getLongitudeCentroid(), place.getLatitudeCentroid()),
+                            polygonWkt,
+                            polygonWkt,
+                            place.getTimezone() != null ? place.getTimezone().getId() : null,
+                            place.isGeocoded(),
+                            place.getId()
         );
-        return findById(place.getId()).orElseThrow();
-    }
+        return findById(place.getId()).orElseThrow();    }
 
     @Cacheable("significant-places")
     public Optional<SignificantPlace> findById(Long id) {
-        String sql = "SELECT sp.id, sp.address, sp.city, sp.country_code, sp.type, sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id, ST_AsText(sp.geom) as geom, sp.timezone, sp.geocoded, sp.version " +
-                "FROM significant_places sp " +
-                "WHERE sp.id = ?";
+        String sql = """
+                SELECT sp.id,
+                       sp.address,
+                       sp.city,
+                       sp.country_code,
+                       sp.type,
+                       sp.latitude_centroid,
+                       sp.longitude_centroid,
+                       sp.name,
+                       sp.user_id,
+                       ST_AsText(sp.geom) as geom,
+                       ST_AsText(sp.polygon) as polygon,
+                       sp.timezone,
+                       sp.geocoded,
+                       sp.version
+                FROM significant_places sp
+                WHERE sp.id = ?
+                """;
         List<SignificantPlace> results = jdbcTemplate.query(sql, significantPlaceRowMapper, id);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
@@ -135,26 +214,71 @@ public class SignificantPlaceJdbcService {
     }
 
     public List<SignificantPlace> findNonGeocodedByUser(User user) {
-        String sql = "SELECT sp.id, sp.address, sp.city, sp.country_code, sp.type, sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id, ST_AsText(sp.geom) as geom, sp.timezone, sp.geocoded, sp.version " +
-                "FROM significant_places sp " +
-                "WHERE sp.user_id = ? AND sp.geocoded = false " +
-                "ORDER BY sp.id";
+        String sql = """
+                SELECT sp.id,
+                       sp.address,
+                       sp.city,
+                       sp.country_code,
+                       sp.type,
+                       sp.latitude_centroid,
+                       sp.longitude_centroid,
+                       sp.name,
+                       sp.user_id,
+                       ST_AsText(sp.geom) as geom,
+                       ST_AsText(sp.polygon) as polygon,
+                       sp.timezone,
+                       sp.geocoded,
+                       sp.version
+                FROM significant_places sp
+                WHERE sp.user_id = ? AND sp.geocoded = false
+                ORDER BY sp.id
+                """;
         return jdbcTemplate.query(sql, significantPlaceRowMapper, user.getId());
     }
 
     public List<SignificantPlace> findAllByUser(User user) {
-        String sql = "SELECT sp.id, sp.address, sp.city, sp.country_code, sp.type, sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id, ST_AsText(sp.geom) as geom, sp.timezone, sp.geocoded, sp.version " +
-                "FROM significant_places sp " +
-                "WHERE sp.user_id = ? " +
-                "ORDER BY sp.id";
+        String sql = """
+                SELECT sp.id,
+                       sp.address,
+                       sp.city,
+                       sp.country_code,
+                       sp.type,
+                       sp.latitude_centroid,
+                       sp.longitude_centroid,
+                       sp.name,
+                       sp.user_id,
+                       ST_AsText(sp.geom) as geom,
+                       ST_AsText(sp.polygon) as polygon,
+                       sp.timezone,
+                       sp.geocoded,
+                       sp.version
+                FROM significant_places sp
+                WHERE sp.user_id = ?
+                ORDER BY sp.id
+                """;
         return jdbcTemplate.query(sql, significantPlaceRowMapper, user.getId());
     }
 
     public List<SignificantPlace> findWithMissingTimezone() {
-        String sql = "SELECT sp.id, sp.address, sp.city, sp.country_code, sp.type, sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id, ST_AsText(sp.geom) as geom, sp.timezone, sp.geocoded, sp.version " +
-                "FROM significant_places sp " +
-                "WHERE sp.timezone IS NULL " +
-                "ORDER BY sp.id";
+        String sql = """
+                SELECT sp.id,
+                       sp.address,
+                       sp.city,
+                       sp.country_code,
+                       sp.type,
+                       sp.latitude_centroid,
+                       sp.longitude_centroid,
+                       sp.name,
+                       sp.user_id,
+                       ST_AsText(sp.geom) as geom,
+                       ST_AsText(sp.polygon) as polygon,
+                       sp.timezone,
+                       sp.geocoded,
+                       sp.version
+                FROM significant_places sp
+                 WHERE sp.timezone IS NULL
+                 ORDER BY sp.id
+                """;
         return jdbcTemplate.query(sql, significantPlaceRowMapper);
 
     }
