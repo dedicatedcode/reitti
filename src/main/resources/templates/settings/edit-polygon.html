@@ -258,7 +258,7 @@
         const map = L.map('map', {
             zoomControl: true,
             attributionControl: true
-        }).setView([/*[[${place.lat}]]*/ 0, /*[[${place.lng}]]*/ 0], 16);
+        }).setView([/*[[${place.lat()}]]*/ 0, /*[[${place.lng()}]]*/ 0], 16);
 
         // Add tile layer
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
