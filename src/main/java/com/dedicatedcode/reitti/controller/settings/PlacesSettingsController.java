@@ -14,14 +14,13 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceOverrideJdbcService;
+import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.PlaceService;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.MessageSource;
-import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -46,7 +45,7 @@ public class PlacesSettingsController {
     private final GeocodingResponseJdbcService geocodingResponseJdbcService;
     private final RabbitTemplate rabbitTemplate;
     private final GeometryFactory geometryFactory;
-    private final MessageSource messageSource;
+    private final I18nService i18nService;
     private final boolean dataManagementEnabled;
     private final ObjectMapper objectMapper;
 
@@ -56,7 +55,7 @@ public class PlacesSettingsController {
                                     GeocodingResponseJdbcService geocodingResponseJdbcService,
                                     RabbitTemplate rabbitTemplate,
                                     GeometryFactory geometryFactory,
-                                    MessageSource messageSource,
+                                    I18nService i18nService,
                                     @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                                     ObjectMapper objectMapper) {
         this.placeService = placeService;
@@ -65,7 +64,7 @@ public class PlacesSettingsController {
         this.geocodingResponseJdbcService = geocodingResponseJdbcService;
         this.rabbitTemplate = rabbitTemplate;
         this.geometryFactory = geometryFactory;
-        this.messageSource = messageSource;
+        this.i18nService = i18nService;
         this.dataManagementEnabled = dataManagementEnabled;
         this.objectMapper = objectMapper;
     }
@@ -130,7 +129,7 @@ public class PlacesSettingsController {
             model.addAttribute("hasPolygon", place.getPolygon() != null && !place.getPolygon().isEmpty());
 
         } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("message.error.place.update", e.getMessage()));
+            model.addAttribute("errorMessage", i18nService.translate("message.error.place.update", e.getMessage()));
             return getPlacesContent(user, page, search, model);
         }
 
@@ -174,7 +173,7 @@ public class PlacesSettingsController {
                         SignificantPlace.PlaceType placeType = SignificantPlace.PlaceType.valueOf(type);
                         updatedPlace = updatedPlace.withType(placeType);
                     } catch (IllegalArgumentException e) {
-                        model.addAttribute("errorMessage", getMessage("message.error.place.update", "Invalid place type"));
+                        model.addAttribute("errorMessage", i18nService.translate("message.error.place.update", "Invalid place type"));
                         if (returnUrl != null) {
                             return editPolygon(placeId, returnUrl, authentication, model);
                         }
@@ -188,7 +187,7 @@ public class PlacesSettingsController {
                         List<GeoPoint> polygon = parsePolygonData(polygonData);
                         updatedPlace = updatedPlace.withPolygon(polygon);
                     } catch (Exception e) {
-                        model.addAttribute("errorMessage", getMessage("message.error.place.update", "Invalid polygon data: " + e.getMessage()));
+                        model.addAttribute("errorMessage", i18nService.translate("message.error.place.update", "Invalid polygon data: " + e.getMessage()));
                         if (returnUrl != null) {
                             return editPolygon(placeId, returnUrl, authentication, model);
                         }
@@ -202,11 +201,11 @@ public class PlacesSettingsController {
                 if (returnUrl != null) {
                     return "redirect:" + returnUrl;
                 }
-                
-                model.addAttribute("successMessage", getMessage("message.success.place.updated"));
+
+                model.addAttribute("successMessage", i18nService.translate("message.success.place.updated", new Object[]{}));
                 return editPlace(placeId, page, search, authentication, model);
             } catch (Exception e) {
-                model.addAttribute("errorMessage", getMessage("message.error.place.update", e.getMessage()));
+                model.addAttribute("errorMessage", i18nService.translate("message.error.place.update", e.getMessage()));
                 if (returnUrl != null) {
                     return editPolygon(placeId, returnUrl, authentication, model);
                 }
@@ -244,9 +243,9 @@ public class PlacesSettingsController {
                 );
                 rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.SIGNIFICANT_PLACE_ROUTING_KEY, event);
 
-                model.addAttribute("successMessage", getMessage("places.geocode.success"));
+                model.addAttribute("successMessage", i18nService.translate("places.geocode.success", new Object[]{}));
             } catch (Exception e) {
-                model.addAttribute("errorMessage", getMessage("places.geocode.error", e.getMessage()));
+                model.addAttribute("errorMessage", i18nService.translate("places.geocode.error", e.getMessage()));
             }
         } else {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
@@ -284,7 +283,7 @@ public class PlacesSettingsController {
             model.addAttribute("geocodingResponses", geocodingResponses);
 
         } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("message.error.place.update", e.getMessage()));
+            model.addAttribute("errorMessage", i18nService.translate("message.error.place.update", e.getMessage()));
             return getPlacesContent(user, page, search, model);
         }
 
@@ -318,7 +317,7 @@ public class PlacesSettingsController {
             model.addAttribute("nearbyPlaces", nearbyPlaces);
 
         } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("message.error.place.update", e.getMessage()));
+            model.addAttribute("errorMessage", i18nService.translate("message.error.place.update", e.getMessage()));
             return "redirect:/settings/places";
         }
 
@@ -390,7 +389,4 @@ public class PlacesSettingsController {
         return geoPoints;
     }
 
-    private String getMessage(String key, Object... args) {
-        return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
-    }
 }

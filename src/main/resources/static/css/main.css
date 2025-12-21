@@ -358,6 +358,11 @@ tr:hover {
 .form-group {
     margin-bottom: 15px;
 }
+
+.form-group label {
+    color: var(--color-text-white);
+}
+
 .queue-status {
     display: flex;
     gap: 20px;
