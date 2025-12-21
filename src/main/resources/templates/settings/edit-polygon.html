@@ -118,7 +118,7 @@
                 </div>
                 <div class="form-group">
                     <label for="city" th:text="#{places.city.label}">City</label>
-                    <input id="city" type="text" name="address" th:value="${place.city()}">
+                    <input id="city" type="text" name="city" th:value="${place.city()}">
                 </div>
                 <div class="form-group">
                     <label for="country" th:text="#{places.country.label}">Country</label>
@@ -170,7 +170,7 @@
         const map = L.map('map', {
             zoomControl: true,
             attributionControl: true
-        }).setView([placeData.lat, placeData.lng], 16);
+        }).setView([placeData.lat, placeData.lng], 25);
 
         // Add tile layer based on user settings
         const tilesUrl = window.userSettings.tiles.service;
