@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.controller.settings;
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.PlaceInfo;
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
+import com.dedicatedcode.reitti.model.AvailableCountry;
 import com.dedicatedcode.reitti.model.Page;
 import com.dedicatedcode.reitti.model.PageRequest;
 import com.dedicatedcode.reitti.model.Role;
@@ -268,6 +269,7 @@ public class PlacesSettingsController {
             Point point = geometryFactory.createPoint(new Coordinate(place.getLongitudeCentroid(), place.getLongitudeCentroid()));
 
             List<PlaceInfo> nearbyPlaces = this.placeJdbcService.findNearbyPlaces(user.getId(), point, 1000.0).stream().map(PlacesSettingsController::convertToPlaceInfo).toList();
+            model.addAttribute("availableCountries", AvailableCountry.values());
             model.addAttribute("nearbyPlaces", nearbyPlaces);
 
         } catch (Exception e) {
