@@ -67,20 +67,6 @@
             padding: 16px 20px;
         }
         
-        .bottom-actions {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            right: 20px;
-            background: var(--color-background-dark);
-            border: 1px solid var(--color-highlight);
-            border-radius: 8px;
-            box-shadow: var(--box-shadow);
-            padding: 16px;
-            z-index: 1000;
-            display: flex;
-            gap: 12px;
-        }
         
         .polygon-info {
             background: var(--color-background-dark-light);
@@ -156,14 +142,15 @@
                             onclick="return confirm('Are you sure you want to remove the polygon?')"
                             th:text="#{polygon.remove}">Remove Polygon</button>
                 </form>
+                
+                <div style="margin-top: 16px; display: flex; gap: 12px;">
+                    <a th:href="${returnUrl}" class="btn btn-default" th:text="#{cancel}">Cancel</a>
+                    <button type="button" id="save-btn" class="btn btn-default btn-block" th:text="#{save}">Save</button>
+                </div>
             </div>
         </div>
     </div>
     
-    <div class="bottom-actions">
-        <a th:href="${returnUrl}" class="btn btn-default" th:text="#{cancel}">Cancel</a>
-        <button type="button" id="save-btn" class="btn btn-default btn-block" th:text="#{save}">Save</button>
-    </div>
 
     <script th:inline="javascript">
         // Place data from server
