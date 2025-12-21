@@ -82,10 +82,6 @@
             gap: 12px;
         }
         
-        .btn-primary {
-            flex: 1;
-        }
-        
         .polygon-info {
             background: var(--color-background-dark-light);
             border-radius: 6px;
@@ -165,8 +161,8 @@
     </div>
     
     <div class="bottom-actions">
-        <a th:href="${returnUrl}" class="btn" th:text="#{cancel}">Cancel</a>
-        <button type="button" id="save-btn" class="btn btn-primary" th:text="#{save}">Save</button>
+        <a th:href="${returnUrl}" class="btn btn-default" th:text="#{cancel}">Cancel</a>
+        <button type="button" id="save-btn" class="btn btn-default btn-block" th:text="#{save}">Save</button>
     </div>
 
     <script th:inline="javascript">
