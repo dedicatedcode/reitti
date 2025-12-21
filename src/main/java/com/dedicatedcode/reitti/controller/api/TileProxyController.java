@@ -8,12 +8,15 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.concurrent.TimeUnit;
 
 @RestController
@@ -34,14 +37,23 @@ public class TileProxyController {
     public ResponseEntity<byte[]> getTile(
             @PathVariable int z,
             @PathVariable int x,
-            @PathVariable int y) {
+            @PathVariable int y,
+            HttpServletRequest request) {
 
         String tileUrl = String.format("%s/%d/%d/%d.png", tileCacheUrl, z, x, y);
 
         try {
             log.trace("Fetching tile: {}/{}/{}", z, x, y);
 
-            ResponseEntity<byte[]> response = restTemplate.getForEntity(tileUrl, byte[].class);
+            // Prepare headers for the outgoing request
+            HttpHeaders requestHeaders = new HttpHeaders();
+            String referer = request.getHeader("Referer");
+            if (referer != null) {
+                requestHeaders.set("Referer", referer);
+            }
+
+            HttpEntity<Void> requestEntity = new HttpEntity<>(requestHeaders);
+            ResponseEntity<byte[]> response = restTemplate.exchange(tileUrl, HttpMethod.GET, requestEntity, byte[].class);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.IMAGE_PNG);
