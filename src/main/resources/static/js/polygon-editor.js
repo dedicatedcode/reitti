@@ -69,7 +69,7 @@ class PolygonEditor {
         
         // Add click handler to remove point
         marker.on('click', (e) => {
-            e.originalEvent.stopPropagation();
+            L.DomEvent.stopPropagation(e);
             this.removePolygonPoint(this.polygonPoints.indexOf(latlng));
         });
         
