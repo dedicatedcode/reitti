@@ -13,6 +13,9 @@ import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceOverrideJdbcService;
 import com.dedicatedcode.reitti.service.PlaceService;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
@@ -37,6 +40,7 @@ public class PlacesSettingsController {
     private final SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
     private final GeocodingResponseJdbcService geocodingResponseJdbcService;
     private final RabbitTemplate rabbitTemplate;
+    private final GeometryFactory geometryFactory;
     private final MessageSource messageSource;
     private final boolean dataManagementEnabled;
 
@@ -45,6 +49,7 @@ public class PlacesSettingsController {
                                     SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
                                     GeocodingResponseJdbcService geocodingResponseJdbcService,
                                     RabbitTemplate rabbitTemplate,
+                                    GeometryFactory geometryFactory,
                                     MessageSource messageSource,
                                     @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.placeService = placeService;
@@ -52,6 +57,7 @@ public class PlacesSettingsController {
         this.significantPlaceOverrideJdbcService = significantPlaceOverrideJdbcService;
         this.geocodingResponseJdbcService = geocodingResponseJdbcService;
         this.rabbitTemplate = rabbitTemplate;
+        this.geometryFactory = geometryFactory;
         this.messageSource = messageSource;
         this.dataManagementEnabled = dataManagementEnabled;
     }
@@ -75,17 +81,9 @@ public class PlacesSettingsController {
 
         // Convert to PlaceInfo objects
         List<PlaceInfo> places = placesPage.getContent().stream()
-                .map(place -> new PlaceInfo(
-                        place.getId(),
-                        place.getName(),
-                        place.getAddress(),
-                        place.getType(),
-                        place.getLatitudeCentroid(),
-                        place.getLongitudeCentroid()
-                ))
+                .map(PlacesSettingsController::convertToPlaceInfo)
                 .collect(Collectors.toList());
 
-        // Add pagination info to model
         model.addAttribute("currentPage", placesPage.getNumber());
         model.addAttribute("totalPages", placesPage.getTotalPages());
         model.addAttribute("places", places);
@@ -111,15 +109,7 @@ public class PlacesSettingsController {
         try {
             SignificantPlace place = placeJdbcService.findById(placeId).orElseThrow();
 
-            // Convert to PlaceInfo for the template
-            PlaceInfo placeInfo = new PlaceInfo(
-                    place.getId(),
-                    place.getName(),
-                    place.getAddress(),
-                    place.getType(),
-                    place.getLatitudeCentroid(),
-                    place.getLongitudeCentroid()
-            );
+            PlaceInfo placeInfo = convertToPlaceInfo(place);
 
             // Get visit statistics for this place
             var visitStats = placeService.getVisitStatisticsForPlace(user, placeId);
@@ -236,15 +226,7 @@ public class PlacesSettingsController {
         try {
             SignificantPlace place = placeJdbcService.findById(placeId).orElseThrow();
 
-            // Convert to PlaceInfo for the template
-            PlaceInfo placeInfo = new PlaceInfo(
-                    place.getId(),
-                    place.getName(),
-                    place.getAddress(),
-                    place.getType(),
-                    place.getLatitudeCentroid(),
-                    place.getLongitudeCentroid()
-            );
+            PlaceInfo placeInfo = convertToPlaceInfo(place);
 
             // Get all geocoding responses for this place
             List<GeocodingResponse> geocodingResponses = geocodingResponseJdbcService.findBySignificantPlace(place);
@@ -277,26 +259,16 @@ public class PlacesSettingsController {
         try {
             SignificantPlace place = placeJdbcService.findById(placeId).orElseThrow();
 
-            // Convert to PlaceInfo for the template
-            PlaceInfo placeInfo = new PlaceInfo(
-                    place.getId(),
-                    place.getName(),
-                    place.getAddress(),
-                    place.getType(),
-                    place.getLatitudeCentroid(),
-                    place.getLongitudeCentroid()
-            );
+            PlaceInfo placeInfo = convertToPlaceInfo(place);
 
             model.addAttribute("place", placeInfo);
             model.addAttribute("placeTypes", SignificantPlace.PlaceType.values());
             model.addAttribute("returnUrl", returnUrl != null ? returnUrl : "/settings/places");
 
-            // Get nearby places for context (within ~1km)
-            double latRange = 0.009; // approximately 1km
-            double lngRange = 0.009;
-            // Note: This would need a new service method to get nearby places
-            // For now, we'll just pass an empty list
-            model.addAttribute("nearbyPlaces", List.of());
+            Point point = geometryFactory.createPoint(new Coordinate(place.getLongitudeCentroid(), place.getLongitudeCentroid()));
+
+            List<PlaceInfo> nearbyPlaces = this.placeJdbcService.findNearbyPlaces(user.getId(), point, 1000.0).stream().map(PlacesSettingsController::convertToPlaceInfo).toList();
+            model.addAttribute("nearbyPlaces", nearbyPlaces);
 
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("message.error.place.update", e.getMessage()));
@@ -304,6 +276,20 @@ public class PlacesSettingsController {
         }
 
         return "settings/edit-polygon";
+    }
+
+    private static PlaceInfo convertToPlaceInfo(SignificantPlace place) {
+        return new PlaceInfo(
+                place.getId(),
+                place.getName(),
+                place.getAddress(),
+                place.getCity(),
+                place.getCountryCode(),
+                place.getLatitudeCentroid(),
+                place.getLongitudeCentroid(),
+                place.getType(),
+                place.getPolygon()
+        );
     }
 
     @PostMapping("/{placeId}/update-polygon")

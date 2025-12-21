@@ -178,6 +178,11 @@ header {
     font-family: var(--sans-font);
 }
 
+a.btn-default,
+.btn-default {
+    border: 1px solid var(--color-highlight);
+}
+
 .btn.btn-block {
     width: 100%;
     display: inline-block;

@@ -17,7 +17,7 @@
     <div class="settings-card">
         <h3 th:text="${place.name()}">Place Name</h3>
         <p><strong th:text="#{places.address.label}">Address:</strong> <span th:text="${place.address() ?: #messages.msg('places.address.not.available')}">Address</span></p>
-        <p><strong th:text="#{places.coordinates.label}">Coordinates:</strong> <span th:text="${place.latitude() + ', ' + place.longitude()}">Coordinates</span></p>
+        <p><strong th:text="#{places.coordinates.label}">Coordinates:</strong> <span th:text="${place.lat() + ', ' + place.lng()}">Coordinates</span></p>
     </div>
 
     <div th:if="${!geocodingResponses.isEmpty()}" class="settings-card">
@@ -76,8 +76,8 @@
     <!-- Large Interactive Map -->
     <div class="settings-card" style="margin-bottom: 20px; height: 500px;">
         <div class="place-map" th:id="'edit-map-' + ${place.id()}"
-             th:data-lat="${place.latitude()}"
-             th:data-lng="${place.longitude()}"
+             th:data-lat="${place.lat()}"
+             th:data-lng="${place.lng()}"
              style="height: 100%; width: 100%;"></div>
     </div>
 
@@ -126,7 +126,7 @@
                 </select>
             </div>
             <div class="place-info">
-                <div><strong th:text="#{places.coordinates.label}">Coordinates:</strong> <span th:text="${place.latitude() + ', ' + place.longitude()}"></span></div>
+                <div><strong th:text="#{places.coordinates.label}">Coordinates:</strong> <span th:text="${place.lat()() + ', ' + place.lng()}"></span></div>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button type="submit" class="btn" th:text="#{form.update}">Update</button>

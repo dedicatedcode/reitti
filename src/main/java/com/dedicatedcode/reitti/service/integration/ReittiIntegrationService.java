@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.integration;
 
 import com.dedicatedcode.reitti.dto.*;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
+import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.integration.ReittiIntegration;
 import com.dedicatedcode.reitti.model.security.RemoteUser;
 import com.dedicatedcode.reitti.model.security.User;
@@ -495,7 +496,7 @@ public class ReittiIntegrationService {
         Map<String, Object> placeInfo = (Map<String, Object>) placeData.get("place");
         List<GeoPoint> polygon = mapToPolygon(placeInfo.get("polygon"));
 
-        ProcessedVisitResponse.PlaceInfo place = new ProcessedVisitResponse.PlaceInfo(
+        PlaceInfo place = new PlaceInfo(
                 getLongValue(placeInfo, "id"),
                 (String) placeInfo.get("name"),
                 (String) placeInfo.get("address"),
@@ -503,7 +504,7 @@ public class ReittiIntegrationService {
                 (String) placeInfo.get("countryCode"),
                 getDoubleValue(placeInfo, "lat"),
                 getDoubleValue(placeInfo, "lng"),
-                (String) placeInfo.get("type"),
+                SignificantPlace.PlaceType.valueOf(placeInfo.get("type").toString()),
                 polygon
         );
         

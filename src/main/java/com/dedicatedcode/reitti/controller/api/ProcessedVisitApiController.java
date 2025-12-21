@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller.api;
 
+import com.dedicatedcode.reitti.dto.PlaceInfo;
 import com.dedicatedcode.reitti.dto.ProcessedVisitResponse;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
@@ -125,7 +126,7 @@ public class ProcessedVisitApiController {
                     List<ProcessedVisit> placeVisits = entry.getValue();
                     
                     // Create PlaceInfo DTO
-                    ProcessedVisitResponse.PlaceInfo placeInfo = new ProcessedVisitResponse.PlaceInfo(
+                    PlaceInfo placeInfo = new PlaceInfo(
                         place.getId(),
                         place.getName(),
                         place.getAddress(),
@@ -133,7 +134,7 @@ public class ProcessedVisitApiController {
                         place.getCountryCode(),
                         place.getLatitudeCentroid(),
                         place.getLongitudeCentroid(),
-                        place.getType() != null ? place.getType().toString() : null,
+                        place.getType(),
                         place.getPolygon()
                     );
                     

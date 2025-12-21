@@ -39,14 +39,14 @@
                 <div class="places-grid" th:if="${!isEmpty}">
                     <div class="place-stats-card" th:each="place : ${places}">
                         <div class="place-map-container">
-                            <div class="place-map" th:id="'map-' + ${place.id()}" th:data-lat="${place.latitude()}" th:data-lng="${place.longitude()}" ></div>
+                            <div class="place-map" th:id="'map-' + ${place.id()}" th:data-lat="${place.lat()}" th:data-lng="${place.lng()}" ></div>
                         </div>
                         <div class="place-details text-align-left">
                             <div class="place-info">
                                 <div><strong th:text="#{places.name.label}">Name:</strong> <span th:text="${place.name()}"></span></div>
                                 <div><strong th:text="#{places.address.label}">Address:</strong> <span th:text="${place.address() ?: #messages.msg('places.address.not.available')}"></span></div>
                                 <div><strong th:text="#{places.category.label}">Category:</strong> <span th:text="#{${place.type().messageKey}}"></span></div>
-                                <div><strong th:text="#{places.coordinates.label}">Coordinates:</strong> <span th:text="${place.latitude() + ', ' + place.longitude()}"></span></div>
+                                <div><strong th:text="#{places.coordinates.label}">Coordinates:</strong> <span th:text="${place.lat() + ', ' + place.lng()}"></span></div>
                             </div>
                             <div style="display: flex; gap: 10px; margin-top: 10px;">
                                 <button type="button"
