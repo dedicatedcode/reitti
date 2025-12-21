@@ -164,18 +164,36 @@ class PolygonEditor {
     updateSaveButton() {
         const saveBtn = document.getElementById('save-btn');
         const polygonDataInput = document.getElementById('polygonData');
+        const saveStatusElement = document.getElementById('save-status');
         
-        if (this.polygonPoints.length >= 3) {
+        if (this.polygonPoints.length === 0) {
+            // No polygon - this is valid, allow saving
             saveBtn.disabled = false;
-            // Convert points to JSON
+            polygonDataInput.value = '';
+            if (saveStatusElement) {
+                saveStatusElement.textContent = '';
+                saveStatusElement.style.display = 'none';
+            }
+        } else if (this.polygonPoints.length >= 3) {
+            // Valid polygon - allow saving
+            saveBtn.disabled = false;
             const polygonData = this.polygonPoints.map(point => ({
                 lat: point.lat,
                 lng: point.lng
             }));
             polygonDataInput.value = JSON.stringify(polygonData);
+            if (saveStatusElement) {
+                saveStatusElement.textContent = '';
+                saveStatusElement.style.display = 'none';
+            }
         } else {
+            // Invalid polygon (1-2 points) - disable saving with explanation
             saveBtn.disabled = true;
             polygonDataInput.value = '';
+            if (saveStatusElement) {
+                saveStatusElement.textContent = `Polygon needs at least 3 points (currently ${this.polygonPoints.length})`;
+                saveStatusElement.style.display = 'block';
+            }
         }
     }
     

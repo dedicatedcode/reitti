@@ -146,6 +146,8 @@
                 <button type="button" id="remove-polygon-btn" class="btn btn-danger" 
                         th:text="#{places.polygon.remove}">Remove Polygon</button>
                 
+                <div id="save-status" class="polygon-info" style="display: none; margin-top: 12px; background: var(--color-warning); color: var(--color-text-dark);"></div>
+                
                 <div>
                     <a th:href="${returnUrl}" class="btn btn-default" th:text="#{form.cancel}">Cancel</a>
                     <button type="button" id="save-btn" class="btn btn-default btn-block" th:text="#{form.save}">Save</button>
