@@ -54,11 +54,9 @@
                     <!-- Visit with editable place name -->
                     <div th:if="${entry.type.name() == 'VISIT'}" class="place-name-container">
                         <span class="place-name" th:text="${entry.place?.name ?: 'Unknown Place'}">Place Name</span>
-                        <i class="lni lni-pencil-1 edit-icon"
-                           th:hx-get="@{/timeline/places/edit-form/{id}(id=${entry.place?.id}, date=${date}, timezone=${timezone})}"
-                           hx-target="closest .place-name-container"
-                           hx-swap="outerHTML"
-                           th:if="${entry.place?.id != null}"></i>
+                        <a class="lni lni-pencil-1 edit-icon"
+                           th:href="@{/settings/places/{id}/edit-polygon(id=${entry.place?.id}, returnUrl=${#httpServletRequest.requestURL + '?' + #httpServletRequest.queryString})}"
+                           th:if="${entry.place?.id != null}"></a>
                     </div>
 
                     <!-- Trip description -->
