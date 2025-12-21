@@ -129,6 +129,7 @@ public class PlacesSettingsController {
             model.addAttribute("search", search);
             model.addAttribute("placeTypes", SignificantPlace.PlaceType.values());
             model.addAttribute("visitStats", visitStats);
+            model.addAttribute("hasPolygon", place.getPolygon() != null && !place.getPolygon().isEmpty());
 
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("message.error.place.update", e.getMessage()));
@@ -260,6 +261,120 @@ public class PlacesSettingsController {
         }
 
         return "fragments/places :: geocoding-response-content";
+    }
+
+    @GetMapping("/{placeId}/edit-polygon")
+    public String editPolygon(@PathVariable Long placeId,
+                              @RequestParam(required = false) String returnUrl,
+                              Authentication authentication,
+                              Model model) {
+
+        User user = (User) authentication.getPrincipal();
+        if (!this.placeJdbcService.exists(user, placeId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+
+        try {
+            SignificantPlace place = placeJdbcService.findById(placeId).orElseThrow();
+
+            // Convert to PlaceInfo for the template
+            PlaceInfo placeInfo = new PlaceInfo(
+                    place.getId(),
+                    place.getName(),
+                    place.getAddress(),
+                    place.getType(),
+                    place.getLatitudeCentroid(),
+                    place.getLongitudeCentroid()
+            );
+
+            model.addAttribute("place", placeInfo);
+            model.addAttribute("placeTypes", SignificantPlace.PlaceType.values());
+            model.addAttribute("returnUrl", returnUrl != null ? returnUrl : "/settings/places");
+
+            // Get nearby places for context (within ~1km)
+            double latRange = 0.009; // approximately 1km
+            double lngRange = 0.009;
+            // Note: This would need a new service method to get nearby places
+            // For now, we'll just pass an empty list
+            model.addAttribute("nearbyPlaces", List.of());
+
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", getMessage("message.error.place.update", e.getMessage()));
+            return "redirect:/settings/places";
+        }
+
+        return "settings/edit-polygon";
+    }
+
+    @PostMapping("/{placeId}/update-polygon")
+    public String updatePolygon(@PathVariable Long placeId,
+                                @RequestParam String name,
+                                @RequestParam(required = false) String address,
+                                @RequestParam(required = false) String type,
+                                @RequestParam(required = false) String polygonData,
+                                @RequestParam(required = false) String returnUrl,
+                                Authentication authentication,
+                                Model model) {
+
+        User user = (User) authentication.getPrincipal();
+        if (!this.placeJdbcService.exists(user, placeId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+
+        try {
+            SignificantPlace significantPlace = placeJdbcService.findById(placeId).orElseThrow();
+            SignificantPlace updatedPlace = significantPlace.withName(name);
+            
+            if (address != null) {
+                updatedPlace = updatedPlace.withAddress(address.trim().isEmpty() ? null : address.trim());
+            }
+
+            if (type != null && !type.isEmpty()) {
+                try {
+                    SignificantPlace.PlaceType placeType = SignificantPlace.PlaceType.valueOf(type);
+                    updatedPlace = updatedPlace.withType(placeType);
+                } catch (IllegalArgumentException e) {
+                    model.addAttribute("errorMessage", getMessage("message.error.place.update", "Invalid place type"));
+                    return editPolygon(placeId, returnUrl, authentication, model);
+                }
+            }
+
+            // TODO: Parse polygonData and update polygon
+            // For now, we'll just update the basic fields
+            
+            placeJdbcService.update(updatedPlace);
+            significantPlaceOverrideJdbcService.insertOverride(user, updatedPlace);
+            
+            return "redirect:" + (returnUrl != null ? returnUrl : "/settings/places");
+            
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", getMessage("message.error.place.update", e.getMessage()));
+            return editPolygon(placeId, returnUrl, authentication, model);
+        }
+    }
+
+    @PostMapping("/{placeId}/remove-polygon")
+    public String removePolygon(@PathVariable Long placeId,
+                                @RequestParam(required = false) String returnUrl,
+                                Authentication authentication) {
+
+        User user = (User) authentication.getPrincipal();
+        if (!this.placeJdbcService.exists(user, placeId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+
+        try {
+            SignificantPlace significantPlace = placeJdbcService.findById(placeId).orElseThrow();
+            SignificantPlace updatedPlace = significantPlace.withPolygon(null);
+            
+            placeJdbcService.update(updatedPlace);
+            significantPlaceOverrideJdbcService.insertOverride(user, updatedPlace);
+            
+        } catch (Exception e) {
+            // Log error but continue to redirect
+        }
+
+        return "redirect:" + (returnUrl != null ? returnUrl : "/settings/places");
     }
 
 

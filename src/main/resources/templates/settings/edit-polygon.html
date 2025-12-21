@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{page.title.edit-polygon(${place.name})}">Edit Polygon - Reitti</title>
+    <link rel="icon" th:href="@{/img/logo.svg}">
+    <link rel="stylesheet" href="/css/leaflet.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/lineicons.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1;
+        }
+        
+        .polygon-editor-sidebar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 320px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0 0 8px 0;
+            color: #111827;
+        }
+        
+        .sidebar-subtitle {
+            font-size: 14px;
+            color: #6b7280;
+            margin: 0;
+        }
+        
+        .sidebar-content {
+            padding: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .form-select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            box-sizing: border-box;
+        }
+        
+        .polygon-actions {
+            border-top: 1px solid #e5e7eb;
+            padding: 16px 20px;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+            margin-right: 8px;
+        }
+        
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+        
+        .bottom-actions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            padding: 16px;
+            z-index: 1000;
+            display: flex;
+            gap: 12px;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+            flex: 1;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+        
+        .btn-primary:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        
+        .polygon-info {
+            background: #f3f4f6;
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 13px;
+            color: #4b5563;
+            margin-bottom: 16px;
+        }
+        
+        .error-message {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        
+        .coordinates-display {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+    </style>
+    <script src="/js/leaflet.js"></script>
+    <script src="/js/TileLayer.Grayscale.js"></script>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="polygon-editor-sidebar">
+        <div class="sidebar-header">
+            <h1 class="sidebar-title" th:text="${place.name}">Place Name</h1>
+            <p class="sidebar-subtitle" th:text="#{polygon.editor.subtitle}">Edit polygon boundary</p>
+            <div class="coordinates-display">
+                <span th:text="#{coordinates}">Coordinates</span>: 
+                <span th:text="${#numbers.formatDecimal(place.lat, 1, 6)}">0.000000</span>, 
+                <span th:text="${#numbers.formatDecimal(place.lng, 1, 6)}">0.000000</span>
+            </div>
+        </div>
+        
+        <div class="sidebar-content">
+            <div th:if="${errorMessage}" class="error-message" th:text="${errorMessage}"></div>
+            
+            <div class="polygon-info" th:text="#{polygon.editor.instructions}">
+                Click on the map to add polygon points. The polygon will automatically close when you have 3 or more points.
+            </div>
+            
+            <form id="polygon-form" th:action="@{/settings/places/{placeId}/update-polygon(placeId=${place.id})}" method="post">
+                <input type="hidden" name="returnUrl" th:value="${returnUrl}">
+                <input type="hidden" name="polygonData" id="polygonData">
+                
+                <div class="form-group">
+                    <label class="form-label" th:text="#{place.name}">Name</label>
+                    <input type="text" name="name" class="form-input" th:value="${place.name}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" th:text="#{place.address}">Address</label>
+                    <input type="text" name="address" class="form-input" th:value="${place.address}">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" th:text="#{place.type}">Type</label>
+                    <select name="type" class="form-select">
+                        <option th:each="placeType : ${placeTypes}" 
+                                th:value="${placeType}" 
+                                th:text="#{${placeType.messageKey}}"
+                                th:selected="${placeType == place.type}">Type</option>
+                    </select>
+                </div>
+            </form>
+            
+            <div class="polygon-actions">
+                <form th:action="@{/settings/places/{placeId}/remove-polygon(placeId=${place.id})}" method="post" style="display: inline;">
+                    <input type="hidden" name="returnUrl" th:value="${returnUrl}">
+                    <button type="submit" class="btn btn-danger" 
+                            onclick="return confirm('Are you sure you want to remove the polygon?')"
+                            th:text="#{polygon.remove}">Remove Polygon</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bottom-actions">
+        <a th:href="${returnUrl}" class="btn btn-secondary" th:text="#{cancel}">Cancel</a>
+        <button type="button" id="save-btn" class="btn btn-primary" th:text="#{save}">Save</button>
+    </div>
+
+    <script th:inline="javascript">
+        // Initialize the map
+        const map = L.map('map', {
+            zoomControl: true,
+            attributionControl: true
+        }).setView([/*[[${place.lat}]]*/ 0, /*[[${place.lng}]]*/ 0], 16);
+
+        // Add tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Place data
+        const placeData = {
+            id: /*[[${place.id}]]*/ 0,
+            name: /*[[${place.name}]]*/ '',
+            lat: /*[[${place.lat}]]*/ 0,
+            lng: /*[[${place.lng}]]*/ 0
+        };
+
+        // Initialize polygon editor
+        const polygonEditor = new PolygonEditor(map, placeData.lat, placeData.lng, placeData.name);
+
+        // Save button handler
+        document.getElementById('save-btn').addEventListener('click', function() {
+            polygonEditor.savePolygon();
+        });
+
+        // TODO: Load existing polygon if it exists
+        // TODO: Load nearby places for context
+        // const nearbyPlaces = /*[[${nearbyPlaces}]]*/ [];
+        // polygonEditor.loadNearbyPlaces(nearbyPlaces);
+    </script>
+</body>
+</html>
