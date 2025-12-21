@@ -134,7 +134,11 @@ public class PlacesSettingsController {
     public String updatePlace(@PathVariable Long placeId,
                               @RequestParam String name,
                               @RequestParam(required = false) String address,
+                              @RequestParam(required = false) String city,
+                              @RequestParam(required = false) String countryCode,
                               @RequestParam(required = false) String type,
+                              @RequestParam(required = false) String polygonData,
+                              @RequestParam(required = false) String returnUrl,
                               @RequestParam(defaultValue = "0") int page,
                               @RequestParam(defaultValue = "") String search,
                               Authentication authentication,
@@ -145,8 +149,17 @@ public class PlacesSettingsController {
             try {
                 SignificantPlace significantPlace = placeJdbcService.findById(placeId).orElseThrow();
                 SignificantPlace updatedPlace = significantPlace.withName(name);
+                
                 if (address != null) {
                     updatedPlace = updatedPlace.withAddress(address.trim().isEmpty() ? null : address.trim());
+                }
+                
+                if (city != null) {
+                    updatedPlace = updatedPlace.withCity(city.trim().isEmpty() ? null : city.trim());
+                }
+                
+                if (countryCode != null) {
+                    updatedPlace = updatedPlace.withCountryCode(countryCode.trim().isEmpty() ? null : countryCode.trim());
                 }
 
                 if (type != null && !type.isEmpty()) {
@@ -155,16 +168,30 @@ public class PlacesSettingsController {
                         updatedPlace = updatedPlace.withType(placeType);
                     } catch (IllegalArgumentException e) {
                         model.addAttribute("errorMessage", getMessage("message.error.place.update", "Invalid place type"));
+                        if (returnUrl != null) {
+                            return editPolygon(placeId, returnUrl, authentication, model);
+                        }
                         return editPlace(placeId, page, search, authentication, model);
                     }
                 }
 
+                // TODO: Parse polygonData and update polygon
+                // For now, we'll just update the basic fields
+
                 placeJdbcService.update(updatedPlace);
                 significantPlaceOverrideJdbcService.insertOverride(user, updatedPlace);
+                
+                if (returnUrl != null) {
+                    return "redirect:" + returnUrl;
+                }
+                
                 model.addAttribute("successMessage", getMessage("message.success.place.updated"));
                 return editPlace(placeId, page, search, authentication, model);
             } catch (Exception e) {
                 model.addAttribute("errorMessage", getMessage("message.error.place.update", e.getMessage()));
+                if (returnUrl != null) {
+                    return editPolygon(placeId, returnUrl, authentication, model);
+                }
                 return editPlace(placeId, page, search, authentication, model);
             }
         } else {
@@ -294,52 +321,6 @@ public class PlacesSettingsController {
         );
     }
 
-    @PostMapping("/{placeId}/update-polygon")
-    public String updatePolygon(@PathVariable Long placeId,
-                                @RequestParam String name,
-                                @RequestParam(required = false) String address,
-                                @RequestParam(required = false) String type,
-                                @RequestParam(required = false) String polygonData,
-                                @RequestParam(required = false) String returnUrl,
-                                Authentication authentication,
-                                Model model) {
-
-        User user = (User) authentication.getPrincipal();
-        if (!this.placeJdbcService.exists(user, placeId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        }
-
-        try {
-            SignificantPlace significantPlace = placeJdbcService.findById(placeId).orElseThrow();
-            SignificantPlace updatedPlace = significantPlace.withName(name);
-            
-            if (address != null) {
-                updatedPlace = updatedPlace.withAddress(address.trim().isEmpty() ? null : address.trim());
-            }
-
-            if (type != null && !type.isEmpty()) {
-                try {
-                    SignificantPlace.PlaceType placeType = SignificantPlace.PlaceType.valueOf(type);
-                    updatedPlace = updatedPlace.withType(placeType);
-                } catch (IllegalArgumentException e) {
-                    model.addAttribute("errorMessage", getMessage("message.error.place.update", "Invalid place type"));
-                    return editPolygon(placeId, returnUrl, authentication, model);
-                }
-            }
-
-            // TODO: Parse polygonData and update polygon
-            // For now, we'll just update the basic fields
-            
-            placeJdbcService.update(updatedPlace);
-            significantPlaceOverrideJdbcService.insertOverride(user, updatedPlace);
-            
-            return "redirect:" + (returnUrl != null ? returnUrl : "/settings/places");
-            
-        } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("message.error.place.update", e.getMessage()));
-            return editPolygon(placeId, returnUrl, authentication, model);
-        }
-    }
 
     @PostMapping("/{placeId}/remove-polygon")
     public String removePolygon(@PathVariable Long placeId,

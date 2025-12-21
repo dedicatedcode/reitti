@@ -103,7 +103,7 @@
                 Click on the map to add polygon points. The polygon will automatically close when you have 3 or more points.
             </div>
             
-            <form id="polygon-form" th:action="@{/settings/places/{placeId}/update-polygon(placeId=${place.id()})}" method="post">
+            <form id="polygon-form" th:action="@{/settings/places/{placeId}/update(placeId=${place.id()})}" method="post">
                 <input type="hidden" name="returnUrl" th:value="${returnUrl}">
                 <input type="hidden" name="polygonData" id="polygonData">
                 
