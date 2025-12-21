@@ -58,13 +58,14 @@ class PolygonEditor {
         this.polygonPoints.push(latlng);
         
         // Add marker for the point
-        const marker = L.circleMarker(latlng, {
-            radius: 6,
-            fillColor: '#ef4444',
-            color: '#dc2626',
-            weight: 2,
-            fillOpacity: 0.8,
-            draggable: true
+        const marker = L.marker(latlng, {
+            draggable: true,
+            icon: L.divIcon({
+                className: 'polygon-point-marker',
+                html: '<div style="background: #ef4444; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #dc2626; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+            })
         }).addTo(this.map);
         
         marker.bindTooltip(`Point ${this.polygonPoints.length}`, {
@@ -75,7 +76,8 @@ class PolygonEditor {
         // Add click handler to remove point
         marker.on('click', (e) => {
             L.DomEvent.stopPropagation(e);
-            this.removePolygonPoint(this.polygonPoints.indexOf(latlng));
+            const index = this.polygonMarkers.indexOf(marker);
+            this.removePolygonPoint(index);
         });
         
         // Add drag handlers to update polygon when point is moved
