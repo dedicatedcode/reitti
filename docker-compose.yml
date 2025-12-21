@@ -76,13 +76,13 @@ services:
       }
       http {
         proxy_cache_path /var/cache/nginx/tiles levels=1:2 keys_zone=tiles:10m max_size=1g inactive=30d use_temp_path=off;
-        
+      
         server {
           listen 80;
           location / {
             proxy_pass https://tile.openstreetmap.org/;
             proxy_set_header Host tile.openstreetmap.org;
-            proxy_set_header User-Agent "Reitti/1.0";
+            proxy_set_header User-Agent "Reitti/1.0 \\(+https://github.com/dedicatedcode/reitti; contact: reitti@dedicatedcode.com\\)";
             proxy_cache tiles;
             proxy_cache_valid 200 30d;
             proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
