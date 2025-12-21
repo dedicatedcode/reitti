@@ -29,9 +29,12 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 @Controller
@@ -45,6 +48,7 @@ public class PlacesSettingsController {
     private final GeometryFactory geometryFactory;
     private final MessageSource messageSource;
     private final boolean dataManagementEnabled;
+    private final ObjectMapper objectMapper;
 
     public PlacesSettingsController(PlaceService placeService,
                                     SignificantPlaceJdbcService placeJdbcService,
@@ -53,7 +57,8 @@ public class PlacesSettingsController {
                                     RabbitTemplate rabbitTemplate,
                                     GeometryFactory geometryFactory,
                                     MessageSource messageSource,
-                                    @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
+                                    @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
+                                    ObjectMapper objectMapper) {
         this.placeService = placeService;
         this.placeJdbcService = placeJdbcService;
         this.significantPlaceOverrideJdbcService = significantPlaceOverrideJdbcService;
@@ -62,6 +67,7 @@ public class PlacesSettingsController {
         this.geometryFactory = geometryFactory;
         this.messageSource = messageSource;
         this.dataManagementEnabled = dataManagementEnabled;
+        this.objectMapper = objectMapper;
     }
 
     @GetMapping
@@ -176,8 +182,19 @@ public class PlacesSettingsController {
                     }
                 }
 
-                // Parse the data in the form of [{"lat":53.863610437441515,"lng":10.700447559356691},{"lat":53.86357245523754,"lng":10.702464580535889},{"lat":53.862698855028654,"lng":10.702078342437744},{"lat":53.86261022790135,"lng":10.700275897979736}] as geoPoints and set it for the place AI! 
-                // For now, we'll just update the basic fields
+                // Parse polygon data if provided
+                if (polygonData != null && !polygonData.trim().isEmpty()) {
+                    try {
+                        List<GeoPoint> polygon = parsePolygonData(polygonData);
+                        updatedPlace = updatedPlace.withPolygon(polygon);
+                    } catch (Exception e) {
+                        model.addAttribute("errorMessage", getMessage("message.error.place.update", "Invalid polygon data: " + e.getMessage()));
+                        if (returnUrl != null) {
+                            return editPolygon(placeId, returnUrl, authentication, model);
+                        }
+                        return editPlace(placeId, page, search, authentication, model);
+                    }
+                }
 
                 placeJdbcService.update(updatedPlace);
                 significantPlaceOverrideJdbcService.insertOverride(user, updatedPlace);
@@ -347,6 +364,31 @@ public class PlacesSettingsController {
         return "redirect:" + (returnUrl != null ? returnUrl : "/settings/places");
     }
 
+
+    private List<GeoPoint> parsePolygonData(String polygonData) throws Exception {
+        JsonNode jsonNode = objectMapper.readTree(polygonData);
+        List<GeoPoint> geoPoints = new ArrayList<>();
+        
+        if (jsonNode.isArray()) {
+            for (JsonNode pointNode : jsonNode) {
+                if (pointNode.has("lat") && pointNode.has("lng")) {
+                    double lat = pointNode.get("lat").asDouble();
+                    double lng = pointNode.get("lng").asDouble();
+                    geoPoints.add(new GeoPoint(lat, lng));
+                } else {
+                    throw new IllegalArgumentException("Each point must have 'lat' and 'lng' properties");
+                }
+            }
+        } else {
+            throw new IllegalArgumentException("Polygon data must be an array of coordinate objects");
+        }
+        
+        if (geoPoints.size() < 3) {
+            throw new IllegalArgumentException("Polygon must have at least 3 points");
+        }
+        
+        return geoPoints;
+    }
 
     private String getMessage(String key, Object... args) {
         return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
