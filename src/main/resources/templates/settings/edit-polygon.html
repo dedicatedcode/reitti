@@ -143,12 +143,8 @@
             </form>
             
             <div class="polygon-actions">
-                <form th:action="@{/settings/places/{placeId}/remove-polygon(placeId=${place.id})}" method="post" style="display: inline;">
-                    <input type="hidden" name="returnUrl" th:value="${returnUrl}">
-                    <button type="submit" class="btn btn-danger" 
-                            onclick="return confirm('Are you sure you want to remove the polygon?')"
-                            th:text="#{places.polygon.remove}">Remove Polygon</button>
-                </form>
+                <button type="button" id="remove-polygon-btn" class="btn btn-danger" 
+                        th:text="#{places.polygon.remove}">Remove Polygon</button>
                 
                 <div>
                     <a th:href="${returnUrl}" class="btn btn-default" th:text="#{form.cancel}">Cancel</a>
@@ -195,6 +191,11 @@
         // Save button handler
         document.getElementById('save-btn').addEventListener('click', function() {
             polygonEditor.savePolygon();
+        });
+
+        // Remove polygon button handler
+        document.getElementById('remove-polygon-btn').addEventListener('click', function() {
+            polygonEditor.clearPolygon();
         });
 
         const nearbyPlaces = /*[[${nearbyPlaces}]]*/ [];
