@@ -84,7 +84,7 @@ class SignificantPlaceJdbcServiceTest {
     }
 
     @Test
-    void findNearbyPlaces_shouldReturnPlacesWithinDistance() {
+    void findEnclosingPlaces_shouldReturnPlacesWithinDistance() {
         // Given
         Point centerPoint = geometryFactory.createPoint(new Coordinate(10.700927, 53.863149));
         SignificantPlace nearPlace = createTestPlace("Near Place", 53.863200, 10.701000); // ~50m away
@@ -94,7 +94,7 @@ class SignificantPlaceJdbcServiceTest {
         significantPlaceJdbcService.create(testUser, farPlace);
 
         // When
-        List<SignificantPlace> nearbyPlaces = significantPlaceJdbcService.findNearbyPlaces(
+        List<SignificantPlace> nearbyPlaces = significantPlaceJdbcService.findEnclosingPlaces(
                 testUser.getId(), centerPoint, 0.003);
 
         // Then
@@ -512,7 +512,7 @@ class SignificantPlaceJdbcServiceTest {
         significantPlaceJdbcService.create(testUser, farPlace);
 
         // When
-        List<SignificantPlace> nearbyPlaces = significantPlaceJdbcService.findNearbyPlaces(
+        List<SignificantPlace> nearbyPlaces = significantPlaceJdbcService.findEnclosingPlaces(
                 testUser.getId(), searchPoint, 0.001); // Small buffer for places without polygons
 
         // Then

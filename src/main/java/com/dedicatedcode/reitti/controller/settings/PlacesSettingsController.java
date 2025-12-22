@@ -157,12 +157,7 @@ public class PlacesSettingsController {
                 placeJdbcService.update(updatedPlace);
                 significantPlaceOverrideJdbcService.insertOverride(user, updatedPlace);
                 
-                if (returnUrl != null) {
-                    return "redirect:" + returnUrl;
-                }
-
-                model.addAttribute("successMessage", i18nService.translate("message.success.place.updated", new Object[]{}));
-                return editPolygon(placeId, returnUrl, authentication, model);
+                return "redirect:" + returnUrl;
             } catch (Exception e) {
                 model.addAttribute("errorMessage", i18nService.translate("message.error.place.update", e.getMessage()));
                 return editPolygon(placeId, returnUrl, authentication, model);
@@ -266,9 +261,9 @@ public class PlacesSettingsController {
             model.addAttribute("placeTypes", SignificantPlace.PlaceType.values());
             model.addAttribute("returnUrl", returnUrl != null ? returnUrl : "/settings/places");
 
-            Point point = geometryFactory.createPoint(new Coordinate(place.getLongitudeCentroid(), place.getLongitudeCentroid()));
+            Point point = geometryFactory.createPoint(new Coordinate(place.getLongitudeCentroid(), place.getLatitudeCentroid()));
 
-            List<PlaceInfo> nearbyPlaces = this.placeJdbcService.findNearbyPlaces(user.getId(), point, 1000.0).stream().map(PlacesSettingsController::convertToPlaceInfo).toList();
+            List<PlaceInfo> nearbyPlaces = this.placeJdbcService.findNearbyPlaces(user.getId(), point, 0.019).stream().map(PlacesSettingsController::convertToPlaceInfo).toList();
             model.addAttribute("availableCountries", AvailableCountry.values());
             model.addAttribute("nearbyPlaces", nearbyPlaces);
 
