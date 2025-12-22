@@ -17,6 +17,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Service class for managing and accessing significant places using JDBC.
+ * Provides methods for CRUD operations and queries related to significant places.
+ * Includes support for handling geographical data and pagination.
+ */
 @Service
 @Transactional
 public class SignificantPlaceJdbcService {
@@ -108,7 +113,18 @@ public class SignificantPlaceJdbcService {
         return new Page<>(content, pageable, total != null ? total : 0);
     }
 
-    public List<SignificantPlace> findNearbyPlaces(Long userId, Point point, double distanceInMeters) {
+    //create a findNearbyPlaces method which follows the parameters of the findEnclosingPlaces method. But this time, it should also find not only places without a polygon, but also nearby places with a polygon which are in range of the given point.  AI!
+
+    /**
+     * Searches for SignificantPlaces which contain this point. Either by having a polygon which contains that point or
+     * by extending the center point by distanceInDegrees.
+     *
+     * @param userId - the user to load the places for.
+     * @param point - the point to search for.
+     * @param distanceInDegrees - meters in degress to extend the search radius for points without a polygon.
+     * @return list of SignificantPlaces.
+     */
+    public List<SignificantPlace> findEnclosingPlaces(Long userId, Point point, double distanceInDegrees) {
         String sql = """
         SELECT sp.id,
                sp.address,
@@ -134,7 +150,7 @@ public class SignificantPlaceJdbcService {
         """;
 
         return jdbcTemplate.query(sql, significantPlaceRowMapper,
-                                  userId, distanceInMeters, point.toString());
+                                  userId, distanceInDegrees, point.toString());
     }
 
     public SignificantPlace create(User user, SignificantPlace place) {
