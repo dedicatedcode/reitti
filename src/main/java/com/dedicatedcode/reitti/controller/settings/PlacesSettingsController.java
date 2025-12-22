@@ -118,7 +118,6 @@ public class PlacesSettingsController {
                               Authentication authentication,
                               Model model) {
 
-        type = "daadasd";
         User user = (User) authentication.getPrincipal();
         if (this.placeJdbcService.exists(user, placeId)) {
             try {
@@ -156,6 +155,8 @@ public class PlacesSettingsController {
                         model.addAttribute("errorMessage", i18nService.translate("message.error.place.update", "Invalid polygon data: " + e.getMessage()));
                         return editPolygon(placeId, returnUrl, authentication, model);
                     }
+                } else {
+                    updatedPlace = updatedPlace.withPolygon(null);
                 }
 
                 placeJdbcService.update(updatedPlace);
@@ -280,7 +281,7 @@ public class PlacesSettingsController {
             return "redirect:/settings/places";
         }
 
-        return "settings/edit-polygon";
+        return "settings/edit-place";
     }
 
     private static PlaceInfo convertToPlaceInfo(SignificantPlace place) {

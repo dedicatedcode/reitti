@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="#{page.title.edit-polygon(${place.name})}">Edit Polygon - Reitti</title>
+    <title th:text="#{edit-place.page.title}">Edit Place - Reitti</title>
     <link rel="icon" th:href="@{/img/logo.svg}">
     <link rel="stylesheet" href="/css/leaflet.css">
     <link rel="stylesheet" href="/css/main.css">
@@ -24,12 +24,8 @@
             bottom: 0;
             z-index: 1;
         }
-        
-        .polygon-editor-sidebar {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            width: 320px;
+
+        .sidebar {
             background: var(--color-background-dark);
             border: 1px solid var(--color-highlight);
             border-radius: 8px;
@@ -38,9 +34,16 @@
             overflow-y: auto;
             max-height: calc(100vh - 40px);
         }
+
+        .polygon-editor-sidebar {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            width: 324px;
+        }
         
         .sidebar-header {
-            padding: 20px;
+            padding: 24px;
             border-bottom: 1px solid var(--color-highlight);
         }
         
@@ -59,7 +62,7 @@
         }
         
         .sidebar-content {
-            padding: 20px;
+            padding: 24px;
         }
         
         .polygon-info {
@@ -81,17 +84,10 @@
         
         .geocoding-drawer {
             position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 400px;
-            background: var(--color-background-dark);
-            border: 1px solid var(--color-highlight);
-            border-radius: 8px;
-            box-shadow: var(--box-shadow);
-            z-index: 1000;
-            overflow-y: auto;
-            max-height: calc(100vh - 40px);
+            top: 24px;
+            right: 24px;
             display: none;
+            width: calc(100vw - 390px);
         }
         
         .geocoding-drawer.active {
@@ -99,7 +95,7 @@
         }
         
         .drawer-header {
-            padding: 20px;
+            padding: 24px;
             border-bottom: 1px solid var(--color-highlight);
             display: flex;
             justify-content: space-between;
@@ -128,17 +124,18 @@
         }
         
         .drawer-content {
-            padding: 20px;
+            padding: 24px;
         }
     </style>
     <script src="/js/leaflet.js"></script>
     <script src="/js/polygon-editor.js"></script>
     <script src="/js/TileLayer.Grayscale.js"></script>
+    <script src="/js/htmx.min.js"></script>
 </head>
 <body>
     <div id="map"></div>
     
-    <div class="polygon-editor-sidebar">
+    <div class="sidebar polygon-editor-sidebar">
         <div class="sidebar-header">
             <h1 class="sidebar-title" th:text="${place.name()}">Place Name</h1>
             <p class="sidebar-subtitle" th:text="#{places.polygon.editor.subtitle}">Edit polygon boundary</p>
@@ -210,7 +207,7 @@
                         hx-target="#geocoding-drawer"
                         hx-swap="innerHTML"
                         style="margin-top: 10px;"
-                        th:text="#{places.geocoding.response.view}">View Geocoding Response</button>
+                        th:text="#{places.geocoding.response.button}">View Geocoding Response</button>
                 
                 <div class="separator"></div>
                 <div>
@@ -221,11 +218,10 @@
         </div>
     </div>
     
-    <div id="geocoding-drawer" class="geocoding-drawer">
+    <div id="geocoding-drawer" class="sidebar geocoding-drawer">
         <!-- Geocoding response content will be loaded here via HTMX -->
     </div>
 
-    <script src="/js/htmx.min.js"></script>
     <script th:inline="javascript">
         const placeData = /*[[${place}]]*/ {};
         window.userSettings = /*[[${userSettings}]]*/ {};
@@ -233,7 +229,7 @@
         // Initialize the map
         const map = L.map('map', {
             zoomControl: false,
-            attributionControl: true
+            attributionControl: false
         }).setView([placeData.lat, placeData.lng], 25);
 
         // Add tile layer based on user settings
