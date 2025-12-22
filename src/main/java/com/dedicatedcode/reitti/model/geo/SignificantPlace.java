@@ -129,6 +129,14 @@ public class SignificantPlace implements Serializable {
         return new SignificantPlace(this.id, this.name, this.address, city, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, polygon, this.type, timezone, this.geocoded, this.version);
     }
 
+    public SignificantPlace withLatitudeCentroid(Double latitudeCentroid) {
+        return new SignificantPlace(this.id, this.name, this.address, city, this.countryCode, latitudeCentroid, this.longitudeCentroid, this.polygon, this.type, timezone, this.geocoded, this.version);
+    }
+
+    public SignificantPlace withLongitudeCentroid(Double longitudeCentroid) {
+        return new SignificantPlace(this.id, this.name, this.address, city, this.countryCode, this.latitudeCentroid, longitudeCentroid, this.polygon, this.type, timezone, this.geocoded, this.version);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
