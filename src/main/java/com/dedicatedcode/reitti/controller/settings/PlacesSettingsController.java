@@ -338,32 +338,6 @@ public class PlacesSettingsController {
         );
     }
 
-
-    @PostMapping("/{placeId}/remove-polygon")
-    public String removePolygon(@PathVariable Long placeId,
-                                @RequestParam(required = false) String returnUrl,
-                                Authentication authentication) {
-
-        User user = (User) authentication.getPrincipal();
-        if (!this.placeJdbcService.exists(user, placeId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        }
-
-        try {
-            SignificantPlace significantPlace = placeJdbcService.findById(placeId).orElseThrow();
-            SignificantPlace updatedPlace = significantPlace.withPolygon(null);
-            
-            placeJdbcService.update(updatedPlace);
-            significantPlaceOverrideJdbcService.insertOverride(user, updatedPlace);
-            
-        } catch (Exception e) {
-            // Log error but continue to redirect
-        }
-
-        return "redirect:" + (returnUrl != null ? returnUrl : "/settings/places");
-    }
-
-
     private List<GeoPoint> parsePolygonData(String polygonData) throws Exception {
         JsonNode jsonNode = objectMapper.readTree(polygonData);
         List<GeoPoint> geoPoints = new ArrayList<>();
