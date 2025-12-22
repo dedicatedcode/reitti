@@ -110,8 +110,6 @@ public class PlacesSettingsController {
                               @RequestParam(required = false) String type,
                               @RequestParam(required = false) String polygonData,
                               @RequestParam(required = false) String returnUrl,
-                              @RequestParam(defaultValue = "0") int page,
-                              @RequestParam(defaultValue = "") String search,
                               Authentication authentication,
                               Model model) {
 
@@ -244,8 +242,6 @@ public class PlacesSettingsController {
     @GetMapping("/{placeId}/edit")
     public String editPolygon(@PathVariable Long placeId,
                               @RequestParam(required = false) String returnUrl,
-                              @RequestParam(defaultValue = "0") int page,
-                              @RequestParam(defaultValue = "") String search,
                               Authentication authentication,
                               Model model) {
 
@@ -262,12 +258,7 @@ public class PlacesSettingsController {
             model.addAttribute("place", placeInfo);
             model.addAttribute("placeTypes", SignificantPlace.PlaceType.values());
             
-            // If no returnUrl is provided, construct one with current page and search parameters
-            String finalReturnUrl = returnUrl;
-            if (finalReturnUrl == null) {
-                finalReturnUrl = "/settings/places/places-content?page=" + page + "&search=" + search;
-            }
-            model.addAttribute("returnUrl", finalReturnUrl);
+            model.addAttribute("returnUrl", returnUrl);
 
             Point point = geometryFactory.createPoint(new Coordinate(place.getLongitudeCentroid(), place.getLatitudeCentroid()));
 
