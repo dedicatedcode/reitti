@@ -28,6 +28,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -172,10 +173,11 @@ public class PlacesSettingsController {
 
     @PostMapping("/{placeId}/geocode")
     public String geocodePlace(@PathVariable Long placeId,
+                               @RequestParam(required = false) String returnUrl,
                                @RequestParam(defaultValue = "0") int page,
                                @RequestParam(defaultValue = "") String search,
                                Authentication authentication,
-                               Model model) {
+                               RedirectAttributes redirectAttributes) {
 
         User user = (User) authentication.getPrincipal();
         if (this.placeJdbcService.exists(user, placeId)) {
@@ -197,15 +199,17 @@ public class PlacesSettingsController {
                 );
                 rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.SIGNIFICANT_PLACE_ROUTING_KEY, event);
 
-                model.addAttribute("successMessage", i18nService.translate("places.geocode.success", new Object[]{}));
+                redirectAttributes.addFlashAttribute("successMessage", i18nService.translate("places.geocode.success", new Object[]{}));
             } catch (Exception e) {
-                model.addAttribute("errorMessage", i18nService.translate("places.geocode.error", e.getMessage()));
+                redirectAttributes.addFlashAttribute("errorMessage", i18nService.translate("places.geocode.error", e.getMessage()));
             }
         } else {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
 
-        return getPlacesContent(user, page, search, model);
+        // Redirect to returnUrl if provided, otherwise to places list
+        String redirectUrl = returnUrl != null ? returnUrl : "/settings/places?page=" + page + "&search=" + search;
+        return "redirect:" + redirectUrl;
     }
 
 

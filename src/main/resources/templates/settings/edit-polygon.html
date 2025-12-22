@@ -78,6 +78,58 @@
             margin-top: 4px;
             opacity: 0.7;
         }
+        
+        .geocoding-drawer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 400px;
+            background: var(--color-background-dark);
+            border: 1px solid var(--color-highlight);
+            border-radius: 8px;
+            box-shadow: var(--box-shadow);
+            z-index: 1000;
+            overflow-y: auto;
+            max-height: calc(100vh - 40px);
+            display: none;
+        }
+        
+        .geocoding-drawer.active {
+            display: block;
+        }
+        
+        .drawer-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--color-highlight);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .drawer-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0;
+            color: var(--color-highlight);
+        }
+        
+        .drawer-close {
+            background: none;
+            border: none;
+            color: var(--color-text-white);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .drawer-content {
+            padding: 20px;
+        }
     </style>
     <script src="/js/leaflet.js"></script>
     <script src="/js/polygon-editor.js"></script>
@@ -146,6 +198,20 @@
             <div class="polygon-actions">
                 <button type="button" id="remove-polygon-btn" class="btn btn-danger" 
                         th:text="#{places.polygon.remove}">Remove Polygon</button>
+                
+                <form th:action="@{/settings/places/{placeId}/geocode(placeId=${place.id()})}" method="post" style="margin-top: 10px;">
+                    <input type="hidden" name="returnUrl" th:value="${returnUrl}">
+                    <button type="submit" class="btn btn-default btn-block" 
+                            th:text="#{places.geocode.button}">Geocode Place</button>
+                </form>
+                
+                <button type="button" class="btn btn-default btn-block" 
+                        th:attr="hx-get=@{/settings/places/{placeId}/geocoding-response(placeId=${place.id()}, context='edit')}"
+                        hx-target="#geocoding-drawer"
+                        hx-swap="innerHTML"
+                        style="margin-top: 10px;"
+                        th:text="#{places.geocoding.response.view}">View Geocoding Response</button>
+                
                 <div class="separator"></div>
                 <div>
                     <button type="button" id="save-btn" class="btn btn-default btn-block" th:text="#{form.save}">Save</button>
@@ -155,7 +221,11 @@
         </div>
     </div>
     
+    <div id="geocoding-drawer" class="geocoding-drawer">
+        <!-- Geocoding response content will be loaded here via HTMX -->
+    </div>
 
+    <script src="/js/htmx.min.js"></script>
     <script th:inline="javascript">
         const placeData = /*[[${place}]]*/ {};
         window.userSettings = /*[[${userSettings}]]*/ {};
@@ -198,6 +268,23 @@
 
         const nearbyPlaces = /*[[${nearbyPlaces}]]*/ [];
         polygonEditor.loadNearbyPlaces(nearbyPlaces);
+        
+        // Handle geocoding drawer
+        document.body.addEventListener('htmx:afterSettle', function(event) {
+            if (event.detail.target.id === 'geocoding-drawer') {
+                const drawer = document.getElementById('geocoding-drawer');
+                drawer.classList.add('active');
+                
+                // Add close button functionality
+                const closeBtn = drawer.querySelector('.drawer-close');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', function() {
+                        drawer.classList.remove('active');
+                        drawer.innerHTML = '';
+                    });
+                }
+            }
+        });
     </script>
 </body>
 </html>

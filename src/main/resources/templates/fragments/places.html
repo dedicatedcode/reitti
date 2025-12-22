@@ -3,15 +3,24 @@
 <body>
 
 <div th:fragment="geocoding-response-content">
-    <h2 th:text="#{places.geocoding.response.title(${place.name()})}">Geocoding Response for Place</h2>
-
-    <div style="margin-bottom: 20px;">
-        <button class="btn" 
-                th:attr="hx-get=${context == 'edit' ? '/settings/places/' + place.id() + '/edit?page=' + currentPage + '&search=' + search : '/settings/places/places-content?page=' + currentPage + '&search=' + search}"
-                hx-target="#places-management"
-                hx-swap="innerHTML"
-                th:text="#{places.geocoding.response.back}">Back to Places</button>
+    <div th:if="${context == 'edit'}" class="drawer-header">
+        <h3 class="drawer-title" th:text="#{places.geocoding.response.title(${place.name()})}">Geocoding Response for Place</h3>
+        <button type="button" class="drawer-close">&times;</button>
     </div>
+    
+    <div th:if="${context != 'edit'}">
+        <h2 th:text="#{places.geocoding.response.title(${place.name()})}">Geocoding Response for Place</h2>
+
+        <div style="margin-bottom: 20px;">
+            <button class="btn" 
+                    th:attr="hx-get=${'/settings/places/places-content?page=' + currentPage + '&search=' + search}"
+                    hx-target="#places-management"
+                    hx-swap="innerHTML"
+                    th:text="#{places.geocoding.response.back}">Back to Places</button>
+        </div>
+    </div>
+
+    <div th:class="${context == 'edit' ? 'drawer-content' : ''}">
 
     <div class="settings-card">
         <h3 th:text="${place.name()}">Place Name</h3>
@@ -50,6 +59,7 @@
 
     <div th:if="${geocodingResponses.isEmpty()}" class="settings-card">
         <p th:text="#{places.geocoding.response.no.data}">No geocoding response is available for this place</p>
+    </div>
     </div>
 </div>
 
