@@ -401,8 +401,8 @@
 
         function showConfirmationDialog(warnings) {
             const warningsList = warnings.map(warning => `• ${warning}`).join('\n');
-            //make the message translatable AI!
-            const message = `The following changes will be made:\n\n${warningsList}\n\nDo you want to continue?`;
+            const confirmMessage = /*[[#{places.update.confirmation.message}]]*/ 'The following changes will be made:\n\n{0}\n\nDo you want to continue?';
+            const message = confirmMessage.replace('{0}', warningsList);
             if (confirm(message)) {
                 polygonEditor.savePolygon();
             }
