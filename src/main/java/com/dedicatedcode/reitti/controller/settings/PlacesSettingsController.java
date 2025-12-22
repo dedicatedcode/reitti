@@ -190,13 +190,12 @@ public class PlacesSettingsController {
             if (willHavePolygon) {
                 try {
                     List<GeoPoint> newPolygon = parsePolygonData(polygonData);
-                    int overlappingVisits = checkForOverlappingVisits(user, placeId, newPolygon);
+                    int overlappingVisits = checkForOverlappingPlaces(user, placeId, newPolygon);
                     if (overlappingVisits > 0) {
                         warnings.add(i18nService.translate("places.warning.overlapping.visits", overlappingVisits));
                     }
                 } catch (Exception e) {
-                    // If overlap checking fails, log but don't block the update
-                    System.err.println("Failed to check for overlapping visits: " + e.getMessage());
+                    throw new IllegalStateException("Failed to parse polygon data: " + e.getMessage(), e);
                 }
             }
 
@@ -457,14 +456,12 @@ public class PlacesSettingsController {
         return new GeoPoint(avgLat, avgLng);
     }
 
-    private int checkForOverlappingVisits(User user, Long placeId, List<GeoPoint> newPolygon) {
+    private int checkForOverlappingPlaces(User user, Long placeId, List<GeoPoint> newPolygon) {
         try {
             // Find places that would overlap with the new polygon
             List<SignificantPlace> overlappingPlaces = placeJdbcService.findPlacesOverlappingWithPolygon(
                 user.getId(), placeId, newPolygon);
             
-            // For now, we return the count of overlapping places as a proxy for affected visits
-            // In a more sophisticated implementation, we could query actual visits for these places
             return overlappingPlaces.size();
         } catch (Exception e) {
             // Log error but don't fail the check
