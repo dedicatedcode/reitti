@@ -117,6 +117,7 @@ public class PlacesSettingsController {
                               Authentication authentication,
                               Model model) {
 
+        type = "daadasd";
         User user = (User) authentication.getPrincipal();
         if (this.placeJdbcService.exists(user, placeId)) {
             try {

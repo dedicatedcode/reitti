@@ -36,6 +36,7 @@
             box-shadow: var(--box-shadow);
             z-index: 1000;
             overflow-y: auto;
+            max-height: calc(100vh - 40px);
         }
         
         .sidebar-header {
@@ -97,7 +98,7 @@
         </div>
         
         <div class="sidebar-content">
-            <div th:if="${errorMessage}" class="error-message" th:text="${errorMessage}"></div>
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
             
             <div class="polygon-info" th:text="#{places.polygon.editor.instructions}">
                 Click on the map to add polygon points. The polygon will automatically close when you have 3 or more points.
@@ -145,12 +146,10 @@
             <div class="polygon-actions">
                 <button type="button" id="remove-polygon-btn" class="btn btn-danger" 
                         th:text="#{places.polygon.remove}">Remove Polygon</button>
-                
-                <div id="save-status" class="polygon-info" style="display: none; margin-top: 12px; background: var(--color-warning); color: var(--color-text-dark);"></div>
-                
+                <div class="separator"></div>
                 <div>
-                    <a th:href="${returnUrl}" class="btn btn-default" th:text="#{form.cancel}">Cancel</a>
                     <button type="button" id="save-btn" class="btn btn-default btn-block" th:text="#{form.save}">Save</button>
+                    <a th:href="${returnUrl}" class="btn btn-default btn-block" th:text="#{form.cancel}">Cancel</a>
                 </div>
             </div>
         </div>
@@ -158,15 +157,12 @@
     
 
     <script th:inline="javascript">
-        // Place data from server
         const placeData = /*[[${place}]]*/ {};
-        
-        // User settings from server
         window.userSettings = /*[[${userSettings}]]*/ {};
 
         // Initialize the map
         const map = L.map('map', {
-            zoomControl: true,
+            zoomControl: false,
             attributionControl: true
         }).setView([placeData.lat, placeData.lng], 25);
 

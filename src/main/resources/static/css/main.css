@@ -183,6 +183,10 @@ a.btn-default,
     border: 1px solid var(--color-highlight);
 }
 
+.btn-block + .btn-block {
+    margin-top: 10px;
+}
+
 .btn.btn-block {
     width: 100%;
     display: inline-block;
@@ -1824,7 +1828,6 @@ button:disabled {
     width: 100%;
     border-collapse: collapse;
 }
-
 
 .export-data-table-container table thead tr {
     position: sticky;
