@@ -186,6 +186,20 @@ public class PlacesSettingsController {
                 }
             }
 
+            // Check for overlapping boundaries with existing visits
+            if (willHavePolygon) {
+                try {
+                    List<GeoPoint> newPolygon = parsePolygonData(polygonData);
+                    int overlappingVisits = checkForOverlappingVisits(user, placeId, newPolygon);
+                    if (overlappingVisits > 0) {
+                        warnings.add(i18nService.translate("places.warning.overlapping.visits", overlappingVisits));
+                    }
+                } catch (Exception e) {
+                    // If overlap checking fails, log but don't block the update
+                    System.err.println("Failed to check for overlapping visits: " + e.getMessage());
+                }
+            }
+
             return new CheckUpdateResponse(warnings.isEmpty(), warnings);
 
         } catch (Exception e) {
@@ -441,6 +455,19 @@ public class PlacesSettingsController {
         double avgLng = uniquePoints.stream().mapToDouble(GeoPoint::longitude).average().orElse(0.0);
         
         return new GeoPoint(avgLat, avgLng);
+    }
+
+    private int checkForOverlappingVisits(User user, Long placeId, List<GeoPoint> newPolygon) {
+        // TODO: Implement overlap checking with existing visits
+        // This would need to:
+        // 1. Query all processed visits for the user
+        // 2. For each visit, check if its location points fall within the new polygon
+        // 3. Count visits that would be affected by the boundary change
+        // 4. Return the count of overlapping visits
+        
+        // For now, return 0 as a placeholder
+        // This needs to be implemented with proper visit querying and geometry operations
+        return 0;
     }
 
 }
