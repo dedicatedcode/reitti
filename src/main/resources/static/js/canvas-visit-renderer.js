@@ -163,8 +163,8 @@ class CanvasVisitRenderer {
     }
     
     createPolygonMarker(visit) {
-        // Parse polygon coordinates from WKT format
-        const polygonCoords = this.parsePolygonWKT(visit.place.polygon);
+        // Parse polygon coordinates from array format (same as polygon-editor.js)
+        const polygonCoords = this.parsePolygonData(visit.place.polygon);
         
         if (!polygonCoords || polygonCoords.length === 0) {
             // Fallback to circle marker if polygon parsing fails
@@ -217,22 +217,29 @@ class CanvasVisitRenderer {
         this.visitMarkers.push(polygon, centerMarker);
     }
     
-    parsePolygonWKT(wktString) {
-        if (!wktString) return null;
+    parsePolygonData(polygonData) {
+        if (!polygonData) return null;
         
         try {
-            // Remove POLYGON(( and )) from the string
-            const coordsString = wktString.replace(/^POLYGON\(\(/, '').replace(/\)\)$/, '');
+            // Handle both array format and JSON string format
+            let coords;
+            if (typeof polygonData === 'string') {
+                coords = JSON.parse(polygonData);
+            } else if (Array.isArray(polygonData)) {
+                coords = polygonData;
+            } else {
+                return null;
+            }
             
-            // Split by comma and parse each coordinate pair
-            const coords = coordsString.split(',').map(pair => {
-                const [lng, lat] = pair.trim().split(' ').map(parseFloat);
-                return [lat, lng]; // Leaflet expects [lat, lng]
+            // Convert to Leaflet format [lat, lng]
+            return coords.map(point => {
+                // Handle both GeoPoint format (latitude/longitude) and simple lat/lng format
+                const lat = point.latitude || point.lat;
+                const lng = point.longitude || point.lng;
+                return [lat, lng];
             });
-            
-            return coords;
         } catch (error) {
-            console.warn('Failed to parse polygon WKT:', wktString, error);
+            console.warn('Failed to parse polygon data:', polygonData, error);
             return null;
         }
     }
