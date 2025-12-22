@@ -374,8 +374,41 @@
 
         // Save button handler
         document.getElementById('save-btn').addEventListener('click', function() {
-            polygonEditor.savePolygon();
+            checkBeforeSave();
         });
+
+        function checkBeforeSave() {
+            const formData = new FormData(document.getElementById('polygon-form'));
+            
+            fetch(`/settings/places/${placeData.id}/check-update`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.canProceed && data.warnings.length === 0) {
+                    // No warnings, proceed with save
+                    polygonEditor.savePolygon();
+                } else {
+                    // Show confirmation dialog with warnings
+                    showConfirmationDialog(data.warnings);
+                }
+            })
+            .catch(error => {
+                console.error('Error checking update:', error);
+                // On error, proceed with save anyway
+                polygonEditor.savePolygon();
+            });
+        }
+
+        function showConfirmationDialog(warnings) {
+            const warningsList = warnings.map(warning => `• ${warning}`).join('\n');
+            const message = `The following changes will be made:\n\n${warningsList}\n\nDo you want to continue?`;
+            
+            if (confirm(message)) {
+                polygonEditor.savePolygon();
+            }
+        }
 
         // Remove polygon button handler
         document.getElementById('remove-polygon-btn').addEventListener('click', function() {

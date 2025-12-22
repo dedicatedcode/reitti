@@ -37,6 +37,24 @@ import java.util.UUID;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 
+class CheckUpdateResponse {
+    private final boolean canProceed;
+    private final List<String> warnings;
+
+    public CheckUpdateResponse(boolean canProceed, List<String> warnings) {
+        this.canProceed = canProceed;
+        this.warnings = warnings;
+    }
+
+    public boolean isCanProceed() {
+        return canProceed;
+    }
+
+    public List<String> getWarnings() {
+        return warnings;
+    }
+}
+
 @Controller
 @RequestMapping("/settings/places")
 public class PlacesSettingsController {
@@ -104,6 +122,75 @@ public class PlacesSettingsController {
         model.addAttribute("returnUrl", "/settings/places?search=" + search + "&page=" + page);
 
         return "settings/places :: places-content";
+    }
+
+    @PostMapping("/{placeId}/check-update")
+    @ResponseBody
+    public CheckUpdateResponse checkUpdate(@PathVariable Long placeId,
+                                          @RequestParam String name,
+                                          @RequestParam(required = false) String address,
+                                          @RequestParam(required = false) String city,
+                                          @RequestParam(required = false) String countryCode,
+                                          @RequestParam(required = false) String type,
+                                          @RequestParam(required = false) String polygonData,
+                                          Authentication authentication) {
+
+        User user = (User) authentication.getPrincipal();
+        if (!this.placeJdbcService.exists(user, placeId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+
+        try {
+            SignificantPlace currentPlace = placeJdbcService.findById(placeId).orElseThrow();
+            List<String> warnings = new ArrayList<>();
+
+            // Check if polygon is being removed
+            boolean hadPolygon = currentPlace.getPolygon() != null && !currentPlace.getPolygon().isEmpty();
+            boolean willHavePolygon = polygonData != null && !polygonData.trim().isEmpty();
+            
+            if (hadPolygon && !willHavePolygon) {
+                warnings.add(i18nService.translate("places.warning.polygon.removal"));
+            }
+
+            // Check if polygon is being significantly changed
+            if (hadPolygon && willHavePolygon) {
+                try {
+                    List<GeoPoint> newPolygon = parsePolygonData(polygonData);
+                    GeoPoint newCentroid = calculatePolygonCentroid(newPolygon);
+                    GeoPoint currentCentroid = new GeoPoint(currentPlace.getLatitudeCentroid(), currentPlace.getLongitudeCentroid());
+                    
+                    // Calculate distance between centroids (rough approximation)
+                    double latDiff = Math.abs(newCentroid.latitude() - currentCentroid.latitude());
+                    double lngDiff = Math.abs(newCentroid.longitude() - currentCentroid.longitude());
+                    
+                    // If centroid moved significantly (more than ~100m at typical latitudes)
+                    if (latDiff > 0.001 || lngDiff > 0.001) {
+                        warnings.add(i18nService.translate("places.warning.polygon.significant_change"));
+                    }
+                } catch (Exception e) {
+                    // If polygon parsing fails, we'll catch it in the actual update
+                }
+            }
+
+            // Check if place type is changing
+            if (type != null && !type.isEmpty()) {
+                try {
+                    SignificantPlace.PlaceType newType = SignificantPlace.PlaceType.valueOf(type);
+                    if (currentPlace.getType() != newType) {
+                        warnings.add(i18nService.translate("places.warning.type.change", 
+                            i18nService.translate(currentPlace.getType().getMessageKey()),
+                            i18nService.translate(newType.getMessageKey())));
+                    }
+                } catch (IllegalArgumentException e) {
+                    // Invalid type will be handled in actual update
+                }
+            }
+
+            return new CheckUpdateResponse(warnings.isEmpty(), warnings);
+
+        } catch (Exception e) {
+            return new CheckUpdateResponse(false, List.of(i18nService.translate("places.warning.general_error", e.getMessage())));
+        }
     }
 
     @PostMapping("/{placeId}/update")
