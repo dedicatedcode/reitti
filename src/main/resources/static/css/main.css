@@ -484,9 +484,6 @@ tr:hover {
     color: var(--color-text-white);
 }
 
-.place-details {
-    padding: 15px;
-}
 
 .place-info {
     margin: 15px 0;
@@ -964,6 +961,19 @@ body.auto-update-mode .today-fab {
     padding: 1rem;
     text-align: center;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.place-stats-card .place-details {
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.place-stats-card .place-info {
+    flex-grow: 1;
 }
 
 .place-stats-card:hover {
