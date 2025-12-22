@@ -306,8 +306,25 @@
                 return { lat: placeData.lat, lng: placeData.lng };
             }
             
-            const avgLat = validPoints.reduce((sum, point) => sum + point.lat, 0) / validPoints.length;
-            const avgLng = validPoints.reduce((sum, point) => sum + point.lng, 0) / validPoints.length;
+            // Remove duplicate points (especially the closing point that duplicates the first point)
+            let uniquePoints = [];
+            for (let i = 0; i < validPoints.length; i++) {
+                const point = validPoints[i];
+                const isDuplicate = uniquePoints.some(existing => 
+                    Math.abs(existing.lat - point.lat) < 0.000001 && 
+                    Math.abs(existing.lng - point.lng) < 0.000001
+                );
+                if (!isDuplicate) {
+                    uniquePoints.push(point);
+                }
+            }
+            
+            if (uniquePoints.length === 0) {
+                return { lat: placeData.lat, lng: placeData.lng };
+            }
+            
+            const avgLat = uniquePoints.reduce((sum, point) => sum + point.lat, 0) / uniquePoints.length;
+            const avgLng = uniquePoints.reduce((sum, point) => sum + point.lng, 0) / uniquePoints.length;
             
             return { lat: avgLat, lng: avgLng };
         }
