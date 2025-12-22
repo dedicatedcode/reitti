@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.Page;
 import com.dedicatedcode.reitti.model.PageRequest;
+import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
 import org.locationtech.jts.geom.Point;
@@ -346,20 +347,6 @@ public class SignificantPlaceJdbcService {
             return List.of();
         }
 
-        // Create WKT polygon string from the points
-        StringBuilder wktBuilder = new StringBuilder("POLYGON((");
-        for (int i = 0; i < polygon.size(); i++) {
-            GeoPoint point = polygon.get(i);
-            wktBuilder.append(point.longitude()).append(" ").append(point.latitude());
-            if (i < polygon.size() - 1) {
-                wktBuilder.append(", ");
-            }
-        }
-        // Close the polygon by adding the first point again
-        GeoPoint firstPoint = polygon.get(0);
-        wktBuilder.append(", ").append(firstPoint.longitude()).append(" ").append(firstPoint.latitude());
-        wktBuilder.append("))");
-
         String sql = """
                 SELECT sp.id,
                        sp.address,
@@ -390,7 +377,7 @@ public class SignificantPlaceJdbcService {
                 )
                 """;
 
-        String polygonWkt = wktBuilder.toString();
+        String polygonWkt = this.pointReaderWriter.polygonToWkt(polygon);
         return jdbcTemplate.query(sql, significantPlaceRowMapper, userId, excludePlaceId, polygonWkt, polygonWkt, polygonWkt);
     }
 }
