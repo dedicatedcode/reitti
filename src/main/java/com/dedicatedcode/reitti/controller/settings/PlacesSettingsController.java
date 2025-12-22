@@ -139,10 +139,7 @@ public class PlacesSettingsController {
                         updatedPlace = updatedPlace.withType(placeType);
                     } catch (IllegalArgumentException e) {
                         model.addAttribute("errorMessage", i18nService.translate("message.error.place.update", "Invalid place type"));
-                        if (returnUrl != null) {
-                            return editPolygon(placeId, returnUrl, authentication, model);
-                        }
-                        return editPlace(placeId, page, search, authentication, model);
+                        return editPolygon(placeId, returnUrl, authentication, model);
                     }
                 }
 
@@ -153,10 +150,7 @@ public class PlacesSettingsController {
                         updatedPlace = updatedPlace.withPolygon(polygon);
                     } catch (Exception e) {
                         model.addAttribute("errorMessage", i18nService.translate("message.error.place.update", "Invalid polygon data: " + e.getMessage()));
-                        if (returnUrl != null) {
-                            return editPolygon(placeId, returnUrl, authentication, model);
-                        }
-                        return editPlace(placeId, page, search, authentication, model);
+                        return editPolygon(placeId, returnUrl, authentication, model);
                     }
                 }
 
@@ -168,13 +162,10 @@ public class PlacesSettingsController {
                 }
 
                 model.addAttribute("successMessage", i18nService.translate("message.success.place.updated", new Object[]{}));
-                return editPlace(placeId, page, search, authentication, model);
+                return editPolygon(placeId, returnUrl, authentication, model);
             } catch (Exception e) {
                 model.addAttribute("errorMessage", i18nService.translate("message.error.place.update", e.getMessage()));
-                if (returnUrl != null) {
-                    return editPolygon(placeId, returnUrl, authentication, model);
-                }
-                return editPlace(placeId, page, search, authentication, model);
+                return editPolygon(placeId, returnUrl, authentication, model);
             }
         } else {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
