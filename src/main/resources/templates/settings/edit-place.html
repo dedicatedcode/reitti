@@ -247,9 +247,25 @@
         // Initialize polygon editor
         const polygonEditor = new PolygonEditor(map, placeData.lat, placeData.lng, placeData.name);
 
+        // Create centroid marker
+        let centroidMarker = L.circleMarker([placeData.lat, placeData.lng], {
+            radius: 8,
+            fillColor: '#ff0000',
+            color: '#ffffff',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.8
+        }).addTo(map);
+        
+        centroidMarker.bindTooltip('Centroid', { permanent: true, direction: 'top' });
+
         // Load existing polygon if it exists
         if (placeData.polygon && placeData.polygon.length >= 3) {
             polygonEditor.loadExistingPolygon(placeData.polygon);
+            // Calculate and show centroid for existing polygon
+            const centroid = calculatePolygonCentroid(placeData.polygon);
+            centroidMarker.setLatLng([centroid.lat, centroid.lng]);
+            updateCoordinatesDisplay(centroid.lat, centroid.lng);
         }
 
         // Function to calculate polygon centroid
@@ -264,10 +280,15 @@
             return { lat: avgLat, lng: avgLng };
         }
 
-        // Function to update coordinates display
+        // Function to update coordinates display and centroid marker
         function updateCoordinatesDisplay(lat, lng) {
             document.getElementById('current-lat').textContent = lat.toFixed(6);
             document.getElementById('current-lng').textContent = lng.toFixed(6);
+            
+            // Update centroid marker position
+            if (centroidMarker) {
+                centroidMarker.setLatLng([lat, lng]);
+            }
         }
 
         // Set up polygon change callback to update centroid
@@ -303,7 +324,7 @@
         // Remove polygon button handler
         document.getElementById('remove-polygon-btn').addEventListener('click', function() {
             polygonEditor.clearPolygon();
-            // Reset coordinates display when polygon is removed
+            // Reset coordinates display and centroid marker when polygon is removed
             updateCoordinatesDisplay(placeData.lat, placeData.lng);
         });
 
