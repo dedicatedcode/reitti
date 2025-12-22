@@ -101,41 +101,6 @@ public class PlacesSettingsController {
         return "settings/places :: places-content";
     }
 
-    @GetMapping("/{placeId}/edit")
-    public String editPlace(@PathVariable Long placeId,
-                            @RequestParam(defaultValue = "0") int page,
-                            @RequestParam(defaultValue = "") String search,
-                            Authentication authentication,
-                            Model model) {
-
-        User user = (User) authentication.getPrincipal();
-        if (!this.placeJdbcService.exists(user, placeId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        }
-
-        try {
-            SignificantPlace place = placeJdbcService.findById(placeId).orElseThrow();
-
-            PlaceInfo placeInfo = convertToPlaceInfo(place);
-
-            // Get visit statistics for this place
-            var visitStats = placeService.getVisitStatisticsForPlace(user, placeId);
-
-            model.addAttribute("place", placeInfo);
-            model.addAttribute("currentPage", page);
-            model.addAttribute("search", search);
-            model.addAttribute("placeTypes", SignificantPlace.PlaceType.values());
-            model.addAttribute("visitStats", visitStats);
-            model.addAttribute("hasPolygon", place.getPolygon() != null && !place.getPolygon().isEmpty());
-
-        } catch (Exception e) {
-            model.addAttribute("errorMessage", i18nService.translate("message.error.place.update", e.getMessage()));
-            return getPlacesContent(user, page, search, model);
-        }
-
-        return "fragments/places :: edit-place-content";
-    }
-
     @PostMapping("/{placeId}/update")
     public String updatePlace(@PathVariable Long placeId,
                               @RequestParam String name,
@@ -290,7 +255,7 @@ public class PlacesSettingsController {
         return "fragments/places :: geocoding-response-content";
     }
 
-    @GetMapping("/{placeId}/edit-polygon")
+    @GetMapping("/{placeId}/edit")
     public String editPolygon(@PathVariable Long placeId,
                               @RequestParam(required = false) String returnUrl,
                               Authentication authentication,
