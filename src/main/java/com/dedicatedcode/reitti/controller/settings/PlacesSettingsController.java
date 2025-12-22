@@ -122,12 +122,15 @@ public class PlacesSettingsController {
             SignificantPlace currentPlace = placeJdbcService.findById(placeId).orElseThrow();
             List<String> warnings = new ArrayList<>();
 
-            // Check if polygon is being removed
             boolean hadPolygon = currentPlace.getPolygon() != null && !currentPlace.getPolygon().isEmpty();
             boolean willHavePolygon = polygonData != null && !polygonData.trim().isEmpty();
             
             if (hadPolygon && !willHavePolygon) {
                 warnings.add(i18nService.translate("places.warning.polygon.removal"));
+            }
+
+            if (!hadPolygon && willHavePolygon) {
+                warnings.add(i18nService.translate("places.warning.polygon.addition"));
             }
 
             // Check if polygon is being significantly changed
@@ -141,26 +144,12 @@ public class PlacesSettingsController {
                     double latDiff = Math.abs(newCentroid.latitude() - currentCentroid.latitude());
                     double lngDiff = Math.abs(newCentroid.longitude() - currentCentroid.longitude());
                     
-                    // If centroid moved significantly (more than ~100m at typical latitudes)
-                    if (latDiff > 0.001 || lngDiff > 0.001) {
+                    // If centroid moved significantly (more than ~10m at typical latitudes)
+                    if (latDiff > 0.0001 || lngDiff > 0.0001) {
                         warnings.add(i18nService.translate("places.warning.polygon.significant_change"));
                     }
                 } catch (Exception e) {
                     // If polygon parsing fails, we'll catch it in the actual update
-                }
-            }
-
-            // Check if place type is changing
-            if (type != null && !type.isEmpty()) {
-                try {
-                    SignificantPlace.PlaceType newType = SignificantPlace.PlaceType.valueOf(type);
-                    if (currentPlace.getType() != newType) {
-                        warnings.add(i18nService.translate("places.warning.type.change", 
-                            i18nService.translate(currentPlace.getType().getMessageKey()),
-                            i18nService.translate(newType.getMessageKey())));
-                    }
-                } catch (IllegalArgumentException e) {
-                    // Invalid type will be handled in actual update
                 }
             }
 
