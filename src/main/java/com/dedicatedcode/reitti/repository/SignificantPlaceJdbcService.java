@@ -340,4 +340,57 @@ public class SignificantPlaceJdbcService {
         this.jdbcTemplate.update("DELETE FROM geocoding_response WHERE significant_place_id IN (SELECT id FROM significant_places WHERE user_id = ?)", user.getId());
         this.jdbcTemplate.update("DELETE FROM significant_places WHERE user_id = ?", user.getId());
     }
+
+    public List<SignificantPlace> findPlacesOverlappingWithPolygon(Long userId, Long excludePlaceId, List<GeoPoint> polygon) {
+        if (polygon == null || polygon.size() < 3) {
+            return List.of();
+        }
+
+        // Create WKT polygon string from the points
+        StringBuilder wktBuilder = new StringBuilder("POLYGON((");
+        for (int i = 0; i < polygon.size(); i++) {
+            GeoPoint point = polygon.get(i);
+            wktBuilder.append(point.longitude()).append(" ").append(point.latitude());
+            if (i < polygon.size() - 1) {
+                wktBuilder.append(", ");
+            }
+        }
+        // Close the polygon by adding the first point again
+        GeoPoint firstPoint = polygon.get(0);
+        wktBuilder.append(", ").append(firstPoint.longitude()).append(" ").append(firstPoint.latitude());
+        wktBuilder.append("))");
+
+        String sql = """
+                SELECT sp.id,
+                       sp.address,
+                       sp.city,
+                       sp.country_code,
+                       sp.type,
+                       sp.latitude_centroid,
+                       sp.longitude_centroid,
+                       sp.name,
+                       sp.user_id,
+                       ST_AsText(sp.geom) as geom,
+                       ST_AsText(sp.polygon) as polygon,
+                       sp.timezone,
+                       sp.geocoded,
+                       sp.version
+                FROM significant_places sp
+                WHERE sp.user_id = ?
+                AND sp.id != ?
+                AND (
+                    -- Check if the new polygon overlaps with existing place's polygon
+                    (sp.polygon IS NOT NULL AND ST_Overlaps(sp.polygon, ST_GeomFromText(?, 4326)))
+                    OR
+                    -- Check if the new polygon contains the existing place's centroid
+                    ST_Contains(ST_GeomFromText(?, 4326), sp.geom)
+                    OR
+                    -- Check if existing place's polygon contains any part of the new polygon
+                    (sp.polygon IS NOT NULL AND ST_Overlaps(ST_GeomFromText(?, 4326), sp.polygon))
+                )
+                """;
+
+        String polygonWkt = wktBuilder.toString();
+        return jdbcTemplate.query(sql, significantPlaceRowMapper, userId, excludePlaceId, polygonWkt, polygonWkt, polygonWkt);
+    }
 }
