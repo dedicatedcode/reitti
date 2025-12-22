@@ -458,16 +458,19 @@ public class PlacesSettingsController {
     }
 
     private int checkForOverlappingVisits(User user, Long placeId, List<GeoPoint> newPolygon) {
-        // TODO: Implement overlap checking with existing visits
-        // This would need to:
-        // 1. Query all processed visits for the user
-        // 2. For each visit, check if its location points fall within the new polygon
-        // 3. Count visits that would be affected by the boundary change
-        // 4. Return the count of overlapping visits
-        
-        // For now, return 0 as a placeholder
-        // This needs to be implemented with proper visit querying and geometry operations
-        return 0;
+        try {
+            // Find places that would overlap with the new polygon
+            List<SignificantPlace> overlappingPlaces = placeJdbcService.findPlacesOverlappingWithPolygon(
+                user.getId(), placeId, newPolygon);
+            
+            // For now, we return the count of overlapping places as a proxy for affected visits
+            // In a more sophisticated implementation, we could query actual visits for these places
+            return overlappingPlaces.size();
+        } catch (Exception e) {
+            // Log error but don't fail the check
+            System.err.println("Error checking for overlapping places: " + e.getMessage());
+            return 0;
+        }
     }
 
 }
