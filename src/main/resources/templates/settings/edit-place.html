@@ -270,19 +270,30 @@
             document.getElementById('current-lng').textContent = lng.toFixed(6);
         }
 
-        // Override polygon editor's polygon change callback to update centroid
-        const originalOnPolygonChange = polygonEditor.onPolygonChange || function() {};
-        polygonEditor.onPolygonChange = function(points) {
-            originalOnPolygonChange.call(this, points);
-            
-            if (points && points.length >= 3) {
-                const centroid = calculatePolygonCentroid(points);
-                updateCoordinatesDisplay(centroid.lat, centroid.lng);
-            } else {
-                // Reset to original coordinates if no valid polygon
-                updateCoordinatesDisplay(placeData.lat, placeData.lng);
-            }
-        };
+        // Set up polygon change callback to update centroid
+        if (typeof polygonEditor.onPolygonChange === 'function') {
+            const originalOnPolygonChange = polygonEditor.onPolygonChange;
+            polygonEditor.onPolygonChange = function(points) {
+                originalOnPolygonChange.call(this, points);
+                
+                if (points && points.length >= 3) {
+                    const centroid = calculatePolygonCentroid(points);
+                    updateCoordinatesDisplay(centroid.lat, centroid.lng);
+                } else {
+                    updateCoordinatesDisplay(placeData.lat, placeData.lng);
+                }
+            };
+        } else {
+            // If no callback exists, create one
+            polygonEditor.onPolygonChange = function(points) {
+                if (points && points.length >= 3) {
+                    const centroid = calculatePolygonCentroid(points);
+                    updateCoordinatesDisplay(centroid.lat, centroid.lng);
+                } else {
+                    updateCoordinatesDisplay(placeData.lat, placeData.lng);
+                }
+            };
+        }
 
         // Save button handler
         document.getElementById('save-btn').addEventListener('click', function() {
@@ -299,13 +310,30 @@
         const nearbyPlaces = /*[[${nearbyPlaces}]]*/ [];
         polygonEditor.loadNearbyPlaces(nearbyPlaces);
         
-        // Monitor polygon changes if no callback mechanism exists
+        // Monitor polygon changes with multiple fallback methods
         let lastPolygonPoints = null;
-        setInterval(function() {
-            const currentPoints = polygonEditor.getPolygonPoints ? polygonEditor.getPolygonPoints() : null;
+        let lastPolygonString = '';
+        
+        function checkPolygonChanges() {
+            let currentPoints = null;
+            
+            // Try multiple methods to get polygon points
+            if (polygonEditor.getPolygonPoints) {
+                currentPoints = polygonEditor.getPolygonPoints();
+            } else if (polygonEditor.polygon && polygonEditor.polygon.getLatLngs) {
+                const latLngs = polygonEditor.polygon.getLatLngs();
+                if (latLngs && latLngs.length > 0) {
+                    currentPoints = latLngs[0].map(latlng => ({ lat: latlng.lat, lng: latlng.lng }));
+                }
+            } else if (polygonEditor.polygonPoints) {
+                currentPoints = polygonEditor.polygonPoints;
+            }
+            
+            const currentString = JSON.stringify(currentPoints);
             
             // Check if polygon has changed
-            if (JSON.stringify(currentPoints) !== JSON.stringify(lastPolygonPoints)) {
+            if (currentString !== lastPolygonString) {
+                lastPolygonString = currentString;
                 lastPolygonPoints = currentPoints;
                 
                 if (currentPoints && currentPoints.length >= 3) {
@@ -315,7 +343,19 @@
                     updateCoordinatesDisplay(placeData.lat, placeData.lng);
                 }
             }
-        }, 500); // Check every 500ms
+        }
+        
+        // Check for changes every 300ms
+        setInterval(checkPolygonChanges, 300);
+        
+        // Also listen for map events that might indicate polygon changes
+        map.on('click', function() {
+            setTimeout(checkPolygonChanges, 100);
+        });
+        
+        map.on('contextmenu', function() {
+            setTimeout(checkPolygonChanges, 100);
+        });
         
         // Handle geocoding drawer
         document.body.addEventListener('htmx:afterSettle', function(event) {
