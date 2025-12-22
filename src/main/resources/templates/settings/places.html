@@ -51,7 +51,7 @@
                             <div style="display: flex; gap: 10px; margin-top: 10px;">
                                 <button type="button"
                                         class="btn btn-block"
-                                        th:attr="hx-get=@{/settings/places/{id}/edit(id=${place.id()}, page=${currentPage}, search=${search})}"
+                                        th:attr="hx-get=@{/settings/places/{id}/edit(id=${place.id()}, returnUrl=@{/settings/places/places-content(page=${currentPage}, search=${search})})}"
                                         hx-target="#places-management"
                                         hx-swap="innerHTML"
                                         th:text="#{places.edit.button}">Edit</button>
