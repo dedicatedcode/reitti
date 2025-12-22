@@ -186,7 +186,9 @@ a.btn-default,
 .btn.btn-block {
     width: 100%;
     display: inline-block;
-    box-sizing: border-box;}
+    box-sizing: border-box;
+    text-align: center;
+}
 
 .btn.btn-danger {
     background: #995353;
