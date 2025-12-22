@@ -257,7 +257,7 @@
             fillOpacity: 0.8
         }).addTo(map);
         
-        centroidMarker.bindTooltip('Centroid', { permanent: true, direction: 'top' });
+        centroidMarker.bindTooltip('Centroid', { permanent: false, direction: 'top' });
 
         // Load existing polygon if it exists
         if (placeData.polygon && placeData.polygon.length >= 3) {
@@ -331,7 +331,6 @@
             }
         }
 
-        // Set up polygon change callback to update centroid
         if (typeof polygonEditor.onPolygonChange === 'function') {
             const originalOnPolygonChange = polygonEditor.onPolygonChange;
             polygonEditor.onPolygonChange = function(points) {
@@ -371,7 +370,6 @@
         const nearbyPlaces = /*[[${nearbyPlaces}]]*/ [];
         polygonEditor.loadNearbyPlaces(nearbyPlaces);
         
-        // Monitor polygon changes with multiple fallback methods
         let lastPolygonPoints = null;
         let lastPolygonString = '';
         
