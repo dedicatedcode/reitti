@@ -89,15 +89,9 @@ class CanvasVisitRenderer {
         });
     }
     
-    createVisitMarkers() {
-        this.visibleVisits.forEach(visit => {
-            this.createVisitMarker(visit);
-        });
-    }
-    
     createVisitMarker(visit) {
         const zoom = this.map.getZoom();
-        const showPolygons = zoom >= 16; // Show polygons at zoom level 16 and above
+        const showPolygons = zoom >= 18; // Show polygons at zoom level 16 and above
         
         // Check if visit has polygon data and we should show polygons
         if (showPolygons && visit.place.polygon) {
@@ -181,12 +175,11 @@ class CanvasVisitRenderer {
             renderer: this.canvasRenderer,
             interactive: true
         });
-        
-        // Create center marker for better visibility
+
         const centerMarker = L.circleMarker([visit.lat, visit.lng], {
-            radius: 3,
+            radius: 5,
             fillOpacity: 1,
-            fillColor: visit.color,
+            fillColor: this.lightenHexColor(visit.color, 80),
             color: '#000',
             weight: 1,
             renderer: this.canvasRenderer,
