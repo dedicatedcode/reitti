@@ -37,24 +37,6 @@ import java.util.UUID;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 
-class CheckUpdateResponse {
-    private final boolean canProceed;
-    private final List<String> warnings;
-
-    public CheckUpdateResponse(boolean canProceed, List<String> warnings) {
-        this.canProceed = canProceed;
-        this.warnings = warnings;
-    }
-
-    public boolean isCanProceed() {
-        return canProceed;
-    }
-
-    public List<String> getWarnings() {
-        return warnings;
-    }
-}
-
 @Controller
 @RequestMapping("/settings/places")
 public class PlacesSettingsController {
@@ -467,6 +449,24 @@ public class PlacesSettingsController {
             // Log error but don't fail the check
             System.err.println("Error checking for overlapping places: " + e.getMessage());
             return 0;
+        }
+    }
+
+    public static class CheckUpdateResponse {
+        private final boolean canProceed;
+        private final List<String> warnings;
+
+        public CheckUpdateResponse(boolean canProceed, List<String> warnings) {
+            this.canProceed = canProceed;
+            this.warnings = warnings;
+        }
+
+        public boolean isCanProceed() {
+            return canProceed;
+        }
+
+        public List<String> getWarnings() {
+            return warnings;
         }
     }
 
