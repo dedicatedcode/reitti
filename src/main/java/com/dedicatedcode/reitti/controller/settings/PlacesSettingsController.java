@@ -151,6 +151,11 @@ public class PlacesSettingsController {
                     try {
                         List<GeoPoint> polygon = parsePolygonData(polygonData);
                         updatedPlace = updatedPlace.withPolygon(polygon);
+                        
+                        // Calculate and update the centroid
+                        GeoPoint centroid = calculatePolygonCentroid(polygon);
+                        updatedPlace = updatedPlace.withLatitudeCentroid(centroid.latitude())
+                                                   .withLongitudeCentroid(centroid.longitude());
                     } catch (Exception e) {
                         model.addAttribute("errorMessage", i18nService.translate("message.error.place.update", "Invalid polygon data: " + e.getMessage()));
                         return editPolygon(placeId, returnUrl, authentication, model);
@@ -321,6 +326,46 @@ public class PlacesSettingsController {
         }
         
         return geoPoints;
+    }
+
+    private GeoPoint calculatePolygonCentroid(List<GeoPoint> polygon) {
+        if (polygon == null || polygon.isEmpty()) {
+            throw new IllegalArgumentException("Polygon cannot be null or empty");
+        }
+        
+        // Calculate centroid using the shoelace formula
+        double area = 0.0;
+        double centroidLat = 0.0;
+        double centroidLng = 0.0;
+        
+        int n = polygon.size();
+        
+        for (int i = 0; i < n; i++) {
+            int j = (i + 1) % n;
+            double xi = polygon.get(i).longitude();
+            double yi = polygon.get(i).latitude();
+            double xj = polygon.get(j).longitude();
+            double yj = polygon.get(j).latitude();
+            
+            double cross = xi * yj - xj * yi;
+            area += cross;
+            centroidLat += (yi + yj) * cross;
+            centroidLng += (xi + xj) * cross;
+        }
+        
+        area *= 0.5;
+        
+        if (Math.abs(area) < 1e-10) {
+            // Fallback to simple average if area is too small
+            double avgLat = polygon.stream().mapToDouble(GeoPoint::latitude).average().orElse(0.0);
+            double avgLng = polygon.stream().mapToDouble(GeoPoint::longitude).average().orElse(0.0);
+            return new GeoPoint(avgLat, avgLng);
+        }
+        
+        centroidLat /= (6.0 * area);
+        centroidLng /= (6.0 * area);
+        
+        return new GeoPoint(centroidLat, centroidLng);
     }
 
 }
