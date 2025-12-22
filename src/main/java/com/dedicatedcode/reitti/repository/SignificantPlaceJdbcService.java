@@ -113,7 +113,44 @@ public class SignificantPlaceJdbcService {
         return new Page<>(content, pageable, total != null ? total : 0);
     }
 
-    //create a findNearbyPlaces method which follows the parameters of the findEnclosingPlaces method. But this time, it should also find not only places without a polygon, but also nearby places with a polygon which are in range of the given point.  AI!
+    /**
+     * Searches for SignificantPlaces that are nearby to this point. This includes places with polygons
+     * that are within the specified distance range of the given point, as well as places without polygons
+     * whose center points are within the distance range.
+     *
+     * @param userId - the user to load the places for.
+     * @param point - the point to search near.
+     * @param distanceInDegrees - distance in degrees to search within.
+     * @return list of nearby SignificantPlaces.
+     */
+    public List<SignificantPlace> findNearbyPlaces(Long userId, Point point, double distanceInDegrees) {
+        String sql = """
+        SELECT sp.id,
+               sp.address,
+               sp.country_code,
+               sp.city,
+               sp.type,
+               sp.latitude_centroid,
+               sp.longitude_centroid,
+               sp.name,
+               sp.user_id,
+               ST_AsText(sp.geom) as geom,
+               ST_AsText(sp.polygon) as polygon,
+               sp.timezone,
+               sp.geocoded,
+               sp.version
+        FROM significant_places sp
+        WHERE sp.user_id = ?
+        AND ST_DWithin(
+            COALESCE(sp.polygon, sp.geom),
+            ST_GeomFromText(?, '4326'),
+            ?
+        )
+        """;
+
+        return jdbcTemplate.query(sql, significantPlaceRowMapper,
+                                  userId, point.toString(), distanceInDegrees);
+    }
 
     /**
      * Searches for SignificantPlaces which contain this point. Either by having a polygon which contains that point or
