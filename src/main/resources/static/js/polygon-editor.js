@@ -62,9 +62,9 @@ class PolygonEditor {
             draggable: true,
             icon: L.divIcon({
                 className: 'polygon-point-marker',
-                html: '<div style="background: #ef4444; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #dc2626; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
-                iconSize: [16, 16],
-                iconAnchor: [8, 8]
+                html: '<div style="background: #f5deb3; width: 8px; height: 8px; border-radius: 50%; border: 2px solid #daa520; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+                iconSize: [12, 12],
+                iconAnchor: [6, 6]
             })
         }).addTo(this.map);
         
@@ -143,10 +143,10 @@ class PolygonEditor {
         if (this.polygonPoints.length >= 3) {
             // Create polygon
             this.polygonLayer = L.polygon(this.polygonPoints, {
-                color: '#3b82f6',
+                color: '#daa520',
                 weight: 2,
-                fillColor: '#3b82f6',
-                fillOpacity: 0.2
+                fillColor: '#f5deb3',
+                fillOpacity: 0.3
             }).addTo(this.map);
         } else if (this.polygonPoints.length === 2) {
             // Show preview line to first point
@@ -237,10 +237,10 @@ class PolygonEditor {
             if (place.id !== this.placeId) {
                 const marker = L.circleMarker([place.lat, place.lng], {
                     radius: 4,
-                    fillColor: '#6b7280',
-                    color: '#4b5563',
+                    fillColor: '#ffcccb',
+                    color: '#ff6b6b',
                     weight: 1,
-                    fillOpacity: 0.6
+                    fillOpacity: 0.7
                 }).addTo(this.map);
                 
                 marker.bindTooltip(place.name, {
