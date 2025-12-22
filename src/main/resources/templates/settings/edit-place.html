@@ -264,8 +264,9 @@
             polygonEditor.loadExistingPolygon(placeData.polygon);
             // Calculate and show centroid for existing polygon
             const centroid = calculatePolygonCentroid(placeData.polygon);
-            centroidMarker.setLatLng([centroid.lat, centroid.lng]);
-            updateCoordinatesDisplay(centroid.lat, centroid.lng);
+            if (centroid && !isNaN(centroid.lat) && !isNaN(centroid.lng)) {
+                updateCoordinatesDisplay(centroid.lat, centroid.lng);
+            }
         }
 
         // Function to calculate polygon centroid
@@ -274,14 +275,53 @@
                 return { lat: placeData.lat, lng: placeData.lng };
             }
             
-            const avgLat = points.reduce((sum, point) => sum + point.lat, 0) / points.length;
-            const avgLng = points.reduce((sum, point) => sum + point.lng, 0) / points.length;
+            let validPoints = [];
+            
+            // Handle different point formats and filter valid points
+            for (let point of points) {
+                let lat, lng;
+                
+                if (point.lat !== undefined && point.lng !== undefined) {
+                    lat = point.lat;
+                    lng = point.lng;
+                } else if (point.latitude !== undefined && point.longitude !== undefined) {
+                    lat = point.latitude;
+                    lng = point.longitude;
+                } else if (Array.isArray(point) && point.length >= 2) {
+                    lat = point[0];
+                    lng = point[1];
+                } else {
+                    continue; // Skip invalid points
+                }
+                
+                // Validate that lat/lng are numbers
+                if (typeof lat === 'number' && typeof lng === 'number' && 
+                    !isNaN(lat) && !isNaN(lng) && 
+                    lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                    validPoints.push({ lat: lat, lng: lng });
+                }
+            }
+            
+            if (validPoints.length === 0) {
+                return { lat: placeData.lat, lng: placeData.lng };
+            }
+            
+            const avgLat = validPoints.reduce((sum, point) => sum + point.lat, 0) / validPoints.length;
+            const avgLng = validPoints.reduce((sum, point) => sum + point.lng, 0) / validPoints.length;
             
             return { lat: avgLat, lng: avgLng };
         }
 
         // Function to update coordinates display and centroid marker
         function updateCoordinatesDisplay(lat, lng) {
+            // Validate coordinates before updating
+            if (typeof lat !== 'number' || typeof lng !== 'number' || 
+                isNaN(lat) || isNaN(lng) || 
+                lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                console.warn('Invalid coordinates:', lat, lng);
+                return;
+            }
+            
             document.getElementById('current-lat').textContent = lat.toFixed(6);
             document.getElementById('current-lng').textContent = lng.toFixed(6);
             
