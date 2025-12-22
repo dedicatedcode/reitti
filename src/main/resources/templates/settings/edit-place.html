@@ -141,8 +141,8 @@
             <p class="sidebar-subtitle" th:text="#{places.polygon.editor.subtitle}">Edit polygon boundary</p>
             <div class="coordinates-display">
                 <span th:text="#{places.coordinates.label}">Coordinates</span>:
-                <span th:text="${#numbers.formatDecimal(place.lat(), 1, 6)}">0.000000</span>,
-                <span th:text="${#numbers.formatDecimal(place.lng(), 1, 6)}">0.000000</span>
+                <span id="current-lat" th:text="${#numbers.formatDecimal(place.lat(), 1, 6)}">0.000000</span>,
+                <span id="current-lng" th:text="${#numbers.formatDecimal(place.lng(), 1, 6)}">0.000000</span>
             </div>
         </div>
         
@@ -252,6 +252,38 @@
             polygonEditor.loadExistingPolygon(placeData.polygon);
         }
 
+        // Function to calculate polygon centroid
+        function calculatePolygonCentroid(points) {
+            if (!points || points.length === 0) {
+                return { lat: placeData.lat, lng: placeData.lng };
+            }
+            
+            const avgLat = points.reduce((sum, point) => sum + point.lat, 0) / points.length;
+            const avgLng = points.reduce((sum, point) => sum + point.lng, 0) / points.length;
+            
+            return { lat: avgLat, lng: avgLng };
+        }
+
+        // Function to update coordinates display
+        function updateCoordinatesDisplay(lat, lng) {
+            document.getElementById('current-lat').textContent = lat.toFixed(6);
+            document.getElementById('current-lng').textContent = lng.toFixed(6);
+        }
+
+        // Override polygon editor's polygon change callback to update centroid
+        const originalOnPolygonChange = polygonEditor.onPolygonChange || function() {};
+        polygonEditor.onPolygonChange = function(points) {
+            originalOnPolygonChange.call(this, points);
+            
+            if (points && points.length >= 3) {
+                const centroid = calculatePolygonCentroid(points);
+                updateCoordinatesDisplay(centroid.lat, centroid.lng);
+            } else {
+                // Reset to original coordinates if no valid polygon
+                updateCoordinatesDisplay(placeData.lat, placeData.lng);
+            }
+        };
+
         // Save button handler
         document.getElementById('save-btn').addEventListener('click', function() {
             polygonEditor.savePolygon();
@@ -260,10 +292,30 @@
         // Remove polygon button handler
         document.getElementById('remove-polygon-btn').addEventListener('click', function() {
             polygonEditor.clearPolygon();
+            // Reset coordinates display when polygon is removed
+            updateCoordinatesDisplay(placeData.lat, placeData.lng);
         });
 
         const nearbyPlaces = /*[[${nearbyPlaces}]]*/ [];
         polygonEditor.loadNearbyPlaces(nearbyPlaces);
+        
+        // Monitor polygon changes if no callback mechanism exists
+        let lastPolygonPoints = null;
+        setInterval(function() {
+            const currentPoints = polygonEditor.getPolygonPoints ? polygonEditor.getPolygonPoints() : null;
+            
+            // Check if polygon has changed
+            if (JSON.stringify(currentPoints) !== JSON.stringify(lastPolygonPoints)) {
+                lastPolygonPoints = currentPoints;
+                
+                if (currentPoints && currentPoints.length >= 3) {
+                    const centroid = calculatePolygonCentroid(currentPoints);
+                    updateCoordinatesDisplay(centroid.lat, centroid.lng);
+                } else {
+                    updateCoordinatesDisplay(placeData.lat, placeData.lng);
+                }
+            }
+        }, 500); // Check every 500ms
         
         // Handle geocoding drawer
         document.body.addEventListener('htmx:afterSettle', function(event) {
