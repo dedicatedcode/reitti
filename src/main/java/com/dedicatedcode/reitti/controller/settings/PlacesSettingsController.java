@@ -109,10 +109,6 @@ public class PlacesSettingsController {
     @PostMapping("/{placeId}/check-update")
     @ResponseBody
     public CheckUpdateResponse checkUpdate(@PathVariable Long placeId,
-                                          @RequestParam String name,
-                                          @RequestParam(required = false) String address,
-                                          @RequestParam(required = false) String city,
-                                          @RequestParam(required = false) String countryCode,
                                           @RequestParam(required = false) String type,
                                           @RequestParam(required = false) String polygonData,
                                           Authentication authentication) {
@@ -425,10 +421,6 @@ public class PlacesSettingsController {
             if (!isDuplicate) {
                 uniquePoints.add(point);
             }
-        }
-        
-        if (uniquePoints.isEmpty()) {
-            throw new IllegalArgumentException("No unique points found in polygon");
         }
         
         // Calculate centroid as the arithmetic mean of unique vertices
