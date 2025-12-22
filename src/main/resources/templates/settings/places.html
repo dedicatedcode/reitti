@@ -49,12 +49,9 @@
                                 <div><strong th:text="#{places.coordinates.label}">Coordinates:</strong> <span th:text="${place.lat() + ', ' + place.lng()}"></span></div>
                             </div>
                             <div style="display: flex; gap: 10px; margin-top: 10px;">
-                                <button type="button"
-                                        class="btn btn-block"
-                                        th:attr="hx-get=@{/settings/places/{id}/edit(id=${place.id()}, returnUrl=@{/settings/places/places-content(page=${currentPage}, search=${search})})}"
-                                        hx-target="#places-management"
-                                        hx-swap="innerHTML"
-                                        th:text="#{places.edit.button}">Edit</button>
+                                <a class="btn btn-block"
+                                    th:href="@{/settings/places/{id}/edit(id=${place.id()}, returnUrl=${returnUrl})}"
+                                    th:text="#{places.edit.button}">Edit</a>
                             </div>
                         </div>
                     </div>

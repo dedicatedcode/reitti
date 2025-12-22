@@ -70,12 +70,15 @@ public class PlacesSettingsController {
     }
 
     @GetMapping
-    public String getPage(@AuthenticationPrincipal User user, Model model) {
+    public String getPage(@AuthenticationPrincipal User user,
+                          Model model,
+                          @RequestParam(defaultValue = "0") int page,
+                          @RequestParam(defaultValue = "") String search) {
         model.addAttribute("activeSection", "places");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
 
-        getPlacesContent(user, 0, "", model);
+        getPlacesContent(user, page, search, model);
         return "settings/places";
     }
 
@@ -97,6 +100,7 @@ public class PlacesSettingsController {
         model.addAttribute("isEmpty", places.isEmpty());
         model.addAttribute("placeTypes", SignificantPlace.PlaceType.values());
         model.addAttribute("search", search);
+        model.addAttribute("returnUrl", "/settings/places?search=" + search + "&page=" + page);
 
         return "settings/places :: places-content";
     }
