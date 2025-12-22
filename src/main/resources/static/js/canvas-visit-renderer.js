@@ -26,6 +26,11 @@ class CanvasVisitRenderer {
         this.map.on('zoomend', () => {
             this.updateVisibleVisits();
         });
+        
+        // Listen for zoom changes to re-render markers (for polygon/circle switching)
+        this.map.on('zoomend', () => {
+            this.renderVisibleVisits();
+        });
     }
     
     setVisits(visits) {
@@ -91,6 +96,18 @@ class CanvasVisitRenderer {
     }
     
     createVisitMarker(visit) {
+        const zoom = this.map.getZoom();
+        const showPolygons = zoom >= 16; // Show polygons at zoom level 16 and above
+        
+        // Check if visit has polygon data and we should show polygons
+        if (showPolygons && visit.place.polygon) {
+            this.createPolygonMarker(visit);
+        } else {
+            this.createCircleMarker(visit);
+        }
+    }
+    
+    createCircleMarker(visit) {
         // Calculate radius using logarithmic scale
         const durationHours = visit.totalDurationMs / (1000 * 60 * 60);
         const baseRadius = 15;
@@ -143,6 +160,81 @@ class CanvasVisitRenderer {
         
         // Store references for cleanup
         this.visitMarkers.push(outerCircle, innerMarker);
+    }
+    
+    createPolygonMarker(visit) {
+        // Parse polygon coordinates from WKT format
+        const polygonCoords = this.parsePolygonWKT(visit.place.polygon);
+        
+        if (!polygonCoords || polygonCoords.length === 0) {
+            // Fallback to circle marker if polygon parsing fails
+            this.createCircleMarker(visit);
+            return;
+        }
+        
+        // Create polygon
+        const polygon = L.polygon(polygonCoords, {
+            fillColor: this.lightenHexColor(visit.color, 20),
+            fillOpacity: 0.3,
+            color: visit.color,
+            weight: 2,
+            renderer: this.canvasRenderer,
+            interactive: true
+        });
+        
+        // Create center marker for better visibility
+        const centerMarker = L.circleMarker([visit.lat, visit.lng], {
+            radius: 3,
+            fillOpacity: 1,
+            fillColor: visit.color,
+            color: '#000',
+            weight: 1,
+            renderer: this.canvasRenderer,
+            interactive: true
+        });
+        
+        // Create tooltip content
+        const totalDurationText = this.humanizeDuration(visit.totalDurationMs);
+        const visitCount = visit.visits.length;
+        const visitText = visitCount === 1 ? 'visit' : 'visits';
+        
+        let tooltip = L.tooltip({
+            content: `<div class="visit-title">${visit.place.name}</div>
+                             <div class="visit-description">
+                                 ${visitCount} ${visitText} - Total: ${totalDurationText}
+                             </div>`,
+            className: 'visit-popup',
+            permanent: false
+        });
+        
+        polygon.bindTooltip(tooltip);
+        centerMarker.bindTooltip(tooltip);
+
+        this.map.addLayer(polygon);
+        this.map.addLayer(centerMarker);
+        
+        // Store references for cleanup
+        this.visitMarkers.push(polygon, centerMarker);
+    }
+    
+    parsePolygonWKT(wktString) {
+        if (!wktString) return null;
+        
+        try {
+            // Remove POLYGON(( and )) from the string
+            const coordsString = wktString.replace(/^POLYGON\(\(/, '').replace(/\)\)$/, '');
+            
+            // Split by comma and parse each coordinate pair
+            const coords = coordsString.split(',').map(pair => {
+                const [lng, lat] = pair.trim().split(' ').map(parseFloat);
+                return [lat, lng]; // Leaflet expects [lat, lng]
+            });
+            
+            return coords;
+        } catch (error) {
+            console.warn('Failed to parse polygon WKT:', wktString, error);
+            return null;
+        }
     }
     
     lightenHexColor(hex, percent) {

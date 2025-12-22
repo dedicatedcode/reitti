@@ -487,7 +487,8 @@
                                     visits: placeSummary.visits.map(v => ({ id: v.id })),
                                     place: {
                                         name: place.name || 'Unknown Place',
-                                        address: place.address || ''
+                                        address: place.address || '',
+                                        polygon: place.polygon || null
                                     },
                                     color: color
                                 };
