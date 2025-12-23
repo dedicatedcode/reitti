@@ -114,8 +114,7 @@ public class PlacesSettingsController {
     @PostMapping("/{placeId}/check-update")
     @ResponseBody
     public CheckUpdateResponse checkUpdate(@PathVariable Long placeId,
-                                          @RequestParam(required = false) String type,
-                                          @RequestParam(required = false) String polygonData,
+                                           @RequestParam(required = false) String polygonData,
                                           Authentication authentication) {
 
         User user = (User) authentication.getPrincipal();
@@ -124,7 +123,7 @@ public class PlacesSettingsController {
         }
 
         PlaceChangeDetectionService.PlaceChangeAnalysis analysis = 
-            placeChangeDetectionService.analyzeChanges(user, placeId, type, polygonData);
+            placeChangeDetectionService.analyzeChanges(user, placeId, polygonData);
         
         return new CheckUpdateResponse(analysis.isCanProceed(), analysis.getWarnings());
     }

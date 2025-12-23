@@ -4,9 +4,12 @@ import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.GeoUtils;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -15,31 +18,37 @@ import java.util.List;
 @Service
 public class PlaceChangeDetectionService {
 
+    private static final Logger log = LoggerFactory.getLogger(PlaceChangeDetectionService.class);
+    private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final SignificantPlaceJdbcService placeJdbcService;
     private final I18nService i18nService;
     private final ObjectMapper objectMapper;
 
-    public PlaceChangeDetectionService(SignificantPlaceJdbcService placeJdbcService,
-                                     I18nService i18nService,
-                                     ObjectMapper objectMapper) {
+    public PlaceChangeDetectionService(ProcessedVisitJdbcService processedVisitJdbcService,
+                                       SignificantPlaceJdbcService placeJdbcService,
+                                       I18nService i18nService,
+                                       ObjectMapper objectMapper) {
+        this.processedVisitJdbcService = processedVisitJdbcService;
         this.placeJdbcService = placeJdbcService;
         this.i18nService = i18nService;
         this.objectMapper = objectMapper;
     }
 
-    public PlaceChangeAnalysis analyzeChanges(User user, Long placeId, String type, String polygonData) {
+    public PlaceChangeAnalysis analyzeChanges(User user, Long placeId, String polygonData) {
         try {
             SignificantPlace currentPlace = placeJdbcService.findById(placeId).orElseThrow();
             List<String> warnings = new ArrayList<>();
 
             // Analyze polygon changes
-            analyzePolygonChanges(currentPlace, polygonData, warnings);
-
-            // Analyze type changes
-            analyzeTypeChanges(currentPlace, type, warnings);
+            boolean changed = analyzePolygonChanges(currentPlace, polygonData, warnings);
 
             // Check for overlapping places
-            analyzeOverlappingPlaces(user, placeId, polygonData, warnings);
+            changed = changed || analyzeOverlappingPlaces(user, placeId, polygonData, warnings);
+
+            // Check for overlapping places
+            if (changed) {
+                calculateAffectedDays(user, currentPlace, polygonData, warnings);
+            }
 
             return new PlaceChangeAnalysis(warnings.isEmpty(), warnings);
 
@@ -48,16 +57,29 @@ public class PlaceChangeDetectionService {
         }
     }
 
-    private void analyzePolygonChanges(SignificantPlace currentPlace, String polygonData, List<String> warnings) {
+    private void calculateAffectedDays(User user, SignificantPlace currentPlace, String polygonData, List<String> warnings) throws Exception {
+        List<GeoPoint> newPolygon = parsePolygonData(polygonData);
+        List<SignificantPlace> overlappingPlaces = checkForOverlappingPlaces(user, currentPlace.getId(), newPolygon);
+        overlappingPlaces.add(currentPlace);
+        int affectedDays = this.processedVisitJdbcService.getAffectedDays(overlappingPlaces).size();
+        if (affectedDays > 0) {
+            warnings.add(i18nService.translate("places.warning.overlapping.recalculation_hint", affectedDays));
+        }
+    }
+
+    private boolean analyzePolygonChanges(SignificantPlace currentPlace, String polygonData, List<String> warnings) {
+        boolean changed = false;
         boolean hadPolygon = currentPlace.getPolygon() != null && !currentPlace.getPolygon().isEmpty();
         boolean willHavePolygon = polygonData != null && !polygonData.trim().isEmpty();
 
         if (hadPolygon && !willHavePolygon) {
             warnings.add(i18nService.translate("places.warning.polygon.removal"));
+            changed = true;
         }
 
         if (!hadPolygon && willHavePolygon) {
             warnings.add(i18nService.translate("places.warning.polygon.addition"));
+            changed = true;
         }
 
         // Check if polygon is being significantly changed
@@ -67,49 +89,40 @@ public class PlaceChangeDetectionService {
                 GeoPoint newCentroid = GeoUtils.calculatePolygonCentroid(newPolygon);
                 GeoPoint currentCentroid = new GeoPoint(currentPlace.getLatitudeCentroid(), currentPlace.getLongitudeCentroid());
 
+                double currentArea = GeoUtils.calculatePolygonArea(currentPlace.getPolygon());
+                double newArea = GeoUtils.calculatePolygonArea(newPolygon);
                 // Calculate distance between centroids (rough approximation)
                 double latDiff = Math.abs(newCentroid.latitude() - currentCentroid.latitude());
                 double lngDiff = Math.abs(newCentroid.longitude() - currentCentroid.longitude());
 
                 // If centroid moved significantly (more than ~10m at typical latitudes)
-                if (latDiff > 0.0001 || lngDiff > 0.0001) {
+                if (latDiff > 0.0001 || lngDiff > 0.0001 || Math.abs(newArea - currentArea) > 1) {
                     warnings.add(i18nService.translate("places.warning.polygon.significant_change"));
+                    changed = true;
                 }
             } catch (Exception e) {
                 // If polygon parsing fails, we'll catch it in the actual update
             }
         }
+        return changed;
     }
 
-    private void analyzeTypeChanges(SignificantPlace currentPlace, String type, List<String> warnings) {
-        if (type != null && !type.isEmpty()) {
-            try {
-                SignificantPlace.PlaceType newType = SignificantPlace.PlaceType.valueOf(type);
-                if (currentPlace.getType() != newType) {
-                    warnings.add(i18nService.translate("places.warning.type.change",
-                        i18nService.translate(currentPlace.getType().getMessageKey()),
-                        i18nService.translate(newType.getMessageKey())));
-                }
-            } catch (IllegalArgumentException e) {
-                // Invalid type will be handled in actual update
-            }
-        }
-    }
-
-    private void analyzeOverlappingPlaces(User user, Long placeId, String polygonData, List<String> warnings) {
+    private boolean analyzeOverlappingPlaces(User user, Long placeId, String polygonData, List<String> warnings) {
         boolean willHavePolygon = polygonData != null && !polygonData.trim().isEmpty();
         
         if (willHavePolygon) {
             try {
                 List<GeoPoint> newPolygon = parsePolygonData(polygonData);
-                int overlappingPlaces = checkForOverlappingPlaces(user, placeId, newPolygon);
+                int overlappingPlaces = checkForOverlappingPlaces(user, placeId, newPolygon).size();
                 if (overlappingPlaces > 0) {
                     warnings.add(i18nService.translate("places.warning.overlapping.visits", overlappingPlaces));
+                    return true;
                 }
             } catch (Exception e) {
                 throw new IllegalStateException("Failed to parse polygon data: " + e.getMessage(), e);
             }
         }
+        return false;
     }
 
     private List<GeoPoint> parsePolygonData(String polygonData) throws Exception {
@@ -137,15 +150,8 @@ public class PlaceChangeDetectionService {
         return geoPoints;
     }
 
-    private int checkForOverlappingPlaces(User user, Long placeId, List<GeoPoint> newPolygon) {
-        try {
-            List<SignificantPlace> overlappingPlaces = placeJdbcService.findPlacesOverlappingWithPolygon(
-                user.getId(), placeId, newPolygon);
-            return overlappingPlaces.size();
-        } catch (Exception e) {
-            System.err.println("Error checking for overlapping places: " + e.getMessage());
-            return 0;
-        }
+    private List<SignificantPlace> checkForOverlappingPlaces(User user, Long placeId, List<GeoPoint> newPolygon) {
+        return placeJdbcService.findPlacesOverlappingWithPolygon(user.getId(), placeId, newPolygon);
     }
 
     public static class PlaceChangeAnalysis {

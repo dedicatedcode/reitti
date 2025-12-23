@@ -98,16 +98,7 @@ public final class GeoUtils {
         }
 
         // Remove duplicate points (especially the closing point that duplicates the first point)
-        List<GeoPoint> uniquePoints = new ArrayList<>();
-        for (GeoPoint point : polygon) {
-            boolean isDuplicate = uniquePoints.stream().anyMatch(existing ->
-                Math.abs(existing.latitude() - point.latitude()) < 0.000001 &&
-                Math.abs(existing.longitude() - point.longitude()) < 0.000001
-            );
-            if (!isDuplicate) {
-                uniquePoints.add(point);
-            }
-        }
+        List<GeoPoint> uniquePoints = removeDuplicates(polygon);
 
         // Calculate centroid as the arithmetic mean of unique vertices
         double avgLat = uniquePoints.stream().mapToDouble(GeoPoint::latitude).average().orElse(0.0);
@@ -136,16 +127,8 @@ public final class GeoUtils {
         }
 
         // Remove duplicate points (including possible closing point)
-        List<GeoPoint> uniquePoints = new ArrayList<>();
-        for (GeoPoint point : polygon) {
-            boolean isDuplicate = uniquePoints.stream().anyMatch(existing ->
-                Math.abs(existing.latitude() - point.latitude()) < 0.000001 &&
-                Math.abs(existing.longitude() - point.longitude()) < 0.000001
-            );
-            if (!isDuplicate) {
-                uniquePoints.add(point);
-            }
-        }
+
+        List<GeoPoint> uniquePoints = removeDuplicates(polygon);
 
         if (uniquePoints.size() < 3) {
             throw new IllegalArgumentException("Polygon must contain at least three distinct points");
@@ -174,6 +157,20 @@ public final class GeoUtils {
         }
 
         return Math.abs(sum) / 2.0;
+    }
+
+    private static List<GeoPoint> removeDuplicates(List<GeoPoint> polygon) {
+        List<GeoPoint> uniquePoints = new ArrayList<>();
+        for (GeoPoint point : polygon) {
+            boolean isDuplicate = uniquePoints.stream().anyMatch(existing ->
+                Math.abs(existing.latitude() - point.latitude()) < 0.000001 &&
+                Math.abs(existing.longitude() - point.longitude()) < 0.000001
+            );
+            if (!isDuplicate) {
+                uniquePoints.add(point);
+            }
+        }
+        return uniquePoints;
     }
 
 }
