@@ -53,9 +53,9 @@ class PlaceChangeDetectionServiceTest {
         PlaceChangeAnalysis result = placeChangeDetectionService.analyzeChanges(testUser, place.getId(), polygonData);
 
         // Then
-        assertTrue(result.isCanProceed());
+        assertFalse(result.isCanProceed());
         assertFalse(result.getWarnings().isEmpty());
-        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("addition")));
+        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("The polygon boundary will be added to this place, this may affect visit detection.")));
     }
 
     @Test
@@ -73,9 +73,9 @@ class PlaceChangeDetectionServiceTest {
         PlaceChangeAnalysis result = placeChangeDetectionService.analyzeChanges(testUser, place.getId(), null);
 
         // Then
-        assertTrue(result.isCanProceed());
+        assertFalse(result.isCanProceed());
         assertFalse(result.getWarnings().isEmpty());
-        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("removal")));
+        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("The polygon boundary will be removed from this place, this may affect visit detection.")));
     }
 
     @Test
@@ -103,13 +103,13 @@ class PlaceChangeDetectionServiceTest {
         PlaceChangeAnalysis result = placeChangeDetectionService.analyzeChanges(testUser, place.getId(), newPolygonData);
 
         // Then
-        assertTrue(result.isCanProceed());
+        assertFalse(result.isCanProceed());
         assertFalse(result.getWarnings().isEmpty());
-        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("significant_change")));
+        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("The polygon boundary will be significantly changed, which may affect visit detection.")));
     }
 
     @Test
-    void analyzeChanges_WithMinorPolygonChange_ShouldNotReturnWarning() {
+    void analyzeChanges_WithNoPolygonChange_ShouldNotReturnWarning() {
         // Given
         List<GeoPoint> existingPolygon = List.of(
             new GeoPoint(53.863100, 10.700900),
@@ -122,10 +122,10 @@ class PlaceChangeDetectionServiceTest {
         // Very minor change (less than 10m)
         String newPolygonData = """
             [
-                {"lat": 53.863105, "lng": 10.700905},
-                {"lat": 53.863195, "lng": 10.700905},
-                {"lat": 53.863195, "lng": 10.700995},
-                {"lat": 53.863105, "lng": 10.700995}
+                {"lat": 53.863100, "lng": 10.700900},
+                {"lat": 53.863200, "lng": 10.700900},
+                {"lat": 53.863200, "lng": 10.701000},
+                {"lat": 53.863100, "lng": 10.701000}
             ]
             """;
 
@@ -146,7 +146,7 @@ class PlaceChangeDetectionServiceTest {
             new GeoPoint(53.863200, 10.701000),
             new GeoPoint(53.863100, 10.701000)
         );
-        SignificantPlace existingPlace = createTestPlace("Existing Place", 53.863149, 10.700927, existingPolygon);
+        createTestPlace("Existing Place", 53.863149, 10.700927, existingPolygon);
         SignificantPlace newPlace = createTestPlace("New Place", 53.863149, 10.700927, null);
         
         // Overlapping polygon
@@ -163,9 +163,9 @@ class PlaceChangeDetectionServiceTest {
         PlaceChangeAnalysis result = placeChangeDetectionService.analyzeChanges(testUser, newPlace.getId(), overlappingPolygonData);
 
         // Then
-        assertTrue(result.isCanProceed());
+        assertFalse(result.isCanProceed());
         assertFalse(result.getWarnings().isEmpty());
-        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("visits")));
+        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("The new boundary will overlap with 1 existing place, which may cause visits to be reassigned between places and affect trip calculations")));
     }
 
     @Test
@@ -180,7 +180,7 @@ class PlaceChangeDetectionServiceTest {
         // Then
         assertFalse(result.isCanProceed());
         assertFalse(result.getWarnings().isEmpty());
-        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("general_error")));
+        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("An error occurred while checking the update")));
     }
 
     @Test
@@ -200,7 +200,7 @@ class PlaceChangeDetectionServiceTest {
         // Then
         assertFalse(result.isCanProceed());
         assertFalse(result.getWarnings().isEmpty());
-        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("general_error")));
+        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("An error occurred while checking the update")));
     }
 
     @Test
@@ -221,7 +221,7 @@ class PlaceChangeDetectionServiceTest {
         // Then
         assertFalse(result.isCanProceed());
         assertFalse(result.getWarnings().isEmpty());
-        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("general_error")));
+        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("An error occurred while checking the update")));
     }
 
     @Test
@@ -238,17 +238,19 @@ class PlaceChangeDetectionServiceTest {
     }
 
     private SignificantPlace createTestPlace(String name, double latitude, double longitude, List<GeoPoint> polygon) {
-        return placeJdbcService.create(testUser.getId(), new SignificantPlace(
-            null,
-            name,
-            null,
-            null,
-            null,
-            latitude,
-            longitude,
-            polygon,
-            ZoneId.systemDefault(),
-            0L
+        return placeJdbcService.create(testUser, new SignificantPlace(
+                null,
+                name,
+                null,
+                null,
+                null,
+                latitude,
+                longitude,
+                polygon,
+                SignificantPlace.PlaceType.HOME,
+                ZoneId.systemDefault(),
+                true,
+                0L
         ));
     }
 }

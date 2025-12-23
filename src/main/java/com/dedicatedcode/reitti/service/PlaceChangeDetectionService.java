@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -43,7 +44,7 @@ public class PlaceChangeDetectionService {
             boolean changed = analyzePolygonChanges(currentPlace, polygonData, warnings);
 
             // Check for overlapping places
-            changed = changed || analyzeOverlappingPlaces(user, placeId, polygonData, warnings);
+            changed = changed | analyzeOverlappingPlaces(user, placeId, polygonData, warnings);
 
             // Check for overlapping places
             if (changed) {
@@ -58,9 +59,13 @@ public class PlaceChangeDetectionService {
     }
 
     private void calculateAffectedDays(User user, SignificantPlace currentPlace, String polygonData, List<String> warnings) throws Exception {
-        List<GeoPoint> newPolygon = parsePolygonData(polygonData);
-        List<SignificantPlace> overlappingPlaces = checkForOverlappingPlaces(user, currentPlace.getId(), newPolygon);
-        overlappingPlaces.add(currentPlace);
+        List<SignificantPlace> overlappingPlaces;
+        if (polygonData != null) {
+            overlappingPlaces = new ArrayList<>(checkForOverlappingPlaces(user, currentPlace.getId(), Collections.emptyList()));
+            overlappingPlaces.add(currentPlace);
+        } else {
+            overlappingPlaces = List.of(currentPlace);
+        }
         int affectedDays = this.processedVisitJdbcService.getAffectedDays(overlappingPlaces).size();
         if (affectedDays > 0) {
             warnings.add(i18nService.translate("places.warning.overlapping.recalculation_hint", affectedDays));
