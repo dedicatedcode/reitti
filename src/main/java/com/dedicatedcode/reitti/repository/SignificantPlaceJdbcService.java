@@ -159,7 +159,7 @@ public class SignificantPlaceJdbcService {
      *
      * @param userId - the user to load the places for.
      * @param point - the point to search for.
-     * @param distanceInDegrees - meters in degress to extend the search radius for points without a polygon.
+     * @param distanceInDegrees - meters in degrees to extend the search radius for points without a polygon.
      * @return list of SignificantPlaces.
      */
     public List<SignificantPlace> findEnclosingPlaces(Long userId, Point point, double distanceInDegrees) {
