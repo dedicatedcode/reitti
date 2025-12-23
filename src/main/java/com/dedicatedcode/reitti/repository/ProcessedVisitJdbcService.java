@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -198,38 +197,26 @@ public class ProcessedVisitJdbcService {
         jdbcTemplate.update("DELETE FROM processed_visits WHERE user_id = ?", user.getId());
     }
 
+    //fix this method, at the moment it throws a bad sql grammar AI!
     public List<LocalDate> getAffectedDays(List<SignificantPlace> places) {
         if (places.isEmpty()) {
             return Collections.emptyList();
         }
 
-        // Build a list of place IDs
-        List<Long> ids = places.stream()
-                .map(SignificantPlace::getId)
-                .collect(Collectors.toList());
+        String ids = "{" + String.join(",", places.stream()
+                .map(place -> String.valueOf(place.getId()))
+                .toList()) + "}";
+        String sql = """
+                SELECT DISTINCT DATE(pv.start_time) AS affected_day
+                FROM processed_visits pv
+                WHERE pv.place_id = ANY (?)
+                UNION
+                SELECT DISTINCT DATE(pv.end_time) AS affected_day
+                FROM processed_visits pv
+                WHERE pv.place_id = ANY (?)
+                ORDER BY affected_day;
+                """;
+        return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getDate("day").toLocalDate(), ids, ids);
 
-        // Create placeholders for the IN clause
-        String placeholders = ids.stream()
-                .map(id -> "?")
-                .collect(Collectors.joining(", "));
-
-        // Build the SQL query using IN (…) for both start_time and end_time
-        String sql = "SELECT DISTINCT DATE(pv.start_time) AS affected_day " +
-                "FROM processed_visits pv " +
-                "WHERE pv.place_id IN (" + placeholders + ") " +
-                "UNION " +
-                "SELECT DISTINCT DATE(pv.end_time) AS affected_day " +
-                "FROM processed_visits pv " +
-                "WHERE pv.place_id IN (" + placeholders + ") " +
-                "ORDER BY affected_day";
-
-        // Prepare arguments: the list of IDs appears twice (once for each IN clause)
-        Object[] args = new Object[ids.size() * 2];
-        for (int i = 0; i < ids.size(); i++) {
-            args[i] = ids.get(i);
-            args[i + ids.size()] = ids.get(i);
-        }
-
-        return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getDate("affected_day").toLocalDate(), args);
     }
 }
