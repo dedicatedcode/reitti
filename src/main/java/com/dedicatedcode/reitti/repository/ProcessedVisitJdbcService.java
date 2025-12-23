@@ -197,26 +197,31 @@ public class ProcessedVisitJdbcService {
         jdbcTemplate.update("DELETE FROM processed_visits WHERE user_id = ?", user.getId());
     }
 
-    //fix this method, at the moment it throws a bad sql grammar AI!
     public List<LocalDate> getAffectedDays(List<SignificantPlace> places) {
         if (places.isEmpty()) {
             return Collections.emptyList();
         }
 
-        String ids = "{" + String.join(",", places.stream()
-                .map(place -> String.valueOf(place.getId()))
-                .toList()) + "}";
+        List<Long> placeIds = places.stream()
+                .map(SignificantPlace::getId)
+                .toList();
+        
+        String placeholders = String.join(",", placeIds.stream().map(id -> "?").toList());
         String sql = """
                 SELECT DISTINCT DATE(pv.start_time) AS affected_day
                 FROM processed_visits pv
-                WHERE pv.place_id = ANY (?)
+                WHERE pv.place_id IN (%s)
                 UNION
                 SELECT DISTINCT DATE(pv.end_time) AS affected_day
                 FROM processed_visits pv
-                WHERE pv.place_id = ANY (?)
+                WHERE pv.place_id IN (%s)
                 ORDER BY affected_day;
-                """;
-        return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getDate("day").toLocalDate(), ids, ids);
-
+                """.formatted(placeholders, placeholders);
+        
+        List<Object> params = new ArrayList<>();
+        params.addAll(placeIds);
+        params.addAll(placeIds);
+        
+        return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getDate("affected_day").toLocalDate(), params.toArray());
     }
 }
