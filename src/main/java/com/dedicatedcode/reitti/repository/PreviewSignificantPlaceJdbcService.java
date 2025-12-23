@@ -60,7 +60,7 @@ public class PreviewSignificantPlaceJdbcService {
 
     public SignificantPlace create(User user, String previewId, SignificantPlace place) {
         String sql = "INSERT INTO preview_significant_places (user_id, preview_id, name, latitude_centroid, longitude_centroid, timezone, geom, polygon) " +
-                "VALUES (?, ?, ?, ?, ?, ST_GeomFromText(?, '4326'), " +
+                "VALUES (?, ?, ?, ?, ?, ?, ST_GeomFromText(?, '4326'), " +
                 "CASE WHEN ?::text IS NOT NULL THEN ST_GeomFromText(?, '4326')  END) RETURNING id";
 
         String polygonWkt = this.pointReaderWriter.polygonToWkt(place.getPolygon());
