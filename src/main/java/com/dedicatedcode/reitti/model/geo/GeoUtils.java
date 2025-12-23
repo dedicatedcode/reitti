@@ -115,4 +115,5 @@ public final class GeoUtils {
 
         return new GeoPoint(avgLat, avgLng);
     }
+
 }
