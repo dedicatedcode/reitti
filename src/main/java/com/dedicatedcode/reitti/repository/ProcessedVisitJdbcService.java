@@ -13,6 +13,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -194,5 +195,28 @@ public class ProcessedVisitJdbcService {
 
     public void deleteAllForUser(User user) {
         jdbcTemplate.update("DELETE FROM processed_visits WHERE user_id = ?", user.getId());
+    }
+
+    //fix this method, at the moment it throws a bad sql grammar AI!
+    public List<LocalDate> getAffectedDays(List<SignificantPlace> places) {
+        if (places.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        String ids = "{" + String.join(",", places.stream()
+                .map(place -> String.valueOf(place.getId()))
+                .toList()) + "}";
+        String sql = """
+                SELECT DISTINCT DATE(pv.start_time) AS affected_day
+                FROM processed_visits pv
+                WHERE pv.place_id = ANY (?)
+                UNION
+                SELECT DISTINCT DATE(pv.end_time) AS affected_day
+                FROM processed_visits pv
+                WHERE pv.place_id = ANY (?)
+                ORDER BY affected_day;
+                """;
+        return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getDate("day").toLocalDate(), ids, ids);
+
     }
 }
