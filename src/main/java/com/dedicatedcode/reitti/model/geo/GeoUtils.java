@@ -91,4 +91,28 @@ public final class GeoUtils {
 
         return totalDistance;
     }
+
+    public static GeoPoint calculatePolygonCentroid(List<GeoPoint> polygon) {
+        if (polygon == null || polygon.isEmpty()) {
+            throw new IllegalArgumentException("Polygon cannot be null or empty");
+        }
+
+        // Remove duplicate points (especially the closing point that duplicates the first point)
+        List<GeoPoint> uniquePoints = new ArrayList<>();
+        for (GeoPoint point : polygon) {
+            boolean isDuplicate = uniquePoints.stream().anyMatch(existing ->
+                Math.abs(existing.latitude() - point.latitude()) < 0.000001 &&
+                Math.abs(existing.longitude() - point.longitude()) < 0.000001
+            );
+            if (!isDuplicate) {
+                uniquePoints.add(point);
+            }
+        }
+
+        // Calculate centroid as the arithmetic mean of unique vertices
+        double avgLat = uniquePoints.stream().mapToDouble(GeoPoint::latitude).average().orElse(0.0);
+        double avgLng = uniquePoints.stream().mapToDouble(GeoPoint::longitude).average().orElse(0.0);
+
+        return new GeoPoint(avgLat, avgLng);
+    }
 }

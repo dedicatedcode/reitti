@@ -8,6 +8,7 @@ import com.dedicatedcode.reitti.model.Page;
 import com.dedicatedcode.reitti.model.PageRequest;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
+import com.dedicatedcode.reitti.model.geo.GeoUtils;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geocoding.GeocodingResponse;
 import com.dedicatedcode.reitti.model.security.User;
@@ -175,7 +176,7 @@ public class PlacesSettingsController {
                         updatedPlace = updatedPlace.withPolygon(polygon);
                         
                         // Calculate and update the centroid
-                        GeoPoint centroid = calculatePolygonCentroid(polygon);
+                        GeoPoint centroid = GeoUtils.calculatePolygonCentroid(polygon);
                         updatedPlace = updatedPlace.withLatitudeCentroid(centroid.latitude())
                                                    .withLongitudeCentroid(centroid.longitude());
                     } catch (Exception e) {
@@ -348,30 +349,6 @@ public class PlacesSettingsController {
         }
         
         return geoPoints;
-    }
-
-    private GeoPoint calculatePolygonCentroid(List<GeoPoint> polygon) {
-        if (polygon == null || polygon.isEmpty()) {
-            throw new IllegalArgumentException("Polygon cannot be null or empty");
-        }
-        
-        // Remove duplicate points (especially the closing point that duplicates the first point)
-        List<GeoPoint> uniquePoints = new ArrayList<>();
-        for (GeoPoint point : polygon) {
-            boolean isDuplicate = uniquePoints.stream().anyMatch(existing ->
-                Math.abs(existing.latitude() - point.latitude()) < 0.000001 &&
-                Math.abs(existing.longitude() - point.longitude()) < 0.000001
-            );
-            if (!isDuplicate) {
-                uniquePoints.add(point);
-            }
-        }
-        
-        // Calculate centroid as the arithmetic mean of unique vertices
-        double avgLat = uniquePoints.stream().mapToDouble(GeoPoint::latitude).average().orElse(0.0);
-        double avgLng = uniquePoints.stream().mapToDouble(GeoPoint::longitude).average().orElse(0.0);
-        
-        return new GeoPoint(avgLat, avgLng);
     }
 
     public static class CheckUpdateResponse {
