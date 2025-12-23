@@ -16,6 +16,7 @@ import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceOverrideJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.PlaceService;
+import com.dedicatedcode.reitti.service.PlaceChangeDetectionService;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -47,6 +48,7 @@ public class PlacesSettingsController {
     private final RabbitTemplate rabbitTemplate;
     private final GeometryFactory geometryFactory;
     private final I18nService i18nService;
+    private final PlaceChangeDetectionService placeChangeDetectionService;
     private final boolean dataManagementEnabled;
     private final ObjectMapper objectMapper;
 
@@ -57,6 +59,7 @@ public class PlacesSettingsController {
                                     RabbitTemplate rabbitTemplate,
                                     GeometryFactory geometryFactory,
                                     I18nService i18nService,
+                                    PlaceChangeDetectionService placeChangeDetectionService,
                                     @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                                     ObjectMapper objectMapper) {
         this.placeService = placeService;
@@ -66,6 +69,7 @@ public class PlacesSettingsController {
         this.rabbitTemplate = rabbitTemplate;
         this.geometryFactory = geometryFactory;
         this.i18nService = i18nService;
+        this.placeChangeDetectionService = placeChangeDetectionService;
         this.dataManagementEnabled = dataManagementEnabled;
         this.objectMapper = objectMapper;
     }
@@ -118,59 +122,10 @@ public class PlacesSettingsController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
 
-        try {
-            SignificantPlace currentPlace = placeJdbcService.findById(placeId).orElseThrow();
-            List<String> warnings = new ArrayList<>();
-
-            boolean hadPolygon = currentPlace.getPolygon() != null && !currentPlace.getPolygon().isEmpty();
-            boolean willHavePolygon = polygonData != null && !polygonData.trim().isEmpty();
-            
-            if (hadPolygon && !willHavePolygon) {
-                warnings.add(i18nService.translate("places.warning.polygon.removal"));
-            }
-
-            if (!hadPolygon && willHavePolygon) {
-                warnings.add(i18nService.translate("places.warning.polygon.addition"));
-            }
-
-            // Check if polygon is being significantly changed
-            if (hadPolygon && willHavePolygon) {
-                try {
-                    List<GeoPoint> newPolygon = parsePolygonData(polygonData);
-                    GeoPoint newCentroid = calculatePolygonCentroid(newPolygon);
-                    GeoPoint currentCentroid = new GeoPoint(currentPlace.getLatitudeCentroid(), currentPlace.getLongitudeCentroid());
-                    
-                    // Calculate distance between centroids (rough approximation)
-                    double latDiff = Math.abs(newCentroid.latitude() - currentCentroid.latitude());
-                    double lngDiff = Math.abs(newCentroid.longitude() - currentCentroid.longitude());
-                    
-                    // If centroid moved significantly (more than ~10m at typical latitudes)
-                    if (latDiff > 0.0001 || lngDiff > 0.0001) {
-                        warnings.add(i18nService.translate("places.warning.polygon.significant_change"));
-                    }
-                } catch (Exception e) {
-                    // If polygon parsing fails, we'll catch it in the actual update
-                }
-            }
-
-            // Check for overlapping boundaries with existing visits
-            if (willHavePolygon) {
-                try {
-                    List<GeoPoint> newPolygon = parsePolygonData(polygonData);
-                    int overlappingVisits = checkForOverlappingPlaces(user, placeId, newPolygon);
-                    if (overlappingVisits > 0) {
-                        warnings.add(i18nService.translate("places.warning.overlapping.visits", overlappingVisits));
-                    }
-                } catch (Exception e) {
-                    throw new IllegalStateException("Failed to parse polygon data: " + e.getMessage(), e);
-                }
-            }
-
-            return new CheckUpdateResponse(warnings.isEmpty(), warnings);
-
-        } catch (Exception e) {
-            return new CheckUpdateResponse(false, List.of(i18nService.translate("places.warning.general_error", e.getMessage())));
-        }
+        PlaceChangeDetectionService.PlaceChangeAnalysis analysis = 
+            placeChangeDetectionService.analyzeChanges(user, placeId, type, polygonData);
+        
+        return new CheckUpdateResponse(analysis.isCanProceed(), analysis.getWarnings());
     }
 
     @PostMapping("/{placeId}/update")
@@ -417,20 +372,6 @@ public class PlacesSettingsController {
         double avgLng = uniquePoints.stream().mapToDouble(GeoPoint::longitude).average().orElse(0.0);
         
         return new GeoPoint(avgLat, avgLng);
-    }
-
-    private int checkForOverlappingPlaces(User user, Long placeId, List<GeoPoint> newPolygon) {
-        try {
-            // Find places that would overlap with the new polygon
-            List<SignificantPlace> overlappingPlaces = placeJdbcService.findPlacesOverlappingWithPolygon(
-                user.getId(), placeId, newPolygon);
-            
-            return overlappingPlaces.size();
-        } catch (Exception e) {
-            // Log error but don't fail the check
-            System.err.println("Error checking for overlapping places: " + e.getMessage());
-            return 0;
-        }
     }
 
     public static class CheckUpdateResponse {
