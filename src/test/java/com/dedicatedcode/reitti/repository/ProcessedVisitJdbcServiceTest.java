@@ -2,7 +2,6 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
-import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
@@ -37,9 +36,7 @@ class ProcessedVisitJdbcServiceTest {
 
     @BeforeEach
     void setUp() {
-        testingService.clearData();
         testUser = testingService.randomUser();
-        
         testPlace = createTestPlace("Home", 53.863149, 10.700927);
         anotherPlace = createTestPlace("Work", 53.864149, 10.701927);
     }
@@ -344,17 +341,19 @@ class ProcessedVisitJdbcServiceTest {
     }
 
     private SignificantPlace createTestPlaceForUser(User user, String name, double latitude, double longitude) {
-        return placeJdbcService.create(user.getId(), new SignificantPlace(
-            null,
-            name,
-            null,
-            null,
-            null,
-            latitude,
-            longitude,
-            List.of(),
-            ZoneId.systemDefault(),
-            0L
+        return placeJdbcService.create(user, new SignificantPlace(
+                null,
+                name,
+                null,
+                null,
+                null,
+                latitude,
+                longitude,
+                null,
+                SignificantPlace.PlaceType.OTHER,
+                ZoneId.systemDefault(),
+                false,
+                0L
         ));
     }
 }
