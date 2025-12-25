@@ -234,7 +234,7 @@ class RawLocationLoader {
 
                 const rawPointsCoords = segment.points.map(point => [point.latitude, point.longitude]);
 
-                const weight = this.map.getZoom() >= 18 ? 4 : 6;
+                const weight = this.map.getZoom() >= 18 ? 2 : 6;
                 let rawPointsPath;
                 if (segment.points.length > 100) {
                     rawPointsPath = L.polyline(rawPointsCoords, {

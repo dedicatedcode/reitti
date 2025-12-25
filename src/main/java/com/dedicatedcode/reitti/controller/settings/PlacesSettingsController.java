@@ -198,11 +198,10 @@ public class PlacesSettingsController {
                     updatedPlace = updatedPlace.withPolygon(null);
                 }
 
-                placeJdbcService.update(updatedPlace);
-                significantPlaceOverrideJdbcService.insertOverride(user, updatedPlace);
 
 
-                if (this.placeChangeDetectionService.analyzeChanges(user, placeId, polygonData).isCanProceed()) {
+                if (!this.placeChangeDetectionService.analyzeChanges(user, placeId, polygonData).isCanProceed()) {
+                    placeJdbcService.update(updatedPlace);
                     log.info("Significant change detected for place [{}]. Will issue a recalculation of all affected dates", significantPlace);
 
                     List<SignificantPlace> placesToRemove = placeJdbcService.findPlacesOverlappingWithPolygon(user.getId(), placeId, updatedPlace.getPolygon());
@@ -210,7 +209,11 @@ public class PlacesSettingsController {
                     placesToCheck.add(updatedPlace);
                     List<LocalDate> affectedDays = this.processedVisitJdbcService.getAffectedDays(placesToCheck);
                     this.dataCleanupService.cleanupForGeometryChange(user, placesToRemove, affectedDays);
+                } else {
+                    placeJdbcService.update(updatedPlace);
                 }
+                significantPlaceOverrideJdbcService.insertOverride(user, updatedPlace);
+
                 return "redirect:" + returnUrl;
             } catch (Exception e) {
                 model.addAttribute("errorMessage", i18nService.translate("message.error.place.update", e.getMessage()));

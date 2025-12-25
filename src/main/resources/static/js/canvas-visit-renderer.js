@@ -56,11 +56,10 @@ class CanvasVisitRenderer {
     
     updateVisibleVisits() {
         const zoom = this.map.getZoom();
-        
-        // Filter visits based on zoom level and duration
-        let minDurationMs;
+
+        let minDurationMs = 0;
         if (zoom >= 15) {
-            minDurationMs = 5 * 60 * 1000; // 5 minutes at high zoom
+            minDurationMs = 60 * 1000; // 1 minute at high zoom
         } else if (zoom >= 12) {
             minDurationMs = 30 * 60 * 1000; // 30 minutes at medium zoom
         } else if (zoom >= 10) {
@@ -68,11 +67,11 @@ class CanvasVisitRenderer {
         } else {
             minDurationMs = 6 * 60 * 60 * 1000; // 6+ hours at very low zoom
         }
-        
-        this.visibleVisits = this.allVisits.filter(visit => 
+
+        this.visibleVisits = this.allVisits.filter(visit =>
             visit.totalDurationMs >= minDurationMs
         );
-        
+
         this.renderVisibleVisits();
     }
     
@@ -92,8 +91,6 @@ class CanvasVisitRenderer {
     createVisitMarker(visit) {
         const zoom = this.map.getZoom();
         const showPolygons = zoom >= 18; // Show polygons at zoom level 16 and above
-        
-        // Check if visit has polygon data and we should show polygons
         if (showPolygons && visit.place.polygon) {
             this.createPolygonMarker(visit);
         } else {
@@ -113,7 +110,7 @@ class CanvasVisitRenderer {
 
         // Create outer circle (visit area)
         const outerCircle = L.circle([visit.lat, visit.lng], {
-            radius: radius * 5, // Convert to meters (approximate)
+            radius: radius, // Convert to meters (approximate)
             fillColor:  this.lightenHexColor(visit.color, 20),
             fillOpacity: 0.1,
             color: visit.color,

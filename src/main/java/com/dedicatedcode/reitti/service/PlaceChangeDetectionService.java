@@ -46,7 +46,7 @@ public class PlaceChangeDetectionService {
             // Check for overlapping places
             changed = changed | analyzeOverlappingPlaces(user, placeId, polygonData, warnings);
 
-            // Check for overlapping places
+            //check for affected days only when places got merged or the polygon changed significantly
             if (changed) {
                 calculateAffectedDays(user, currentPlace, polygonData, warnings);
             }
