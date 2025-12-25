@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.model.Page;
 import com.dedicatedcode.reitti.model.PageRequest;
 import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
 import org.junit.jupiter.api.BeforeEach;
@@ -83,7 +84,7 @@ class SignificantPlaceJdbcServiceTest {
     }
 
     @Test
-    void findNearbyPlaces_shouldReturnPlacesWithinDistance() {
+    void findEnclosingPlaces_shouldReturnPlacesWithinDistance() {
         // Given
         Point centerPoint = geometryFactory.createPoint(new Coordinate(10.700927, 53.863149));
         SignificantPlace nearPlace = createTestPlace("Near Place", 53.863200, 10.701000); // ~50m away
@@ -93,7 +94,7 @@ class SignificantPlaceJdbcServiceTest {
         significantPlaceJdbcService.create(testUser, farPlace);
 
         // When
-        List<SignificantPlace> nearbyPlaces = significantPlaceJdbcService.findNearbyPlaces(
+        List<SignificantPlace> nearbyPlaces = significantPlaceJdbcService.findEnclosingPlaces(
                 testUser.getId(), centerPoint, 0.003);
 
         // Then
@@ -130,6 +131,7 @@ class SignificantPlaceJdbcServiceTest {
                 "DE",
                 53.863149,
                 10.700927,
+                null,
                 SignificantPlace.PlaceType.RESTAURANT,
                 ZoneId.systemDefault(),
                 true,
@@ -215,6 +217,7 @@ class SignificantPlaceJdbcServiceTest {
                 "DE",
                 created1.getLatitudeCentroid(),
                 created1.getLongitudeCentroid(),
+                null,
                 SignificantPlace.PlaceType.HOME,
                 ZoneId.systemDefault(),
                 true, // geocoded = true
@@ -252,6 +255,291 @@ class SignificantPlaceJdbcServiceTest {
                 .containsExactly("Place 1", "Place 2");
     }
 
+    @Test
+    void create_shouldPersistNewPlaceWithPolygon() {
+        // Given
+        List<GeoPoint> polygon = List.of(
+                GeoPoint.from(53.863149, 10.700927),
+                GeoPoint.from(53.863200, 10.701000),
+                GeoPoint.from(53.863100, 10.701100),
+                GeoPoint.from(53.863050, 10.700950),
+                GeoPoint.from(53.863149, 10.700927) // Close the polygon
+        );
+
+        SignificantPlace newPlace = new SignificantPlace(
+                null,
+                "Place with Polygon",
+                null,
+                null,
+                null,
+                53.863149,
+                10.700927,
+                polygon,
+                SignificantPlace.PlaceType.PARK,
+                ZoneId.systemDefault(),
+                false,
+                0L
+        );
+
+        // When
+        SignificantPlace created = significantPlaceJdbcService.create(testUser, newPlace);
+
+        // Then
+        assertThat(created.getId()).isNotNull();
+        assertThat(created.getName()).isEqualTo("Place with Polygon");
+        assertThat(created.getPolygon()).isNotNull();
+        assertThat(created.getPolygon()).hasSize(5);
+        assertThat(created.getPolygon().get(0).latitude()).isEqualTo(53.863149);
+        assertThat(created.getPolygon().get(0).longitude()).isEqualTo(10.700927);
+    }
+
+    @Test
+    void create_shouldPersistNewPlaceWithoutPolygon() {
+        // Given
+        SignificantPlace newPlace = new SignificantPlace(
+                null,
+                "Place without Polygon",
+                null,
+                null,
+                null,
+                53.863149,
+                10.700927,
+                null, // No polygon
+                SignificantPlace.PlaceType.OTHER,
+                ZoneId.systemDefault(),
+                false,
+                0L
+        );
+
+        // When
+        SignificantPlace created = significantPlaceJdbcService.create(testUser, newPlace);
+
+        // Then
+        assertThat(created.getId()).isNotNull();
+        assertThat(created.getName()).isEqualTo("Place without Polygon");
+        assertThat(created.getPolygon()).isNull();
+    }
+
+    @Test
+    void update_shouldAddPolygonToExistingPlace() {
+        // Given - Create place without polygon
+        SignificantPlace originalPlace = createTestPlace("Original Place", 53.863149, 10.700927);
+        SignificantPlace created = significantPlaceJdbcService.create(testUser, originalPlace);
+
+        // Create polygon to add
+        List<GeoPoint> polygon = List.of(
+                GeoPoint.from(53.863149, 10.700927),
+                GeoPoint.from(53.863200, 10.701000),
+                GeoPoint.from(53.863100, 10.701100),
+                GeoPoint.from(53.863149, 10.700927) // Close the polygon
+        );
+
+        SignificantPlace updatedPlace = new SignificantPlace(
+                created.getId(),
+                created.getName(),
+                "Updated Address",
+                "Berlin",
+                "DE",
+                created.getLatitudeCentroid(),
+                created.getLongitudeCentroid(),
+                polygon, // Add polygon
+                SignificantPlace.PlaceType.PARK,
+                ZoneId.systemDefault(),
+                true,
+                created.getVersion()
+        );
+
+        // When
+        SignificantPlace result = significantPlaceJdbcService.update(updatedPlace);
+
+        // Then
+        assertThat(result.getPolygon()).isNotNull();
+        assertThat(result.getPolygon()).hasSize(4);
+        assertThat(result.getPolygon().get(0).latitude()).isEqualTo(53.863149);
+        assertThat(result.getPolygon().get(0).longitude()).isEqualTo(10.700927);
+        assertThat(result.getAddress()).isEqualTo("Updated Address");
+        assertThat(result.getType()).isEqualTo(SignificantPlace.PlaceType.PARK);
+    }
+
+    @Test
+    void update_shouldRemovePolygonFromExistingPlace() {
+        // Given - Create place with polygon
+        List<GeoPoint> originalPolygon = List.of(
+                GeoPoint.from(53.863149, 10.700927),
+                GeoPoint.from(53.863200, 10.701000),
+                GeoPoint.from(53.863100, 10.701100),
+                GeoPoint.from(53.863149, 10.700927)
+        );
+
+        SignificantPlace originalPlace = new SignificantPlace(
+                null,
+                "Place with Polygon",
+                null,
+                null,
+                null,
+                53.863149,
+                10.700927,
+                originalPolygon,
+                SignificantPlace.PlaceType.PARK,
+                ZoneId.systemDefault(),
+                false,
+                0L
+        );
+
+        SignificantPlace created = significantPlaceJdbcService.create(testUser, originalPlace);
+
+        // Update to remove polygon
+        SignificantPlace updatedPlace = new SignificantPlace(
+                created.getId(),
+                created.getName(),
+                "Updated Address",
+                "Berlin",
+                "DE",
+                created.getLatitudeCentroid(),
+                created.getLongitudeCentroid(),
+                null, // Remove polygon
+                SignificantPlace.PlaceType.RESTAURANT,
+                ZoneId.systemDefault(),
+                true,
+                created.getVersion()
+        );
+
+        // When
+        SignificantPlace result = significantPlaceJdbcService.update(updatedPlace);
+
+        // Then
+        assertThat(result.getPolygon()).isNull();
+        assertThat(result.getAddress()).isEqualTo("Updated Address");
+        assertThat(result.getType()).isEqualTo(SignificantPlace.PlaceType.RESTAURANT);
+    }
+
+    @Test
+    void update_shouldModifyExistingPolygon() {
+        // Given - Create place with polygon
+        List<GeoPoint> originalPolygon = List.of(
+                GeoPoint.from(53.863149, 10.700927),
+                GeoPoint.from(53.863200, 10.701000),
+                GeoPoint.from(53.863100, 10.701100),
+                GeoPoint.from(53.863149, 10.700927)
+        );
+
+        SignificantPlace originalPlace = new SignificantPlace(
+                null,
+                "Place with Polygon",
+                null,
+                null,
+                null,
+                53.863149,
+                10.700927,
+                originalPolygon,
+                SignificantPlace.PlaceType.PARK,
+                ZoneId.systemDefault(),
+                false,
+                0L
+        );
+
+        SignificantPlace created = significantPlaceJdbcService.create(testUser, originalPlace);
+
+        // Create modified polygon
+        List<GeoPoint> modifiedPolygon = List.of(
+                GeoPoint.from(53.863149, 10.700927),
+                GeoPoint.from(53.863250, 10.701050), // Different coordinates
+                GeoPoint.from(53.863150, 10.701150), // Different coordinates
+                GeoPoint.from(53.863080, 10.700980), // Different coordinates
+                GeoPoint.from(53.863149, 10.700927)
+        );
+
+        SignificantPlace updatedPlace = new SignificantPlace(
+                created.getId(),
+                created.getName(),
+                created.getAddress(),
+                created.getCity(),
+                created.getCountryCode(),
+                created.getLatitudeCentroid(),
+                created.getLongitudeCentroid(),
+                modifiedPolygon, // Modified polygon
+                created.getType(),
+                created.getTimezone(),
+                created.isGeocoded(),
+                created.getVersion()
+        );
+
+        // When
+        SignificantPlace result = significantPlaceJdbcService.update(updatedPlace);
+
+        // Then
+        assertThat(result.getPolygon()).isNotNull();
+        assertThat(result.getPolygon()).hasSize(5);
+        assertThat(result.getPolygon().get(1).latitude()).isEqualTo(53.863250);
+        assertThat(result.getPolygon().get(1).longitude()).isEqualTo(10.701050);
+        assertThat(result.getPolygon().get(2).latitude()).isEqualTo(53.863150);
+        assertThat(result.getPolygon().get(2).longitude()).isEqualTo(10.701150);
+    }
+
+    @Test
+    void findNearbyPlaces_shouldFindPlacesWithPolygons() {
+        // Given
+        Point searchPoint = geometryFactory.createPoint(new Coordinate(10.700950, 53.863120));
+
+        // Create a place with polygon that contains the search point
+        List<GeoPoint> polygon = List.of(
+                GeoPoint.from(53.863100, 10.700900),
+                GeoPoint.from(53.863200, 10.701000),
+                GeoPoint.from(53.863100, 10.701100),
+                GeoPoint.from(53.863000, 10.701000),
+                GeoPoint.from(53.863100, 10.700900) // Close the polygon
+        );
+
+        SignificantPlace placeWithPolygon = new SignificantPlace(
+                null,
+                "Place with Polygon",
+                null,
+                null,
+                null,
+                53.863100,
+                10.701000,
+                polygon,
+                SignificantPlace.PlaceType.PARK,
+                ZoneId.systemDefault(),
+                false,
+                0L
+        );
+
+        // Create a place without polygon that's far away
+        SignificantPlace farPlace = createTestPlace("Far Place", 53.870000, 10.720000);
+
+        significantPlaceJdbcService.create(testUser, placeWithPolygon);
+        significantPlaceJdbcService.create(testUser, farPlace);
+
+        // When
+        List<SignificantPlace> nearbyPlaces = significantPlaceJdbcService.findEnclosingPlaces(
+                testUser.getId(), searchPoint, 0.001); // Small buffer for places without polygons
+
+        // Then
+        assertThat(nearbyPlaces).hasSize(1);
+        assertThat(nearbyPlaces.get(0).getName()).isEqualTo("Place with Polygon");
+        assertThat(nearbyPlaces.get(0).getPolygon()).isNotNull();
+        assertThat(nearbyPlaces.get(0).getPolygon()).hasSize(5);
+    }
+
+    // Helper method to create test place with polygon
+    private SignificantPlace createTestPlaceWithPolygon(String name, double latitude, double longitude, List<GeoPoint> polygon) {
+        return new SignificantPlace(
+                null,
+                name,
+                null,
+                null,
+                null,
+                latitude,
+                longitude,
+                polygon,
+                SignificantPlace.PlaceType.OTHER,
+                ZoneId.systemDefault(),
+                false,
+                0L
+        );
+    }
+
     private User createTestUser(String username, String displayName) {
         Long userId = jdbcTemplate.queryForObject(
                 "INSERT INTO users (username, password, display_name, role) VALUES (?, ?, ?, ?) RETURNING id",
@@ -270,6 +558,7 @@ class SignificantPlaceJdbcServiceTest {
                 null,
                 latitude,
                 longitude,
+                null,
                 SignificantPlace.PlaceType.OTHER,
                 ZoneId.systemDefault()
                 , false,
@@ -286,6 +575,7 @@ class SignificantPlaceJdbcServiceTest {
                 null,
                 latitude,
                 longitude,
+                null,
                 SignificantPlace.PlaceType.OTHER,
                 ZoneId.systemDefault(),
                 false,

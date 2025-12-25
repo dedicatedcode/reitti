@@ -26,6 +26,11 @@ class CanvasVisitRenderer {
         this.map.on('zoomend', () => {
             this.updateVisibleVisits();
         });
+        
+        // Listen for zoom changes to re-render markers (for polygon/circle switching)
+        this.map.on('zoomend', () => {
+            this.renderVisibleVisits();
+        });
     }
     
     setVisits(visits) {
@@ -51,11 +56,10 @@ class CanvasVisitRenderer {
     
     updateVisibleVisits() {
         const zoom = this.map.getZoom();
-        
-        // Filter visits based on zoom level and duration
-        let minDurationMs;
+
+        let minDurationMs = 0;
         if (zoom >= 15) {
-            minDurationMs = 5 * 60 * 1000; // 5 minutes at high zoom
+            minDurationMs = 60 * 1000; // 1 minute at high zoom
         } else if (zoom >= 12) {
             minDurationMs = 30 * 60 * 1000; // 30 minutes at medium zoom
         } else if (zoom >= 10) {
@@ -63,11 +67,11 @@ class CanvasVisitRenderer {
         } else {
             minDurationMs = 6 * 60 * 60 * 1000; // 6+ hours at very low zoom
         }
-        
-        this.visibleVisits = this.allVisits.filter(visit => 
+
+        this.visibleVisits = this.allVisits.filter(visit =>
             visit.totalDurationMs >= minDurationMs
         );
-        
+
         this.renderVisibleVisits();
     }
     
@@ -84,13 +88,17 @@ class CanvasVisitRenderer {
         });
     }
     
-    createVisitMarkers() {
-        this.visibleVisits.forEach(visit => {
-            this.createVisitMarker(visit);
-        });
+    createVisitMarker(visit) {
+        const zoom = this.map.getZoom();
+        const showPolygons = zoom >= 18; // Show polygons at zoom level 16 and above
+        if (showPolygons && visit.place.polygon) {
+            this.createPolygonMarker(visit);
+        } else {
+            this.createCircleMarker(visit);
+        }
     }
     
-    createVisitMarker(visit) {
+    createCircleMarker(visit) {
         // Calculate radius using logarithmic scale
         const durationHours = visit.totalDurationMs / (1000 * 60 * 60);
         const baseRadius = 15;
@@ -102,7 +110,7 @@ class CanvasVisitRenderer {
 
         // Create outer circle (visit area)
         const outerCircle = L.circle([visit.lat, visit.lng], {
-            radius: radius * 5, // Convert to meters (approximate)
+            radius: radius, // Convert to meters (approximate)
             fillColor:  this.lightenHexColor(visit.color, 20),
             fillOpacity: 0.1,
             color: visit.color,
@@ -143,6 +151,87 @@ class CanvasVisitRenderer {
         
         // Store references for cleanup
         this.visitMarkers.push(outerCircle, innerMarker);
+    }
+    
+    createPolygonMarker(visit) {
+        // Parse polygon coordinates from array format (same as polygon-editor.js)
+        const polygonCoords = this.parsePolygonData(visit.place.polygon);
+        
+        if (!polygonCoords || polygonCoords.length === 0) {
+            // Fallback to circle marker if polygon parsing fails
+            this.createCircleMarker(visit);
+            return;
+        }
+        
+        // Create polygon
+        const polygon = L.polygon(polygonCoords, {
+            fillColor: this.lightenHexColor(visit.color, 20),
+            fillOpacity: 0.3,
+            color: visit.color,
+            weight: 2,
+            renderer: this.canvasRenderer,
+            interactive: true
+        });
+
+        const centerMarker = L.circleMarker([visit.lat, visit.lng], {
+            radius: 5,
+            fillOpacity: 1,
+            fillColor: this.lightenHexColor(visit.color, 80),
+            color: '#000',
+            weight: 1,
+            renderer: this.canvasRenderer,
+            interactive: true
+        });
+        
+        // Create tooltip content
+        const totalDurationText = this.humanizeDuration(visit.totalDurationMs);
+        const visitCount = visit.visits.length;
+        const visitText = visitCount === 1 ? 'visit' : 'visits';
+        
+        let tooltip = L.tooltip({
+            content: `<div class="visit-title">${visit.place.name}</div>
+                             <div class="visit-description">
+                                 ${visitCount} ${visitText} - Total: ${totalDurationText}
+                             </div>`,
+            className: 'visit-popup',
+            permanent: false
+        });
+        
+        polygon.bindTooltip(tooltip);
+        centerMarker.bindTooltip(tooltip);
+
+        this.map.addLayer(polygon);
+        this.map.addLayer(centerMarker);
+        
+        // Store references for cleanup
+        this.visitMarkers.push(polygon, centerMarker);
+    }
+    
+    parsePolygonData(polygonData) {
+        if (!polygonData) return null;
+        
+        try {
+            // Handle both array format and JSON string format
+            let coords;
+            if (typeof polygonData === 'string') {
+                coords = JSON.parse(polygonData);
+            } else if (Array.isArray(polygonData)) {
+                coords = polygonData;
+            } else {
+                return null;
+            }
+            
+            // Convert to Leaflet format [lat, lng]
+            return coords.map(point => {
+                // Handle both GeoPoint format (latitude/longitude) and simple lat/lng format
+                const lat = point.latitude || point.lat;
+                const lng = point.longitude || point.lng;
+                return [lat, lng];
+            });
+        } catch (error) {
+            console.warn('Failed to parse polygon data:', polygonData, error);
+            return null;
+        }
     }
     
     lightenHexColor(hex, percent) {

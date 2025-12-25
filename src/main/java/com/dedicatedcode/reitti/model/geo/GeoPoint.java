@@ -2,7 +2,9 @@ package com.dedicatedcode.reitti.model.geo;
 
 import org.locationtech.jts.geom.Point;
 
-public record GeoPoint(double latitude, double longitude) {
+import java.io.Serializable;
+
+public record GeoPoint(double latitude, double longitude) implements Serializable {
     public static GeoPoint from(Point point) {
         return new  GeoPoint(point.getY(), point.getX());
     }

@@ -14,10 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -452,6 +449,12 @@ public class RawLocationPointJdbcService {
         jdbcTemplate.update(sql, user.getId());
     }
 
+    public void markAllAsUnprocessedForUser(User user, List<LocalDate> affectedDays) {
+        this.jdbcTemplate.update("UPDATE raw_location_points SET processed = false WHERE user_id = ? AND date_trunc('day', timestamp) = ANY(?)",
+                                 user.getId(),
+                                 affectedDays.stream().map(d -> Timestamp.valueOf(d.atStartOfDay())).toList().toArray(new Timestamp[0]));
+    }
+
     public void deleteAllForUser(User user) {
         String sql = "DELETE FROM raw_location_points WHERE user_id = ?";
         jdbcTemplate.update(sql, user.getId());
@@ -513,7 +516,7 @@ public class RawLocationPointJdbcService {
             return;
         }
         
-        String sql = "UPDATE raw_location_points SET ignored = ? WHERE id = ?";
+        String sql = "UPDATE raw_location_points SET ignored = ?, processed = true WHERE id = ?";
         
         List<Object[]> batchArgs = pointIds.stream()
                 .map(pointId -> new Object[]{ignored, pointId})

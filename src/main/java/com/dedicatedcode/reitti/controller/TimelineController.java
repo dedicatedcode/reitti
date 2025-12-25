@@ -72,63 +72,6 @@ public class TimelineController {
         return getTimelineContentRange(startDate, endDate, timezone, principal, model, null);
     }
 
-    @GetMapping("/places/edit-form/{id}")
-    public String getPlaceEditForm(@PathVariable Long id,
-                                   @RequestParam(required = false) String date,
-                                   @RequestParam(required = false) String timezone,
-                                   Model model) {
-        SignificantPlace place = placeService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        model.addAttribute("place", place);
-        model.addAttribute("placeTypes", SignificantPlace.PlaceType.values());
-        model.addAttribute("date", date);
-        model.addAttribute("timezone", timezone);
-        return "fragments/place-edit :: edit-form";
-    }
-
-    @PutMapping("/places/{id}")
-    public String updatePlace(@PathVariable Long id,
-                              @RequestParam String name,
-                              @RequestParam(required = false) String type,
-                              @RequestParam(required = false) String date,
-                              @RequestParam(required = false, defaultValue = "UTC") String timezone,
-                              Authentication principal,
-                              Model model) {
-        SignificantPlace place = placeService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        SignificantPlace updatedPlace = place.withName(name);
-
-        if (type != null && !type.isEmpty()) {
-            try {
-                SignificantPlace.PlaceType placeType = SignificantPlace.PlaceType.valueOf(type);
-                updatedPlace = updatedPlace.withType(placeType);
-            } catch (IllegalArgumentException e) {
-                // Invalid place type, ignore and just update name
-            }
-        }
-
-        User user = this.userJdbcService.findByUsername(principal.getName()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        placeService.update(updatedPlace);
-        placeOverrideJdbcService.insertOverride(user, updatedPlace);
-
-        // If we have timeline context, reload the entire timeline with the edited place selected
-        if (date != null) {
-            return getTimelineContent(date, timezone, principal, model, id);
-        }
-
-        // Otherwise just return the updated place view
-        model.addAttribute("place", updatedPlace);
-        return "fragments/place-edit :: view-mode";
-    }
-
-    @GetMapping("/places/view/{id}")
-    public String getPlaceView(@PathVariable Long id,
-                               @RequestParam(required = false) String date,
-                               Model model) {
-        SignificantPlace place = placeService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        model.addAttribute("place", place);
-        model.addAttribute("date", date);
-        return "fragments/place-edit :: view-mode";
-    }
-
     @GetMapping("/trips/edit-form/{id}")
     public String getTripEditForm(@PathVariable Long id,
                                   Model model) {

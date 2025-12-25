@@ -33,7 +33,7 @@ class SignificantPlaceOverrideJdbcServiceTest {
         GeoPoint point = new GeoPoint(40.7128, -74.0060); // Example: New York coordinates
 
         // Create a SignificantPlace with the override details
-        SignificantPlace place = new SignificantPlace(1L, "Home Override", "123 Main St", "New York", "US", 40.7128, -74.0060, PlaceType.HOME, ZoneId.of("America/New_York"), false, 1L);
+        SignificantPlace place = new SignificantPlace(1L, "Home Override", "123 Main St", "New York", "US", 40.7128, -74.0060, null, PlaceType.HOME, ZoneId.of("America/New_York"), false, 1L);
 
         // Insert the override using the service
         significantPlaceOverrideJdbcService.insertOverride(user, place);
@@ -67,7 +67,7 @@ class SignificantPlaceOverrideJdbcServiceTest {
         User user = testingService.randomUser();
 
         // Create a SignificantPlace
-        SignificantPlace place = new SignificantPlace(1L, "Test Place", "123 Test St", "Test City", "US", 40.7128, -74.0060, PlaceType.HOME, ZoneId.of("America/New_York"), false, 1L);
+        SignificantPlace place = new SignificantPlace(1L, "Test Place", "123 Test St", "Test City", "US", 40.7128, -74.0060, null, PlaceType.HOME, ZoneId.of("America/New_York"), false, 1L);
 
         // Insert the override
         significantPlaceOverrideJdbcService.insertOverride(user, place);
@@ -88,7 +88,7 @@ class SignificantPlaceOverrideJdbcServiceTest {
         User user = testingService.randomUser();
 
         // Create a SignificantPlace
-        SignificantPlace place = new SignificantPlace(1L, "Test Place", "123 Test St", "Test City", "US", 40.7128, -74.0060, PlaceType.HOME, ZoneId.of("America/New_York"), false, 1L);
+        SignificantPlace place = new SignificantPlace(1L, "Test Place", "123 Test St", "Test City", "US", 40.7128, -74.0060, null, PlaceType.HOME, ZoneId.of("America/New_York"), false, 1L);
 
         // Insert the override
         significantPlaceOverrideJdbcService.insertOverride(user, place);
@@ -112,7 +112,7 @@ class SignificantPlaceOverrideJdbcServiceTest {
         User user = testingService.randomUser();
 
         // Create a SignificantPlace at a specific location
-        SignificantPlace place = new SignificantPlace(1L, "Nearby Override", "456 Nearby St", "Nearby City", "US", 40.7128, -74.0060, PlaceType.WORK, ZoneId.of("America/New_York"), false, 1L);
+        SignificantPlace place = new SignificantPlace(1L, "Nearby Override", "456 Nearby St", "Nearby City", "US", 40.7128, -74.0060, null, PlaceType.WORK, ZoneId.of("America/New_York"), false, 1L);
         significantPlaceOverrideJdbcService.insertOverride(user, place);
 
         // Create a GeoPoint very close (within 5m) to the place
@@ -130,7 +130,7 @@ class SignificantPlaceOverrideJdbcServiceTest {
         User user = testingService.randomUser();
 
         // Insert first override
-        SignificantPlace place1 = new SignificantPlace(1L, "First Override", "123 First St", "First City", "US", 40.7128, -74.0060, PlaceType.HOME, ZoneId.of("America/New_York"), false, 1L);
+        SignificantPlace place1 = new SignificantPlace(1L, "First Override", "123 First St", "First City", "US", 40.7128, -74.0060, null, PlaceType.HOME, ZoneId.of("America/New_York"), false, 1L);
         significantPlaceOverrideJdbcService.insertOverride(user, place1);
 
         // Verify first override exists
@@ -139,7 +139,7 @@ class SignificantPlaceOverrideJdbcServiceTest {
         assertTrue(result1.isPresent());
 
         // Insert second override very close (within 5m)
-        SignificantPlace place2 = new SignificantPlace(2L, "Second Override", "456 Second St", "Second City", "US", 40.7128442, -74.0060, PlaceType.WORK, ZoneId.of("America/New_York"), false, 1L);
+        SignificantPlace place2 = new SignificantPlace(2L, "Second Override", "456 Second St", "Second City", "US", 40.7128442, -74.0060, null, PlaceType.WORK, ZoneId.of("America/New_York"), false, 1L);
         significantPlaceOverrideJdbcService.insertOverride(user, place2);
 
         // Verify second override exists

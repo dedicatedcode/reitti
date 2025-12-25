@@ -23,7 +23,7 @@ class HomeDetectionServiceTest {
     @Test
     void testFindAccommodation_SingleCandidate() {
         // Create a significant place
-        SignificantPlace place = new SignificantPlace(1L, "Home", "123 Main St", "City", "US", 40.0, -74.0, HOME, ZoneId.of("America/New_York"), true, 1L);
+        SignificantPlace place = new SignificantPlace(1L, "Home", "123 Main St", "City", "US", 40.0, -74.0, null, HOME, ZoneId.of("America/New_York"), true, 1L);
 
         // Create a visit that spans sleeping hours
         Instant start = Instant.parse("2023-10-01T20:00:00Z");
@@ -42,8 +42,8 @@ class HomeDetectionServiceTest {
     @Test
     void testFindAccommodation_MultipleCandidates_SameDuration_PickClosestToEnd() {
         // Create two places
-        SignificantPlace place1 = new SignificantPlace(1L, "Home1", "123 Main St", "City", "US", 40.0, -74.0, HOME, ZoneId.of("America/New_York"), true, 1L);
-        SignificantPlace place2 = new SignificantPlace(2L, "Home2", "456 Elm St", "City", "US", 40.1, -74.1, HOME, ZoneId.of("America/New_York"), true, 1L);
+        SignificantPlace place1 = new SignificantPlace(1L, "Home1", "123 Main St", "City", "US", 40.0, -74.0, null, HOME, ZoneId.of("America/New_York"), true, 1L);
+        SignificantPlace place2 = new SignificantPlace(2L, "Home2", "456 Elm St", "City", "US", 40.1, -74.1, null, HOME, ZoneId.of("America/New_York"), true, 1L);
 
         // Create visits with same duration (8 hours sleeping), but different end times
         // Visit1 ends closer to memoryEnd
@@ -68,8 +68,8 @@ class HomeDetectionServiceTest {
     @Test
     void testFindAccommodation_MultipleCandidates_DifferentDurations() {
         // Similar setup, but place1 has higher duration
-        SignificantPlace place1 = new SignificantPlace(1L, "Home1", "123 Main St", "City", "US", 40.0, -74.0, HOME, ZoneId.of("America/New_York"), true, 1L);
-        SignificantPlace place2 = new SignificantPlace(2L, "Home2", "456 Elm St", "City", "US", 40.1, -74.1, HOME, ZoneId.of("America/New_York"), true, 1L);
+        SignificantPlace place1 = new SignificantPlace(1L, "Home1", "123 Main St", "City", "US", 40.0, -74.0, null, HOME, ZoneId.of("America/New_York"), true, 1L);
+        SignificantPlace place2 = new SignificantPlace(2L, "Home2", "456 Elm St", "City", "US", 40.1, -74.1, null, HOME, ZoneId.of("America/New_York"), true, 1L);
 
         // Visit1: higher duration
         Instant start1 = Instant.parse("2023-10-01T20:00:00Z");
@@ -102,7 +102,7 @@ class HomeDetectionServiceTest {
 
     @Test
     void testFindAccommodation_VisitsOutsideMemoryRange() {
-        SignificantPlace place = new SignificantPlace(1L, "Home", "123 Main St", "City", "US", 40.0, -74.0, HOME, ZoneId.of("America/New_York"), true, 1L);
+        SignificantPlace place = new SignificantPlace(1L, "Home", "123 Main St", "City", "US", 40.0, -74.0, null, HOME, ZoneId.of("America/New_York"), true, 1L);
 
         // Visit completely outside memory range
         Instant start = Instant.parse("2023-09-30T20:00:00Z");

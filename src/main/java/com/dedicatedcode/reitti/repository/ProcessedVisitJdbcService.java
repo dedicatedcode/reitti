@@ -13,6 +13,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -194,5 +195,38 @@ public class ProcessedVisitJdbcService {
 
     public void deleteAllForUser(User user) {
         jdbcTemplate.update("DELETE FROM processed_visits WHERE user_id = ?", user.getId());
+    }
+
+    public List<LocalDate> getAffectedDays(List<SignificantPlace> places) {
+        if (places.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> placeIds = places.stream()
+                .map(SignificantPlace::getId)
+                .toList();
+        
+        String placeholders = String.join(",", placeIds.stream().map(id -> "?").toList());
+        String sql = """
+                SELECT DISTINCT DATE(pv.start_time) AS affected_day
+                FROM processed_visits pv
+                WHERE pv.place_id IN (%s)
+                UNION
+                SELECT DISTINCT DATE(pv.end_time) AS affected_day
+                FROM processed_visits pv
+                WHERE pv.place_id IN (%s)
+                ORDER BY affected_day;
+                """.formatted(placeholders, placeholders);
+        
+        List<Object> params = new ArrayList<>();
+        params.addAll(placeIds);
+        params.addAll(placeIds);
+        
+        return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getDate("affected_day").toLocalDate(), params.toArray());
+    }
+
+    public void deleteFor(User user, List<SignificantPlace> placesToRemove) {
+        Long[] idList = placesToRemove.stream().map(SignificantPlace::getId).toList().toArray(Long[]::new);
+        this.jdbcTemplate.update("DELETE FROM processed_visits WHERE user_id = ? AND place_id = ANY(?)", user.getId(), idList);
     }
 }

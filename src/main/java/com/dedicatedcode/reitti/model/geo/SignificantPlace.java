@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.model.geo;
 
 import java.io.Serializable;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Objects;
 
 public class SignificantPlace implements Serializable {
@@ -13,13 +14,14 @@ public class SignificantPlace implements Serializable {
     private final String countryCode;
     private final Double latitudeCentroid;
     private final Double longitudeCentroid;
+    private final List<GeoPoint> polygon;
     private final PlaceType type;
     private final ZoneId timezone;
     private final boolean geocoded;
     private final Long version;
 
     public static SignificantPlace create(Double latitude, Double longitude) {
-        return new SignificantPlace(null, null, null, null,null, latitude, longitude, PlaceType.OTHER, ZoneId.systemDefault(), false, 1L);
+        return new SignificantPlace(null, null, null, null, null, latitude, longitude, null, PlaceType.OTHER, ZoneId.systemDefault(), false, 1L);
     }
 
     public SignificantPlace(Long id,
@@ -28,7 +30,7 @@ public class SignificantPlace implements Serializable {
                             String city,
                             String countryCode,
                             Double latitudeCentroid,
-                            Double longitudeCentroid,
+                            Double longitudeCentroid, List<GeoPoint> polygon,
                             PlaceType type, ZoneId timezone,
                             boolean geocoded,
                             Long version) {
@@ -39,6 +41,7 @@ public class SignificantPlace implements Serializable {
         this.countryCode = countryCode;
         this.latitudeCentroid = latitudeCentroid;
         this.longitudeCentroid = longitudeCentroid;
+        this.polygon = polygon;
         this.type = type;
         this.timezone = timezone;
         this.geocoded = geocoded;
@@ -69,6 +72,10 @@ public class SignificantPlace implements Serializable {
         return longitudeCentroid;
     }
 
+    public List<GeoPoint> getPolygon() {
+        return polygon;
+    }
+
     public PlaceType getType() {
         return type;
     }
@@ -87,35 +94,47 @@ public class SignificantPlace implements Serializable {
     
     // Wither methods
     public SignificantPlace withGeocoded(boolean geocoded) {
-        return new SignificantPlace(this.id, this.name, this.address, city, this.countryCode,  this.latitudeCentroid, this.longitudeCentroid, this.type, timezone, geocoded, this.version);
+        return new SignificantPlace(this.id, this.name, this.address, city, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, polygon, this.type, timezone, geocoded, this.version);
     }
 
     public SignificantPlace withName(String name) {
-        return new SignificantPlace(this.id, name, this.address, city, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, timezone, this.geocoded, this.version);
+        return new SignificantPlace(this.id, name, this.address, city, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, polygon, this.type, timezone, this.geocoded, this.version);
     }
 
     public SignificantPlace withAddress(String address) {
-        return new SignificantPlace(this.id, this.name, address, city, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, timezone, this.geocoded, this.version);
+        return new SignificantPlace(this.id, this.name, address, city, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, polygon, this.type, timezone, this.geocoded, this.version);
     }
 
     public SignificantPlace withCountryCode(String countryCode) {
-        return new SignificantPlace(this.id, this.name, this.address, city, countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, timezone, this.geocoded, this.version);
+        return new SignificantPlace(this.id, this.name, this.address, city, countryCode, this.latitudeCentroid, this.longitudeCentroid, polygon, this.type, timezone, this.geocoded, this.version);
     }
 
     public SignificantPlace withType(PlaceType type) {
-        return new SignificantPlace(this.id, this.name, this.address, city, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, type, timezone, this.geocoded, this.version);
+        return new SignificantPlace(this.id, this.name, this.address, city, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, polygon, type, timezone, this.geocoded, this.version);
     }
 
     public SignificantPlace withId(Long id) {
-        return new SignificantPlace(id, this.name, address, city, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, timezone, this.geocoded, this.version);
+        return new SignificantPlace(id, this.name, address, city, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, polygon, this.type, timezone, this.geocoded, this.version);
     }
 
     public SignificantPlace withTimezone(ZoneId timezone) {
-        return new SignificantPlace(this.id, this.name, address, city, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, timezone, this.geocoded, this.version);
+        return new SignificantPlace(this.id, this.name, address, city, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, polygon, this.type, timezone, this.geocoded, this.version);
     }
 
     public SignificantPlace withCity(String city) {
-        return new SignificantPlace(this.id, this.name, address, city, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, this.type, timezone, this.geocoded, this.version);
+        return new SignificantPlace(this.id, this.name, address, city, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, polygon, this.type, timezone, this.geocoded, this.version);
+    }
+
+    public SignificantPlace withPolygon(List<GeoPoint> polygon) {
+        return new SignificantPlace(this.id, this.name, this.address, city, this.countryCode, this.latitudeCentroid, this.longitudeCentroid, polygon, this.type, timezone, this.geocoded, this.version);
+    }
+
+    public SignificantPlace withLatitudeCentroid(Double latitudeCentroid) {
+        return new SignificantPlace(this.id, this.name, this.address, city, this.countryCode, latitudeCentroid, this.longitudeCentroid, this.polygon, this.type, timezone, this.geocoded, this.version);
+    }
+
+    public SignificantPlace withLongitudeCentroid(Double longitudeCentroid) {
+        return new SignificantPlace(this.id, this.name, this.address, city, this.countryCode, this.latitudeCentroid, longitudeCentroid, this.polygon, this.type, timezone, this.geocoded, this.version);
     }
 
     @Override

@@ -234,12 +234,12 @@ class RawLocationLoader {
 
                 const rawPointsCoords = segment.points.map(point => [point.latitude, point.longitude]);
 
-                // Use polyline for segments with many points (>100), geodesic for fewer points
+                const weight = this.map.getZoom() >= 18 ? 2 : 6;
                 let rawPointsPath;
                 if (segment.points.length > 100) {
                     rawPointsPath = L.polyline(rawPointsCoords, {
                         color: color == null ? '#f1ba63' : color,
-                        weight: 6,
+                        weight: weight,
                         opacity: 0.9,
                         lineJoin: 'round',
                         lineCap: 'round',
@@ -248,7 +248,7 @@ class RawLocationLoader {
                 } else {
                     rawPointsPath = L.geodesic(rawPointsCoords, {
                         color: color == null ? '#f1ba63' : color,
-                        weight: 6,
+                        weight: weight,
                         opacity: 0.9,
                         lineJoin: 'round',
                         lineCap: 'round',
