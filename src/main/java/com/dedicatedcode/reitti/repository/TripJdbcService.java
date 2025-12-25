@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
+import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.security.User;
@@ -213,5 +214,18 @@ public class TripJdbcService {
         String sql = "DELETE FROM trips WHERE id IN (" + placeholders + ")";
         
         jdbcTemplate.update(sql, ids.toArray());
+    }
+
+    public void deleteFor(User user, List<SignificantPlace> placesToRemove) {
+        List<Long> idList = placesToRemove.stream().map(SignificantPlace::getId).toList();
+        this.jdbcTemplate.update("""
+                                     DELETE FROM trips
+                                            WHERE user_id = ?
+                                              AND start_visit_id IN (SELECT id FROM processed_visits WHERE place_id IN (?))
+                                              OR end_visit_id IN (SELECT id FROM processed_visits WHERE place_id IN (?))
+                                     """,
+                                 user.getId(),
+                                 idList,
+                                 idList);
     }
 }

@@ -13,14 +13,18 @@ import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geocoding.GeocodingResponse;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
+import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceOverrideJdbcService;
+import com.dedicatedcode.reitti.service.DataCleanupService;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.PlaceService;
 import com.dedicatedcode.reitti.service.PlaceChangeDetectionService;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -34,6 +38,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import java.util.ArrayList;
@@ -42,35 +47,42 @@ import java.util.stream.Collectors;
 @Controller
 @RequestMapping("/settings/places")
 public class PlacesSettingsController {
+    private static final Logger log = LoggerFactory.getLogger(PlacesSettingsController.class);
     private final PlaceService placeService;
     private final SignificantPlaceJdbcService placeJdbcService;
+    private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
     private final GeocodingResponseJdbcService geocodingResponseJdbcService;
     private final RabbitTemplate rabbitTemplate;
     private final GeometryFactory geometryFactory;
     private final I18nService i18nService;
     private final PlaceChangeDetectionService placeChangeDetectionService;
+    private final DataCleanupService dataCleanupService;
     private final boolean dataManagementEnabled;
     private final ObjectMapper objectMapper;
 
     public PlacesSettingsController(PlaceService placeService,
                                     SignificantPlaceJdbcService placeJdbcService,
+                                    ProcessedVisitJdbcService processedVisitJdbcService,
                                     SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
                                     GeocodingResponseJdbcService geocodingResponseJdbcService,
                                     RabbitTemplate rabbitTemplate,
                                     GeometryFactory geometryFactory,
                                     I18nService i18nService,
                                     PlaceChangeDetectionService placeChangeDetectionService,
+                                    DataCleanupService dataCleanupService,
                                     @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                                     ObjectMapper objectMapper) {
         this.placeService = placeService;
         this.placeJdbcService = placeJdbcService;
+        this.processedVisitJdbcService = processedVisitJdbcService;
         this.significantPlaceOverrideJdbcService = significantPlaceOverrideJdbcService;
         this.geocodingResponseJdbcService = geocodingResponseJdbcService;
         this.rabbitTemplate = rabbitTemplate;
         this.geometryFactory = geometryFactory;
         this.i18nService = i18nService;
         this.placeChangeDetectionService = placeChangeDetectionService;
+        this.dataCleanupService = dataCleanupService;
         this.dataManagementEnabled = dataManagementEnabled;
         this.objectMapper = objectMapper;
     }
@@ -188,7 +200,17 @@ public class PlacesSettingsController {
 
                 placeJdbcService.update(updatedPlace);
                 significantPlaceOverrideJdbcService.insertOverride(user, updatedPlace);
-                
+
+
+                if (this.placeChangeDetectionService.analyzeChanges(user, placeId, polygonData).isCanProceed()) {
+                    log.info("Significant change detected for place [{}]. Will issue a recalculation of all affected dates", significantPlace);
+
+                    List<SignificantPlace> placesToRemove = placeJdbcService.findPlacesOverlappingWithPolygon(user.getId(), placeId, updatedPlace.getPolygon());
+                    List<SignificantPlace> placesToCheck = new  ArrayList<>(placesToRemove);
+                    placesToCheck.add(updatedPlace);
+                    List<LocalDate> affectedDays = this.processedVisitJdbcService.getAffectedDays(placesToCheck);
+                    this.dataCleanupService.cleanupForGeometryChange(user, placesToRemove, affectedDays);
+                }
                 return "redirect:" + returnUrl;
             } catch (Exception e) {
                 model.addAttribute("errorMessage", i18nService.translate("message.error.place.update", e.getMessage()));

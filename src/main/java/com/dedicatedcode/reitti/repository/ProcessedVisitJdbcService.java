@@ -224,4 +224,9 @@ public class ProcessedVisitJdbcService {
         
         return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getDate("affected_day").toLocalDate(), params.toArray());
     }
+
+    public void deleteFor(User user, List<SignificantPlace> placesToRemove) {
+        List<Long> idList = placesToRemove.stream().map(SignificantPlace::getId).toList();
+        this.jdbcTemplate.update("DELETE FROM processed_visits WHERE user_id = ? AND place_id IN (?)", user.getId(), idList);
+    }
 }

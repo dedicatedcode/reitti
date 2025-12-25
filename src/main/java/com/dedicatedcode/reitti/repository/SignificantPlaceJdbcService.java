@@ -342,6 +342,11 @@ public class SignificantPlaceJdbcService {
         this.jdbcTemplate.update("DELETE FROM significant_places WHERE user_id = ?", user.getId());
     }
 
+    public void deleteForUser(User user, List<SignificantPlace> placesToRemove) {
+        this.jdbcTemplate.update("DELETE FROM geocoding_response WHERE significant_place_id IN (?)", placesToRemove.stream().map(SignificantPlace::getId).toList());
+        this.jdbcTemplate.update("DELETE FROM significant_places WHERE user_id = ? AND id IN (?)", user.getId(), placesToRemove.stream().map(SignificantPlace::getId).toList());
+    }
+
     public List<SignificantPlace> findPlacesOverlappingWithPolygon(Long userId, Long excludePlaceId, List<GeoPoint> polygon) {
         if (polygon == null || polygon.size() < 3) {
             return List.of();
