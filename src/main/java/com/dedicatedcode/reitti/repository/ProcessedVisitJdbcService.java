@@ -226,7 +226,7 @@ public class ProcessedVisitJdbcService {
     }
 
     public void deleteFor(User user, List<SignificantPlace> placesToRemove) {
-        List<Long> idList = placesToRemove.stream().map(SignificantPlace::getId).toList();
-        this.jdbcTemplate.update("DELETE FROM processed_visits WHERE user_id = ? AND place_id IN (?)", user.getId(), idList);
+        Long[] idList = placesToRemove.stream().map(SignificantPlace::getId).toList().toArray(Long[]::new);
+        this.jdbcTemplate.update("DELETE FROM processed_visits WHERE user_id = ? AND place_id = ANY(?)", user.getId(), idList);
     }
 }

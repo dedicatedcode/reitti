@@ -2,11 +2,7 @@ package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
-import com.dedicatedcode.reitti.model.geo.GeoPoint;
-import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
-import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
-import com.dedicatedcode.reitti.model.geo.SignificantPlace;
-import com.dedicatedcode.reitti.model.geo.Trip;
+import com.dedicatedcode.reitti.model.geo.*;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
@@ -23,8 +19,8 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @IntegrationTest
 class DataCleanupServiceTest {
@@ -259,17 +255,19 @@ class DataCleanupServiceTest {
     }
 
     private SignificantPlace createTestPlace(User user, String name, double latitude, double longitude) {
-        return placeJdbcService.create(user.getId(), new SignificantPlace(
-            null,
-            name,
-            null,
-            null,
-            null,
-            latitude,
-            longitude,
-            List.of(),
-            ZoneId.systemDefault(),
-            0L
+        return placeJdbcService.create(user, new SignificantPlace(
+                null,
+                name,
+                null,
+                null,
+                null,
+                latitude,
+                longitude,
+                List.of(),
+                SignificantPlace.PlaceType.OTHER,
+                ZoneId.systemDefault(),
+                true,
+                0L
         ));
     }
 
@@ -286,12 +284,11 @@ class DataCleanupServiceTest {
             startVisit.getEndTime(),
             endVisit.getStartTime(),
             duration,
-            1000.0, // estimatedDistanceMeters
-            1200.0, // travelledDistanceMeters
-            null, // transportModeInferred
+            1000.0,
+            1200.0,
+            TransportMode.WALKING,
             startVisit,
             endVisit,
-            List.of(), // rawLocationPoints
             1L
         );
         return tripJdbcService.create(testUser, trip);
@@ -304,7 +301,7 @@ class DataCleanupServiceTest {
             new GeoPoint(53.863149, 10.700927),
             10.0,
             null,
-            false, // will be set to true after creation
+            false,
             false,
             false,
             1L
@@ -319,7 +316,7 @@ class DataCleanupServiceTest {
             created.getGeom(),
             created.getAccuracyMeters(),
             created.getElevationMeters(),
-            true, // processed = true
+            true,
             created.isSynthetic(),
             created.isIgnored(),
             created.getVersion()

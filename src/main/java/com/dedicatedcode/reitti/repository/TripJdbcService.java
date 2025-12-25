@@ -217,12 +217,15 @@ public class TripJdbcService {
     }
 
     public void deleteFor(User user, List<SignificantPlace> placesToRemove) {
-        List<Long> idList = placesToRemove.stream().map(SignificantPlace::getId).toList();
+        if (placesToRemove == null || placesToRemove.isEmpty()) {
+            return;
+        }
+        Long[] idList = placesToRemove.stream().map(SignificantPlace::getId).toArray(Long[]::new);
         this.jdbcTemplate.update("""
                                      DELETE FROM trips
                                             WHERE user_id = ?
-                                              AND start_visit_id IN (SELECT id FROM processed_visits WHERE place_id IN (?))
-                                              OR end_visit_id IN (SELECT id FROM processed_visits WHERE place_id IN (?))
+                                              AND (start_visit_id IN (SELECT id FROM processed_visits WHERE place_id = ANY(?))
+                                               OR end_visit_id IN (SELECT id FROM processed_visits WHERE place_id = ANY(?)))
                                      """,
                                  user.getId(),
                                  idList,
