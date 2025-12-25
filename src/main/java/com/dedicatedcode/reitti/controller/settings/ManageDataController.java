@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 public class ManageDataController {
 
     private final boolean dataManagementEnabled;
-    private final VisitJdbcService visitJdbcService;
     private final TripJdbcService tripJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final ProcessingPipelineTrigger processingPipelineTrigger;
@@ -26,7 +25,6 @@ public class ManageDataController {
     private final MessageSource messageSource;
 
     public ManageDataController(@Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
-                                VisitJdbcService visitJdbcService,
                                 TripJdbcService tripJdbcService,
                                 ProcessedVisitJdbcService processedVisitJdbcService,
                                 ProcessingPipelineTrigger processingPipelineTrigger,
@@ -34,7 +32,6 @@ public class ManageDataController {
                                 UserSettingsJdbcService userSettingsJdbcService,
                                 MessageSource messageSource) {
         this.dataManagementEnabled = dataManagementEnabled;
-        this.visitJdbcService = visitJdbcService;
         this.tripJdbcService = tripJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.processingPipelineTrigger = processingPipelineTrigger;
@@ -115,7 +112,6 @@ public class ManageDataController {
     private void clearProcessedDataExceptPlaces(User user) {
         tripJdbcService.deleteAllForUser(user);
         processedVisitJdbcService.deleteAllForUser(user);
-        visitJdbcService.deleteAllForUser(user);
     }
 
     private void markRawLocationPointsAsUnprocessed(User user) {
@@ -126,7 +122,6 @@ public class ManageDataController {
         this.userSettingsJdbcService.deleteNewestData(user);
         tripJdbcService.deleteAllForUser(user);
         processedVisitJdbcService.deleteAllForUser(user);
-        visitJdbcService.deleteAllForUser(user);
         rawLocationPointJdbcService.deleteAllForUser(user);
     }
 

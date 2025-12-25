@@ -37,7 +37,6 @@ public class SettingsVisitSensitivityController {
     private final ProcessingPipelineTrigger processingPipelineTrigger;
     private final TripJdbcService tripJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
-    private final VisitJdbcService visitJdbcService;
     private final MessageSource messageSource;
     private final boolean dataManagementEnabled;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
@@ -48,7 +47,6 @@ public class SettingsVisitSensitivityController {
                                               ProcessingPipelineTrigger processingPipelineTrigger,
                                               TripJdbcService tripJdbcService,
                                               ProcessedVisitJdbcService processedVisitJdbcService,
-                                              VisitJdbcService visitJdbcService,
                                               MessageSource messageSource,
                                               @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled, RawLocationPointJdbcService rawLocationPointJdbcService, SignificantPlaceJdbcService significantPlaceJdbcService) {
         this.configurationService = configurationService;
@@ -56,7 +54,6 @@ public class SettingsVisitSensitivityController {
         this.processingPipelineTrigger = processingPipelineTrigger;
         this.tripJdbcService = tripJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
-        this.visitJdbcService = visitJdbcService;
         this.messageSource = messageSource;
         this.dataManagementEnabled = dataManagementEnabled;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
@@ -271,7 +268,6 @@ public class SettingsVisitSensitivityController {
             try {
                 tripJdbcService.deleteAllForUser(user);
                 processedVisitJdbcService.deleteAllForUser(user);
-                visitJdbcService.deleteAllForUser(user);
                 significantPlaceJdbcService.deleteForUser(user);
                 rawLocationPointJdbcService.markAllAsUnprocessedForUser(user);
                 allConfigurationsForUser.forEach(config -> this.configurationService.updateConfiguration(config.withRecalculationState(RecalculationState.DONE)));

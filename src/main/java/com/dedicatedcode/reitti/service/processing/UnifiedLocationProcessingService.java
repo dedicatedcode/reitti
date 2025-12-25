@@ -40,8 +40,6 @@ public class UnifiedLocationProcessingService {
     private final UserJdbcService userJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService;
-    private final VisitJdbcService visitJdbcService;
-    private final PreviewVisitJdbcService previewVisitJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final PreviewProcessedVisitJdbcService previewProcessedVisitJdbcService;
     private final TripJdbcService tripJdbcService;
@@ -61,8 +59,6 @@ public class UnifiedLocationProcessingService {
             UserJdbcService userJdbcService,
             RawLocationPointJdbcService rawLocationPointJdbcService,
             PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService,
-            VisitJdbcService visitJdbcService,
-            PreviewVisitJdbcService previewVisitJdbcService,
             ProcessedVisitJdbcService processedVisitJdbcService,
             PreviewProcessedVisitJdbcService previewProcessedVisitJdbcService,
             TripJdbcService tripJdbcService,
@@ -70,7 +66,8 @@ public class UnifiedLocationProcessingService {
             SignificantPlaceJdbcService significantPlaceJdbcService,
             PreviewSignificantPlaceJdbcService previewSignificantPlaceJdbcService,
             SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
-            VisitDetectionParametersService visitDetectionParametersService, PreviewVisitDetectionParametersJdbcService previewVisitDetectionParametersJdbcService,
+            VisitDetectionParametersService visitDetectionParametersService,
+            PreviewVisitDetectionParametersJdbcService previewVisitDetectionParametersJdbcService,
             TransportModeService transportModeService,
             UserNotificationService userNotificationService,
             GeoLocationTimezoneService timezoneService,
@@ -79,8 +76,6 @@ public class UnifiedLocationProcessingService {
         this.userJdbcService = userJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
-        this.visitJdbcService = visitJdbcService;
-        this.previewVisitJdbcService = previewVisitJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.previewProcessedVisitJdbcService = previewProcessedVisitJdbcService;
         this.tripJdbcService = tripJdbcService;
@@ -238,28 +233,27 @@ public class UnifiedLocationProcessingService {
         }
         detectionParams = currentConfiguration.getVisitDetection();
 
-        // Find and delete affected visits
-        List<Visit> affectedVisits;
+        List<ProcessedVisit> existingProcessedVisits;
         if (previewId == null) {
-            affectedVisits = visitJdbcService.findByUserAndTimeAfterAndStartTimeBefore(user, windowStart, windowEnd);
-            visitJdbcService.delete(affectedVisits);
+            existingProcessedVisits = processedVisitJdbcService
+                    .findByUserAndStartTimeBeforeEqualAndEndTimeAfterEqual(user, windowEnd, windowStart);
         } else {
-            affectedVisits = previewVisitJdbcService.findByUserAndTimeAfterAndStartTimeBefore(user, previewId, windowStart, windowEnd);
-            previewVisitJdbcService.delete(affectedVisits);
+            existingProcessedVisits = previewProcessedVisitJdbcService
+                    .findByUserAndStartTimeBeforeEqualAndEndTimeAfterEqual(user, previewId, windowEnd, windowStart);
         }
 
-        // Expand the window based on deleted visits
-        if (!affectedVisits.isEmpty()) {
-            if (affectedVisits.getFirst().getStartTime().isBefore(windowStart)) {
-                windowStart = affectedVisits.getFirst().getStartTime();
+        // Expand window based on deleted processed visits
+        if (!existingProcessedVisits.isEmpty()) {
+            if (existingProcessedVisits.getFirst().getStartTime().isBefore(windowStart)) {
+                windowStart = existingProcessedVisits.getFirst().getStartTime();
             }
-            if (affectedVisits.getLast().getEndTime().isAfter(windowEnd)) {
-                windowEnd = affectedVisits.getLast().getEndTime();
+            if (existingProcessedVisits.getLast().getEndTime().isAfter(windowEnd)) {
+                windowEnd = existingProcessedVisits.getLast().getEndTime();
             }
         }
 
         // Get clustered points
-        double baseLatitude = affectedVisits.isEmpty() ? 50 : affectedVisits.getFirst().getLatitude();
+        double baseLatitude = existingProcessedVisits.isEmpty() ? 50 : existingProcessedVisits.getFirst().getPlace().getLatitudeCentroid();
         double metersAsDegrees = GeoUtils.metersToDegreesAtPosition((double) currentConfiguration.getVisitMerging().getMinDistanceBetweenVisits() / 2, baseLatitude);
 
         List<ClusteredPoint> clusteredPoints;
@@ -786,7 +780,7 @@ public class UnifiedLocationProcessingService {
         Point point = geometryFactory.createPoint(new Coordinate(longitude, latitude));
         // Find places within the merge distance
         if (previewId == null) {
-            return significantPlaceJdbcService.findNearbyPlaces(user.getId(), point, GeoUtils.metersToDegreesAtPosition((double) mergeConfiguration.getMinDistanceBetweenVisits() / 2, latitude));
+            return significantPlaceJdbcService.findEnclosingPlaces(user.getId(), point, GeoUtils.metersToDegreesAtPosition((double) mergeConfiguration.getMinDistanceBetweenVisits() / 2, latitude));
         } else {
             return previewSignificantPlaceJdbcService.findNearbyPlaces(user.getId(), point, GeoUtils.metersToDegreesAtPosition((double) mergeConfiguration.getMinDistanceBetweenVisits() /2, latitude), previewId);
         }

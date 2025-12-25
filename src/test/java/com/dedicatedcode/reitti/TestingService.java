@@ -48,8 +48,6 @@ public class TestingService {
     @Autowired
     private ProcessedVisitJdbcService processedVisitRepository;
     @Autowired
-    private VisitJdbcService visitRepository;
-    @Autowired
     private ProcessingPipelineTrigger trigger;
     @Autowired
     private UserService userService;
@@ -134,16 +132,13 @@ public class TestingService {
 
                     // Check if all counts are stable
                     long currentRawCount = rawLocationPointRepository.count();
-                    long currentVisitCount = visitRepository.count();
                     long currentTripCount = tripRepository.count();
 
                     boolean countsStable =
                             currentRawCount == lastRawCount.get() &&
-                                    currentVisitCount == lastVisitCount.get() &&
                                     currentTripCount == lastTripCount.get();
 
                     lastRawCount.set(currentRawCount);
-                    lastVisitCount.set(currentVisitCount);
                     lastTripCount.set(currentTripCount);
 
                     if (countsStable && this.trigger.isIdle() && importBatchProcessor.isIdle()) {
@@ -166,7 +161,6 @@ public class TestingService {
         //now clear the database
         this.tripRepository.deleteAll();
         this.processedVisitRepository.deleteAll();
-        this.visitRepository.deleteAll();
         this.rawLocationPointRepository.deleteAll();
     }
 

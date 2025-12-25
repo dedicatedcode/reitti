@@ -16,6 +16,7 @@
     border: 1px solid wheat;
     color: wheat;
     border-radius: 4px;
+    text-decoration: none;
 }
 
 .timeline-entry.trip.active:hover .edit-icon,

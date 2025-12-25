@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{edit-place.page.title}">Edit Place - Reitti</title>
+    <link rel="icon" th:href="@{/img/logo.svg}">
+    <link rel="stylesheet" href="/css/leaflet.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/lineicons.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1;
+        }
+
+        .sidebar {
+            background: var(--color-background-dark);
+            border: 1px solid var(--color-highlight);
+            border-radius: 8px;
+            box-shadow: var(--box-shadow);
+            z-index: 1000;
+            overflow-y: auto;
+            max-height: calc(100vh - 40px);
+        }
+
+        .polygon-editor-sidebar {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            width: 324px;
+        }
+        
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--color-highlight);
+        }
+        
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0 0 8px 0;
+            color: var(--color-highlight);
+        }
+        
+        .sidebar-subtitle {
+            font-size: 14px;
+            color: var(--color-text-white);
+            margin: 0;
+            opacity: 0.8;
+        }
+        
+        .sidebar-content {
+            padding: 24px;
+        }
+        
+        .polygon-info {
+            background: var(--color-background-dark-light);
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 13px;
+            color: var(--color-text-white);
+            margin-bottom: 16px;
+            opacity: 0.9;
+        }
+        
+        .coordinates-display {
+            font-size: 12px;
+            color: var(--color-text-white);
+            margin-top: 4px;
+            opacity: 0.7;
+        }
+        
+        .geocoding-drawer {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            display: none;
+            width: calc(100vw - 390px);
+        }
+        
+        .geocoding-drawer.active {
+            display: block;
+        }
+        
+        .drawer-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--color-highlight);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .drawer-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0;
+            color: var(--color-highlight);
+        }
+        
+        .drawer-close {
+            background: none;
+            border: none;
+            color: var(--color-text-white);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .drawer-content {
+            padding: 24px;
+        }
+    </style>
+    <script src="/js/leaflet.js"></script>
+    <script src="/js/polygon-editor.js"></script>
+    <script src="/js/TileLayer.Grayscale.js"></script>
+    <script src="/js/htmx.min.js"></script>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="sidebar polygon-editor-sidebar">
+        <div class="sidebar-header">
+            <h1 class="sidebar-title" th:text="${place.name()}">Place Name</h1>
+            <p class="sidebar-subtitle" th:text="#{places.polygon.editor.subtitle}">Edit polygon boundary</p>
+            <div class="coordinates-display">
+                <span th:text="#{places.coordinates.label}">Coordinates</span>:
+                <span id="current-lat" th:text="${#numbers.formatDecimal(place.lat(), 1, 6)}">0.000000</span>,
+                <span id="current-lng" th:text="${#numbers.formatDecimal(place.lng(), 1, 6)}">0.000000</span>
+            </div>
+        </div>
+        
+        <div class="sidebar-content">
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+            
+            <div class="polygon-info" th:text="#{places.polygon.editor.instructions}">
+                Click on the map to add polygon points. The polygon will automatically close when you have 3 or more points.
+            </div>
+            
+            <form id="polygon-form" th:action="@{/settings/places/{placeId}/update(placeId=${place.id()})}" method="post">
+                <input type="hidden" name="returnUrl" th:value="${returnUrl}">
+                <input type="hidden" name="polygonData" id="polygonData">
+                
+                <div class="form-group">
+                    <label for="name" th:text="#{places.name.label}">Name</label>
+                    <input id="name" type="text" name="name" th:value="${place.name()}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="address" th:text="#{places.address.label}">Address</label>
+                    <input id="address" type="text" name="address" th:value="${place.address()}">
+                </div>
+                <div class="form-group">
+                    <label for="city" th:text="#{places.city.label}">City</label>
+                    <input id="city" type="text" name="city" th:value="${place.city()}">
+                </div>
+                <div class="form-group">
+                    <label for="country" th:text="#{places.country.label}">Country</label>
+                    <select id="country" name="countryCode">
+                        <option value="" th:text="#{form.select.placeholder}">Select...</option>
+                        <option th:each="country : ${availableCountries}"
+                                th:value="${country.code}"
+                                th:text="#{${country.messageKey}}"
+                                th:selected="${country.code == place.countryCode()}">Country</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label th:text="#{places.category.label}">Type</label>
+                    <select name="type">
+                        <option th:each="placeType : ${placeTypes}" 
+                                th:value="${placeType}" 
+                                th:text="#{${placeType.messageKey}}"
+                                th:selected="${placeType == place.type()}">Type</option>
+                    </select>
+                </div>
+            </form>
+            
+            <div class="polygon-actions">
+                <button type="button" id="remove-polygon-btn" class="btn btn-danger" 
+                        th:text="#{places.polygon.remove}">Remove Polygon</button>
+                
+                <form th:action="@{/settings/places/{placeId}/geocode(placeId=${place.id()})}" method="post" style="margin-top: 10px;">
+                    <input type="hidden" name="returnUrl" th:value="${returnUrl}">
+                    <button type="submit" class="btn btn-default btn-block" 
+                            th:text="#{places.geocode.button}">Geocode Place</button>
+                </form>
+                
+                <button type="button" class="btn btn-default btn-block" 
+                        th:attr="hx-get=@{/settings/places/{placeId}/geocoding-response(placeId=${place.id()}, context='edit')}"
+                        hx-target="#geocoding-drawer"
+                        hx-swap="innerHTML"
+                        style="margin-top: 10px;"
+                        th:text="#{places.geocoding.response.button}">View Geocoding Response</button>
+                
+                <div class="separator"></div>
+                <div>
+                    <button type="button" id="save-btn" class="btn btn-default btn-block" th:text="#{form.save}">Save</button>
+                    <a th:href="${returnUrl}" class="btn btn-default btn-block" th:text="#{form.cancel}">Cancel</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="geocoding-drawer" class="sidebar geocoding-drawer">
+        <!-- Geocoding response content will be loaded here via HTMX -->
+    </div>
+
+    <script th:inline="javascript">
+        const placeData = /*[[${place}]]*/ {};
+        window.userSettings = /*[[${userSettings}]]*/ {};
+
+        // Initialize the map
+        const map = L.map('map', {
+            zoomControl: false,
+            attributionControl: false
+        }).setView([placeData.lat, placeData.lng], 25);
+
+        // Add tile layer based on user settings
+        const tilesUrl = window.userSettings.tiles.service;
+        const tilesAttribution = window.userSettings.tiles.attribution;
+
+        const tileLayer = window.userSettings.preferColoredMap ? L.tileLayer : L.tileLayer.grayscale;
+        tileLayer(tilesUrl, {
+            maxZoom: 19,
+            attribution: tilesAttribution
+        }).addTo(map);
+        
+        L.control.attribution({position: 'topright'}).addAttribution(tilesAttribution).addTo(map);
+
+        // Initialize polygon editor
+        const polygonEditor = new PolygonEditor(map, placeData.lat, placeData.lng, placeData.name);
+
+        // Create centroid marker
+        let centroidMarker = L.circleMarker([placeData.lat, placeData.lng], {
+            radius: 8,
+            fillColor: '#ff0000',
+            color: '#ffffff',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.8
+        }).addTo(map);
+        
+        centroidMarker.bindTooltip('Centroid', { permanent: false, direction: 'top' });
+
+        // Load existing polygon if it exists
+        if (placeData.polygon && placeData.polygon.length >= 3) {
+            polygonEditor.loadExistingPolygon(placeData.polygon);
+            // Calculate and show centroid for existing polygon
+            const centroid = calculatePolygonCentroid(placeData.polygon);
+            if (centroid && !isNaN(centroid.lat) && !isNaN(centroid.lng)) {
+                updateCoordinatesDisplay(centroid.lat, centroid.lng);
+            }
+        }
+
+        // Function to calculate polygon centroid
+        function calculatePolygonCentroid(points) {
+            if (!points || points.length === 0) {
+                return { lat: placeData.lat, lng: placeData.lng };
+            }
+            
+            let validPoints = [];
+            
+            // Handle different point formats and filter valid points
+            for (let point of points) {
+                let lat, lng;
+                
+                if (point.lat !== undefined && point.lng !== undefined) {
+                    lat = point.lat;
+                    lng = point.lng;
+                } else if (point.latitude !== undefined && point.longitude !== undefined) {
+                    lat = point.latitude;
+                    lng = point.longitude;
+                } else if (Array.isArray(point) && point.length >= 2) {
+                    lat = point[0];
+                    lng = point[1];
+                } else {
+                    continue; // Skip invalid points
+                }
+                
+                // Validate that lat/lng are numbers
+                if (typeof lat === 'number' && typeof lng === 'number' && 
+                    !isNaN(lat) && !isNaN(lng) && 
+                    lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                    validPoints.push({ lat: lat, lng: lng });
+                }
+            }
+            
+            if (validPoints.length === 0) {
+                return { lat: placeData.lat, lng: placeData.lng };
+            }
+            
+            // Remove duplicate points (especially the closing point that duplicates the first point)
+            let uniquePoints = [];
+            for (let i = 0; i < validPoints.length; i++) {
+                const point = validPoints[i];
+                const isDuplicate = uniquePoints.some(existing => 
+                    Math.abs(existing.lat - point.lat) < 0.000001 && 
+                    Math.abs(existing.lng - point.lng) < 0.000001
+                );
+                if (!isDuplicate) {
+                    uniquePoints.push(point);
+                }
+            }
+            
+            if (uniquePoints.length === 0) {
+                return { lat: placeData.lat, lng: placeData.lng };
+            }
+            
+            const avgLat = uniquePoints.reduce((sum, point) => sum + point.lat, 0) / uniquePoints.length;
+            const avgLng = uniquePoints.reduce((sum, point) => sum + point.lng, 0) / uniquePoints.length;
+            
+            return { lat: avgLat, lng: avgLng };
+        }
+
+        // Function to update coordinates display and centroid marker
+        function updateCoordinatesDisplay(lat, lng) {
+            // Validate coordinates before updating
+            if (typeof lat !== 'number' || typeof lng !== 'number' || 
+                isNaN(lat) || isNaN(lng) || 
+                lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                console.warn('Invalid coordinates:', lat, lng);
+                return;
+            }
+            
+            document.getElementById('current-lat').textContent = lat.toFixed(6);
+            document.getElementById('current-lng').textContent = lng.toFixed(6);
+            
+            // Update centroid marker position
+            if (centroidMarker) {
+                centroidMarker.setLatLng([lat, lng]);
+            }
+        }
+
+        if (typeof polygonEditor.onPolygonChange === 'function') {
+            const originalOnPolygonChange = polygonEditor.onPolygonChange;
+            polygonEditor.onPolygonChange = function(points) {
+                originalOnPolygonChange.call(this, points);
+                
+                if (points && points.length >= 3) {
+                    const centroid = calculatePolygonCentroid(points);
+                    updateCoordinatesDisplay(centroid.lat, centroid.lng);
+                } else {
+                    updateCoordinatesDisplay(placeData.lat, placeData.lng);
+                }
+            };
+        } else {
+            // If no callback exists, create one
+            polygonEditor.onPolygonChange = function(points) {
+                if (points && points.length >= 3) {
+                    const centroid = calculatePolygonCentroid(points);
+                    updateCoordinatesDisplay(centroid.lat, centroid.lng);
+                } else {
+                    updateCoordinatesDisplay(placeData.lat, placeData.lng);
+                }
+            };
+        }
+
+        // Save button handler
+        document.getElementById('save-btn').addEventListener('click', function() {
+            checkBeforeSave();
+        });
+
+        function checkBeforeSave() {
+            const formData = new FormData(document.getElementById('polygon-form'));
+            
+            fetch(`/settings/places/${placeData.id}/check-update`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.canProceed && data.warnings.length === 0) {
+                    polygonEditor.savePolygon();
+                } else {
+                    showConfirmationDialog(data.warnings);
+                }
+            })
+            .catch(error => {
+                console.error('Error checking update:', error);
+                // On error, proceed with save anyway
+                polygonEditor.savePolygon();
+            });
+        }
+
+        function showConfirmationDialog(warnings) {
+            const warningsList = warnings.map(warning => `• ${warning}`).join('\n');
+            const confirmMessage = /*[[#{places.update.confirmation.message}]]*/ 'The following changes will be made:\n\n{0}\n\nDo you want to continue?';
+            const message = confirmMessage.replace('{0}', warningsList);
+            if (confirm(message)) {
+                polygonEditor.savePolygon();
+            }
+        }
+
+        document.getElementById('remove-polygon-btn').addEventListener('click', function() {
+            polygonEditor.clearPolygon();
+            updateCoordinatesDisplay(placeData.lat, placeData.lng);
+        });
+
+        const nearbyPlaces = /*[[${nearbyPlaces}]]*/ [];
+        polygonEditor.loadNearbyPlaces(nearbyPlaces);
+        
+        let lastPolygonPoints = null;
+        let lastPolygonString = '';
+        
+        function checkPolygonChanges() {
+            let currentPoints = null;
+            
+            // Try multiple methods to get polygon points
+            if (polygonEditor.getPolygonPoints) {
+                currentPoints = polygonEditor.getPolygonPoints();
+            } else if (polygonEditor.polygon && polygonEditor.polygon.getLatLngs) {
+                const latLngs = polygonEditor.polygon.getLatLngs();
+                if (latLngs && latLngs.length > 0) {
+                    currentPoints = latLngs[0].map(latlng => ({ lat: latlng.lat, lng: latlng.lng }));
+                }
+            } else if (polygonEditor.polygonPoints) {
+                currentPoints = polygonEditor.polygonPoints;
+            }
+            
+            const currentString = JSON.stringify(currentPoints);
+            
+            // Check if polygon has changed
+            if (currentString !== lastPolygonString) {
+                lastPolygonString = currentString;
+                lastPolygonPoints = currentPoints;
+                
+                if (currentPoints && currentPoints.length >= 3) {
+                    const centroid = calculatePolygonCentroid(currentPoints);
+                    updateCoordinatesDisplay(centroid.lat, centroid.lng);
+                } else {
+                    updateCoordinatesDisplay(placeData.lat, placeData.lng);
+                }
+            }
+        }
+        
+        // Check for changes every 300ms
+        setInterval(checkPolygonChanges, 300);
+        
+        // Also listen for map events that might indicate polygon changes
+        map.on('click', function() {
+            setTimeout(checkPolygonChanges, 100);
+        });
+        
+        map.on('contextmenu', function() {
+            setTimeout(checkPolygonChanges, 100);
+        });
+        
+        // Handle geocoding drawer
+        document.body.addEventListener('htmx:afterSettle', function(event) {
+            if (event.detail.target.id === 'geocoding-drawer') {
+                const drawer = document.getElementById('geocoding-drawer');
+                drawer.classList.add('active');
+                
+                // Add close button functionality
+                const closeBtn = drawer.querySelector('.drawer-close');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', function() {
+                        drawer.classList.remove('active');
+                        drawer.innerHTML = '';
+                    });
+                }
+            }
+        });
+    </script>
+</body>
+</html>

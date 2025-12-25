@@ -31,6 +31,7 @@
     <script src="/js/htmx.min.js"></script>
     <script src="/js/leaflet.js"></script>
     <script src="/js/TileLayer.Grayscale.js"></script>
+    <script src="/js/polygon-editor.js"></script>
     <script src="/js/leaflet.geodesic.2.7.2.js"></script>
     <script src="/js/leaflet.markercluster.js"></script>
     <script src="/js/util.js"></script>
@@ -411,6 +412,9 @@
                 }
                 window.timelineScrollIndicator = new TimelineScrollIndicator();
                 window.timelineScrollIndicator.init();
+                
+                // Update edit place links with current URL
+                updateEditPlaceLinks();
             }
         });
         // Function to update map markers from processed visits API
@@ -483,7 +487,8 @@
                                     visits: placeSummary.visits.map(v => ({ id: v.id })),
                                     place: {
                                         name: place.name || 'Unknown Place',
-                                        address: place.address || ''
+                                        address: place.address || '',
+                                        polygon: place.polygon || null
                                     },
                                     color: color
                                 };
@@ -1019,6 +1024,18 @@
         if (window.horizontalDatePicker) {
             window.horizontalDatePicker.setSelectedRange(getCurrentLocalDate(), null);
         }
+    }
+
+    function updateEditPlaceLinks() {
+        const currentUrl = window.location.href;
+        const editLinks = document.querySelectorAll('.timeline-container .edit-icon[href*="/settings/places/"]');
+        
+        editLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            const url = new URL(href, window.location.origin);
+            url.searchParams.set('returnUrl', currentUrl);
+            link.setAttribute('href', url.toString());
+        });
     }
 </script>
 </body>
