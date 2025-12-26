@@ -1347,6 +1347,8 @@ body.auto-update-mode .today-fab {
         overflow-x: auto;
         border-right: none;
         border-bottom: 1px solid var(--color-highlight);
+        scrollbar-width: none;
+        -ms-overflow-style: none;
     }
 
     .settings-page .settings-nav-item {
@@ -2559,8 +2561,3 @@ button:disabled {
 .timeband-item.selected:hover::before {
     opacity: 1;
 }
-
-.timeband-item.locked {
-
-}
-
