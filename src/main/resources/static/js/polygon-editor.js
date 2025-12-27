@@ -216,7 +216,8 @@ class PolygonEditor {
     }
     
     savePolygon() {
-        if (!document.getElementById('save-btn').disabled) {
+        const saveBtn = document.getElementById('save-btn');
+        if (!saveBtn.disabled || saveBtn.classList.contains('btn-loading')) {
             document.getElementById('polygon-form').submit();
         }
     }
