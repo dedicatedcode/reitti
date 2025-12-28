@@ -1276,6 +1276,32 @@ function groupPointsByLocalDay(points) {
 // New functions for Phase 2 features
 
 function onMapMouseMove(e) {
+    // Check if we are hovering over a marker first
+    const containerPoint = map.mouseEventToContainerPoint(e.originalEvent);
+    const tolerance = 10; // pixels
+    let hoveredMarker = null;
+
+    for (let i = 0; i < markers.length; i++) {
+        const markerData = markers[i];
+        const markerPoint = map.latLngToContainerPoint([markerData.lat, markerData.lng]);
+        
+        const dist = Math.sqrt(
+            Math.pow(containerPoint.x - markerPoint.x, 2) + 
+            Math.pow(containerPoint.y - markerPoint.y, 2)
+        );
+        
+        if (dist <= tolerance) {
+            hoveredMarker = markerData;
+            break;
+        }
+    }
+
+    if (hoveredMarker) {
+        showMarkerTooltip(e.originalEvent, hoveredMarker);
+        previewLine.setLatLngs([]);
+        return;
+    }
+
     // Don't show preview or allow painting if edit mode is disabled
     if (!editModeEnabled) {
         hideHoverTooltip();
@@ -1332,6 +1358,33 @@ function onMapMouseMove(e) {
 function onMapMouseOut(e) {
     hideHoverTooltip();
     previewLine.setLatLngs([]);
+}
+
+function showMarkerTooltip(mouseEvent, markerData) {
+    const track = tracks[markerData.trackIndex];
+    const point = track.points[markerData.pointIndex];
+    const tooltip = hoverTooltip;
+    
+    let speedText = '-';
+    let speedClass = 'speed-ok';
+    
+    if (markerData.pointIndex > 0) {
+        const prevPoint = track.points[markerData.pointIndex - 1];
+        const speedInfo = calculateSpeedInfo(prevPoint, point);
+        speedText = `${speedInfo.speed.toFixed(1)} km/h`;
+        speedClass = getSpeedClass(speedInfo.speed);
+    }
+
+    tooltip.innerHTML = `
+        <div style="font-weight: 600; margin-bottom: 4px; color: ${markerData.color}">${track.name} - Point ${markerData.pointIndex + 1}</div>
+        <div>Time: ${formatTimestamp(point.timestamp)}</div>
+        <div class="${speedClass}">Speed: ${speedText}</div>
+        <div>Elevation: ${point.elevation.toFixed(1)}m</div>
+    `;
+    
+    tooltip.style.left = (mouseEvent.pageX + 10) + 'px';
+    tooltip.style.top = (mouseEvent.pageY - 10) + 'px';
+    tooltip.style.display = 'block';
 }
 
 function showHoverTooltip(mouseEvent, latLng, distance, speed, speedClass) {
