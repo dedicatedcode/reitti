@@ -148,4 +148,57 @@ class SignificantPlaceOverrideJdbcServiceTest {
         assertTrue(result2.isPresent());
         assertEquals("Second Override", result2.get().name());
     }
+
+    @Test
+    void testPolygonHandling() {
+        // Create a test user
+        User user = testingService.randomUser();
+
+        // Create a polygon for the place (a simple rectangle around the center point)
+        List<GeoPoint> polygon = List.of(
+            new GeoPoint(40.7120, -74.0070), // Southwest corner
+            new GeoPoint(40.7120, -74.0050), // Southeast corner
+            new GeoPoint(40.7136, -74.0050), // Northeast corner
+            new GeoPoint(40.7136, -74.0070), // Northwest corner
+            new GeoPoint(40.7120, -74.0070)  // Close the polygon
+        );
+
+        // Create a SignificantPlace with a polygon
+        SignificantPlace place = new SignificantPlace(1L, "Polygon Place", "123 Polygon St", "Polygon City", "US", 40.7128, -74.0060, polygon, PlaceType.WORK, ZoneId.of("America/New_York"), false, 1L);
+
+        // Insert the override
+        significantPlaceOverrideJdbcService.insertOverride(user, place);
+
+        // Test finding by center point
+        GeoPoint centerPoint = new GeoPoint(place.getLatitudeCentroid(), place.getLongitudeCentroid());
+        Optional<PlaceInformationOverride> result = significantPlaceOverrideJdbcService.findByUserAndPoint(user, centerPoint);
+
+        assertTrue(result.isPresent());
+        assertEquals("Polygon Place", result.get().name());
+        assertEquals(PlaceType.WORK, result.get().category());
+        assertEquals(ZoneId.of("America/New_York"), result.get().timezone());
+        
+        // Verify the polygon is returned correctly
+        assertNotNull(result.get().polygon());
+        assertEquals(5, result.get().polygon().size()); // Should have 5 points (including closing point)
+        
+        // Verify the polygon points match what we inserted
+        List<GeoPoint> returnedPolygon = result.get().polygon();
+        for (int i = 0; i < polygon.size(); i++) {
+            assertEquals(polygon.get(i).latitude(), returnedPolygon.get(i).latitude(), 0.0001);
+            assertEquals(polygon.get(i).longitude(), returnedPolygon.get(i).longitude(), 0.0001);
+        }
+
+        // Test finding by a point inside the polygon
+        GeoPoint insidePoint = new GeoPoint(40.7128, -74.0060); // Should be inside the polygon
+        Optional<PlaceInformationOverride> resultInside = significantPlaceOverrideJdbcService.findByUserAndPoint(user, insidePoint);
+        assertTrue(resultInside.isPresent());
+        assertEquals("Polygon Place", resultInside.get().name());
+
+        // Test finding by a point outside the polygon but within 5m of center should still find it
+        GeoPoint nearbyPoint = new GeoPoint(40.71281, -74.006056); // Close to center but outside polygon
+        Optional<PlaceInformationOverride> resultNearby = significantPlaceOverrideJdbcService.findByUserAndPoint(user, nearbyPoint);
+        assertTrue(resultNearby.isPresent());
+        assertEquals("Polygon Place", resultNearby.get().name());
+    }
 }
