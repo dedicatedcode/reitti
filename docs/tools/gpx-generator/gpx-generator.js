@@ -18,6 +18,12 @@ let currentMapLayer = 'street'; // 'street' or 'satellite'
 let streetLayer, satelliteLayer;
 let stopProbability = 0.05; // 5% chance of adding a stop per point when auto-stops enabled
 
+// Google JSON Import State
+let pendingJsonData = null;
+let pendingJsonFilename = "";
+let selectedDates = new Set();
+let lastClickedDate = null;
+
 // Track colors for visual distinction
 const TRACK_COLORS = [
     '#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6',
@@ -245,7 +251,7 @@ function showSpeedChangeNotification(speed) {
     }, 2000);
 }
 
-function createNewTrack() {
+function createNewTrack(name = null, startTime = null) {
     const trackIndex = tracks.length;
     const color = TRACK_COLORS[trackIndex % TRACK_COLORS.length];
     
@@ -255,23 +261,23 @@ function createNewTrack() {
     });
     
     // Set start time based on last point of previous track or current time
-    let startTime = new Date();
-    if (tracks.length > 0) {
+    let trackStartTime = startTime || new Date();
+    if (!startTime && tracks.length > 0) {
         const lastTrack = tracks[tracks.length - 1];
         if (lastTrack.points.length > 0) {
             const lastPoint = lastTrack.points[lastTrack.points.length - 1];
             const timeInterval = parseInt(document.getElementById('timeInterval').value);
-            startTime = new Date(lastPoint.timestamp.getTime() + (timeInterval * 1000));
+            trackStartTime = new Date(lastPoint.timestamp.getTime() + (timeInterval * 1000));
         }
     }
     
     const track = {
         id: trackIndex,
-        name: `Track ${trackIndex + 1}`,
+        name: name || `Track ${trackIndex + 1}`,
         points: [],
         color: color,
         collapsed: false,
-        startTime: startTime
+        startTime: trackStartTime
     };
     
     tracks.push(track);
@@ -287,6 +293,7 @@ function createNewTrack() {
     
     updatePointsList();
     updateStatus();
+    return track;
 }
 
 function newTrack() {
@@ -331,7 +338,7 @@ function onMapClick(e) {
     }
 }
 
-function addPoint(lat, lng) {
+function addPoint(lat, lng, options = {}) {
     if (tracks.length === 0) {
         createNewTrack();
     }
@@ -339,29 +346,35 @@ function addPoint(lat, lng) {
     const currentTrack = tracks[currentTrackIndex];
     const pointIndex = currentTrack.points.length;
     
-    // Use current datetime input value as timestamp
-    const startDateTimeValue = document.getElementById('startDateTime').value;
-    let timestamp = new Date(startDateTimeValue);
+    // Use provided timestamp or current datetime input value
+    let timestamp = options.timestamp;
+    if (!timestamp) {
+        const startDateTimeValue = document.getElementById('startDateTime').value;
+        timestamp = new Date(startDateTimeValue);
+    }
     
     // Check if we need to create a new track due to day change
-    if (shouldCreateNewTrackForDayChange(timestamp, currentTrack)) {
+    if (!options.skipDayChangeCheck && shouldCreateNewTrackForDayChange(timestamp, currentTrack)) {
         createNewTrack();
-        return addPoint(lat, lng); // Recursively add to new track
+        return addPoint(lat, lng, options); // Recursively add to new track
     }
     
     // Check for realistic stops
-    if (document.getElementById('autoStops').checked && shouldAddStop(currentTrack)) {
+    if (!options.skipStops && document.getElementById('autoStops').checked && shouldAddStop(currentTrack)) {
         timestamp = addRealisticStop(timestamp);
     }
 
     // Apply GPS accuracy simulation
-    const accuracy = parseFloat(document.getElementById('accuracySlider').value);
-    const adjustedCoords = applyGPSNoise(lat, lng, accuracy);
+    const accuracy = options.accuracy !== undefined ? options.accuracy : parseFloat(document.getElementById('accuracySlider').value);
+    const adjustedCoords = options.skipNoise ? {lat, lng} : applyGPSNoise(lat, lng, accuracy);
     
     // Calculate elevation with variation
-    const baseElevation = parseFloat(document.getElementById('elevation').value);
-    const elevationVariation = parseFloat(document.getElementById('elevationVariation').value);
-    const elevation = baseElevation + (Math.random() - 0.5) * 2 * elevationVariation;
+    let elevation = options.elevation;
+    if (elevation === undefined) {
+        const baseElevation = parseFloat(document.getElementById('elevation').value);
+        const elevationVariation = parseFloat(document.getElementById('elevationVariation').value);
+        elevation = baseElevation + (Math.random() - 0.5) * 2 * elevationVariation;
+    }
     
     const point = {
         id: pointIndex,
@@ -396,19 +409,21 @@ function addPoint(lat, lng) {
     redrawMarkers();
     
     // Update datetime input to next interval for next point
-    const timeInterval = parseInt(document.getElementById('timeInterval').value);
-    const nextTimestamp = new Date(timestamp.getTime() + (timeInterval * 1000));
-    
-    // Format for datetime-local input (YYYY-MM-DDTHH:mm:ss)
-    const year = nextTimestamp.getFullYear();
-    const month = String(nextTimestamp.getMonth() + 1).padStart(2, '0');
-    const day = String(nextTimestamp.getDate()).padStart(2, '0');
-    const hours = String(nextTimestamp.getHours()).padStart(2, '0');
-    const minutes = String(nextTimestamp.getMinutes()).padStart(2, '0');
-    const seconds = String(nextTimestamp.getSeconds()).padStart(2, '0');
-    
-    const datetimeString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
-    document.getElementById('startDateTime').value = datetimeString;
+    if (!options.skipTimeUpdate) {
+        const timeInterval = parseInt(document.getElementById('timeInterval').value);
+        const nextTimestamp = new Date(timestamp.getTime() + (timeInterval * 1000));
+        
+        // Format for datetime-local input (YYYY-MM-DDTHH:mm:ss)
+        const year = nextTimestamp.getFullYear();
+        const month = String(nextTimestamp.getMonth() + 1).padStart(2, '0');
+        const day = String(nextTimestamp.getDate()).padStart(2, '0');
+        const hours = String(nextTimestamp.getHours()).padStart(2, '0');
+        const minutes = String(nextTimestamp.getMinutes()).padStart(2, '0');
+        const seconds = String(nextTimestamp.getSeconds()).padStart(2, '0');
+        
+        const datetimeString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+        document.getElementById('startDateTime').value = datetimeString;
+    }
     
     // Update UI
     updatePointsList();
@@ -881,26 +896,17 @@ function handleGPXFiles(event) {
     const files = Array.from(event.target.files);
     if (files.length === 0) return;
     
-    let processedFiles = 0;
-    let totalPoints = 0;
-    let totalTracks = 0;
-
     files.forEach((file, index) => {
         const reader = new FileReader();
         reader.onload = function(e) {
-            try {
-                const result = parseAndImportGPX(e.target.result, file.name, index === 0);
-                totalPoints += result.pointsCount;
-                totalTracks += result.tracksCount;
-                processedFiles++;
-
-                // Show summary when all files are processed
-                if (processedFiles === files.length) {
-                    alert(`Successfully imported ${files.length} GPX file(s):\n${totalPoints} total points split into ${totalTracks} track(s).`);
+            if (file.name.toLowerCase().endsWith('.json')) {
+                handleGoogleJson(e.target.result, file.name);
+            } else {
+                try {
+                    const result = parseAndImportGPX(e.target.result, file.name, index === 0);
+                } catch (error) {
+                    alert(`Error parsing GPX file "${file.name}": ${error.message}`);
                 }
-            } catch (error) {
-                alert(`Error parsing GPX file "${file.name}": ${error.message}`);
-                processedFiles++;
             }
         };
         reader.readAsText(file);
@@ -910,9 +916,141 @@ function handleGPXFiles(event) {
     event.target.value = '';
 }
 
-function handleGPXFile(event) {
-    // Keep backward compatibility
-    handleGPXFiles(event);
+function handleGoogleJson(content, filename) {
+    try {
+        const data = JSON.parse(content);
+        const locations = data.locations || [];
+        if (locations.length === 0) {
+            alert("No location data found in JSON.");
+            return;
+        }
+
+        // Group points by date
+        const days = {};
+        locations.forEach(loc => {
+            const timestamp = loc.timestamp || loc.timestampMs;
+            if (!timestamp) return;
+            
+            const date = new Date(timestamp);
+            const dateStr = date.toISOString().split('T')[0];
+            
+            if (!days[dateStr]) days[dateStr] = [];
+            days[dateStr].push({
+                lat: loc.latitudeE7 / 1e7,
+                lng: loc.longitudeE7 / 1e7,
+                timestamp: date,
+                elevation: loc.altitude || 0,
+                accuracy: loc.accuracy || 0
+            });
+        });
+
+        pendingJsonData = days;
+        pendingJsonFilename = filename.replace('.json', '');
+        showJsonDatePicker();
+    } catch (e) {
+        alert("Error parsing Google Records JSON: " + e.message);
+    }
+}
+
+function showJsonDatePicker() {
+    const modal = document.getElementById('jsonDatePicker');
+    const grid = document.getElementById('dateGrid');
+    grid.innerHTML = '';
+    selectedDates.clear();
+    lastClickedDate = null;
+
+    const sortedDates = Object.keys(pendingJsonData).sort();
+    sortedDates.forEach(date => {
+        const div = document.createElement('div');
+        div.className = 'date-item';
+        div.textContent = date;
+        div.dataset.date = date;
+        div.onclick = (e) => handleDateClick(date, e.shiftKey);
+        grid.appendChild(div);
+    });
+
+    modal.classList.add('open');
+}
+
+function handleDateClick(date, isShift) {
+    const sortedDates = Object.keys(pendingJsonData).sort();
+    
+    if (isShift && lastClickedDate) {
+        const startIdx = sortedDates.indexOf(lastClickedDate);
+        const endIdx = sortedDates.indexOf(date);
+        const [low, high] = [Math.min(startIdx, endIdx), Math.max(startIdx, endIdx)];
+        
+        selectedDates.clear();
+        for (let i = low; i <= high; i++) {
+            selectedDates.add(sortedDates[i]);
+        }
+    } else {
+        if (selectedDates.has(date)) {
+            selectedDates.delete(date);
+        } else {
+            selectedDates.add(date);
+        }
+        lastClickedDate = date;
+    }
+    updateDateGridUI();
+}
+
+function updateDateGridUI() {
+    const items = document.querySelectorAll('.date-item');
+    items.forEach(item => {
+        if (selectedDates.has(item.dataset.date)) {
+            item.classList.add('selected');
+        } else {
+            item.classList.remove('selected');
+        }
+    });
+}
+
+function closeJsonPicker() {
+    document.getElementById('jsonDatePicker').classList.remove('open');
+    pendingJsonData = null;
+}
+
+function importSelectedJsonDates() {
+    if (selectedDates.size === 0) {
+        alert("Please select at least one date.");
+        return;
+    }
+
+    const sortedSelected = Array.from(selectedDates).sort();
+    let totalPoints = 0;
+    const bounds = L.latLngBounds();
+
+    sortedSelected.forEach(dateStr => {
+        const dayPoints = pendingJsonData[dateStr];
+        // Sort points within the day
+        dayPoints.sort((a, b) => a.timestamp - b.timestamp);
+
+        const trackName = `${pendingJsonFilename} - ${dateStr}`;
+        const track = createNewTrack(trackName, dayPoints[0].timestamp);
+        
+        dayPoints.forEach(p => {
+            addPoint(p.lat, p.lng, {
+                timestamp: p.timestamp,
+                elevation: p.elevation,
+                accuracy: p.accuracy,
+                skipNoise: true,
+                skipDayChangeCheck: true,
+                skipStops: true,
+                skipTimeUpdate: true
+            });
+            bounds.extend([p.lat, p.lng]);
+            totalPoints++;
+        });
+    });
+
+    if (totalPoints > 0) {
+        map.fitBounds(bounds.pad(0.1));
+    }
+
+    closeJsonPicker();
+    updatePointsList();
+    updateStatus();
 }
 
 function parseAndImportGPX(gpxContent, filename, isFirstFile = true) {
@@ -1579,4 +1717,3 @@ function shiftTrackTime(amount, unit) {
     const direction = amount > 0 ? 'forward' : 'backward';
     const absAmount = Math.abs(amount);
 }
-
