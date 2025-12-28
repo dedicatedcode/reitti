@@ -426,8 +426,10 @@ function addPoint(lat, lng, options = {}) {
     }
     
     // Update UI
-    updatePointsList();
-    updateStatus();
+    if (!options.skipUIUpdate) {
+        updatePointsList();
+        updateStatus();
+    }
     
     // Clear preview line
     previewLine.setLatLngs([]);
@@ -1021,7 +1023,12 @@ function importSelectedJsonDates() {
     let totalPoints = 0;
     const bounds = L.latLngBounds();
 
-    sortedSelected.forEach(dateStr => {
+    // Collapse all existing tracks first
+    tracks.forEach(track => {
+        track.collapsed = true;
+    });
+
+    sortedSelected.forEach((dateStr, index) => {
         const dayPoints = pendingJsonData[dateStr];
         // Sort points within the day
         dayPoints.sort((a, b) => a.timestamp - b.timestamp);
@@ -1029,6 +1036,9 @@ function importSelectedJsonDates() {
         const trackName = `${pendingJsonFilename} - ${dateStr}`;
         const track = createNewTrack(trackName, dayPoints[0].timestamp);
         
+        // Ensure the newly created track is expanded if it's part of the batch
+        track.collapsed = false;
+
         dayPoints.forEach(p => {
             addPoint(p.lat, p.lng, {
                 timestamp: p.timestamp,
@@ -1037,7 +1047,8 @@ function importSelectedJsonDates() {
                 skipNoise: true,
                 skipDayChangeCheck: true,
                 skipStops: true,
-                skipTimeUpdate: true
+                skipTimeUpdate: true,
+                skipUIUpdate: true // Skip UI updates during batch
             });
             bounds.extend([p.lat, p.lng]);
             totalPoints++;
@@ -1051,6 +1062,7 @@ function importSelectedJsonDates() {
     closeJsonPicker();
     updatePointsList();
     updateStatus();
+    redrawMarkers();
 }
 
 function parseAndImportGPX(gpxContent, filename, isFirstFile = true) {
