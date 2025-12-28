@@ -805,6 +805,44 @@
         .points-list::-webkit-scrollbar-thumb:hover {
             background: rgba(102, 126, 234, 0.5);
         }
+
+        /* Date Picker Styles */
+        .date-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 8px;
+            margin: 20px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 4px;
+        }
+
+        .date-item {
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            text-align: center;
+            font-size: 12px;
+            cursor: pointer;
+            background: var(--bg-primary);
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .date-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .date-item.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .date-item.in-range {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
     </style>
 </head>
 <body>
@@ -923,7 +961,7 @@
                 </div>
             </div>
             
-            <input type="file" id="gpxFileInput" accept=".gpx" multiple style="display: none;" onchange="handleGPXFiles(event)">
+            <input type="file" id="gpxFileInput" accept=".gpx,.json" multiple style="display: none;" onchange="handleGPXFiles(event)">
         
         <div class="main-content">
             <div class="map-container">
@@ -978,6 +1016,24 @@
                 </ul>
                 
                 <p>This tool is part of the <a href="https://github.com/dedicatedcode/reitti" target="_blank" rel="noopener" class="about-link">Reitti project</a> - an open-source location tracking and analytics platform.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JSON Date Picker Dialog -->
+    <div class="about-dialog" id="jsonDatePicker">
+        <div class="about-content">
+            <div class="about-header">
+                <h2 class="about-title">Select Dates to Import</h2>
+                <button class="about-close" onclick="closeJsonPicker()">×</button>
+            </div>
+            <div class="about-text">
+                <p>Select a range of dates from the Google Records file. Click a date to select it, or use Shift+Click to select a range.</p>
+                <div id="dateGrid" class="date-grid"></div>
+                <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+                    <button class="control-button" onclick="closeJsonPicker()">Cancel</button>
+                    <button class="control-button success" onclick="importSelectedJsonDates()">Import Selected</button>
+                </div>
             </div>
         </div>
     </div>
