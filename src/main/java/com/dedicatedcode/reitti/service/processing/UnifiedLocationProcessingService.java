@@ -809,7 +809,8 @@ public class UnifiedLocationProcessingService {
             significantPlace = significantPlace
                     .withName(override.get().name())
                     .withType(override.get().category())
-                    .withTimezone(override.get().timezone());
+                    .withTimezone(override.get().timezone())
+                    .withPolygon(override.get().polygon());
         }
         significantPlace = previewId == null ? this.significantPlaceJdbcService.create(user, significantPlace) : this.previewSignificantPlaceJdbcService.create(user, previewId, significantPlace);
         publishSignificantPlaceCreatedEvent(user, significantPlace, previewId, traceId);
