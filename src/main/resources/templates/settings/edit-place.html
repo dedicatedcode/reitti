@@ -126,6 +126,34 @@
         .drawer-content {
             padding: 24px;
         }
+        
+        .btn-loading {
+            position: relative;
+            pointer-events: none;
+        }
+        
+        .btn-loading .btn-text {
+            opacity: 0;
+        }
+        
+        .btn-loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 16px;
+            height: 16px;
+            margin: -8px 0 0 -8px;
+            border: 2px solid transparent;
+            border-top: 2px solid currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
     <script src="/js/leaflet.js"></script>
     <script src="/js/polygon-editor.js"></script>
@@ -211,7 +239,9 @@
                 
                 <div class="separator"></div>
                 <div>
-                    <button type="button" id="save-btn" class="btn btn-default btn-block" th:text="#{form.save}">Save</button>
+                    <button type="button" id="save-btn" class="btn btn-default btn-block">
+                        <span class="btn-text" th:text="#{form.save}">Save</span>
+                    </button>
                     <a th:href="${returnUrl}" class="btn btn-default btn-block" th:text="#{form.cancel}">Cancel</a>
                 </div>
             </div>
@@ -372,12 +402,27 @@
             };
         }
 
+        // Functions to manage button loading state
+        function showSaveLoading() {
+            const saveBtn = document.getElementById('save-btn');
+            saveBtn.disabled = true;
+            saveBtn.classList.add('btn-loading');
+        }
+        
+        function hideSaveLoading() {
+            const saveBtn = document.getElementById('save-btn');
+            saveBtn.disabled = false;
+            saveBtn.classList.remove('btn-loading');
+        }
+
         // Save button handler
         document.getElementById('save-btn').addEventListener('click', function() {
             checkBeforeSave();
         });
 
         function checkBeforeSave() {
+            showSaveLoading();
+            
             const formData = new FormData(document.getElementById('polygon-form'));
             
             fetch(`/settings/places/${placeData.id}/check-update`, {
@@ -387,14 +432,17 @@
             .then(response => response.json())
             .then(data => {
                 if (data.canProceed && data.warnings.length === 0) {
+                    // Keep loading state and proceed with save
                     polygonEditor.savePolygon();
                 } else {
+                    // Hide loading state to show confirmation dialog
+                    hideSaveLoading();
                     showConfirmationDialog(data.warnings);
                 }
             })
             .catch(error => {
                 console.error('Error checking update:', error);
-                // On error, proceed with save anyway
+                // Keep loading state and proceed with save anyway
                 polygonEditor.savePolygon();
             });
         }
@@ -404,6 +452,7 @@
             const confirmMessage = /*[[#{places.update.confirmation.message}]]*/ 'The following changes will be made:\n\n{0}\n\nDo you want to continue?';
             const message = confirmMessage.replace('{0}', warningsList);
             if (confirm(message)) {
+                showSaveLoading();
                 polygonEditor.savePolygon();
             }
         }
