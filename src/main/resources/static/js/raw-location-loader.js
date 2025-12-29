@@ -494,7 +494,6 @@ class RawLocationLoader {
      * Get the currently selected date
      */
     getSelectedDate() {
-        debugger
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('date')) {
             return urlParams.get('date');
