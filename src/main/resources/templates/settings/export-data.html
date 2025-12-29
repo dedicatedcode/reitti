@@ -43,7 +43,7 @@
                                    hx-get="/settings/export-data/data-content"
                                    hx-target="#data-content"
                                    hx-swap="innerHTML"
-                                   hx-trigger="load, change"
+                                   hx-trigger="change"
                                    hx-include="#endDate, #pageSizeSelect"
                                    hx-indicator="#loading-indicator"
                                    hx-vals='js:{"timezone": getUserTimezone()}'
@@ -115,7 +115,7 @@
                                                 hx-get="/settings/export-data/data-content"
                                                 hx-target="#data-content"
                                                 hx-swap="innerHTML"
-                                                hx-include="#startDate, #endDate"
+                                                hx-include="#startDate, #endDate, #pageSizeSelect"
                                                 hx-vals='js:{"timezone": getUserTimezone(), "page": 0}'
                                                 hx-trigger="change">
                                             <option value="100" th:selected="${pageSize == 100}">100</option>
