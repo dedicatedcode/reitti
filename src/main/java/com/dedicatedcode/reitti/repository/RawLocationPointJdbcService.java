@@ -80,6 +80,42 @@ public class RawLocationPointJdbcService {
                                   user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
     }
 
+    public List<RawLocationPoint> findByUserAndTimestampBetweenOrderByTimestampAsc(
+            User user, Instant startTime, Instant endTime, boolean includeSynthetic, boolean includeIgnored, int page, int pageSize) {
+        StringBuilder sql = new StringBuilder()
+                .append("SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.ignored, rlp.version ")
+                .append("FROM raw_location_points rlp ")
+                .append("WHERE rlp.user_id = ? ");
+        if (!includeSynthetic) {
+            sql.append("AND rlp.synthetic = false ");
+        }
+        if (!includeIgnored) {
+            sql.append("AND rlp.ignored = false ");
+        }
+        sql.append("AND rlp.timestamp BETWEEN ? AND ? ").append("ORDER BY rlp.timestamp")
+                .append(" OFFSET ").append(page * pageSize).append(" LIMIT ").append(pageSize);
+        return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper,
+                                  user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
+    }
+
+    @SuppressWarnings("DataFlowIssue")
+    public long countByUserAndTimestampBetweenOrderByTimestampAsc(
+            User user, Instant startTime, Instant endTime, boolean includeSynthetic, boolean includeIgnored) {
+        StringBuilder sql = new StringBuilder()
+                .append("SELECT COUNT(*)")
+                .append("FROM raw_location_points rlp ")
+                .append("WHERE rlp.user_id = ? ");
+        if (!includeSynthetic) {
+            sql.append("AND rlp.synthetic = false ");
+        }
+        if (!includeIgnored) {
+            sql.append("AND rlp.ignored = false ");
+        }
+        sql.append("AND rlp.timestamp BETWEEN ? AND ? ");
+        return jdbcTemplate.queryForObject(sql.toString(), Long.class,
+                                  user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
+    }
+
     public List<RawLocationPoint> findByUserAndProcessedIsFalseOrderByTimestampWithLimit(User user, int limit, int offset) {
         String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.ignored, rlp.version " +
                 "FROM raw_location_points rlp " +

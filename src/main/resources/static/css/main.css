@@ -590,7 +590,7 @@ a.btn,
 button {
     font-size: 14px;
     color: var(--color-highlight);
-    border: none;
+    border: 1px solid var(--color-highlight);
     padding: 8px 12px;
     border-radius: 4px;
     cursor: pointer;
@@ -1266,10 +1266,6 @@ body.auto-update-mode .today-fab {
     color: var(--color-text-white);
 }
 
-.settings-page .settings-section .btn {
-    border: 1px solid;
-}
-
 @media (max-width: 800px) {
     .timeline-entry {
         padding: 1rem 2rem 0 1rem;
@@ -1425,9 +1421,10 @@ body.auto-update-mode .today-fab {
 
 a.btn:disabled,
 button:disabled {
-    background: #9b9b9b;
+    background: #686868;
     cursor: not-allowed;
-    color: white;
+    color: #b4b4b4;
+    border: 1px solid #9d9d9d;
 }
 
 .pulsating-marker {
