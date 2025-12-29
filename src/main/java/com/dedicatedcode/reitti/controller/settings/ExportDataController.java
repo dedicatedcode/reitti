@@ -67,6 +67,8 @@ public class ExportDataController {
                                       @RequestParam(required = false) String startDate,
                                       @RequestParam(required = false) String endDate,
                                       @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+                                      @RequestParam(required = false, defaultValue = "0") int page,
+                                      @RequestParam(required = false, defaultValue = "100") int size,
                                       Model model) {
         
         LocalDate start = startDate != null ? LocalDate.parse(startDate) : LocalDate.now();
@@ -77,11 +79,28 @@ public class ExportDataController {
         model.addAttribute("endDate", end);
         
         // Get raw location points for the date range
-        List<RawLocationPoint> rawLocationPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(
+        List<RawLocationPoint> allPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(
             user, startDateTime.toInstant(), endDateTime.toInstant(), false, true);
-        model.addAttribute("rawLocationPoints", rawLocationPoints.stream()
-                .map(p -> new DataLine(TimeUtil.adjustInstant(p.getTimestamp(), timezone), p.getLatitude(), p.getLongitude(), p.getAccuracyMeters(), p.isProcessed()))
-                .toList());
+        
+        int totalElements = allPoints.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        int startIndex = page * size;
+        int endIndex = Math.min(startIndex + size, totalElements);
+        
+        List<DataLine> paginatedData = allPoints.stream()
+                .skip(startIndex)
+                .limit(size)
+                .map(p -> new DataLine(TimeUtil.adjustInstant(p.getTimestamp(), timezone), 
+                                     p.getLatitude(), p.getLongitude(), p.getAccuracyMeters(), p.isProcessed()))
+                .toList();
+        
+        model.addAttribute("rawLocationPoints", paginatedData);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("pageSize", size);
+        model.addAttribute("totalElements", totalElements);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("hasNext", page < totalPages - 1);
+        model.addAttribute("hasPrevious", page > 0);
         
         return "settings/export-data :: data-content";
     }

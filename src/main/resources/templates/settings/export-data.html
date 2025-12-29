@@ -95,18 +95,79 @@
                     </div>
 
                     <div id="data-content" th:fragment="data-content">
-                        <div th:if="${rawLocationPoints.isEmpty()}">
+                        <div th:if="${rawLocationPoints.isEmpty() and totalElements == 0}">
                             <p th:text="#{export.raw.data.no.data}">No location data found for the selected date range</p>
                         </div>
 
-                        <div th:if="${!rawLocationPoints.isEmpty()}">
-                            <p style="margin-bottom: 15px; color: var(--color-text-white);" th:text="#{export.raw.data.found.data(${rawLocationPoints.size()})}">
-                                Found 123234 location points
-                            </p>
+                        <div th:if="${totalElements > 0}">
+                            <!-- Pagination controls at top -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                <div>
+                                    <p style="margin: 0; color: var(--color-text-white);" 
+                                       th:text="#{export.raw.data.found.data(${totalElements})}">
+                                        Found 123234 location points
+                                    </p>
+                                    <p style="margin: 0; color: var(--color-text-muted); font-size: 14px;"
+                                       th:text="|Showing ${currentPage * pageSize + 1} - ${currentPage * pageSize + rawLocationPoints.size()} of ${totalElements}|">
+                                        Showing 1 - 100 of 1000
+                                    </p>
+                                </div>
+                                
+                                <div style="display: flex; align-items: center; gap: 15px;">
+                                    <!-- Page size selector -->
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <label for="pageSizeSelect" style="color: var(--color-text-white); font-size: 14px;">Show:</label>
+                                        <select id="pageSizeSelect" 
+                                                style="background: var(--color-bg-secondary); color: var(--color-text-white); border: 1px solid var(--color-border); border-radius: 4px; padding: 4px 8px;"
+                                                hx-get="/settings/export-data/data-content"
+                                                hx-target="#data-content"
+                                                hx-swap="innerHTML"
+                                                hx-include="#startDate, #endDate"
+                                                hx-vals='js:{"timezone": getUserTimezone(), "page": 0}'
+                                                hx-trigger="change">
+                                            <option value="100" th:selected="${pageSize == 100}">100</option>
+                                            <option value="500" th:selected="${pageSize == 500}">500</option>
+                                            <option value="1000" th:selected="${pageSize == 1000}">1000</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- Page navigation -->
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <button type="button" 
+                                                class="btn btn-sm"
+                                                th:disabled="${!hasPrevious}"
+                                                hx-get="/settings/export-data/data-content"
+                                                hx-target="#data-content"
+                                                hx-swap="innerHTML"
+                                                hx-include="#startDate, #endDate, #pageSizeSelect"
+                                                th:hx-vals="|js:{'timezone': getUserTimezone(), 'page': ${currentPage - 1}}|"
+                                                hx-trigger="click">
+                                            Previous
+                                        </button>
+                                        
+                                        <span style="color: var(--color-text-white); font-size: 14px;"
+                                              th:text="|Page ${currentPage + 1} of ${totalPages}|">
+                                            Page 1 of 10
+                                        </span>
+                                        
+                                        <button type="button" 
+                                                class="btn btn-sm"
+                                                th:disabled="${!hasNext}"
+                                                hx-get="/settings/export-data/data-content"
+                                                hx-target="#data-content"
+                                                hx-swap="innerHTML"
+                                                hx-include="#startDate, #endDate, #pageSizeSelect"
+                                                th:hx-vals="|js:{'timezone': getUserTimezone(), 'page': ${currentPage + 1}}|"
+                                                hx-trigger="click">
+                                            Next
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
 
                             <div class="export-data-table-container">
                                 <table>
-                                    <thead style="">
+                                    <thead>
                                     <tr>
                                         <th th:text="#{export.raw.data.table.timestamp}">Timestamp</th>
                                         <th th:text="#{export.raw.data.table.latitude}">Latitude</th>
@@ -128,6 +189,40 @@
                                     </tr>
                                     </tbody>
                                 </table>
+                            </div>
+                            
+                            <!-- Pagination controls at bottom -->
+                            <div style="display: flex; justify-content: center; margin-top: 15px;" th:if="${totalPages > 1}">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <button type="button" 
+                                            class="btn btn-sm"
+                                            th:disabled="${!hasPrevious}"
+                                            hx-get="/settings/export-data/data-content"
+                                            hx-target="#data-content"
+                                            hx-swap="innerHTML"
+                                            hx-include="#startDate, #endDate, #pageSizeSelect"
+                                            th:hx-vals="|js:{'timezone': getUserTimezone(), 'page': ${currentPage - 1}}|"
+                                            hx-trigger="click">
+                                        Previous
+                                    </button>
+                                    
+                                    <span style="color: var(--color-text-white); font-size: 14px;"
+                                          th:text="|Page ${currentPage + 1} of ${totalPages}|">
+                                        Page 1 of 10
+                                    </span>
+                                    
+                                    <button type="button" 
+                                            class="btn btn-sm"
+                                            th:disabled="${!hasNext}"
+                                            hx-get="/settings/export-data/data-content"
+                                            hx-target="#data-content"
+                                            hx-swap="innerHTML"
+                                            hx-include="#startDate, #endDate, #pageSizeSelect"
+                                            th:hx-vals="|js:{'timezone': getUserTimezone(), 'page': ${currentPage + 1}}|"
+                                            hx-trigger="click">
+                                        Next
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
