@@ -1,3 +1,4 @@
+package com.dedicatedcode.reitti.tools;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -193,7 +194,7 @@ public class GoogleTimelineRandomizer {
             for (int i = 0; i < maxSemanticSegments; i++) {
                 limitedSemanticSegments.add(semanticSegments.get(i));
             }
-            ((ObjectNode) root).set("semanticSegments", limitedSemanticSegments);
+            root.set("semanticSegments", limitedSemanticSegments);
             semanticSegments = limitedSemanticSegments;
         }
 

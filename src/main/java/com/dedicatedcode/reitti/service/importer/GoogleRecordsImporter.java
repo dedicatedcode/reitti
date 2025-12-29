@@ -151,7 +151,7 @@ public class GoogleRecordsImporter {
         if (locationNode.has("accuracy")) {
             point.setAccuracyMeters(locationNode.get("accuracy").asDouble());
         } else {
-            point.setAccuracyMeters(100.0);
+            point.setAccuracyMeters(10.0);
         }
 
         return point;

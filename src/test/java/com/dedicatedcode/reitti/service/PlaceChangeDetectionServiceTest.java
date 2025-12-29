@@ -10,11 +10,14 @@ import com.dedicatedcode.reitti.service.PlaceChangeDetectionService.PlaceChangeA
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.i18n.LocaleContextHolder;
 
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Locale;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @IntegrationTest
 class PlaceChangeDetectionServiceTest {
@@ -34,6 +37,7 @@ class PlaceChangeDetectionServiceTest {
     void setUp() {
         testingService.clearData();
         testUser = testingService.randomUser();
+        LocaleContextHolder.setLocale(Locale.ENGLISH);
     }
 
     @Test

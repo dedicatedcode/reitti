@@ -49,7 +49,7 @@ public class ProcessingPipelineTrigger {
 
     @Scheduled(cron = "${reitti.process-data.schedule}")
     public void start() {
-        if (stateHolder.isImportRunning()) {
+        if (stateHolder.isImportRunning() || !isIdle()) {
             log.warn("Data Import is currently running, wil skip this run");
             return;
         }
@@ -75,7 +75,7 @@ public class ProcessingPipelineTrigger {
         int totalProcessed = 0;
 
         while (true) {
-
+            stateHolder.importStarted();
             try {
                 List<RawLocationPoint> currentBatch;
                 if (previewId == null) {
@@ -110,6 +110,7 @@ public class ProcessingPipelineTrigger {
             }
         }
 
+        stateHolder.importFinished();
         log.debug("Processed [{}] unprocessed points for user [{}]", totalProcessed, user.getId());
     }
 
