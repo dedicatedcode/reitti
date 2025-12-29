@@ -111,7 +111,6 @@ body {
     body.auto-update-mode .navbar {
         background: #4446;
         padding: 0;
-        border: 1px solid;
         box-shadow: var(--box-shadow);
         margin: 0;
         border-right: 1px solid var(--color-highlight);
