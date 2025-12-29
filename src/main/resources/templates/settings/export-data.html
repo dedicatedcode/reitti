@@ -112,10 +112,11 @@
                                     <div style="display: flex; align-items: center; gap: 8px;">
                                         <label for="pageSizeSelect" th:text="#{export.raw.data.show}">Show:</label>
                                         <select id="pageSizeSelect"
+                                                name="size"
                                                 hx-get="/settings/export-data/data-content"
                                                 hx-target="#data-content"
                                                 hx-swap="innerHTML"
-                                                hx-include="#startDate, #endDate, #pageSizeSelect"
+                                                hx-include="#startDate, #endDate"
                                                 hx-vals='js:{"timezone": getUserTimezone(), "page": 0}'
                                                 hx-trigger="change">
                                             <option value="100" th:selected="${pageSize == 100}">100</option>
