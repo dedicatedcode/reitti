@@ -108,7 +108,7 @@
                                         Found 123234 location points
                                     </p>
                                     <p style="margin: 0; color: var(--color-text-muted); font-size: 14px;"
-                                       th:text="|Showing ${currentPage * pageSize + 1} - ${currentPage * pageSize + rawLocationPoints.size()} of ${totalElements}|">
+                                       th:text="#{export.raw.data.showing(${currentPage * pageSize + 1}, ${currentPage * pageSize + rawLocationPoints.size()}, ${totalElements})}">
                                         Showing 1 - 100 of 1000
                                     </p>
                                 </div>
@@ -116,7 +116,7 @@
                                 <div style="display: flex; align-items: center; gap: 15px;">
                                     <!-- Page size selector -->
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <label for="pageSizeSelect" style="color: var(--color-text-white); font-size: 14px;">Show:</label>
+                                        <label for="pageSizeSelect" style="color: var(--color-text-white); font-size: 14px;" th:text="#{export.raw.data.show}">Show:</label>
                                         <select id="pageSizeSelect" 
                                                 style="background: var(--color-bg-secondary); color: var(--color-text-white); border: 1px solid var(--color-border); border-radius: 4px; padding: 4px 8px;"
                                                 hx-get="/settings/export-data/data-content"
@@ -141,12 +141,13 @@
                                                 hx-swap="innerHTML"
                                                 hx-include="#startDate, #endDate, #pageSizeSelect"
                                                 th:hx-vals="|js:{'timezone': getUserTimezone(), 'page': ${currentPage - 1}}|"
-                                                hx-trigger="click">
+                                                hx-trigger="click"
+                                                th:text="#{export.raw.data.previous}">
                                             Previous
                                         </button>
                                         
                                         <span style="color: var(--color-text-white); font-size: 14px;"
-                                              th:text="|Page ${currentPage + 1} of ${totalPages}|">
+                                              th:text="#{export.raw.data.page.info(${currentPage + 1}, ${totalPages})}">
                                             Page 1 of 10
                                         </span>
                                         
@@ -158,7 +159,8 @@
                                                 hx-swap="innerHTML"
                                                 hx-include="#startDate, #endDate, #pageSizeSelect"
                                                 th:hx-vals="|js:{'timezone': getUserTimezone(), 'page': ${currentPage + 1}}|"
-                                                hx-trigger="click">
+                                                hx-trigger="click"
+                                                th:text="#{export.raw.data.next}">
                                             Next
                                         </button>
                                     </div>
@@ -202,12 +204,13 @@
                                             hx-swap="innerHTML"
                                             hx-include="#startDate, #endDate, #pageSizeSelect"
                                             th:hx-vals="|js:{'timezone': getUserTimezone(), 'page': ${currentPage - 1}}|"
-                                            hx-trigger="click">
+                                            hx-trigger="click"
+                                            th:text="#{export.raw.data.previous}">
                                         Previous
                                     </button>
                                     
                                     <span style="color: var(--color-text-white); font-size: 14px;"
-                                          th:text="|Page ${currentPage + 1} of ${totalPages}|">
+                                          th:text="#{export.raw.data.page.info(${currentPage + 1}, ${totalPages})}">
                                         Page 1 of 10
                                     </span>
                                     
@@ -219,7 +222,8 @@
                                             hx-swap="innerHTML"
                                             hx-include="#startDate, #endDate, #pageSizeSelect"
                                             th:hx-vals="|js:{'timezone': getUserTimezone(), 'page': ${currentPage + 1}}|"
-                                            hx-trigger="click">
+                                            hx-trigger="click"
+                                            th:text="#{export.raw.data.next}">
                                         Next
                                     </button>
                                 </div>
