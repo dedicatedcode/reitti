@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -67,21 +68,36 @@ public class ExportDataController {
                                       @RequestParam(required = false) String startDate,
                                       @RequestParam(required = false) String endDate,
                                       @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+                                      @RequestParam(required = false, defaultValue = "0") int page,
+                                      @RequestParam(required = false, defaultValue = "100") int size,
                                       Model model) {
         
-        LocalDate start = startDate != null ? LocalDate.parse(startDate) : LocalDate.now();
-        LocalDate end = endDate != null ? LocalDate.parse(endDate) : LocalDate.now();
+        LocalDate start = StringUtils.hasText(startDate) ? LocalDate.parse(startDate) : LocalDate.now();
+        LocalDate end = StringUtils.hasText(endDate) ? LocalDate.parse(endDate) : LocalDate.now();
         ZonedDateTime startDateTime = start.atStartOfDay(timezone);
         ZonedDateTime endDateTime = end.plusDays(1).atStartOfDay(timezone);
         model.addAttribute("startDate", start);
         model.addAttribute("endDate", end);
         
         // Get raw location points for the date range
-        List<RawLocationPoint> rawLocationPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(
-            user, startDateTime.toInstant(), endDateTime.toInstant(), false, true);
-        model.addAttribute("rawLocationPoints", rawLocationPoints.stream()
-                .map(p -> new DataLine(TimeUtil.adjustInstant(p.getTimestamp(), timezone), p.getLatitude(), p.getLongitude(), p.getAccuracyMeters(), p.isProcessed()))
-                .toList());
+        List<RawLocationPoint> allPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(
+            user, startDateTime.toInstant(), endDateTime.toInstant(), false, true, page, size);
+        
+        long totalElements = rawLocationPointJdbcService.countByUserAndTimestampBetweenOrderByTimestampAsc(user, startDateTime.toInstant(), endDateTime.toInstant(), false, true);
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+
+        List<DataLine> paginatedData = allPoints.stream()
+                .map(p -> new DataLine(TimeUtil.adjustInstant(p.getTimestamp(), timezone),
+                                     p.getLatitude(), p.getLongitude(), p.getAccuracyMeters(), p.isProcessed()))
+                .toList();
+        
+        model.addAttribute("rawLocationPoints", paginatedData);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("pageSize", size);
+        model.addAttribute("totalElements", totalElements);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("hasNext", page < totalPages - 1);
+        model.addAttribute("hasPrevious", page > 0);
         
         return "settings/export-data :: data-content";
     }

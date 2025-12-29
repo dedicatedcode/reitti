@@ -11,7 +11,7 @@
         <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER', 'ROLE_MAGIC_LINK_FULL_ACCESS')" th:if="${activeSection == 'index'}" type="button" class="nav-link" id="auto-update-btn" onclick="toggleAutoUpdate()" th:title="#{map.auto-update.enable.title}" title="Auto Update"><i class="lni lni-play"></i></a>
         <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER', 'ROLE_MAGIC_LINK_FULL_ACCESS')" th:if="${activeSection == 'index'}" type="button" class="nav-link" onclick="toggleFullscreen()" th:title="#{map.fullscreen.toggle.title}" title="Toggle Fullscreen"><i class="lni lni-arrow-all-direction"></i></a>
         <form th:action="@{/logout}" method="post">
-            <button type="submit" class="nav-link" th:title="#{nav.logout.tooltip}"><i
+            <button type="submit" class="nav-link" th:title="#{nav.logout.tooltip}" style="border: none"><i
                     class="lni lni-exit"></i>
             </button>
         </form>
