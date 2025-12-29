@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -71,8 +72,8 @@ public class ExportDataController {
                                       @RequestParam(required = false, defaultValue = "100") int size,
                                       Model model) {
         
-        LocalDate start = startDate != null ? LocalDate.parse(startDate) : LocalDate.now();
-        LocalDate end = endDate != null ? LocalDate.parse(endDate) : LocalDate.now();
+        LocalDate start = StringUtils.hasText(startDate) ? LocalDate.parse(startDate) : LocalDate.now();
+        LocalDate end = StringUtils.hasText(endDate) ? LocalDate.parse(endDate) : LocalDate.now();
         ZonedDateTime startDateTime = start.atStartOfDay(timezone);
         ZonedDateTime endDateTime = end.plusDays(1).atStartOfDay(timezone);
         model.addAttribute("startDate", start);
@@ -80,17 +81,13 @@ public class ExportDataController {
         
         // Get raw location points for the date range
         List<RawLocationPoint> allPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(
-            user, startDateTime.toInstant(), endDateTime.toInstant(), false, true);
+            user, startDateTime.toInstant(), endDateTime.toInstant(), false, true, page, size);
         
-        int totalElements = allPoints.size();
+        long totalElements = rawLocationPointJdbcService.countByUserAndTimestampBetweenOrderByTimestampAsc(user, startDateTime.toInstant(), endDateTime.toInstant(), false, true);
         int totalPages = (int) Math.ceil((double) totalElements / size);
-        int startIndex = page * size;
-        int endIndex = Math.min(startIndex + size, totalElements);
-        
+
         List<DataLine> paginatedData = allPoints.stream()
-                .skip(startIndex)
-                .limit(size)
-                .map(p -> new DataLine(TimeUtil.adjustInstant(p.getTimestamp(), timezone), 
+                .map(p -> new DataLine(TimeUtil.adjustInstant(p.getTimestamp(), timezone),
                                      p.getLatitude(), p.getLongitude(), p.getAccuracyMeters(), p.isProcessed()))
                 .toList();
         

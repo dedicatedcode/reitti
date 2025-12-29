@@ -100,15 +100,9 @@
                         </div>
 
                         <div th:if="${totalElements > 0}">
-                            <!-- Pagination controls at top -->
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                                 <div>
-                                    <p style="margin: 0; color: var(--color-text-white);" 
-                                       th:text="#{export.raw.data.found.data(${totalElements})}">
-                                        Found 123234 location points
-                                    </p>
-                                    <p style="margin: 0; color: var(--color-text-muted); font-size: 14px;"
-                                       th:text="#{export.raw.data.showing(${currentPage * pageSize + 1}, ${currentPage * pageSize + rawLocationPoints.size()}, ${totalElements})}">
+                                    <p th:text="#{export.raw.data.showing(${currentPage * pageSize + 1}, ${currentPage * pageSize + rawLocationPoints.size()}, ${totalElements})}">
                                         Showing 1 - 100 of 1000
                                     </p>
                                 </div>
@@ -116,9 +110,8 @@
                                 <div style="display: flex; align-items: center; gap: 15px;">
                                     <!-- Page size selector -->
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <label for="pageSizeSelect" style="color: var(--color-text-white); font-size: 14px;" th:text="#{export.raw.data.show}">Show:</label>
-                                        <select id="pageSizeSelect" 
-                                                style="background: var(--color-bg-secondary); color: var(--color-text-white); border: 1px solid var(--color-border); border-radius: 4px; padding: 4px 8px;"
+                                        <label for="pageSizeSelect" th:text="#{export.raw.data.show}">Show:</label>
+                                        <select id="pageSizeSelect"
                                                 hx-get="/settings/export-data/data-content"
                                                 hx-target="#data-content"
                                                 hx-swap="innerHTML"
@@ -146,8 +139,7 @@
                                             Previous
                                         </button>
                                         
-                                        <span style="color: var(--color-text-white); font-size: 14px;"
-                                              th:text="#{export.raw.data.page.info(${currentPage + 1}, ${totalPages})}">
+                                        <span th:text="#{export.raw.data.page.info(${currentPage + 1}, ${totalPages})}">
                                             Page 1 of 10
                                         </span>
                                         
