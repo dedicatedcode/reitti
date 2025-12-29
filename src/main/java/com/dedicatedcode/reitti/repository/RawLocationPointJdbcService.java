@@ -133,7 +133,7 @@ public class RawLocationPointJdbcService {
                 "FROM raw_location_points rlp " +
                 "WHERE rlp.id = ?";
         List<RawLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper, id);
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
     public Optional<RawLocationPoint> findLatest(User user, Instant since) {
@@ -142,7 +142,7 @@ public class RawLocationPointJdbcService {
                 "WHERE rlp.user_id = ? AND rlp.timestamp >= ? " +
                 "ORDER BY rlp.timestamp LIMIT 1";
         List<RawLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId(), Timestamp.from(since));
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
     public Optional<RawLocationPoint> findLatest(User user) {
@@ -151,10 +151,10 @@ public class RawLocationPointJdbcService {
                 "WHERE rlp.user_id = ? " +
                 "ORDER BY rlp.timestamp DESC LIMIT 1";
         List<RawLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId());
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
-    public List<Visit> findClusteredPointsInTimeRangeForUser2(
+    public List<Visit> findVisitsInTimerangeForUser(
             User user, Instant startTime, Instant endTime, long minimumStayTime, double distanceInMeters) {
         String sql = """
                 
@@ -225,10 +225,12 @@ public class RawLocationPointJdbcService {
         }, user.getId(), Timestamp.from(startTime), Timestamp.from(endTime), distanceInMeters, minimumStayTime);
     }
 
+    @SuppressWarnings("DataFlowIssue")
     public long count() {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM raw_location_points", Long.class);
     }
 
+    @SuppressWarnings("DataFlowIssue")
     public List<RawLocationPoint> findPointsInBoxWithNeighbors(
             User user,
             Instant startTime,
@@ -444,6 +446,7 @@ public class RawLocationPointJdbcService {
                                   Timestamp.from(startTime), Timestamp.from(endTime));
     }
 
+    @SuppressWarnings("DataFlowIssue")
     public long countByUser(User user) {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM raw_location_points WHERE user_id = ?", Long.class, user.getId());
     }

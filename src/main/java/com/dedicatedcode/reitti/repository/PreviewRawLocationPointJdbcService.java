@@ -57,7 +57,7 @@ public class PreviewRawLocationPointJdbcService {
                 "LIMIT ? OFFSET ?";
         return jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId(), previewId, limit, offset);
     }
-    public List<Visit> findClusteredPointsInTimeRangeForUser2(
+    public List<Visit> findVisitsInTimerangeForUser(
             User user, String previewId, Instant startTime, Instant endTime, long minimumStayTime, double distanceInMeters) {
         String sql = """
                 

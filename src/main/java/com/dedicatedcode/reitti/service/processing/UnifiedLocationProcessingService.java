@@ -245,7 +245,7 @@ public class UnifiedLocationProcessingService {
                     .findByUserAndStartTimeBeforeEqualAndEndTimeAfterEqual(user, previewId, windowEnd, windowStart);
         }
 
-        // Expand window based on deleted processed visits
+        // Expand the window based on found processed visits
         if (!existingProcessedVisits.isEmpty()) {
             if (existingProcessedVisits.getFirst().getStartTime().isBefore(windowStart)) {
                 windowStart = existingProcessedVisits.getFirst().getStartTime();
@@ -254,17 +254,16 @@ public class UnifiedLocationProcessingService {
                 windowEnd = existingProcessedVisits.getLast().getEndTime();
             }
         }
-
+        List<Visit> visits;
         if (previewId == null) {
-            List<Visit> visits = rawLocationPointJdbcService.findClusteredPointsInTimeRangeForUser2(
+            visits = rawLocationPointJdbcService.findVisitsInTimerangeForUser(
                     user, windowStart, windowEnd, detectionParams.getMinimumStayTimeInSeconds(), currentConfiguration.getVisitMerging().getMinDistanceBetweenVisits());
-            return new VisitDetectionResult(visits, windowStart, windowEnd, System.currentTimeMillis() - start);
         } else {
-            List<Visit> visits = previewRawLocationPointJdbcService.findClusteredPointsInTimeRangeForUser2(
+            visits = previewRawLocationPointJdbcService.findVisitsInTimerangeForUser(
                     user, previewId, windowStart, windowEnd, detectionParams.getMinimumStayTimeInSeconds(), currentConfiguration.getVisitMerging().getMinDistanceBetweenVisits());
-            return new VisitDetectionResult(visits, windowStart, windowEnd, System.currentTimeMillis() - start);
-
         }
+        visits.sort(Comparator.comparing(Visit::getStartTime));
+        return new VisitDetectionResult(visits, windowStart, windowEnd, System.currentTimeMillis() - start);
     }
 
     /**
