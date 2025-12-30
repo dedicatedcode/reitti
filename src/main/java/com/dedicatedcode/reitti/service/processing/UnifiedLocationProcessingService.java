@@ -263,8 +263,36 @@ public class UnifiedLocationProcessingService {
                     user, previewId, windowStart, windowEnd, detectionParams.getMinimumStayTimeInSeconds(), currentConfiguration.getVisitMerging().getMinDistanceBetweenVisits());
         }
 
-        //for every visit, get the closest rawlocation point in the middle of the visit and put the visit there. AI!
-        List<Visit> list = visits.stream().sorted(Comparator.comparing(Visit::getStartTime))
+        // Align visits to the raw point at the middle of the time range
+        List<Visit> alignedVisits = new ArrayList<>();
+        for (Visit visit : visits) {
+            Instant middleTime = visit.getStartTime().plusSeconds(visit.getDurationSeconds() / 2);
+            // Use a tolerance of 15 minutes (900 seconds) to find a point
+            int tolerance = 900; 
+            
+            Optional<RawLocationPoint> rawPoint;
+            if (previewId == null) {
+                rawPoint = rawLocationPointJdbcService.findProximatePoint(user, middleTime, tolerance);
+            } else {
+                // Assuming preview service has the same method
+                rawPoint = previewRawLocationPointJdbcService.findProximatePoint(user, middleTime, tolerance);
+            }
+
+            if (rawPoint.isPresent()) {
+                alignedVisits.add(new Visit(
+                        rawPoint.get().getLongitude(),
+                        rawPoint.get().getLatitude(),
+                        visit.getStartTime(),
+                        visit.getEndTime(),
+                        visit.getDurationSeconds(),
+                        visit.isProcessed()
+                ));
+            } else {
+                alignedVisits.add(visit);
+            }
+        }
+
+        List<Visit> list = alignedVisits.stream().sorted(Comparator.comparing(Visit::getStartTime))
                 .filter(v -> v.getDurationSeconds() >= detectionParams.getMinimumStayTimeInSeconds())
                 .toList();
         return new VisitDetectionResult(list, windowStart, windowEnd, System.currentTimeMillis() - start);
