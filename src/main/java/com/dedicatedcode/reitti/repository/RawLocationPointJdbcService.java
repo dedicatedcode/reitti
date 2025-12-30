@@ -393,7 +393,7 @@ public class RawLocationPointJdbcService {
         String sql = """
         WITH sampled_points AS (
             SELECT DISTINCT ON (
-                date_trunc('hour', timestamp) +
+                date_trunc('hour', timestamp) + 
                 (EXTRACT(minute FROM timestamp)::int / %d) * interval '%d minutes'
             )
             id,
@@ -410,7 +410,7 @@ public class RawLocationPointJdbcService {
               AND timestamp BETWEEN ? AND ?
               AND ignored = false
             ORDER BY
-                date_trunc('hour', timestamp) +
+                date_trunc('hour', timestamp) + 
                 (EXTRACT(minute FROM timestamp)::int / %d) * interval '%d minutes',
                 timestamp
         )
@@ -575,8 +575,8 @@ public class RawLocationPointJdbcService {
                     (
                         SELECT SUM(
                             CASE 
-                                WHEN ST_DistanceSphere(ST_MakePoint(p1.lon, p1.lat), ST_MakePoint(p2.lon, p2.lat)) <= p1.accuracy * 2
-                                THEN GREATEST(0, 1.0 - (ST_DistanceSphere(ST_MakePoint(p1.lon, p1.lat), ST_MakePoint(p2.lon, p2.lat)) / (p1.accuracy * 2)))
+                                WHEN ST_DistanceSphere(geom, p2.geom) <= COALESCE(accuracy_meters, 50.0) * 2
+                                THEN GREATEST(0, 1.0 - (ST_DistanceSphere(geom, p2.geom) / (COALESCE(accuracy_meters, 50.0) * 2)))
                                 ELSE 0 
                             END
                         )
