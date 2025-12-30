@@ -262,8 +262,12 @@ public class UnifiedLocationProcessingService {
             visits = previewRawLocationPointJdbcService.findVisitsInTimerangeForUser(
                     user, previewId, windowStart, windowEnd, detectionParams.getMinimumStayTimeInSeconds(), currentConfiguration.getVisitMerging().getMinDistanceBetweenVisits());
         }
-        visits.sort(Comparator.comparing(Visit::getStartTime));
-        return new VisitDetectionResult(visits, windowStart, windowEnd, System.currentTimeMillis() - start);
+
+        //for every visit, get the closest rawlocation point in the middle of the visit and put the visit there. AI!
+        List<Visit> list = visits.stream().sorted(Comparator.comparing(Visit::getStartTime))
+                .filter(v -> v.getDurationSeconds() >= detectionParams.getMinimumStayTimeInSeconds())
+                .toList();
+        return new VisitDetectionResult(list, windowStart, windowEnd, System.currentTimeMillis() - start);
     }
 
     /**
