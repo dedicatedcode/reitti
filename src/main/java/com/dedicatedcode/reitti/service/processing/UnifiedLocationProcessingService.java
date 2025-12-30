@@ -562,7 +562,7 @@ public class UnifiedLocationProcessingService {
         return new StayPoint(result.latitude(), result.longitude(), arrivalTime, departureTime, clusterPoints);
     }
 
-    private GeoPoint weightedCenter(List<RawLocationPoint> clusterPoints) {
+    private GeoPoint weightedCenter(List<RawLocationPoint> clusterPoints, User user) {
 
         long start = System.currentTimeMillis();
 
@@ -571,8 +571,7 @@ public class UnifiedLocationProcessingService {
         if (clusterPoints.size() <= 100) {
             result = weightedCenterSimple(clusterPoints);
         } else {
-            // For large clusters, use spatial partitioning for better performance
-            //instead of calculating the weightedCenterOptimized here, leavarage the postgis db by adding a new method in the RawLocationPointJdbcService which akes the user, start and end instant and calculate the weigthed center in the db. AI!
+            // For large clusters, use the database method
             result = this.rawLocationPointJdbcService.calculateWeightedCenterInDatabase(user, clusterPoints.getFirst().getTimestamp(), clusterPoints.getLast().getTimestamp());
         }
         logger.debug("Weighted center calculation took {}ms for [{}] number of points", System.currentTimeMillis() - start, clusterPoints.size());
