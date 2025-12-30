@@ -146,7 +146,7 @@ public class UnifiedLocationProcessingService {
         }
 
         long duration = System.currentTimeMillis() - startTime;
-        
+
         if (logger.isTraceEnabled()) {
             // Tabular output for trace level logging
             StringBuilder traceOutput = new StringBuilder();
@@ -154,13 +154,13 @@ public class UnifiedLocationProcessingService {
             traceOutput.append("Event Period: ").append(event.getEarliest()).append(" → ").append(event.getLatest()).append("\n");
             traceOutput.append("Search Period: ").append(detectionResult.searchStart).append(" → ").append(detectionResult.searchEnd).append("\n");
             traceOutput.append("Duration: ").append(duration).append("ms\n\n");
-            
+
             // Input Visits Table
-            traceOutput.append("INPUT VISITS (").append(mergingResult.inputVisits.size()).append("):\n");
+            traceOutput.append("INPUT VISITS (").append(detectionResult.visits.size()).append(") - took [").append(detectionResult.durationInMillis).append("]ms:\n");
             traceOutput.append("┌─────────────────────┬─────────────────────┬───────────┬─────────────┬─────────────┬──────────────────────────────────────────────────────────────────────┐\n");
             traceOutput.append("│ Start Time          │ End Time            │ Duration  │ Latitude    │ Longitude   │ Google Maps Link                                                     │\n");
             traceOutput.append("├─────────────────────┼─────────────────────┼───────────┼─────────────┼─────────────┼──────────────────────────────────────────────────────────────────────┤\n");
-            for (Visit visit : mergingResult.inputVisits) {
+            for (Visit visit : detectionResult.visits) {
                 String googleMapsLink = "https://www.google.com/maps/search/?api=1&query=" + visit.getLatitude() + "," + visit.getLongitude();
                 traceOutput.append(String.format("│ %-19s │ %-19s │ %8ds │ %11.6f │ %11.6f │ %-68s │\n",
                     visit.getStartTime().toString().substring(0, 19),
@@ -171,9 +171,9 @@ public class UnifiedLocationProcessingService {
                     googleMapsLink));
             }
             traceOutput.append("└─────────────────────┴─────────────────────┴───────────┴─────────────┴─────────────┴──────────────────────────────────────────────────────────────────────┘\n\n");
-            
+
             // Processed Visits Table
-            traceOutput.append("PROCESSED VISITS (").append(mergingResult.processedVisits.size()).append("):\n");
+            traceOutput.append("PROCESSED VISITS (").append(mergingResult.processedVisits.size()).append(") - took [").append(mergingResult.durationInMillis).append("]ms:\n");
             traceOutput.append("┌─────────────────────┬─────────────────────┬───────────┬─────────────┬─────────────┬──────────────────────┐\n");
             traceOutput.append("│ Start Time          │ End Time            │ Duration  │ Latitude    │ Longitude   │ Place Name           │\n");
             traceOutput.append("├─────────────────────┼─────────────────────┼───────────┼─────────────┼─────────────┼──────────────────────┤\n");
@@ -189,9 +189,9 @@ public class UnifiedLocationProcessingService {
                     placeName));
             }
             traceOutput.append("└─────────────────────┴─────────────────────┴───────────┴─────────────┴─────────────┴──────────────────────┘\n\n");
-            
+
             // Trips Table
-            traceOutput.append("TRIPS (").append(tripResult.trips.size()).append("):\n");
+            traceOutput.append("TRIPS (").append(tripResult.trips.size()).append(") - took [").append(tripResult.durationInMillis).append("]ms:\n");
             traceOutput.append("┌─────────────────────┬─────────────────────┬───────────┬───────────┬───────────┬─────────────────┐\n");
             traceOutput.append("│ Start Time          │ End Time            │ Duration  │ Distance  │ Traveled  │ Transport Mode  │\n");
             traceOutput.append("├─────────────────────┼─────────────────────┼───────────┼───────────┼───────────┼─────────────────┤\n");
@@ -205,10 +205,10 @@ public class UnifiedLocationProcessingService {
                     trip.getTransportModeInferred().toString()));
             }
             traceOutput.append("└─────────────────────┴─────────────────────┴───────────┴───────────┴───────────┴─────────────────┘\n");
-            
+
             logger.trace(traceOutput.toString());
         }
-        
+
         logger.info("Completed processing for user [{}] in {}ms: {} visits → {} processed visits → {} trips",
                 username, duration, detectionResult.visits.size(),
                 mergingResult.processedVisits.size(), tripResult.trips.size());
@@ -294,39 +294,7 @@ public class UnifiedLocationProcessingService {
                 ))
                 .toList();
 
-        // Align visits to the raw point at the middle of the time range
-        List<Visit> alignedVisits = new ArrayList<>();
-        for (Visit visit : visits) {
-            Instant middleTime = visit.getStartTime().plusSeconds(visit.getDurationSeconds() / 2);
-            // Use a tolerance of 15 minutes (900 seconds) to find a point
-            int tolerance = 900; 
-            
-            Optional<RawLocationPoint> rawPoint;
-            if (previewId == null) {
-                rawPoint = rawLocationPointJdbcService.findProximatePoint(user, middleTime, tolerance);
-            } else {
-                // Assuming preview service has the same method
-                rawPoint = previewRawLocationPointJdbcService.findProximatePoint(user, middleTime, tolerance);
-            }
-
-            if (rawPoint.isPresent()) {
-                alignedVisits.add(new Visit(
-                        rawPoint.get().getLongitude(),
-                        rawPoint.get().getLatitude(),
-                        visit.getStartTime(),
-                        visit.getEndTime(),
-                        visit.getDurationSeconds(),
-                        visit.isProcessed()
-                ));
-            } else {
-                alignedVisits.add(visit);
-            }
-        }
-
-        List<Visit> list = alignedVisits.stream().sorted(Comparator.comparing(Visit::getStartTime))
-                .filter(v -> v.getDurationSeconds() >= detectionParams.getMinimumStayTimeInSeconds())
-                .toList();
-        return new VisitDetectionResult(list, windowStart, windowEnd, System.currentTimeMillis() - start);
+        return new VisitDetectionResult(visits, windowStart, windowEnd, System.currentTimeMillis() - start);
     }
 
     /**
@@ -885,13 +853,13 @@ public class UnifiedLocationProcessingService {
 
     // ==================== Result Classes ====================
 
-    private record VisitDetectionResult(List<Visit> visits, Instant searchStart, Instant searchEnd, long durationMillis) {
+    private record VisitDetectionResult(List<Visit> visits, Instant searchStart, Instant searchEnd, long durationInMillis) {
     }
 
     private record VisitMergingResult(List<Visit> inputVisits, List<ProcessedVisit> processedVisits,
-                                      Instant searchStart, Instant searchEnd, long durationMillis) {
+                                      Instant searchStart, Instant searchEnd, long durationInMillis) {
     }
 
-    private record TripDetectionResult(List<Trip> trips, long durationMillis) {
+    private record TripDetectionResult(List<Trip> trips, long durationInMillis) {
     }
 }
