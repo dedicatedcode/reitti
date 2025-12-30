@@ -236,11 +236,11 @@ label {
 
 .toggle-buttons .btn {
     padding: 0.375rem 0.75rem;
-    border: none;
     cursor: pointer;
     transition: all 0.15s ease-in-out;
     font-size: 0.875rem;
     font-weight: 500;
+    border: 1px solid var(--color-highlight);
 }
 
 .toggle-buttons .btn:not(:last-child) {
