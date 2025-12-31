@@ -101,8 +101,7 @@ public class UnifiedLocationProcessingService {
         String username = event.getUsername();
         String previewId = event.getPreviewId();
 
-        logger.info("Processing location data for user [{}], mode: {}",
-                username, previewId == null ? "LIVE" : "PREVIEW");
+        logger.info("Processing location data for user [{}], mode: {}", username, previewId == null ? "LIVE" : "PREVIEW");
 
         User user = userJdbcService.findByUsername(username)
                 .orElseThrow(() -> new IllegalStateException("User not found: " + username));
@@ -256,10 +255,10 @@ public class UnifiedLocationProcessingService {
 
         // Get clustered points
         double baseLatitude = existingProcessedVisits.isEmpty() ? 50 : existingProcessedVisits.getFirst().getPlace().getLatitudeCentroid();
-        double metersAsDegrees = GeoUtils.metersToDegreesAtPosition((double) currentConfiguration.getVisitMerging().getMinDistanceBetweenVisits() / 2, baseLatitude);
+        double metersAsDegrees = GeoUtils.metersToDegreesAtPosition((double) currentConfiguration.getVisitMerging().getMinDistanceBetweenVisits() / 4, baseLatitude);
 
         List<ClusteredPoint> clusteredPoints;
-        int minimumAdjacentPoints = Math.max(4, Math.toIntExact(detectionParams.getMinimumStayTimeInSeconds() / 20));
+        int minimumAdjacentPoints = Math.max(4, Math.toIntExact(detectionParams.getMinimumStayTimeInSeconds() / 60));
         if (previewId == null) {
             clusteredPoints = rawLocationPointJdbcService.findClusteredPointsInTimeRangeForUser(
                     user, windowStart, windowEnd, minimumAdjacentPoints, metersAsDegrees);
@@ -292,6 +291,7 @@ public class UnifiedLocationProcessingService {
                         sp.getDurationSeconds(),
                         false
                 ))
+                .sorted(Comparator.comparing(Visit::getStartTime))
                 .toList();
 
         return new VisitDetectionResult(visits, windowStart, windowEnd, System.currentTimeMillis() - start);
@@ -346,7 +346,6 @@ public class UnifiedLocationProcessingService {
             return new VisitMergingResult(List.of(), List.of(), searchStart, searchEnd, System.currentTimeMillis() - start);
         }
 
-        allVisits = allVisits.stream().sorted(Comparator.comparing(Visit::getStartTime)).toList();
         // Merge visits chronologically
         List<ProcessedVisit> processedVisits = mergeVisitsChronologically(
                 user, previewId, traceId, allVisits, mergeConfig);
@@ -394,6 +393,19 @@ public class UnifiedLocationProcessingService {
             }
         }
 
+        if (previewId == null) {
+            //recreate the trip between this run's first visit and the processed visit before. We deleted that when we cleared the processed visits in the search range. But only if it is max 24h apart
+            Optional<ProcessedVisit> firstProcessedVisitBefore = this.processedVisitJdbcService.findFirstProcessedVisitBefore(user, searchStart);
+            if (firstProcessedVisitBefore.isPresent() && Duration.between(firstProcessedVisitBefore.get().getEndTime(), processedVisits.getFirst().getStartTime()).toHours() <= 24) {
+                trips.add(createTripBetweenVisits(user, null, firstProcessedVisitBefore.get(), processedVisits.getFirst()));
+            }
+
+            Optional<ProcessedVisit> processedVisitAfter = this.processedVisitJdbcService.findFirstProcessedVisitAfter(user, searchEnd);
+            if (processedVisitAfter.isPresent() && Duration.between(processedVisits.getLast().getEndTime(), processedVisitAfter.get().getStartTime()).toHours() <= 24) {
+                trips.add(createTripBetweenVisits(user, null, processedVisits.getLast(), processedVisitAfter.get()));
+            }
+        }
+        trips.sort(Comparator.comparing(Trip::getStartTime));
         // Save trips
         if (previewId == null) {
             trips = tripJdbcService.bulkInsert(user, trips);
@@ -403,9 +415,6 @@ public class UnifiedLocationProcessingService {
 
         return new TripDetectionResult(trips, System.currentTimeMillis() - start);
     }
-
-    // ==================== Helper Methods ====================
-    // Copy from existing services with minimal changes
 
     private List<StayPoint> detectStayPointsFromTrajectory(
             Map<Integer, List<RawLocationPoint>> points,
@@ -474,7 +483,7 @@ public class UnifiedLocationProcessingService {
             Visit nextVisit = visits.get(i);
 
             if (nextVisit.getStartTime().isBefore(currentEndTime)) {
-                logger.debug("Skipping visit [{}] because it starts before the end time of the previous one [{}]", nextVisit, currentEndTime);
+                logger.error("Skipping visit [{}] because it starts before the end time of the previous one [{}]", nextVisit, currentEndTime);
                 continue;
             }
             SignificantPlace nextPlace = findOrCreateSignificantPlace(user, previewId, nextVisit.getLatitude(), nextVisit.getLongitude(), mergeConfiguration, traceId);
@@ -558,11 +567,11 @@ public class UnifiedLocationProcessingService {
         Instant arrivalTime = clusterPoints.getFirst().getTimestamp();
         Instant departureTime = clusterPoints.getLast().getTimestamp();
 
-        logger.debug("Creating stay point at [{}] with arrival time [{}] and departure time [{}]", result, arrivalTime, departureTime);
+        logger.trace("Creating stay point at [{}] with arrival time [{}] and departure time [{}]", result, arrivalTime, departureTime);
         return new StayPoint(result.latitude(), result.longitude(), arrivalTime, departureTime, clusterPoints);
     }
 
-    private GeoPoint weightedCenter(List<RawLocationPoint> clusterPoints, User user) {
+    private GeoPoint weightedCenter(List<RawLocationPoint> clusterPoints) {
 
         long start = System.currentTimeMillis();
 
@@ -571,12 +580,11 @@ public class UnifiedLocationProcessingService {
         if (clusterPoints.size() <= 100) {
             result = weightedCenterSimple(clusterPoints);
         } else {
-            // For large clusters, use the database method
-            result = this.rawLocationPointJdbcService.calculateWeightedCenterInDatabase(user, clusterPoints.getFirst().getTimestamp(), clusterPoints.getLast().getTimestamp());
+            // For large clusters, use spatial partitioning for better performance
+            result = weightedCenterOptimized(clusterPoints);
         }
-        logger.debug("Weighted center calculation took {}ms for [{}] number of points", System.currentTimeMillis() - start, clusterPoints.size());
+        logger.trace("Weighted center calculation took {}ms for [{}] number of points", System.currentTimeMillis() - start, clusterPoints.size());
         return result;
-
     }
 
     private GeoPoint weightedCenterSimple(List<RawLocationPoint> clusterPoints) {

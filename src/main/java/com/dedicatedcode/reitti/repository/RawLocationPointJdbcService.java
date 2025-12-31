@@ -2,7 +2,6 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.ClusteredPoint;
-import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import org.locationtech.jts.geom.Coordinate;
@@ -560,57 +559,6 @@ public class RawLocationPointJdbcService {
                 .collect(Collectors.toList());
         
         jdbcTemplate.batchUpdate(sql, batchArgs);
-    }
-
-    public GeoPoint calculateWeightedCenterInDatabase(User user, Instant startTime, Instant endTime) {
-        String sql = """
-            WITH weighted_points AS (
-                SELECT 
-                    ST_X(geom) as lon,
-                    ST_Y(geom) as lat,
-                    COALESCE(accuracy_meters, 50.0) as accuracy,
-                    -- Calculate density score: inverse of accuracy
-                    1.0 / COALESCE(accuracy_meters, 50.0) as accuracy_weight,
-                    -- Calculate proximity weight: sum of distances to other points within accuracy radius
-                    (
-                        SELECT SUM(
-                            CASE 
-                                WHEN ST_DistanceSphere(geom, p2.geom) <= COALESCE(accuracy_meters, 50.0) * 2
-                                THEN GREATEST(0, 1.0 - (ST_DistanceSphere(geom, p2.geom) / (COALESCE(accuracy_meters, 50.0) * 2)))
-                                ELSE 0 
-                            END
-                        )
-                        FROM raw_location_points p2
-                        WHERE p2.user_id = ?
-                          AND p2.timestamp BETWEEN ? AND ?
-                          AND p2.ignored = false
-                          AND p2.id != p1.id
-                    ) as proximity_weight
-                FROM raw_location_points p1
-                WHERE p1.user_id = ?
-                  AND p1.timestamp BETWEEN ? AND ?
-                  AND p1.ignored = false
-            ),
-            scored_points AS (
-                SELECT 
-                    lon,
-                    lat,
-                    (accuracy_weight + (proximity_weight * accuracy_weight)) as total_score
-                FROM weighted_points
-            )
-            SELECT 
-                lon,
-                lat
-            FROM scored_points
-            ORDER BY total_score DESC
-            LIMIT 1
-            """;
-
-        return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
-            double lat = rs.getDouble("lat");
-            double lon = rs.getDouble("lon");
-            return new GeoPoint(lat, lon);
-        }, user.getId(), Timestamp.from(startTime), Timestamp.from(endTime), user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
     }
 
 }

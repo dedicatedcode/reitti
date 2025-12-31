@@ -63,6 +63,20 @@ public class ProcessedVisitJdbcService {
                 Timestamp.from(endTime), Timestamp.from(startTime));
     }
 
+    public Optional<ProcessedVisit> findFirstProcessedVisitBefore(User user, Instant time) {
+        String sql = "SELECT pv.* " +
+                "FROM processed_visits pv " +
+                "WHERE pv.user_id = ? AND pv.end_time < ? ORDER BY pv.end_time DESC LIMIT 1";
+        return jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, user.getId(), Timestamp.from(time)).stream().findFirst();
+    }
+
+    public Optional<ProcessedVisit> findFirstProcessedVisitAfter(User user, Instant time) {
+        String sql = "SELECT pv.* " +
+                "FROM processed_visits pv " +
+                "WHERE pv.user_id = ? AND pv.start_time > ? ORDER BY pv.start_time LIMIT 1";
+        return jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, user.getId(), Timestamp.from(time)).stream().findFirst();
+
+    }
     public Optional<ProcessedVisit> findByUserAndId(User user, long id) {
         String sql = "SELECT pv.* " +
                 "FROM processed_visits pv " +
