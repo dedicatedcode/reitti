@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class LocationDensityConfig {
     
-    @Value("${reitti.location.density.target-points-per-minute:2}")
+    @Value("${reitti.location.density.target-points-per-minute:4}")
     private int targetPointsPerMinute;
     
     public int getTargetPointsPerMinute() {

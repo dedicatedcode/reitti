@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.service.processing;
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.LocationProcessEvent;
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
+import com.dedicatedcode.reitti.model.ClusteredPoint;
 import com.dedicatedcode.reitti.model.PlaceInformationOverride;
 import com.dedicatedcode.reitti.model.geo.*;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
@@ -23,10 +24,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Unified service that processes the entire GPS pipeline atomically per user.
@@ -102,8 +101,7 @@ public class UnifiedLocationProcessingService {
         String username = event.getUsername();
         String previewId = event.getPreviewId();
 
-        logger.info("Processing location data for user [{}], mode: {}",
-                username, previewId == null ? "LIVE" : "PREVIEW");
+        logger.info("Processing location data for user [{}], mode: {}", username, previewId == null ? "LIVE" : "PREVIEW");
 
         User user = userJdbcService.findByUsername(username)
                 .orElseThrow(() -> new IllegalStateException("User not found: " + username));
@@ -147,7 +145,7 @@ public class UnifiedLocationProcessingService {
         }
 
         long duration = System.currentTimeMillis() - startTime;
-        
+
         if (logger.isTraceEnabled()) {
             // Tabular output for trace level logging
             StringBuilder traceOutput = new StringBuilder();
@@ -155,13 +153,13 @@ public class UnifiedLocationProcessingService {
             traceOutput.append("Event Period: ").append(event.getEarliest()).append(" → ").append(event.getLatest()).append("\n");
             traceOutput.append("Search Period: ").append(detectionResult.searchStart).append(" → ").append(detectionResult.searchEnd).append("\n");
             traceOutput.append("Duration: ").append(duration).append("ms\n\n");
-            
+
             // Input Visits Table
-            traceOutput.append("INPUT VISITS (").append(mergingResult.inputVisits.size()).append(") - took [").append(detectionResult.durationMillis).append("]ms:\n");
+            traceOutput.append("INPUT VISITS (").append(detectionResult.visits.size()).append(") - took [").append(detectionResult.durationInMillis).append("]ms:\n");
             traceOutput.append("┌─────────────────────┬─────────────────────┬───────────┬─────────────┬─────────────┬──────────────────────────────────────────────────────────────────────┐\n");
             traceOutput.append("│ Start Time          │ End Time            │ Duration  │ Latitude    │ Longitude   │ Google Maps Link                                                     │\n");
             traceOutput.append("├─────────────────────┼─────────────────────┼───────────┼─────────────┼─────────────┼──────────────────────────────────────────────────────────────────────┤\n");
-            for (Visit visit : mergingResult.inputVisits) {
+            for (Visit visit : detectionResult.visits) {
                 String googleMapsLink = "https://www.google.com/maps/search/?api=1&query=" + visit.getLatitude() + "," + visit.getLongitude();
                 traceOutput.append(String.format("│ %-19s │ %-19s │ %8ds │ %11.6f │ %11.6f │ %-68s │\n",
                     visit.getStartTime().toString().substring(0, 19),
@@ -172,9 +170,9 @@ public class UnifiedLocationProcessingService {
                     googleMapsLink));
             }
             traceOutput.append("└─────────────────────┴─────────────────────┴───────────┴─────────────┴─────────────┴──────────────────────────────────────────────────────────────────────┘\n\n");
-            
+
             // Processed Visits Table
-            traceOutput.append("PROCESSED VISITS (").append(mergingResult.processedVisits.size()).append(") - took [").append(mergingResult.durationMillis).append("]ms:\n");
+            traceOutput.append("PROCESSED VISITS (").append(mergingResult.processedVisits.size()).append(") - took [").append(mergingResult.durationInMillis).append("]ms:\n");
             traceOutput.append("┌─────────────────────┬─────────────────────┬───────────┬─────────────┬─────────────┬──────────────────────┐\n");
             traceOutput.append("│ Start Time          │ End Time            │ Duration  │ Latitude    │ Longitude   │ Place Name           │\n");
             traceOutput.append("├─────────────────────┼─────────────────────┼───────────┼─────────────┼─────────────┼──────────────────────┤\n");
@@ -190,9 +188,9 @@ public class UnifiedLocationProcessingService {
                     placeName));
             }
             traceOutput.append("└─────────────────────┴─────────────────────┴───────────┴─────────────┴─────────────┴──────────────────────┘\n\n");
-            
+
             // Trips Table
-            traceOutput.append("TRIPS (").append(tripResult.trips.size()).append(") - took [").append(tripResult.durationMillis).append("]ms:\n");
+            traceOutput.append("TRIPS (").append(tripResult.trips.size()).append(") - took [").append(tripResult.durationInMillis).append("]ms:\n");
             traceOutput.append("┌─────────────────────┬─────────────────────┬───────────┬───────────┬───────────┬─────────────────┐\n");
             traceOutput.append("│ Start Time          │ End Time            │ Duration  │ Distance  │ Traveled  │ Transport Mode  │\n");
             traceOutput.append("├─────────────────────┼─────────────────────┼───────────┼───────────┼───────────┼─────────────────┤\n");
@@ -206,10 +204,10 @@ public class UnifiedLocationProcessingService {
                     trip.getTransportModeInferred().toString()));
             }
             traceOutput.append("└─────────────────────┴─────────────────────┴───────────┴───────────┴───────────┴─────────────────┘\n");
-            
+
             logger.trace(traceOutput.toString());
         }
-        
+
         logger.info("Completed processing for user [{}] in {}ms: {} visits → {} processed visits → {} trips",
                 username, duration, detectionResult.visits.size(),
                 mergingResult.processedVisits.size(), tripResult.trips.size());
@@ -245,7 +243,7 @@ public class UnifiedLocationProcessingService {
                     .findByUserAndStartTimeBeforeEqualAndEndTimeAfterEqual(user, previewId, windowEnd, windowStart);
         }
 
-        // Expand the window based on found processed visits
+        // Expand window based on deleted processed visits
         if (!existingProcessedVisits.isEmpty()) {
             if (existingProcessedVisits.getFirst().getStartTime().isBefore(windowStart)) {
                 windowStart = existingProcessedVisits.getFirst().getStartTime();
@@ -254,15 +252,48 @@ public class UnifiedLocationProcessingService {
                 windowEnd = existingProcessedVisits.getLast().getEndTime();
             }
         }
-        List<Visit> visits;
+
+        // Get clustered points
+        double baseLatitude = existingProcessedVisits.isEmpty() ? 50 : existingProcessedVisits.getFirst().getPlace().getLatitudeCentroid();
+        double metersAsDegrees = GeoUtils.metersToDegreesAtPosition((double) currentConfiguration.getVisitMerging().getMinDistanceBetweenVisits() / 4, baseLatitude);
+
+        List<ClusteredPoint> clusteredPoints;
+        int minimumAdjacentPoints = Math.max(4, Math.toIntExact(detectionParams.getMinimumStayTimeInSeconds() / 60));
         if (previewId == null) {
-            visits = rawLocationPointJdbcService.findVisitsInTimerangeForUser(
-                    user, windowStart, windowEnd, detectionParams.getMinimumStayTimeInSeconds(), currentConfiguration.getVisitMerging().getMinDistanceBetweenVisits());
+            clusteredPoints = rawLocationPointJdbcService.findClusteredPointsInTimeRangeForUser(
+                    user, windowStart, windowEnd, minimumAdjacentPoints, metersAsDegrees);
         } else {
-            visits = previewRawLocationPointJdbcService.findVisitsInTimerangeForUser(
-                    user, previewId, windowStart, windowEnd, detectionParams.getMinimumStayTimeInSeconds(), currentConfiguration.getVisitMerging().getMinDistanceBetweenVisits());
+            clusteredPoints = previewRawLocationPointJdbcService.findClusteredPointsInTimeRangeForUser(
+                    user, previewId, windowStart, windowEnd, minimumAdjacentPoints, metersAsDegrees);
         }
-        visits.sort(Comparator.comparing(Visit::getStartTime));
+        logger.debug("Searching for clustered points in range [{}, {}], minimum adjacent points: {} ", windowStart, windowEnd, minimumAdjacentPoints);
+
+        // Cluster by location and time
+        Map<Integer, List<RawLocationPoint>> clusteredByLocation = new TreeMap<>();
+        for (ClusteredPoint cp : clusteredPoints.stream().filter(clusteredPoint -> !clusteredPoint.getPoint().isIgnored()).toList()) {
+            if (cp.getClusterId() != null) {
+                clusteredByLocation
+                        .computeIfAbsent(cp.getClusterId(), _ -> new ArrayList<>())
+                        .add(cp.getPoint());
+            }
+        }
+
+        // Detect stay points
+        List<StayPoint> stayPoints = detectStayPointsFromTrajectory(clusteredByLocation, detectionParams);
+
+        // Create visits
+        List<Visit> visits = stayPoints.stream()
+                .map(sp -> new Visit(
+                        sp.getLongitude(),
+                        sp.getLatitude(),
+                        sp.getArrivalTime(),
+                        sp.getDepartureTime(),
+                        sp.getDurationSeconds(),
+                        false
+                ))
+                .sorted(Comparator.comparing(Visit::getStartTime))
+                .toList();
+
         return new VisitDetectionResult(visits, windowStart, windowEnd, System.currentTimeMillis() - start);
     }
 
@@ -315,7 +346,6 @@ public class UnifiedLocationProcessingService {
             return new VisitMergingResult(List.of(), List.of(), searchStart, searchEnd, System.currentTimeMillis() - start);
         }
 
-        allVisits = allVisits.stream().sorted(Comparator.comparing(Visit::getStartTime)).toList();
         // Merge visits chronologically
         List<ProcessedVisit> processedVisits = mergeVisitsChronologically(
                 user, previewId, traceId, allVisits, mergeConfig);
@@ -363,6 +393,19 @@ public class UnifiedLocationProcessingService {
             }
         }
 
+        if (previewId == null) {
+            //recreate the trip between this run's first visit and the processed visit before. We deleted that when we cleared the processed visits in the search range. But only if it is max 24h apart
+            Optional<ProcessedVisit> firstProcessedVisitBefore = this.processedVisitJdbcService.findFirstProcessedVisitBefore(user, searchStart);
+            if (firstProcessedVisitBefore.isPresent() && Duration.between(firstProcessedVisitBefore.get().getEndTime(), processedVisits.getFirst().getStartTime()).toHours() <= 24) {
+                trips.add(createTripBetweenVisits(user, null, firstProcessedVisitBefore.get(), processedVisits.getFirst()));
+            }
+
+            Optional<ProcessedVisit> processedVisitAfter = this.processedVisitJdbcService.findFirstProcessedVisitAfter(user, searchEnd);
+            if (processedVisitAfter.isPresent() && Duration.between(processedVisits.getLast().getEndTime(), processedVisitAfter.get().getStartTime()).toHours() <= 24) {
+                trips.add(createTripBetweenVisits(user, null, processedVisits.getLast(), processedVisitAfter.get()));
+            }
+        }
+        trips.sort(Comparator.comparing(Trip::getStartTime));
         // Save trips
         if (previewId == null) {
             trips = tripJdbcService.bulkInsert(user, trips);
@@ -371,6 +414,52 @@ public class UnifiedLocationProcessingService {
         }
 
         return new TripDetectionResult(trips, System.currentTimeMillis() - start);
+    }
+
+    private List<StayPoint> detectStayPointsFromTrajectory(
+            Map<Integer, List<RawLocationPoint>> points,
+            DetectionParameter.VisitDetection visitDetectionParameters) {
+        logger.debug("Starting cluster-based stay point detection with {} different spatial clusters.", points.size());
+
+        List<List<RawLocationPoint>> clusters = new ArrayList<>();
+
+        //split them up when time is x seconds between
+        for (List<RawLocationPoint> clusteredByLocation : points.values()) {
+            logger.debug("Start splitting up geospatial cluster with [{}] elements based on minimum time [{}]s between points", clusteredByLocation.size(), visitDetectionParameters.getMaxMergeTimeBetweenSameStayPoints());
+            //first sort them by timestamp
+            clusteredByLocation.sort(Comparator.comparing(RawLocationPoint::getTimestamp));
+
+            List<RawLocationPoint> currentTimedCluster = new ArrayList<>();
+            clusters.add(currentTimedCluster);
+            currentTimedCluster.add(clusteredByLocation.getFirst());
+
+            Instant currentTime = clusteredByLocation.getFirst().getTimestamp();
+
+            for (int i = 1; i < clusteredByLocation.size(); i++) {
+                RawLocationPoint next = clusteredByLocation.get(i);
+                if (Duration.between(currentTime, next.getTimestamp()).getSeconds() < visitDetectionParameters.getMaxMergeTimeBetweenSameStayPoints()) {
+                    currentTimedCluster.add(next);
+                } else {
+                    currentTimedCluster = new ArrayList<>();
+                    currentTimedCluster.add(next);
+                    clusters.add(currentTimedCluster);
+                }
+                currentTime = next.getTimestamp();
+            }
+        }
+
+        logger.debug("Detected {} stay points after splitting them up.", clusters.size());
+        //filter them by duration
+        List<List<RawLocationPoint>> filteredByMinimumDuration = clusters.stream()
+                .filter(c -> Duration.between(c.getFirst().getTimestamp(), c.getLast().getTimestamp()).toSeconds() > visitDetectionParameters.getMinimumStayTimeInSeconds())
+                .toList();
+
+        logger.debug("Found {} valid clusters after duration filtering with minimum stay time [{}]s", filteredByMinimumDuration.size(), visitDetectionParameters.getMinimumStayTimeInSeconds());
+
+        // Step 3: Convert valid clusters to stay points
+        return filteredByMinimumDuration.stream()
+                .map(this::createStayPoint)
+                .collect(Collectors.toList());
     }
 
     private List<ProcessedVisit> mergeVisitsChronologically(
@@ -394,13 +483,14 @@ public class UnifiedLocationProcessingService {
             Visit nextVisit = visits.get(i);
 
             if (nextVisit.getStartTime().isBefore(currentEndTime)) {
-                logger.debug("Skipping visit [{}] because it starts before the end time of the previous one [{}]", nextVisit, currentEndTime);
+                logger.error("Skipping visit [{}] because it starts before the end time of the previous one [{}]", nextVisit, currentEndTime);
                 continue;
             }
             SignificantPlace nextPlace = findOrCreateSignificantPlace(user, previewId, nextVisit.getLatitude(), nextVisit.getLongitude(), mergeConfiguration, traceId);
 
             boolean samePlace = nextPlace.getId().equals(currentPlace.getId());
             boolean withinTimeThreshold = Duration.between(currentEndTime, nextVisit.getStartTime()).getSeconds() <= mergeConfiguration.getMaxMergeTimeBetweenSameVisits();
+
             boolean shouldMergeWithNextVisit = samePlace && withinTimeThreshold;
 
             if (samePlace && !withinTimeThreshold) {
@@ -413,7 +503,7 @@ public class UnifiedLocationProcessingService {
                 if (pointsBetweenVisits.size() > 2) {
                     double travelledDistanceInMeters = GeoUtils.calculateTripDistance(pointsBetweenVisits);
                     shouldMergeWithNextVisit = travelledDistanceInMeters <= mergeConfiguration.getMinDistanceBetweenVisits();
-                } else  {
+                } else {
                     logger.debug("There are no points tracked between {} and {}. Will merge consecutive visits because they are on the same place", currentEndTime, nextVisit.getStartTime());
                     shouldMergeWithNextVisit = true;
                 }
@@ -468,6 +558,166 @@ public class UnifiedLocationProcessingService {
         }
         logger.debug("Creating processed visit for place [{}] between [{}] and [{}]", place.getId(), startTime, endTime);
         return new ProcessedVisit(place, startTime, endTime, endTime.getEpochSecond() - startTime.getEpochSecond());
+    }
+
+    private StayPoint createStayPoint(List<RawLocationPoint> clusterPoints) {
+        GeoPoint result = weightedCenter(clusterPoints);
+
+        // Get the time range
+        Instant arrivalTime = clusterPoints.getFirst().getTimestamp();
+        Instant departureTime = clusterPoints.getLast().getTimestamp();
+
+        logger.trace("Creating stay point at [{}] with arrival time [{}] and departure time [{}]", result, arrivalTime, departureTime);
+        return new StayPoint(result.latitude(), result.longitude(), arrivalTime, departureTime, clusterPoints);
+    }
+
+    private GeoPoint weightedCenter(List<RawLocationPoint> clusterPoints) {
+
+        long start = System.currentTimeMillis();
+
+        GeoPoint result;
+        // For small clusters, use the original algorithm
+        if (clusterPoints.size() <= 100) {
+            result = weightedCenterSimple(clusterPoints);
+        } else {
+            // For large clusters, use spatial partitioning for better performance
+            result = weightedCenterOptimized(clusterPoints);
+        }
+        logger.trace("Weighted center calculation took {}ms for [{}] number of points", System.currentTimeMillis() - start, clusterPoints.size());
+        return result;
+    }
+
+    private GeoPoint weightedCenterSimple(List<RawLocationPoint> clusterPoints) {
+        RawLocationPoint bestPoint = null;
+        double maxDensityScore = 0;
+
+        // For each point, calculate a density score based on nearby points and accuracy
+        for (RawLocationPoint candidate : clusterPoints) {
+            double densityScore = 0;
+
+            for (RawLocationPoint neighbor : clusterPoints) {
+                if (candidate == neighbor) continue;
+
+                double distance = GeoUtils.distanceInMeters(candidate, neighbor);
+                double accuracy = candidate.getAccuracyMeters() != null && candidate.getAccuracyMeters() > 0
+                        ? candidate.getAccuracyMeters()
+                        : 50.0; // default accuracy if null
+
+                // Points within accuracy radius contribute to density
+                // Closer points and better accuracy contribute more
+                if (distance <= accuracy * 2) {
+                    double proximityWeight = Math.max(0, 1.0 - (distance / (accuracy * 2)));
+                    double accuracyWeight = 1.0 / accuracy;
+                    densityScore += proximityWeight * accuracyWeight;
+                }
+            }
+
+            // Add self-contribution based on accuracy
+            densityScore += 1.0 / (candidate.getAccuracyMeters() != null && candidate.getAccuracyMeters() > 0
+                    ? candidate.getAccuracyMeters()
+                    : 50.0);
+
+            if (densityScore > maxDensityScore) {
+                maxDensityScore = densityScore;
+                bestPoint = candidate;
+            }
+        }
+
+        // Fallback to first point if no best point found
+        if (bestPoint == null) {
+            bestPoint = clusterPoints.getFirst();
+        }
+
+        return new GeoPoint(bestPoint.getLatitude(), bestPoint.getLongitude());
+    }
+
+    private GeoPoint weightedCenterOptimized(List<RawLocationPoint> clusterPoints) {
+        // Sample a subset of points for density calculation to improve performance
+        // Use every nth point or random sampling for very large clusters
+        int sampleSize = Math.min(200, clusterPoints.size());
+        List<RawLocationPoint> samplePoints = new ArrayList<>();
+
+        if (clusterPoints.size() <= sampleSize) {
+            samplePoints = clusterPoints;
+        } else {
+            // Take evenly distributed samples
+            int step = clusterPoints.size() / sampleSize;
+            for (int i = 0; i < clusterPoints.size(); i += step) {
+                samplePoints.add(clusterPoints.get(i));
+            }
+        }
+
+        // Use spatial grid approach to avoid distance calculations
+        // Create a grid based on the bounding box of all points
+        double minLat = clusterPoints.stream().mapToDouble(RawLocationPoint::getLatitude).min().orElse(0);
+        double minLon = clusterPoints.stream().mapToDouble(RawLocationPoint::getLongitude).min().orElse(0);
+
+        // Grid cell size approximately 10 meters (rough approximation)
+        double cellSizeLat = 0.0001; // ~11 meters
+        double cellSizeLon = 0.0001; // varies by latitude but roughly 11 meters
+
+        // Create grid map for fast neighbor lookup
+        Map<String, List<RawLocationPoint>> grid = new HashMap<>();
+        for (RawLocationPoint point : clusterPoints) {
+            int gridLat = (int) ((point.getLatitude() - minLat) / cellSizeLat);
+            int gridLon = (int) ((point.getLongitude() - minLon) / cellSizeLon);
+            String gridKey = gridLat + "," + gridLon;
+            grid.computeIfAbsent(gridKey, _ -> new ArrayList<>()).add(point);
+        }
+
+        RawLocationPoint bestPoint = null;
+        double maxDensityScore = 0;
+
+        // Calculate density scores for sample points using grid lookup
+        for (RawLocationPoint candidate : samplePoints) {
+            double accuracy = candidate.getAccuracyMeters() != null && candidate.getAccuracyMeters() > 0
+                    ? candidate.getAccuracyMeters()
+                    : 50.0;
+
+            // Calculate grid coordinates for candidate
+            int candidateGridLat = (int) ((candidate.getLatitude() - minLat) / cellSizeLat);
+            int candidateGridLon = (int) ((candidate.getLongitude() - minLon) / cellSizeLon);
+
+            // Search radius in grid cells (conservative estimate)
+            int searchRadiusInCells = Math.max(1, (int) (accuracy / 100000)); // rough conversion
+
+            double densityScore = 0;
+
+            // Check neighboring grid cells
+            for (int latOffset = -searchRadiusInCells; latOffset <= searchRadiusInCells; latOffset++) {
+                for (int lonOffset = -searchRadiusInCells; lonOffset <= searchRadiusInCells; lonOffset++) {
+                    String neighborKey = (candidateGridLat + latOffset) + "," + (candidateGridLon + lonOffset);
+                    List<RawLocationPoint> neighbors = grid.get(neighborKey);
+
+                    if (neighbors != null) {
+                        for (RawLocationPoint neighbor : neighbors) {
+                            if (candidate != neighbor) {
+                                // Simple proximity weight based on grid distance
+                                double gridDistance = Math.sqrt(latOffset * latOffset + lonOffset * lonOffset);
+                                double proximityWeight = Math.max(0, 1.0 - (gridDistance / searchRadiusInCells));
+                                densityScore += proximityWeight;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Combine density with accuracy weight
+            double accuracyWeight = 1.0 / accuracy;
+            densityScore = (densityScore * accuracyWeight) + accuracyWeight;
+
+            if (densityScore > maxDensityScore) {
+                maxDensityScore = densityScore;
+                bestPoint = candidate;
+            }
+        }
+
+        // Fallback to first point if no best point found
+        if (bestPoint == null) {
+            bestPoint = clusterPoints.getFirst();
+        }
+
+        return new GeoPoint(bestPoint.getLatitude(), bestPoint.getLongitude());
     }
 
     private Trip createTripBetweenVisits(User user, String previewId,
@@ -611,13 +861,13 @@ public class UnifiedLocationProcessingService {
 
     // ==================== Result Classes ====================
 
-    private record VisitDetectionResult(List<Visit> visits, Instant searchStart, Instant searchEnd, long durationMillis) {
+    private record VisitDetectionResult(List<Visit> visits, Instant searchStart, Instant searchEnd, long durationInMillis) {
     }
 
     private record VisitMergingResult(List<Visit> inputVisits, List<ProcessedVisit> processedVisits,
-                                      Instant searchStart, Instant searchEnd, long durationMillis) {
+                                      Instant searchStart, Instant searchEnd, long durationInMillis) {
     }
 
-    private record TripDetectionResult(List<Trip> trips, long durationMillis) {
+    private record TripDetectionResult(List<Trip> trips, long durationInMillis) {
     }
 }
