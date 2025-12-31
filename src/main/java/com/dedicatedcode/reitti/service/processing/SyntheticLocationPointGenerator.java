@@ -47,8 +47,17 @@ public class SyntheticLocationPointGenerator {
             // Calculate interpolation ratio (0.0 to 1.0)
             long totalDuration = endTime.getEpochSecond() - startTime.getEpochSecond();
             long currentDuration = currentTime.getEpochSecond() - startTime.getEpochSecond();
-            double ratio = (double) currentDuration / totalDuration;
-            
+            double timeRatio = (double) currentDuration / totalDuration;
+
+            // Calculate speed and adjust the ratio based on it
+            double distance = GeoUtils.distanceInMeters(startPoint, endPoint);
+            double speed = distance / totalDuration; // meters per second
+
+            // Apply speed-based transformation: slower speeds shift points towards start
+            // Using a power function where speed < 1 m/s creates stronger clustering at start
+            double speedFactor = Math.min(speed / 5.0, 1.0); // normalize to 5 m/s as reference
+            double ratio = Math.pow(timeRatio, 1.0 / (speedFactor + 0.5));
+
             // Interpolate coordinates
             GeoPoint interpolatedCoords = interpolateCoordinates(
                 startPoint.getGeom(),

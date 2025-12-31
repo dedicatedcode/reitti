@@ -14,18 +14,6 @@ public final class GeoUtils {
     private static final double EARTH_RADIUS = 6371000;
 
     public static double distanceInMeters(double lat1, double lon1, double lat2, double lon2) {
-        // For very small distances (< 1km), use faster approximation
-        double latDiff = Math.abs(lat2 - lat1);
-        double lonDiff = Math.abs(lon2 - lon1);
-        
-        if (latDiff < 0.01 && lonDiff < 0.01) { // roughly < 1km
-            double avgLat = Math.toRadians((lat1 + lat2) / 2);
-            double latDistance = Math.toRadians(latDiff);
-            double lonDistance = Math.toRadians(lonDiff) * Math.cos(avgLat);
-
-            return EARTH_RADIUS * Math.sqrt(latDistance * latDistance + lonDistance * lonDistance);
-        }
-        
         // Use precise haversine formula for longer distances
         double latDistance = Math.toRadians(lat2 - lat1);
         double lonDistance = Math.toRadians(lon2 - lon1);
