@@ -215,7 +215,6 @@ class LocationDataDensityNormalizerTest {
 
         List<RawLocationPoint> pointsAfter = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, startOfDay, endOfDay);
 
-        //now split them up in one hour chunks and compare them. AI!
         assertEquals(pointsBefore.size(), pointsAfter.size(), "The number of points for 2025-06-17 should not change after importing 2025-06-18");
         for (int i = 0; i < pointsBefore.size(); i++) {
             assertEquals(pointsBefore.get(i).getTimestamp(), pointsAfter.get(i).getTimestamp(), "Timestamps should match");
