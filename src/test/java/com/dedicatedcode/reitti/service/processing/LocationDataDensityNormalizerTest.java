@@ -233,6 +233,10 @@ class LocationDataDensityNormalizerTest {
             List<RawLocationPoint> pointsBefore = pointsBeforeByHour.get(currentHourStart);
             List<RawLocationPoint> pointsAfter = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, currentHourStart, currentHourEnd);
 
+            if (pointsBefore.size() != pointsAfter.size()) {
+                // now we found an invalid hour, we want to drill down to the minute level. Do the same as in the hourly check, but only for the minute level.
+                // for this, take the old hour list, split it up into minutes, for the new list you can leavarage the database to fetch that.Verify it the number are the same, if not, print out the individual points in that minute. AI!
+            }
             // Also do the full comparison for this hour as a sanity check
             assertEquals(pointsBefore.size(), pointsAfter.size(), "The number of points for hour starting at " + currentHourStart + " should not change after importing 2025-06-18");
             for (int i = 0; i < pointsBefore.size(); i++) {
