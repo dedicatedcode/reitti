@@ -202,31 +202,37 @@ class LocationDataDensityNormalizerTest {
         Instant startOfDay = date.atStartOfDay(ZoneOffset.UTC).toInstant();
         Instant endOfDay = date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
 
-
-        // you could also fetch them in on hour chunks from the database and store them in a map with the hour as key. AI!
-        List<RawLocationPoint> pointsBefore = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, startOfDay, endOfDay);
-
-        testingService.importData(testUser, "/data/gpx/20250618.gpx");
-        await().pollDelay(1, TimeUnit.SECONDS)
-                .atMost(30, TimeUnit.SECONDS)
-                .until(() -> importProcessor.isIdle());
-
-        List<RawLocationPoint> pointsAfter = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, startOfDay, endOfDay);
-
-        //split the time up in one hour chunks and onlyy compare the number of points in these chunks. Make sure to print out which hour failed. Do not compare the whole time range at once, een if it would make sense.
+        // Fetch points in one-hour chunks and store them in a map with the hour as key
+        java.util.Map<Instant, List<RawLocationPoint>> pointsBeforeByHour = new java.util.HashMap<>();
         Instant currentHourStart = startOfDay;
         while (currentHourStart.isBefore(endOfDay)) {
             Instant currentHourEnd = currentHourStart.plus(1, ChronoUnit.HOURS);
             if (currentHourEnd.isAfter(endOfDay)) {
                 currentHourEnd = endOfDay;
             }
+            List<RawLocationPoint> hourPoints = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, currentHourStart, currentHourEnd);
+            pointsBeforeByHour.put(currentHourStart, hourPoints);
+            currentHourStart = currentHourEnd;
+        }
 
-            long countBefore = pointsBefore.stream()
-                    .filter(p -> !p.getTimestamp().isBefore(currentHourStart) && p.getTimestamp().isBefore(currentHourEnd))
-                    .count();
-            long countAfter = pointsAfter.stream()
-                    .filter(p -> !p.getTimestamp().isBefore(currentHourStart) && p.getTimestamp().isBefore(currentHourEnd))
-                    .count();
+        testingService.importData(testUser, "/data/gpx/20250618.gpx");
+        await().pollDelay(1, TimeUnit.SECONDS)
+                .atMost(30, TimeUnit.SECONDS)
+                .until(() -> importProcessor.isIdle());
+
+        // Verify each hour chunk separately
+        currentHourStart = startOfDay;
+        while (currentHourStart.isBefore(endOfDay)) {
+            Instant currentHourEnd = currentHourStart.plus(1, ChronoUnit.HOURS);
+            if (currentHourEnd.isAfter(endOfDay)) {
+                currentHourEnd = endOfDay;
+            }
+
+            List<RawLocationPoint> pointsBefore = pointsBeforeByHour.get(currentHourStart);
+            List<RawLocationPoint> pointsAfter = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, currentHourStart, currentHourEnd);
+
+            long countBefore = pointsBefore.size();
+            long countAfter = pointsAfter.size();
 
             if (countBefore != countAfter) {
                 System.out.println("Hour " + currentHourStart + " failed: expected " + countBefore + " points, but got " + countAfter);
@@ -234,17 +240,17 @@ class LocationDataDensityNormalizerTest {
 
             assertEquals(countBefore, countAfter, "Point count mismatch for hour starting at " + currentHourStart);
 
-            currentHourStart = currentHourEnd;
-        }
+            // Also do the full comparison for this hour as a sanity check
+            assertEquals(pointsBefore.size(), pointsAfter.size(), "The number of points for hour starting at " + currentHourStart + " should not change after importing 2025-06-18");
+            for (int i = 0; i < pointsBefore.size(); i++) {
+                assertEquals(pointsBefore.get(i).getTimestamp(), pointsAfter.get(i).getTimestamp(), "Timestamps should match for hour starting at " + currentHourStart);
+                assertEquals(pointsBefore.get(i).getLatitude(), pointsAfter.get(i).getLatitude(), 0.000001, "Latitudes should match for hour starting at " + currentHourStart);
+                assertEquals(pointsBefore.get(i).getLongitude(), pointsAfter.get(i).getLongitude(), 0.000001, "Longitudes should match for hour starting at " + currentHourStart);
+                assertEquals(pointsBefore.get(i).isSynthetic(), pointsAfter.get(i).isSynthetic(), "isSynthetic should match for hour starting at " + currentHourStart);
+                assertEquals(pointsBefore.get(i).isIgnored(), pointsAfter.get(i).isIgnored(), "isIgnored should match for hour starting at " + currentHourStart);
+            }
 
-        // Also do the full comparison as a sanity check
-        assertEquals(pointsBefore.size(), pointsAfter.size(), "The number of points for 2025-06-17 should not change after importing 2025-06-18");
-        for (int i = 0; i < pointsBefore.size(); i++) {
-            assertEquals(pointsBefore.get(i).getTimestamp(), pointsAfter.get(i).getTimestamp(), "Timestamps should match");
-            assertEquals(pointsBefore.get(i).getLatitude(), pointsAfter.get(i).getLatitude(), 0.000001, "Latitudes should match");
-            assertEquals(pointsBefore.get(i).getLongitude(), pointsAfter.get(i).getLongitude(), 0.000001, "Longitudes should match");
-            assertEquals(pointsBefore.get(i).isSynthetic(), pointsAfter.get(i).isSynthetic(), "isSynthetic should match");
-            assertEquals(pointsBefore.get(i).isIgnored(), pointsAfter.get(i).isIgnored(), "isIgnored should match");
+            currentHourStart = currentHourEnd;
         }
     }
 
