@@ -235,7 +235,46 @@ class LocationDataDensityNormalizerTest {
 
             if (pointsBefore.size() != pointsAfter.size()) {
                 // now we found an invalid hour, we want to drill down to the minute level. Do the same as in the hourly check, but only for the minute level.
-                // for this, take the old hour list, split it up into minutes, for the new list you can leavarage the database to fetch that.Verify it the number are the same, if not, print out the individual points in that minute. AI!
+                // for this, take the old hour list, split it up into minutes, for the new list you can leavarage the database to fetch that.Verify it the number are the same, if not, print out the individual points in that minute.
+                Map<Instant, List<RawLocationPoint>> pointsBeforeByMinute = new HashMap<>();
+                Instant currentMinuteStart = currentHourStart;
+                while (currentMinuteStart.isBefore(currentHourEnd)) {
+                    Instant currentMinuteEnd = currentMinuteStart.plus(1, ChronoUnit.MINUTES);
+                    if (currentMinuteEnd.isAfter(currentHourEnd)) {
+                        currentMinuteEnd = currentHourEnd;
+                    }
+                    List<RawLocationPoint> minutePoints = new ArrayList<>();
+                    for (RawLocationPoint p : pointsBefore) {
+                        if (!p.getTimestamp().isBefore(currentMinuteStart) && p.getTimestamp().isBefore(currentMinuteEnd)) {
+                            minutePoints.add(p);
+                        }
+                    }
+                    pointsBeforeByMinute.put(currentMinuteStart, minutePoints);
+                    currentMinuteStart = currentMinuteEnd;
+                }
+
+                currentMinuteStart = currentHourStart;
+                while (currentMinuteStart.isBefore(currentHourEnd)) {
+                    Instant currentMinuteEnd = currentMinuteStart.plus(1, ChronoUnit.MINUTES);
+                    if (currentMinuteEnd.isAfter(currentHourEnd)) {
+                        currentMinuteEnd = currentHourEnd;
+                    }
+                    List<RawLocationPoint> pointsBeforeMinute = pointsBeforeByMinute.get(currentMinuteStart);
+                    List<RawLocationPoint> pointsAfterMinute = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, currentMinuteStart, currentMinuteEnd);
+
+                    if (pointsBeforeMinute.size() != pointsAfterMinute.size()) {
+                        System.out.println("Minute " + currentMinuteStart + " failed: expected " + pointsBeforeMinute.size() + " points, but got " + pointsAfterMinute.size());
+                        System.out.println("Points before in this minute:");
+                        for (RawLocationPoint p : pointsBeforeMinute) {
+                            System.out.println("  " + p.getTimestamp() + " - lat: " + p.getLatitude() + ", lon: " + p.getLongitude() + ", synthetic: " + p.isSynthetic() + ", ignored: " + p.isIgnored());
+                        }
+                        System.out.println("Points after in this minute:");
+                        for (RawLocationPoint p : pointsAfterMinute) {
+                            System.out.println("  " + p.getTimestamp() + " - lat: " + p.getLatitude() + ", lon: " + p.getLongitude() + ", synthetic: " + p.isSynthetic() + ", ignored: " + p.isIgnored());
+                        }
+                    }
+                    currentMinuteStart = currentMinuteEnd;
+                }
             }
             // Also do the full comparison for this hour as a sanity check
             assertEquals(pointsBefore.size(), pointsAfter.size(), "The number of points for hour starting at " + currentHourStart + " should not change after importing 2025-06-18");
