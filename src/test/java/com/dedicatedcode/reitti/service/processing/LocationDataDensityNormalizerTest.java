@@ -203,6 +203,7 @@ class LocationDataDensityNormalizerTest {
         Instant endOfDay = date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
 
 
+        // you could also fetch them in on hour chunks from the database and store them in a map with the hour as key. AI!
         List<RawLocationPoint> pointsBefore = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, startOfDay, endOfDay);
 
         testingService.importData(testUser, "/data/gpx/20250618.gpx");
