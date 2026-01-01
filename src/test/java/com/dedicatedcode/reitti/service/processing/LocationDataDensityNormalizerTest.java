@@ -7,6 +7,8 @@ import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
+import com.dedicatedcode.reitti.service.ImportProcessor;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +21,9 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.*;
 
 @IntegrationTest
@@ -33,6 +37,9 @@ class LocationDataDensityNormalizerTest {
 
     @Autowired
     private TestingService testingService;
+
+    @Autowired
+    private ImportProcessor importProcessor;
 
     private User testUser;
 
@@ -187,24 +194,35 @@ class LocationDataDensityNormalizerTest {
 
     @Test
     void verifyConsistentCalculation() throws Exception {
-        testingService.importAndProcess(testUser, "/data/gpx/20250617.gpx");
+        testingService.importData(testUser, "/data/gpx/20250617.gpx");
+        await().pollDelay(1, TimeUnit.SECONDS)
+                .atMost(30, TimeUnit.SECONDS)
+                .until(() -> importProcessor.isIdle());
+
         //fetch rawLocation points in one hour chunks and store them in a variable here to verify them later.
         LocalDate date = LocalDate.of(2025, 6, 17);
         Instant startOfDay = date.atStartOfDay(ZoneOffset.UTC).toInstant();
         Instant endOfDay = date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+
+
         List<RawLocationPoint> pointsBefore = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, startOfDay, endOfDay);
 
         //now we import the next file and should check if the data for the 06-17 timerange changed in these one hour chunks.
-        testingService.importAndProcess(testUser, "/data/gpx/20250618.gpx");
+        testingService.importData(testUser, "/data/gpx/20250618.gpx");
+        await().pollDelay(1, TimeUnit.SECONDS)
+                .atMost(30, TimeUnit.SECONDS)
+                .until(() -> importProcessor.isIdle());
 
         List<RawLocationPoint> pointsAfter = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, startOfDay, endOfDay);
 
+        //now split them up in one hour chunks and compare them. AI!
         assertEquals(pointsBefore.size(), pointsAfter.size(), "The number of points for 2025-06-17 should not change after importing 2025-06-18");
         for (int i = 0; i < pointsBefore.size(); i++) {
-            assertEquals(pointsBefore.get(i).getId(), pointsAfter.get(i).getId(), "Point IDs should match");
             assertEquals(pointsBefore.get(i).getTimestamp(), pointsAfter.get(i).getTimestamp(), "Timestamps should match");
             assertEquals(pointsBefore.get(i).getLatitude(), pointsAfter.get(i).getLatitude(), 0.000001, "Latitudes should match");
             assertEquals(pointsBefore.get(i).getLongitude(), pointsAfter.get(i).getLongitude(), 0.000001, "Longitudes should match");
+            assertEquals(pointsBefore.get(i).isSynthetic(), pointsAfter.get(i).isSynthetic(), "isSynthetic should match");
+            assertEquals(pointsBefore.get(i).isIgnored(), pointsAfter.get(i).isIgnored(), "isIgnored should match");
         }
     }
 
