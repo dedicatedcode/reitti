@@ -199,7 +199,6 @@ class LocationDataDensityNormalizerTest {
                 .atMost(30, TimeUnit.SECONDS)
                 .until(() -> importProcessor.isIdle());
 
-        //fetch rawLocation points in one hour chunks and store them in a variable here to verify them later.
         LocalDate date = LocalDate.of(2025, 6, 17);
         Instant startOfDay = date.atStartOfDay(ZoneOffset.UTC).toInstant();
         Instant endOfDay = date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
@@ -207,7 +206,6 @@ class LocationDataDensityNormalizerTest {
 
         List<RawLocationPoint> pointsBefore = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, startOfDay, endOfDay);
 
-        //now we import the next file and should check if the data for the 06-17 timerange changed in these one hour chunks.
         testingService.importData(testUser, "/data/gpx/20250618.gpx");
         await().pollDelay(1, TimeUnit.SECONDS)
                 .atMost(30, TimeUnit.SECONDS)
@@ -215,6 +213,7 @@ class LocationDataDensityNormalizerTest {
 
         List<RawLocationPoint> pointsAfter = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, startOfDay, endOfDay);
 
+        //split the time up in one hour chunks and onlyy compare the number of points in these chunks. Make sure to print out which hour failed. Do not compare the whole time range at once, een if it would make sense. AI!
         assertEquals(pointsBefore.size(), pointsAfter.size(), "The number of points for 2025-06-17 should not change after importing 2025-06-18");
         for (int i = 0; i < pointsBefore.size(); i++) {
             assertEquals(pointsBefore.get(i).getTimestamp(), pointsAfter.get(i).getTimestamp(), "Timestamps should match");
