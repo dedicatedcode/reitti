@@ -170,6 +170,8 @@ class LocationDataDensityNormalizerTest {
         assertEquals(0, syntheticCount, "Should not generate synthetic points for large time gaps");
     }
 
+    //create a test which first normalizes some points, and then normalizes some other points later which are happen to create a search range starting at the end of the first run. Then verify if all synthetic points beofre the second are are still present and not deleted. AI!
+
     @Test
     void shouldHandleEmptyDataGracefully() {
         // Given: No existing points
@@ -196,7 +198,7 @@ class LocationDataDensityNormalizerTest {
     @Test
     void verifyConsistentCalculation() throws Exception {
         testingService.importData(testUser, "/data/gpx/20250617.gpx");
-        await().pollDelay(1, TimeUnit.SECONDS)
+        await().pollDelay(5, TimeUnit.SECONDS)
                 .atMost(30, TimeUnit.SECONDS)
                 .until(() -> importProcessor.isIdle());
 
@@ -218,7 +220,7 @@ class LocationDataDensityNormalizerTest {
         }
 
         testingService.importData(testUser, "/data/gpx/20250618.gpx");
-        await().pollDelay(1, TimeUnit.SECONDS)
+        await().pollDelay(5, TimeUnit.SECONDS)
                 .atMost(30, TimeUnit.SECONDS)
                 .until(() -> importProcessor.isIdle());
 
@@ -234,8 +236,6 @@ class LocationDataDensityNormalizerTest {
             List<RawLocationPoint> pointsAfter = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, currentHourStart, currentHourEnd);
 
             if (pointsBefore.size() != pointsAfter.size()) {
-                // now we found an invalid hour, we want to drill down to the minute level. Do the same as in the hourly check, but only for the minute level.
-                // for this, take the old hour list, split it up into minutes, for the new list you can leavarage the database to fetch that.Verify it the number are the same, if not, print out the individual points in that minute.
                 Map<Instant, List<RawLocationPoint>> pointsBeforeByMinute = new HashMap<>();
                 Instant currentMinuteStart = currentHourStart;
                 while (currentMinuteStart.isBefore(currentHourEnd)) {
@@ -263,14 +263,14 @@ class LocationDataDensityNormalizerTest {
                     List<RawLocationPoint> pointsAfterMinute = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, currentMinuteStart, currentMinuteEnd);
 
                     if (pointsBeforeMinute.size() != pointsAfterMinute.size()) {
-                        System.out.println("Minute " + currentMinuteStart + " failed: expected " + pointsBeforeMinute.size() + " points, but got " + pointsAfterMinute.size());
-                        System.out.println("Points before in this minute:");
+                        System.out.println("#######\n  Minute " + currentMinuteStart + " failed: expected " + pointsBeforeMinute.size() + " points, but got " + pointsAfterMinute.size());
+                        System.out.println("  Points before in this minute:");
                         for (RawLocationPoint p : pointsBeforeMinute) {
-                            System.out.println("  " + p.getTimestamp() + " - lat: " + p.getLatitude() + ", lon: " + p.getLongitude() + ", synthetic: " + p.isSynthetic() + ", ignored: " + p.isIgnored());
+                            System.out.println("   " + p.getTimestamp() + " - lat: " + p.getLatitude() + ", lon: " + p.getLongitude() + ", synthetic: " + p.isSynthetic() + ", ignored: " + p.isIgnored());
                         }
-                        System.out.println("Points after in this minute:");
+                        System.out.println("  Points after in this minute:");
                         for (RawLocationPoint p : pointsAfterMinute) {
-                            System.out.println("  " + p.getTimestamp() + " - lat: " + p.getLatitude() + ", lon: " + p.getLongitude() + ", synthetic: " + p.isSynthetic() + ", ignored: " + p.isIgnored());
+                            System.out.println("   " + p.getTimestamp() + " - lat: " + p.getLatitude() + ", lon: " + p.getLongitude() + ", synthetic: " + p.isSynthetic() + ", ignored: " + p.isIgnored());
                         }
                     }
                     currentMinuteStart = currentMinuteEnd;
