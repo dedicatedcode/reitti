@@ -170,7 +170,44 @@ class LocationDataDensityNormalizerTest {
         assertEquals(0, syntheticCount, "Should not generate synthetic points for large time gaps");
     }
 
-    //create a test which first normalizes some points, and then normalizes some other points later which are happen to create a search range starting at the end of the first run. Then verify if all synthetic points beofre the second are are still present and not deleted. AI!
+    @Test
+    void shouldPreserveSyntheticPointsFromPreviousNormalization() {
+        // Given: First normalization run with a gap that generates synthetic points
+        Instant firstStart = Instant.parse("2023-01-01T10:00:00Z");
+        Instant firstEnd = firstStart.plus(2, ChronoUnit.MINUTES);
+
+        createAndSaveRawPoint(firstStart, 50.0, 8.0);
+        createAndSaveRawPoint(firstEnd, 50.0001, 8.0001);
+
+        LocationPoint firstNewPoint = createLocationPoint(firstStart.plus(1, ChronoUnit.MINUTES), 50.0005, 8.0005);
+        normalizer.normalize(testUser, Collections.singletonList(firstNewPoint));
+
+        // Verify synthetic points were created
+        List<RawLocationPoint> pointsAfterFirstRun = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(
+            testUser, firstStart.minus(1, ChronoUnit.MINUTES), firstEnd.plus(1, ChronoUnit.MINUTES)
+        );
+        long syntheticCountAfterFirst = pointsAfterFirstRun.stream().filter(RawLocationPoint::isSynthetic).count();
+        assertTrue(syntheticCountAfterFirst > 0, "First run should have created synthetic points");
+
+        // Given: Second normalization run with data starting exactly where the first run ended
+        Instant secondStart = firstEnd; // Start right after the first run's data
+        Instant secondEnd = secondStart.plus(2, ChronoUnit.MINUTES);
+
+        createAndSaveRawPoint(secondStart, 50.0002, 8.0002);
+        createAndSaveRawPoint(secondEnd, 50.0003, 8.0003);
+
+        LocationPoint secondNewPoint = createLocationPoint(secondStart.plus(1, ChronoUnit.MINUTES), 50.00025, 8.00025);
+        normalizer.normalize(testUser, Collections.singletonList(secondNewPoint));
+
+        // When: Verify the synthetic points from the first run are still present
+        List<RawLocationPoint> pointsAfterSecondRun = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(
+            testUser, firstStart.minus(1, ChronoUnit.MINUTES), secondEnd.plus(1, ChronoUnit.MINUTES)
+        );
+
+        // Then: The synthetic points from the first run should still be there
+        long syntheticCountAfterSecond = pointsAfterSecondRun.stream().filter(RawLocationPoint::isSynthetic).count();
+        assertEquals(syntheticCountAfterFirst, syntheticCountAfterSecond, "Synthetic points from the first run should not be deleted by the second run");
+    }
 
     @Test
     void shouldHandleEmptyDataGracefully() {
