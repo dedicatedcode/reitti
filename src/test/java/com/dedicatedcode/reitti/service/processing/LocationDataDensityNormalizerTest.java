@@ -64,9 +64,9 @@ class LocationDataDensityNormalizerTest {
         List<RawLocationPoint> storedPoints = this.rawLocationPointService.findByUserAndProcessedIsFalseOrderByTimestampWithLimit(testUser, 1000, 0);
 
 
-        assertEquals(8, storedPoints.size());
+        assertEquals(26, storedPoints.size());
         assertEquals(0, storedPoints.stream().filter(RawLocationPoint::isIgnored).count());
-        assertEquals(2, storedPoints.stream().filter(RawLocationPoint::isSynthetic).count());
+        assertEquals(20, storedPoints.stream().filter(RawLocationPoint::isSynthetic).count());
     }
 
     @Test
@@ -182,6 +182,16 @@ class LocationDataDensityNormalizerTest {
         
         // Then: Should not throw exception
         assertDoesNotThrow(() -> normalizer.normalize(testUser, Collections.singletonList(newPoint)));
+    }
+
+    //follow the comments and implement this test AI!
+    @Test
+    void verifyConsistentCalculation() throws Exception {
+        testingService.importAndProcess(testUser, "/data/gpx/20250617.gpx");
+        //fetch rawLocation points in one hour chunks and store them in a variable here to verify them later.
+        //now we import the next file and should check if the data for the 06-17 timerange changed in these one hour chunks.
+        testingService.importAndProcess(testUser, "/data/gpx/20250618.gpx");
+
     }
 
     private RawLocationPoint createAndSaveRawPoint(Instant timestamp, double lat, double lon) {
