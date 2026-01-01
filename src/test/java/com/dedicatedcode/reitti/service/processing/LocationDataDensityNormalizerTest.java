@@ -8,7 +8,6 @@ import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.ImportProcessor;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -213,7 +212,31 @@ class LocationDataDensityNormalizerTest {
 
         List<RawLocationPoint> pointsAfter = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, startOfDay, endOfDay);
 
-        //split the time up in one hour chunks and onlyy compare the number of points in these chunks. Make sure to print out which hour failed. Do not compare the whole time range at once, een if it would make sense. AI!
+        //split the time up in one hour chunks and onlyy compare the number of points in these chunks. Make sure to print out which hour failed. Do not compare the whole time range at once, een if it would make sense.
+        Instant currentHourStart = startOfDay;
+        while (currentHourStart.isBefore(endOfDay)) {
+            Instant currentHourEnd = currentHourStart.plus(1, ChronoUnit.HOURS);
+            if (currentHourEnd.isAfter(endOfDay)) {
+                currentHourEnd = endOfDay;
+            }
+
+            long countBefore = pointsBefore.stream()
+                    .filter(p -> !p.getTimestamp().isBefore(currentHourStart) && p.getTimestamp().isBefore(currentHourEnd))
+                    .count();
+            long countAfter = pointsAfter.stream()
+                    .filter(p -> !p.getTimestamp().isBefore(currentHourStart) && p.getTimestamp().isBefore(currentHourEnd))
+                    .count();
+
+            if (countBefore != countAfter) {
+                System.out.println("Hour " + currentHourStart + " failed: expected " + countBefore + " points, but got " + countAfter);
+            }
+
+            assertEquals(countBefore, countAfter, "Point count mismatch for hour starting at " + currentHourStart);
+
+            currentHourStart = currentHourEnd;
+        }
+
+        // Also do the full comparison as a sanity check
         assertEquals(pointsBefore.size(), pointsAfter.size(), "The number of points for 2025-06-17 should not change after importing 2025-06-18");
         for (int i = 0; i < pointsBefore.size(); i++) {
             assertEquals(pointsBefore.get(i).getTimestamp(), pointsAfter.get(i).getTimestamp(), "Timestamps should match");
