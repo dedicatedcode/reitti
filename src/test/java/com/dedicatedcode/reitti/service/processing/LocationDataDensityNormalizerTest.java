@@ -19,7 +19,9 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
@@ -203,7 +205,7 @@ class LocationDataDensityNormalizerTest {
         Instant endOfDay = date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
 
         // Fetch points in one-hour chunks and store them in a map with the hour as key
-        java.util.Map<Instant, List<RawLocationPoint>> pointsBeforeByHour = new java.util.HashMap<>();
+        Map<Instant, List<RawLocationPoint>> pointsBeforeByHour = new HashMap<>();
         Instant currentHourStart = startOfDay;
         while (currentHourStart.isBefore(endOfDay)) {
             Instant currentHourEnd = currentHourStart.plus(1, ChronoUnit.HOURS);
@@ -230,15 +232,6 @@ class LocationDataDensityNormalizerTest {
 
             List<RawLocationPoint> pointsBefore = pointsBeforeByHour.get(currentHourStart);
             List<RawLocationPoint> pointsAfter = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, currentHourStart, currentHourEnd);
-
-            long countBefore = pointsBefore.size();
-            long countAfter = pointsAfter.size();
-
-            if (countBefore != countAfter) {
-                System.out.println("Hour " + currentHourStart + " failed: expected " + countBefore + " points, but got " + countAfter);
-            }
-
-            assertEquals(countBefore, countAfter, "Point count mismatch for hour starting at " + currentHourStart);
 
             // Also do the full comparison for this hour as a sanity check
             assertEquals(pointsBefore.size(), pointsAfter.size(), "The number of points for hour starting at " + currentHourStart + " should not change after importing 2025-06-18");

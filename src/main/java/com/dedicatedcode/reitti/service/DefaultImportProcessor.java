@@ -79,7 +79,8 @@ public class DefaultImportProcessor implements ImportProcessor {
 
     @Override
     public boolean isIdle() {
-        return pendingTriggers.isEmpty() || pendingTriggers.values().stream().allMatch(ScheduledFuture::isDone);
+        return  importExecutors.getQueue().isEmpty() &&
+                pendingTriggers.isEmpty() || pendingTriggers.values().stream().allMatch(ScheduledFuture::isDone);
     }
     
     @PreDestroy
