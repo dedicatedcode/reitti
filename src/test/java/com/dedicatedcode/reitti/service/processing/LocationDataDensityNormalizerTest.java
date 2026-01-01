@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -184,14 +185,27 @@ class LocationDataDensityNormalizerTest {
         assertDoesNotThrow(() -> normalizer.normalize(testUser, Collections.singletonList(newPoint)));
     }
 
-    //follow the comments and implement this test AI!
     @Test
     void verifyConsistentCalculation() throws Exception {
         testingService.importAndProcess(testUser, "/data/gpx/20250617.gpx");
         //fetch rawLocation points in one hour chunks and store them in a variable here to verify them later.
+        LocalDate date = LocalDate.of(2025, 6, 17);
+        Instant startOfDay = date.atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant endOfDay = date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        List<RawLocationPoint> pointsBefore = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, startOfDay, endOfDay);
+
         //now we import the next file and should check if the data for the 06-17 timerange changed in these one hour chunks.
         testingService.importAndProcess(testUser, "/data/gpx/20250618.gpx");
 
+        List<RawLocationPoint> pointsAfter = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, startOfDay, endOfDay);
+
+        assertEquals(pointsBefore.size(), pointsAfter.size(), "The number of points for 2025-06-17 should not change after importing 2025-06-18");
+        for (int i = 0; i < pointsBefore.size(); i++) {
+            assertEquals(pointsBefore.get(i).getId(), pointsAfter.get(i).getId(), "Point IDs should match");
+            assertEquals(pointsBefore.get(i).getTimestamp(), pointsAfter.get(i).getTimestamp(), "Timestamps should match");
+            assertEquals(pointsBefore.get(i).getLatitude(), pointsAfter.get(i).getLatitude(), 0.000001, "Latitudes should match");
+            assertEquals(pointsBefore.get(i).getLongitude(), pointsAfter.get(i).getLongitude(), 0.000001, "Longitudes should match");
+        }
     }
 
     private RawLocationPoint createAndSaveRawPoint(Instant timestamp, double lat, double lon) {
