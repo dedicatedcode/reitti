@@ -19,8 +19,7 @@ public class FilePropertySourceInitializer implements ApplicationContextInitiali
 
         // Iterate through all properties to find ones ending with _FILE
         applicationContext.getEnvironment().getPropertySources().forEach(source -> {
-            if (source instanceof MapPropertySource) {
-                MapPropertySource cps = (MapPropertySource) source;
+            if (source instanceof MapPropertySource cps) {
                 Arrays.stream(cps.getPropertyNames()).forEach(name -> {
                     if (name.endsWith("_FILE")) {
                         String filePath = Objects.requireNonNull(cps.getProperty(name)).toString();
