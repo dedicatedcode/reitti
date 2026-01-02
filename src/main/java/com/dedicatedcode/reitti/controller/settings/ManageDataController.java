@@ -3,10 +3,9 @@ package com.dedicatedcode.reitti.controller.settings;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
+import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.MessageSource;
-import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -26,16 +25,16 @@ public class ManageDataController {
     private final ProcessingPipelineTrigger processingPipelineTrigger;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
-    private final MessageSource messageSource;
+    private final I18nService i18n;
 
     public ManageDataController(@Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
-                                @Value("${reitti.data-management.delete-all.hostname-verification.enabled:false}") boolean deleteAllHostnameVerificationEnabled,
+                                @Value("${reitti.data-management.delete-all.hostname-verification.enabled:true}") boolean deleteAllHostnameVerificationEnabled,
                                 TripJdbcService tripJdbcService,
                                 ProcessedVisitJdbcService processedVisitJdbcService,
                                 ProcessingPipelineTrigger processingPipelineTrigger,
                                 RawLocationPointJdbcService rawLocationPointJdbcService,
                                 UserSettingsJdbcService userSettingsJdbcService,
-                                MessageSource messageSource) {
+                                I18nService i18nService) {
         this.dataManagementEnabled = dataManagementEnabled;
         this.deleteAllHostnameVerificationEnabled = deleteAllHostnameVerificationEnabled;
         this.tripJdbcService = tripJdbcService;
@@ -43,7 +42,7 @@ public class ManageDataController {
         this.processingPipelineTrigger = processingPipelineTrigger;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
-        this.messageSource = messageSource;
+        this.i18n = i18nService;
     }
 
     @GetMapping("/settings/manage-data")
@@ -85,9 +84,9 @@ public class ManageDataController {
 
         try {
             processingPipelineTrigger.start();
-            model.addAttribute("successMessage", getMessage("data.process.success"));
+            model.addAttribute("successMessage", i18n.translate("data.process.success"));
         } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("data.process.error", e.getMessage()));
+            model.addAttribute("errorMessage", i18n.translate("data.process.error", e.getMessage()));
         }
 
         return "settings/manage-data :: manage-data-content";
@@ -103,9 +102,9 @@ public class ManageDataController {
             clearProcessedDataExceptPlaces(user);
             markRawLocationPointsAsUnprocessed(user);
             processingPipelineTrigger.start();
-            model.addAttribute("successMessage", getMessage("data.clear.reprocess.success"));
+            model.addAttribute("successMessage", i18n.translate("data.clear.reprocess.success"));
         } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("data.clear.reprocess.error", e.getMessage()));
+            model.addAttribute("errorMessage", i18n.translate("data.clear.reprocess.error", e.getMessage()));
         }
 
         return "settings/manage-data :: manage-data-content";
@@ -121,7 +120,7 @@ public class ManageDataController {
         if (deleteAllHostnameVerificationEnabled) {
             String expectedHostname = request.getServerName();
             if (hostname == null || !hostname.trim().equals(expectedHostname)) {
-                model.addAttribute("errorMessage", "Hostname verification failed. Please enter the correct hostname.");
+                model.addAttribute("errorMessage", i18n.translate("data.remove.all.error.hostname-verification", expectedHostname));
                 // Re-add attributes needed for the view
                 model.addAttribute("deleteAllRequiresVerification", true);
                 model.addAttribute("serverHostname", expectedHostname);
@@ -131,9 +130,9 @@ public class ManageDataController {
 
         try {
             removeAllDataExceptPlaces(user);
-            model.addAttribute("successMessage", getMessage("data.remove.all.success"));
+            model.addAttribute("successMessage", i18n.translate("data.remove.all.success"));
         } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("data.remove.all.error", e.getMessage()));
+            model.addAttribute("errorMessage", i18n.translate("data.remove.all.error", e.getMessage()));
         }
 
         // Re-add attributes needed for the view
@@ -161,7 +160,4 @@ public class ManageDataController {
         rawLocationPointJdbcService.deleteAllForUser(user);
     }
 
-    private String getMessage(String key, Object... args) {
-        return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
-    }
 }
