@@ -12,11 +12,15 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 @Controller
 public class ManageDataController {
 
     private final boolean dataManagementEnabled;
+    private final boolean deleteAllHostnameVerificationEnabled;
     private final TripJdbcService tripJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final ProcessingPipelineTrigger processingPipelineTrigger;
@@ -25,6 +29,7 @@ public class ManageDataController {
     private final MessageSource messageSource;
 
     public ManageDataController(@Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
+                                @Value("${reitti.data-management.delete-all.hostname-verification.enabled:false}") boolean deleteAllHostnameVerificationEnabled,
                                 TripJdbcService tripJdbcService,
                                 ProcessedVisitJdbcService processedVisitJdbcService,
                                 ProcessingPipelineTrigger processingPipelineTrigger,
@@ -32,6 +37,7 @@ public class ManageDataController {
                                 UserSettingsJdbcService userSettingsJdbcService,
                                 MessageSource messageSource) {
         this.dataManagementEnabled = dataManagementEnabled;
+        this.deleteAllHostnameVerificationEnabled = deleteAllHostnameVerificationEnabled;
         this.tripJdbcService = tripJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.processingPipelineTrigger = processingPipelineTrigger;
@@ -41,20 +47,32 @@ public class ManageDataController {
     }
 
     @GetMapping("/settings/manage-data")
-    public String getPage(@AuthenticationPrincipal User user, Model model) {
+    public String getPage(@AuthenticationPrincipal User user, Model model, HttpServletRequest request) {
         if (!dataManagementEnabled) {
             throw new RuntimeException("Data management is not enabled");
         }
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("activeSection", "manage-data");
         model.addAttribute("dataManagementEnabled", true);
+        
+        // Add verification info
+        model.addAttribute("deleteAllRequiresVerification", deleteAllHostnameVerificationEnabled);
+        if (deleteAllHostnameVerificationEnabled) {
+            model.addAttribute("serverHostname", request.getServerName());
+        }
+        
         return "settings/manage-data";
     }
 
     @GetMapping("/settings/manage-data-content")
-    public String getManageDataContent() {
+    public String getManageDataContent(HttpServletRequest request, Model model) {
         if (!dataManagementEnabled) {
             throw new RuntimeException("Data management is not enabled");
+        }
+        // Ensure verification info is available if fragment is loaded directly
+        model.addAttribute("deleteAllRequiresVerification", deleteAllHostnameVerificationEnabled);
+        if (deleteAllHostnameVerificationEnabled) {
+            model.addAttribute("serverHostname", request.getServerName());
         }
         return "settings/manage-data :: manage-data-content";
     }
@@ -94,9 +112,21 @@ public class ManageDataController {
     }
 
     @PostMapping("/settings/manage-data/remove-all-data")
-    public String removeAllData(@AuthenticationPrincipal User user, Model model) {
+    public String removeAllData(@AuthenticationPrincipal User user, Model model, HttpServletRequest request, @RequestParam(value = "hostname", required = false) String hostname) {
         if (!dataManagementEnabled) {
             throw new RuntimeException("Data management is not enabled");
+        }
+
+        // Hostname verification check
+        if (deleteAllHostnameVerificationEnabled) {
+            String expectedHostname = request.getServerName();
+            if (hostname == null || !hostname.trim().equals(expectedHostname)) {
+                model.addAttribute("errorMessage", "Hostname verification failed. Please enter the correct hostname.");
+                // Re-add attributes needed for the view
+                model.addAttribute("deleteAllRequiresVerification", true);
+                model.addAttribute("serverHostname", expectedHostname);
+                return "settings/manage-data :: manage-data-content";
+            }
         }
 
         try {
@@ -104,6 +134,12 @@ public class ManageDataController {
             model.addAttribute("successMessage", getMessage("data.remove.all.success"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("data.remove.all.error", e.getMessage()));
+        }
+
+        // Re-add attributes needed for the view
+        model.addAttribute("deleteAllRequiresVerification", deleteAllHostnameVerificationEnabled);
+        if (deleteAllHostnameVerificationEnabled) {
+            model.addAttribute("serverHostname", request.getServerName());
         }
 
         return "settings/manage-data :: manage-data-content";
