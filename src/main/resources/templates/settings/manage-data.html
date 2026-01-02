@@ -52,7 +52,7 @@
                     <div class="action-card" style="margin-top: 15px;">
                         <h3 th:text="#{data.clear.reprocess.title}">Clear and Reprocess All Data</h3>
                         <p th:text="#{data.clear.reprocess.description}">Clear all processed data (visits, trips, processed visits) while preserving significant places and raw location points. Raw location points will be marked as unprocessed, and the processing pipeline will be triggered automatically.</p>
-                        <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 10px; margin: 10px 0; color: #856404;">
+                        <div class="alert alert-warning">
                             <strong>⚠️ <span th:text="#{label.warning}">Warning:</span></strong> <span th:text="#{data.clear.reprocess.warning}">This action will permanently delete all visits, trips, and processed visits. This cannot be undone.</span>
                         </div>
                         <button class="btn btn-danger"
@@ -68,17 +68,45 @@
                     <div class="action-card" style="margin-top: 15px;">
                         <h3 th:text="#{data.remove.all.title}">Remove All Data</h3>
                         <p th:text="#{data.remove.all.description}">Remove all data except significant places. This will permanently delete all raw location points, visits, trips, and processed visits while preserving your significant places.</p>
-                        <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; padding: 10px; margin: 10px 0; color: #721c24;">
+                        <!-- Verification UI -->
+                        <div th:if="${deleteAllRequiresVerification}" class="verification-container">
+                            <p th:text="#{data.remove.all.verification.required}">Verification Required:</p>
+                            <p><span th:text="#{data.remove.all.verification.instruction}">To confirm deletion, please enter the server hostname:</span> <code id="expected-hostname-display" th:text="${serverHostname}"></code></p>
+                            
+                            <input type="text" 
+                                   id="delete-verification-input"
+                                   name="hostname"
+                                   th:placeholder="#{data.remove.all.verification.placeholder}"
+                                   oninput="checkDeleteVerification()">
+                            
+                            <button class="btn btn-danger"
+                                    id="delete-all-confirmed-btn"
+                                    hx-post="/settings/manage-data/remove-all-data"
+                                    hx-target="#manage-data"
+                                    hx-swap="innerHTML"
+                                    hx-include="#delete-verification-input"
+                                    th:text="#{data.remove.all.button}"
+                                    style="margin-top: 15px; display: none;">
+                                Remove All Data
+                            </button>
+                            <span id="delete-all-hint" style="display: inline-block; color: #666; font-size: 0.9em; margin-left: 10px;" th:text="#{data.remove.all.verification.hint}">Enter the hostname to enable the button.</span>
+                        </div>
+
+                        <div th:unless="${deleteAllRequiresVerification}">
+                            <button class="btn btn-danger"
+                                    hx-post="/settings/manage-data/remove-all-data"
+                                    hx-target="#manage-data"
+                                    hx-swap="innerHTML"
+                                    th:attr="hx-confirm=#{data.remove.all.confirm}"
+                                    th:text="#{data.remove.all.button}"
+                                    style="margin-top: 15px;">
+                                Remove All Data
+                            </button>
+                        </div>
+
+                        <div class="alert alert-danger" style="margin-top: 15px;">
                             <strong>⚠️ Danger:</strong> <span th:text="#{data.remove.all.warning}">This action will permanently delete ALL location data except significant places. This cannot be undone.</span>
                         </div>
-                        <button class="btn btn-danger"
-                                hx-post="/settings/manage-data/remove-all-data"
-                                hx-target="#manage-data"
-                                hx-swap="innerHTML"
-                                th:attr="hx-confirm=#{data.remove.all.confirm}"
-                                th:text="#{data.remove.all.button}">
-                            Remove All Data
-                        </button>
                     </div>
 
                 </div>
@@ -89,5 +117,25 @@
 </div>
 <script th:inline="javascript">
     window.userSettings = /*[[${userSettings}]]*/ {}
+
+    function checkDeleteVerification() {
+        const input = document.getElementById('delete-verification-input');
+        const btn = document.getElementById('delete-all-confirmed-btn');
+        const hint = document.getElementById('delete-all-hint');
+        const expected = document.getElementById('expected-hostname-display').textContent.trim();
+        
+        if (input.value.trim() === expected) {
+            btn.style.display = 'inline-block';
+            btn.style.pointerEvents = 'auto';
+            btn.style.opacity = '1';
+            if (hint) hint.style.display = 'none';
+        } else {
+            btn.style.display = 'none';
+            btn.style.pointerEvents = 'none';
+            btn.style.opacity = '0.5';
+            if (hint) hint.style.display = 'inline-block';
+        }
+    }
 </script>
 </body>
+</html>
