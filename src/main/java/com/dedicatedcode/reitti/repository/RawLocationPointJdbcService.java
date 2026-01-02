@@ -14,7 +14,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
-import java.time.*;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -32,7 +35,7 @@ public class RawLocationPointJdbcService {
 
     public RawLocationPointJdbcService(JdbcTemplate jdbcTemplate, PointReaderWriter pointReaderWriter, GeometryFactory geometryFactory) {
         this.jdbcTemplate = jdbcTemplate;
-        this.rawLocationPointRowMapper = (rs, rowNum) -> new RawLocationPoint(
+        this.rawLocationPointRowMapper = (rs, _) -> new RawLocationPoint(
                 rs.getLong("id"),
                 rs.getTimestamp("timestamp").toInstant(),
                 pointReaderWriter.read(rs.getString("geom")),
@@ -53,7 +56,7 @@ public class RawLocationPointJdbcService {
             User user, Instant startTime, Instant endTime) {
         String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.ignored, rlp.version " +
                 "FROM raw_location_points rlp " +
-                "WHERE rlp.user_id = ? AND rlp.timestamp BETWEEN ? AND ? " +
+                "WHERE rlp.user_id = ? AND rlp.timestamp >= ? AND rlp.timestamp < ? " +
                 "ORDER BY rlp.timestamp";
         return jdbcTemplate.query(sql, rawLocationPointRowMapper,
                 user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
@@ -71,7 +74,7 @@ public class RawLocationPointJdbcService {
         if (!includeIgnored) {
             sql.append("AND rlp.ignored = false ");
         }
-        sql.append("AND rlp.timestamp BETWEEN ? AND ? ").append("ORDER BY rlp.timestamp");
+        sql.append("AND rlp.timestamp >= ? AND rlp.timestamp < ? ").append("ORDER BY rlp.timestamp");
         return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper,
                                   user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
     }
@@ -88,7 +91,7 @@ public class RawLocationPointJdbcService {
         if (!includeIgnored) {
             sql.append("AND rlp.ignored = false ");
         }
-        sql.append("AND rlp.timestamp BETWEEN ? AND ? ").append("ORDER BY rlp.timestamp")
+        sql.append("AND rlp.timestamp >= ? AND rlp.timestamp < ? ").append("ORDER BY rlp.timestamp")
                 .append(" OFFSET ").append(page * pageSize).append(" LIMIT ").append(pageSize);
         return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper,
                                   user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
@@ -107,7 +110,7 @@ public class RawLocationPointJdbcService {
         if (!includeIgnored) {
             sql.append("AND rlp.ignored = false ");
         }
-        sql.append("AND rlp.timestamp BETWEEN ? AND ? ");
+        sql.append("AND rlp.timestamp >= ? AND rlp.timestamp < ? ");
         return jdbcTemplate.queryForObject(sql.toString(), Long.class,
                                   user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
     }
@@ -131,7 +134,7 @@ public class RawLocationPointJdbcService {
 
     public RawLocationPoint create(User user, RawLocationPoint rawLocationPoint) {
         String sql = "INSERT INTO raw_location_points (user_id, timestamp, accuracy_meters, elevation_meters, geom, processed, synthetic, ignored) " +
-                "VALUES (?, ?, ?, ?, ST_GeomFromText(?, '4326'), ?, ?, ?) RETURNING id";
+                "VALUES (?, ?, ?, ?, ST_GeomFromText(?, '4326'), ?, ?, ?) ON CONFLICT DO NOTHING RETURNING id";
         Long id = jdbcTemplate.queryForObject(sql, Long.class,
                 user.getId(),
                 Timestamp.from(rawLocationPoint.getTimestamp()),
@@ -165,7 +168,7 @@ public class RawLocationPointJdbcService {
                 "FROM raw_location_points rlp " +
                 "WHERE rlp.id = ?";
         List<RawLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper, id);
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
     public Optional<RawLocationPoint> findLatest(User user, Instant since) {
@@ -174,7 +177,7 @@ public class RawLocationPointJdbcService {
                 "WHERE rlp.user_id = ? AND rlp.timestamp >= ? " +
                 "ORDER BY rlp.timestamp LIMIT 1";
         List<RawLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId(), Timestamp.from(since));
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
     public Optional<RawLocationPoint> findLatest(User user) {
@@ -183,7 +186,7 @@ public class RawLocationPointJdbcService {
                 "WHERE rlp.user_id = ? " +
                 "ORDER BY rlp.timestamp DESC LIMIT 1";
         List<RawLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId());
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
     public List<ClusteredPoint> findClusteredPointsInTimeRangeForUser(
@@ -191,7 +194,7 @@ public class RawLocationPointJdbcService {
         String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.ignored, rlp.version , " +
                 "ST_ClusterDBSCAN(rlp.geom, ?, ?) over () AS cluster_id " +
                 "FROM raw_location_points rlp " +
-                "WHERE rlp.user_id = ? AND rlp.timestamp BETWEEN ? AND ?";
+                "WHERE rlp.user_id = ? AND rlp.timestamp >= ? AND rlp.timestamp < ?";
 
         return jdbcTemplate.query(sql, (rs, rowNum) -> {
 
@@ -234,7 +237,7 @@ public class RawLocationPointJdbcService {
             FROM raw_location_points
             WHERE user_id = ?
               AND ST_Within(geom, ST_MakeEnvelope(?, ?, ?, ?, 4326))
-              AND timestamp BETWEEN ?::timestamp AND ?::timestamp
+              AND timestamp >= ?::timestamp AND timestamp < ?::timestamp
               AND ignored = false
         """;
 
@@ -245,7 +248,6 @@ public class RawLocationPointJdbcService {
                                                               Timestamp.from(endTime)
         );
 
-        logger.trace("took [{}]ms to count relevant points", (System.nanoTime() - start) / 1_000_000);
         // If we have fewer points than the budget, return all without sampling
         if (relevantPointCount <= maxPoints) {
             String sql = """
@@ -268,7 +270,7 @@ public class RawLocationPointJdbcService {
                         OVER (ORDER BY timestamp) as next_in_box
                 FROM raw_location_points
                 WHERE user_id = ?
-                  AND timestamp BETWEEN ?::timestamp AND ?::timestamp
+                  AND timestamp >= ?::timestamp AND timestamp < ?::timestamp
                   AND ignored = false
             )
             SELECT
@@ -323,7 +325,7 @@ public class RawLocationPointJdbcService {
                     OVER (ORDER BY timestamp) as next_in_box
             FROM raw_location_points
             WHERE user_id = ?
-              AND timestamp BETWEEN ?::timestamp AND ?::timestamp
+              AND timestamp >= ?::timestamp AND timestamp < ?::timestamp
               AND ignored = false
         ),
         relevant_points AS (
@@ -406,7 +408,7 @@ public class RawLocationPointJdbcService {
             version
             FROM raw_location_points
             WHERE user_id = ?
-              AND timestamp BETWEEN ? AND ?
+              AND timestamp >= ? AND timestamp < ?
               AND ignored = false
             ORDER BY
                 date_trunc('hour', timestamp) + 
@@ -502,7 +504,7 @@ public class RawLocationPointJdbcService {
     }
 
     public boolean containsData(User user, Instant start, Instant end) {
-        Integer count = this.jdbcTemplate.queryForObject("SELECT count(*) FROM raw_location_points WHERE user_id = ? AND timestamp > ? AND timestamp < ? LIMIT 1",
+        Integer count = this.jdbcTemplate.queryForObject("SELECT count(*) FROM raw_location_points WHERE user_id = ? AND timestamp >= ? AND timestamp < ? LIMIT 1",
                 Integer.class,
                 user.getId(),
                 start != null ? Timestamp.from(start) : Timestamp.valueOf("1970-01-01 00:00:00"),
@@ -543,7 +545,7 @@ public class RawLocationPointJdbcService {
     }
     
     public void deleteSyntheticPointsInRange(User user, Instant start, Instant end) {
-        String sql = "DELETE FROM raw_location_points WHERE user_id = ? AND timestamp BETWEEN ? AND ? AND synthetic = true";
+        String sql = "DELETE FROM raw_location_points WHERE user_id = ? AND timestamp >= ? AND timestamp < ? AND synthetic = true";
         jdbcTemplate.update(sql, user.getId(), Timestamp.from(start), Timestamp.from(end));
     }
     

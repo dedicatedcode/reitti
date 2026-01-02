@@ -62,20 +62,21 @@ public class ProcessingPipelineTest {
         assertEquals(11, processedVisits.size());
 
         //should not touch visits before the new data
-        assertVisit(processedVisits.get(0), "2025-06-16T22:00:09.154Z", "2025-06-17T05:41:00Z"      , MOLTKESTR);
-        assertVisit(processedVisits.get(1), "2025-06-17T05:41:30.989Z", "2025-06-17T05:57:07.729Z"  , ST_THOMAS);
-        assertVisit(processedVisits.get(2), "2025-06-17T05:57:41Z"    , "2025-06-17T13:09:29Z"      , MOLTKESTR);
-        assertVisit(processedVisits.get(3), "2025-06-17T13:09:51.476Z", "2025-06-17T13:20:24.494Z"  , ST_THOMAS);
+        assertVisit(processedVisits.get(0), "2025-06-16T22:00:09Z", "2025-06-17T05:42:33Z" , MOLTKESTR);
+        assertVisit(processedVisits.get(1), "2025-06-17T05:43:05Z", "2025-06-17T05:55:34Z" , ST_THOMAS);
+        assertVisit(processedVisits.get(2), "2025-06-17T05:55:56Z", "2025-06-17T13:11:30Z" , MOLTKESTR);
+        assertVisit(processedVisits.get(3), "2025-06-17T13:12:01Z", "2025-06-17T13:18:51Z" , ST_THOMAS);
 
         //should extend the last visit of the old day
-        assertVisit(processedVisits.get(4), "2025-06-17T13:20:58Z"    , "2025-06-18T05:46:43Z", MOLTKESTR);
+        assertVisit(processedVisits.get(4), "2025-06-17T13:21:28Z", "2025-06-18T05:45:36Z", MOLTKESTR);
 
         //new visits
-        assertVisit(processedVisits.get(5), "2025-06-18T05:47:13.682Z"  ,"2025-06-18T06:04:02.435Z" , ST_THOMAS);
-        assertVisit(processedVisits.get(6), "2025-06-18T06:04:36Z"      ,"2025-06-18T13:01:57Z"     , MOLTKESTR);
-        assertVisit(processedVisits.get(7), "2025-06-18T13:02:27.656Z"  ,"2025-06-18T13:14:19.417Z" , ST_THOMAS);
-        assertVisit(processedVisits.get(8), "2025-06-18T13:33:05Z"      ,"2025-06-18T15:50:40Z"     , GARTEN);
-        assertVisit(processedVisits.get(9), "2025-06-18T16:02:38Z"      ,"2025-06-18T21:59:29.055Z" , MOLTKESTR);
+        assertVisit(processedVisits.get(5) , "2025-06-18T05:46:10Z", "2025-06-18T05:53:01Z", MOLTKEPLATZ);
+        assertVisit(processedVisits.get(6) , "2025-06-18T05:54:37Z", "2025-06-18T06:02:05Z", ST_THOMAS);
+        assertVisit(processedVisits.get(7) , "2025-06-18T06:05:07Z", "2025-06-18T13:01:23Z", MOLTKESTR);
+        assertVisit(processedVisits.get(8) , "2025-06-18T13:05:04Z", "2025-06-18T13:13:47Z", ST_THOMAS);
+        assertVisit(processedVisits.get(9) , "2025-06-18T13:33:35Z", "2025-06-18T15:50:40Z", GARTEN);
+        assertVisit(processedVisits.get(10), "2025-06-18T16:03:09Z", "2025-06-18T21:59:29Z", MOLTKESTR);
     }
 
     @Test
@@ -86,11 +87,11 @@ public class ProcessingPipelineTest {
         assertEquals(6, processedVisits.size());
 
         assertVisit(processedVisits.get(0), "2025-06-17T22:00:15Z","2025-06-18T05:45:36Z", MOLTKESTR);
-        assertVisit(processedVisits.get(1), "2025-06-18T05:54:37Z","2025-06-18T06:02:05Z" , ST_THOMAS);
-        assertVisit(processedVisits.get(2), "2025-06-18T06:05:07Z","2025-06-18T13:01:23Z" , MOLTKESTR);
-        assertVisit(processedVisits.get(3), "2025-06-18T13:05:04Z","2025-06-18T13:13:47Z" , ST_THOMAS);
-        assertVisit(processedVisits.get(4), "2025-06-18T13:33:35Z","2025-06-18T15:50:40Z" , GARTEN);
-        assertVisit(processedVisits.get(5), "2025-06-18T16:03:09Z","2025-06-18T21:59:29Z" , MOLTKESTR);
+        assertVisit(processedVisits.get(1), "2025-06-18T05:54:37Z","2025-06-18T06:02:05Z", ST_THOMAS);
+        assertVisit(processedVisits.get(2), "2025-06-18T06:05:07Z","2025-06-18T13:01:23Z", MOLTKESTR);
+        assertVisit(processedVisits.get(3), "2025-06-18T13:05:04Z","2025-06-18T13:13:47Z", ST_THOMAS);
+        assertVisit(processedVisits.get(4), "2025-06-18T13:33:35Z","2025-06-18T15:50:40Z", GARTEN);
+        assertVisit(processedVisits.get(5), "2025-06-18T16:03:09Z","2025-06-18T21:59:29Z", MOLTKESTR);
 
         testingService.importAndProcess(user, "/data/gpx/20250617.gpx");
 
@@ -99,20 +100,20 @@ public class ProcessingPipelineTest {
         assertEquals(10, processedVisits.size());
 
         //new visits
-        assertVisit(processedVisits.get(0), "2025-06-16T22:00:09Z", "2025-06-17T05:42:33Z", MOLTKESTR);
-        assertVisit(processedVisits.get(1), "2025-06-17T05:43:05Z", "2025-06-17T05:55:34Z", ST_THOMAS);
-        assertVisit(processedVisits.get(2), "2025-06-17T05:55:56Z", "2025-06-17T13:11:30Z", MOLTKESTR);
-        assertVisit(processedVisits.get(3), "2025-06-17T13:12:01Z", "2025-06-17T13:18:51Z", ST_THOMAS);
+        assertVisit(processedVisits.get(0),"2025-06-16T22:00:09Z", "2025-06-17T05:42:33Z", MOLTKESTR);
+        assertVisit(processedVisits.get(1),"2025-06-17T05:43:05Z", "2025-06-17T05:55:34Z", ST_THOMAS);
+        assertVisit(processedVisits.get(2),"2025-06-17T05:55:56Z", "2025-06-17T13:11:30Z", MOLTKESTR);
+        assertVisit(processedVisits.get(3),"2025-06-17T13:12:01Z", "2025-06-17T13:18:51Z", ST_THOMAS);
 
         //should extend the last visit of the old day
-        assertVisit(processedVisits.get(4), "2025-06-17T13:19:22Z", "2025-06-18T05:53:01Z", MOLTKESTR);
+        assertVisit(processedVisits.get(4),"2025-06-17T13:19:22Z", "2025-06-18T05:53:01Z", MOLTKESTR);
 
         //should not touch visits after the new data
-        assertVisit(processedVisits.get(5), "2025-06-18T05:53:33Z", "2025-06-18T06:02:05Z", ST_THOMAS);
-        assertVisit(processedVisits.get(6), "2025-06-18T06:03:00Z", "2025-06-18T13:04:01Z", MOLTKESTR);
-        assertVisit(processedVisits.get(7), "2025-06-18T13:04:33Z", "2025-06-18T13:13:47Z", ST_THOMAS);
-        assertVisit(processedVisits.get(8), "2025-06-18T13:33:35Z", "2025-06-18T15:50:40Z", GARTEN);
-        assertVisit(processedVisits.get(9), "2025-06-18T16:02:02Z", "2025-06-18T21:59:29Z", MOLTKESTR);
+        assertVisit(processedVisits.get(5),"2025-06-18T05:53:33Z", "2025-06-18T06:02:05Z", ST_THOMAS);
+        assertVisit(processedVisits.get(6),"2025-06-18T06:03:00Z", "2025-06-18T13:04:01Z", MOLTKESTR);
+        assertVisit(processedVisits.get(7),"2025-06-18T13:04:33Z", "2025-06-18T13:13:47Z", ST_THOMAS);
+        assertVisit(processedVisits.get(8),"2025-06-18T13:33:35Z", "2025-06-18T15:50:40Z", GARTEN);
+        assertVisit(processedVisits.get(9),"2025-06-18T16:02:02Z", "2025-06-18T21:59:29Z", MOLTKESTR);
     }
 
     @Test

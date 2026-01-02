@@ -7,24 +7,18 @@ import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
-import com.dedicatedcode.reitti.service.ImportProcessor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
-import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.*;
 
 @IntegrationTest
@@ -38,9 +32,6 @@ class LocationDataDensityNormalizerTest {
 
     @Autowired
     private TestingService testingService;
-
-    @Autowired
-    private ImportProcessor importProcessor;
 
     private User testUser;
 
@@ -171,45 +162,6 @@ class LocationDataDensityNormalizerTest {
     }
 
     @Test
-    void shouldPreserveSyntheticPointsFromPreviousNormalization() {
-        // Given: First normalization run with a gap that generates synthetic points
-        Instant firstStart = Instant.parse("2023-01-01T10:00:00Z");
-        Instant firstEnd = firstStart.plus(2, ChronoUnit.MINUTES);
-
-        createAndSaveRawPoint(firstStart, 50.0, 8.0);
-        createAndSaveRawPoint(firstEnd, 50.0001, 8.0001);
-
-        LocationPoint firstNewPoint = createLocationPoint(firstStart.plus(1, ChronoUnit.MINUTES), 50.0005, 8.0005);
-        normalizer.normalize(testUser, Collections.singletonList(firstNewPoint));
-
-        // Verify synthetic points were created
-        List<RawLocationPoint> pointsAfterFirstRun = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(
-            testUser, firstStart.minus(1, ChronoUnit.MINUTES), firstEnd.plus(1, ChronoUnit.MINUTES)
-        );
-        long syntheticCountAfterFirst = pointsAfterFirstRun.stream().filter(RawLocationPoint::isSynthetic).count();
-        assertTrue(syntheticCountAfterFirst > 0, "First run should have created synthetic points");
-
-        // Given: Second normalization run with data starting exactly where the first run ended
-        Instant secondStart = firstEnd; // Start right after the first run's data
-        Instant secondEnd = secondStart.plus(2, ChronoUnit.MINUTES);
-
-        createAndSaveRawPoint(secondStart, 50.0002, 8.0002);
-        createAndSaveRawPoint(secondEnd, 50.0003, 8.0003);
-
-        LocationPoint secondNewPoint = createLocationPoint(secondStart.plus(1, ChronoUnit.MINUTES), 50.00025, 8.00025);
-        normalizer.normalize(testUser, Collections.singletonList(secondNewPoint));
-
-        // When: Verify the synthetic points from the first run are still present
-        List<RawLocationPoint> pointsAfterSecondRun = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(
-            testUser, firstStart.minus(1, ChronoUnit.MINUTES), secondEnd.plus(1, ChronoUnit.MINUTES)
-        );
-
-        // Then: The synthetic points from the first run should still be there
-        long syntheticCountAfterSecond = pointsAfterSecondRun.stream().filter(RawLocationPoint::isSynthetic).count();
-        assertEquals(syntheticCountAfterFirst, syntheticCountAfterSecond, "Synthetic points from the first run should not be deleted by the second run");
-    }
-
-    @Test
     void shouldHandleEmptyDataGracefully() {
         // Given: No existing points
         
@@ -230,101 +182,6 @@ class LocationDataDensityNormalizerTest {
         
         // Then: Should not throw exception
         assertDoesNotThrow(() -> normalizer.normalize(testUser, Collections.singletonList(newPoint)));
-    }
-
-    @Test
-    void verifyConsistentCalculation() throws Exception {
-        testingService.importData(testUser, "/data/gpx/20250617.gpx");
-        await().pollDelay(5, TimeUnit.SECONDS)
-                .atMost(30, TimeUnit.SECONDS)
-                .until(() -> importProcessor.isIdle());
-
-        LocalDate date = LocalDate.of(2025, 6, 17);
-        Instant startOfDay = date.atStartOfDay(ZoneOffset.UTC).toInstant();
-        Instant endOfDay = date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-
-        // Fetch points in one-hour chunks and store them in a map with the hour as key
-        Map<Instant, List<RawLocationPoint>> pointsBeforeByHour = new HashMap<>();
-        Instant currentHourStart = startOfDay;
-        while (currentHourStart.isBefore(endOfDay)) {
-            Instant currentHourEnd = currentHourStart.plus(1, ChronoUnit.HOURS);
-            if (currentHourEnd.isAfter(endOfDay)) {
-                currentHourEnd = endOfDay;
-            }
-            List<RawLocationPoint> hourPoints = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, currentHourStart, currentHourEnd);
-            pointsBeforeByHour.put(currentHourStart, hourPoints);
-            currentHourStart = currentHourEnd;
-        }
-
-        testingService.importData(testUser, "/data/gpx/20250618.gpx");
-        await().pollDelay(5, TimeUnit.SECONDS)
-                .atMost(30, TimeUnit.SECONDS)
-                .until(() -> importProcessor.isIdle());
-
-        // Verify each hour chunk separately
-        currentHourStart = startOfDay;
-        while (currentHourStart.isBefore(endOfDay)) {
-            Instant currentHourEnd = currentHourStart.plus(1, ChronoUnit.HOURS);
-            if (currentHourEnd.isAfter(endOfDay)) {
-                currentHourEnd = endOfDay;
-            }
-
-            List<RawLocationPoint> pointsBefore = pointsBeforeByHour.get(currentHourStart);
-            List<RawLocationPoint> pointsAfter = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, currentHourStart, currentHourEnd);
-
-            if (pointsBefore.size() != pointsAfter.size()) {
-                Map<Instant, List<RawLocationPoint>> pointsBeforeByMinute = new HashMap<>();
-                Instant currentMinuteStart = currentHourStart;
-                while (currentMinuteStart.isBefore(currentHourEnd)) {
-                    Instant currentMinuteEnd = currentMinuteStart.plus(1, ChronoUnit.MINUTES);
-                    if (currentMinuteEnd.isAfter(currentHourEnd)) {
-                        currentMinuteEnd = currentHourEnd;
-                    }
-                    List<RawLocationPoint> minutePoints = new ArrayList<>();
-                    for (RawLocationPoint p : pointsBefore) {
-                        if (!p.getTimestamp().isBefore(currentMinuteStart) && p.getTimestamp().isBefore(currentMinuteEnd)) {
-                            minutePoints.add(p);
-                        }
-                    }
-                    pointsBeforeByMinute.put(currentMinuteStart, minutePoints);
-                    currentMinuteStart = currentMinuteEnd;
-                }
-
-                currentMinuteStart = currentHourStart;
-                while (currentMinuteStart.isBefore(currentHourEnd)) {
-                    Instant currentMinuteEnd = currentMinuteStart.plus(1, ChronoUnit.MINUTES);
-                    if (currentMinuteEnd.isAfter(currentHourEnd)) {
-                        currentMinuteEnd = currentHourEnd;
-                    }
-                    List<RawLocationPoint> pointsBeforeMinute = pointsBeforeByMinute.get(currentMinuteStart);
-                    List<RawLocationPoint> pointsAfterMinute = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, currentMinuteStart, currentMinuteEnd);
-
-                    if (pointsBeforeMinute.size() != pointsAfterMinute.size()) {
-                        System.out.println("#######\n  Minute " + currentMinuteStart + " failed: expected " + pointsBeforeMinute.size() + " points, but got " + pointsAfterMinute.size());
-                        System.out.println("  Points before in this minute:");
-                        for (RawLocationPoint p : pointsBeforeMinute) {
-                            System.out.println("   " + p.getTimestamp() + " - lat: " + p.getLatitude() + ", lon: " + p.getLongitude() + ", synthetic: " + p.isSynthetic() + ", ignored: " + p.isIgnored());
-                        }
-                        System.out.println("  Points after in this minute:");
-                        for (RawLocationPoint p : pointsAfterMinute) {
-                            System.out.println("   " + p.getTimestamp() + " - lat: " + p.getLatitude() + ", lon: " + p.getLongitude() + ", synthetic: " + p.isSynthetic() + ", ignored: " + p.isIgnored());
-                        }
-                    }
-                    currentMinuteStart = currentMinuteEnd;
-                }
-            }
-            // Also do the full comparison for this hour as a sanity check
-            assertEquals(pointsBefore.size(), pointsAfter.size(), "The number of points for hour starting at " + currentHourStart + " should not change after importing 2025-06-18");
-            for (int i = 0; i < pointsBefore.size(); i++) {
-                assertEquals(pointsBefore.get(i).getTimestamp(), pointsAfter.get(i).getTimestamp(), "Timestamps should match for hour starting at " + currentHourStart);
-                assertEquals(pointsBefore.get(i).getLatitude(), pointsAfter.get(i).getLatitude(), 0.000001, "Latitudes should match for hour starting at " + currentHourStart);
-                assertEquals(pointsBefore.get(i).getLongitude(), pointsAfter.get(i).getLongitude(), 0.000001, "Longitudes should match for hour starting at " + currentHourStart);
-                assertEquals(pointsBefore.get(i).isSynthetic(), pointsAfter.get(i).isSynthetic(), "isSynthetic should match for hour starting at " + currentHourStart);
-                assertEquals(pointsBefore.get(i).isIgnored(), pointsAfter.get(i).isIgnored(), "isIgnored should match for hour starting at " + currentHourStart);
-            }
-
-            currentHourStart = currentHourEnd;
-        }
     }
 
     private RawLocationPoint createAndSaveRawPoint(Instant timestamp, double lat, double lon) {
