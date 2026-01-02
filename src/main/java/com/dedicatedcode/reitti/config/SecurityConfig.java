@@ -34,6 +34,9 @@ public class SecurityConfig {
     @Autowired
     private SetupFilter setupFilter;
 
+    @Autowired
+    private HtmxAuthenticationEntryPoint authenticationEntryPoint;
+
     @Autowired(required = false)
     private LogoutSuccessHandler oidcLogoutSuccessHandler;
 
@@ -77,6 +80,7 @@ public class SecurityConfig {
                         .rememberMeParameter("remember-me")
                         .useSecureCookie(false)
                 )
+                .exceptionHandling(exceptionHandling -> exceptionHandling.authenticationEntryPoint(authenticationEntryPoint))
                 .logout(logout -> {
                     if (oidcLogoutSuccessHandler != null) {
                         logout.logoutSuccessHandler(oidcLogoutSuccessHandler);
