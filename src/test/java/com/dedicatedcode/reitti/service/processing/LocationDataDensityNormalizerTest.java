@@ -64,9 +64,9 @@ class LocationDataDensityNormalizerTest {
         List<RawLocationPoint> storedPoints = this.rawLocationPointService.findByUserAndProcessedIsFalseOrderByTimestampWithLimit(testUser, 1000, 0);
 
 
-        assertEquals(8, storedPoints.size());
+        assertEquals(26, storedPoints.size());
         assertEquals(0, storedPoints.stream().filter(RawLocationPoint::isIgnored).count());
-        assertEquals(2, storedPoints.stream().filter(RawLocationPoint::isSynthetic).count());
+        assertEquals(20, storedPoints.stream().filter(RawLocationPoint::isSynthetic).count());
     }
 
     @Test

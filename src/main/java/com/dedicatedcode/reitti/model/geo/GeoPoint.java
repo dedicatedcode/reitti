@@ -14,7 +14,7 @@ public record GeoPoint(double latitude, double longitude) implements Serializabl
     }
 
     public boolean near(GeoPoint point) {
-        return GeoUtils.distanceInMeters(this, point) < 100;
+        return GeoUtils.distanceInMeters(this, point) < 150;
     }
 
     @Override

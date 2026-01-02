@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.model.geo.GeoPoint;
 public class TestConstants {
     public static class Points {
         public static final GeoPoint MOLTKESTR = new GeoPoint(53.863149, 10.700927);
+        public static final GeoPoint MOLTKEPLATZ = new GeoPoint(53.863352275279084,10.707716378325035);
         public static final GeoPoint DIELE = new GeoPoint(53.868977437711706, 10.680643284930158);
         public static final GeoPoint OBI = new GeoPoint(53.87172110622166, 10.747495611916795);
         public static final GeoPoint GARTEN = new GeoPoint(53.87318065243313, 10.732683669587999);

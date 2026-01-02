@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -58,24 +59,23 @@ public class LocationDataDensityNormalizer {
             TimeRange inputRange = computeTimeRange(newPoints);
 
             // Step 2: Get detection parameters (use the earliest point's time for config lookup)
-            DetectionParameter detectionParams = visitDetectionParametersService.getCurrentConfiguration(user, inputRange.start);
+            DetectionParameter detectionParams = visitDetectionParametersService.getCurrentConfiguration(user, inputRange.start());
             DetectionParameter.LocationDensity densityConfig = detectionParams.getLocationDensity();
 
             // Step 3: Expand the time range by the interpolation window to catch boundary gaps
-            Duration window = Duration.ofMinutes(densityConfig.getMaxInterpolationGapMinutes());
+            long maxInterpolationGapMinutes = densityConfig.getMaxInterpolationGapMinutes();
+            Duration window = Duration.ofMinutes(maxInterpolationGapMinutes);
             TimeRange expandedRange = new TimeRange(
-                    inputRange.start.minus(window),
-                    inputRange.end.plus(window)
+                    inputRange.start().minus(window),
+                    inputRange.end().plus(window)
             );
-
             // Step 4: Delete all synthetic points in the expanded range
-            rawLocationPointService.deleteSyntheticPointsInRange(user, expandedRange.start, expandedRange.end);
+            rawLocationPointService.deleteSyntheticPointsInRange(user, expandedRange.start(), expandedRange.end());
 
             // Step 5: Fetch all existing points in the expanded range (single DB query)
-            List<RawLocationPoint> existingPoints = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, expandedRange.start, expandedRange.end);
+            List<RawLocationPoint> existingPoints = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, expandedRange.start().minus(maxInterpolationGapMinutes, ChronoUnit.MINUTES), expandedRange.end().plus(maxInterpolationGapMinutes, ChronoUnit.MINUTES));
 
-            logger.debug("Found {} existing points in expanded range [{} - {}]",
-                    existingPoints.size(), expandedRange.start, expandedRange.end);
+            logger.debug("Found {} existing points in expanded range [{} - {}]", existingPoints.size(), expandedRange.start(), expandedRange.end());
 
             // Step 7: Sort deterministically by timestamp, then by ID (for repeatability)
             existingPoints.sort(Comparator
@@ -89,18 +89,8 @@ public class LocationDataDensityNormalizer {
             // Step 8: Process gaps (generate synthetic points)
             processGaps(user, existingPoints, densityConfig);
 
-            // Step 9: Re-fetch and handle excess density
-            // We need to re-fetch because synthetic points were just inserted
-            List<RawLocationPoint> updatedPoints = rawLocationPointService
-                    .findByUserAndTimestampBetweenOrderByTimestampAsc(user, expandedRange.start, expandedRange.end);
 
-            updatedPoints.sort(Comparator
-                    .comparing(RawLocationPoint::getTimestamp)
-                    .thenComparing(p -> p.getGeom().latitude())
-                    .thenComparing(p -> p.getGeom().longitude())
-                    .thenComparing(RawLocationPoint::isSynthetic));
-
-            handleExcessDensity(user, updatedPoints);
+            handleExcessDensity(user, existingPoints);
 
             logger.debug("Completed batch density normalization for user {}", user.getUsername());
 
@@ -149,29 +139,19 @@ public class LocationDataDensityNormalizer {
         long maxInterpolationSeconds = densityConfig.getMaxInterpolationGapMinutes() * 60L;
 
         List<LocationPoint> allSyntheticPoints = new ArrayList<>();
-        Set<GapKey> processedGaps = new HashSet<>();
 
         for (int i = 0; i < points.size() - 1; i++) {
             RawLocationPoint current = points.get(i);
             RawLocationPoint next = points.get(i + 1);
 
-            // Skip if either point is already ignored
-            if (current.isIgnored() || next.isIgnored()) {
+            // Skip if either point is already ignored or synthetic
+            if (current.isIgnored() || next.isIgnored() || current.isSynthetic()) {
                 continue;
             }
-
-            // Create a deterministic gap key to avoid reprocessing
-            GapKey gapKey = new GapKey(current.getTimestamp(), next.getTimestamp());
-            if (processedGaps.contains(gapKey)) {
-                continue;
-            }
-            processedGaps.add(gapKey);
 
             long gapSeconds = Duration.between(current.getTimestamp(), next.getTimestamp()).getSeconds();
 
             if (gapSeconds > gapThresholdSeconds && gapSeconds <= maxInterpolationSeconds) {
-                logger.trace("Found gap of {} seconds between {} and {}",
-                        gapSeconds, current.getTimestamp(), next.getTimestamp());
 
                 List<LocationPoint> syntheticPoints = syntheticGenerator.generateSyntheticPoints(
                         current,
@@ -179,6 +159,9 @@ public class LocationDataDensityNormalizer {
                         config.getTargetPointsPerMinute(),
                         densityConfig.getMaxInterpolationDistanceMeters()
                 );
+
+                logger.trace("Found gap of {} seconds between {} and {} -> created {} synthetic points between them",
+                             gapSeconds, current.getTimestamp(), next.getTimestamp(), syntheticPoints.size());
 
                 allSyntheticPoints.addAll(syntheticPoints);
             }
@@ -288,43 +271,5 @@ public class LocationDataDensityNormalizer {
 
     }
 
-    /**
-     * Represents a time range with start and end instants.
-     */
-    private static class TimeRange {
-        final Instant start;
-        final Instant end;
-
-        TimeRange(Instant start, Instant end) {
-            this.start = start;
-            this.end = end;
-        }
-    }
-
-    /**
-     * Represents a unique gap between two timestamps.
-     * Used to avoid processing the same gap multiple times.
-     */
-    private static class GapKey {
-        final Instant start;
-        final Instant end;
-
-        GapKey(Instant start, Instant end) {
-            this.start = start;
-            this.end = end;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            GapKey gapKey = (GapKey) o;
-            return Objects.equals(start, gapKey.start) && Objects.equals(end, gapKey.end);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(start, end);
-        }
-    }
+    public record TimeRange(Instant start, Instant end) {}
 }
