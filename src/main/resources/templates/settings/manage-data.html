@@ -70,13 +70,13 @@
                         <p th:text="#{data.remove.all.description}">Remove all data except significant places. This will permanently delete all raw location points, visits, trips, and processed visits while preserving your significant places.</p>
                         <!-- Verification UI -->
                         <div th:if="${deleteAllRequiresVerification}" class="verification-container">
-                            <p>Verification Required:</p>
-                            <p>To confirm deletion, please enter the server hostname: <code id="expected-hostname-display" th:text="${serverHostname}"></code></p>
+                            <p th:text="#{data.remove.all.verification.required}">Verification Required:</p>
+                            <p><span th:text="#{data.remove.all.verification.instruction}">To confirm deletion, please enter the server hostname:</span> <code id="expected-hostname-display" th:text="${serverHostname}"></code></p>
                             
                             <input type="text" 
                                    id="delete-verification-input"
                                    name="hostname"
-                                   placeholder="Enter hostname to confirm"
+                                   th:placeholder="#{data.remove.all.verification.placeholder}"
                                    oninput="checkDeleteVerification()">
                             
                             <button class="btn btn-danger"
@@ -89,7 +89,7 @@
                                     style="margin-top: 15px; display: none;">
                                 Remove All Data
                             </button>
-                            <span id="delete-all-hint" style="display: inline-block; color: #666; font-size: 0.9em; margin-left: 10px;">Enter the hostname to enable the button.</span>
+                            <span id="delete-all-hint" style="display: inline-block; color: #666; font-size: 0.9em; margin-left: 10px;" th:text="#{data.remove.all.verification.hint}">Enter the hostname to enable the button.</span>
                         </div>
 
                         <div th:unless="${deleteAllRequiresVerification}">
