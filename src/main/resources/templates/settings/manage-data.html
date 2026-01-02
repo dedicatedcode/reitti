@@ -52,7 +52,7 @@
                     <div class="action-card" style="margin-top: 15px;">
                         <h3 th:text="#{data.clear.reprocess.title}">Clear and Reprocess All Data</h3>
                         <p th:text="#{data.clear.reprocess.description}">Clear all processed data (visits, trips, processed visits) while preserving significant places and raw location points. Raw location points will be marked as unprocessed, and the processing pipeline will be triggered automatically.</p>
-                        <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 10px; margin: 10px 0; color: #856404;">
+                        <div class="alert alert-warning">
                             <strong>⚠️ <span th:text="#{label.warning}">Warning:</span></strong> <span th:text="#{data.clear.reprocess.warning}">This action will permanently delete all visits, trips, and processed visits. This cannot be undone.</span>
                         </div>
                         <button class="btn btn-danger"
@@ -68,19 +68,15 @@
                     <div class="action-card" style="margin-top: 15px;">
                         <h3 th:text="#{data.remove.all.title}">Remove All Data</h3>
                         <p th:text="#{data.remove.all.description}">Remove all data except significant places. This will permanently delete all raw location points, visits, trips, and processed visits while preserving your significant places.</p>
-                        <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; padding: 10px; margin: 10px 0; color: #721c24;">
-                            <strong>⚠️ Danger:</strong> <span th:text="#{data.remove.all.warning}">This action will permanently delete ALL location data except significant places. This cannot be undone.</span>
-                        </div>
-
                         <!-- Verification UI -->
-                        <div th:if="${deleteAllRequiresVerification}" class="verification-container" style="margin-top: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 4px; background-color: #f9f9f9;">
-                            <p style="margin-top: 0; font-weight: bold;">Verification Required:</p>
-                            <p style="margin-bottom: 10px;">To confirm deletion, please enter the server hostname: <code id="expected-hostname-display" th:text="${serverHostname}"></code></p>
+                        <div th:if="${deleteAllRequiresVerification}" class="verification-container">
+                            <p>Verification Required:</p>
+                            <p>To confirm deletion, please enter the server hostname: <code id="expected-hostname-display" th:text="${serverHostname}"></code></p>
                             
                             <input type="text" 
-                                   id="delete-verification-input" 
-                                   placeholder="Enter hostname to confirm" 
-                                   style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;"
+                                   id="delete-verification-input"
+                                   name="hostname"
+                                   placeholder="Enter hostname to confirm"
                                    oninput="checkDeleteVerification()">
                             
                             <button class="btn btn-danger"
@@ -90,22 +86,27 @@
                                     hx-swap="innerHTML"
                                     th:attr="hx-confirm=#{data.remove.all.confirm}"
                                     th:text="#{data.remove.all.button}"
-                                    style="display: none; pointer-events: none; opacity: 0.5;">
+                                    style="margin-top: 15px; display: none;">
                                 Remove All Data
                             </button>
                             <span id="delete-all-hint" style="display: inline-block; color: #666; font-size: 0.9em; margin-left: 10px;">Enter the hostname to enable the button.</span>
                         </div>
 
-                        <!-- Fallback UI if verification is disabled -->
                         <div th:unless="${deleteAllRequiresVerification}">
                             <button class="btn btn-danger"
                                     hx-post="/settings/manage-data/remove-all-data"
                                     hx-target="#manage-data"
                                     hx-swap="innerHTML"
+                                    hx-include="#delete-verification-input"
                                     th:attr="hx-confirm=#{data.remove.all.confirm}"
-                                    th:text="#{data.remove.all.button}">
+                                    th:text="#{data.remove.all.button}"
+                                    style="margin-top: 15px;">
                                 Remove All Data
                             </button>
+                        </div>
+
+                        <div class="alert alert-danger" style="margin-top: 15px;">
+                            <strong>⚠️ Danger:</strong> <span th:text="#{data.remove.all.warning}">This action will permanently delete ALL location data except significant places. This cannot be undone.</span>
                         </div>
                     </div>
 
