@@ -28,6 +28,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -135,8 +137,15 @@ public class OwntracksIngestionApiController {
             try {
                 ReittiRemoteInfo info = reittiIntegrationService.getInfo(integration);
                 String tid = generateTid(info.userInfo().username());
-                friendsData.add(new OwntracksFriendResponse(tid, info.userInfo().displayName(), null, null));
-            } catch (RequestFailedException | RequestTemporaryFailedException e) {
+
+                OwntracksFriendResponse owntracksFriendResponse = reittiIntegrationService.getAvatar(user, integration.getId())
+                        .map(avatarData -> new OwntracksFriendResponse(tid, info.userInfo().displayName(), avatarData.imageData(), avatarData.mimeType()))
+                        .orElse(new OwntracksFriendResponse(tid, info.userInfo().displayName(), null, null));
+
+                friendsData.add(owntracksFriendResponse);
+                Optional<LocationPoint> latestLocation = reittiIntegrationService.findLatest(user, integration.getId());
+                latestLocation.ifPresent(location -> friendsData.add(new OwntracksFriendResponse(tid, info.userInfo().displayName(), location.getLatitude(), location.getLongitude(), Instant.parse(location.getTimestamp()).getEpochSecond())));
+                } catch (RequestFailedException | RequestTemporaryFailedException e) {
                 logger.warn("Couldn't fetch info for integration {}", integration.getId(), e);
             }
         }

@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.integration;
 
 import com.dedicatedcode.reitti.dto.*;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
+import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.integration.ReittiIntegration;
 import com.dedicatedcode.reitti.model.security.RemoteUser;
@@ -15,11 +16,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.*;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import javax.xml.stream.Location;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -37,48 +41,22 @@ public class ReittiIntegrationService {
 
     private final String advertiseUri;
     private final ReittiIntegrationJdbcService jdbcService;
+    private final JdbcTemplate jdbcTemplate;
     private final RestTemplate restTemplate;
     private final AvatarService avatarService;
     private final Map<Long, String> integrationSubscriptions = new ConcurrentHashMap<>();
     private final Map<String, Long> userForSubscriptions = new ConcurrentHashMap<>();
 
-    public ReittiIntegrationService(@Value("${reitti.server.advertise-uri}") String advertiseUri, ReittiIntegrationJdbcService jdbcService,
+    public ReittiIntegrationService(@Value("${reitti.server.advertise-uri}") String advertiseUri,
+                                    ReittiIntegrationJdbcService jdbcService,
+                                    JdbcTemplate jdbcTemplate,
                                     RestTemplate restTemplate,
                                     AvatarService avatarService) {
         this.advertiseUri = advertiseUri;
         this.jdbcService = jdbcService;
+        this.jdbcTemplate = jdbcTemplate;
         this.restTemplate = restTemplate;
         this.avatarService = avatarService;
-    }
-
-    public List<UserTimelineData> getTimelineData(User user, LocalDate selectedDate, ZoneId userTimezone) {
-        return this.jdbcService
-                .findAllByUser(user)
-                .stream().filter(integration -> integration.isEnabled() && VALID_INTEGRATION_STATUS.contains(integration.getStatus()))
-                .map(integration -> {
-
-                    log.debug("Fetching user timeline data for [{}]", integration);
-                    try {
-                        RemoteUser remoteUser = handleRemoteUser(integration);
-                        List<TimelineEntry> timelineEntries = loadTimeLineEntries(integration, selectedDate, userTimezone);
-                        integration = update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
-                        return new UserTimelineData("remote:" + integration.getId(),
-                                remoteUser.getDisplayName(),
-                                this.avatarService.generateInitials(remoteUser.getDisplayName()),
-                                "/reitti-integration/avatar/" + integration.getId(),
-                                integration.getColor(),
-                                timelineEntries,
-                                String.format("/reitti-integration/raw-location-points/%d?date=%s&timezone=%s", integration.getId(), selectedDate, userTimezone),
-                                String.format("/reitti-integration/visits/%d?date=%s&timezone=%s", integration.getId(), selectedDate, userTimezone));
-                    } catch (RequestFailedException e) {
-                        log.error("couldn't fetch user info for [{}]", integration, e);
-                        update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
-                    } catch (RequestTemporaryFailedException e) {
-                        log.warn("couldn't temporarily fetch user info for [{}]", integration, e);
-                        update(integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
-                    }
-                    return null;
-                }).toList();
     }
 
     public List<UserTimelineData> getTimelineDataRange(User user, LocalDate startDate, LocalDate endDate, ZoneId userTimezone) {
@@ -146,6 +124,24 @@ public class ReittiIntegrationService {
         }
     }
 
+    public Optional<AvatarService.AvatarData> getAvatar(User user, Long integrationId) {
+        Map<String, Object> result;
+        try {
+            result = jdbcTemplate.queryForMap(
+                    "SELECT mime_type, binary_data FROM remote_user_info WHERE integration_id = ?",
+                    integrationId
+            );
+        } catch (EmptyResultDataAccessException ignored) {
+            return Optional.empty();
+        }
+
+        String contentType = (String) result.get("mime_type");
+        byte[] imageData = (byte[]) result.get("binary_data");
+
+        return Optional.of(new AvatarService.AvatarData(contentType,imageData, -1));
+
+    }
+
     public ProcessedVisitResponse getVisits(User user, Long integrationId, String startDate, String endDate, Integer zoom, String timezone) {
         return this.jdbcService
                 .findByIdAndUser(integrationId,user)
@@ -191,6 +187,51 @@ public class ReittiIntegrationService {
                 })
                 .filter(Objects::nonNull)
                 .findFirst().orElse(null);
+    }
+
+    public Optional<LocationPoint> findLatest(User user, Long integrationId) {
+        return this.jdbcService
+                .findByIdAndUser(integrationId, user)
+                .filter(integration -> integration.isEnabled() && VALID_INTEGRATION_STATUS.contains(integration.getStatus()))
+                .map(integration -> {
+
+                    log.debug("Fetching latest location ata for [{}]", integration);
+                    try {
+                        HttpHeaders headers = new HttpHeaders();
+                        headers.set("X-API-TOKEN", integration.getToken());
+                        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+                        String rawLocationDataUrl = integration.getUrl().endsWith("/") ?
+                                integration.getUrl() + "api/v1/latest-location" :
+                                integration.getUrl() + "/api/v1/latest-location";
+                        ResponseEntity<Map> remoteResponse = restTemplate.exchange(
+                                rawLocationDataUrl,
+                                HttpMethod.GET,
+                                entity,
+                                Map.class
+                        );
+
+                        if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null && remoteResponse.getBody().containsKey("hasLocation")) {
+                            update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
+                            if (!remoteResponse.getBody().get("hasLocation").equals(true)) {
+                                return null;
+                            } else {
+                                return parseLocationPoint(remoteResponse.getBody().get("point"));
+                            }
+                        } else if (remoteResponse.getStatusCode().is4xxClientError()) {
+                            throw new RequestFailedException(rawLocationDataUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
+                        } else {
+                            throw new RequestTemporaryFailedException(rawLocationDataUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
+                        }
+                    } catch (RequestFailedException e) {
+                        log.error("couldn't fetch user info for [{}]", integration, e);
+                        update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
+                    } catch (RequestTemporaryFailedException e) {
+                        log.warn("couldn't temporarily fetch user info for [{}]", integration, e);
+                        update(integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
+                    }
+                    return null;
+                });
     }
     public List<LocationPoint> getRawLocationData(User user, Long integrationId, String startDate, String endDate, Integer zoom, String timezone) {
         return this.jdbcService
@@ -249,36 +290,6 @@ public class ReittiIntegrationService {
         return integration;
     }
 
-    private List<TimelineEntry> loadTimeLineEntries(ReittiIntegration integration, LocalDate selectedDate, ZoneId userTimezone) throws RequestFailedException, RequestTemporaryFailedException {
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("X-API-TOKEN", integration.getToken());
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-
-        String timelineUrl = integration.getUrl().endsWith("/") ?
-                integration.getUrl() + "api/v1/reitti-integration/timeline?date={date}&timezone={timezone}" :
-                integration.getUrl() + "/api/v1/reitti-integration/timeline?date={date}&timezone={timezone}";
-
-
-        ParameterizedTypeReference<List<TimelineEntry>> typeRef = new ParameterizedTypeReference<>() {};
-        ResponseEntity<List<TimelineEntry>> remoteResponse = restTemplate.exchange(
-                timelineUrl,
-                HttpMethod.GET,
-                entity,
-                typeRef,
-                selectedDate,
-                userTimezone.getId()
-        );
-
-        if (remoteResponse.getStatusCode().is2xxSuccessful()) {
-            return remoteResponse.getBody();
-        } else if (remoteResponse.getStatusCode().is4xxClientError()) {
-            throw new RequestFailedException(timelineUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
-        } else {
-            throw new RequestTemporaryFailedException(timelineUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
-        }
-    }
-
     private List<TimelineEntry> loadTimeLineEntriesRange(ReittiIntegration integration, LocalDate startDate, LocalDate endDate, ZoneId userTimezone) throws RequestFailedException, RequestTemporaryFailedException {
 
         HttpHeaders headers = new HttpHeaders();
@@ -288,7 +299,6 @@ public class ReittiIntegrationService {
         String timelineUrl = integration.getUrl().endsWith("/") ?
                 integration.getUrl() + "api/v1/reitti-integration/timeline?startDate={startDate}&endDate={endDate}&timezone={timezone}" :
                 integration.getUrl() + "/api/v1/reitti-integration/timeline?startDate={startDate}&endDate={endDate}&timezone={timezone}";
-
 
         ParameterizedTypeReference<List<TimelineEntry>> typeRef = new ParameterizedTypeReference<>() {};
         ResponseEntity<List<TimelineEntry>> remoteResponse = restTemplate.exchange(
@@ -353,9 +363,9 @@ public class ReittiIntegrationService {
             log.warn("Advertise URI is null or empty, remote updates are disabled. Consider setting 'reitti.server.advertise-uri'");
             return;
         }
-        
+
         List<ReittiIntegration> activeIntegrations = getActiveIntegrationsForUser(user);
-        
+
         for (ReittiIntegration integration : activeIntegrations) {
             try {
                 registerSubscriptionOnIntegration(integration, user);
@@ -383,7 +393,7 @@ public class ReittiIntegrationService {
             log.warn("No advertise URI configured, skipping subscription registration for integration: [{}]", integration.getId());
             return;
         }
-        
+
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-API-TOKEN", integration.getToken());
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -391,11 +401,11 @@ public class ReittiIntegrationService {
         SubscriptionRequest subscriptionRequest = new SubscriptionRequest();
         subscriptionRequest.setCallbackUrl(advertiseUri);
         HttpEntity<SubscriptionRequest> entity = new HttpEntity<>(subscriptionRequest, headers);
-        
+
         String subscribeUrl = integration.getUrl().endsWith("/") ?
                 integration.getUrl() + "api/v1/reitti-integration/subscribe" :
                 integration.getUrl() + "/api/v1/reitti-integration/subscribe";
-        
+
         try {
             ResponseEntity<SubscriptionResponse> response = restTemplate.exchange(
                     subscribeUrl,
@@ -403,7 +413,7 @@ public class ReittiIntegrationService {
                     entity,
                     SubscriptionResponse.class
             );
-            
+
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 log.debug("Successfully subscribed to integration: [{}]", integration.getId());
                 synchronized (integrationSubscriptions) {
@@ -482,14 +492,14 @@ public class ReittiIntegrationService {
         if (placesData == null) {
             return new ProcessedVisitResponse(Collections.emptyList());
         }
-        
+
         List<ProcessedVisitResponse.PlaceVisitSummary> places = placesData.stream()
                 .map(this::parsePlaceVisitSummary)
                 .toList();
-        
+
         return new ProcessedVisitResponse(places);
     }
-    
+
     @SuppressWarnings("unchecked")
     private ProcessedVisitResponse.PlaceVisitSummary parsePlaceVisitSummary(Map<String, Object> placeData) {
         // Parse place info
@@ -507,7 +517,7 @@ public class ReittiIntegrationService {
                 SignificantPlace.PlaceType.valueOf(placeInfo.get("type").toString()),
                 polygon
         );
-        
+
         // Parse visits
         List<Map<String, Object>> visitsData = (List<Map<String, Object>>) placeData.get("visits");
         List<ProcessedVisitResponse.VisitDetail> visits = visitsData.stream()
@@ -518,12 +528,12 @@ public class ReittiIntegrationService {
                         getLongValue(visitData, "durationSeconds")
                 ))
                 .toList();
-        
+
         // Parse summary data
         long totalDurationMs = getLongValue(placeData, "totalDurationMs"); // Convert to milliseconds
         int visitCount = getIntValue(placeData, "visitCount");
         String color = "#3388ff"; // Default color, could be extracted from response if available
-        
+
         return new ProcessedVisitResponse.PlaceVisitSummary(place, visits, totalDurationMs, visitCount, color);
     }
 
@@ -543,7 +553,7 @@ public class ReittiIntegrationService {
         }
         return polygon;
     }
-    
+
     private Long getLongValue(Map<String, Object> map, String key) {
         Object value = map.get(key);
         if (value instanceof Number) {
@@ -551,7 +561,7 @@ public class ReittiIntegrationService {
         }
         return null;
     }
-    
+
     private Double getDoubleValue(Map<String, Object> map, String key) {
         Object value = map.get(key);
         if (value instanceof Number) {
@@ -559,13 +569,33 @@ public class ReittiIntegrationService {
         }
         return null;
     }
-    
+
     private Integer getIntValue(Map<String, Object> map, String key) {
         Object value = map.get(key);
         if (value instanceof Number) {
             return ((Number) value).intValue();
         }
         return 0;
+    }
+
+    private LocationPoint parseLocationPoint(Object locationObj) {
+        if (locationObj == null) {
+            return null;
+        }
+
+        Map<String, Object> locationMap = (Map<String, Object>) locationObj;
+
+        LocationPoint locationPoint = new LocationPoint();
+        locationPoint.setLatitude(getDoubleValue(locationMap, "latitude"));
+        locationPoint.setLongitude(getDoubleValue(locationMap, "longitude"));
+        locationPoint.setTimestamp((String) locationMap.get("timestamp"));
+        locationPoint.setAccuracyMeters(getDoubleValue(locationMap, "accuracyMeters"));
+
+        if (locationMap.containsKey("elevationMeters")) {
+            locationPoint.setElevationMeters(getDoubleValue(locationMap, "elevationMeters"));
+        }
+
+        return locationPoint;
     }
 
 }
