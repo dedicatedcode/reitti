@@ -211,13 +211,12 @@ public class ReittiIntegrationService {
                                 Map.class
                         );
 
-                        if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null && remoteResponse.getBody().containsKey("hasLocation")) {
+                        if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null && remoteResponse.getBody().containsKey("hasLocation")) {
                             update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
                             if (!remoteResponse.getBody().get("hasLocation").equals(true)) {
                                 return null;
                             } else {
-                                //parse the remoteResponse.getBody().get("location") to an LocationPoint.java and return it. AI!
-                                return new LocationPoint();
+                                return parseLocationPoint(remoteResponse.getBody().get("location"));
                             }
                         } else if (remoteResponse.getStatusCode().is4xxClientError()) {
                             throw new RequestFailedException(rawLocationDataUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
@@ -301,7 +300,6 @@ public class ReittiIntegrationService {
                 integration.getUrl() + "api/v1/reitti-integration/timeline?startDate={startDate}&endDate={endDate}&timezone={timezone}" :
                 integration.getUrl() + "/api/v1/reitti-integration/timeline?startDate={startDate}&endDate={endDate}&timezone={timezone}";
 
-
         ParameterizedTypeReference<List<TimelineEntry>> typeRef = new ParameterizedTypeReference<>() {};
         ResponseEntity<List<TimelineEntry>> remoteResponse = restTemplate.exchange(
                 timelineUrl,
@@ -365,9 +363,9 @@ public class ReittiIntegrationService {
             log.warn("Advertise URI is null or empty, remote updates are disabled. Consider setting 'reitti.server.advertise-uri'");
             return;
         }
-        
+
         List<ReittiIntegration> activeIntegrations = getActiveIntegrationsForUser(user);
-        
+
         for (ReittiIntegration integration : activeIntegrations) {
             try {
                 registerSubscriptionOnIntegration(integration, user);
@@ -395,7 +393,7 @@ public class ReittiIntegrationService {
             log.warn("No advertise URI configured, skipping subscription registration for integration: [{}]", integration.getId());
             return;
         }
-        
+
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-API-TOKEN", integration.getToken());
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -403,11 +401,11 @@ public class ReittiIntegrationService {
         SubscriptionRequest subscriptionRequest = new SubscriptionRequest();
         subscriptionRequest.setCallbackUrl(advertiseUri);
         HttpEntity<SubscriptionRequest> entity = new HttpEntity<>(subscriptionRequest, headers);
-        
+
         String subscribeUrl = integration.getUrl().endsWith("/") ?
                 integration.getUrl() + "api/v1/reitti-integration/subscribe" :
                 integration.getUrl() + "/api/v1/reitti-integration/subscribe";
-        
+
         try {
             ResponseEntity<SubscriptionResponse> response = restTemplate.exchange(
                     subscribeUrl,
@@ -415,7 +413,7 @@ public class ReittiIntegrationService {
                     entity,
                     SubscriptionResponse.class
             );
-            
+
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 log.debug("Successfully subscribed to integration: [{}]", integration.getId());
                 synchronized (integrationSubscriptions) {
@@ -494,14 +492,14 @@ public class ReittiIntegrationService {
         if (placesData == null) {
             return new ProcessedVisitResponse(Collections.emptyList());
         }
-        
+
         List<ProcessedVisitResponse.PlaceVisitSummary> places = placesData.stream()
                 .map(this::parsePlaceVisitSummary)
                 .toList();
-        
+
         return new ProcessedVisitResponse(places);
     }
-    
+
     @SuppressWarnings("unchecked")
     private ProcessedVisitResponse.PlaceVisitSummary parsePlaceVisitSummary(Map<String, Object> placeData) {
         // Parse place info
@@ -519,7 +517,7 @@ public class ReittiIntegrationService {
                 SignificantPlace.PlaceType.valueOf(placeInfo.get("type").toString()),
                 polygon
         );
-        
+
         // Parse visits
         List<Map<String, Object>> visitsData = (List<Map<String, Object>>) placeData.get("visits");
         List<ProcessedVisitResponse.VisitDetail> visits = visitsData.stream()
@@ -530,12 +528,12 @@ public class ReittiIntegrationService {
                         getLongValue(visitData, "durationSeconds")
                 ))
                 .toList();
-        
+
         // Parse summary data
         long totalDurationMs = getLongValue(placeData, "totalDurationMs"); // Convert to milliseconds
         int visitCount = getIntValue(placeData, "visitCount");
         String color = "#3388ff"; // Default color, could be extracted from response if available
-        
+
         return new ProcessedVisitResponse.PlaceVisitSummary(place, visits, totalDurationMs, visitCount, color);
     }
 
@@ -555,7 +553,7 @@ public class ReittiIntegrationService {
         }
         return polygon;
     }
-    
+
     private Long getLongValue(Map<String, Object> map, String key) {
         Object value = map.get(key);
         if (value instanceof Number) {
@@ -563,7 +561,7 @@ public class ReittiIntegrationService {
         }
         return null;
     }
-    
+
     private Double getDoubleValue(Map<String, Object> map, String key) {
         Object value = map.get(key);
         if (value instanceof Number) {
@@ -571,13 +569,33 @@ public class ReittiIntegrationService {
         }
         return null;
     }
-    
+
     private Integer getIntValue(Map<String, Object> map, String key) {
         Object value = map.get(key);
         if (value instanceof Number) {
             return ((Number) value).intValue();
         }
         return 0;
+    }
+
+    private LocationPoint parseLocationPoint(Object locationObj) {
+        if (locationObj == null) {
+            return null;
+        }
+
+        Map<String, Object> locationMap = (Map<String, Object>) locationObj;
+
+        LocationPoint locationPoint = new LocationPoint();
+        locationPoint.setLatitude(getDoubleValue(locationMap, "latitude"));
+        locationPoint.setLongitude(getDoubleValue(locationMap, "longitude"));
+        locationPoint.setTimestamp((String) locationMap.get("timestamp"));
+        locationPoint.setAccuracyMeters(getDoubleValue(locationMap, "accuracyMeters"));
+
+        if (locationMap.containsKey("elevationMeters")) {
+            locationPoint.setElevationMeters(getDoubleValue(locationMap, "elevationMeters"));
+        }
+
+        return locationPoint;
     }
 
 }
