@@ -19,19 +19,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class GpxSender {
-    
+
     private static class TrackPoint {
         public final double latitude;
         public final double longitude;
         public final Instant timestamp;
-        
+
         public TrackPoint(double latitude, double longitude, Instant timestamp) {
             this.latitude = latitude;
             this.longitude = longitude;
             this.timestamp = timestamp;
         }
     }
-    
+
     private static class OwntracksMessage {
         public String _type = "location";
         public double acc;
@@ -48,7 +48,7 @@ public class GpxSender {
 
     public static void main(String[] args) {
         if (args.length < 1) {
-            System.err.println("Usage: java -jar gpx-sender.jar <gpx-file> --url <reitti-url> --token <api-token> [--interval <seconds>] [--original-time]");
+            System.err.println("Usage: java -jar gpx-sender.jar <gpx-file> --url <reitti-url> --token <api-token> [--interval <seconds>] [--original-time] [--verbose]");
             System.err.println("Example: java -jar gpx-sender.jar track.gpx --url http://localhost:8080 --token your-api-token --interval 15");
             System.err.println("         java -jar gpx-sender.jar track.gpx --url http://localhost:8080 --token your-api-token --original-time");
             System.exit(1);
@@ -59,6 +59,7 @@ public class GpxSender {
         String apiToken = null;
         double intervalSeconds = 15.0;
         boolean useOriginalTime = false;
+        boolean verboseOutput = false;
 
         // Parse named parameters
         for (int i = 1; i < args.length; i++) {
@@ -81,6 +82,10 @@ public class GpxSender {
                 case "--original-time":
                 case "-ot":
                     useOriginalTime = true;
+                    break;
+                case "--verbose":
+                case "-v":
+                    verboseOutput = true;
                     break;
                 default:
                     System.err.println("Unknown parameter: " + args[i]);
@@ -107,8 +112,11 @@ public class GpxSender {
             } else {
                 System.out.println("Interval: " + intervalSeconds + " seconds");
             }
+            if (verboseOutput) {
+                System.out.println("Verbose output enabled");
+            }
 
-            sendTrackPoints(trackPoints, reittiUrl, apiToken, intervalSeconds, useOriginalTime);
+            sendTrackPoints(trackPoints, reittiUrl, apiToken, intervalSeconds, useOriginalTime, verboseOutput);
 
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
@@ -119,44 +127,44 @@ public class GpxSender {
 
     private static List<TrackPoint> parseGpxFile(String gpxFile) throws Exception {
         List<TrackPoint> trackPoints = new ArrayList<>();
-        
+
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         DocumentBuilder builder = factory.newDocumentBuilder();
         Document document = builder.parse(new File(gpxFile));
-        
+
         NodeList trkptNodes = document.getElementsByTagName("trkpt");
-        
+
         for (int i = 0; i < trkptNodes.getLength(); i++) {
             Element trkpt = (Element) trkptNodes.item(i);
-            
+
             double lat = Double.parseDouble(trkpt.getAttribute("lat"));
             double lon = Double.parseDouble(trkpt.getAttribute("lon"));
-            
+
             NodeList timeNodes = trkpt.getElementsByTagName("time");
             Instant timestamp = null;
             if (timeNodes.getLength() > 0) {
                 String timeStr = timeNodes.item(0).getTextContent();
                 timestamp = Instant.parse(timeStr);
             }
-            
+
             trackPoints.add(new TrackPoint(lat, lon, timestamp));
         }
-        
+
         return trackPoints;
     }
 
-    private static void sendTrackPoints(List<TrackPoint> trackPoints, String reittiUrl, String apiToken, double intervalSeconds, boolean useOriginalTime) throws Exception {
+    private static void sendTrackPoints(List<TrackPoint> trackPoints, String reittiUrl, String apiToken, double intervalSeconds, boolean useOriginalTime, boolean verboseOutput) throws Exception {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
-        
+
         // Start from current time and send points with their original intervals
         Instant startTime = Instant.now();
-        
+
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            
+
             for (int i = 0; i < trackPoints.size(); i++) {
                 TrackPoint point = trackPoints.get(i);
-                
+
                 // Calculate timestamp based on mode
                 Instant adjustedTime;
                 if (useOriginalTime) {
@@ -177,7 +185,7 @@ public class GpxSender {
                         adjustedTime = startTime.plusMillis((long) (i * intervalSeconds * 1000));
                     }
                 }
-                
+
                 // Create Owntracks message
                 OwntracksMessage message = new OwntracksMessage(
                         point.latitude,
@@ -185,40 +193,69 @@ public class GpxSender {
                         adjustedTime.getEpochSecond(),
                         10.0
                 );
-                
+
                 // Send HTTP request
                 String url = reittiUrl + "/api/v1/ingest/owntracks";
                 HttpPost post = new HttpPost(url);
                 post.setHeader("Authorization", "Bearer " + apiToken);
                 post.setHeader("Content-Type", "application/json");
-                
+
                 String json = objectMapper.writeValueAsString(message);
                 post.setEntity(new StringEntity(json, ContentType.APPLICATION_JSON));
-                
-                System.out.printf("Sending point %d/%d: lat=%.6f, lon=%.6f, time=%s%n", 
+
+                System.out.printf("Sending point %d/%d: lat=%.6f, lon=%.6f, time=%s%n",
                     i + 1, trackPoints.size(), point.latitude, point.longitude, adjustedTime);
-                
+
                 try {
                     httpClient.execute(post, response -> {
                         int statusCode = response.getCode();
                         if (statusCode >= 200 && statusCode < 300) {
                             System.out.println("✓ Sent successfully");
+                            // Try to read and pretty-print the response body if it exists and verbose is enabled
+                            if (verboseOutput) {
+                                try {
+                                    String responseBody = new String(response.getEntity().getContent().readAllBytes());
+                                    if (!responseBody.isEmpty()) {
+                                        Object jsonResponse = objectMapper.readValue(responseBody, Object.class);
+                                        String prettyJson = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonResponse);
+                                        System.out.println("Response:");
+                                        System.out.println(prettyJson);
+                                    }
+                                } catch (Exception e) {
+                                    // If we can't parse as JSON, just print the raw response
+                                    try {
+                                        String rawResponse = new String(response.getEntity().getContent().readAllBytes());
+                                        if (!rawResponse.isEmpty()) {
+                                            System.out.println("Response: " + rawResponse);
+                                        }
+                                    } catch (Exception ex) {
+                                        // Ignore if we can't read the response
+                                    }
+                                }
+                            }
                         } else {
                             System.err.println("✗ Failed with status: " + statusCode);
+                            // Print error response if available
+                            try {
+                                String errorBody = new String(response.getEntity().getContent().readAllBytes());
+                                System.err.println("Error response: " + errorBody);
+                            } catch (Exception e) {
+                                // Ignore if we can't read the error body
+                            }
                         }
                         return null;
                     });
                 } catch (Exception e) {
                     System.err.println("✗ Error sending point: " + e.getMessage());
                 }
-                
+
                 // Wait before sending next point (except for the last one)
                 if (i < trackPoints.size() - 1) {
                     Thread.sleep((long) (intervalSeconds * 1000));
                 }
             }
         }
-        
+
         System.out.println("Finished sending all track points");
     }
 }
