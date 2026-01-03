@@ -19,7 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @IntegrationTest
 @AutoConfigureWebMvc
-class IngestApiControllerTest {
+class OverlandIngestionApiControllerTest {
 
     @Autowired
     private MockMvc mockMvc;

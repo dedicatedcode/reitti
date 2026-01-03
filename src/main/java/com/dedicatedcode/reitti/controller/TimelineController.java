@@ -31,8 +31,6 @@ import java.util.*;
 @RequestMapping("/timeline")
 public class TimelineController {
 
-    private final SignificantPlaceJdbcService placeService;
-    private final SignificantPlaceOverrideJdbcService placeOverrideJdbcService;
     private final UserJdbcService userJdbcService;
 
     private final AvatarService avatarService;
@@ -44,16 +42,14 @@ public class TimelineController {
     private final TripJdbcService tripJdbcService;
 
     @Autowired
-    public TimelineController(SignificantPlaceJdbcService placeService, SignificantPlaceOverrideJdbcService placeOverrideJdbcService,
-                              UserJdbcService userJdbcService,
+    public TimelineController(UserJdbcService userJdbcService,
                               AvatarService avatarService,
-                              ReittiIntegrationService reittiIntegrationService, UserSharingJdbcService userSharingJdbcService,
+                              ReittiIntegrationService reittiIntegrationService,
+                              UserSharingJdbcService userSharingJdbcService,
                               TimelineService timelineService,
                               UserSettingsJdbcService userSettingsJdbcService,
                               TransportModeService transportModeService,
                               TripJdbcService tripJdbcService) {
-        this.placeService = placeService;
-        this.placeOverrideJdbcService = placeOverrideJdbcService;
         this.userJdbcService = userJdbcService;
         this.avatarService = avatarService;
         this.reittiIntegrationService = reittiIntegrationService;
