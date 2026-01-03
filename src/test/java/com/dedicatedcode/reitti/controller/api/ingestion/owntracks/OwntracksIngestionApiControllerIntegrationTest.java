@@ -89,8 +89,7 @@ class OwntracksIngestionApiControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(owntracksPayload))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Successfully queued Owntracks location point for processing"));
+                .andExpect(jsonPath("$").isArray());
     }
 
     @Test
@@ -109,8 +108,8 @@ class OwntracksIngestionApiControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(owntracksPayload))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Non-location update ignored"));
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$").isEmpty());
     }
 
     @Test

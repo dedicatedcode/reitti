@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.controller.api.ingestion.owntracks;
 
-
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
 import com.dedicatedcode.reitti.dto.ReittiRemoteInfo;
@@ -60,25 +59,24 @@ public class OwntracksIngestionApiController {
 
     @PostMapping("/owntracks")
     public ResponseEntity<?> receiveOwntracksData(@RequestBody OwntracksLocationRequest request) {
-        if (!request.isLocationUpdate()) {
-            logger.debug("Ignoring non-location Owntracks message of type: {}", request.getType());
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "message", "Non-location update ignored"
-            ));
-        }
-
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         User user = this.userJdbcService.findByUsername(userDetails.getUsername()).orElseThrow(() -> new UsernameNotFoundException(userDetails.getUsername()));
 
         try {
+            if (!request.isLocationUpdate()) {
+                logger.debug("Ignoring non-location Owntracks message of type: {}", request.getType());
+                // Return empty array for non-location messages
+                return ResponseEntity.ok(new ArrayList<OwntracksFriendResponse>());
+            }
+
             // Convert an Owntracks format to our LocationPoint format
             LocationPoint locationPoint = request.toLocationPoint();
 
             if (locationPoint.getTimestamp() == null) {
                 logger.warn("Ignoring location point [{}] because timestamp is null", locationPoint);
-                return ResponseEntity.ok(Map.of());
+                // Return empty array when timestamp is null
+                return ResponseEntity.ok(new ArrayList<OwntracksFriendResponse>());
             }
 
             this.locationBatchingService.addLocationPoint(user, locationPoint);
