@@ -216,7 +216,7 @@ public class ReittiIntegrationService {
                             if (!remoteResponse.getBody().get("hasLocation").equals(true)) {
                                 return null;
                             } else {
-                                return parseLocationPoint(remoteResponse.getBody().get("location"));
+                                return parseLocationPoint(remoteResponse.getBody().get("point"));
                             }
                         } else if (remoteResponse.getStatusCode().is4xxClientError()) {
                             throw new RequestFailedException(rawLocationDataUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
