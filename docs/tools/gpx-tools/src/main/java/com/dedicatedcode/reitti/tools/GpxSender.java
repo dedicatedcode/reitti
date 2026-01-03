@@ -178,7 +178,6 @@ public class GpxSender {
                     } else if (trackPoints.get(i - 1).timestamp != null && point.timestamp != null) {
                         // Calculate time difference from previous point and add to previous adjusted time
                         TrackPoint prevPoint = trackPoints.get(i-1);
-                        long durationFromPrev = point.timestamp.getEpochSecond() - prevPoint.timestamp.getEpochSecond();
                         adjustedTime = startTime.plusMillis((long) (i * intervalSeconds * 1000));
                     } else {
                         // Fallback: distribute points evenly from start time
