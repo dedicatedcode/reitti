@@ -1,9 +1,14 @@
 package com.dedicatedcode.reitti.service;
 
+import net.coobird.thumbnailator.Thumbnails;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.Map;
 import java.util.Optional;
@@ -74,7 +79,6 @@ public class AvatarService {
 
         String trimmed = displayName.trim();
 
-
         if (trimmed.contains(" ")) {
             StringBuilder initials = new StringBuilder();
             String[] words = trimmed.split("\\s+");
@@ -94,6 +98,23 @@ public class AvatarService {
             }
         }
     }
+
+    @Cacheable(value = "avatarThumbnails", key = "{#userId, #width, #height}")
+    public Optional<byte[]> getAvatarThumbnail(Long userId, int width, int height) {
+        return getAvatarByUserId(userId).map(avatarData -> {
+            try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+                Thumbnails.of(new ByteArrayInputStream(avatarData.imageData()))
+                    .size(width, height)
+                    .outputFormat(avatarData.mimeType().contains("png") ? "png" : "jpg")
+                    .outputQuality(0.75)
+                    .toOutputStream(output);
+                return output.toByteArray();
+            } catch (IOException e) {
+                return null;
+            }
+        });
+    }
+
     public record AvatarData(String mimeType, byte[] imageData, long updatedAt) {}
 
     public record AvatarInfo(long updatedAt) {}
