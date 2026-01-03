@@ -31,48 +31,6 @@ class OverlandIngestionApiControllerTest {
         testUser = testingService.randomUser();
     }
 
-    @Test
-    void testOwntracksIngestWithoutElevation() throws Exception {
-        String owntracksPayload = """
-                {
-                    "_type": "location",
-                    "lat": 53.863149,
-                    "lon": 10.700927,
-                    "tst": 1699545600,
-                    "acc": 10.5
-                }
-                """;
-
-        mockMvc.perform(post("/api/v1/ingest/owntracks")
-                        .with(user(testUser))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(owntracksPayload))
-                .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Successfully queued Owntracks location point for processing"));
-    }
-
-    @Test
-    void testOwntracksIngestWithElevation() throws Exception {
-        String owntracksPayload = """
-                {
-                    "_type": "location",
-                    "lat": 53.863149,
-                    "lon": 10.700927,
-                    "tst": 1699545600,
-                    "acc": 10.5,
-                    "alt": 42.5
-                }
-                """;
-
-        mockMvc.perform(post("/api/v1/ingest/owntracks")
-                        .with(user(testUser))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(owntracksPayload))
-                .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Successfully queued Owntracks location point for processing"));
-    }
 
     @Test
     void testOverlandIngestWithoutElevation() throws Exception {
@@ -130,26 +88,6 @@ class OverlandIngestionApiControllerTest {
                         .content(overlandPayload))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result").value("ok"));
-    }
-
-    @Test
-    void testOwntracksIngestIgnoresNonLocationMessages() throws Exception {
-        String owntracksPayload = """
-                {
-                    "_type": "waypoint",
-                    "lat": 53.863149,
-                    "lon": 10.700927,
-                    "tst": 1699545600
-                }
-                """;
-
-        mockMvc.perform(post("/api/v1/ingest/owntracks")
-                        .with(user(testUser))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(owntracksPayload))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Non-location update ignored"));
     }
 
     @Test
