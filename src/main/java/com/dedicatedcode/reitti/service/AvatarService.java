@@ -1,22 +1,32 @@
 package com.dedicatedcode.reitti.service;
 
+import net.coobird.thumbnailator.Thumbnails;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.Serializable;
 import java.sql.Timestamp;
 import java.util.Map;
 import java.util.Optional;
 
 @Service
 public class AvatarService {
-
+    private final static Logger log = LoggerFactory.getLogger(AvatarService.class);
     private final JdbcTemplate jdbcTemplate;
 
     public AvatarService(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    @Cacheable(value = "avatarData", key = "{#userId}")
     public Optional<AvatarData> getAvatarByUserId(Long userId) {
         try {
             Map<String, Object> result = jdbcTemplate.queryForMap(
@@ -51,6 +61,7 @@ public class AvatarService {
         }
     }
 
+    @CacheEvict(value = {"avatarThumbnails", "avatarData"}, key = "{#userId}")
     public void updateAvatar(Long userId, String contentType, byte[] imageData) {
 
         jdbcTemplate.update("DELETE FROM user_avatars WHERE user_id = ?", userId);
@@ -63,6 +74,7 @@ public class AvatarService {
         );
     }
 
+    @CacheEvict(value = {"avatarThumbnails", "avatarData"}, key = "{#userId}")
     public void deleteAvatar(Long userId) {
         this.jdbcTemplate.update("DELETE FROM user_avatars WHERE user_id = ?", userId);
     }
@@ -73,7 +85,6 @@ public class AvatarService {
         }
 
         String trimmed = displayName.trim();
-
 
         if (trimmed.contains(" ")) {
             StringBuilder initials = new StringBuilder();
@@ -94,7 +105,25 @@ public class AvatarService {
             }
         }
     }
-    public record AvatarData(String mimeType, byte[] imageData, long updatedAt) {}
 
-    public record AvatarInfo(long updatedAt) {}
+    @Cacheable(value = "avatarThumbnails", key = "{#userId, #width, #height}")
+    public Optional<byte[]> getAvatarThumbnail(Long userId, int width, int height) {
+        return getAvatarByUserId(userId).map(avatarData -> {
+            try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+                Thumbnails.of(new ByteArrayInputStream(avatarData.imageData()))
+                    .size(width, height)
+                    .outputFormat(avatarData.mimeType().contains("png") ? "png" : "jpg")
+                    .outputQuality(0.75)
+                    .toOutputStream(output);
+                return output.toByteArray();
+            } catch (IOException e) {
+                log.error("Failed to generate thumbnail for avatar of user [{}]", userId, e);
+                return null;
+            }
+        });
+    }
+
+    public record AvatarData(String mimeType, byte[] imageData, long updatedAt) implements Serializable {}
+
+    public record AvatarInfo(long updatedAt) implements Serializable {}
 }

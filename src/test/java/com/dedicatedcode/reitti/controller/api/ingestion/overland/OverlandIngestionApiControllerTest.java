@@ -1,10 +1,8 @@
-package com.dedicatedcode.reitti.controller.api;
+package com.dedicatedcode.reitti.controller.api.ingestion.overland;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.UserJdbcService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @IntegrationTest
 @AutoConfigureWebMvc
-class IngestApiControllerTest {
+class OverlandIngestionApiControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -33,48 +31,6 @@ class IngestApiControllerTest {
         testUser = testingService.randomUser();
     }
 
-    @Test
-    void testOwntracksIngestWithoutElevation() throws Exception {
-        String owntracksPayload = """
-                {
-                    "_type": "location",
-                    "lat": 53.863149,
-                    "lon": 10.700927,
-                    "tst": 1699545600,
-                    "acc": 10.5
-                }
-                """;
-
-        mockMvc.perform(post("/api/v1/ingest/owntracks")
-                        .with(user(testUser))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(owntracksPayload))
-                .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Successfully queued Owntracks location point for processing"));
-    }
-
-    @Test
-    void testOwntracksIngestWithElevation() throws Exception {
-        String owntracksPayload = """
-                {
-                    "_type": "location",
-                    "lat": 53.863149,
-                    "lon": 10.700927,
-                    "tst": 1699545600,
-                    "acc": 10.5,
-                    "alt": 42.5
-                }
-                """;
-
-        mockMvc.perform(post("/api/v1/ingest/owntracks")
-                        .with(user(testUser))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(owntracksPayload))
-                .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Successfully queued Owntracks location point for processing"));
-    }
 
     @Test
     void testOverlandIngestWithoutElevation() throws Exception {
@@ -132,26 +88,6 @@ class IngestApiControllerTest {
                         .content(overlandPayload))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result").value("ok"));
-    }
-
-    @Test
-    void testOwntracksIngestIgnoresNonLocationMessages() throws Exception {
-        String owntracksPayload = """
-                {
-                    "_type": "waypoint",
-                    "lat": 53.863149,
-                    "lon": 10.700927,
-                    "tst": 1699545600
-                }
-                """;
-
-        mockMvc.perform(post("/api/v1/ingest/owntracks")
-                        .with(user(testUser))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(owntracksPayload))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Non-location update ignored"));
     }
 
     @Test
