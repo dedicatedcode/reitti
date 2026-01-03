@@ -23,6 +23,7 @@ public class AvatarService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    @Cacheable(value = "avatarData", key = "{#userId}")
     public Optional<AvatarData> getAvatarByUserId(Long userId) {
         try {
             Map<String, Object> result = jdbcTemplate.queryForMap(
