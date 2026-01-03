@@ -2,10 +2,12 @@ package com.dedicatedcode.reitti.controller.api.ingestion.owntracks;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.OwntracksFriendResponse;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.model.security.UserSharing;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
 import com.dedicatedcode.reitti.service.AvatarService;
@@ -13,16 +15,19 @@ import com.dedicatedcode.reitti.service.LocationBatchingService;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureWebMvc;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -50,10 +55,10 @@ class OwntracksIngestionApiControllerIntegrationTest {
     @Autowired
     private AvatarService avatarService;
 
-    @MockBean
+    @MockitoBean
     private LocationBatchingService locationBatchingService;
 
-    @MockBean
+    @MockitoBean
     private ReittiIntegrationService reittiIntegrationService;
 
     private User testUser;
@@ -65,8 +70,9 @@ class OwntracksIngestionApiControllerIntegrationTest {
         sharedUser = testingService.randomUser();
 
         // Create sharing relationship - sharedUser shares with testUser
-        userSharingJdbcService.createSharing(sharedUser.getId(), testUser.getId(), "#FF0000");
+        userSharingJdbcService.create(testUser, Set.of(new UserSharing(null, sharedUser.getId(), testUser.getId(), null, "#FF0000", null)));
 
+        //use the create method in RawLocationPointJdbcService for this here AI!
         // Add some location data for shared user
         rawLocationPointJdbcService.save(new RawLocationPoint(
                 null,
@@ -160,7 +166,7 @@ class OwntracksIngestionApiControllerIntegrationTest {
                 """;
 
         // Mock the location batching service to avoid actual processing
-        doNothing().when(locationBatchingService).addLocationPoint(any(User.class), any(OwntracksLocationRequest.class));
+        doNothing().when(locationBatchingService).addLocationPoint(any(User.class), any(LocationPoint.class));
 
         MvcResult result = mockMvc.perform(post("/api/v1/ingest/owntracks")
                         .with(user(testUser))
@@ -174,7 +180,7 @@ class OwntracksIngestionApiControllerIntegrationTest {
         assertTrue(responseContent.contains("friends"), "Response should contain friends data");
 
         // Verify location batching was called
-        verify(locationBatchingService, times(1)).addLocationPoint(any(User.class), any(OwntracksLocationRequest.class));
+        verify(locationBatchingService, times(1)).addLocationPoint(any(User.class), any(LocationPoint.class));
     }
 
     @Test
@@ -190,7 +196,7 @@ class OwntracksIngestionApiControllerIntegrationTest {
                 """;
 
         // Mock the location batching service
-        doNothing().when(locationBatchingService).addLocationPoint(any(User.class), any(OwntracksLocationRequest.class));
+        doNothing().when(locationBatchingService).addLocationPoint(any(User.class), any(LocationPoint.class));
 
         MvcResult result = mockMvc.perform(post("/api/v1/ingest/owntracks")
                         .with(user(testUser))
