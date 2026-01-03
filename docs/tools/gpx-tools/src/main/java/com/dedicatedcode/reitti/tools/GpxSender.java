@@ -196,8 +196,7 @@ public class GpxSender {
                 post.setEntity(new StringEntity(json, ContentType.APPLICATION_JSON));
                 
                 System.out.printf("Sending point %d/%d: lat=%.6f, lon=%.6f, time=%s%n", 
-                    i + 1, trackPoints.size(), point.latitude, point.longitude, 
-                    adjustedTime.toString());
+                    i + 1, trackPoints.size(), point.latitude, point.longitude, adjustedTime);
                 
                 try {
                     httpClient.execute(post, response -> {
