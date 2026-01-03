@@ -72,10 +72,8 @@ class OwntracksIngestionApiControllerIntegrationTest {
         // Create sharing relationship - sharedUser shares with testUser
         userSharingJdbcService.create(testUser, Set.of(new UserSharing(null, sharedUser.getId(), testUser.getId(), null, "#FF0000", null)));
 
-        //use the create method in RawLocationPointJdbcService for this here AI!
         // Add some location data for shared user
-        rawLocationPointJdbcService.save(new RawLocationPoint(
-                null,
+        rawLocationPointJdbcService.save(RawLocationPoint.create(
                 sharedUser.getId(),
                 60.1699,
                 24.9384,
