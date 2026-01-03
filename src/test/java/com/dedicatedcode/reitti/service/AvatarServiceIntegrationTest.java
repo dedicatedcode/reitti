@@ -8,8 +8,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -28,6 +32,9 @@ class AvatarServiceIntegrationTest {
 
     @Autowired
     private TestingService testingService;
+
+    @Autowired
+    private ResourceLoader resourceLoader;
 
     private User testUser;
 
@@ -59,10 +66,13 @@ class AvatarServiceIntegrationTest {
     }
 
     @Test
-    void testGetAvatarByUserId_WhenAvatarExists() {
-        // Insert test avatar data
+    void testGetAvatarByUserId_WhenAvatarExists() throws IOException {
+        // Load test image from resources
+        Resource imageResource = resourceLoader.getResource("classpath:data/images/test-image.jpg");
+        byte[] testImageData = loadImageData(imageResource);
         String testContentType = "image/jpeg";
-        byte[] testImageData = new byte[]{1, 2, 3, 4}; // Simple test data
+
+        // Insert test avatar data
         jdbcTemplate.update(
                 "INSERT INTO user_avatars (user_id, mime_type, binary_data) VALUES (?, ?, ?)",
                 testUser.getId(), testContentType, testImageData);
@@ -82,11 +92,15 @@ class AvatarServiceIntegrationTest {
     }
 
     @Test
-    void testGetInfo_WhenAvatarExists() {
+    void testGetInfo_WhenAvatarExists() throws IOException {
+        // Load test image from resources
+        Resource imageResource = resourceLoader.getResource("classpath:data/images/test-image.jpg");
+        byte[] testImageData = loadImageData(imageResource);
+
         // Insert test avatar data
         jdbcTemplate.update(
                 "INSERT INTO user_avatars (user_id, mime_type, binary_data) VALUES (?, ?, ?)",
-                testUser.getId(), "image/png", new byte[]{5, 6, 7, 8});
+                testUser.getId(), "image/jpeg", testImageData);
 
         Optional<AvatarService.AvatarInfo> result = avatarService.getInfo(testUser.getId());
 
@@ -95,9 +109,11 @@ class AvatarServiceIntegrationTest {
     }
 
     @Test
-    void testUpdateAvatar() {
-        String contentType = "image/png";
-        byte[] imageData = new byte[]{10, 20, 30, 40};
+    void testUpdateAvatar() throws IOException {
+        // Load test image from resources
+        Resource imageResource = resourceLoader.getResource("classpath:data/images/test-image.jpg");
+        byte[] imageData = loadImageData(imageResource);
+        String contentType = "image/jpeg";
 
         // Update avatar
         avatarService.updateAvatar(testUser.getId(), contentType, imageData);
@@ -110,11 +126,15 @@ class AvatarServiceIntegrationTest {
     }
 
     @Test
-    void testDeleteAvatar() {
+    void testDeleteAvatar() throws IOException {
+        // Load test image from resources
+        Resource imageResource = resourceLoader.getResource("classpath:data/images/test-image.jpg");
+        byte[] imageData = loadImageData(imageResource);
+
         // First insert an avatar
         jdbcTemplate.update(
                 "INSERT INTO user_avatars (user_id, mime_type, binary_data) VALUES (?, ?, ?)",
-                testUser.getId(), "image/jpeg", new byte[]{1, 2, 3});
+                testUser.getId(), "image/jpeg", imageData);
 
         // Verify it exists
         Optional<AvatarService.AvatarData> beforeDelete = avatarService.getAvatarByUserId(testUser.getId());
@@ -145,12 +165,10 @@ class AvatarServiceIntegrationTest {
     }
 
     @Test
-    void testGetAvatarThumbnail() {
-        // Insert a larger test image
-        byte[] originalImage = new byte[1000];
-        for (int i = 0; i < originalImage.length; i++) {
-            originalImage[i] = (byte) (i % 256);
-        }
+    void testGetAvatarThumbnail() throws IOException {
+        // Load test image from resources
+        Resource imageResource = resourceLoader.getResource("classpath:data/images/test-image.jpg");
+        byte[] originalImage = loadImageData(imageResource);
 
         jdbcTemplate.update(
                 "INSERT INTO user_avatars (user_id, mime_type, binary_data) VALUES (?, ?, ?)",
@@ -164,11 +182,15 @@ class AvatarServiceIntegrationTest {
     }
 
     @Test
-    void testAvatarDataCaching() {
+    void testAvatarDataCaching() throws IOException {
+        // Load test image from resources
+        Resource imageResource = resourceLoader.getResource("classpath:data/images/test-image.jpg");
+        byte[] imageData = loadImageData(imageResource);
+
         // Insert test data
         jdbcTemplate.update(
                 "INSERT INTO user_avatars (user_id, mime_type, binary_data) VALUES (?, ?, ?)",
-                testUser.getId(), "image/jpeg", new byte[]{1, 2, 3});
+                testUser.getId(), "image/jpeg", imageData);
 
         // First call - should hit database
         Optional<AvatarService.AvatarData> firstCall = avatarService.getAvatarByUserId(testUser.getId());
@@ -184,12 +206,15 @@ class AvatarServiceIntegrationTest {
     }
 
     @Test
-    void testAvatarThumbnailCaching() {
+    void testAvatarThumbnailCaching() throws IOException {
+        // Load test image from resources
+        Resource imageResource = resourceLoader.getResource("classpath:data/images/test-image.jpg");
+        byte[] imageData = loadImageData(imageResource);
+
         // Insert test data
-        byte[] imageData = new byte[500];
         jdbcTemplate.update(
                 "INSERT INTO user_avatars (user_id, mime_type, binary_data) VALUES (?, ?, ?)",
-                testUser.getId(), "image/png", imageData);
+                testUser.getId(), "image/jpeg", imageData);
 
         // First call - should process thumbnail
         Optional<byte[]> firstThumbnail = avatarService.getAvatarThumbnail(testUser.getId(), 50, 50);
@@ -204,32 +229,42 @@ class AvatarServiceIntegrationTest {
     }
 
     @Test
-    void testCacheEvictionOnUpdate() {
+    void testCacheEvictionOnUpdate() throws IOException {
+        // Load test images from resources
+        Resource imageResource1 = resourceLoader.getResource("classpath:data/images/test-image.jpg");
+        Resource imageResource2 = resourceLoader.getResource("classpath:data/images/test-image2.png");
+        byte[] imageData1 = loadImageData(imageResource1);
+        byte[] imageData2 = loadImageData(imageResource2);
+
         // Insert initial avatar
         jdbcTemplate.update(
                 "INSERT INTO user_avatars (user_id, mime_type, binary_data) VALUES (?, ?, ?)",
-                testUser.getId(), "image/jpeg", new byte[]{1, 2, 3});
+                testUser.getId(), "image/jpeg", imageData1);
 
         // Get avatar data (will be cached)
         Optional<AvatarService.AvatarData> beforeUpdate = avatarService.getAvatarByUserId(testUser.getId());
         assertTrue(beforeUpdate.isPresent());
 
         // Update avatar
-        avatarService.updateAvatar(testUser.getId(), "image/png", new byte[]{4, 5, 6});
+        avatarService.updateAvatar(testUser.getId(), "image/png", imageData2);
 
         // Get avatar data again - should get new data, not cached old data
         Optional<AvatarService.AvatarData> afterUpdate = avatarService.getAvatarByUserId(testUser.getId());
         assertTrue(afterUpdate.isPresent());
         assertEquals("image/png", afterUpdate.get().mimeType());
-        assertArrayEquals(new byte[]{4, 5, 6}, afterUpdate.get().imageData());
+        assertArrayEquals(imageData2, afterUpdate.get().imageData());
     }
 
     @Test
-    void testCacheEvictionOnDelete() {
+    void testCacheEvictionOnDelete() throws IOException {
+        // Load test image from resources
+        Resource imageResource = resourceLoader.getResource("classpath:data/images/test-image.jpg");
+        byte[] imageData = loadImageData(imageResource);
+
         // Insert avatar
         jdbcTemplate.update(
                 "INSERT INTO user_avatars (user_id, mime_type, binary_data) VALUES (?, ?, ?)",
-                testUser.getId(), "image/jpeg", new byte[]{1, 2, 3});
+                testUser.getId(), "image/jpeg", imageData);
 
         // Get avatar data (will be cached)
         Optional<AvatarService.AvatarData> beforeDelete = avatarService.getAvatarByUserId(testUser.getId());
@@ -244,9 +279,12 @@ class AvatarServiceIntegrationTest {
     }
 
     @Test
-    void testDifferentThumbnailSizesAreCachedSeparately() {
+    void testDifferentThumbnailSizesAreCachedSeparately() throws IOException {
+        // Load test image from resources
+        Resource imageResource = resourceLoader.getResource("classpath:data/images/test-image.jpg");
+        byte[] imageData = loadImageData(imageResource);
+
         // Insert test image
-        byte[] imageData = new byte[1000];
         jdbcTemplate.update(
                 "INSERT INTO user_avatars (user_id, mime_type, binary_data) VALUES (?, ?, ?)",
                 testUser.getId(), "image/jpeg", imageData);
@@ -260,5 +298,11 @@ class AvatarServiceIntegrationTest {
 
         // They should be different sizes
         assertNotEquals(smallThumbnail.get().length, largeThumbnail.get().length);
+    }
+
+    private byte[] loadImageData(Resource resource) throws IOException {
+        try (InputStream inputStream = resource.getInputStream()) {
+            return inputStream.readAllBytes();
+        }
     }
 }
