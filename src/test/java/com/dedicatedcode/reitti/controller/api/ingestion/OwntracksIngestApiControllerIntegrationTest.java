@@ -114,4 +114,3 @@ class OwntracksIngestApiControllerIntegrationTest {
                 100.0,
                 100.0,
                 100.0,
-                1
