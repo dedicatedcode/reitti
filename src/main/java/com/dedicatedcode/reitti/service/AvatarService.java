@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service;
 
 import net.coobird.thumbnailator.Thumbnails;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -56,6 +57,7 @@ public class AvatarService {
         }
     }
 
+    @CacheEvict(value = "avatarThumbnails", key = "{#userId}")
     public void updateAvatar(Long userId, String contentType, byte[] imageData) {
 
         jdbcTemplate.update("DELETE FROM user_avatars WHERE user_id = ?", userId);
