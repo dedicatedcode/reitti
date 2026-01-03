@@ -2,9 +2,7 @@ package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.*;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -15,36 +13,21 @@ import java.util.concurrent.TimeUnit;
 @Controller
 @RequestMapping("/reitti-integration")
 public class ReittiIntegrationController {
-    private final JdbcTemplate jdbcTemplate;
     private final ReittiIntegrationService reittiIntegrationService;
 
-    public ReittiIntegrationController(JdbcTemplate jdbcTemplate, ReittiIntegrationService reittiIntegrationService) {
-        this.jdbcTemplate = jdbcTemplate;
+    public ReittiIntegrationController(ReittiIntegrationService reittiIntegrationService) {
         this.reittiIntegrationService = reittiIntegrationService;
     }
 
     @GetMapping("/avatar/{integrationId}")
-    public ResponseEntity<byte[]> getAvatar(@PathVariable Long integrationId) {
-
-        Map<String, Object> result;
-        try {
-            result = jdbcTemplate.queryForMap(
-                    "SELECT mime_type, binary_data FROM remote_user_info WHERE integration_id = ?",
-                    integrationId
-            );
-        } catch (EmptyResultDataAccessException ignored) {
-            return  ResponseEntity.notFound().build();
-        }
-
-        String contentType = (String) result.get("mime_type");
-        byte[] imageData = (byte[]) result.get("binary_data");
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType(contentType));
-        headers.setContentLength(imageData.length);
-        headers.setCacheControl(CacheControl.maxAge(30, TimeUnit.DAYS));
-
-        return new ResponseEntity<>(imageData, headers, HttpStatus.OK);
+    public ResponseEntity<byte[]> getAvatar(@AuthenticationPrincipal User user, @PathVariable Long integrationId) {
+        return this.reittiIntegrationService.getAvatar(user, integrationId).map(avatarData -> {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType(avatarData.mimeType()));
+            headers.setContentLength(avatarData.imageData().length);
+            headers.setCacheControl(CacheControl.maxAge(30, TimeUnit.DAYS));
+            return new ResponseEntity<>(avatarData.imageData(), headers, HttpStatus.OK);
+        }).orElse(ResponseEntity.notFound().cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS)).build());
     }
 
 
