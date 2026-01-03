@@ -24,7 +24,6 @@ import org.springframework.test.web.servlet.MvcResult;
 import java.time.Instant;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -127,16 +126,21 @@ class OwntracksIngestionApiControllerIntegrationTest {
         // Mock the location batching service to avoid actual processing
         doNothing().when(locationBatchingService).addLocationPoint(any(User.class), any(LocationPoint.class));
 
-        MvcResult result = mockMvc.perform(post("/api/v1/ingest/owntracks")
+        mockMvc.perform(post("/api/v1/ingest/owntracks")
                         .with(user(testUser))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(owntracksPayload))
                 .andExpect(status().isOk())
-                .andReturn();
-
-        // Parse the response to check friends data
-        String responseContent = result.getResponse().getContentAsString();
-        assertTrue(responseContent.contains("friends"), "Response should contain friends data");
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0]._type").value("card"))
+                .andExpect(jsonPath("$[0].tid").exists())
+                .andExpect(jsonPath("$[0].name").exists())
+                .andExpect(jsonPath("$[1]._type").value("location"))
+                .andExpect(jsonPath("$[1].tid").exists())
+                .andExpect(jsonPath("$[1].name").exists())
+                .andExpect(jsonPath("$[1].lat").exists())
+                .andExpect(jsonPath("$[1].lon").exists())
+                .andExpect(jsonPath("$[1].tst").exists());
 
         // Verify location batching was called
         verify(locationBatchingService, times(1)).addLocationPoint(any(User.class), any(LocationPoint.class));
@@ -157,17 +161,21 @@ class OwntracksIngestionApiControllerIntegrationTest {
         // Mock the location batching service
         doNothing().when(locationBatchingService).addLocationPoint(any(User.class), any(LocationPoint.class));
 
-        MvcResult result = mockMvc.perform(post("/api/v1/ingest/owntracks")
+        mockMvc.perform(post("/api/v1/ingest/owntracks")
                         .with(user(testUser))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(owntracksPayload))
                 .andExpect(status().isOk())
-                .andReturn();
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0]._type").value("card"))
+                .andExpect(jsonPath("$[0].name").value(sharedUser.getDisplayName()))
+                .andExpect(jsonPath("$[1]._type").value("location"))
+                .andExpect(jsonPath("$[1].name").value(sharedUser.getDisplayName()))
+                .andExpect(jsonPath("$[1].lat").value(60.1699))
+                .andExpect(jsonPath("$[1].lon").value(24.9384));
 
-        // Parse the response to check if shared user's location is included
-        String responseContent = result.getResponse().getContentAsString();
-        assertTrue(responseContent.contains("friends"), "Response should contain friends data");
-        assertTrue(responseContent.contains("Shared User"), "Response should contain shared user's name");
+        // Verify location batching was called
+        verify(locationBatchingService, times(1)).addLocationPoint(any(User.class), any(LocationPoint.class));
     }
 
     @Test
