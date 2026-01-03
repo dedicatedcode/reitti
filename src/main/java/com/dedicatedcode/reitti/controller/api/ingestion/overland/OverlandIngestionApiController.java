@@ -1,11 +1,9 @@
-package com.dedicatedcode.reitti.controller.api;
+package com.dedicatedcode.reitti.controller.api.ingestion.overland;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.OverlandLocationRequest;
-import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
-import com.dedicatedcode.reitti.service.ImportProcessor;
 import com.dedicatedcode.reitti.service.LocationBatchingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,68 +19,25 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.io.Serializable;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/ingest")
-public class IngestApiController {
+public class OverlandIngestionApiController {
 
-    private static final Logger logger = LoggerFactory.getLogger(IngestApiController.class);
-    private static final Map<String, ? extends Serializable> SUCCESS = Map.of(
-            "success", true,
-            "message", "Successfully queued Owntracks location point for processing"
-    );
+    private static final Logger logger = LoggerFactory.getLogger(OverlandIngestionApiController.class);
 
-    private final ImportProcessor batchProcessor;
     private final UserJdbcService userJdbcService;
     private final LocationBatchingService locationBatchingService;
 
     @Autowired
-    public IngestApiController(ImportProcessor batchProcessor, UserJdbcService userJdbcService, LocationBatchingService locationBatchingService) {
+    public OverlandIngestionApiController(UserJdbcService userJdbcService,
+                                          LocationBatchingService locationBatchingService) {
         this.userJdbcService = userJdbcService;
-        this.batchProcessor = batchProcessor;
         this.locationBatchingService = locationBatchingService;
     }
-    
-    @PostMapping("/owntracks")
-    public ResponseEntity<?> receiveOwntracksData(@RequestBody OwntracksLocationRequest request) {
-        if (!request.isLocationUpdate()) {
-            logger.debug("Ignoring non-location Owntracks message of type: {}", request.getType());
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "message", "Non-location update ignored"
-            ));
-        }
-        
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        User user = this.userJdbcService.findByUsername(userDetails.getUsername()).orElseThrow(() -> new UsernameNotFoundException(userDetails.getUsername()));
-        
-        try {
-            // Convert an Owntracks format to our LocationPoint format
-            LocationPoint locationPoint = request.toLocationPoint();
 
-            if (locationPoint.getTimestamp() == null) {
-                logger.warn("Ignoring location point [{}] because timestamp is null", locationPoint);
-                return ResponseEntity.ok(Map.of());
-            }
-
-            this.locationBatchingService.addLocationPoint(user, locationPoint);
-            logger.debug("Successfully received and queued Owntracks location point for user {}",
-                    user.getUsername());
-            
-            return ResponseEntity.accepted().body(SUCCESS);
-            
-        } catch (Exception e) {
-            logger.error("Error processing Owntracks data", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error processing Owntracks data: " + e.getMessage()));
-        }
-    }
-    
     @PostMapping("/overland")
     public ResponseEntity<?> receiveOverlandData(@RequestBody OverlandLocationRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
