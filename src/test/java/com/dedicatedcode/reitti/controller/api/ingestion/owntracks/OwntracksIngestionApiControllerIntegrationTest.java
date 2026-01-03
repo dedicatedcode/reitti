@@ -3,8 +3,7 @@ package com.dedicatedcode.reitti.controller.api.ingestion.owntracks;
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.dto.OwntracksFriendResponse;
-import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
+import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSharing;
@@ -15,26 +14,23 @@ import com.dedicatedcode.reitti.service.LocationBatchingService;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureWebMvc;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @IntegrationTest
 @AutoConfigureWebMvc
@@ -70,43 +66,9 @@ class OwntracksIngestionApiControllerIntegrationTest {
         sharedUser = testingService.randomUser();
 
         // Create sharing relationship - sharedUser shares with testUser
-        userSharingJdbcService.create(testUser, Set.of(new UserSharing(null, sharedUser.getId(), testUser.getId(), null, "#FF0000", null)));
+        userSharingJdbcService.create(sharedUser, Set.of(new UserSharing(null, null, testUser.getId(), null, "#FF0000", null)));
 
-        // Add some location data for shared user
-        rawLocationPointJdbcService.save(RawLocationPoint.create(
-                sharedUser.getId(),
-                60.1699,
-                24.9384,
-                10.0,
-                50.0,
-                10.0,  // altitude
-                10.0,  // vertical accuracy
-                10.0,  // speed
-                10.0,  // course
-                10.0,  // battery
-                10.0,  // hdop
-                10.0,  // vdop
-                10.0,  // pdop
-                10.0,  // hacc
-                10.0,  // vacc
-                10.0,  // sacc
-                10.0,  // cacc
-                10.0,  // hdop
-                10.0,  // vdop
-                10.0,  // pdop
-                10.0,  // hacc
-                10.0,  // vacc
-                10.0,  // sacc
-                10.0,  // cacc
-                10.0,  // hdop
-                10.0,  // vdop
-                10.0,  // pdop
-                10.0,  // hacc
-                10.0,  // vacc
-                10.0,  // sacc
-                10.0,  // cacc
-                Instant.now()
-        ));
+        rawLocationPointJdbcService.create(sharedUser, new RawLocationPoint(Instant.now(), new GeoPoint(60.1699, 24.9384), 10.0));
     }
 
     @Test
