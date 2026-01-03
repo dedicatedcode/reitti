@@ -1,6 +1,8 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.IntegrationTest;
+import com.dedicatedcode.reitti.TestingService;
+import com.dedicatedcode.reitti.model.security.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,12 +26,15 @@ class AvatarServiceIntegrationTest {
     @Autowired
     private CacheManager cacheManager;
 
-    private Long testUserId = 999999L;
+    @Autowired
+    private TestingService testingService;
+
+    private User testUser;
 
     @BeforeEach
     void setUp() {
-        // Clean up any existing test data
-        jdbcTemplate.update("DELETE FROM user_avatars WHERE user_id = ?", testUserId);
+        // Create a real user using TestingService
+        testUser = testingService.randomUser();
 
         // Clear caches before each test
         clearCaches();
@@ -49,7 +54,7 @@ class AvatarServiceIntegrationTest {
 
     @Test
     void testGetAvatarByUserId_WhenNoAvatarExists() {
-        Optional<AvatarService.AvatarData> result = avatarService.getAvatarByUserId(testUserId);
+        Optional<AvatarService.AvatarData> result = avatarService.getAvatarByUserId(testUser.getId());
         assertTrue(result.isEmpty(), "Should return empty when no avatar exists");
     }
 
@@ -60,9 +65,9 @@ class AvatarServiceIntegrationTest {
         byte[] testImageData = new byte[]{1, 2, 3, 4}; // Simple test data
         jdbcTemplate.update(
                 "INSERT INTO user_avatars (user_id, mime_type, binary_data) VALUES (?, ?, ?)",
-                testUserId, testContentType, testImageData);
+                testUser.getId(), testContentType, testImageData);
 
-        Optional<AvatarService.AvatarData> result = avatarService.getAvatarByUserId(testUserId);
+        Optional<AvatarService.AvatarData> result = avatarService.getAvatarByUserId(testUser.getId());
 
         assertTrue(result.isPresent(), "Should return avatar data when it exists");
         assertEquals(testContentType, result.get().mimeType());
@@ -72,7 +77,7 @@ class AvatarServiceIntegrationTest {
 
     @Test
     void testGetInfo_WhenNoAvatarExists() {
-        Optional<AvatarService.AvatarInfo> result = avatarService.getInfo(testUserId);
+        Optional<AvatarService.AvatarInfo> result = avatarService.getInfo(testUser.getId());
         assertTrue(result.isEmpty(), "Should return empty when no avatar exists");
     }
 
@@ -81,9 +86,9 @@ class AvatarServiceIntegrationTest {
         // Insert test avatar data
         jdbcTemplate.update(
                 "INSERT INTO user_avatars (user_id, mime_type, binary_data) VALUES (?, ?, ?)",
-                testUserId, "image/png", new byte[]{5, 6, 7, 8});
+                testUser.getId(), "image/png", new byte[]{5, 6, 7, 8});
 
-        Optional<AvatarService.AvatarInfo> result = avatarService.getInfo(testUserId);
+        Optional<AvatarService.AvatarInfo> result = avatarService.getInfo(testUser.getId());
 
         assertTrue(result.isPresent(), "Should return avatar info when it exists");
         assertTrue(result.get().updatedAt() > 0, "Updated timestamp should be set");
@@ -95,10 +100,10 @@ class AvatarServiceIntegrationTest {
         byte[] imageData = new byte[]{10, 20, 30, 40};
 
         // Update avatar
-        avatarService.updateAvatar(testUserId, contentType, imageData);
+        avatarService.updateAvatar(testUser.getId(), contentType, imageData);
 
         // Verify it was stored
-        Optional<AvatarService.AvatarData> result = avatarService.getAvatarByUserId(testUserId);
+        Optional<AvatarService.AvatarData> result = avatarService.getAvatarByUserId(testUser.getId());
         assertTrue(result.isPresent());
         assertEquals(contentType, result.get().mimeType());
         assertArrayEquals(imageData, result.get().imageData());
@@ -109,17 +114,17 @@ class AvatarServiceIntegrationTest {
         // First insert an avatar
         jdbcTemplate.update(
                 "INSERT INTO user_avatars (user_id, mime_type, binary_data) VALUES (?, ?, ?)",
-                testUserId, "image/jpeg", new byte[]{1, 2, 3});
+                testUser.getId(), "image/jpeg", new byte[]{1, 2, 3});
 
         // Verify it exists
-        Optional<AvatarService.AvatarData> beforeDelete = avatarService.getAvatarByUserId(testUserId);
+        Optional<AvatarService.AvatarData> beforeDelete = avatarService.getAvatarByUserId(testUser.getId());
         assertTrue(beforeDelete.isPresent());
 
         // Delete the avatar
-        avatarService.deleteAvatar(testUserId);
+        avatarService.deleteAvatar(testUser.getId());
 
         // Verify it's gone
-        Optional<AvatarService.AvatarData> afterDelete = avatarService.getAvatarByUserId(testUserId);
+        Optional<AvatarService.AvatarData> afterDelete = avatarService.getAvatarByUserId(testUser.getId());
         assertTrue(afterDelete.isEmpty());
     }
 
@@ -149,10 +154,10 @@ class AvatarServiceIntegrationTest {
 
         jdbcTemplate.update(
                 "INSERT INTO user_avatars (user_id, mime_type, binary_data) VALUES (?, ?, ?)",
-                testUserId, "image/jpeg", originalImage);
+                testUser.getId(), "image/jpeg", originalImage);
 
         // Get thumbnail
-        Optional<byte[]> thumbnail = avatarService.getAvatarThumbnail(testUserId, 100, 100);
+        Optional<byte[]> thumbnail = avatarService.getAvatarThumbnail(testUser.getId(), 100, 100);
 
         assertTrue(thumbnail.isPresent());
         assertTrue(thumbnail.get().length < originalImage.length, "Thumbnail should be smaller than original");
@@ -163,14 +168,14 @@ class AvatarServiceIntegrationTest {
         // Insert test data
         jdbcTemplate.update(
                 "INSERT INTO user_avatars (user_id, mime_type, binary_data) VALUES (?, ?, ?)",
-                testUserId, "image/jpeg", new byte[]{1, 2, 3});
+                testUser.getId(), "image/jpeg", new byte[]{1, 2, 3});
 
         // First call - should hit database
-        Optional<AvatarService.AvatarData> firstCall = avatarService.getAvatarByUserId(testUserId);
+        Optional<AvatarService.AvatarData> firstCall = avatarService.getAvatarByUserId(testUser.getId());
         assertTrue(firstCall.isPresent());
 
         // Second call - should hit cache
-        Optional<AvatarService.AvatarData> secondCall = avatarService.getAvatarByUserId(testUserId);
+        Optional<AvatarService.AvatarData> secondCall = avatarService.getAvatarByUserId(testUser.getId());
         assertTrue(secondCall.isPresent());
 
         // Verify both calls return the same data
@@ -184,14 +189,14 @@ class AvatarServiceIntegrationTest {
         byte[] imageData = new byte[500];
         jdbcTemplate.update(
                 "INSERT INTO user_avatars (user_id, mime_type, binary_data) VALUES (?, ?, ?)",
-                testUserId, "image/png", imageData);
+                testUser.getId(), "image/png", imageData);
 
         // First call - should process thumbnail
-        Optional<byte[]> firstThumbnail = avatarService.getAvatarThumbnail(testUserId, 50, 50);
+        Optional<byte[]> firstThumbnail = avatarService.getAvatarThumbnail(testUser.getId(), 50, 50);
         assertTrue(firstThumbnail.isPresent());
 
         // Second call - should return cached thumbnail
-        Optional<byte[]> secondThumbnail = avatarService.getAvatarThumbnail(testUserId, 50, 50);
+        Optional<byte[]> secondThumbnail = avatarService.getAvatarThumbnail(testUser.getId(), 50, 50);
         assertTrue(secondThumbnail.isPresent());
 
         // Verify both calls return the same thumbnail data
@@ -203,17 +208,17 @@ class AvatarServiceIntegrationTest {
         // Insert initial avatar
         jdbcTemplate.update(
                 "INSERT INTO user_avatars (user_id, mime_type, binary_data) VALUES (?, ?, ?)",
-                testUserId, "image/jpeg", new byte[]{1, 2, 3});
+                testUser.getId(), "image/jpeg", new byte[]{1, 2, 3});
 
         // Get avatar data (will be cached)
-        Optional<AvatarService.AvatarData> beforeUpdate = avatarService.getAvatarByUserId(testUserId);
+        Optional<AvatarService.AvatarData> beforeUpdate = avatarService.getAvatarByUserId(testUser.getId());
         assertTrue(beforeUpdate.isPresent());
 
         // Update avatar
-        avatarService.updateAvatar(testUserId, "image/png", new byte[]{4, 5, 6});
+        avatarService.updateAvatar(testUser.getId(), "image/png", new byte[]{4, 5, 6});
 
         // Get avatar data again - should get new data, not cached old data
-        Optional<AvatarService.AvatarData> afterUpdate = avatarService.getAvatarByUserId(testUserId);
+        Optional<AvatarService.AvatarData> afterUpdate = avatarService.getAvatarByUserId(testUser.getId());
         assertTrue(afterUpdate.isPresent());
         assertEquals("image/png", afterUpdate.get().mimeType());
         assertArrayEquals(new byte[]{4, 5, 6}, afterUpdate.get().imageData());
@@ -224,17 +229,17 @@ class AvatarServiceIntegrationTest {
         // Insert avatar
         jdbcTemplate.update(
                 "INSERT INTO user_avatars (user_id, mime_type, binary_data) VALUES (?, ?, ?)",
-                testUserId, "image/jpeg", new byte[]{1, 2, 3});
+                testUser.getId(), "image/jpeg", new byte[]{1, 2, 3});
 
         // Get avatar data (will be cached)
-        Optional<AvatarService.AvatarData> beforeDelete = avatarService.getAvatarByUserId(testUserId);
+        Optional<AvatarService.AvatarData> beforeDelete = avatarService.getAvatarByUserId(testUser.getId());
         assertTrue(beforeDelete.isPresent());
 
         // Delete avatar
-        avatarService.deleteAvatar(testUserId);
+        avatarService.deleteAvatar(testUser.getId());
 
         // Get avatar data again - should get empty, not cached data
-        Optional<AvatarService.AvatarData> afterDelete = avatarService.getAvatarByUserId(testUserId);
+        Optional<AvatarService.AvatarData> afterDelete = avatarService.getAvatarByUserId(testUser.getId());
         assertTrue(afterDelete.isEmpty());
     }
 
@@ -244,11 +249,11 @@ class AvatarServiceIntegrationTest {
         byte[] imageData = new byte[1000];
         jdbcTemplate.update(
                 "INSERT INTO user_avatars (user_id, mime_type, binary_data) VALUES (?, ?, ?)",
-                testUserId, "image/jpeg", imageData);
+                testUser.getId(), "image/jpeg", imageData);
 
         // Get different sized thumbnails
-        Optional<byte[]> smallThumbnail = avatarService.getAvatarThumbnail(testUserId, 50, 50);
-        Optional<byte[]> largeThumbnail = avatarService.getAvatarThumbnail(testUserId, 200, 200);
+        Optional<byte[]> smallThumbnail = avatarService.getAvatarThumbnail(testUser.getId(), 50, 50);
+        Optional<byte[]> largeThumbnail = avatarService.getAvatarThumbnail(testUser.getId(), 200, 200);
 
         assertTrue(smallThumbnail.isPresent());
         assertTrue(largeThumbnail.isPresent());
