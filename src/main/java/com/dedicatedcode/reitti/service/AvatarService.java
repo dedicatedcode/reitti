@@ -57,7 +57,7 @@ public class AvatarService {
         }
     }
 
-    @CacheEvict(value = "avatarThumbnails", key = "{#userId}")
+    @CacheEvict(value = {"avatarThumbnails", "avatarData"}, key = "{#userId}")
     public void updateAvatar(Long userId, String contentType, byte[] imageData) {
 
         jdbcTemplate.update("DELETE FROM user_avatars WHERE user_id = ?", userId);
@@ -70,6 +70,7 @@ public class AvatarService {
         );
     }
 
+    @CacheEvict(value = {"avatarThumbnails", "avatarData"}, key = "{#userId}")
     public void deleteAvatar(Long userId) {
         this.jdbcTemplate.update("DELETE FROM user_avatars WHERE user_id = ?", userId);
     }
