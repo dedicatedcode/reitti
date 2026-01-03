@@ -68,7 +68,7 @@ class AvatarServiceIntegrationTest {
     @Test
     void testGetAvatarByUserId_WhenAvatarExists() throws IOException {
         // Load test image from resources
-        Resource imageResource = resourceLoader.getResource("classpath:data/images/test-image.jpg");
+        Resource imageResource = resourceLoader.getResource("classpath:data/images/pexels-waldemar-nowak-305041-910625.jpg");
         byte[] testImageData = loadImageData(imageResource);
         String testContentType = "image/jpeg";
 
@@ -94,7 +94,7 @@ class AvatarServiceIntegrationTest {
     @Test
     void testGetInfo_WhenAvatarExists() throws IOException {
         // Load test image from resources
-        Resource imageResource = resourceLoader.getResource("classpath:data/images/test-image.jpg");
+        Resource imageResource = resourceLoader.getResource("classpath:data/images/pexels-waldemar-nowak-305041-910625.jpg");
         byte[] testImageData = loadImageData(imageResource);
 
         // Insert test avatar data
@@ -111,7 +111,7 @@ class AvatarServiceIntegrationTest {
     @Test
     void testUpdateAvatar() throws IOException {
         // Load test image from resources
-        Resource imageResource = resourceLoader.getResource("classpath:data/images/test-image.jpg");
+        Resource imageResource = resourceLoader.getResource("classpath:data/images/pexels-waldemar-nowak-305041-910625.jpg");
         byte[] imageData = loadImageData(imageResource);
         String contentType = "image/jpeg";
 
@@ -128,7 +128,7 @@ class AvatarServiceIntegrationTest {
     @Test
     void testDeleteAvatar() throws IOException {
         // Load test image from resources
-        Resource imageResource = resourceLoader.getResource("classpath:data/images/test-image.jpg");
+        Resource imageResource = resourceLoader.getResource("classpath:data/images/pexels-waldemar-nowak-305041-910625.jpg");
         byte[] imageData = loadImageData(imageResource);
 
         // First insert an avatar
@@ -156,18 +156,18 @@ class AvatarServiceIntegrationTest {
 
         assertEquals("JD", avatarService.generateInitials("John Doe"));
         assertEquals("JS", avatarService.generateInitials("John Smith"));
-        assertEquals("J", avatarService.generateInitials("John"));
-        assertEquals("JA", avatarService.generateInitials("John"));
+        assertEquals("JO", avatarService.generateInitials("John"));
+        assertEquals("JO", avatarService.generateInitials("John"));
         assertEquals("A", avatarService.generateInitials("A"));
         assertEquals("AB", avatarService.generateInitials("AB"));
-        assertEquals("ABCD", avatarService.generateInitials("ABCD EFGH")); // Only first 2 words
+        assertEquals("AE", avatarService.generateInitials("ABCD EFGH")); // Only first 2 words
         assertEquals("JD", avatarService.generateInitials("  John   Doe  ")); // Trimmed
     }
 
     @Test
     void testGetAvatarThumbnail() throws IOException {
         // Load test image from resources
-        Resource imageResource = resourceLoader.getResource("classpath:data/images/test-image.jpg");
+        Resource imageResource = resourceLoader.getResource("classpath:data/images/pexels-waldemar-nowak-305041-910625.jpg");
         byte[] originalImage = loadImageData(imageResource);
 
         jdbcTemplate.update(
@@ -184,7 +184,7 @@ class AvatarServiceIntegrationTest {
     @Test
     void testAvatarDataCaching() throws IOException {
         // Load test image from resources
-        Resource imageResource = resourceLoader.getResource("classpath:data/images/test-image.jpg");
+        Resource imageResource = resourceLoader.getResource("classpath:data/images/pexels-waldemar-nowak-305041-910625.jpg");
         byte[] imageData = loadImageData(imageResource);
 
         // Insert test data
@@ -208,7 +208,7 @@ class AvatarServiceIntegrationTest {
     @Test
     void testAvatarThumbnailCaching() throws IOException {
         // Load test image from resources
-        Resource imageResource = resourceLoader.getResource("classpath:data/images/test-image.jpg");
+        Resource imageResource = resourceLoader.getResource("classpath:data/images/pexels-waldemar-nowak-305041-910625.jpg");
         byte[] imageData = loadImageData(imageResource);
 
         // Insert test data
@@ -231,8 +231,8 @@ class AvatarServiceIntegrationTest {
     @Test
     void testCacheEvictionOnUpdate() throws IOException {
         // Load test images from resources
-        Resource imageResource1 = resourceLoader.getResource("classpath:data/images/test-image.jpg");
-        Resource imageResource2 = resourceLoader.getResource("classpath:data/images/test-image2.png");
+        Resource imageResource1 = resourceLoader.getResource("classpath:data/images/pexels-waldemar-nowak-305041-910625.jpg");
+        Resource imageResource2 = resourceLoader.getResource("classpath:data/images/pexels-jan-van-der-wolf-11680885-32207751.jpg");
         byte[] imageData1 = loadImageData(imageResource1);
         byte[] imageData2 = loadImageData(imageResource2);
 
@@ -258,7 +258,7 @@ class AvatarServiceIntegrationTest {
     @Test
     void testCacheEvictionOnDelete() throws IOException {
         // Load test image from resources
-        Resource imageResource = resourceLoader.getResource("classpath:data/images/test-image.jpg");
+        Resource imageResource = resourceLoader.getResource("classpath:data/images/pexels-waldemar-nowak-305041-910625.jpg");
         byte[] imageData = loadImageData(imageResource);
 
         // Insert avatar
@@ -281,7 +281,7 @@ class AvatarServiceIntegrationTest {
     @Test
     void testDifferentThumbnailSizesAreCachedSeparately() throws IOException {
         // Load test image from resources
-        Resource imageResource = resourceLoader.getResource("classpath:data/images/test-image.jpg");
+        Resource imageResource = resourceLoader.getResource("classpath:data/images/pexels-waldemar-nowak-305041-910625.jpg");
         byte[] imageData = loadImageData(imageResource);
 
         // Insert test image

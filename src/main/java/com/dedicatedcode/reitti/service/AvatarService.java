@@ -1,6 +1,8 @@
 package com.dedicatedcode.reitti.service;
 
 import net.coobird.thumbnailator.Thumbnails;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -10,13 +12,14 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.Serializable;
 import java.sql.Timestamp;
 import java.util.Map;
 import java.util.Optional;
 
 @Service
 public class AvatarService {
-
+    private final static Logger log = LoggerFactory.getLogger(AvatarService.class);
     private final JdbcTemplate jdbcTemplate;
 
     public AvatarService(JdbcTemplate jdbcTemplate) {
@@ -114,12 +117,13 @@ public class AvatarService {
                     .toOutputStream(output);
                 return output.toByteArray();
             } catch (IOException e) {
+                log.error("Failed to generate thumbnail for avatar of user [{}]", userId, e);
                 return null;
             }
         });
     }
 
-    public record AvatarData(String mimeType, byte[] imageData, long updatedAt) {}
+    public record AvatarData(String mimeType, byte[] imageData, long updatedAt) implements Serializable {}
 
-    public record AvatarInfo(long updatedAt) {}
+    public record AvatarInfo(long updatedAt) implements Serializable {}
 }
