@@ -52,7 +52,16 @@ public class CustomOidcUserService extends OidcUserService {
         OidcUser oidcUser = getDefaultUser(userRequest);
         String preferredUsername = userRequest.getIdToken().getPreferredUsername();
         if (preferredUsername == null) {
+            preferredUsername = oidcUser.getPreferredUsername();
+        }
+        if (preferredUsername == null && oidcUser.getUserInfo() != null) {
             preferredUsername = oidcUser.getUserInfo().getPreferredUsername();
+        }
+        if (preferredUsername == null) {
+            preferredUsername = oidcUser.getEmail();
+        }
+        if (preferredUsername == null) {
+            preferredUsername = oidcUser.getGivenName().toLowerCase() + "." + oidcUser.getFamilyName().toLowerCase();
         }
         String oidcUserId = userRequest.getIdToken().getIssuer().toString() + ":" + userRequest.getIdToken().getSubject();
 
