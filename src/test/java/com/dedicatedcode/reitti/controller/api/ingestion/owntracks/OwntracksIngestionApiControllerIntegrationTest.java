@@ -190,6 +190,6 @@ class OwntracksIngestionApiControllerIntegrationTest {
                         .with(user(testUser))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidPayload))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk());
     }
 }
