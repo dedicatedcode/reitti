@@ -106,21 +106,20 @@ public class OwntracksIngestionApiController {
             sharedUserOpt.ifPresent(sharedUser -> {
                 String tid = generateTid(sharedUser.getUsername());
 
-                byte[] data = null;
-                String mimeType = null;
+                // Get processed avatar thumbnail (192x192)
+                Optional<byte[]> avatarThumbnail = avatarService.getAvatarThumbnail(sharedUser.getId(), 192, 192);
 
-                Optional<AvatarService.AvatarData> avatarByUserId = avatarService.getAvatarByUserId(sharedUser.getId());
-                if (avatarByUserId.isPresent()) {
-                    data = avatarByUserId.get().imageData();
-                    mimeType = avatarByUserId.get().mimeType();
-                };
-
-                // Add card with avatar
-                friendsData.add(new OwntracksFriendResponse(tid, sharedUser.getDisplayName(), data, mimeType));
+                // Add card with processed avatar
+                friendsData.add(new OwntracksFriendResponse(
+                        tid,
+                        sharedUser.getDisplayName(),
+                        avatarThumbnail.orElse(null),
+                        "image/jpeg" // Default to JPEG for OwnTracks
+                ));
 
                 // Add location if available
-                Optional<RawLocationPoint> latestLocationOpt = rawLocationPointJdbcService.findLatest(sharedUser);
-                latestLocationOpt.ifPresent(location -> {
+                Optional<RawLocationPoint> latestLocation = rawLocationPointJdbcService.findLatest(sharedUser);
+                latestLocation.ifPresent(location -> {
                     friendsData.add(new OwntracksFriendResponse(
                             tid,
                             sharedUser.getDisplayName(),
