@@ -115,7 +115,6 @@ public class TimelineController {
         TimelineData timelineData = new TimelineData(allUsersData.stream().filter(Objects::nonNull).toList());
 
         model.addAttribute("timelineData", timelineData);
-        model.addAttribute("selectedPlaceId", null);
         model.addAttribute("startDate", startDate);
         model.addAttribute("endDate", endDate);
         model.addAttribute("timezone", timezone);

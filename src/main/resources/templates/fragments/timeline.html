@@ -41,7 +41,6 @@
 
         <div th:each="entry : ${userData?.entries}"
              th:class="|timeline-entry ${entry.type.name().toLowerCase()}|"
-             th:classappend="${selectedPlaceId != null and entry.place?.id == selectedPlaceId} ? 'active' : ''"
              th:data-id="${entry.id}"
              th:data-lat="${entry.place?.latitudeCentroid}"
              th:data-lng="${entry.place?.longitudeCentroid}"
@@ -56,7 +55,7 @@
                         <span class="place-name" th:text="${entry.place?.name ?: 'Unknown Place'}">Place Name</span>
                         <a class="lni lni-pencil-1 edit-icon"
                            th:href="@{/settings/places/{id}/edit(id=${entry.place?.id})}"
-                           th:if="${entry.place?.id != null}"></a>
+                           th:if="${iterStat.first && entry.place?.id != null}"></a>
                     </div>
 
                     <!-- Trip description -->
@@ -80,6 +79,7 @@
                         <div th:if="${entry.transportMode != null}" class="trip-transport-mode-container">
                             <span th:text="#{'timeline.transport.' + ${entry.transportMode} + '.label'}">by foot</span>
                             <i class="lni lni-pencil-1 edit-icon"
+                               th:if="${iterStat.first}"
                                th:hx-get="@{/timeline/trips/edit-form/{id}(id=${entry.resourceId})}"
                                hx-target="closest .trip-transport-mode-container"
                                hx-swap="outerHTML"></i>
