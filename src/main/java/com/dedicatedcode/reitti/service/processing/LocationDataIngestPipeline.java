@@ -60,7 +60,7 @@ public class LocationDataIngestPipeline {
             }
 
             User user = userOpt.get();
-            List<LocationPoint> filtered = this.geoPointAnomalyFilter.filterAnomalies(points);
+            List<LocationPoint> filtered = this.geoPointAnomalyFilter.filterAnomalies(user, points);
 
             // Store real points first
             int updatedRows = rawLocationPointJdbcService.bulkInsert(user, filtered);

@@ -2,88 +2,139 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.geo.GeoUtils;
+import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
+import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 public class GeoPointAnomalyFilter {
     private static final Logger logger = LoggerFactory.getLogger(GeoPointAnomalyFilter.class);
     private final GeoPointAnomalyFilterConfig config;
-
-    public GeoPointAnomalyFilter(GeoPointAnomalyFilterConfig config) {
+    private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    public GeoPointAnomalyFilter(GeoPointAnomalyFilterConfig config, RawLocationPointJdbcService rawLocationPointJdbcService) {
         this.config = config;
+        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
     }
 
     /**
      * Main filtering method that removes anomalous geopoints
      */
-    public List<LocationPoint> filterAnomalies(List<LocationPoint> points) {
+    public List<LocationPoint> filterAnomalies(User user, List<LocationPoint> points) {
         if (points == null || points.isEmpty()) {
             return new ArrayList<>();
         }
 
-        Set<LocationPoint> detectedAnomalies = new HashSet<>();
+        List<WindowedPoint> allPoints = new ArrayList<>();
+        // Add new points (mark as new)
+        for (LocationPoint lp : points) {
+            allPoints.add(new WindowedPoint(
+                    ZonedDateTime.parse(lp.getTimestamp()).toInstant(),
+                    lp.getAccuracyMeters(),
+                    lp.getLatitude(),
+                    lp.getLongitude(),
+                    false // isNew
+            ));
+        }
+
+        allPoints.sort(Comparator.comparing(WindowedPoint::timestamp));
+
+        Instant start = allPoints.getFirst().timestamp().minus(config.getWindowSize(), ChronoUnit.HOURS);
+        Instant end = allPoints.getLast().timestamp().plus(config.getWindowSize(), ChronoUnit.HOURS);
+
+        //to speed up calculation, we only use relevant points here.
+        List<RawLocationPoint> rawHistory = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, start, end, true, false);
+
+        // Add history (mark as history)
+        for (RawLocationPoint rlp : rawHistory) {
+            allPoints.add(new WindowedPoint(
+                    rlp.getTimestamp(),
+                    rlp.getAccuracyMeters(),
+                    rlp.getLatitude(),
+                    rlp.getLongitude(),
+                    true // isHistory
+            ));
+        }
+
+        // Sort all points by timestamp
+        allPoints.sort(Comparator.comparing(WindowedPoint::timestamp));
+
+        Set<WindowedPoint> detectedAnomalies = new HashSet<>();
 
         // Apply multiple detection methods
-        detectedAnomalies.addAll(detectAccuracyAnomalies(points));
-        detectedAnomalies.addAll(detectSpeedAnomalies(points));
-        detectedAnomalies.addAll(detectDistanceJumpAnomalies(points));
-        detectedAnomalies.addAll(detectDirectionAnomalies(points));
+        detectedAnomalies.addAll(detectAccuracyAnomalies(allPoints));
+        detectedAnomalies.addAll(detectSpeedAnomalies(allPoints));
+        detectedAnomalies.addAll(detectDistanceJumpAnomalies(allPoints));
+        detectedAnomalies.addAll(detectDirectionAnomalies(allPoints));
 
         // Filter out anomalies
+        // We only return points that were originally in 'newPoints' AND were not flagged as anomalies
         return points.stream()
-                .filter(point -> !detectedAnomalies.contains(point))
+                .filter(lp -> {
+                    Instant ts = ZonedDateTime.parse(lp.getTimestamp()).toInstant();
+                    // Check if this specific point (by timestamp and accuracy) was flagged
+                    boolean isAnomaly = allPoints.stream()
+                            .filter(wp -> !wp.isHistory) // Only look at new points
+                            .filter(wp -> wp.timestamp.equals(ts))
+                            .anyMatch(detectedAnomalies::contains);
+                    return !isAnomaly;
+                })
                 .collect(Collectors.toList());
     }
 
     /**
      * Detect points with poor accuracy
      */
-    private Set<LocationPoint> detectAccuracyAnomalies(List<LocationPoint> points) {
-        Set<LocationPoint> anomalies = new HashSet<>();
-
-        for (LocationPoint point : points) {
-            if (point.getAccuracyMeters() > config.maxAccuracyMeters) {
+    private Set<WindowedPoint> detectAccuracyAnomalies(List<WindowedPoint> points) {
+        Set<WindowedPoint> anomalies = new HashSet<>();
+        for (WindowedPoint point : points) {
+            if (point.accuracy > config.getMaxAccuracyMeters()) {
                 anomalies.add(point);
             }
         }
-        logger.debug("Filtering out [{}] points because min accuracy [{}] not met.", anomalies.size(), config.maxAccuracyMeters);
+        logger.debug("Filtering out [{}] points because min accuracy [{}] not met.", anomalies.size(), config.getMaxAccuracyMeters());
         return anomalies;
     }
 
     /**
      * Detect impossible speeds between consecutive points
      */
-    private Set<LocationPoint> detectSpeedAnomalies(List<LocationPoint> points) {
-        Set<LocationPoint> anomalies = new HashSet<>();
+    private Set<WindowedPoint> detectSpeedAnomalies(List<WindowedPoint> points) {
+        Set<WindowedPoint> anomalies = new HashSet<>();
+        int windowSize = config.getWindowSize();
 
-        for (int i = 1; i < points.size(); i++) {
-            LocationPoint prev = points.get(i - 1);
-            LocationPoint curr = points.get(i);
+        for (int i = 0; i < points.size(); i++) {
+            WindowedPoint current = points.get(i);
 
-            if (prev.getTimestamp() != null && curr.getTimestamp() != null) {
-                double distance = GeoUtils.distanceInMeters(prev, curr);
-                long timeDiffSeconds = ChronoUnit.SECONDS.between(getTimestamp(prev.getTimestamp()), getTimestamp(curr.getTimestamp()));
+            int lookBackCount = 0;
+            for (int j = i - 1; j >= 0 && lookBackCount < windowSize; j--, lookBackCount++) {
+                WindowedPoint prev = points.get(j);
+
+                if (prev.timestamp == null || current.timestamp == null) continue;
+
+                double distance = GeoUtils.distanceInMeters(prev.latitude, prev.longitude, current.latitude, current.longitude);
+                long timeDiffSeconds = ChronoUnit.SECONDS.between(prev.timestamp, current.timestamp);
 
                 if (timeDiffSeconds > 0) {
                     double speedKmh = (distance / 1000.0) / (timeDiffSeconds / 3600.0);
-                    double maxSpeed = isEdgePoint(i, points.size()) ?
-                            config.maxSpeedKmh * config.edgeToleranceMultiplier : config.maxSpeedKmh;
+
+                    boolean isEdge = i == points.size() - 1;
+                    double maxSpeed = isEdge ? config.getMaxSpeedKmh() * config.getEdgeToleranceMultiplier() : config.getMaxSpeedKmh();
 
                     if (speedKmh > maxSpeed) {
-                        // Mark the point with worse accuracy as anomaly
-                        if (curr.getAccuracyMeters() > prev.getAccuracyMeters()) {
-                            anomalies.add(curr);
+                        if (current.accuracy > prev.accuracy) { //we prefer higher accuracy
+                            anomalies.add(current);
+                        } else if (!current.isHistory() && prev.isHistory()) { //we prefer already stored points
+                            anomalies.add(current);
                         } else {
                             anomalies.add(prev);
                         }
@@ -92,7 +143,7 @@ public class GeoPointAnomalyFilter {
             }
         }
 
-        logger.debug("Filtering out [{}] points because speed was above [{}].", anomalies.size(), config.maxSpeedKmh);
+        logger.debug("Filtering out [{}] points because speed was above [{}].", anomalies.size(), config.getMaxSpeedKmh());
         return anomalies;
     }
 
@@ -103,75 +154,73 @@ public class GeoPointAnomalyFilter {
     /**
      * Detect large distance jumps between consecutive points
      */
-    private Set<LocationPoint> detectDistanceJumpAnomalies(List<LocationPoint> points) {
-        Set<LocationPoint> anomalies = new HashSet<>();
+    private Set<WindowedPoint> detectDistanceJumpAnomalies(List<WindowedPoint> points) {
+        Set<WindowedPoint> anomalies = new HashSet<>();
+        int windowSize = config.getWindowSize();
 
-        for (int i = 1; i < points.size(); i++) {
-            LocationPoint prev = points.get(i - 1);
-            LocationPoint curr = points.get(i);
+        for (int i = 0; i < points.size(); i++) {
+            WindowedPoint current = points.get(i);
 
-            double distance = GeoUtils.distanceInMeters(prev, curr);
-            double maxDistance = isEdgePoint(i, points.size()) ?
-                    config.maxDistanceJumpMeters * config.edgeToleranceMultiplier :
-                    config.maxDistanceJumpMeters;
+            int lookBackCount = 0;
+            for (int j = i - 1; j >= 0 && lookBackCount < windowSize; j--, lookBackCount++) {
+                WindowedPoint prev = points.get(j);
 
-            if (distance > maxDistance) {
-                // For edge points, be more careful about which point to remove
-                if (isEdgePoint(i, points.size())) {
-                    anomalies.add(selectWorsePoint(prev, curr, points, i));
-                } else {
-                    // Mark the point with worse accuracy as anomaly
-                    if (curr.getAccuracyMeters() > prev.getAccuracyMeters()) {
-                        anomalies.add(curr);
+                double distance = GeoUtils.distanceInMeters(prev.latitude, prev.longitude, current.latitude, current.longitude);
+
+                boolean isEdge = (i == 0 || i == points.size() - 1);
+                double maxDistance = isEdge ? config.getMaxDistanceJumpMeters() * config.getEdgeToleranceMultiplier() : config.getMaxDistanceJumpMeters();
+
+                if (distance > maxDistance) {
+                    if (current.accuracy > prev.accuracy) {
+                        anomalies.add(current);
                     } else {
                         anomalies.add(prev);
                     }
                 }
             }
         }
-
-        logger.debug("Filtering out [{}] points because distance jumped more than [{}] meters.", anomalies.size(), config.maxDistanceJumpMeters);
+        logger.debug("Filtering out [{}] points because distance jumped more than [{}] meters.", anomalies.size(), config.getMaxDistanceJumpMeters());
 
         return anomalies;
     }
     /**
      * Detect sudden direction changes that might indicate errors
      */
-    private Set<LocationPoint> detectDirectionAnomalies(List<LocationPoint> points) {
-        Set<LocationPoint> anomalies = new HashSet<>();
+    private Set<WindowedPoint> detectDirectionAnomalies(List<WindowedPoint> points) {
+        Set<WindowedPoint> anomalies = new HashSet<>();
+        int windowSize = config.getWindowSize();
 
-        if (points.size() < 3) {
-            return anomalies;
-        }
+        for (int i = 0; i < points.size(); i++) {
+            WindowedPoint current = points.get(i);
 
-        for (int i = 1; i < points.size() - 1; i++) {
-            LocationPoint prev = points.get(i - 1);
-            LocationPoint curr = points.get(i);
-            LocationPoint next = points.get(i + 1);
+            int lookBackCount = 0;
+            for (int j = i - 1; j >= 0 && lookBackCount < windowSize; j--, lookBackCount++) {
+                WindowedPoint prev = points.get(j);
 
-            // Calculate bearings
-            double bearing1 = calculateBearing(prev, curr);
-            double bearing2 = calculateBearing(curr, next);
+                int lookForwardCount = 0;
+                for (int k = i + 1; k < points.size() && lookForwardCount < windowSize; k++, lookForwardCount++) {
+                    WindowedPoint next = points.get(k);
 
-            // Calculate angle difference
-            double angleDiff = Math.abs(bearing2 - bearing1);
-            if (angleDiff > 180) {
-                angleDiff = 360 - angleDiff;
-            }
+                    double bearing1 = calculateBearing(prev, current);
+                    double bearing2 = calculateBearing(current, next);
 
-            // If it's a sharp reversal (close to 180 degrees) and the distances are significant
-            double dist1 = GeoUtils.distanceInMeters(prev, curr);
-            double dist2 = GeoUtils.distanceInMeters(next, curr);
+                    double angleDiff = Math.abs(bearing2 - bearing1);
+                    if (angleDiff > 180) {
+                        angleDiff = 360 - angleDiff;
+                    }
 
-            if (angleDiff > 150 && dist1 > 50 && dist2 > 50) {
-                // Check if current point has worse accuracy
-                if (curr.getAccuracyMeters() > Math.max(prev.getAccuracyMeters(), next.getAccuracyMeters())) {
-                    anomalies.add(curr);
+                    double dist1 = GeoUtils.distanceInMeters(prev.latitude, prev.longitude, current.latitude, current.longitude);
+                    double dist2 = GeoUtils.distanceInMeters(current.latitude, current.longitude, next.latitude, next.longitude);
+
+                    if (angleDiff > 150 && dist1 > 50 && dist2 > 50) {
+                        if (current.accuracy > Math.max(prev.accuracy, next.accuracy)) {
+                            anomalies.add(current);
+                        }
+                    }
                 }
             }
         }
         logger.debug("Filtering out [{}] points because the suddenly changed the direction.", anomalies.size());
-
         return anomalies;
     }
 
@@ -216,15 +265,20 @@ public class GeoPointAnomalyFilter {
         return index == 0 || index == totalSize - 1;
     }
 
-    private double calculateBearing(LocationPoint from, LocationPoint to) {
-        double lat1 = Math.toRadians(from.getLatitude());
-        double lat2 = Math.toRadians(to.getLatitude());
-        double deltaLng = Math.toRadians(to.getLongitude() - from.getLongitude());
+    private double calculateBearing(WindowedPoint from, WindowedPoint to) {
+        double lat1 = Math.toRadians(from.latitude);
+        double lat2 = Math.toRadians(to.latitude);
+        double deltaLng = Math.toRadians(to.longitude - from.longitude());
 
         double y = Math.sin(deltaLng) * Math.cos(lat2);
         double x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(deltaLng);
 
         double bearing = Math.toDegrees(Math.atan2(y, x));
         return (bearing + 360) % 360;
+    }
+
+
+    private record WindowedPoint(Instant timestamp, double accuracy, double latitude, double longitude,
+                                 boolean isHistory) {
     }
 }

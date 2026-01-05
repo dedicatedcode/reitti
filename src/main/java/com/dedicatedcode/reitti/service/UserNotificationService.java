@@ -53,12 +53,6 @@ public class UserNotificationService {
         sendToQueue(user, eventType, previewId);
     }
 
-    public void placeUpdate(User user, SignificantPlace place) {
-        SSEType eventType = SSEType.PLACE;
-        log.debug("Place updated for user [{}]", user.getId());
-        sendToQueue(user, eventType, null);
-    }
-
     public void newVisits(User user, List<ProcessedVisit> processedVisits) {
         SSEType eventType = SSEType.VISITS;
         log.debug("New Visits for user [{}]", user.getId());

@@ -2,7 +2,6 @@ package com.dedicatedcode.reitti.service.integration;
 
 import com.dedicatedcode.reitti.dto.*;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
-import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.integration.ReittiIntegration;
 import com.dedicatedcode.reitti.model.security.RemoteUser;
@@ -23,7 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
-import javax.xml.stream.Location;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -195,7 +193,7 @@ public class ReittiIntegrationService {
                 .filter(integration -> integration.isEnabled() && VALID_INTEGRATION_STATUS.contains(integration.getStatus()))
                 .map(integration -> {
 
-                    log.debug("Fetching latest location ata for [{}]", integration);
+                    log.debug("Fetching latest location for [{}]", integration);
                     try {
                         HttpHeaders headers = new HttpHeaders();
                         headers.set("X-API-TOKEN", integration.getToken());

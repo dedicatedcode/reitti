@@ -2,7 +2,6 @@ package com.dedicatedcode.reitti.service.geocoding;
 
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.model.PlaceInformationOverride;
-import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.PreviewSignificantPlaceJdbcService;
@@ -84,7 +83,7 @@ public class ReverseGeocodingListener {
                 }
                 if (event.previewId() == null) {
                     significantPlaceJdbcService.update(place.withGeocoded(true));
-                    userNotificationService.placeUpdate(user, place);
+                    userNotificationService.placeUpdate(user, place, null);
                 } else {
                     previewSignificantPlaceJdbcService.update(place.withGeocoded(true));
                     userNotificationService.placeUpdate(user, place, event.previewId());
