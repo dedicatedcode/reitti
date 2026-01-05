@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build-and-publish-develop:
-    name: "Release"
+    name: "Build and publish develop image"
     runs-on: "ubuntu-latest"
 
     steps:
