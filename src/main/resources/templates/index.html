@@ -7,34 +7,27 @@
     <link rel="icon" th:href="@{/img/logo.svg}">
     <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
-    <link rel="stylesheet" href="/css/leaflet.css">
-    <link rel="stylesheet" href="/css/date-picker.css">
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/lineicons.css">
-    <link rel="stylesheet" href="/css/photo-client.css">
-    <link rel="stylesheet" href="/css/inline-edit.css">
-    <link rel="stylesheet" href="/css/avatar-marker.css">
+    <link rel="stylesheet" th:href="@{/css/leaflet.css}" href="/css/leaflet.css">
+    <link rel="stylesheet" th:href="@{/css/date-picker.css}" href="/css/date-picker.css">
+    <link rel="stylesheet" th:href="@{/css/main.css}" href="/css/main.css">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}" href="/css/lineicons.css">
+    <link rel="stylesheet" th:href="@{/css/photo-client.css}" href="/css/photo-client.css">
+    <link rel="stylesheet" th:href="@{/css/inline-edit.css}" href="/css/inline-edit.css">
+    <link rel="stylesheet" th:href="@{/css/avatar-marker.css}" href="/css/avatar-marker.css">
     <link th:if="${userSettings.customCssUrl}" rel="stylesheet" th:href="${userSettings.customCssUrl}">
-    <style>
-        .canvas-visit-tooltip {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-    </style>
-    <script src="/js/HumanizeDuration.js"></script>
-    <script src="/js/date-picker-combined.js"></script>
-    <script src="/js/timeline-scroll-indicator.js"></script>
-    <script src="/js/photo-client.js"></script>
-    <script src="/js/raw-location-loader.js"></script>
-    <script src="/js/canvas-visit-renderer.js"></script>
-    <script src="/js/htmx.min.js"></script>
-    <script src="/js/leaflet.js"></script>
-    <script src="/js/TileLayer.Grayscale.js"></script>
-    <script src="/js/polygon-editor.js"></script>
-    <script src="/js/leaflet.geodesic.2.7.2.js"></script>
-    <script src="/js/leaflet.markercluster.js"></script>
-    <script src="/js/util.js"></script>
+    <script th:src="@{/js/HumanizeDuration.js}"></script>
+    <script th:src="@{/js/date-picker-combined.js}"></script>
+    <script th:src="@{/js/timeline-scroll-indicator.js}"></script>
+    <script th:src="@{/js/photo-client.js}"></script>
+    <script th:src="@{/js/raw-location-loader.js}"></script>
+    <script th:src="@{/js/canvas-visit-renderer.js}"></script>
+    <script th:src="@{/js/htmx.min.js}"></script>
+    <script th:src="@{/js/leaflet.js}"></script>
+    <script th:src="@{/js/TileLayer.Grayscale.js}"></script>
+    <script th:src="@{/js/polygon-editor.js}"></script>
+    <script th:src="@{/js/leaflet.geodesic.2.7.2.js}"></script>
+    <script th:src="@{/js/leaflet.markercluster.js}"></script>
+    <script th:src="@{/js/util.js}"></script>
 </head>
 <body>
 <div id="message-container">
@@ -57,7 +50,7 @@
 <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('index')}"></div>
 <div class="timeline">
     <div class="timeline-container"
-         hx-get="/timeline/content/range"
+         th:hx-get="@{/timeline/content/range}"
          hx-trigger="dateChanged from:body"
          hx-vals="js:{startDate: getTimelineParams().startDate, endDate: getTimelineParams().endDate, timezone: getTimelineParams().timezone}"
          hx-indicator="#loading-indicator">
@@ -82,6 +75,9 @@
 </button>
 
 <script th:inline="javascript">
+    window.contextPath = /*[[@{/}]]*/ "/";
+    window.contextPath = window.contextPath.replace(/\/$/, '');
+
     // Locale object for JavaScript
     window.locale = {
         today: /*[[#{datepicker.today}]]*/ 'Today',
@@ -326,7 +322,7 @@
         restoreDatePickerState();
         // Check if date is in URL parameters
 
-        const tilesUrl = window.userSettings.tiles.service;
+        const tilesUrl = window.contextPath + window.userSettings.tiles.service;
         const tilesAttribution = window.userSettings.tiles.attribution;
 
         const tileLayer = window.userSettings.preferColoredMap ? L.tileLayer : L.tileLayer.grayscale;
@@ -464,7 +460,7 @@
                 const fullUrl = baseUrl.includes('?') ? `${baseUrl}&${urlParams}` : `${baseUrl}?${urlParams}`;
 
                 fetchPromises.push(
-                    fetch(fullUrl)
+                    fetch(window.contextPath + fullUrl)
                         .then(response => response.json())
                         .then(data => ({ userId, data, color: userConfigs.get(userId)?.color }))
                         .catch(error => {
