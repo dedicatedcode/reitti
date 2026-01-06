@@ -304,6 +304,7 @@ class DataCleanupServiceTest {
             false,
             false,
             false,
+            false,
             1L
         );
         
@@ -319,6 +320,7 @@ class DataCleanupServiceTest {
             true,
             created.isSynthetic(),
             created.isIgnored(),
+            created.isInvalid(),
             created.getVersion()
         );
         

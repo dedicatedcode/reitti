@@ -15,7 +15,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
@@ -80,10 +79,9 @@ public class ExportDataController {
         model.addAttribute("endDate", end);
         
         // Get raw location points for the date range
-        List<RawLocationPoint> allPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(
-            user, startDateTime.toInstant(), endDateTime.toInstant(), false, true, page, size);
+        List<RawLocationPoint> allPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, startDateTime.toInstant(), endDateTime.toInstant(), false, true, true, page, size);
         
-        long totalElements = rawLocationPointJdbcService.countByUserAndTimestampBetweenOrderByTimestampAsc(user, startDateTime.toInstant(), endDateTime.toInstant(), false, true);
+        long totalElements = rawLocationPointJdbcService.countByUserAndTimestampBetweenOrderByTimestampAsc(user, startDateTime.toInstant(), endDateTime.toInstant(), false, true, true);
         int totalPages = (int) Math.ceil((double) totalElements / size);
 
         List<DataLine> paginatedData = allPoints.stream()
@@ -106,7 +104,7 @@ public class ExportDataController {
     public ResponseEntity<StreamingResponseBody> exportGpx(@AuthenticationPrincipal User user,
                                                            @RequestParam String startDate,
                                                            @RequestParam String endDate,
-                                                           @RequestParam boolean relevantData,
+                                                           @RequestParam boolean relevantDataOnly,
                                                            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
         try {
             LocalDate start = LocalDate.parse(startDate);
@@ -120,7 +118,7 @@ public class ExportDataController {
             
             StreamingResponseBody stream = outputStream -> {
                 try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
-                    gpxExportService.generateGpxContentStreaming(user, startDateTime.toInstant(), endDateTime.toInstant(), writer, relevantData);
+                    gpxExportService.generateGpxContentStreaming(user, startDateTime.toInstant(), endDateTime.toInstant(), writer, relevantDataOnly);
                 } catch (Exception e) {
                     throw new RuntimeException("Error generating GPX file", e);
                 }

@@ -1,0 +1,1 @@
+ALTER TABLE raw_location_points ADD COLUMN invalid BOOLEAN DEFAULT FALSE;

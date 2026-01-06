@@ -13,15 +13,19 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.chrono.ChronoZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class LocationDataIngestPipeline {
     private static final Logger logger = LoggerFactory.getLogger(LocationDataIngestPipeline.class);
 
-    private final GeoPointAnomalyFilter geoPointAnomalyFilter;
+    private final AnomalyProcessingService anomalyProcessingService;
     private final UserJdbcService userJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
@@ -29,13 +33,13 @@ public class LocationDataIngestPipeline {
     private final LocationDataDensityNormalizer densityNormalizer;
 
     @Autowired
-    public LocationDataIngestPipeline(GeoPointAnomalyFilter geoPointAnomalyFilter,
+    public LocationDataIngestPipeline(AnomalyProcessingService anomalyProcessingService,
                                       UserJdbcService userJdbcService,
                                       RawLocationPointJdbcService rawLocationPointJdbcService,
                                       UserSettingsJdbcService userSettingsJdbcService,
                                       UserNotificationService userNotificationService,
                                       LocationDataDensityNormalizer densityNormalizer) {
-        this.geoPointAnomalyFilter = geoPointAnomalyFilter;
+        this.anomalyProcessingService = anomalyProcessingService;
         this.userJdbcService = userJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
@@ -60,17 +64,17 @@ public class LocationDataIngestPipeline {
             }
 
             User user = userOpt.get();
-            List<LocationPoint> filtered = this.geoPointAnomalyFilter.filterAnomalies(user, points);
 
-            // Store real points first
-            int updatedRows = rawLocationPointJdbcService.bulkInsert(user, filtered);
+            // Store all points first
+            int updatedRows = rawLocationPointJdbcService.bulkInsert(user, points);
+            List<Instant> timestamp = points.stream().map(LocationPoint::getTimestamp).map(ZonedDateTime::parse).map(ChronoZonedDateTime::toInstant).sorted().toList();
 
-            // Normalize density around each new point
-            densityNormalizer.normalize(user, filtered);
+            anomalyProcessingService.processAndMarkAnomalies(user, timestamp.getFirst(), timestamp.getLast());
 
-            userSettingsJdbcService.updateNewestData(user, filtered);
-            userNotificationService.newRawLocationData(user, filtered);
-            logger.info("Finished storing and normalizing points [{}] for user [{}] in [{}]ms. Filtered out [{}] points before database and [{}] after database.", filtered.size(), user, System.currentTimeMillis() - start, points.size() - filtered.size(), filtered.size() - updatedRows);
+            densityNormalizer.normalize(user, points);
+            userSettingsJdbcService.updateNewestData(user, points);
+            userNotificationService.newRawLocationData(user, points);
+            logger.info("Finished storing and normalizing points [{}] for user [{}] in [{}]ms. Filtered out [{}] after database.", points.size(), user, System.currentTimeMillis() - start, points.size() - updatedRows);
         } catch (Exception e) {
             logger.error("Error during processing: ", e);
         }
