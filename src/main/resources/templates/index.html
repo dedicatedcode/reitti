@@ -316,11 +316,15 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        // Restore timeline state on page load
-        restoreTimelineState();
-        // Restore date picker state on page load
-        restoreDatePickerState();
-        // Check if date is in URL parameters
+        if (window.userSettings.uiMode !== 'SHARED_LIVE_MODE_ONLY') {
+            // Restore timeline state on page load
+            restoreTimelineState();
+            // Restore date picker state on page load
+            restoreDatePickerState();
+        } else {
+            document.body.classList.add('datepicker-hidden')
+            document.body.classList.add('timeline-hidden')
+        }
 
         const tilesUrl = window.userSettings.tiles.service;
         const tilesAttribution = window.userSettings.tiles.attribution;
