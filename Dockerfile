@@ -49,7 +49,8 @@ HEALTHCHECK --interval=5s --timeout=3s --start-period=1s --retries=20 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
 
 # Install su-exec for proper user switching and wget for healthcheck
-RUN apk add --no-cache su-exec wget
+RUN apk add --no-cache su-exec wget attr
+RUN setfattr -n user.pax.flags -v "mr" /opt/java/openjdk/bin/java
 
 # Run as root initially to allow UID/GID changes
 USER root
