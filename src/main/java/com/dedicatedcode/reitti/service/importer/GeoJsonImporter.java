@@ -40,6 +40,7 @@ public class GeoJsonImporter {
 
         try {
             stateHolder.importStarted();
+            logger.info("Importing GeoJSON file for user {}", user.getUsername());
             JsonNode rootNode = objectMapper.readTree(inputStream);
 
             // Check if it's a valid GeoJSON

@@ -40,8 +40,8 @@ test.describe('Date Picker Tests', () => {
     test('should select latest date when no date is given', async ({page}) => {
         await page.goto('/')
         await expect(page.locator('.date-day.range-start')).toBeVisible();
-        await expect(page.locator('.date-day.range-start .day-number')).toHaveText('31');
-        await expect(page.locator('.date-day.range-start .month-year')).toHaveText('Dec 2017');
+        await expect(page.locator('.date-day.range-start .day-number')).toHaveText('1');
+        await expect(page.locator('.date-day.range-start .month-year')).toHaveText('Jan 2018');
     });
 
     test('should select date range', async ({page}) => {

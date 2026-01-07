@@ -40,6 +40,7 @@ public class GpxImporter {
         
         try {
             stateHolder.importStarted();
+            logger.info("Importing GPX file for user {}", user.getUsername());
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             DocumentBuilder builder = factory.newDocumentBuilder();
             Document document = builder.parse(inputStream);
