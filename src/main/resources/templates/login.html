@@ -7,9 +7,9 @@
     <link rel="icon" th:href="@{/img/logo.svg}">
     <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
-    <link rel="stylesheet" href="/css/leaflet.css">
-    <script src="/js/leaflet.js"></script>
-    <script src="/js/TileLayer.Grayscale.js"></script>
+    <link rel="stylesheet" th:href="@{/css/leaflet.css}">
+    <script th:src="@{/js/leaflet.js}"></script>
+    <script th:src="@{/js/TileLayer.Grayscale.js}"></script>
     <style>
         :root {
             --color-highlight: #F5DEB3FF;
@@ -168,7 +168,7 @@
         </form>
         <div th:if="${oidcEnabled}">
             <hr th:if="${localLoginEnabled}" style="margin: 30px 0; border: none; border-top: 1px solid var(--color-highlight);">
-            <a href="/oauth2/authorization/oauth" style="text-decoration: none;">
+            <a th:href="@{/oauth2/authorization/oauth}" style="text-decoration: none;">
               <button type="button" th:text="#{login.oauth.button}">Log in with OAuth</button>
             </a>
         </div>

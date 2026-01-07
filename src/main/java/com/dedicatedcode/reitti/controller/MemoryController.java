@@ -10,10 +10,7 @@ import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
-import com.dedicatedcode.reitti.service.I18nService;
-import com.dedicatedcode.reitti.service.MagicLinkTokenService;
-import com.dedicatedcode.reitti.service.MemoryService;
-import com.dedicatedcode.reitti.service.RequestHelper;
+import com.dedicatedcode.reitti.service.*;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -45,19 +42,21 @@ public class MemoryController {
     private final ImmichIntegrationService immichIntegrationService;
     private final MagicLinkTokenService magicLinkTokenService;
     private final I18nService i18n;
-
+    private final ContextPathHolder contextPathHolder;
     public MemoryController(MemoryService memoryService,
                             TripJdbcService tripJdbcService,
                             ProcessedVisitJdbcService processedVisitJdbcService,
                             ImmichIntegrationService immichIntegrationService,
                             MagicLinkTokenService magicLinkTokenService,
-                            I18nService i18n) {
+                            I18nService i18n,
+                            ContextPathHolder contextPathHolder) {
         this.memoryService = memoryService;
         this.tripJdbcService = tripJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.immichIntegrationService = immichIntegrationService;
         this.magicLinkTokenService = magicLinkTokenService;
         this.i18n = i18n;
+        this.contextPathHolder = contextPathHolder;
     }
 
     @GetMapping
@@ -211,7 +210,7 @@ public class MemoryController {
             
             Memory created = memoryService.createMemory(user, memory);
             this.memoryService.recalculateMemory(user, created.getId(), timezone);
-            response.setHeader("HX-Redirect", "/memories/" + created.getId() + "?timezone=" + timezone.getId());
+            response.setHeader("HX-Redirect", contextPathHolder.getContextPath() + "/memories/" + created.getId() + "?timezone=" + timezone.getId());
             return "memories/fragments :: empty";
 
         } catch (Exception e) {
@@ -335,7 +334,7 @@ public class MemoryController {
             throw new ForbiddenException("You are not allowed to delete this memory");
         }
         memoryService.deleteMemory(user, id);
-        response.setHeader("HX-Redirect", "/memories");
+        response.setHeader("HX-Redirect", contextPathHolder.getContextPath() + "/memories");
         return "";
     }
 
@@ -361,7 +360,7 @@ public class MemoryController {
             throw new ForbiddenException("You are not allowed execute this action. Only the owner of the memory can do this.");
         }
         memoryService.recalculateMemory(user, id, timezone);
-        httpResponse.setHeader("HX-Redirect", "/memories/" + id + "?timezone=" + timezone.getId());
+        httpResponse.setHeader("HX-Redirect", contextPathHolder.getContextPath() + "/memories/" + id + "?timezone=" + timezone.getId());
         return "Ok";
     }
 

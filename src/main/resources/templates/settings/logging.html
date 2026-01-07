@@ -7,10 +7,10 @@
     <link rel="icon" th:href="@{/img/logo.svg}">
     <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/lineicons.css">
-    <script src="/js/htmx.min.js"></script>
-    <script src="/js/util.js"></script>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <script th:src="@{/js/htmx.min.js}"></script>
+    <script th:src="@{/js/util.js}"></script>
     <style>
         .log-output {
             background: #1e1e1e;
@@ -107,7 +107,7 @@
 
                 <div id="loggingSettingsCard" th:fragment="logging-settings-card" class="settings-card">
                     <form id="loggingSettingsForm"
-                          hx-post="/settings/logging/update"
+                          th:hx-post="@{/settings/logging/update}"
                           hx-target="#loggingSettingsCard"
                           hx-swap="outerHTML">
                         <div class="form-group">
@@ -160,7 +160,7 @@
                             </td>
                             <td>
                                 <form class="logger-level-form"
-                                      hx-post="/settings/logging/update"
+                                      th:hx-post="@{/settings/logging/update}"
                                       hx-target="#loggingSettingsCard"
                                       hx-swap="outerHTML">
                                     <input type="hidden" name="logger" th:value="${logger.name}">
@@ -181,7 +181,7 @@
                             <td>
                                 <button type="button" class="btn btn-danger"
                                         th:if="${logger.name != 'ROOT'}"
-                                        hx-post="/settings/logging/remove"
+                                        th:hx-post="@{/settings/logging/remove}"
                                         th:hx-vals="${'{&quot;logger&quot;:&quot;' + logger.name + '&quot;}'}"
                                         hx-target="#loggingSettingsCard"
                                         hx-swap="outerHTML"
@@ -201,6 +201,8 @@
 </div>
 
 <script th:inline="javascript">
+    window.contextPath = /*[[@{/}]]*/ "/";
+    window.contextPath = window.contextPath.replace(/\/$/, '');
     window.userSettings = /*[[${userSettings}]]*/ {}
     
     // Localized messages
@@ -240,7 +242,7 @@
     }
     
     function connectEventSource() {
-        eventSource = new EventSource('/settings/logging/stream');
+        eventSource = new EventSource(window.contextPath + '/settings/logging/stream');
         
         eventSource.onopen = function() {
             logOutput.innerHTML = `<div class="log-line">${messages.connected}</div>`;

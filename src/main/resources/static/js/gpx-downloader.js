@@ -20,7 +20,7 @@ class GpxDownloader {
                 relevantData: relevantData ? 'true' : 'false'
             });
 
-            const response = await fetch(`/settings/export-data/gpx?${params}`, {
+            const response = await fetch(window.contextPath + `/settings/export-data/gpx?${params}`, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/xml'

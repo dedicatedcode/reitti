@@ -7,10 +7,10 @@
     <link rel="icon" th:href="@{/img/logo.svg}">
     <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/lineicons.css">
-    <script src="/js/htmx.min.js"></script>
-    <script src="/js/util.js"></script>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <script th:src="@{/js/htmx.min.js}"></script>
+    <script th:src="@{/js/util.js}"></script>
 </head>
 <body class="settings-page">
 <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('settings')}"></div>
@@ -64,7 +64,7 @@
                 </div>
 
                 <div class="settings-card">
-                    <form hx-post="/settings/api-tokens" hx-target="#api-tokens" hx-swap="innerHTML" class="token-form"
+                    <form th:hx-post="@{/settings/api-tokens}" hx-target="#api-tokens" hx-swap="innerHTML" class="token-form"
                           style="margin-bottom: 20px;">
                         <div class="form-group">
                             <label for="tokenName" th:text="#{tokens.name.label}">Token Name</label>

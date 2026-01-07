@@ -4,14 +4,14 @@
 
 <div class="years-navigation" th:fragment="years-navigation">
     <div class="timeline-entry trip active" id="overall-entry" data-year="overall"
-         hx-get="/statistics/overall"
+         th:hx-get="@{/statistics/overall}"
          hx-target="#statistics-panel"
          hx-trigger="load, click[shouldTrigger(this)]"
          hx-swap="outerHTML">
         <div class="entry-description" th:text="#{statistics.overall}">Overall</div>
     </div>
     <div class="timeline-entry trip" th:each="year : ${years}"
-         th:attr="hx-get='/statistics/'+ ${year}, data-year=${year}"
+         th:attr="hx-get=@{'/statistics/'+ ${year}}, data-year=${year}"
          hx-target="#statistics-panel"
          hx-trigger="click[shouldTrigger(this)]"
          hx-swap="outerHTML">
@@ -125,7 +125,7 @@
         <h3 th:text="#{statistics.monthly.breakdown}">Monthly Breakdown</h3>
         <div class="months-grid">
             <div class="month-item" th:each="month, iterStats : ${months}"
-                 th:attr="hx-get='/statistics/' + ${year} + '/' + ${month}, 
+                 th:attr="hx-get=@{'/statistics/' + ${year} + '/' + ${month}},
                           hx-target='#month-details-' + ${month},
                           data-year=${year},
                           data-month=${month},

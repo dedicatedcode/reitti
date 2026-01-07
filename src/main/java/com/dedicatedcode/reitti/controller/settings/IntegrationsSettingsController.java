@@ -9,6 +9,7 @@ import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.ApiTokenService;
+import com.dedicatedcode.reitti.service.ContextPathHolder;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
 import com.dedicatedcode.reitti.service.integration.OwnTracksRecorderIntegrationService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,13 +22,12 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @Controller
 @RequestMapping("/settings/integrations")
 public class IntegrationsSettingsController {
+    private final ContextPathHolder contextPathHolder;
     private final ApiTokenService apiTokenService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final ImmichIntegrationService immichIntegrationService;
@@ -35,10 +35,14 @@ public class IntegrationsSettingsController {
     private final MessageSource messageSource;
     private final boolean dataManagementEnabled;
 
-    public IntegrationsSettingsController(ApiTokenService apiTokenService, RawLocationPointJdbcService rawLocationPointJdbcService, ImmichIntegrationService immichIntegrationService,
+    public IntegrationsSettingsController(ContextPathHolder contextPathHolder,
+                                          ApiTokenService apiTokenService,
+                                          RawLocationPointJdbcService rawLocationPointJdbcService,
+                                          ImmichIntegrationService immichIntegrationService,
                                           OwnTracksRecorderIntegrationService ownTracksRecorderIntegrationService,
                                           MessageSource messageSource,
                                           @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
+        this.contextPathHolder = contextPathHolder;
         this.apiTokenService = apiTokenService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.immichIntegrationService = immichIntegrationService;
@@ -81,6 +85,7 @@ public class IntegrationsSettingsController {
 
         model.addAttribute("openSection", openSection);
         model.addAttribute("serverUrl", calculateServerUrl(request));
+        model.addAttribute("contextPath", contextPathHolder.getContextPath());
 
         return "settings/integrations";
     }
@@ -121,6 +126,7 @@ public class IntegrationsSettingsController {
 
         model.addAttribute("openSection", openSection);
         model.addAttribute("serverUrl", calculateServerUrl(request));
+        model.addAttribute("contextPath", contextPathHolder.getContextPath());
 
         return "settings/integrations :: integrations-content";
     }
@@ -145,7 +151,7 @@ public class IntegrationsSettingsController {
     @GetMapping("/reitti.properties")
     public ResponseEntity<String> getGpsLoggerProperties(@RequestParam String token, HttpServletRequest request) {
         String serverUrl = calculateServerUrl(request);
-        String url = serverUrl + "/api/v1/ingest/owntracks?token=" + token;
+        String url = serverUrl + contextPathHolder.getContextPath() + "/api/v1/ingest/owntracks?token=" + token;
         String properties = "log_customurl_url=" + url + "\n" +
                             "log_customurl_method=POST\n" +
                             "log_customurl_body={\"_type\" : \"location\",\"t\": \"u\",\"acc\": \"%ACC\",\"alt\": \"%ALT\",\"batt\": \"%BATT\",\"bs\": \"%ISCHARGING\",\"lat\": \"%LAT\",\"lon\": \"%LON\",\"tst\": \"%TIMESTAMP\",\"vel\": \"%SPD\"}\n" +

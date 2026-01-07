@@ -21,7 +21,7 @@
     <div class="timeline">
         <div class="timeline-container">
             <div id="years-navigation"
-                 hx-get="/memories/years-navigation"
+                 th:hx-get="@{/memories/years-navigation}"
                  hx-trigger="load">
                 <div class="photo-modal-loading-spinner htmx-indicator" th:text="#{timeline.loading}">Loading...</div>
             </div>
@@ -68,6 +68,8 @@
 
     <script th:inline="javascript">
         window.userSettings = /*[[${userSettings}]]*/ {};
+        window.contextPath = /*[[@{/}]]*/ "/";
+        window.contextPath = window.contextPath.replace(/\/$/, '');
 
         function getUserTimezone() {
             if (window.userSettings.timeZoneOverride) {

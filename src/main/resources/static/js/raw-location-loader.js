@@ -114,7 +114,7 @@ class RawLocationLoader {
                 }
                 
                 // Create fetch promise for raw location points with index to maintain order
-                const fetchPromise = fetch(urlWithParams).then(response => {
+                const fetchPromise = fetch(window.contextPath + urlWithParams).then(response => {
                     if (!response.ok) {
                         console.warn('Could not fetch raw location points');
                         return { points: [], index: i, config: config };
@@ -177,7 +177,7 @@ class RawLocationLoader {
                     'zoom=' + currentZoom + (config.respectBounds && withBounds ? ('&minLat=' + bbox.minLat +'&minLng=' + bbox.minLng +'&maxLat=' + bbox.maxLat +'&maxLng=' + bbox.maxLng) : '');
                 
                 // Create fetch promise for raw location points with index to maintain order
-                const fetchPromise = fetch(urlWithParams).then(response => {
+                const fetchPromise = fetch(window.contextPath + urlWithParams).then(response => {
                     if (!response.ok) {
                         console.warn('Could not fetch raw location points');
                         return { points: [], index: i, config: config };
@@ -315,7 +315,7 @@ class RawLocationLoader {
                 const urlWithParams = config.url + separator + 'zoom=' + currentZoom;
                 
                 // Create fetch promise for raw location points with index to maintain order
-                const fetchPromise = fetch(urlWithParams).then(response => {
+                const fetchPromise = fetch(window.contextPath + urlWithParams).then(response => {
                     if (!response.ok) {
                         console.warn('Could not fetch raw location points');
                         return { points: [], index: i, config: config };

@@ -7,10 +7,10 @@
     <link rel="icon" th:href="@{/img/logo.svg}">
     <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/lineicons.css">
-    <script src="/js/htmx.min.js"></script>
-    <script src="/js/util.js"></script>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <script th:src="@{/js/htmx.min.js}"></script>
+    <script th:src="@{/js/util.js}"></script>
 </head>
 <body class="settings-page">
 <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('settings')}"></div>
@@ -85,7 +85,7 @@
                         </table>
                     </div>
                     <div class="settings-card">
-                        <form hx-post="/settings/share-access/magic-links" hx-target="#magic-links" hx-swap="innerHTML"
+                        <form th:hx-post="@{/settings/share-access/magic-links}" hx-target="#magic-links" hx-swap="innerHTML"
                               class="magic-link-form"
                               style="margin-bottom: 20px;">
                             <div class="form-group">
@@ -158,7 +158,7 @@
                     <div class="settings-card" th:if="${!availableUsers.isEmpty()}">
                         <p th:text="#{share-with.users.description}">Select users you want to share your location data with. They will be able to view your timeline and location history.</p>
                         
-                        <form hx-post="/settings/share-access/users" hx-target="#share-with" hx-swap="innerHTML">
+                        <form th:hx-post="@{/settings/share-access/users}" hx-target="#share-with" hx-swap="innerHTML">
                             <div class="user-sharing-selection">
                                 <div class="language-buttons">
                                     <div th:each="user : ${availableUsers}" class="user-sharing-button-wrapper">
@@ -171,7 +171,7 @@
                                                    onchange="this.form.requestSubmit()"
                                                    style="display: none;">
                                             <div class="user-sharing-content">
-                                                <img th:src="${user.avatarUrl()}"
+                                                <img th:src="@{${user.avatarUrl()}}"
                                                      th:alt="${user.avatarFallback()}"
                                                      class="avatar">
                                                 <div class="user-info">
@@ -220,7 +220,7 @@
                                 <tr th:each="sharing : ${sharedWithMeUsers}">
                                     <td>
                                         <div class="user-info-row" style="display: flex; align-items: center; gap: 10px;">
-                                            <img th:src="${sharing.sharingUser().avatarUrl()}"
+                                            <img th:src="@{${sharing.sharingUser().avatarUrl()}}"
                                                  th:alt="${sharing.sharingUser().avatarFallback()}"
                                                  class="avatar small">
                                             <div class="user-details">
@@ -261,7 +261,7 @@ function updateSharingColor(colorInput) {
     const sharingId = colorInput.getAttribute('data-sharing-id');
     const color = colorInput.value;
     
-    fetch(`/settings/share-access/shared-with-me/${sharingId}/color`, {
+    fetch(window.contextPath  + `/settings/share-access/shared-with-me/${sharingId}/color`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -287,6 +287,8 @@ function updateSharingColor(colorInput) {
 }
 </script>
 <script th:inline="javascript">
+    window.contextPath = /*[[@{/}]]*/ "/";
+    window.contextPath = window.contextPath.replace(/\/$/, '');
     window.userSettings = /*[[${userSettings}]]*/ {}
 </script>
 </body>

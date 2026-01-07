@@ -7,10 +7,10 @@
     <link rel="icon" th:href="@{/img/logo.svg}">
     <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/lineicons.css">
-    <script src="/js/htmx.min.js"></script>
-    <script src="/js/util.js"></script>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <script th:src="@{/js/htmx.min.js}"></script>
+    <script th:src="@{/js/util.js}"></script>
 </head>
 <body class="settings-page">
 <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('settings')}"></div>
@@ -38,7 +38,7 @@
                             tracks, and routes with timestamps that can be processed into your location history.
                         </p>
                         <form id="gpx-upload-form"
-                              hx-post="/settings/import/gpx"
+                              th:hx-post="@{/settings/import/gpx}"
                               hx-target="#file-upload"
                               hx-encoding="multipart/form-data">
                             <div class="form-group">
@@ -62,7 +62,7 @@
                             Supports both single Feature and FeatureCollection formats.
                         </p>
                         <form id="geojson-upload-form"
-                              hx-post="/settings/import/geojson"
+                              th:hx-post="@{/settings/import/geojson}"
                               hx-target="#file-upload"
                               hx-swap="innerHTML"
                               hx-encoding="multipart/form-data">
@@ -85,7 +85,7 @@
                         <p class="description" th:text="#{upload.google.android.format.description}">This exports a timeline.json file with your recent location data from Android devices.</p>
 
                         <form id="timeline-android-upload-form"
-                              hx-post="/settings/import/google-timeline-android"
+                              th:hx-post="@{/settings/import/google-timeline-android}"
                               hx-target="#file-upload"
                               hx-swap="innerHTML"
                               hx-encoding="multipart/form-data">
@@ -108,7 +108,7 @@
                         <p class="description" th:text="#{upload.google.ios.format.description}">This exports a timeline.json file with your recent location data from iOS devices.</p>
 
                         <form id="timeline-ios-upload-form"
-                              hx-post="/settings/import/google-timeline-ios"
+                              th:hx-post="@{/settings/import/google-timeline-ios}"
                               hx-target="#file-upload"
                               hx-swap="innerHTML"
                               hx-encoding="multipart/form-data">
@@ -130,7 +130,7 @@
                         <p th:text="#{upload.google.old.format.instructions}">From Google Takeout: Export your data from takeout.google.com and upload the Records.json file from the Location History folder.</p>
                         <p class="description" th:text="#{upload.google.old.format.description}">This contains your complete historical location data.</p>
                         <form id="records-upload-form"
-                              hx-post="/settings/import/google-records"
+                              th:hx-post="@{/settings/import/google-records}"
                               hx-target="#file-upload"
                               hx-swap="innerHTML"
                               hx-encoding="multipart/form-data">

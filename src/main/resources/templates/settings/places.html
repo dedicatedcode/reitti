@@ -7,13 +7,13 @@
     <link rel="icon" th:href="@{/img/logo.svg}">
     <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
-    <link rel="stylesheet" href="/css/leaflet.css">
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/lineicons.css">
-    <script src="/js/htmx.min.js"></script>
-    <script src="/js/leaflet.js"></script>
-    <script src="/js/TileLayer.Grayscale.js"></script>
-    <script src="/js/util.js"></script>
+    <link rel="stylesheet" th:href="@{/css/leaflet.css}">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <script th:src="@{/js/htmx.min.js}"></script>
+    <script th:src="@{/js/leaflet.js}"></script>
+    <script th:src="@{/js/TileLayer.Grayscale.js}"></script>
+    <script th:src="@{/js/util.js}"></script>
 </head>
 <body class="settings-page">
 <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('settings')}"></div>
@@ -33,7 +33,8 @@
                 </div>
 
                 <div class="search-container" style="margin-bottom: 20px;">
-                    <input type="text" id="search-input" name="search" th:value="${search}" th:placeholder="#{places.search.placeholder}" placeholder="Search places..." style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;" hx-get="/settings/places/places-content" hx-target="#places-management" hx-swap="innerHTML" hx-trigger="input changed delay:300ms" hx-vals='{"page": 0}' />
+                    <input type="text" id="search-input" name="search" th:value="${search}" th:placeholder="#{places.search.placeholder}" placeholder="Search places..." style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;"
+                           th:hx-get="@{/settings/places/places-content}" hx-target="#places-management" hx-swap="innerHTML" hx-trigger="input changed delay:300ms" hx-vals='{"page": 0}' />
                 </div>
 
                 <div class="places-grid" th:if="${!isEmpty}">

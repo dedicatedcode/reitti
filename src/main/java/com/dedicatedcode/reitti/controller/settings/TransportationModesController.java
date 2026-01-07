@@ -1,17 +1,19 @@
 package com.dedicatedcode.reitti.controller.settings;
 
-import com.dedicatedcode.reitti.config.RabbitMQConfig;
-import com.dedicatedcode.reitti.event.RecalculateTripEvent;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.UnitSystem;
+import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.TransportModeConfig;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
+import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.TransportModeJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.dedicatedcode.reitti.service.processing.TransportModeService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -19,10 +21,11 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -30,20 +33,25 @@ import java.util.stream.Collectors;
 @RequestMapping("/settings/transportation-modes")
 public class TransportationModesController {
 
-    private final RabbitTemplate rabbitTemplate;
+    private static final Logger log = LoggerFactory.getLogger(TransportationModesController.class);
     private final TripJdbcService tripJdbcService;
     private final TransportModeJdbcService transportModeJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
+    private final TransportModeService transportModeService;
+    private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final boolean dataManagementEnabled;
 
-    public TransportationModesController(RabbitTemplate rabbitTemplate, TripJdbcService tripJdbcService,
+    public TransportationModesController(TripJdbcService tripJdbcService,
                                          TransportModeJdbcService transportModeJdbcService,
                                          UserSettingsJdbcService userSettingsJdbcService,
+                                         TransportModeService transportModeService,
+                                         RawLocationPointJdbcService rawLocationPointJdbcService,
                                          @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
-        this.rabbitTemplate = rabbitTemplate;
         this.tripJdbcService = tripJdbcService;
         this.transportModeJdbcService = transportModeJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
+        this.transportModeService = transportModeService;
+        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.dataManagementEnabled = dataManagementEnabled;
     }
 
@@ -188,19 +196,21 @@ public class TransportationModesController {
         return mph * 1.60934;
     }
     
-    private Double kmhToMph(Double kmh) {
-        return kmh / 1.60934;
-    }
-
     @PostMapping("/reclassify")
     public String reclassifyTrips(@AuthenticationPrincipal User user, Model model) {
         try {
             // Start async reclassification
             CompletableFuture.runAsync(() -> {
-                tripJdbcService.findIdsByUser(user).forEach(tripId -> {
-                    rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME,
-                            RabbitMQConfig.DETECT_TRIP_RECALCULATION_ROUTING_KEY,
-                            new RecalculateTripEvent(user.getUsername(), tripId, UUID.randomUUID().toString()));
+                tripJdbcService.findByUser(user).forEach(trip -> {
+                    Instant startTime = trip.getStartTime();
+                    Instant endTime = trip.getEndTime();
+                    List<RawLocationPoint> tripPoints = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, startTime, endTime.plus(1, ChronoUnit.MILLIS));
+                    TransportMode transportMode = this.transportModeService.inferTransportMode(user, tripPoints, startTime, endTime);
+                    if (transportMode != trip.getTransportModeInferred()) {
+                        log.trace("Reclassified trip {} from {} to {} to mode {}", trip.getId(), startTime, endTime, transportMode);
+                        trip = trip.withTransportMode(transportMode);
+                        this.tripJdbcService.update(trip);
+                    }
                 });
             });
             

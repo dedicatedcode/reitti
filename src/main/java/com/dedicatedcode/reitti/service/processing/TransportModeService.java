@@ -4,6 +4,8 @@ import com.dedicatedcode.reitti.model.geo.*;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.TransportModeJdbcService;
 import com.dedicatedcode.reitti.repository.TransportModeOverrideJdbcService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -12,7 +14,7 @@ import java.util.*;
 
 @Service
 public class TransportModeService {
-
+    private static final Logger log = LoggerFactory.getLogger(TransportModeService.class);
     private final TransportModeJdbcService transportModeJdbcService;
     private final TransportModeOverrideJdbcService transportModeOverrideJdbcService;
 
@@ -23,9 +25,9 @@ public class TransportModeService {
     }
 
     public TransportMode inferTransportMode(User user, List<RawLocationPoint> tripPoints, Instant startTime, Instant endTime) {
-
         Optional<TransportMode> override = this.transportModeOverrideJdbcService.getTransportModeOverride(user, startTime, endTime);
         if (override.isPresent()) {
+            log.trace("Found transport mode override for user [{}] and time range [{} - {}]", user.getUsername(), startTime, endTime);
             return override.get();
         }
         List<TransportModeConfig> config = transportModeJdbcService.getTransportModeConfigs(user);

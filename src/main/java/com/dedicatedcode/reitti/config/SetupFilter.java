@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.config;
 
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.service.ContextPathHolder;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -14,11 +15,13 @@ import java.io.IOException;
 public class SetupFilter implements Filter {
 
     private final UserJdbcService userService;
+    private final ContextPathHolder contextPathHolder;
     private final boolean localLoginDisabled;
 
-    public SetupFilter(UserJdbcService userService,
+    public SetupFilter(UserJdbcService userService, ContextPathHolder contextPathHolder,
                        @Value("${reitti.security.local-login.disable:false}") boolean localLoginDisabled) {
         this.userService = userService;
+        this.contextPathHolder = contextPathHolder;
         this.localLoginDisabled = localLoginDisabled;
     }
 
@@ -37,19 +40,19 @@ public class SetupFilter implements Filter {
         String requestURI = httpRequest.getRequestURI();
 
         // Skip setup check for setup pages, static resources, and health checks
-        if (requestURI.startsWith("/setup") ||
-                requestURI.startsWith("/css") ||
-                requestURI.startsWith("/js") ||
-                requestURI.startsWith("/images") ||
-                requestURI.startsWith("/img") ||
-                requestURI.equals("/actuator/health")) {
+        if (requestURI.contains("/setup") ||
+                requestURI.contains("/css") ||
+                requestURI.contains("/js") ||
+                requestURI.contains("/images") ||
+                requestURI.contains("/img") ||
+                requestURI.contains("/actuator/health")) {
             chain.doFilter(request, response);
             return;
         }
 
         // Check if admin has empty password
         if (hasAdminWithEmptyPassword()) {
-            httpResponse.sendRedirect("/setup");
+            httpResponse.sendRedirect(contextPathHolder.getContextPath() + "/setup");
             return;
         }
 
