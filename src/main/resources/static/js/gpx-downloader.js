@@ -17,7 +17,7 @@ class GpxDownloader {
                 startDate: startDate,
                 endDate: endDate,
                 timezone: timezone,
-                relevantData: relevantData ? 'true' : 'false'
+                relevantDataOnly: relevantData ? 'true' : 'false'
             });
 
             const response = await fetch(window.contextPath + `/settings/export-data/gpx?${params}`, {

@@ -1,18 +1,13 @@
 package com.dedicatedcode.reitti.service.processing;
 
-import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.geo.GeoUtils;
+import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,207 +19,111 @@ public class GeoPointAnomalyFilter {
         this.config = config;
     }
 
-    /**
-     * Main filtering method that removes anomalous geopoints
-     */
-    public List<LocationPoint> filterAnomalies(List<LocationPoint> points) {
-        if (points == null || points.isEmpty()) {
+    public List<RawLocationPoint> detectAnomalies(List<RawLocationPoint> pointsToCheck) {
+        if (pointsToCheck == null || pointsToCheck.size() < 2) {
             return new ArrayList<>();
         }
 
-        Set<LocationPoint> detectedAnomalies = new HashSet<>();
+        List<RawLocationPoint> sortedPoints = pointsToCheck.stream()
+                .sorted(Comparator.comparing(RawLocationPoint::getTimestamp))
+                .collect(Collectors.toList());
 
-        // Apply multiple detection methods
-        detectedAnomalies.addAll(detectAccuracyAnomalies(points));
-        detectedAnomalies.addAll(detectSpeedAnomalies(points));
-        detectedAnomalies.addAll(detectDistanceJumpAnomalies(points));
-        detectedAnomalies.addAll(detectDirectionAnomalies(points));
+        Set<Long> anomalyIds = new HashSet<>();
 
-        // Filter out anomalies
-        return points.stream()
-                .filter(point -> !detectedAnomalies.contains(point))
+        // Simple accuracy filter
+        anomalyIds.addAll(filterByAccuracy(sortedPoints));
+
+        // Speed-based anomaly detection for all points
+        anomalyIds.addAll(filterBySpeed(sortedPoints));
+
+        return pointsToCheck.stream()
+                .filter(p -> anomalyIds.contains(p.getId()))
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Detect points with poor accuracy
-     */
-    private Set<LocationPoint> detectAccuracyAnomalies(List<LocationPoint> points) {
-        Set<LocationPoint> anomalies = new HashSet<>();
-
-        for (LocationPoint point : points) {
-            if (point.getAccuracyMeters() > config.maxAccuracyMeters) {
-                anomalies.add(point);
-            }
-        }
-        logger.debug("Filtering out [{}] points because min accuracy [{}] not met.", anomalies.size(), config.maxAccuracyMeters);
-        return anomalies;
+    private Set<Long> filterByAccuracy(List<RawLocationPoint> points) {
+        return points.stream()
+                .filter(p -> p.getAccuracyMeters() > config.getMaxAccuracyMeters())
+                .map(RawLocationPoint::getId)
+                .collect(Collectors.toSet());
     }
 
-    /**
-     * Detect impossible speeds between consecutive points
-     */
-    private Set<LocationPoint> detectSpeedAnomalies(List<LocationPoint> points) {
-        Set<LocationPoint> anomalies = new HashSet<>();
+    private Set<Long> filterBySpeed(List<RawLocationPoint> points) {
+        Set<Long> anomalies = new HashSet<>();
 
-        for (int i = 1; i < points.size(); i++) {
-            LocationPoint prev = points.get(i - 1);
-            LocationPoint curr = points.get(i);
+        if (points.size() < 2) return anomalies;
 
-            if (prev.getTimestamp() != null && curr.getTimestamp() != null) {
-                double distance = GeoUtils.distanceInMeters(prev, curr);
-                long timeDiffSeconds = ChronoUnit.SECONDS.between(getTimestamp(prev.getTimestamp()), getTimestamp(curr.getTimestamp()));
-
-                if (timeDiffSeconds > 0) {
-                    double speedKmh = (distance / 1000.0) / (timeDiffSeconds / 3600.0);
-                    double maxSpeed = isEdgePoint(i, points.size()) ?
-                            config.maxSpeedKmh * config.edgeToleranceMultiplier : config.maxSpeedKmh;
-
-                    if (speedKmh > maxSpeed) {
-                        // Mark the point with worse accuracy as anomaly
-                        if (curr.getAccuracyMeters() > prev.getAccuracyMeters()) {
-                            anomalies.add(curr);
-                        } else {
-                            anomalies.add(prev);
-                        }
-                    }
-                }
+        // Calculate all successive speeds
+        List<Double> speeds = new ArrayList<>();
+        for (int i = 0; i < points.size() - 1; i++) {
+            double speed = calculateSpeed(points.get(i), points.get(i + 1));
+            if (speed >= 0) {
+                speeds.add(speed);
             }
         }
 
-        logger.debug("Filtering out [{}] points because speed was above [{}].", anomalies.size(), config.maxSpeedKmh);
-        return anomalies;
-    }
+        if (speeds.isEmpty()) return anomalies;
 
-    private Instant getTimestamp(String timestamp) {
-        return DateTimeFormatter.ISO_ZONED_DATE_TIME.parse(timestamp, Instant::from);
-    }
+        // Calculate statistical baseline
+        List<Double> sortedSpeeds = new ArrayList<>(speeds);
+        Collections.sort(sortedSpeeds);
+        double medianSpeed = getMedian(sortedSpeeds);
+        double threshold = Math.max(config.getMaxSpeedKmh() / 3.6, medianSpeed * 3);
 
-    /**
-     * Detect large distance jumps between consecutive points
-     */
-    private Set<LocationPoint> detectDistanceJumpAnomalies(List<LocationPoint> points) {
-        Set<LocationPoint> anomalies = new HashSet<>();
-
-        for (int i = 1; i < points.size(); i++) {
-            LocationPoint prev = points.get(i - 1);
-            LocationPoint curr = points.get(i);
-
-            double distance = GeoUtils.distanceInMeters(prev, curr);
-            double maxDistance = isEdgePoint(i, points.size()) ?
-                    config.maxDistanceJumpMeters * config.edgeToleranceMultiplier :
-                    config.maxDistanceJumpMeters;
-
-            if (distance > maxDistance) {
-                // For edge points, be more careful about which point to remove
-                if (isEdgePoint(i, points.size())) {
-                    anomalies.add(selectWorsePoint(prev, curr, points, i));
-                } else {
-                    // Mark the point with worse accuracy as anomaly
-                    if (curr.getAccuracyMeters() > prev.getAccuracyMeters()) {
-                        anomalies.add(curr);
-                    } else {
-                        anomalies.add(prev);
-                    }
-                }
+        // Check first point (only has speed after)
+        if (speeds.size() >= 2 && speeds.get(0) > threshold) {
+            // If first speed is excessive but second is normal, first point is anomaly
+            if (speeds.get(1) <= threshold) {
+                anomalies.add(points.getFirst().getId());
             }
         }
 
-        logger.debug("Filtering out [{}] points because distance jumped more than [{}] meters.", anomalies.size(), config.maxDistanceJumpMeters);
-
-        return anomalies;
-    }
-    /**
-     * Detect sudden direction changes that might indicate errors
-     */
-    private Set<LocationPoint> detectDirectionAnomalies(List<LocationPoint> points) {
-        Set<LocationPoint> anomalies = new HashSet<>();
-
-        if (points.size() < 3) {
-            return anomalies;
-        }
-
+        // Check middle points (have speeds before and after)
         for (int i = 1; i < points.size() - 1; i++) {
-            LocationPoint prev = points.get(i - 1);
-            LocationPoint curr = points.get(i);
-            LocationPoint next = points.get(i + 1);
+            double speedBefore = speeds.get(i - 1);
+            double speedAfter = speeds.get(i);
 
-            // Calculate bearings
-            double bearing1 = calculateBearing(prev, curr);
-            double bearing2 = calculateBearing(curr, next);
-
-            // Calculate angle difference
-            double angleDiff = Math.abs(bearing2 - bearing1);
-            if (angleDiff > 180) {
-                angleDiff = 360 - angleDiff;
+            if (speedBefore > threshold && speedAfter > threshold) {
+                anomalies.add(points.get(i).getId());
             }
+        }
 
-            // If it's a sharp reversal (close to 180 degrees) and the distances are significant
-            double dist1 = GeoUtils.distanceInMeters(prev, curr);
-            double dist2 = GeoUtils.distanceInMeters(next, curr);
-
-            if (angleDiff > 150 && dist1 > 50 && dist2 > 50) {
-                // Check if current point has worse accuracy
-                if (curr.getAccuracyMeters() > Math.max(prev.getAccuracyMeters(), next.getAccuracyMeters())) {
-                    anomalies.add(curr);
+        // Check last point (only has speed before)
+        if (speeds.size() >= 2) {
+            int lastSpeedIdx = speeds.size() - 1;
+            if (speeds.get(lastSpeedIdx) > threshold) {
+                // If last speed is excessive but second-to-last is normal, last point is anomaly
+                if (speeds.get(lastSpeedIdx - 1) <= threshold) {
+                    anomalies.add(points.getLast().getId());
                 }
             }
         }
-        logger.debug("Filtering out [{}] points because the suddenly changed the direction.", anomalies.size());
 
+        logger.debug("Filtered {} points due to excessive speed (median: {} m/s, threshold: {} m/s)",
+                     anomalies.size(), medianSpeed, threshold);
         return anomalies;
     }
 
-    /**
-     * Handle edge cases specially - first and last points
-     */
-    private LocationPoint selectWorsePoint(LocationPoint p1, LocationPoint p2, List<LocationPoint> allPoints, int currentIndex) {
-        // For edge points, compare against multiple criteria
-        double accuracyScore1 = p1.getAccuracyMeters();
-        double accuracyScore2 = p2.getAccuracyMeters();
-
-        // If we have enough points, check consistency with neighbors
-        if (currentIndex == 1 && allPoints.size() > 2) {
-            // First edge: check consistency with second next point
-            LocationPoint next = allPoints.get(currentIndex + 1);
-            double dist1Next = GeoUtils.distanceInMeters(p1, next);
-            double dist2Next = GeoUtils.distanceInMeters(p2, next);
-
-            // Prefer the point that's more consistent with the next point
-            if (Math.abs(dist1Next - dist2Next) > 1000) {
-                return dist1Next > dist2Next ? p1 : p2;
-            }
+    private double calculateSpeed(RawLocationPoint p1, RawLocationPoint p2) {
+        if (p1.getTimestamp() == null || p2.getTimestamp() == null) {
+            return -1; // Invalid
         }
 
-        if (currentIndex == allPoints.size() - 1 && allPoints.size() > 2) {
-            // Last edge: check consistency with second previous point
-            LocationPoint prevPrev = allPoints.get(currentIndex - 2);
-            double prevPrevDist1 = GeoUtils.distanceInMeters(prevPrev, p1);
-            double prevPrevDist2 = GeoUtils.distanceInMeters(prevPrev, p2);
-
-            // Prefer the point that's more consistent with the previous point
-            if (Math.abs(prevPrevDist1 - prevPrevDist2) > 1000) {
-                return prevPrevDist1 > prevPrevDist2 ? p1 : p2;
-            }
+        long timeDiffSeconds = Math.abs(ChronoUnit.SECONDS.between(p1.getTimestamp(), p2.getTimestamp()));
+        if (timeDiffSeconds == 0) {
+            return -1; // Invalid
         }
 
-        // Fall back to accuracy
-        return accuracyScore1 > accuracyScore2 ? p1 : p2;
+        double distance = GeoUtils.distanceInMeters(p1, p2);
+        return distance / timeDiffSeconds; // m/s
     }
 
-    private boolean isEdgePoint(int index, int totalSize) {
-        return index == 0 || index == totalSize - 1;
-    }
-
-    private double calculateBearing(LocationPoint from, LocationPoint to) {
-        double lat1 = Math.toRadians(from.getLatitude());
-        double lat2 = Math.toRadians(to.getLatitude());
-        double deltaLng = Math.toRadians(to.getLongitude() - from.getLongitude());
-
-        double y = Math.sin(deltaLng) * Math.cos(lat2);
-        double x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(deltaLng);
-
-        double bearing = Math.toDegrees(Math.atan2(y, x));
-        return (bearing + 360) % 360;
+    private double getMedian(List<Double> sortedValues) {
+        int size = sortedValues.size();
+        if (size % 2 == 0) {
+            return (sortedValues.get(size / 2 - 1) + sortedValues.get(size / 2)) / 2.0;
+        } else {
+            return sortedValues.get(size / 2);
+        }
     }
 }

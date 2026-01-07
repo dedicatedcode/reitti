@@ -46,9 +46,6 @@ class OwntracksIngestionApiControllerIntegrationTest {
     @Autowired
     private RawLocationPointJdbcService rawLocationPointJdbcService;
 
-    @Autowired
-    private AvatarService avatarService;
-
     @MockitoBean
     private LocationBatchingService locationBatchingService;
 

@@ -3,19 +3,39 @@ package com.dedicatedcode.reitti.service.processing;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
+
 @Component
 public class GeoPointAnomalyFilterConfig {
-    public final double maxSpeedKmh;           // Maximum reasonable speed
-    public final double maxAccuracyMeters;     // Maximum acceptable accuracy
-    public final double maxDistanceJumpMeters; // Maximum jump between points
-    public final double edgeToleranceMultiplier = 1.5;   // Extra tolerance for edge points
+    private final double maxSpeedKmh;
+    private final double maxAccuracyMeters;
+    private final int historyLookback;
+    private final int windowSize;
 
     public GeoPointAnomalyFilterConfig(
             @Value("${reitti.geo-point-filter.max-speed-kmh:1000}") double maxSpeedKmh,
             @Value("${reitti.geo-point-filter.max-accuracy-meters:100}") double maxAccuracyMeters,
-            @Value("${reitti.geo-point-filter.max-distance-jump-meters:5000}") double maxDistanceJumpMeters) {
+            @Value("${reitti.geo-point-filter.history-lookback-hours:2}") int historyLookback,
+            @Value("${reitti.geo-point-filter.window-size:5}") int windowSize) {
         this.maxSpeedKmh = maxSpeedKmh;
         this.maxAccuracyMeters = maxAccuracyMeters;
-        this.maxDistanceJumpMeters = maxDistanceJumpMeters;
+        this.historyLookback = historyLookback;
+        this.windowSize = windowSize;
+    }
+
+    public double getMaxSpeedKmh() {
+        return maxSpeedKmh;
+    }
+
+    public double getMaxAccuracyMeters() {
+        return maxAccuracyMeters;
+    }
+
+    public int getHistoryLookback() {
+        return historyLookback;
+    }
+
+    public int getWindowSize() {
+        return windowSize;
     }
 }

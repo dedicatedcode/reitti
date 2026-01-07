@@ -535,12 +535,16 @@ function updatePointsList() {
             
             const pointId = `point-${trackIndex}-${pointIndex}`;
             
+            // Format accuracy for display
+            const accuracyText = point.accuracy !== undefined ? `${point.accuracy.toFixed(0)}m` : '';
+            
             html += `
                 <div class="point-item" id="${pointId}" onclick="selectPoint(${trackIndex}, ${pointIndex})" style="border-left-color: ${speedColor}">
                     <div class="point-content">
                         <div class="point-coords">${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}</div>
                         <div class="point-time">${formatCompactTimestamp(point.timestamp)}</div>
                         <div class="point-speed" style="color: ${speedColor}">${speedText}</div>
+                        <div class="point-accuracy">${accuracyText}</div>
                     </div>
                     <button class="point-delete" onclick="event.stopPropagation(); removePoint(${trackIndex}, ${pointIndex})">×</button>
                 </div>
@@ -1375,11 +1379,15 @@ function showMarkerTooltip(mouseEvent, markerData) {
         speedClass = getSpeedClass(speedInfo.speed);
     }
 
+    // Format accuracy for tooltip
+    const accuracyText = point.accuracy !== undefined ? `${point.accuracy.toFixed(0)}m` : 'N/A';
+
     tooltip.innerHTML = `
         <div style="font-weight: 600; margin-bottom: 4px; color: ${markerData.color}">${track.name} - Point ${markerData.pointIndex + 1}</div>
         <div>Time: ${formatTimestamp(point.timestamp)}</div>
         <div class="${speedClass}">Speed: ${speedText}</div>
         <div>Elevation: ${point.elevation.toFixed(1)}m</div>
+        <div>Accuracy: ${accuracyText}</div>
     `;
     
     tooltip.style.left = (mouseEvent.pageX + 10) + 'px';
@@ -1399,11 +1407,15 @@ function showHoverTooltip(mouseEvent, latLng, distance, speed, speedClass) {
         interpolationInfo = `<div style="color: #ed8936;">Will add ${numSegments} points</div>`;
     }
     
+    // Show current accuracy setting in hover tooltip
+    const currentAccuracy = document.getElementById('accuracySlider').value;
+
     tooltip.innerHTML = `
         <div>Lat: ${latLng.lat.toFixed(6)}</div>
         <div>Lng: ${latLng.lng.toFixed(6)}</div>
         <div>Distance: ${distance.toFixed(0)}m</div>
         <div class="${speedClass}">Speed: ${speed.toFixed(1)} km/h</div>
+        <div>Accuracy: ${currentAccuracy}m</div>
         ${interpolationInfo}
     `;
     
