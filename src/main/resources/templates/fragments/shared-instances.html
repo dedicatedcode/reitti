@@ -89,7 +89,7 @@
         </div>
 
         <div class="settings-card">
-            <form id="reitti-integration-form" hx-post="/settings/integrations/reitti-integrations" hx-target="#shared-instances-section" hx-swap="innerHTML" class="reitti-integration-form" style="margin-top: 20px;" autocomplete="off">
+            <form id="reitti-integration-form" th:hx-post="@{/settings/integrations/reitti-integrations}" hx-target="#shared-instances-section" hx-swap="innerHTML" class="reitti-integration-form" style="margin-top: 20px;" autocomplete="off">
                 <h4 id="form-title" th:text="#{integrations.reitti.add.title}">Add New Reitti Integration</h4>
 
                 <input type="hidden" id="integrationId" name="id" value="">
@@ -164,7 +164,7 @@
 
             // Set form action to update
             const form = document.getElementById('reitti-integration-form');
-            form.setAttribute('hx-post', '/settings/integrations/reitti-integrations/' + id + '/update');
+            form.setAttribute('hx-post', window.contextPath + '/settings/integrations/reitti-integrations/' + id + '/update');
 
             // Tell HTMX to process the form again after changing attributes
             htmx.process(form);
@@ -194,7 +194,7 @@
 
             // Reset form action to create
             const form = document.getElementById('reitti-integration-form');
-            form.setAttribute('hx-post', '/settings/integrations/reitti-integrations');
+            form.setAttribute('hx-post', window.contextPath + '/settings/integrations/reitti-integrations');
 
             // Tell HTMX to process the form again after changing attributes
             htmx.process(form);
@@ -231,7 +231,7 @@
             resultDiv.innerHTML = '<div style="color: var(--color-text-white);">' + loadingMessage + '</div>';
 
             // Make AJAX request to test connection
-            fetch('/settings/integrations/reitti-integrations/test', {
+            fetch(window.contextPath + '/settings/integrations/reitti-integrations/test', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -263,7 +263,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h4 style="margin: 0; color: var(--color-accent);" th:text="#{integrations.reitti.info.title}">Remote Instance Information</h4>
             <button class="btn btn-secondary"
-                    hx-get="/settings/integrations/shared-instances-content"
+                    th:hx-get="@{/settings/integrations/shared-instances-content}"
                     hx-target="#shared-instances-section"
                     hx-swap="innerHTML"
                     th:text="#{form.close}">Close</button>

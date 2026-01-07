@@ -19,7 +19,7 @@
              th:classappend="${iterStat.first} ? 'active' : ''"
              th:data-user-id="${userData.userId}"
              onclick="selectUser(this)">
-                <img th:src="${userData.userAvatarUrl}"
+                <img th:src="@{${userData.userAvatarUrl}}"
                      th:alt="${userData.avatarFallback}"
                      class="avatar">
                 <div th:text="${userData.displayName}" class="username">Username</div>

@@ -20,7 +20,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h3 th:text="#{users.existing}">Existing Users</h3>
             <button th:if="${isAdmin && addUserAvailable}" class="btn"
-                    hx-get="/settings/user-form"
+                    th:hx-get="@{/settings/user-form}"
                     hx-target="#user-management"
                     hx-swap="innerHTML"
                     th:text="#{users.add.title}">Add New User</button>
@@ -68,7 +68,7 @@
 <!-- User Form Page Fragment -->
 <div th:fragment="user-form-page">
     <form hx-target="#user-management" hx-swap="innerHTML" class="user-form" autocomplete="off" 
-          th:attr="hx-post=${userId != null ? '/settings/users/update' : '/settings/users'}"
+          th:attr="hx-post=@{${userId != null ? '/settings/users/update' : '/settings/users'}}"
           enctype="multipart/form-data">
         <input type="hidden" name="userId" th:value="${userId}">
         <h3 th:text="${userId != null ? #messages.msg('users.update.title') : #messages.msg('users.add.title')}">Add New User</h3>
@@ -363,7 +363,7 @@
         <div style="display: flex; gap: 10px;">
             <button type="submit" class="btn" th:text="${userId != null ? #messages.msg('form.update') : #messages.msg('form.create')}">Create User</button>
             <button type="button" class="btn"
-                    hx-get="/settings/users-content"
+                    th:hx-get="@{/settings/users-content}"
                     hx-target="#user-management"
                     hx-swap="innerHTML"
                     th:text="#{form.cancel}">Cancel</button>

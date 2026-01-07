@@ -322,7 +322,7 @@
         restoreDatePickerState();
         // Check if date is in URL parameters
 
-        const tilesUrl = window.contextPath + window.userSettings.tiles.service;
+        const tilesUrl = window.userSettings.tiles.service;
         const tilesAttribution = window.userSettings.tiles.attribution;
 
         const tileLayer = window.userSettings.preferColoredMap ? L.tileLayer : L.tileLayer.grayscale;
@@ -854,7 +854,7 @@
         }
 
         console.log('Connecting to SSE...');
-        eventSource = new EventSource('/events');
+        eventSource = new EventSource(window.contextPath + '/events');
 
         eventSource.onopen = function() {
             console.log('SSE connection opened.');

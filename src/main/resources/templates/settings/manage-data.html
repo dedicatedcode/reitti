@@ -7,10 +7,10 @@
     <link rel="icon" th:href="@{/img/logo.svg}">
     <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/lineicons.css">
-    <script src="/js/htmx.min.js"></script>
-    <script src="/js/util.js"></script>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <script th:src="@{/js/htmx.min.js}"></script>
+    <script th:src="@{/js/util.js}"></script>
 </head>
 <body class="settings-page">
 <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('settings')}"></div>
@@ -40,7 +40,7 @@
                         <h3 th:text="#{data.process.visits.title}">Process Visits and Trips</h3>
                         <p th:text="#{data.process.visits.description}">Manually trigger the processing of raw location data into visits and trips. This will analyze unprocessed location points and create meaningful visits and trips from them.</p>
                         <button class="btn"
-                                hx-post="/settings/manage-data/process-visits-trips"
+                                th:hx-post="@{/settings/manage-data/process-visits-trips}"
                                 hx-target="#manage-data"
                                 hx-swap="innerHTML"
                                 th:attr="hx-confirm=#{data.process.visits.confirm}"
@@ -56,7 +56,7 @@
                             <strong>⚠️ <span th:text="#{label.warning}">Warning:</span></strong> <span th:text="#{data.clear.reprocess.warning}">This action will permanently delete all visits, trips, and processed visits. This cannot be undone.</span>
                         </div>
                         <button class="btn btn-danger"
-                                hx-post="/settings/manage-data/clear-and-reprocess"
+                                th:hx-post="@{/settings/manage-data/clear-and-reprocess}"
                                 hx-target="#manage-data"
                                 hx-swap="innerHTML"
                                 th:attr="hx-confirm=#{data.clear.reprocess.confirm}"
@@ -81,7 +81,7 @@
                             
                             <button class="btn btn-danger"
                                     id="delete-all-confirmed-btn"
-                                    hx-post="/settings/manage-data/remove-all-data"
+                                    th:hx-post="@{/settings/manage-data/remove-all-data}"
                                     hx-target="#manage-data"
                                     hx-swap="innerHTML"
                                     hx-include="#delete-verification-input"
@@ -94,7 +94,7 @@
 
                         <div th:unless="${deleteAllRequiresVerification}">
                             <button class="btn btn-danger"
-                                    hx-post="/settings/manage-data/remove-all-data"
+                                    thhx-post="@{/settings/manage-data/remove-all-data}"
                                     hx-target="#manage-data"
                                     hx-swap="innerHTML"
                                     th:attr="hx-confirm=#{data.remove.all.confirm}"

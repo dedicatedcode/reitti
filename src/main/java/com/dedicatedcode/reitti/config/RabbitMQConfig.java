@@ -14,8 +14,6 @@ public class RabbitMQConfig {
     public static final String EXCHANGE_NAME = "reitti-exchange";
     public static final String SIGNIFICANT_PLACE_QUEUE = "reitti.place.created.v2";
     public static final String SIGNIFICANT_PLACE_ROUTING_KEY = "reitti.place.created.v2";
-    public static final String RECALCULATE_TRIP_QUEUE = "reitti.trip.recalculate.v2";
-    public static final String DETECT_TRIP_RECALCULATION_ROUTING_KEY = "reitti.trip.recalculate.v2";
     public static final String TRIGGER_PROCESSING_PIPELINE_QUEUE = "reitti.processing.v2";
     public static final String TRIGGER_PROCESSING_PIPELINE_ROUTING_KEY = "reitti.processing.start.v2";
 
@@ -35,14 +33,6 @@ public class RabbitMQConfig {
     @Bean
     TopicExchange deadLetterExchange() {
         return new TopicExchange(DLX_NAME);
-    }
-
-    @Bean
-    public Queue recaluclateTripQueue() {
-        return QueueBuilder.durable(RECALCULATE_TRIP_QUEUE)
-                .withArgument("x-dead-letter-exchange", DLX_NAME)
-                .withArgument("x-dead-letter-routing-key", DLQ_NAME)
-                .build();
     }
 
     @Bean
@@ -72,11 +62,6 @@ public class RabbitMQConfig {
     @Bean
     public Binding significantPlaceBinding(Queue significantPlaceQueue, TopicExchange exchange) {
         return BindingBuilder.bind(significantPlaceQueue).to(exchange).with(SIGNIFICANT_PLACE_ROUTING_KEY);
-    }
-
-    @Bean
-    public Binding recalculateTripBinding(Queue recaluclateTripQueue , TopicExchange exchange) {
-        return BindingBuilder.bind(recaluclateTripQueue).to(exchange).with(DETECT_TRIP_RECALCULATION_ROUTING_KEY);
     }
 
     @Bean

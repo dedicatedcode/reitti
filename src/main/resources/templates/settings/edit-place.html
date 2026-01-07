@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="#{edit-place.page.title}">Edit Place - Reitti</title>
     <link rel="icon" th:href="@{/img/logo.svg}">
-    <link rel="stylesheet" href="/css/leaflet.css">
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/lineicons.css">
+    <link rel="stylesheet" th:href="@{/css/leaflet.css}">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}">
     <style>
         body {
             margin: 0;
@@ -155,10 +155,10 @@
             100% { transform: rotate(360deg); }
         }
     </style>
-    <script src="/js/leaflet.js"></script>
-    <script src="/js/polygon-editor.js"></script>
-    <script src="/js/TileLayer.Grayscale.js"></script>
-    <script src="/js/htmx.min.js"></script>
+    <script th:src="@{/js/leaflet.js}"></script>
+    <script th:src="@{/js/polygon-editor.js}"></script>
+    <script th:src="@{/js/TileLayer.Grayscale.js}"></script>
+    <script th:src="@{/js/htmx.min.js}"></script>
 </head>
 <body>
     <div id="map"></div>
@@ -242,7 +242,7 @@
                     <button type="button" id="save-btn" class="btn btn-default btn-block">
                         <span class="btn-text" th:text="#{form.save}">Save</span>
                     </button>
-                    <a th:href="${returnUrl}" class="btn btn-default btn-block" th:text="#{form.cancel}">Cancel</a>
+                    <a th:href="@{${returnUrl}}" class="btn btn-default btn-block" th:text="#{form.cancel}">Cancel</a>
                 </div>
             </div>
         </div>
@@ -254,6 +254,8 @@
 
     <script th:inline="javascript">
         const placeData = /*[[${place}]]*/ {};
+        window.contextPath = /*[[@{/}]]*/ "/";
+        window.contextPath = window.contextPath.replace(/\/$/, '');
         window.userSettings = /*[[${userSettings}]]*/ {};
 
         // Initialize the map
@@ -425,7 +427,7 @@
             
             const formData = new FormData(document.getElementById('polygon-form'));
             
-            fetch(`/settings/places/${placeData.id}/check-update`, {
+            fetch(window.contextPath + `/settings/places/${placeData.id}/check-update`, {
                 method: 'POST',
                 body: formData
             })

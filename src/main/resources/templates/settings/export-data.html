@@ -7,11 +7,11 @@
     <link rel="icon" th:href="@{/img/logo.svg}">
     <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/lineicons.css">
-    <script src="/js/htmx.min.js"></script>
-    <script src="/js/util.js"></script>
-    <script src="/js/gpx-downloader.js"></script>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <script th:src="@{/js/htmx.min.js}"></script>
+    <script th:src="@{/js/util.js}"></script>
+    <script th:src="@{/js/gpx-downloader.js}"></script>
 </head>
 <body class="settings-page">
 <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('settings')}"></div>
@@ -40,7 +40,7 @@
                                    id="startDate"
                                    name="startDate"
                                    th:value="${startDate}"
-                                   hx-get="/settings/export-data/data-content"
+                                   th:hx-get="@{/settings/export-data/data-content}"
                                    hx-target="#data-content"
                                    hx-swap="innerHTML"
                                    hx-trigger="change"
@@ -56,7 +56,7 @@
                                    id="endDate"
                                    name="endDate"
                                    th:value="${endDate}"
-                                   hx-get="/settings/export-data/data-content"
+                                   th:hx-get="@{/settings/export-data/data-content}"
                                    hx-target="#data-content"
                                    hx-swap="innerHTML"
                                    hx-trigger="load, change"
@@ -113,7 +113,7 @@
                                         <label for="pageSizeSelect" th:text="#{export.raw.data.show}">Show:</label>
                                         <select id="pageSizeSelect"
                                                 name="size"
-                                                hx-get="/settings/export-data/data-content"
+                                                th:hx-get="@{/settings/export-data/data-content}"
                                                 hx-target="#data-content"
                                                 hx-swap="innerHTML"
                                                 hx-include="#startDate, #endDate"
@@ -130,7 +130,7 @@
                                         <button type="button" 
                                                 class="btn btn-sm"
                                                 th:disabled="${!hasPrevious}"
-                                                hx-get="/settings/export-data/data-content"
+                                                th:hx-get="@{/settings/export-data/data-content}"
                                                 hx-target="#data-content"
                                                 hx-swap="innerHTML"
                                                 hx-include="#startDate, #endDate, #pageSizeSelect"
@@ -147,7 +147,7 @@
                                         <button type="button" 
                                                 class="btn btn-sm"
                                                 th:disabled="${!hasNext}"
-                                                hx-get="/settings/export-data/data-content"
+                                                th:hx-get="@{/settings/export-data/data-content}"
                                                 hx-target="#data-content"
                                                 hx-swap="innerHTML"
                                                 hx-include="#startDate, #endDate, #pageSizeSelect"
@@ -193,6 +193,8 @@
 
     </div>
     <script th:inline="javascript">
+        window.contextPath = /*[[@{/}]]*/ "/";
+        window.contextPath = window.contextPath.replace(/\/$/, '');
         window.userSettings = /*[[${userSettings}]]*/ {}
         
         function handleGpxDownload(buttonElement) {

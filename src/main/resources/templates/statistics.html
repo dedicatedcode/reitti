@@ -7,13 +7,13 @@
     <link rel="icon" th:href="@{/img/logo.svg}">
     <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
-    <link rel="stylesheet" href="/css/leaflet.css">
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/lineicons.css">
-    <script src="/js/htmx.min.js"></script>
-    <script src="/js/chart.js"></script>
-    <script src="/js/leaflet.js"></script>
-    <script src="/js/TileLayer.Grayscale.js"></script>
+    <link rel="stylesheet" th:href="@{/css/leaflet.css}">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <script th:src="@{/js/htmx.min.js}"></script>
+    <script th:src="@{/js/chart.js}"></script>
+    <script th:src="@{/js/leaflet.js}"></script>
+    <script th:src="@{/js/TileLayer.Grayscale.js}"></script>
 </head>
 <body class="background-dark">
 <div id="statistics-panel"></div>
@@ -22,7 +22,7 @@
 <div class="timeline">
     <div class="timeline-container">
         <div id="years-navigation" 
-             hx-get="/statistics/years-navigation" 
+             th:hx-get="@{/statistics/years-navigation}"
              hx-trigger="load">
             <div class="photo-modal-loading-spinner htmx-indicator" th:text="#{timeline.loading}">Loading...</div>
         </div>
@@ -30,6 +30,8 @@
 </div>
 <script th:inline="javascript">
     window.userSettings = /*[[${userSettings}]]*/ {}
+    window.contextPath = /*[[@{/}]]*/ "/";
+    window.contextPath = window.contextPath.replace(/\/$/, '');
 
     function shouldTrigger(element) {
         return !element.classList.contains('active');

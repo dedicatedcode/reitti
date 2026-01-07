@@ -7,10 +7,10 @@
     <link rel="icon" th:href="@{/img/logo.svg}">
     <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/lineicons.css">
-    <script src="/js/htmx.min.js"></script>
-    <script src="/js/util.js"></script>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <script th:src="@{/js/htmx.min.js}"></script>
+    <script th:src="@{/js/util.js}"></script>
 </head>
 <body class="settings-page">
 <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('settings')}"></div>
@@ -109,7 +109,7 @@
                     </table>
                 </div>
                 <div class="settings-card">
-                    <form hx-post="/settings/geocode-services" hx-target="#geocode-services" hx-swap="innerHTML"
+                    <form th:hx-post="@{/settings/geocode-services}" hx-target="#geocode-services" hx-swap="innerHTML"
                           class="geocode-service-form" style="margin-bottom: 20px;">
                         <h3 th:text="#{geocoding.add.title}">Add New Geocoding Service</h3>
                         <div class="form-group">
@@ -137,7 +137,7 @@
                         <p th:text="#{geocoding.run.description}">Process all significant places that haven't been
                             geocoded yet</p>
                         <button class="btn"
-                                hx-post="/settings/geocode-services/run-geocoding"
+                                th:hx-post="@{/settings/geocode-services/run-geocoding}"
                                 hx-target="#geocode-services"
                                 hx-swap="innerHTML"
                                 th:attr="hx-confirm=#{geocoding.run.confirm}"
@@ -155,7 +155,7 @@
                             <strong>⚠️ <span th:text="#{label.warning}">Warning:</span></strong> <span th:text="#{geocoding.clear.warning}">This will clear all existing address information and re-geocode all places</span>
                         </div>
                         <button class="btn btn-danger"
-                                hx-post="/settings/geocode-services/clear-and-rerun"
+                                th:hx-post="@{/settings/geocode-services/clear-and-rerun}"
                                 hx-target="#geocode-services"
                                 hx-swap="innerHTML"
                                 th:attr="hx-confirm=#{geocoding.clear.confirm}"

@@ -20,16 +20,6 @@
 </head>
 <body class="memories-page">
 <div class="settings-container">
-    <nav class="settings-nav">
-        <div class="settings-header">
-            <a href="/memories" class="back-link">
-                <i class="lni lni-arrow-left"></i>
-                <span th:text="#{memory.new.back.to.memories}">Back to Memories</span>
-            </a>
-            <h1 th:text="#{memory.new.title}">New Memory</h1>
-        </div>
-    </nav>
-    
     <div th:fragment="new-memory" class="settings-content-area">
         <div th:if="${error}" class="alert alert-error">
             <i class="lni lni-warning"></i>
@@ -112,7 +102,6 @@
                 return true;
             }
         </script>
-
     </div>
 </div>
 

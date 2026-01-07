@@ -49,7 +49,7 @@
     <div class="form-actions">
         <button type="button"
                 class="btn btn-secondary"
-                hx-get="/memories/fragments/empty"
+                th:hx-get="@{/memories/fragments/empty}"
                 hx-target=".block-type-selection"
                 hx-swap="delete"
                 th:text="#{memory.block.cancel}">Cancel</button>
@@ -77,7 +77,7 @@
         <div class="form-actions">
             <button type="button"
                     class="btn btn-secondary"
-                    hx-get="/memories/fragments/empty"
+                    th:hx-get="@{/memories/fragments/empty}"
                     hx-target=".block-form"
                     hx-swap="delete"
                     th:text="#{memory.block.cancel}">Cancel</button>
@@ -118,7 +118,7 @@
         <div class="form-actions">
             <button type="button"
                     class="btn btn-secondary"
-                    hx-get="/memories/fragments/empty"
+                    th:hx-get="@{/memories/fragments/empty}"
                     hx-target=".block-form"
                     hx-swap="delete"
                     th:text="#{memory.block.cancel}">Cancel</button>
@@ -159,7 +159,7 @@
         <div class="form-actions">
             <button type="button"
                     class="btn btn-secondary"
-                    hx-get="/memories/fragments/empty"
+                    th:hx-get="@{/memories/fragments/empty}"
                     hx-target=".block-form"
                     hx-swap="delete"
                     th:text="#{memory.block.cancel}">Cancel</button>
@@ -233,10 +233,10 @@
 <!-- Uploaded photos fragment -->
 <th:block th:fragment="uploaded-photos">
     <div th:each="url : ${urls}" class="selected-photo-item">
-        <img th:src="${url}" alt="Uploaded image">
+        <img th:src="@{${url}}" alt="Uploaded image">
         <input type="hidden" name="uploadedUrls" th:value="${url}">
         <button type="button" class="btn-remove"
-                hx-get="/memories/fragments/empty"
+                th:hx-get="@{/memories/fragments/empty}"
                 hx-target="closest .selected-photo-item"
                 hx-swap="delete"
                 th:title="#{memory.block.gallery.remove}">
@@ -245,7 +245,6 @@
     </div>
 </th:block>
 
-<!-- Immich photos grid fragment -->
 <div class="immich-photos-grid" th:fragment="immich-photos-grid">
     <div th:if="${photos.isEmpty()}" class="no-photos" th:text="#{memory.block.gallery.immich.no.photos}">
         No photos found for this date range
@@ -255,7 +254,7 @@
          th:attr="hx-post=@{/memories/{id}/blocks/fetch-immich-photo(id=${memoryId}, assetId=${photo.id})}"
          hx-target="#selectedPhotos"
          hx-swap="beforeend">
-        <img th:src="${photo.thumbnailUrl}" th:alt="${photo.fileName}">
+        <img th:src="@{${photo.thumbnailUrl}}" th:alt="${photo.fileName}">
         <div class="photo-overlay">
             <i class="lni lni-plus"></i>
         </div>
@@ -281,7 +280,7 @@
 
 <div class="years-navigation" th:fragment="years-navigation">
     <div class="timeline-entry trip active" id="overall-entry" data-year="overall"
-         hx-get="/memories/all"
+         th:hx-get="@{/memories/all}"
          hx-target=".memories-overview"
          hx-trigger="load, click[shouldTrigger(this)]"
          hx-vals="js:{timezone: getUserTimezone()}"
@@ -289,7 +288,7 @@
         <div class="entry-description" th:text="#{memory.list.all}">All</div>
     </div>
     <div class="timeline-entry trip" th:each="year : ${years}"
-         th:attr="hx-get='/memories/year/'+ ${year}, data-year=${year}"
+         th:attr="hx-get=@{'/memories/year/'+ ${year}}, data-year=${year}"
          hx-target=".memories-overview"
          hx-trigger="click[shouldTrigger(this)]"
          hx-vals="js:{timezone: getUserTimezone()}"
@@ -335,7 +334,6 @@
     <div th:if="${memories.isEmpty()}" class="empty-state">
         <i class="lni lni-image"></i>
         <h2>No memories yet</h2>
-        <p>Create your first memory by selecting a date range on the timeline</p>
     </div>
 
     <div class="memories-grid" th:unless="${memories.isEmpty()}">
@@ -369,7 +367,7 @@
         function navigateToMemoryWithTimezone(event, memoryId) {
             event.preventDefault();
             const timezone = getUserTimezone();
-            window.location.href = `/memories/${memoryId}?timezone=${timezone}`;
+            window.location.href = window.contextPath + `/memories/${memoryId}?timezone=${timezone}`;
         }
 
         (function () {
@@ -386,7 +384,7 @@
                     tap: false,
                     touchZoom: false
                 }).setView([51.505, -0.09], 13);
-                L.tileLayer.grayscale('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                L.tileLayer.grayscale(window.userSettings.tiles.service, {
                     maxZoom: 19,
                     attribution: '© OpenStreetMap contributors'
                 }).addTo(memoryMap);
@@ -417,7 +415,7 @@
             <h2 th:text="#{memory.share.title}">Share Memory</h2>
             <button type="button"
                     class="btn-close"
-                    hx-get="/memories/fragments/empty"
+                    th:hx-get="@{/memories/fragments/empty}"
                     hx-target="#share-overlay-container"
                     hx-swap="innerHTML">×</button>
         </div>
@@ -428,8 +426,7 @@
                 <p class="memory-date-range">
                     <i class="lni lni-calendar"></i>
                     <span th:text="${#temporals.format(memory.startDate, 'MMMM d, yyyy')}">Start Date</span>
-                    <span th:if="${memory.startDate != memory.endDate}">
-                        - <span th:text="${#temporals.format(memory.endDate, 'MMMM d, yyyy')}">End Date</span>
+                    <span th:if="${memory.startDate != memory.endDate}"> — <span th:text="${#temporals.format(memory.endDate, 'MMMM d, yyyy')}">End Date</span>
                     </span>
                 </p>
                 <p th:if="${memory.description != null && !memory.description.isEmpty()}"
@@ -496,7 +493,7 @@
             <h2 th:text="#{memory.share.configure.title}">Configure Share Link</h2>
             <button type="button"
                     class="btn-close"
-                    hx-get="/memories/fragments/empty"
+                    th:hx-get="@{/memories/fragments/empty}"
                     hx-target="#share-overlay-container"
                     hx-swap="innerHTML">×</button>
         </div>
@@ -550,7 +547,7 @@
             <h2 th:text="#{memory.share.result.title}">Share Link Created</h2>
             <button type="button"
                     class="btn-close"
-                    hx-get="/memories/fragments/empty"
+                    th:hx-get="@{/memories/fragments/empty}"
                     hx-target="#share-overlay-container"
                     hx-swap="innerHTML">×</button>
         </div>
@@ -605,7 +602,7 @@
             <div class="form-actions">
                 <button type="button"
                         class="btn btn-primary"
-                        hx-get="/memories/fragments/empty"
+                        th:hx-get="@{/memories/fragments/empty}"
                         hx-target="#share-overlay-container"
                         hx-swap="innerHTML">
                     <i class="lni lni-checkmark"></i> <span th:text="#{memory.share.result.done}">Done</span>
