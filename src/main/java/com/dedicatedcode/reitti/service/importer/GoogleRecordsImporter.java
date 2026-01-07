@@ -40,7 +40,8 @@ public class GoogleRecordsImporter {
         
         try {
             stateHolder.importStarted();
-            // Use Jackson's streaming API to process the file
+            logger.info("Importing Google Records file for user {}", user.getUsername());
+
             JsonFactory factory = objectMapper.getFactory();
             JsonParser parser = factory.createParser(inputStream);
             

@@ -189,7 +189,12 @@ public class RawLocationPointJdbcService {
     }
 
     public Optional<RawLocationPoint> findLatest(User user) {
-       return findLatest(user, Instant.EPOCH);
+        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.ignored, rlp.invalid, rlp.version " +
+                "FROM raw_location_points rlp " +
+                "WHERE rlp.user_id = ? AND rlp.invalid = false " +
+                "ORDER BY rlp.timestamp DESC LIMIT 1";
+        List<RawLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId());
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
     public List<ClusteredPoint> findClusteredPointsInTimeRangeForUser(

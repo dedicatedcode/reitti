@@ -49,10 +49,9 @@ test.describe('Date Picker Tests', () => {
     test('should load correct date when in a different timezone at start of day', async ({page}) => {
         await page.clock.setFixedTime(new Date('2017-02-02T00:30:00'));
 
-        const responsePromise = page.waitForResponse('**/timeline/content/range?startDate=2017-12-20&endDate=2017-12-20&timezone=Europe%2FBerlin');
-
         await page.getByText('Wed20Dec').click()
         await expect(page.locator('div').filter({ hasText: 'Wed20Dec' }).nth(2)).toContainClass('selected');
+        const responsePromise = page.waitForResponse('**/timeline/content/range?startDate=2017-12-20&endDate=2017-12-20&timezone=Europe%2FBerlin');
         const response = await responsePromise;
         expect(response.status()).toBe(200);
 
