@@ -16,7 +16,7 @@ class TilesCustomizationProviderTest {
         String customAttribution = "Custom Attribution";
         
         TilesCustomizationProvider provider = new TilesCustomizationProvider(
-                null, defaultService, defaultAttribution, customService, customAttribution
+                null, defaultService, defaultAttribution, customService, customAttribution, new ContextPathHolder("")
         );
 
         // When
@@ -36,7 +36,7 @@ class TilesCustomizationProviderTest {
         String customAttribution = "Custom Attribution";
 
         TilesCustomizationProvider provider = new TilesCustomizationProvider(
-                null, defaultService, defaultAttribution, customService, customAttribution
+                null, defaultService, defaultAttribution, customService, customAttribution, new ContextPathHolder("")
         );
 
         // When
@@ -56,7 +56,7 @@ class TilesCustomizationProviderTest {
         String customAttribution = "";
         
         TilesCustomizationProvider provider = new TilesCustomizationProvider(
-                null, defaultService, defaultAttribution, customService, customAttribution
+                null, defaultService, defaultAttribution, customService, customAttribution, new ContextPathHolder("")
         );
 
         // When
@@ -76,7 +76,7 @@ class TilesCustomizationProviderTest {
         String customAttribution = null;
         
         TilesCustomizationProvider provider = new TilesCustomizationProvider(
-                null, defaultService, defaultAttribution, customService, customAttribution
+                null, defaultService, defaultAttribution, customService, customAttribution, new ContextPathHolder("")
         );
 
         // When
@@ -96,7 +96,7 @@ class TilesCustomizationProviderTest {
         String customAttribution = "\t\n";
         
         TilesCustomizationProvider provider = new TilesCustomizationProvider(
-                null, defaultService, defaultAttribution, customService, customAttribution
+                null, defaultService, defaultAttribution, customService, customAttribution, new ContextPathHolder("")
         );
 
         // When
@@ -116,7 +116,7 @@ class TilesCustomizationProviderTest {
         String customAttribution = "";
         
         TilesCustomizationProvider provider = new TilesCustomizationProvider(
-                null, defaultService, defaultAttribution, customService, customAttribution
+                null, defaultService, defaultAttribution, customService, customAttribution, new ContextPathHolder("")
         );
 
         // When
@@ -136,7 +136,7 @@ class TilesCustomizationProviderTest {
         String customAttribution = "";
         
         TilesCustomizationProvider provider = new TilesCustomizationProvider(
-                null, defaultService, defaultAttribution, customService, customAttribution
+                null, defaultService, defaultAttribution, customService, customAttribution, new ContextPathHolder("")
         );
 
         // When
@@ -156,7 +156,7 @@ class TilesCustomizationProviderTest {
         String customAttribution = "Custom Attribution";
         
         TilesCustomizationProvider provider = new TilesCustomizationProvider(
-                null, defaultService, defaultAttribution, customService, customAttribution
+                null, defaultService, defaultAttribution, customService, customAttribution, new ContextPathHolder("")
         );
 
         // When
@@ -177,7 +177,7 @@ class TilesCustomizationProviderTest {
         String customAttribution = "Custom Attribution";
 
         TilesCustomizationProvider provider = new TilesCustomizationProvider(
-                cacheUrl, defaultService, defaultAttribution, customService, customAttribution
+                cacheUrl, defaultService, defaultAttribution, customService, customAttribution, new ContextPathHolder("")
         );
 
         // When
@@ -198,7 +198,7 @@ class TilesCustomizationProviderTest {
         String customAttribution = "Custom Attribution";
 
         TilesCustomizationProvider provider = new TilesCustomizationProvider(
-                cacheUrl, defaultService, defaultAttribution, customService, customAttribution
+                cacheUrl, defaultService, defaultAttribution, customService, customAttribution, new ContextPathHolder("")
         );
 
         // When

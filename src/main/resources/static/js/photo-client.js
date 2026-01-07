@@ -32,7 +32,7 @@ class PhotoClient {
                 
                 const iconHtml = `
                     <div class="photo-marker-icon" style="width: ${iconSize}; height: ${iconSize};">
-                        <img src="${firstPhoto.thumbnailUrl}" 
+                        <img src="${window.contextPath + firstPhoto.thumbnailUrl}" 
                              alt="Cluster of ${count} photos"
                              onerror="this.style.display='none'; this.parentElement.innerHTML='📷';">
                         <div class="photo-count-indicator">${count}</div>
@@ -75,7 +75,7 @@ class PhotoClient {
             return;
         }
         try {
-            const response = await fetch(`/api/v1/photos/immich/range?timezone=${timezone}&startDate=${start}&endDate=${end}`);
+            const response = await fetch(window.contextPath + `/api/v1/photos/immich/range?timezone=${timezone}&startDate=${start}&endDate=${end}`);
             if (!response.ok) {
                 this.photos = [];
             } else {
@@ -129,7 +129,7 @@ class PhotoClient {
         
         const iconHtml = `
             <div class="photo-marker-icon" style="width: ${iconSize}; height: ${iconSize};">
-                <img src="${photo.thumbnailUrl}" 
+                <img src="${window.contextPath + photo.thumbnailUrl}" 
                      alt="${photo.fileName || 'Photo'}"
                      onerror="this.style.display='none'; this.parentElement.innerHTML='📷';">
             </div>
@@ -202,7 +202,7 @@ class PhotoClient {
             photoElement.appendChild(spinner);
 
             const img = document.createElement('img');
-            img.src = photo.fullImageUrl;
+            img.src = window.contextPath + photo.fullImageUrl;
             img.alt = photo.fileName || 'Photo';
 
             // Handle image load
@@ -307,7 +307,7 @@ class PhotoClient {
 
         // Create image
         const img = document.createElement('img');
-        img.src = photo.fullImageUrl;
+        img.src = window.contextPath + photo.fullImageUrl;
         img.alt = photo.fileName || 'Photo';
 
         // Handle image load

@@ -172,4 +172,8 @@
 </div>
 
 </body>
+<script th:inline="javascript">
+    window.contextPath = /*[[@{/}]]*/ "/";
+    window.contextPath = window.contextPath.replace(/\/$/, '');
+</script>
 </html>

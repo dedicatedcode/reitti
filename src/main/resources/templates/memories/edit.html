@@ -6,25 +6,10 @@
     <link rel="icon" th:href="@{/img/logo.svg}">
     <link rel="stylesheet" th:href="@{/css/main.css}" href="../../static/css/main.css">
     <link rel="stylesheet" th:href="@{/css/lineicons.css}" href="../../static/css/lineicons.css">
-    <script src="/js/htmx.min.js"></script>
+    <script th:src="@{/js/htmx.min.js}"></script>
 </head>
 <body class="memories-page">
 <div class="settings-container">
-    <div class="settings-nav">
-        <div class="navbar">
-            <a th:href="@{/}" href="../index.html"><img class="logo" th:src="@{/img/logo.svg}"
-                                                        src="../../static/img/logo.svg" alt="reitti logo"
-                                                        title="reitti"></a>
-            <a href="/" class="nav-link" th:title="#{nav.timeline}"><i class="lni lni-route-1"></i></a>
-            <a href="/statistics" class="nav-link" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
-            <form th:action="@{/logout}" method="post">
-                <button type="submit" class="nav-link" style="font-size: 1.4rem;" th:title="#{nav.logout.tooltip}"><i
-                        class="lni lni-exit"></i>
-                </button>
-            </form>
-        </div>
-    </div>
-
     <div class="settings-content-area">
         <div id="edit-fragment" class="memory-header" th:fragment="edit-memory">
         <div th:if="${error}" class="alert alert-error">
@@ -72,30 +57,5 @@
     </div>
     </div>
 </div>
-
-<script>
-
-    // User settings for timezone handling
-    window.userSettings = /*[[${userSettings}]]*/ {};
-
-    function getUserTimezone() {
-        if (window.userSettings.timeZoneOverride) {
-            return window.userSettings.timeZoneOverride;
-        } else {
-            return Intl.DateTimeFormat().resolvedOptions().timeZone;
-        }
-    }
-    // Show/hide image URL field based on header type selection
-    document.querySelectorAll('input[name="headerType"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-            const imageUrlGroup = document.getElementById('imageUrlGroup');
-            if (this.value === 'IMAGE') {
-                imageUrlGroup.style.display = 'block';
-            } else {
-                imageUrlGroup.style.display = 'none';
-            }
-        });
-    });
-</script>
 </body>
 </html>

@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
+import com.dedicatedcode.reitti.service.ContextPathHolder;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.Authentication;
@@ -21,13 +22,15 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
     private final UserJdbcService userJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final LocaleResolver localeResolver;
+    private final ContextPathHolder contextPathHolder;
 
-    public CustomAuthenticationSuccessHandler(UserJdbcService userJdbcService, 
-                                            UserSettingsJdbcService userSettingsJdbcService, 
-                                            LocaleResolver localeResolver) {
+    public CustomAuthenticationSuccessHandler(UserJdbcService userJdbcService,
+                                              UserSettingsJdbcService userSettingsJdbcService,
+                                              LocaleResolver localeResolver, ContextPathHolder contextPathHolder) {
         this.userJdbcService = userJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.localeResolver = localeResolver;
+        this.contextPathHolder = contextPathHolder;
     }
 
     @Override
@@ -46,6 +49,6 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
         }
         
         // Redirect to default success URL
-        response.sendRedirect("/");
+        response.sendRedirect(contextPathHolder.getContextPath() + "/");
     }
 }

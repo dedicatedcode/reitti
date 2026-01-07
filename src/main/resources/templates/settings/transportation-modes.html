@@ -7,10 +7,10 @@
     <link rel="icon" th:href="@{/img/logo.svg}">
     <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/lineicons.css">
-    <script src="/js/htmx.min.js"></script>
-    <script src="/js/util.js"></script>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <script th:src="@{/js/htmx.min.js}"></script>
+    <script th:src="@{/js/util.js}"></script>
 </head>
 <body class="settings-page">
 <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('settings')}"></div>
@@ -71,7 +71,7 @@
 
                 <div class="settings-card" th:if="${!availableModes.isEmpty()}">
                     <h3 th:text="#{transportation.modes.add.title}">Add Transportation Mode</h3>
-                    <form hx-post="/settings/transportation-modes/add" 
+                    <form th:hx-post="@{/settings/transportation-modes/add}"
                           hx-target="body"
                           hx-swap="outerHTML"
                           class="token-form"
@@ -110,7 +110,7 @@
                     
                     <button id="reclassify-btn" 
                             class="btn btn-primary"
-                            hx-post="/settings/transportation-modes/reclassify"
+                            th:hx-post="@{/settings/transportation-modes/reclassify}"
                             hx-target="#reclassify-status"
                             hx-swap="innerHTML"
                             hx-indicator="#reclassify-spinner"

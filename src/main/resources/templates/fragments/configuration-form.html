@@ -7,14 +7,14 @@
             <div class="toggle-buttons">
                 <button type="button" 
                         th:class="${mode == 'simple' ? 'btn active' : 'btn'}"
-                        th:hx-get="${configurationForm.id != null ? '/settings/visit-sensitivity/edit/' + configurationForm.id + '?new-mode=simple' : '/settings/visit-sensitivity/new?new-mode=simple'}"
+                        th:hx-get="@{${configurationForm.id != null ? '/settings/visit-sensitivity/edit/' + configurationForm.id + '?new-mode=simple' : '/settings/visit-sensitivity/new?new-mode=simple'}}"
                         hx-target="#edit-form"
                         hx-include="#configuration-form"
                         th:text="#{visit.sensitivity.mode.simple}"
                         th:title="#{visit.sensitivity.mode.simple.description}">Simple</button>
                 <button type="button" 
                         th:class="${mode == 'advanced' ? 'btn active' : 'btn'}"
-                        th:hx-get="${configurationForm.id != null ? '/settings/visit-sensitivity/edit/' + configurationForm.id + '?new-mode=advanced' : '/settings/visit-sensitivity/new?new-mode=advanced'}"
+                        th:hx-get="@{${configurationForm.id != null ? '/settings/visit-sensitivity/edit/' + configurationForm.id + '?new-mode=advanced' : '/settings/visit-sensitivity/new?new-mode=advanced'}}"
                         hx-target="#edit-form"
                         hx-include="#configuration-form"
                         th:text="#{visit.sensitivity.mode.advanced}"
@@ -23,7 +23,7 @@
         </div>
     </div>
     
-    <form id="configuration-form" hx-post="/settings/visit-sensitivity/save"
+    <form id="configuration-form" th:hx-post="@{/settings/visit-sensitivity/save}"
           hx-target="body" th:object="${configurationForm}"
           onchange="handleFormChange(event)">
         <input type="hidden" th:field="*{id}">
@@ -161,7 +161,7 @@
         <div class="form-actions">
             <button type="button"
                     id="preview-btn"
-                    hx-post="/settings/visit-sensitivity/preview"
+                    th:hx-post="@{/settings/visit-sensitivity/preview}"
                     hx-vals='js:{"timezone": getUserTimezone()}'
                     hx-target="#preview-area"
                     hx-include="#configuration-form"
@@ -169,7 +169,7 @@
                     th:text="#{visit.sensitivity.preview}">Preview</button>
             <button type="submit" class="btn btn-success" th:text="#{visit.sensitivity.save}">Save</button>
             <button type="button" 
-                    hx-get="/settings/visit-sensitivity"
+                    th:hx-get="@{/settings/visit-sensitivity}"
                     hx-target="body"
                     hx-swap="innerHTML"
                     class="btn btn-secondary"
@@ -225,7 +225,7 @@
                 formData.set('previewDate', currentDate);
 
                 // Trigger the preview update
-                htmx.ajax('POST', '/settings/visit-sensitivity/preview', {
+                htmx.ajax('POST', window.contextPath + '/settings/visit-sensitivity/preview', {
                     values: Object.fromEntries(formData),
                     target: '#preview-area',
                     swap: 'innerHTML'

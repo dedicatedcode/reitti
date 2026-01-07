@@ -44,6 +44,6 @@ test.describe('Memory Tests', () => {
         await page.getByRole('button', { name: 'Create Memory' }).click();
         await expect(page.getByText('Test Memory')).toBeVisible();
         await expect(page.getByText('One fine description')).toBeVisible();
-        await expect(page.getByText('March 22, 2018 - March 23, 2018')).toBeVisible();
+        await expect(page.getByText('March 22, 2018 — March 23, 2018')).toBeVisible();
     });
 });

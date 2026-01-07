@@ -32,7 +32,6 @@
 
 <div th:fragment="view-mode" class="trip-transport-mode-container">
     <span th:text="#{'timeline.transport.' + ${transportMode} + '.label'}">by foot</span>
-    </span>
     <i class="lni lni-pencil-1 edit-icon"
        th:hx-get="@{/timeline/trips/edit-form/{id}(id=${tripId}, date=${date}, timezone=${timezone})}"
        hx-target="closest .trip-transport-mode-container"

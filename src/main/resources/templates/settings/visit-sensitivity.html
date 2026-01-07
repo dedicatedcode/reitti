@@ -7,15 +7,15 @@
     <link rel="icon" th:href="@{/img/logo.svg}">
     <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
-    <link rel="stylesheet" href="/css/leaflet.css">
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/lineicons.css">
-    <script src="/js/HumanizeDuration.js"></script>
-    <script src="/js/htmx.min.js"></script>
-    <script src="/js/leaflet.js"></script>
-    <script src="/js/TileLayer.Grayscale.js"></script>
-    <script src="/js/leaflet.geodesic.2.7.2.js"></script>
-    <script src="/js/util.js"></script>
+    <link rel="stylesheet" th:href="@{/css/leaflet.css}">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <script th:src="@{/js/HumanizeDuration.js}"></script>
+    <script th:src="@{/js/htmx.min.js}"></script>
+    <script th:src="@{/js/leaflet.js}"></script>
+    <script th:src="@{/js/TileLayer.Grayscale.js}"></script>
+    <script th:src="@{/js/leaflet.geodesic.2.7.2.js}"></script>
+    <script th:src="@{/js/util.js}"></script>
 </head>
 <body class="settings-page">
 <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('settings')}"></div>
@@ -38,7 +38,7 @@
                 <div class="alert-actions">
                     <button type="button" 
                             class="btn btn-warning"
-                            hx-post="/settings/visit-sensitivity/recalculate"
+                            th:hx-post="@{/settings/visit-sensitivity/recalculate}"
                             hx-target="body"
                             th:hx-confirm="#{visit.sensitivity.recalculation.confirm}"
                             hx-indicator="#recalculate-spinner">
@@ -50,7 +50,7 @@
                     </button>
                     <button type="button" 
                             class="btn btn-secondary"
-                            hx-post="/settings/visit-sensitivity/dismiss-recalculation"
+                            th:hx-post="@{/settings/visit-sensitivity/dismiss-recalculation}"
                             hx-target="body"
                             th:text="#{visit.sensitivity.recalculation.dismiss}">Dismiss</button>
                 </div>
@@ -72,6 +72,8 @@
 </div>
 
 <script th:inline="javascript">
+    window.contextPath = /*[[@{/}]]*/ "/";
+    window.contextPath = window.contextPath.replace(/\/$/, '');
     window.userSettings = /*[[${userSettings}]]*/ {}
 </script>
 </body>

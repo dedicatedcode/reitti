@@ -7,10 +7,10 @@
     <link rel="icon" th:href="@{/img/logo.svg}">
     <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/lineicons.css">
-    <script src="/js/htmx.min.js"></script>
-    <script src="/js/util.js"></script>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <script th:src="@{/js/htmx.min.js}"></script>
+    <script th:src="@{/js/util.js}"></script>
 </head>
 <body class="settings-page">
 <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('settings')}"></div>
@@ -43,7 +43,7 @@
                             <!-- Token Selection Dropdown -->
                             <div th:if="${hasToken && tokens.size() > 1}" >
                                 <label for="tokenSelect" th:text="#{integrations.token.select.label}">Select API Token:</label>
-                                <select id="tokenSelect" name="selectedToken" class="form-control" hx-get="/settings/integrations/integrations-content" hx-vals='{"openSection": "data-ingestion"}' hx-target="#integrations" hx-swap="innerHTML" hx-trigger="change">
+                                <select id="tokenSelect" name="selectedToken" class="form-control" th:hx-get="@{/settings/integrations/integrations-content}" hx-vals='{"openSection": "data-ingestion"}' hx-target="#integrations" hx-swap="innerHTML" hx-trigger="change">
                                     <option th:each="token : ${tokens}" th:value="${token.token}" th:text="${token.name}" th:selected="${token.token == selectedToken}"></option>
                                 </select>
                                 <small th:text="#{integrations.token.select.help}">Choose the API token to use in the setup URLs below. The selected token will be automatically inserted into the example URLs.</small>
@@ -59,8 +59,8 @@
                                         <li th:text="#{integrations.gpslogger.step1}">Download GPSLogger from the Google Play Store</li>
                                         <li th:utext="#{integrations.gpslogger.step2}">Open GPSLogger and go to <strong>Logging details → Log to custom URL</strong></li>
                                         <li th:utext="#{integrations.gpslogger.step3}">Enable "Log to custom URL"</li>
-                                        <li th:if="${hasToken}" th:utext="#{integrations.gpslogger.step4.with.token(${serverUrl + '/api/v1/ingest/owntracks?token=' + selectedToken})}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + selectedToken}">https://your-domain.com/api/v1/location-data</code></li>
-                                        <li th:unless="${hasToken}" th:utext="#{integrations.gpslogger.step4.without.token(${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'})}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/location-data</code></li>
+                                        <li th:if="${hasToken}" th:utext="#{integrations.gpslogger.step4.with.token(${serverUrl + contextPath + '/api/v1/ingest/owntracks?token=' + selectedToken})}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + selectedToken}">https://your-domain.com/api/v1/location-data</code></li>
+                                        <li th:unless="${hasToken}" th:utext="#{integrations.gpslogger.step4.without.token(${serverUrl + contextPath + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'})}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/location-data</code></li>
                                         <li th:utext="#{integrations.gpslogger.step5}">Set HTTP Method to <strong>POST</strong></li>
                                         <li><span th:utext="#{integrations.gpslogger.step6}">Set HTTP Body to:</span> <code>{
                                             "_type" : "location",
@@ -93,8 +93,8 @@
                                         <li th:text="#{integrations.owntracks.step1}">Download OwnTracks from the App Store or Google Play Store</li>
                                         <li th:utext="#{integrations.owntracks.step2}">Open OwnTracks and go to <strong>Settings → Connection</strong></li>
                                         <li th:utext="#{integrations.owntracks.step3}">Set Mode to <strong>HTTP</strong></li>
-                                        <li th:if="${hasToken}" th:utext="#{integrations.owntracks.step4.with.token(${serverUrl + '/api/v1/ingest/owntracks?token=' + selectedToken})}">Set the Endpoint to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + selectedToken}">https://your-domain.com/api/v1/location-data</code></li>
-                                        <li th:unless="${hasToken}" th:utext="#{integrations.owntracks.step4.without.token(${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'})}">Set the Endpoint to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/location-data</code></li>
+                                        <li th:if="${hasToken}" th:utext="#{integrations.owntracks.step4.with.token(${serverUrl + contextPath + '/api/v1/ingest/owntracks?token=' + selectedToken})}">Set the Endpoint to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + selectedToken}">https://your-domain.com/api/v1/location-data</code></li>
+                                        <li th:unless="${hasToken}" th:utext="#{integrations.owntracks.step4.without.token(${serverUrl + contextPath + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'})}">Set the Endpoint to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/location-data</code></li>
                                         <li th:utext="#{integrations.owntracks.step5}">Disable <strong>Authentication</strong> (we use the token in the URL instead)</li>
                                         <li th:text="#{integrations.owntracks.step6}">Configure tracking settings as desired. Make sure that Owntracks records a point at least every 30 seconds.</li>
                                         <li th:utext="#{integrations.owntracks.step7}">On the map view, set tracking mode to "Movement"</li>
@@ -121,8 +121,8 @@
                                         <li th:utext="#{integrations.overland.step2}">Open Overland and go to the <strong>Settings</strong> tab</li>
                                         <li th:utext="#{integrations.overland.step3}"><strong>Important:</strong> Tap the <strong>Request Permission</strong> button to grant location access - Overland will not track anything without this permission</li>
                                         <li th:utext="#{integrations.overland.step4}">Tap on <strong>Receiver Endpoint</strong></li>
-                                        <li th:if="${hasToken}" th:utext="#{integrations.overland.step5.with.token(${serverUrl + '/api/v1/ingest/overland?token=' + selectedToken})}">Set the Endpoint URL to: <code th:text="${serverUrl + '/api/v1/ingest/overland?token=' + selectedToken}">https://your-domain.com/api/v1/ingest/overland?token=YOUR_TOKEN</code></li>
-                                        <li th:unless="${hasToken}" th:utext="#{integrations.overland.step5.without.token(${serverUrl + '/api/v1/ingest/overland?token=<YOUR TOKEN>'})}">Set the Endpoint URL to: <code th:text="${serverUrl + '/api/v1/ingest/overland?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/ingest/overland?token=YOUR_TOKEN</code></li>
+                                        <li th:if="${hasToken}" th:utext="#{integrations.overland.step5.with.token(${serverUrl + contextPath + '/api/v1/ingest/overland?token=' + selectedToken})}">Set the Endpoint URL to: <code th:text="${serverUrl + '/api/v1/ingest/overland?token=' + selectedToken}">https://your-domain.com/api/v1/ingest/overland?token=YOUR_TOKEN</code></li>
+                                        <li th:unless="${hasToken}" th:utext="#{integrations.overland.step5.without.token(${serverUrl + contextPath + '/api/v1/ingest/overland?token=<YOUR TOKEN>'})}">Set the Endpoint URL to: <code th:text="${serverUrl + '/api/v1/ingest/overland?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/ingest/overland?token=YOUR_TOKEN</code></li>
                                         <li th:utext="#{integrations.overland.step6}">Leave the <strong>Device ID</strong> field empty or set a custom identifier</li>
                                         <li th:utext="#{integrations.overland.step7}">Leave the <strong>Access Token</strong> field empty (we use the token in the URL)</li>
                                         <li th:utext="#{integrations.overland.step8}">Configure tracking settings:
@@ -161,7 +161,7 @@
                                 <p style="margin-bottom: 15px; color: var(--color-text-white);" th:text="#{integrations.data.quality.description}">Check the quality and frequency of your incoming location data to ensure optimal tracking performance.</p>
                                 <button class="btn"
                                         id="data-quality-btn"
-                                        hx-get="/settings/integrations/data-quality-content"
+                                        th:hx-get="@{/settings/integrations/data-quality-content}"
                                         hx-target="#integrations"
                                         hx-swap="innerHTML"
                                         hx-indicator="#data-quality-spinner">
@@ -191,7 +191,7 @@
                                     <span th:text="${errorMessage}">Error message</span>
                                 </div>
 
-                                <form hx-post="/settings/integrations/owntracks-recorder-integration" hx-target="#integrations" hx-swap="innerHTML" class="owntracks-recorder-form" style="margin-top: 20px;" autocomplete="off">
+                                <form th:hx-post="@{/settings/integrations/owntracks-recorder-integration}" hx-target="#integrations" hx-swap="innerHTML" class="owntracks-recorder-form" style="margin-top: 20px;" autocomplete="off">
                                     <div class="form-group">
                                         <label for="recorderBaseUrl" th:text="#{integrations.owntracks.recorder.base.url}">Base URL</label>
                                         <input type="url"
@@ -293,7 +293,7 @@
                                         resultDiv.innerHTML = '<div style="color: var(--color-text-white);">' + loadingMessage + '</div>';
 
                                         // Make AJAX request to test connection
-                                        fetch('/settings/integrations/owntracks-recorder-integration/test', {
+                                        fetch(window.contextPath + '/settings/integrations/owntracks-recorder-integration/test', {
                                             method: 'POST',
                                             headers: {
                                                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -349,7 +349,7 @@
                         <summary>
                             <i class="lni lni-photos"></i> <span th:text="#{integrations.photos.title}">Photos</span>
                         </summary>
-                        <div id="photos-section" hx-get="/settings/integrations/photos-content" hx-trigger="load" hx-swap="innerHTML">
+                        <div id="photos-section" th:hx-get="@{/settings/integrations/photos-content}" hx-trigger="load" hx-swap="innerHTML">
                             <!-- <span th:text="#{integrations.photos.loading}">Photos content will be loaded here</span> -->
                         </div>
                     </details>
@@ -357,7 +357,7 @@
                         <summary>
                             <i class="lni lni-network"></i> <span th:text="#{integrations.shared.instances.title}">Shared Instances</span>
                         </summary>
-                        <div id="shared-instances-section" hx-get="/settings/integrations/shared-instances-content" hx-trigger="load" hx-swap="innerHTML">
+                        <div id="shared-instances-section" th:hx-get="@{/settings/integrations/shared-instances-content}" hx-trigger="load" hx-swap="innerHTML">
                             <!-- <span th:text="#{integrations.shared.instances.loading}">Shared instances content will be loaded here</span> -->
                         </div>
                     </details>
@@ -397,7 +397,7 @@
                         }
 
                         function generateOwnTracksConfig(token, serverUrl) {
-                            const url = serverUrl + '/api/v1/ingest/owntracks?token=' + token;
+                            const url = serverUrl + window.contextPath + '/api/v1/ingest/owntracks?token=' + token;
                             const json = JSON.stringify({
                                 "_type": "configuration",
                                 "url": url,
@@ -409,11 +409,11 @@
                         }
 
                         function generateGpsLoggerPropertiesUrl(token, serverUrl) {
-                            return serverUrl + '/settings/integrations/reitti.properties?token=' + token;
+                            return serverUrl + window.contextPath +  '/settings/integrations/reitti.properties?token=' + token;
                         }
 
                         function generateOverlandUrl(token, serverUrl) {
-                            const ingestUrl = serverUrl + '/api/v1/ingest/overland?token=' + token;
+                            const ingestUrl = serverUrl + window.contextPath + '/api/v1/ingest/overland?token=' + token;
                             const encodedUrl = encodeURIComponent(ingestUrl);
                             return 'overland://setup?url=' + encodedUrl + '&device_id=1&unique_id=yes';
                         }
@@ -534,7 +534,7 @@
         <!-- Action Buttons -->
         <div style="margin-top: 25px; text-align: center; display: flex; gap: 15px; justify-content: center;">
             <button class="btn"
-                    hx-get="/settings/integrations/data-quality-content"
+                    th:hx-get="@{/settings/integrations/data-quality-content}"
                     hx-target="#integrations"
                     hx-swap="innerHTML"
                     hx-indicator="#refresh-data-spinner">
@@ -544,7 +544,7 @@
                 </span>
             </button>
             <button class="btn btn-secondary"
-                    hx-get="/settings/integrations/integrations-content"
+                    th:hx-get="@{/settings/integrations/integrations-content}"
                     hx-target="#integrations"
                     hx-swap="innerHTML"
                     th:text="#{form.close}">
@@ -556,6 +556,8 @@
 
 <span th:text="${firstToken}" id="current-token" style="display:none;"></span>
 <script th:inline="javascript">
+    window.contextPath = /*[[@{/}]]*/ "/";
+    window.contextPath = window.contextPath.replace(/\/$/, '');
     window.userSettings = /*[[${userSettings}]]*/ {};
     window.locale = {
         'integrations.owntracks.recorder.test.missing.fields': /*[[#{integrations.owntracks.recorder.test.missing.fields}]]*/ 'Please fill in Base URL, Username, and Device ID',

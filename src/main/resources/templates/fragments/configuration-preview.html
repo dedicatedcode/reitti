@@ -19,7 +19,7 @@
             <input type="date" 
                    id="preview-date" 
                    th:value="${previewDate}" 
-                   hx-post="/settings/visit-sensitivity/preview"
+                   th:hx-post="@{/settings/visit-sensitivity/preview}"
                    hx-vals='js:{"timezone": getUserTimezone()}'
                    hx-target="#preview-area"
                    hx-include="#configuration-form"
@@ -119,8 +119,8 @@
                     .setView([window.userSettings?.homeLatitude || 60.1699, window.userSettings?.homeLongitude || 24.9384], 12);
                 
                 // Add tile layer
-                const tilesUrl = window.userSettings?.tiles?.service || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-                const tilesAttribution = window.userSettings?.tiles?.attribution || '© OpenStreetMap contributors';
+                const tilesUrl = window.userSettings.tiles.service;
+                const tilesAttribution = window.userSettings.tiles.attribution;
                 
                 const tileLayer = window.userSettings?.preferColoredMap ? L.tileLayer : L.tileLayer.grayscale;
                 tileLayer(tilesUrl, {
@@ -141,8 +141,8 @@
                     .setView([window.userSettings?.homeLatitude || 60.1699, window.userSettings?.homeLongitude || 24.9384], 12);
                 
                 // Add tile layer
-                const tilesUrl = window.userSettings?.tiles?.service || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-                const tilesAttribution = window.userSettings?.tiles?.attribution || '© OpenStreetMap contributors';
+                const tilesUrl = window.userSettings.tiles.service;
+                const tilesAttribution = window.userSettings.tiles.attribution;
                 
                 const tileLayer = window.userSettings?.preferColoredMap ? L.tileLayer : L.tileLayer.grayscale;
                 tileLayer(tilesUrl, {
@@ -159,7 +159,7 @@
                 if (!currentMap) return;
                 
                 // Fetch current processed visits/trips for the selected date
-                fetch(`/api/v1/timeline?date=${previewDate}&timezone=${getUserTimezone()}`)
+                fetch(window.contextPath + `/api/v1/timeline?date=${previewDate}&timezone=${getUserTimezone()}`)
                     .then(response => response.json())
                     .then(data => {
                         updateTimelineContent('current-timeline-content', data);
@@ -176,7 +176,7 @@
                 if (!previewMap || !previewReady) return;
                 
                 // Fetch preview processed visits/trips
-                fetch(`/api/v1/preview/${previewId}/timeline?date=${previewDate}&timezone=${getUserTimezone()}`)
+                fetch(window.contextPath + `/api/v1/preview/${previewId}/timeline?date=${previewDate}&timezone=${getUserTimezone()}`)
                     .then(response => response.json())
                     .then(data => {
                         updateTimelineContent('preview-timeline-content', data);
@@ -354,7 +354,7 @@
                 }
                 
                 // Fetch and display raw location points
-                fetch(rawLocationPointsUrl)
+                fetch(window.contextPath + rawLocationPointsUrl)
                     .then(response => {
                         if (!response.ok) {
                             console.warn('Could not fetch raw location points');
@@ -422,7 +422,7 @@
                 }
             }
             function checkPreviewStatus() {
-                fetch(`/api/v1/preview/${previewId}/status`)
+                fetch(window.contextPath + `/api/v1/preview/${previewId}/status`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.ready) {
@@ -460,7 +460,7 @@
             
             function connectSSE() {
                 console.log('Configuration Preview: Connecting to SSE...');
-                eventSource = new EventSource('/events');
+                eventSource = new EventSource(window.contextPath + '/events');
 
                 eventSource.onopen = function() {
                     console.log('Configuration Preview: SSE connection opened.');
