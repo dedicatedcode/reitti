@@ -42,6 +42,7 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
         AtomicInteger processedCount = new AtomicInteger(0);
         
         try {
+            logger.info("Importing Google Timeline Android file for user {}", user.getUsername());
             this.stateHolder.importStarted();
             JsonFactory factory = objectMapper.getFactory();
             JsonParser parser = factory.createParser(inputStream);

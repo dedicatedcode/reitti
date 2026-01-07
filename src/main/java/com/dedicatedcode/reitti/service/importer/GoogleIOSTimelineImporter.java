@@ -40,6 +40,7 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
         AtomicInteger processedCount = new AtomicInteger(0);
 
         try {
+            logger.info("Importing Google Timeline IOS file for user {}", user.getUsername());
             stateHolder.importStarted();
             JsonFactory factory = objectMapper.getFactory();
             JsonParser parser = factory.createParser(inputStream);
