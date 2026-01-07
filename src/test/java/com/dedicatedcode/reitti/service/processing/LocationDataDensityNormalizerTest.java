@@ -186,7 +186,7 @@ class LocationDataDensityNormalizerTest {
 
     private RawLocationPoint createAndSaveRawPoint(Instant timestamp, double lat, double lon) {
         RawLocationPoint point = new RawLocationPoint(
-            null, timestamp, new GeoPoint(lat, lon), 10.0, 100.0, false, false, false, 1L
+            null, timestamp, new GeoPoint(lat, lon), 10.0, 100.0, false, false, false, false, 1L
         );
         return rawLocationPointService.create(testUser, point);
     }

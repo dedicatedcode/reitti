@@ -51,8 +51,7 @@ public class GpxExportService {
         while (!currentDate.isAfter(end)) {
             Instant nextDate = currentDate.plus(1, ChronoUnit.DAYS);
             
-            List<RawLocationPoint> points = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(
-                user, currentDate, nextDate, relevant, !relevant);
+            List<RawLocationPoint> points = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, currentDate, nextDate, relevant, !relevant, !relevant);
             
             for (RawLocationPoint point : points) {
                 writer.write("      <trkpt lat=\"" + point.getLatitude() + "\" lon=\"" + point.getLongitude() + "\">\n");

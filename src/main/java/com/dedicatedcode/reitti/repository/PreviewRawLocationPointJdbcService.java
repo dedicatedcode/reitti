@@ -32,6 +32,7 @@ public class PreviewRawLocationPointJdbcService {
                 rs.getBoolean("processed"),
                 rs.getBoolean("synthetic"),
                 rs.getBoolean("ignored"),
+                false,
                 rs.getLong("version")
         );
 
@@ -75,6 +76,7 @@ public class PreviewRawLocationPointJdbcService {
                             rs.getBoolean("processed"),
                             rs.getBoolean("synthetic"),
                             rs.getBoolean("ignored"),
+                            false,
                             rs.getLong("version")
                     );
 

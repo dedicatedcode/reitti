@@ -459,6 +459,7 @@ public class UnifiedLocationProcessingService {
         // Step 3: Convert valid clusters to stay points
         return filteredByMinimumDuration.stream()
                 .map(this::createStayPoint)
+                .sorted(Comparator.comparing(StayPoint::getArrivalTime))
                 .collect(Collectors.toList());
     }
 
