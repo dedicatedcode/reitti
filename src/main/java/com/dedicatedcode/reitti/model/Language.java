@@ -11,6 +11,8 @@ public enum Language {
     PL(Locale.of("pl"), "language.polish", "\uD83C\uDDF5\uD83C\uDDF1"),
     RU(Locale.of("ru"), "language.russian", "\uD83C\uDDF7\uD83C\uDDFA"),
     PT_BR(Locale.of("pt", "br"), "language.brazilian_portuguese", "\uD83C\uDDE7\uD83C\uDDF7"),
+    TR(Locale.of("tr"), "language.turkish", "\uD83C\uDDF9\uD83C\uDDF7"),
+    UK(Locale.of("uk"), "language.ukrainian", "\uD83C\uDDFA\uD83C\uDDE6"),
     ZH_CN(Locale.of("zh", "cn"), "language.chinese", "\uD83C\uDDE8\uD83C\uDDF3");
 
     private final Locale locale;
