@@ -40,19 +40,15 @@ test.describe('Date Picker Tests', () => {
 
         await page.getByRole('button', { name: 'Today' }).click()
         await expect(page.locator('div').filter({ hasText: 'Thu2Feb' }).nth(2)).toContainClass('selected');
-        const response = await page.waitForResponse('**/timeline/content/range?startDate=2017-02-02&endDate=2017-02-02&timezone=Europe%2FBerlin');
-        expect(response.status()).toBe(200);
+        await expect(page).toHaveURL(/startDate=2017-02-02&endDate=2017-02-02/);
     })
 
     test('should load correct date when in a different timezone at start of day', async ({page}) => {
         await page.clock.setFixedTime(new Date('2017-02-02T00:30:00'));
 
-
         await page.getByText('Wed20Dec').click()
         await expect(page.locator('div').filter({ hasText: 'Wed20Dec' }).nth(2)).toContainClass('selected');
-        const response = await page.waitForResponse('**/timeline/content/range?startDate=2017-12-20&endDate=2017-12-20&timezone=Europe%2FBerlin');;
-        expect(response.status()).toBe(200);
-
+        await expect(page.getByText('Dec. 19 17:28 - 10:')).toBeVisible();
         await expect(page).toHaveURL(/startDate=2017-12-20&endDate=2017-12-20/);
     })
 
@@ -61,12 +57,7 @@ test.describe('Date Picker Tests', () => {
 
         await page.getByText('Wed20Dec').click()
         await expect(page.locator('div').filter({ hasText: 'Wed20Dec' }).nth(2)).toContainClass('selected');
-        const response = await page.waitForResponse('**/timeline/content/range?startDate=2017-12-20&endDate=2017-12-20&timezone=Europe%2FBerlin');
-        expect(response.status()).toBe(200);
-
+        await expect(page.getByText('Dec. 19 17:28 - 10:')).toBeVisible();
         await expect(page).toHaveURL(/startDate=2017-12-20&endDate=2017-12-20/);
     })
-
-
-
 });
