@@ -92,7 +92,7 @@ The easiest way to get started is using Docker Compose:
    or manually downloading it [here](https://raw.githubusercontent.com/dedicatedcode/reitti/refs/heads/main/docker-compose.yml)
 2. Adjust the compose file to your needs
    
-   Pay special attention to the Photon `REGION`. This should match your main location.
+   Pay special attention to the Photon `REGION`. This should match your main location,see [available-regions](https://github.com/rtuszik/photon-docker?tab=readme-ov-file#available-regions) for all available regions.
    
 4. Start all services (PostgreSQL, RabbitMQ, Redis and Reitti)
    ```bash
@@ -310,6 +310,8 @@ photon:
   ports:
     - "2322:2322"
 ```
+
+When updating the REGION,see [available-regions](https://github.com/rtuszik/photon-docker?tab=readme-ov-file#available-regions) for all available regions.
 
 **Storage Requirements:**
 - **Country-specific**: 1-10GB depending on country size
