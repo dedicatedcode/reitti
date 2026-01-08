@@ -48,7 +48,7 @@ test.describe('Date Picker Tests', () => {
 
         await page.getByText('Wed20Dec').click()
         await expect(page.locator('div').filter({ hasText: 'Wed20Dec' }).nth(2)).toContainClass('selected');
-        await expect(page.getByText('Dec. 19 17:28 - 10:')).toBeVisible();
+        await expect(page.getByText('Dec 19 17:28 - 10:')).toBeVisible();
         await expect(page).toHaveURL(/startDate=2017-12-20&endDate=2017-12-20/);
     })
 
@@ -57,7 +57,7 @@ test.describe('Date Picker Tests', () => {
 
         await page.getByText('Wed20Dec').click()
         await expect(page.locator('div').filter({ hasText: 'Wed20Dec' }).nth(2)).toContainClass('selected');
-        await expect(page.getByText('Dec. 19 17:28 - 10:')).toBeVisible();
+        await expect(page.getByText('Dec 19 17:28 - 10:')).toBeVisible();
         await expect(page).toHaveURL(/startDate=2017-12-20&endDate=2017-12-20/);
     })
 });
