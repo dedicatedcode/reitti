@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.MqttIntegrationJdbcService;
 import com.dedicatedcode.reitti.repository.OptimisticLockException;
 import com.dedicatedcode.reitti.service.DynamicMqttProvider;
+import com.dedicatedcode.reitti.service.DynamicMqttProvider.MqttTestResult;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.integration.mqtt.MqttIntegration;
 import com.dedicatedcode.reitti.service.integration.mqtt.PayloadType;
@@ -132,7 +133,7 @@ public class MqttIntegrationSettingsController {
                 return ResponseEntity.ok(response);
             }
 
-            CompletableFuture<Boolean> testResult = this.mqttProvider.testConnection(new MqttIntegration(null,
+            CompletableFuture<MqttTestResult> testResult = this.mqttProvider.testConnection(new MqttIntegration(null,
                                                                                                                        host,
                                                                                                                        port,
                                                                                                                        null,
@@ -147,13 +148,13 @@ public class MqttIntegrationSettingsController {
                                                                                                                        null));
 
             // Wait for the test result and handle it
-            Boolean result = testResult.get(); // This might throw an exception if the test fails
-            if (result) {
+            MqttTestResult result = testResult.get(); // This might throw an exception if the test fails
+            if (result.isSuccess()) {
                 response.put("success", true);
                 response.put("message", i18nService.translate("integration.mqtt.success.test"));
             } else {
                 response.put("success", false);
-                response.put("message", i18nService.translate("integration.mqtt.error.test_failed", "Connection failed"));
+                response.put("message", i18nService.translate("integration.mqtt.error.test_failed", result.getMessage()));
             }
             
         } catch (Exception e) {

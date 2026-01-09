@@ -48,7 +48,7 @@ public class DynamicMqttProvider {
                         .ifPresent(config -> connectClient(user, config)));
     }
 
-    public CompletableFuture<Boolean> testConnection(MqttIntegration config) {
+    public CompletableFuture<MqttTestResult> testConnection(MqttIntegration config) {
         String tempClientId = "reitti-test-" + UUID.randomUUID().toString().substring(0, 8);
 
         Mqtt3AsyncClient testClient = MqttClient.builder()
@@ -71,11 +71,11 @@ public class DynamicMqttProvider {
                 .thenCompose(ack -> {
                     // Success! Disconnect immediately
                     log.info("Test connection successful.");
-                    return testClient.disconnect().thenApply(v -> true);
+                    return testClient.disconnect().thenApply(v -> new MqttTestResult(true, "Connection successful"));
                 })
                 .exceptionally(ex -> {
                     log.error("Test connection failed: {}", ex.getMessage());
-                    return false;
+                    return new MqttTestResult(false, ex.getMessage());
                 });
     }
 
@@ -129,5 +129,23 @@ public class DynamicMqttProvider {
     public void remove(Long userId) {
         Mqtt3AsyncClient client = activeClients.remove(userId);
         if (client != null) client.disconnect();
+    }
+
+    public static class MqttTestResult {
+        private final boolean success;
+        private final String message;
+
+        public MqttTestResult(boolean success, String message) {
+            this.success = success;
+            this.message = message;
+        }
+
+        public boolean isSuccess() {
+            return success;
+        }
+
+        public String getMessage() {
+            return message;
+        }
     }
 }
