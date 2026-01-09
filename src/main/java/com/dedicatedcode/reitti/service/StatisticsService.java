@@ -139,7 +139,7 @@ public class StatisticsService {
                     // Convert seconds to hours with decimal precision
                     double totalStayTimeHours = totalDurationSeconds / 3600.0;
                     return new VisitStatistic(
-                            placeName != null ? placeName : i18nService.translate("places.unknown.label"),
+                            placeName != null ? placeName : i18nService.translate("place.unknown.label"),
                             totalStayTimeHours,
                             visitCount.intValue(),
                             latitude,
