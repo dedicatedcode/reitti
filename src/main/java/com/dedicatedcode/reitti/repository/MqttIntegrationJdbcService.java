@@ -20,4 +20,8 @@ public class MqttIntegrationJdbcService {
     public Optional<MqttIntegration> findByUser(User user) {
 
     }
+
+    public MqttIntegration save(User user, MqttIntegration integration) {
+
+    }
 }
