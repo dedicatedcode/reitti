@@ -132,7 +132,7 @@ public class MqttIntegrationSettingsController {
                 return ResponseEntity.ok(response);
             }
 
-            CompletableFuture<Boolean> booleanCompletableFuture = this.mqttProvider.testConnection(new MqttIntegration(null,
+            CompletableFuture<Boolean> testResult = this.mqttProvider.testConnection(new MqttIntegration(null,
                                                                                                                        host,
                                                                                                                        port,
                                                                                                                        null,
@@ -146,8 +146,15 @@ public class MqttIntegrationSettingsController {
                                                                                                                        null,
                                                                                                                        null));
 
-            response.put("success", true);
-            response.put("message", i18nService.translate("integration.mqtt.success.test"));
+            // Wait for the test result and handle it
+            Boolean result = testResult.get(); // This might throw an exception if the test fails
+            if (result) {
+                response.put("success", true);
+                response.put("message", i18nService.translate("integration.mqtt.success.test"));
+            } else {
+                response.put("success", false);
+                response.put("message", i18nService.translate("integration.mqtt.error.test_failed", "Connection failed"));
+            }
             
         } catch (Exception e) {
             response.put("success", false);
