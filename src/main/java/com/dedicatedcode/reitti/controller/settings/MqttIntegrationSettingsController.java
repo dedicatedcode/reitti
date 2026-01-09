@@ -3,27 +3,35 @@ package com.dedicatedcode.reitti.controller.settings;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.MqttIntegrationJdbcService;
 import com.dedicatedcode.reitti.repository.OptimisticLockException;
+import com.dedicatedcode.reitti.service.DynamicMqttProvider;
 import com.dedicatedcode.reitti.service.integration.mqtt.MqttIntegration;
 import com.dedicatedcode.reitti.service.integration.mqtt.PayloadType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @Controller
 @RequestMapping("/settings/integrations")
 public class MqttIntegrationSettingsController {
-    
-    private final MqttIntegrationJdbcService mqttIntegrationJdbcService;
-    private final SecureRandom secureRandom = new SecureRandom();
 
-    public MqttIntegrationSettingsController(MqttIntegrationJdbcService mqttIntegrationJdbcService) {
+    private final DynamicMqttProvider mqttProvider;
+    private final MqttIntegrationJdbcService mqttIntegrationJdbcService;
+
+    public MqttIntegrationSettingsController(DynamicMqttProvider mqttProvider,
+                                             MqttIntegrationJdbcService mqttIntegrationJdbcService) {
+        this.mqttProvider = mqttProvider;
         this.mqttIntegrationJdbcService = mqttIntegrationJdbcService;
     }
 
@@ -119,8 +127,21 @@ public class MqttIntegrationSettingsController {
                 response.put("message", "Topic is required");
                 return ResponseEntity.ok(response);
             }
-            
-            // For now, just return success since we don't have actual MQTT connection testing implemented
+
+            CompletableFuture<Boolean> booleanCompletableFuture = this.mqttProvider.testConnection(new MqttIntegration(null,
+                                                                                                                       host,
+                                                                                                                       port,
+                                                                                                                       null,
+                                                                                                                       topic,
+                                                                                                                       username,
+                                                                                                                       password,
+                                                                                                                       payloadType,
+                                                                                                                       true,
+                                                                                                                       null,
+                                                                                                                       null,
+                                                                                                                       null,
+                                                                                                                       null));
+
             response.put("success", true);
             response.put("message", "Connection test successful - Configuration appears valid");
             
@@ -139,18 +160,9 @@ public class MqttIntegrationSettingsController {
         
         // Generate client ID if no integration exists
         if (mqttIntegration.isEmpty()) {
-            model.addAttribute("generatedClientId", generateClientId());
+            model.addAttribute("generatedClientId", "reitti-client-" + UUID.randomUUID().toString().substring(0, 8));
         }
         
         return "settings/integrations :: integrations-content";
-    }
-    
-    private String generateClientId() {
-        String chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-        StringBuilder sb = new StringBuilder("reitti-client-");
-        for (int i = 0; i < 8; i++) {
-            sb.append(chars.charAt(secureRandom.nextInt(chars.length())));
-        }
-        return sb.toString();
     }
 }
