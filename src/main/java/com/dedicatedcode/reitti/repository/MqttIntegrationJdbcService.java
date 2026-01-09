@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.integration.mqtt.MqttIntegration;
+import com.dedicatedcode.reitti.service.integration.mqtt.PayloadType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -27,9 +28,9 @@ public class MqttIntegrationJdbcService {
 
     public Optional<MqttIntegration> findByUser(User user) {
         String sql = """
-            SELECT id, user_id, host, port, identifier, topic, username, password, 
+            SELECT id, user_id, host, port, identifier, topic, username, password,
                    payload_type, enabled, created_at, updated_at, last_used, version
-            FROM mqtt_integrations 
+            FROM mqtt_integrations
             WHERE user_id = ?
             """;
         
@@ -47,7 +48,7 @@ public class MqttIntegrationJdbcService {
 
     private MqttIntegration create(User user, MqttIntegration integration) {
         String sql = """
-            INSERT INTO mqtt_integrations (user_id, host, port, identifier, topic, username, password, 
+            INSERT INTO mqtt_integrations (user_id, host, port, identifier, topic, username, password,
                                          payload_type, enabled, created_at, version)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
@@ -91,8 +92,8 @@ public class MqttIntegrationJdbcService {
 
     private MqttIntegration update(MqttIntegration integration) {
         String sql = """
-            UPDATE mqtt_integrations 
-            SET host = ?, port = ?, identifier = ?, topic = ?, username = ?, password = ?, 
+            UPDATE mqtt_integrations
+            SET host = ?, port = ?, identifier = ?, topic = ?, username = ?, password = ?,
                 payload_type = ?, enabled = ?, updated_at = ?, version = version + 1
             WHERE id = ? AND version = ?
             """;
@@ -140,19 +141,19 @@ public class MqttIntegrationJdbcService {
             Timestamp lastUsed = rs.getTimestamp("last_used");
             
             return new MqttIntegration(
-                rs.getLong("id"),
-                rs.getString("host"),
-                rs.getInt("port"),
-                rs.getString("identifier"),
-                rs.getString("topic"),
-                rs.getString("username"),
-                rs.getString("password"),
-                MqttIntegration.PayloadType.valueOf(rs.getString("payload_type")),
-                rs.getBoolean("enabled"),
-                rs.getTimestamp("created_at").toInstant(),
-                updatedAt != null ? updatedAt.toInstant() : null,
-                lastUsed != null ? lastUsed.toInstant() : null,
-                rs.getLong("version")
+                    rs.getLong("id"),
+                    rs.getString("host"),
+                    rs.getInt("port"),
+                    rs.getString("identifier"),
+                    rs.getString("topic"),
+                    rs.getString("username"),
+                    rs.getString("password"),
+                    PayloadType.valueOf(rs.getString("payload_type")),
+                    rs.getBoolean("enabled"),
+                    rs.getTimestamp("created_at").toInstant(),
+                    updatedAt != null ? updatedAt.toInstant() : null,
+                    lastUsed != null ? lastUsed.toInstant() : null,
+                    rs.getLong("version")
             );
         }
     }
