@@ -48,7 +48,7 @@ public class DynamicMqttProvider {
                         .ifPresent(config -> connectClient(user, config)));
     }
 
-    public CompletableFuture<Boolean> testConnection(User user, MqttIntegration config) {
+    public CompletableFuture<Boolean> testConnection(MqttIntegration config) {
         String tempClientId = "reitti-test-" + UUID.randomUUID().toString().substring(0, 8);
 
         Mqtt3AsyncClient testClient = MqttClient.builder()
@@ -70,7 +70,7 @@ public class DynamicMqttProvider {
         return builder.send()
                 .thenCompose(ack -> {
                     // Success! Disconnect immediately
-                    log.info("Test connection successful for user {}", user);
+                    log.info("Test connection successful.");
                     return testClient.disconnect().thenApply(v -> true);
                 })
                 .exceptionally(ex -> {
