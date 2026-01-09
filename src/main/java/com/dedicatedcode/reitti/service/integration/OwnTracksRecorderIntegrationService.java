@@ -190,11 +190,6 @@ public class OwnTracksRecorderIntegrationService {
 
     }
 
-    public void deleteIntegration(User user) {
-        Optional<OwnTracksRecorderIntegration> integration = jdbcService.findByUser(user);
-        integration.ifPresent(jdbcService::delete);
-    }
-
     public void loadHistoricalData(User user) {
         Optional<OwnTracksRecorderIntegration> integrationOpt = jdbcService.findByUser(user);
         

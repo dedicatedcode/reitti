@@ -342,16 +342,14 @@
                                     }
                                 </script>
                             </div>
-
+                        </div>
+                    </details>
                     <details th:attr="open=${openSection == 'mqtt' ? 'open' : null}">
                         <summary>
-                            <i class="lni lni-network"></i> <span th:text="#{integrations.mqtt.title}">MQTT Integration</span>
+                            <i class="lni lni-message-3-text"></i> <span th:text="#{integrations.mqtt.title}">MQTT Integration</span>
                         </summary>
                         <div>
-                            <p th:text="#{integrations.mqtt.description}" style="margin-bottom: 20px; color: var(--color-text-white);">Connect to an MQTT broker to receive location data from OwnTracks or other compatible applications.</p>
-
                             <div class="integration-section">
-                                <h3 th:text="#{integrations.mqtt.title}">📡 MQTT Integration</h3>
                                 <p th:text="#{integrations.mqtt.description}">Connect to an MQTT broker to receive location data from OwnTracks or other compatible applications.</p>
 
                                 <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
@@ -361,7 +359,7 @@
                                     <span th:text="${errorMessage}">Error message</span>
                                 </div>
 
-                                <form th:hx-post="@{/settings/integrations/mqtt-integration}" hx-target="#integrations" hx-swap="innerHTML" class="mqtt-form" style="margin-top: 20px;" autocomplete="off" onsubmit="return validateMqttForm()">
+                                <form th:hx-post="@{/settings/integrations/mqtt-integration}" hx-target="#integrations" hx-swap="innerHTML" autocomplete="off" onsubmit="return validateMqttForm()">
                                     <div class="form-group">
                                         <label for="mqttHost" th:text="#{integrations.mqtt.host}">MQTT Host</label>
                                         <input type="text"
@@ -389,11 +387,10 @@
                                         <input type="text"
                                                id="mqttIdentifier"
                                                name="identifier"
-                                               required
-                                               readonly
+                                               required="required"
+                                               readonly="readonly"
                                                autocomplete="off"
-                                               th:value="${mqttIntegration?.identifier ?: generatedClientId}"
-                                               style="background-color: #f5f5f5; color: #666;">
+                                               th:value="${mqttIntegration?.identifier ?: generatedClientId}">
                                         <small th:text="#{integrations.mqtt.identifier.description}">Unique identifier for this MQTT client connection. Auto-generated and cannot be changed.</small>
                                     </div>
                                     <div class="form-group">
@@ -527,8 +524,6 @@
                                     });
                                 </script>
                             </div>
-                        </div>
-                    </details>
                         </div>
                     </details>
                     <details th:attr="open=${openSection == 'photos' ? 'open' : null}">

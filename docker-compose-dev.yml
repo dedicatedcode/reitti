@@ -33,6 +33,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+  mqtt:
+    image: eclipse-mosquitto:2.0.18
+    ports:
+      - "1884:1883"
   redis:
     image: redis:7-alpine
     ports:
@@ -66,7 +70,6 @@ services:
       - "8083:8083"
     volumes:
       - ot-recorder-data:/store
-
   tile-cache:
     image: nginx:alpine
     environment:

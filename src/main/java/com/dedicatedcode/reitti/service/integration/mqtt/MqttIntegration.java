@@ -17,6 +17,10 @@ public class MqttIntegration {
     private final Instant lastUsed;
     private final Long version;
 
+    public static MqttIntegration empty() {
+        return new MqttIntegration(null, null, 0, null, null, null, null, null, false, null, null, null, null);
+    }
+    
     public MqttIntegration(Long id, String host, int port, String identifier, String topic, String username, String password, PayloadType payloadType, boolean enabled, Instant createdAt, Instant updatedAt, Instant lastUsed, Long version) {
         this.id = id;
         this.host = host;
@@ -85,7 +89,55 @@ public class MqttIntegration {
         return lastUsed;
     }
 
+    public MqttIntegration withId(Long id) {
+        return new MqttIntegration(id, host, port, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+    }
+
+    public MqttIntegration withHost(String host) {
+        return new MqttIntegration(id, host, port, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+    }
+
+    public MqttIntegration withPort(int port) {
+        return new MqttIntegration(id, host, port, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+    }
+
+    public MqttIntegration withIdentifier(String identifier) {
+        return new MqttIntegration(id, host, port, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+    }
+
+    public MqttIntegration withTopic(String topic) {
+        return new MqttIntegration(id, host, port, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+    }
+
+    public MqttIntegration withUsername(String username) {
+        return new MqttIntegration(id, host, port, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+    }
+
+    public MqttIntegration withPassword(String password) {
+        return new MqttIntegration(id, host, port, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+    }
+
+    public MqttIntegration withPayloadType(PayloadType payloadType) {
+        return new MqttIntegration(id, host, port, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+    }
+
     public MqttIntegration withEnabled(boolean enabled) {
+        return new MqttIntegration(id, host, port, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+    }
+
+    public MqttIntegration withCreatedAt(Instant createdAt) {
+        return new MqttIntegration(id, host, port, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+    }
+
+    public MqttIntegration withUpdatedAt(Instant updatedAt) {
+        return new MqttIntegration(id, host, port, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+    }
+
+    public MqttIntegration withLastUsed(Instant lastUsed) {
+        return new MqttIntegration(id, host, port, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+    }
+
+    public MqttIntegration withVersion(Long version) {
         return new MqttIntegration(id, host, port, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
     }
 }

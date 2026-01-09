@@ -1,7 +1,7 @@
 CREATE TABLE mqtt_integrations
 (
     id           BIGSERIAL PRIMARY KEY,
-    user_id      BIGINT        NOT NULL REFERENCES users (id),
+    user_id      BIGINT        NOT NULL REFERENCES users (id) UNIQUE,
     host         VARCHAR(1024) NOT NULL,
     port         INTEGER       NOT NULL,
     identifier   VARCHAR(1024) NOT NULL,
