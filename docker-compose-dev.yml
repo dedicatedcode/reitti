@@ -45,7 +45,7 @@ services:
       timeout: 5s
       retries: 5
   photon:
-    image: rtuszik/photon-docker:1.2.1
+    image: rtuszik/photon-docker:1.3.0
     environment:
       - UPDATE_STRATEGY=PARALLEL
       - REGION=de
