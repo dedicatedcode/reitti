@@ -343,6 +343,13 @@
                                 </script>
                             </div>
 
+                    <details th:attr="open=${openSection == 'mqtt' ? 'open' : null}">
+                        <summary>
+                            <i class="lni lni-network"></i> <span th:text="#{integrations.mqtt.title}">MQTT Integration</span>
+                        </summary>
+                        <div>
+                            <p th:text="#{integrations.mqtt.description}" style="margin-bottom: 20px; color: var(--color-text-white);">Connect to an MQTT broker to receive location data from OwnTracks or other compatible applications.</p>
+
                             <div class="integration-section">
                                 <h3 th:text="#{integrations.mqtt.title}">📡 MQTT Integration</h3>
                                 <p th:text="#{integrations.mqtt.description}">Connect to an MQTT broker to receive location data from OwnTracks or other compatible applications.</p>
@@ -520,6 +527,8 @@
                                     });
                                 </script>
                             </div>
+                        </div>
+                    </details>
                         </div>
                     </details>
                     <details th:attr="open=${openSection == 'photos' ? 'open' : null}">
