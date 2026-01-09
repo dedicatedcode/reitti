@@ -342,6 +342,165 @@
                                     }
                                 </script>
                             </div>
+
+                            <div class="integration-section">
+                                <h3 th:text="#{integrations.mqtt.title}">📡 MQTT Integration</h3>
+                                <p th:text="#{integrations.mqtt.description}">Connect to an MQTT broker to receive location data from OwnTracks or other compatible applications.</p>
+
+                                <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+                                    <span th:text="${successMessage}">Configuration saved successfully</span>
+                                </div>
+                                <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+                                    <span th:text="${errorMessage}">Error message</span>
+                                </div>
+
+                                <form th:hx-post="@{/settings/integrations/mqtt-integration}" hx-target="#integrations" hx-swap="innerHTML" class="mqtt-form" style="margin-top: 20px;" autocomplete="off">
+                                    <div class="form-group">
+                                        <label for="mqttHost" th:text="#{integrations.mqtt.host}">MQTT Host</label>
+                                        <input type="text"
+                                               id="mqttHost"
+                                               name="host"
+                                               required
+                                               autocomplete="off"
+                                               th:placeholder="#{integrations.mqtt.host.placeholder}"
+                                               th:value="${mqttIntegration?.host}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="mqttPort" th:text="#{integrations.mqtt.port}">Port</label>
+                                        <input type="number"
+                                               id="mqttPort"
+                                               name="port"
+                                               required
+                                               autocomplete="off"
+                                               min="1"
+                                               max="65535"
+                                               th:placeholder="#{integrations.mqtt.port.placeholder}"
+                                               th:value="${mqttIntegration?.port}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="mqttIdentifier" th:text="#{integrations.mqtt.identifier}">Client Identifier</label>
+                                        <input type="text"
+                                               id="mqttIdentifier"
+                                               name="identifier"
+                                               required
+                                               autocomplete="off"
+                                               th:placeholder="#{integrations.mqtt.identifier.placeholder}"
+                                               th:value="${mqttIntegration?.identifier}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="mqttTopic" th:text="#{integrations.mqtt.topic}">Topic</label>
+                                        <input type="text"
+                                               id="mqttTopic"
+                                               name="topic"
+                                               required
+                                               autocomplete="off"
+                                               th:placeholder="#{integrations.mqtt.topic.placeholder}"
+                                               th:value="${mqttIntegration?.topic}">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="mqttUsername" th:text="#{integrations.mqtt.username}">Username</label>
+                                        <input type="text"
+                                               id="mqttUsername"
+                                               name="username"
+                                               autocomplete="off"
+                                               th:placeholder="#{integrations.mqtt.username.placeholder}"
+                                               th:value="${mqttIntegration?.username}">
+                                        <small th:text="#{integrations.mqtt.auth.optional}">Leave empty if no authentication is needed</small>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="mqttPassword" th:text="#{integrations.mqtt.password}">Password</label>
+                                        <input type="password"
+                                               id="mqttPassword"
+                                               name="password"
+                                               autocomplete="off"
+                                               th:placeholder="#{integrations.mqtt.password.placeholder}"
+                                               th:value="${mqttIntegration?.password}">
+                                        <small th:text="#{integrations.mqtt.auth.optional}">Leave empty if no authentication is needed</small>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="mqttPayloadType" th:text="#{integrations.mqtt.payload.type}">Payload Type</label>
+                                        <select id="mqttPayloadType" name="payloadType" class="form-control" required>
+                                            <option value="OWNTRACKS" th:selected="${mqttIntegration?.payloadType?.name() == 'OWNTRACKS'}" th:text="#{integrations.mqtt.payload.type.owntracks}">OwnTracks</option>
+                                        </select>
+                                        <small th:text="#{integrations.mqtt.payload.type.help}">Select the format of the location data payload</small>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="checkbox"
+                                                   name="enabled"
+                                                   value="true"
+                                                   th:checked="${mqttIntegration?.enabled}">
+                                            <span th:text="#{integrations.mqtt.enabled}">Enable Integration</span>
+                                        </label>
+                                    </div>
+
+                                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                                        <button type="submit" class="btn" th:text="#{integrations.mqtt.save}">Save Configuration</button>
+                                        <button type="button"
+                                                class="btn"
+                                                id="test-mqtt-connection-btn"
+                                                th:text="#{integrations.mqtt.test.connection}">Test Connection</button>
+                                    </div>
+                                </form>
+
+                                <div id="mqtt-connection-test-result" style="margin-top: 10px;"></div>
+
+                                <script>
+                                    document.getElementById('test-mqtt-connection-btn').addEventListener('click', function() {
+                                        const host = document.getElementById('mqttHost').value;
+                                        const port = document.getElementById('mqttPort').value;
+                                        const identifier = document.getElementById('mqttIdentifier').value;
+                                        const topic = document.getElementById('mqttTopic').value;
+                                        const username = document.getElementById('mqttUsername').value;
+                                        const password = document.getElementById('mqttPassword').value;
+                                        const payloadType = document.getElementById('mqttPayloadType').value;
+                                        const resultDiv = document.getElementById('mqtt-connection-test-result');
+
+                                        if (!host || !port || !identifier || !topic) {
+                                            const message = window.locale?.['integrations.mqtt.test.missing.fields'] || 'Please fill in Host, Port, Client Identifier, and Topic';
+                                            resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">' + message + '</div>';
+                                            return;
+                                        }
+
+                                        // Show loading state
+                                        const loadingMessage = window.locale?.['integrations.mqtt.test.loading'] || 'Testing connection...';
+                                        resultDiv.innerHTML = '<div style="color: var(--color-text-white);">' + loadingMessage + '</div>';
+
+                                        // Make AJAX request to test connection
+                                        fetch(window.contextPath + '/settings/integrations/mqtt-integration/test', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/x-www-form-urlencoded',
+                                            },
+                                            body: new URLSearchParams({
+                                                host: host,
+                                                port: port,
+                                                identifier: identifier,
+                                                topic: topic,
+                                                username: username,
+                                                password: password,
+                                                payloadType: payloadType
+                                            })
+                                        })
+                                            .then(response => response.json())
+                                            .then(data => {
+                                                if (data.success) {
+                                                    resultDiv.innerHTML = '<div class="alert alert-success" style="display: block;">' + data.message + '</div>';
+                                                } else {
+                                                    resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + data.message + '</div>';
+                                                }
+                                            })
+                                            .catch(error => {
+                                                const errorMessage = window.locale?.['integrations.mqtt.test.failed'] || 'Connection test failed';
+                                                resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + errorMessage + ': ' + error.message + '</div>';
+                                            });
+                                    });
+                                </script>
+                            </div>
                         </div>
                     </details>
                     <details th:attr="open=${openSection == 'photos' ? 'open' : null}">
@@ -562,7 +721,10 @@
         'integrations.owntracks.recorder.test.missing.fields': /*[[#{integrations.owntracks.recorder.test.missing.fields}]]*/ 'Please fill in Base URL, Username, and Device ID',
         'integrations.owntracks.recorder.test.loading': /*[[#{integrations.owntracks.recorder.test.loading}]]*/ 'Testing connection...',
         'integrations.owntracks.recorder.test.failed': /*[[#{integrations.owntracks.recorder.test.failed}]]*/ 'Connection test failed',
-        'integrations.owntracks.recorder.loading.historical': /*[[#{integrations.owntracks.recorder.loading.historical}]]*/ 'Loading Historical Data...'
+        'integrations.owntracks.recorder.loading.historical': /*[[#{integrations.owntracks.recorder.loading.historical}]]*/ 'Loading Historical Data...',
+        'integrations.mqtt.test.missing.fields': /*[[#{integrations.mqtt.test.missing.fields}]]*/ 'Please fill in Host, Port, Client Identifier, and Topic',
+        'integrations.mqtt.test.loading': /*[[#{integrations.mqtt.test.loading}]]*/ 'Testing connection...',
+        'integrations.mqtt.test.failed': /*[[#{integrations.mqtt.test.failed}]]*/ 'Connection test failed'
     };
 </script>
 
