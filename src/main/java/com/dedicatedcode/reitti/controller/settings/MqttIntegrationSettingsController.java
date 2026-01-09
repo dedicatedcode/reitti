@@ -55,13 +55,13 @@ public class MqttIntegrationSettingsController {
         try {
             // Validate topic doesn't contain wildcard characters
             if (topic.contains("+") || topic.contains("#")) {
-                model.addAttribute("errorMessage", i18nService.translate("mqtt.integration.error.wildcard"));
+                model.addAttribute("errorMessage", i18nService.translate("integration.mqtt.error.wildcard"));
                 return getIntegrationsContent(user, model);
             }
             
             // Validate port range
             if (port < 1 || port > 65535) {
-                model.addAttribute("errorMessage", i18nService.translate("mqtt.integration.error.port_range"));
+                model.addAttribute("errorMessage", i18nService.translate("integration.mqtt.error.port_range"));
                 return getIntegrationsContent(user, model);
             }
             
@@ -82,12 +82,12 @@ public class MqttIntegrationSettingsController {
             );
             
             mqttIntegrationJdbcService.save(user, integration);
-            model.addAttribute("successMessage", i18nService.translate("mqtt.integration.success.saved"));
+            model.addAttribute("successMessage", i18nService.translate("integration.mqtt.success.saved"));
             
         } catch (OptimisticLockException e) {
-            model.addAttribute("errorMessage", i18nService.translate("mqtt.integration.error.out_of_date"));
+            model.addAttribute("errorMessage", i18nService.translate("integration.mqtt.error.out_of_date"));
         } catch (Exception e) {
-            model.addAttribute("errorMessage", i18nService.translate("mqtt.integration.error.saving", e.getMessage()));
+            model.addAttribute("errorMessage", i18nService.translate("integration.mqtt.error.saving", e.getMessage()));
         }
         
         return getIntegrationsContent(user, model);
@@ -110,25 +110,25 @@ public class MqttIntegrationSettingsController {
             // Validate basic parameters
             if (host == null || host.trim().isEmpty()) {
                 response.put("success", false);
-                response.put("message", i18nService.translate("mqtt.integration.error.host_required"));
+                response.put("message", i18nService.translate("integration.mqtt.error.host_required"));
                 return ResponseEntity.ok(response);
             }
             
             if (port < 1 || port > 65535) {
                 response.put("success", false);
-                response.put("message", i18nService.translate("mqtt.integration.error.port_range"));
+                response.put("message", i18nService.translate("integration.mqtt.error.port_range"));
                 return ResponseEntity.ok(response);
             }
             
             if (identifier == null || identifier.trim().isEmpty()) {
                 response.put("success", false);
-                response.put("message", i18nService.translate("mqtt.integration.error.identifier_required"));
+                response.put("message", i18nService.translate("integration.mqtt.error.identifier_required"));
                 return ResponseEntity.ok(response);
             }
             
             if (topic == null || topic.trim().isEmpty()) {
                 response.put("success", false);
-                response.put("message", i18nService.translate("mqtt.integration.error.topic_required"));
+                response.put("message", i18nService.translate("integration.mqtt.error.topic_required"));
                 return ResponseEntity.ok(response);
             }
 
@@ -147,11 +147,11 @@ public class MqttIntegrationSettingsController {
                                                                                                                        null));
 
             response.put("success", true);
-            response.put("message", i18nService.translate("mqtt.integration.success.test"));
+            response.put("message", i18nService.translate("integration.mqtt.success.test"));
             
         } catch (Exception e) {
             response.put("success", false);
-            response.put("message", i18nService.translate("mqtt.integration.error.test_failed", e.getMessage()));
+            response.put("message", i18nService.translate("integration.mqtt.error.test_failed", e.getMessage()));
         }
         
         return ResponseEntity.ok(response);
