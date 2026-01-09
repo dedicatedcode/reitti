@@ -354,7 +354,7 @@
                                     <span th:text="${errorMessage}">Error message</span>
                                 </div>
 
-                                <form th:hx-post="@{/settings/integrations/mqtt-integration}" hx-target="#integrations" hx-swap="innerHTML" class="mqtt-form" style="margin-top: 20px;" autocomplete="off">
+                                <form th:hx-post="@{/settings/integrations/mqtt-integration}" hx-target="#integrations" hx-swap="innerHTML" class="mqtt-form" style="margin-top: 20px;" autocomplete="off" onsubmit="return validateMqttForm()">
                                     <div class="form-group">
                                         <label for="mqttHost" th:text="#{integrations.mqtt.host}">MQTT Host</label>
                                         <input type="text"
@@ -453,6 +453,22 @@
                                 <div id="mqtt-connection-test-result" style="margin-top: 10px;"></div>
 
                                 <script>
+                                    function validateMqttForm() {
+                                        const topic = document.getElementById('mqttTopic').value;
+                                        const resultDiv = document.getElementById('mqtt-connection-test-result');
+                                        
+                                        // Check for wildcard characters in topic
+                                        if (topic.includes('+') || topic.includes('#')) {
+                                            const errorMessage = window.locale?.['integrations.mqtt.topic.no.wildcards'] || 'Topic cannot contain wildcard characters (+ or #) when saving the configuration. Wildcards are only for subscribing to topics.';
+                                            resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + errorMessage + '</div>';
+                                            return false; // Prevent form submission
+                                        }
+                                        
+                                        // Clear any previous error messages
+                                        resultDiv.innerHTML = '';
+                                        return true; // Allow form submission
+                                    }
+
                                     document.getElementById('test-mqtt-connection-btn').addEventListener('click', function() {
                                         const host = document.getElementById('mqttHost').value;
                                         const port = document.getElementById('mqttPort').value;
@@ -727,7 +743,8 @@
         'integrations.owntracks.recorder.loading.historical': /*[[#{integrations.owntracks.recorder.loading.historical}]]*/ 'Loading Historical Data...',
         'integrations.mqtt.test.missing.fields': /*[[#{integrations.mqtt.test.missing.fields}]]*/ 'Please fill in Host, Port, Client Identifier, and Topic',
         'integrations.mqtt.test.loading': /*[[#{integrations.mqtt.test.loading}]]*/ 'Testing connection...',
-        'integrations.mqtt.test.failed': /*[[#{integrations.mqtt.test.failed}]]*/ 'Connection test failed'
+        'integrations.mqtt.test.failed': /*[[#{integrations.mqtt.test.failed}]]*/ 'Connection test failed',
+        'integrations.mqtt.topic.no.wildcards': /*[[#{integrations.mqtt.topic.no.wildcards}]]*/ 'Topic cannot contain wildcard characters (+ or #) when saving the configuration. Wildcards are only for subscribing to topics.'
     };
 </script>
 
