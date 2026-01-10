@@ -341,6 +341,7 @@ public class IntegrationsSettingsController {
             }
 
             MqttIntegration mqttIntegration = this.mqttIntegrationJdbcService.findByUser(user).orElse(MqttIntegration.empty());
+            boolean wasEnabled = mqttIntegration.isEnabled();
             MqttIntegration updatedIntegration = mqttIntegration
                     .withHost(host)
                     .withPort(port)
@@ -351,6 +352,13 @@ public class IntegrationsSettingsController {
                     .withPayloadType(payloadType)
                     .withEnabled(enabled);
             mqttIntegrationJdbcService.save(user, updatedIntegration);
+            if (wasEnabled && !updatedIntegration.isEnabled()) {
+                this.mqttProvider.remove(user);
+            }
+            if (updatedIntegration.isEnabled()) {
+                this.mqttProvider.register(user, updatedIntegration);
+            }
+
             redirectAttributes.addFlashAttribute("successMessage", i18n.translate("integration.mqtt.success.saved"));
 
         } catch (OptimisticLockException e) {

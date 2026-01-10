@@ -85,11 +85,12 @@ public class DynamicMqttProvider {
             throw new IllegalArgumentException("Reitti requires explicit topics. No wildcards allowed.");
         }
 
-        remove(user.getId());
+        remove(user);
         connectClient(user, config);
     }
 
     private void connectClient(User user, MqttIntegration config) {
+        log.debug("Connecting client [{}] for user {} to {} on {}", config.getIdentifier(), user.getUsername(), config.getTopic(), config.getHost());
         Mqtt3AsyncClient client = MqttClient.builder()
                 .useMqttVersion3()
                 .identifier(config.getIdentifier())
@@ -108,13 +109,17 @@ public class DynamicMqttProvider {
         }
         builder.send()
                 .thenAccept(ack -> {
+                    log.debug("Client [{}] for user {} connected to {} on {}", config.getIdentifier(), user.getUsername(), config.getTopic(), config.getHost());
+                    activeClients.put(user.getId(), client);
                     client.subscribeWith()
                             .topicFilter(config.getTopic())
                             .qos(MqttQos.AT_LEAST_ONCE)
                             .callback(publish -> dispatch(user, config, publish.getPayloadAsBytes()))
                             .send();
+                }).exceptionally(throwable -> {
+                    log.error("Error connecting client [{}] for user {} to {} on {}", config.getIdentifier(), user.getUsername(), config.getTopic(), config.getHost(), throwable);
+                    return null;
                 });
-        activeClients.put(user.getId(), client);
     }
 
     private void dispatch(User user, MqttIntegration config, byte[] payload) {
@@ -126,8 +131,8 @@ public class DynamicMqttProvider {
         }
     }
 
-    public void remove(Long userId) {
-        Mqtt3AsyncClient client = activeClients.remove(userId);
+    public void remove(User user) {
+        Mqtt3AsyncClient client = activeClients.remove(user.getId());
         if (client != null) client.disconnect();
     }
 
