@@ -133,7 +133,10 @@ public class DynamicMqttProvider {
 
     public void remove(User user) {
         Mqtt3AsyncClient client = activeClients.remove(user.getId());
-        if (client != null) client.disconnect();
+        if (client != null) {
+            log.info("Disconnecting client for user {}", user.getUsername());
+            client.disconnect();
+        }
     }
 
     public record MqttTestResult(boolean success, String message) {
