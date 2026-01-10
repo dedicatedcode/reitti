@@ -109,7 +109,7 @@ public class DynamicMqttProvider {
         }
         builder.send()
                 .thenAccept(ack -> {
-                    log.debug("Client [{}] for user {} connected to {} on {}", config.getIdentifier(), user.getUsername(), config.getTopic(), config.getHost());
+                    log.info("Client [{}] for user {} connected to {} on {}", config.getIdentifier(), user.getUsername(), config.getTopic(), config.getHost());
                     activeClients.put(user.getId(), client);
                     client.subscribeWith()
                             .topicFilter(config.getTopic())
