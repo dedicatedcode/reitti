@@ -84,7 +84,6 @@ public class DynamicMqttProvider {
         if (config.getTopic().contains("+") || config.getTopic().contains("#")) {
             throw new IllegalArgumentException("Reitti requires explicit topics. No wildcards allowed.");
         }
-
         remove(user);
         connectClient(user, config);
     }
@@ -131,6 +130,15 @@ public class DynamicMqttProvider {
         }
     }
 
+    public MqttStatus isClientConnected(User user) {
+        Mqtt3AsyncClient client = activeClients.get(user.getId());
+        if (client == null) {
+            return MqttStatus.UNAVAILABLE;
+        }
+
+        return client.getState().isConnectedOrReconnect() ? MqttStatus.CONNECTED : MqttStatus.DISCONNECTED;
+    }
+
     public void remove(User user) {
         Mqtt3AsyncClient client = activeClients.remove(user.getId());
         if (client != null) {
@@ -140,5 +148,9 @@ public class DynamicMqttProvider {
     }
 
     public record MqttTestResult(boolean success, String message) {
+    }
+
+    public enum MqttStatus {
+        CONNECTED, DISCONNECTED, UNAVAILABLE
     }
 }

@@ -8,6 +8,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.utility.DockerImageName;
+import org.testcontainers.utility.MountableFile;
 
 @TestConfiguration(proxyBeanMethods = false)
 public class TestContainerConfiguration {
@@ -37,6 +38,11 @@ public class TestContainerConfiguration {
     @Bean
     public GenericContainer mosquitto() {
         return new GenericContainer(DockerImageName.parse("eclipse-mosquitto:2.0.22"))
-                .withExposedPorts(1883);
+                .withExposedPorts(1883)
+                .withCommand("mosquitto", "-c", "/mosquitto-no-auth.conf")
+                .withCopyFileToContainer(
+                        MountableFile.forClasspathResource("mosquitto-no-auth.conf"),
+                        "/mosquitto-no-auth.conf"
+                );
     }
 }
