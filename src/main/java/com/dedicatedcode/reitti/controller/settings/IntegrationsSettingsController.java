@@ -316,14 +316,14 @@ public class IntegrationsSettingsController {
     @PostMapping("/mqtt-integration")
     public String saveMqttIntegration(
             @AuthenticationPrincipal User user,
-            @RequestParam String host,
-            @RequestParam int port,
-            @RequestParam String identifier,
-            @RequestParam String topic,
-            @RequestParam(required = false) String username,
-            @RequestParam(required = false) String password,
-            @RequestParam PayloadType payloadType,
-            @RequestParam(defaultValue = "false") boolean enabled,
+            @RequestParam(name = "mqtt_host") String host,
+            @RequestParam(name = "mqtt_port") int port,
+            @RequestParam(name = "mqtt_identifier") String identifier,
+            @RequestParam(name = "mqtt_topic") String topic,
+            @RequestParam(name = "mqtt_username", required = false) String username,
+            @RequestParam(name = "mqtt_password", required = false) String password,
+            @RequestParam(name = "mqtt_payloadType") PayloadType payloadType,
+            @RequestParam(name = "mqtt_enabled",defaultValue = "false") boolean enabled,
             RedirectAttributes redirectAttributes) {
 
         try {
@@ -364,13 +364,13 @@ public class IntegrationsSettingsController {
     @PostMapping("/mqtt-integration/test")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> testMqttConnection(
-            @RequestParam String host,
-            @RequestParam int port,
-            @RequestParam String identifier,
-            @RequestParam String topic,
-            @RequestParam(required = false) String username,
-            @RequestParam(required = false) String password,
-            @RequestParam PayloadType payloadType) {
+            @RequestParam(name = "mqtt_host") String host,
+            @RequestParam(name = "mqtt_port") int port,
+            @RequestParam(name = "mqtt_identifier") String identifier,
+            @RequestParam(name = "mqtt_topic") String topic,
+            @RequestParam(name = "mqtt_username", required = false) String username,
+            @RequestParam(name = "mqtt_password", required = false) String password,
+            @RequestParam(name = "mqtt_payloadType") PayloadType payloadType) {
 
         Map<String, Object> response = new HashMap<>();
 

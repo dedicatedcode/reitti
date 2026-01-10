@@ -364,9 +364,9 @@
                                         <label for="mqttHost" th:text="#{integrations.mqtt.host}">MQTT Host</label>
                                         <input type="text"
                                                id="mqttHost"
-                                               name="host"
+                                               name="mqtt_host"
                                                required
-                                               autocomplete="off"
+                                               autocomplete="new-password"
                                                th:placeholder="#{integrations.mqtt.host.placeholder}"
                                                th:value="${mqttIntegration?.host}">
                                     </div>
@@ -374,11 +374,11 @@
                                         <label for="mqttPort" th:text="#{integrations.mqtt.port}">Port</label>
                                         <input type="number"
                                                id="mqttPort"
-                                               name="port"
+                                               name="mqtt_port"
                                                required
-                                               autocomplete="off"
                                                min="1"
                                                max="65535"
+                                               autocomplete="new-password"
                                                th:placeholder="#{integrations.mqtt.port.placeholder}"
                                                th:value="${mqttIntegration?.port}">
                                     </div>
@@ -386,10 +386,10 @@
                                         <label for="mqttIdentifier" th:text="#{integrations.mqtt.identifier}">Client Identifier</label>
                                         <input type="text"
                                                id="mqttIdentifier"
-                                               name="identifier"
+                                               name="mqtt_identifier"
                                                required="required"
                                                readonly="readonly"
-                                               autocomplete="off"
+                                               autocomplete="new-password"
                                                th:value="${mqttIntegration?.identifier ?: generatedClientId}">
                                         <small th:text="#{integrations.mqtt.identifier.description}">Unique identifier for this MQTT client connection. Auto-generated and cannot be changed.</small>
                                     </div>
@@ -397,9 +397,9 @@
                                         <label for="mqttTopic" th:text="#{integrations.mqtt.topic}">Topic</label>
                                         <input type="text"
                                                id="mqttTopic"
-                                               name="topic"
+                                               name="mqtt_topic"
                                                required
-                                               autocomplete="off"
+                                               autocomplete="new-password"
                                                th:placeholder="#{integrations.mqtt.topic.placeholder}"
                                                th:value="${mqttIntegration?.topic}">
                                         <small th:text="#{integrations.mqtt.topic.description}">MQTT topic pattern to subscribe to. Use + for single-level wildcards and # for multi-level wildcards (e.g., owntracks/+/+ for all OwnTracks users and devices).</small>
@@ -409,8 +409,8 @@
                                         <label for="mqttUsername" th:text="#{integrations.mqtt.username}">Username</label>
                                         <input type="text"
                                                id="mqttUsername"
-                                               name="username"
-                                               autocomplete="off"
+                                               name="mqtt_username"
+                                               autocomplete="new-password"
                                                th:placeholder="#{integrations.mqtt.username.placeholder}"
                                                th:value="${mqttIntegration?.username}">
                                         <small th:text="#{integrations.mqtt.auth.optional}">Leave empty if no authentication is needed</small>
@@ -420,8 +420,8 @@
                                         <label for="mqttPassword" th:text="#{integrations.mqtt.password}">Password</label>
                                         <input type="password"
                                                id="mqttPassword"
-                                               name="password"
-                                               autocomplete="off"
+                                               name="mqtt_password"
+                                               autocomplete="new-password"
                                                th:placeholder="#{integrations.mqtt.password.placeholder}"
                                                th:value="${mqttIntegration?.password}">
                                         <small th:text="#{integrations.mqtt.auth.optional}">Leave empty if no authentication is needed</small>
@@ -429,7 +429,7 @@
 
                                     <div class="form-group">
                                         <label for="mqttPayloadType" th:text="#{integrations.mqtt.payload.type}">Payload Type</label>
-                                        <select id="mqttPayloadType" name="payloadType" class="form-control" required>
+                                        <select id="mqttPayloadType" name="mqtt_payloadType" class="form-control" required>
                                             <option value="OWNTRACKS" th:selected="${mqttIntegration?.payloadType?.name() == 'OWNTRACKS'}" th:text="#{integrations.mqtt.payload.type.owntracks}">OwnTracks</option>
                                         </select>
                                         <small th:text="#{integrations.mqtt.payload.type.help}">Select the format of the location data payload</small>
@@ -438,7 +438,7 @@
                                     <div class="form-group">
                                         <label>
                                             <input type="checkbox"
-                                                   name="enabled"
+                                                   name="mqtt_enabled"
                                                    value="true"
                                                    th:checked="${mqttIntegration?.enabled}">
                                             <span th:text="#{integrations.mqtt.enabled}">Enable Integration</span>
@@ -500,13 +500,13 @@
                                                 'Content-Type': 'application/x-www-form-urlencoded',
                                             },
                                             body: new URLSearchParams({
-                                                host: host,
-                                                port: port,
-                                                identifier: identifier,
-                                                topic: topic,
-                                                username: username,
-                                                password: password,
-                                                payloadType: payloadType
+                                                mqtt_host: host,
+                                                mqtt_port: port,
+                                                mqtt_identifier: identifier,
+                                                mqtt_topic: topic,
+                                                mqtt_username: username,
+                                                mqtt_password: password,
+                                                mqtt_payloadType: payloadType
                                             })
                                         })
                                             .then(response => response.json())
