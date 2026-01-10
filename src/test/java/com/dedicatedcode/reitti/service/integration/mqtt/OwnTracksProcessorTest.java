@@ -36,8 +36,7 @@ class OwnTracksProcessorTest {
 
     @BeforeEach
     void setUp() {
-        testUser = new User(1L, "testuser", "password", "Test User",
-                           null, null, null, null, 1L);
+        testUser = new User(1L, "testuser", "password", "Test User", null, null, null, 1L);
     }
 
     @Test
@@ -46,7 +45,7 @@ class OwnTracksProcessorTest {
         String validJson = "{\"_type\":\"location\",\"t\":\"2023-01-01T12:00:00Z\",\"lat\":53.863149,\"lon\":10.700927,\"acc\":10.0}";
         OwntracksLocationRequest request = new OwntracksLocationRequest();
         request.setType("location");
-        request.setT("2023-01-01T12:00:00Z");
+        request.setTimestamp("2023-01-01T12:00:00Z");
         request.setLatitude(53.863149);
         request.setLongitude(10.700927);
         request.setAccuracy(10.0);
@@ -58,7 +57,6 @@ class OwnTracksProcessorTest {
         expectedLocationPoint.setAccuracyMeters(10.0);
 
         when(objectMapper.readValue(validJson, OwntracksLocationRequest.class)).thenReturn(request);
-        when(request.toLocationPoint()).thenReturn(expectedLocationPoint);
 
         // When
         ownTracksProcessor.process(testUser, validJson.getBytes());
@@ -98,14 +96,7 @@ class OwnTracksProcessorTest {
         request.setLongitude(10.700927);
         request.setAccuracy(10.0);
 
-        LocationPoint invalidLocationPoint = new LocationPoint();
-        invalidLocationPoint.setTimestamp(null);
-        invalidLocationPoint.setLatitude(53.863149);
-        invalidLocationPoint.setLongitude(10.700927);
-        invalidLocationPoint.setAccuracyMeters(10.0);
-
         when(objectMapper.readValue(invalidJson, OwntracksLocationRequest.class)).thenReturn(request);
-        when(request.toLocationPoint()).thenReturn(invalidLocationPoint);
 
         // When
         ownTracksProcessor.process(testUser, invalidJson.getBytes());
