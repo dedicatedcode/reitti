@@ -14,6 +14,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -42,16 +44,17 @@ class OwnTracksProcessorTest {
     @Test
     void shouldProcessValidLocationUpdate() throws Exception {
         // Given
-        String validJson = "{\"_type\":\"location\",\"t\":\"2023-01-01T12:00:00Z\",\"lat\":53.863149,\"lon\":10.700927,\"acc\":10.0}";
+        long epochSecond = 1672574400L; // 2023-01-01T12:00:00Z in epoch seconds
+        String validJson = "{\"_type\":\"location\",\"tst\":" + epochSecond + ",\"lat\":53.863149,\"lon\":10.700927,\"acc\":10.0}";
         OwntracksLocationRequest request = new OwntracksLocationRequest();
         request.setType("location");
-        request.setTimestamp("2023-01-01T12:00:00Z");
+        request.setTimestamp(epochSecond);
         request.setLatitude(53.863149);
         request.setLongitude(10.700927);
         request.setAccuracy(10.0);
 
         LocationPoint expectedLocationPoint = new LocationPoint();
-        expectedLocationPoint.setTimestamp("2023-01-01T12:00:00Z");
+        expectedLocationPoint.setTimestamp(Instant.ofEpochSecond(epochSecond).toString());
         expectedLocationPoint.setLatitude(53.863149);
         expectedLocationPoint.setLongitude(10.700927);
         expectedLocationPoint.setAccuracyMeters(10.0);
@@ -73,7 +76,7 @@ class OwnTracksProcessorTest {
     @Test
     void shouldIgnoreNonLocationMessage() throws Exception {
         // Given
-        String nonLocationJson = "{\"_type\":\"transition\",\"t\":\"2023-01-01T12:00:00Z\"}";
+        String nonLocationJson = "{\"_type\":\"transition\",\"tst\":1672574400}";
         OwntracksLocationRequest request = new OwntracksLocationRequest();
         request.setType("transition");
 
@@ -95,6 +98,7 @@ class OwnTracksProcessorTest {
         request.setLatitude(53.863149);
         request.setLongitude(10.700927);
         request.setAccuracy(10.0);
+        // timestamp is null
 
         when(objectMapper.readValue(invalidJson, OwntracksLocationRequest.class)).thenReturn(request);
 
