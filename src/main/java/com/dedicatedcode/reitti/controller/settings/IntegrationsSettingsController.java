@@ -267,6 +267,7 @@ public class IntegrationsSettingsController {
             @AuthenticationPrincipal User user,
             @RequestParam(name = "mqtt_host") String host,
             @RequestParam(name = "mqtt_port") int port,
+            @RequestParam(name = "mqtt_useTLS", defaultValue = "false") boolean useTLS,
             @RequestParam(name = "mqtt_identifier") String identifier,
             @RequestParam(name = "mqtt_topic") String topic,
             @RequestParam(name = "mqtt_username", required = false) String username,
@@ -296,6 +297,7 @@ public class IntegrationsSettingsController {
                     .withPort(port)
                     .withIdentifier(identifier)
                     .withTopic(topic)
+                    .withUseTLS(useTLS)
                     .withUsername(username)
                     .withPassword(password)
                     .withPayloadType(payloadType)
@@ -323,6 +325,7 @@ public class IntegrationsSettingsController {
     public ResponseEntity<Map<String, Object>> testMqttConnection(
             @RequestParam(name = "mqtt_host") String host,
             @RequestParam(name = "mqtt_port") int port,
+            @RequestParam(name = "mqtt_useTLS", defaultValue = "false") boolean useTLS,
             @RequestParam(name = "mqtt_identifier") String identifier,
             @RequestParam(name = "mqtt_topic") String topic,
             @RequestParam(name = "mqtt_username", required = false) String username,
@@ -360,6 +363,7 @@ public class IntegrationsSettingsController {
             CompletableFuture<DynamicMqttProvider.MqttTestResult> testResult = this.mqttProvider.testConnection(new MqttIntegration(null,
                                                                                                                                     host,
                                                                                                                                     port,
+                                                                                                                                    useTLS,
                                                                                                                                     null,
                                                                                                                                     topic,
                                                                                                                                     username,

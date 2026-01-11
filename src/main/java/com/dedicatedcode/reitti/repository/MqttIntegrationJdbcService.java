@@ -15,7 +15,6 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -28,7 +27,7 @@ public class MqttIntegrationJdbcService {
 
     public Optional<MqttIntegration> findByUser(User user) {
         String sql = """
-            SELECT id, user_id, host, port, identifier, topic, username, password,
+            SELECT id, user_id, host, port, use_tls, identifier, topic, username, password,
                    payload_type, enabled, created_at, updated_at, last_used, version
             FROM mqtt_integrations
             WHERE user_id = ?
@@ -48,9 +47,9 @@ public class MqttIntegrationJdbcService {
 
     private MqttIntegration create(User user, MqttIntegration integration) {
         String sql = """
-            INSERT INTO mqtt_integrations (user_id, host, port, identifier, topic, username, password,
+            INSERT INTO mqtt_integrations (user_id, host, port, use_tls, identifier, topic, username, password,
                                          payload_type, enabled, created_at, version)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
         
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -61,39 +60,41 @@ public class MqttIntegrationJdbcService {
             ps.setLong(1, user.getId());
             ps.setString(2, integration.getHost());
             ps.setInt(3, integration.getPort());
-            ps.setString(4, integration.getIdentifier());
-            ps.setString(5, integration.getTopic());
-            ps.setString(6, integration.getUsername());
-            ps.setString(7, integration.getPassword());
-            ps.setString(8, integration.getPayloadType().name());
-            ps.setBoolean(9, integration.isEnabled());
-            ps.setTimestamp(10, Timestamp.from(now));
-            ps.setLong(11, 1L);
+            ps.setBoolean(4, integration.isUseTLS());
+            ps.setString(5, integration.getIdentifier());
+            ps.setString(6, integration.getTopic());
+            ps.setString(7, integration.getUsername());
+            ps.setString(8, integration.getPassword());
+            ps.setString(9, integration.getPayloadType().name());
+            ps.setBoolean(10, integration.isEnabled());
+            ps.setTimestamp(11, Timestamp.from(now));
+            ps.setLong(12, 1L);
             return ps;
         }, keyHolder);
         
         Long id = keyHolder.getKey().longValue();
         return new MqttIntegration(
-            id,
-            integration.getHost(),
-            integration.getPort(),
-            integration.getIdentifier(),
-            integration.getTopic(),
-            integration.getUsername(),
-            integration.getPassword(),
-            integration.getPayloadType(),
-            integration.isEnabled(),
-            now,
-            null,
-            null,
-            1L
+                id,
+                integration.getHost(),
+                integration.getPort(),
+                integration.isUseTLS(),
+                integration.getIdentifier(),
+                integration.getTopic(),
+                integration.getUsername(),
+                integration.getPassword(),
+                integration.getPayloadType(),
+                integration.isEnabled(),
+                now,
+                null,
+                null,
+                1L
         );
     }
 
     private MqttIntegration update(MqttIntegration integration) {
         String sql = """
             UPDATE mqtt_integrations
-            SET host = ?, port = ?, identifier = ?, topic = ?, username = ?, password = ?,
+            SET host = ?, port = ?, use_tls = ?, identifier = ?, topic = ?, username = ?, password = ?,
                 payload_type = ?, enabled = ?, updated_at = ?, version = version + 1
             WHERE id = ? AND version = ?
             """;
@@ -102,6 +103,7 @@ public class MqttIntegrationJdbcService {
         int updated = jdbcTemplate.update(sql,
             integration.getHost(),
             integration.getPort(),
+            integration.isUseTLS(),
             integration.getIdentifier(),
             integration.getTopic(),
             integration.getUsername(),
@@ -118,19 +120,20 @@ public class MqttIntegrationJdbcService {
         }
         
         return new MqttIntegration(
-            integration.getId(),
-            integration.getHost(),
-            integration.getPort(),
-            integration.getIdentifier(),
-            integration.getTopic(),
-            integration.getUsername(),
-            integration.getPassword(),
-            integration.getPayloadType(),
-            integration.isEnabled(),
-            integration.getCreatedAt(),
-            now,
-            integration.getLastUsed(),
-            integration.getVersion() + 1
+                integration.getId(),
+                integration.getHost(),
+                integration.getPort(),
+                integration.isUseTLS(),
+                integration.getIdentifier(),
+                integration.getTopic(),
+                integration.getUsername(),
+                integration.getPassword(),
+                integration.getPayloadType(),
+                integration.isEnabled(),
+                integration.getCreatedAt(),
+                now,
+                integration.getLastUsed(),
+                integration.getVersion() + 1
         );
     }
 
@@ -144,6 +147,7 @@ public class MqttIntegrationJdbcService {
                     rs.getLong("id"),
                     rs.getString("host"),
                     rs.getInt("port"),
+                    rs.getBoolean("use_tls"),
                     rs.getString("identifier"),
                     rs.getString("topic"),
                     rs.getString("username"),

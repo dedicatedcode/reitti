@@ -347,6 +347,16 @@
                                th:value="${mqttIntegration?.port}">
                     </div>
                     <div class="form-group">
+                        <label>
+                            <input type="checkbox"
+                                   id="mqttUseTLS"
+                                   name="mqtt_useTLS"
+                                   value="true"
+                                   th:checked="${mqttIntegration?.useTLS}">
+                            <span th:text="#{integrations.mqtt.useTLS}">User TLS?</span>
+                        </label>
+                    </div>
+                    <div class="form-group">
                         <label for="mqttIdentifier" th:text="#{integrations.mqtt.identifier}">Client Identifier</label>
                         <input type="text"
                                id="mqttIdentifier"
@@ -368,7 +378,6 @@
                                th:value="${mqttIntegration?.topic}">
                         <small th:text="#{integrations.mqtt.topic.description}">MQTT topic pattern to subscribe to. Use + for single-level wildcards and # for multi-level wildcards (e.g., owntracks/+/+ for all OwnTracks users and devices).</small>
                     </div>
-
                     <div class="form-group">
                         <label for="mqttUsername" th:text="#{integrations.mqtt.username}">Username</label>
                         <input type="text"
@@ -379,7 +388,6 @@
                                th:value="${mqttIntegration?.username}">
                         <small th:text="#{integrations.mqtt.auth.optional}">Leave empty if no authentication is needed</small>
                     </div>
-
                     <div class="form-group">
                         <label for="mqttPassword" th:text="#{integrations.mqtt.password}">Password</label>
                         <input type="password"
@@ -390,7 +398,6 @@
                                th:value="${mqttIntegration?.password}">
                         <small th:text="#{integrations.mqtt.auth.optional}">Leave empty if no authentication is needed</small>
                     </div>
-
                     <div class="form-group">
                         <label for="mqttPayloadType" th:text="#{integrations.mqtt.payload.type}">Payload Type</label>
                         <select id="mqttPayloadType" name="mqtt_payloadType" class="form-control" required>
@@ -398,7 +405,6 @@
                         </select>
                         <small th:text="#{integrations.mqtt.payload.type.help}">Select the format of the location data payload</small>
                     </div>
-
                     <div class="form-group">
                         <label>
                             <input type="checkbox"
@@ -408,7 +414,6 @@
                             <span th:text="#{integrations.mqtt.enabled}">Enable Integration</span>
                         </label>
                     </div>
-
                     <div style="display: flex; gap: 10px; margin-top: 20px;">
                         <button type="submit" class="btn" th:text="#{integrations.mqtt.save}">Save Configuration</button>
                         <button type="button"
@@ -440,6 +445,7 @@
                     document.getElementById('test-mqtt-connection-btn').addEventListener('click', function() {
                         const host = document.getElementById('mqttHost').value;
                         const port = document.getElementById('mqttPort').value;
+                        const tls = document.getElementById('mqttUseTLS').checked;
                         const identifier = document.getElementById('mqttIdentifier').value;
                         const topic = document.getElementById('mqttTopic').value;
                         const username = document.getElementById('mqttUsername').value;
@@ -447,6 +453,7 @@
                         const payloadType = document.getElementById('mqttPayloadType').value;
                         const resultDiv = document.getElementById('mqtt-connection-test-result');
 
+                        debugger
                         if (!host || !port || !identifier || !topic) {
                             const message = window.locale?.['integrations.mqtt.test.missing.fields'] || 'Please fill in Host, Port, Client Identifier, and Topic';
                             resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">' + message + '</div>';
@@ -466,6 +473,7 @@
                             body: new URLSearchParams({
                                 mqtt_host: host,
                                 mqtt_port: port,
+                                mqtt_useTLS: tls,
                                 mqtt_identifier: identifier,
                                 mqtt_topic: topic,
                                 mqtt_username: username,

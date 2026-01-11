@@ -300,11 +300,15 @@ select option {
 }
 
 select:disabled,
-input:read-only,
 input:disabled {
     background-color: #3a3a3a;
     color: #d0d0d0;
     cursor: not-allowed;
+}
+
+input:read-only {
+    background-color: #3a3a3a;
+    color: #d0d0d0;
 }
 
 table {

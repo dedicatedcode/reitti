@@ -6,9 +6,12 @@ import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.integration.mqtt.MqttIntegration;
 import com.dedicatedcode.reitti.service.integration.mqtt.MqttPayloadProcessor;
 import com.dedicatedcode.reitti.service.integration.mqtt.PayloadType;
+import com.hivemq.client.internal.mqtt.MqttClientSslConfigImpl;
 import com.hivemq.client.mqtt.MqttClient;
+import com.hivemq.client.mqtt.MqttClientSslConfig;
 import com.hivemq.client.mqtt.datatypes.MqttQos;
 import com.hivemq.client.mqtt.mqtt3.Mqtt3AsyncClient;
+import com.hivemq.client.mqtt.mqtt3.Mqtt3ClientBuilder;
 import com.hivemq.client.mqtt.mqtt3.message.connect.Mqtt3ConnectBuilder;
 import com.hivemq.client.mqtt.mqtt3.message.connect.connack.Mqtt3ConnAck;
 import org.slf4j.Logger;
@@ -51,11 +54,15 @@ public class DynamicMqttProvider {
     public CompletableFuture<MqttTestResult> testConnection(MqttIntegration config) {
         String tempClientId = "reitti-test-" + UUID.randomUUID().toString().substring(0, 8);
 
-        Mqtt3AsyncClient testClient = MqttClient.builder()
+        Mqtt3ClientBuilder clientBuilder = MqttClient.builder()
                 .useMqttVersion3()
                 .identifier(tempClientId)
                 .serverHost(config.getHost())
-                .serverPort(config.getPort())
+                .serverPort(config.getPort());
+        if(config.isUseTLS()) {
+            clientBuilder = clientBuilder.sslWithDefaultConfig();
+        }
+        Mqtt3AsyncClient testClient = clientBuilder
                 .buildAsync();
 
         Mqtt3ConnectBuilder.Send<CompletableFuture<Mqtt3ConnAck>> builder = testClient.connectWith();
@@ -90,13 +97,17 @@ public class DynamicMqttProvider {
 
     private void connectClient(User user, MqttIntegration config) {
         log.debug("Connecting client [{}] for user {} to {} on {}", config.getIdentifier(), user.getUsername(), config.getTopic(), config.getHost());
-        Mqtt3AsyncClient client = MqttClient.builder()
+        Mqtt3ClientBuilder mqtt3ClientBuilder = MqttClient.builder()
                 .useMqttVersion3()
                 .identifier(config.getIdentifier())
                 .serverHost(config.getHost())
                 .serverPort(config.getPort())
-                .automaticReconnectWithDefaultConfig()
-                .buildAsync();
+                .automaticReconnectWithDefaultConfig();
+        if (config.isUseTLS()) {
+            mqtt3ClientBuilder = mqtt3ClientBuilder.sslWithDefaultConfig();
+        }
+
+        Mqtt3AsyncClient client = mqtt3ClientBuilder.buildAsync();
 
         Mqtt3ConnectBuilder.Send<CompletableFuture<Mqtt3ConnAck>> builder = client.connectWith()
                 .cleanSession(false);

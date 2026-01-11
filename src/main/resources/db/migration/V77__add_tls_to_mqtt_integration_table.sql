@@ -1,0 +1,1 @@
+ALTER TABLE mqtt_integrations ADD COLUMN use_tls BOOLEAN DEFAULT FALSE;
