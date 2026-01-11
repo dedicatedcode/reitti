@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Integrations Content Fragment -->
+<div th:fragment="integrations-content">
+    <h2 th:text="#{integrations.title}">Integrations</h2>
+
+    <!-- Token Selection Dropdown -->
+    <div th:if="${hasToken && tokens.size() > 1}" >
+        <label for="tokenSelect" th:text="#{integrations.token.select.label}">Select API Token:</label>
+        <select id="tokenSelect" name="selectedToken" class="form-control" th:hx-get="@{/settings/integrations/integrations-content}" hx-vals='js:{"openSection": getCurrentOpenSection()}' hx-target="#integrations" hx-swap="innerHTML" hx-trigger="change">
+            <option th:each="token : ${tokens}" th:value="${token.token}" th:text="${token.name}" th:selected="${token.token == selectedToken}"></option>
+        </select>
+        <small th:text="#{integrations.token.select.help}">Choose the API token to use in the setup URLs below. The selected token will be automatically inserted into the example URLs.</small>
+    </div>
+    <div th:if="${!hasToken}" style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 15px; margin-bottom: 20px; color: #856404;">
+        <strong th:text="#{integrations.no.token.title}">⚠️ No API Token Available</strong><br>
+        <span th:text="#{integrations.no.token.warning}">You need to create an API token first in the "API Tokens" tab before setting up app integrations.</span>
+    </div>
+    <div class="divider left" th:text="#{integrations.data.ingestion.title}">Data</div>
+    <div class="divider-description left" th:text="#{integrations.data.ingestion.description}">Configure mobile apps to automatically send location data to Reitti or let Reitti connect to external services like OwnTracks Recorder or MQTT.</div>
+    <div class="alert alert-info" style="margin-bottom: 20px;">
+        <strong th:text="#{integrations.tracking.frequency.title}">📍 GPS Tracking Frequency</strong><br>
+        <p style="color: var(--color-text-white)" th:text="#{integrations.tracking.frequency.description}">For optimal results, Reitti works best with a continuous stream of GPS locations. Make sure your tracking app records a point at least every 30 seconds to ensure accurate visit and trip detection.</p>
+        <strong style="var(--color-highlight);" th:text="#{integrations.data.quality.title}">Data Quality Verification</strong>
+        <p style="color: var(--color-text-white)" th:text="#{integrations.data.quality.description}">Check the quality and frequency of your incoming location data to ensure optimal tracking performance.</p>
+        <button class="btn"
+                id="data-quality-btn"
+                th:hx-get="@{/settings/integrations/data-quality-content}"
+                hx-target="#integrations"
+                hx-swap="innerHTML"
+                hx-indicator="#data-quality-spinner">
+            <span class="button-text" th:text="#{integrations.data.quality.button}">Verify Data Quality</span>
+            <span id="data-quality-spinner" class="htmx-indicator"><i class="lni lni-is-spinning lni-spinner-2-sacle"></i></span>
+        </button>
+
+        <div style="margin-top: 24px;"><strong th:text="#{integrations.mobile.help.title}">Need Help?</strong></div>
+        <p style="color: var(--color-text-gray)">
+            <span th:text="#{integrations.mobile.help.description}">For detailed setup instructions and tips, visit our comprehensive guide:</span>
+            <a href="https://www.dedicatedcode.com/projects/reitti/configurations/mobile-app-integration/"
+               target="_blank"
+               rel="noopener noreferrer"
+               style="color: var(--color-highlight);"
+               th:text="#{integrations.mobile.help.link.text}">
+                Mobile Integration Documentation
+            </a>
+        </p>
+    </div>
+    <div>
+        <details data-section="gps-logger" th:attr="open=${openSection == 'gps-logger' ? 'open' : null}">
+            <summary><span th:text="#{integrations.gpslogger.title}">📱 GPSLogger Setup</span></summary>
+            <div>
+                <p th:text="#{integrations.gpslogger.description}">GPSLogger is a free Android app that can automatically log your location and send it to Reitti.</p>
+                <p><strong th:text="#{integrations.download}">Download:</strong> <a href="https://gpslogger.app/" target="_blank" rel="noopener noreferrer" style="color: var(--color-highlight)">https://gpslogger.app/</a></p>
+                <div class="setup-steps">
+                    <h4 th:text="#{integrations.setup.instructions}">Setup Instructions:</h4>
+                    <ol>
+                        <li th:text="#{integrations.gpslogger.step1}">Download GPSLogger from the Google Play Store</li>
+                        <li th:utext="#{integrations.gpslogger.step2}">Open GPSLogger and go to <strong>Logging details → Log to custom URL</strong></li>
+                        <li th:utext="#{integrations.gpslogger.step3}">Enable "Log to custom URL"</li>
+                        <li th:if="${hasToken}" th:utext="#{integrations.gpslogger.step4.with.token(${serverUrl + contextPath + '/api/v1/ingest/owntracks?token=' + selectedToken})}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + selectedToken}">https://your-domain.com/api/v1/location-data</code></li>
+                        <li th:unless="${hasToken}" th:utext="#{integrations.gpslogger.step4.without.token(${serverUrl + contextPath + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'})}">Set the URL to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/location-data</code></li>
+                        <li th:utext="#{integrations.gpslogger.step5}">Set HTTP Method to <strong>POST</strong></li>
+                        <li><span th:utext="#{integrations.gpslogger.step6}">Set HTTP Body to:</span> <pre>
+{
+    "_type" : "location",
+    "t": "u",
+    "acc": "%ACC",
+    "alt": "%ALT",
+    "batt": "%BATT",
+    "bs": "%ISCHARGING",
+    "lat": "%LAT",
+    "lon": "%LON",
+    "tst": "%TIMESTAMP",
+    "vel": "%SPD"
+}
+                                    </pre></li>
+                        <li th:utext="#{integrations.gpslogger.step7}">Set HTTP header to: <code>Content-Type: application/json</code></li>
+                        <li th:text="#{integrations.gpslogger.step8}">Start logging!</li>
+                    </ol>
+                </div>
+                <div th:if="${hasToken}">
+                    <div><a id="gpslogger-config-link" class="btn" th:text="#{integrations.gpslogger.configure}">Configure GPSLogger</a></div>
+                    <div><small th:text="#{integrations.gpslogger.configure.description}">This will create a new profile 'reitti' with the configured settings.</small></div>
+                </div>
+            </div>
+        </details>
+        <details data-section="owntracks-app" th:attr="open=${openSection == 'owntracks-app' ? 'open' : null}">
+            <summary><span th:text="#{integrations.owntracks.title}">🗺️ OwnTracks Setup</span></summary>
+            <div>
+                <p th:text="#{integrations.owntracks.description}">OwnTracks is a privacy-focused location tracking app available for iOS and Android.</p>
+                <p><strong th:text="#{integrations.download}">Download:</strong> <a href="https://owntracks.org/" target="_blank" rel="noopener noreferrer" style="color: var(--color-highlight)">https://owntracks.org/</a></p>
+                <div class="setup-steps">
+                    <h4 th:text="#{integrations.setup.instructions}">Setup Instructions:</h4>
+                    <ol>
+                        <li th:text="#{integrations.owntracks.step1}">Download OwnTracks from the App Store or Google Play Store</li>
+                        <li th:utext="#{integrations.owntracks.step2}">Open OwnTracks and go to <strong>Settings → Connection</strong></li>
+                        <li th:utext="#{integrations.owntracks.step3}">Set Mode to <strong>HTTP</strong></li>
+                        <li th:if="${hasToken}" th:utext="#{integrations.owntracks.step4.with.token(${serverUrl + contextPath + '/api/v1/ingest/owntracks?token=' + selectedToken})}">Set the Endpoint to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + selectedToken}">https://your-domain.com/api/v1/location-data</code></li>
+                        <li th:unless="${hasToken}" th:utext="#{integrations.owntracks.step4.without.token(${serverUrl + contextPath + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'})}">Set the Endpoint to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/location-data</code></li>
+                        <li th:utext="#{integrations.owntracks.step5}">Disable <strong>Authentication</strong> (we use the token in the URL instead)</li>
+                        <li th:text="#{integrations.owntracks.step6}">Configure tracking settings as desired. Make sure that Owntracks records a point at least every 30 seconds.</li>
+                        <li th:utext="#{integrations.owntracks.step7}">On the map view, set tracking mode to "Movement"</li>
+                        <li th:text="#{integrations.owntracks.step8}">The app will automatically start sending location updates</li>
+                    </ol>
+                </div>
+                <div th:if="${hasToken}">
+                    <div><a id="owntracks-config-link" class="btn" th:text="#{integrations.owntracks.configure}">Configure OwnTracks</a></div>
+                    <div><small th:text="#{integrations.owntracks.configure.description}">This will create a new profile 'reitti' with the configured settings.</small></div>
+                </div>
+            </div>
+        </details>
+        <details data-section="overland" th:attr="open=${openSection == 'overland' ? 'open' : null}">
+            <summary><span th:text="#{integrations.overland.title}">📍 Overland Setup</span></summary>
+            <div>
+                <p th:text="#{integrations.overland.description}">Overland is a GPS logger for iOS that sends location data in GeoJSON format.</p>
+                <p>
+                    <strong th:text="#{integrations.homepage}">Homepage:</strong>
+                    <a href="https://overland.p3k.app/" target="_blank" rel="noopener noreferrer" style="color: var(--color-highlight)">https://overland.p3k.app/</a>
+                </p>
+                <div class="setup-steps">
+                    <h4 th:text="#{integrations.setup.instructions}">Setup Instructions:</h4>
+                    <ol>
+                        <li th:text="#{integrations.overland.step1}">Install Overland</li>
+                        <li th:utext="#{integrations.overland.step2}">Open Overland and go to the <strong>Settings</strong> tab</li>
+                        <li th:utext="#{integrations.overland.step3}"><strong>Important:</strong> Tap the <strong>Request Permission</strong> button to grant location access - Overland will not track anything without this permission</li>
+                        <li th:utext="#{integrations.overland.step4}">Tap on <strong>Receiver Endpoint</strong></li>
+                        <li th:if="${hasToken}" th:utext="#{integrations.overland.step5.with.token(${serverUrl + contextPath + '/api/v1/ingest/overland?token=' + selectedToken})}">Set the Endpoint URL to: <code th:text="${serverUrl + '/api/v1/ingest/overland?token=' + selectedToken}">https://your-domain.com/api/v1/ingest/overland?token=YOUR_TOKEN</code></li>
+                        <li th:unless="${hasToken}" th:utext="#{integrations.overland.step5.without.token(${serverUrl + contextPath + '/api/v1/ingest/overland?token=<YOUR TOKEN>'})}">Set the Endpoint URL to: <code th:text="${serverUrl + '/api/v1/ingest/overland?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/ingest/overland?token=YOUR_TOKEN</code></li>
+                        <li th:utext="#{integrations.overland.step6}">Leave the <strong>Device ID</strong> field empty or set a custom identifier</li>
+                        <li th:utext="#{integrations.overland.step7}">Leave the <strong>Access Token</strong> field empty (we use the token in the URL)</li>
+                        <li th:utext="#{integrations.overland.step8}">Configure tracking settings:
+                            <ul>
+                                <li><strong>Desired Accuracy:</strong> Best (for high accuracy) or 100m (for battery saving)</li>
+                                <li><strong>Points per Batch:</strong> 50-200 (lower for unreliable connections)</li>
+                                <li><strong>Significant Location:</strong> Disabled for continuous tracking</li>
+                            </ul>
+                        </li>
+                        <li th:utext="#{integrations.overland.step9}">Go to the <strong>Tracker</strong> tab and turn tracking <strong>On</strong></li>
+                        <li th:text="#{integrations.overland.step10}">Adjust the sending interval slider (1 second to 30 minutes)</li>
+                        <li th:text="#{integrations.overland.step11}">The app will start sending location data automatically</li>
+                    </ol>
+                </div>
+                <div th:if="${hasToken}">
+                    <div><a id="overland-config-link" class="btn" th:text="#{integrations.overland.configure}">Configure Overland</a></div>
+                    <div><small th:text="#{integrations.overland.configure.description}">This will create a new profile 'reitti' with the configured settings.</small></div>
+                </div>
+            </div>
+        </details>
+        <details data-section="owntracks-recorder" th:attr="open=${openSection == 'owntracks-recorder' ? 'open' : null}">
+            <summary><span th:text="#{integrations.owntracks.recorder.title}">📊 OwnTracks Recorder Integration</span></summary>
+            <div>
+                <p th:text="#{integrations.owntracks.recorder.description}">Connect to an OwnTracks Recorder instance to fetch location data from specific users and devices.</p>
+
+                <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+                    <span th:text="${successMessage}">Configuration saved successfully</span>
+                </div>
+                <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+                    <span th:text="${errorMessage}">Error message</span>
+                </div>
+
+                <form th:hx-post="@{/settings/integrations/owntracks-recorder-integration}" hx-target="#integrations" hx-swap="innerHTML" class="owntracks-recorder-form" style="margin-top: 20px;" autocomplete="off">
+                    <div class="form-group">
+                        <label for="recorderBaseUrl" th:text="#{integrations.owntracks.recorder.base.url}">Base URL</label>
+                        <input type="url"
+                               id="recorderBaseUrl"
+                               name="baseUrl"
+                               required
+                               autocomplete="off"
+                               th:placeholder="#{integrations.owntracks.recorder.base.url.placeholder}"
+                               th:value="${ownTracksRecorderIntegration?.baseUrl}">
+                    </div>
+                    <div class="form-group">
+                        <label for="recorderUsername" th:text="#{integrations.owntracks.recorder.username}">Username</label>
+                        <input type="text"
+                               id="recorderUsername"
+                               name="username"
+                               required
+                               autocomplete="off"
+                               th:placeholder="#{integrations.owntracks.recorder.username.placeholder}"
+                               th:value="${ownTracksRecorderIntegration?.username}">
+                    </div>
+                    <div class="form-group">
+                        <label for="recorderDeviceId" th:text="#{integrations.owntracks.recorder.device.id}">Device ID</label>
+                        <input type="text"
+                               id="recorderDeviceId"
+                               name="deviceId"
+                               required
+                               autocomplete="off"
+                               th:placeholder="#{integrations.owntracks.recorder.device.id.placeholder}"
+                               th:value="${ownTracksRecorderIntegration?.deviceId}">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="recorderAuthUsername" th:text="#{integrations.owntracks.recorder.auth.username}">Authentication Username</label>
+                        <input type="text"
+                               id="recorderAuthUsername"
+                               name="authUsername"
+                               autocomplete="off"
+                               th:placeholder="#{integrations.owntracks.recorder.auth.username.placeholder}"
+                               th:value="${ownTracksRecorderIntegration?.authUsername}">
+                        <small th:text="#{integrations.owntracks.recorder.auth.optional}">Leave empty if no authentication is needed</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="recorderAuthPassword" th:text="#{integrations.owntracks.recorder.auth.password}">Authentication Password</label>
+                        <input type="password"
+                               id="recorderAuthPassword"
+                               name="authPassword"
+                               autocomplete="off"
+                               th:placeholder="#{integrations.owntracks.recorder.auth.password.placeholder}"
+                               th:value="${ownTracksRecorderIntegration?.authPassword}">
+                        <small th:text="#{integrations.owntracks.recorder.auth.optional}">Leave empty if no authentication is needed</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox"
+                                   name="enabled"
+                                   value="true"
+                                   th:checked="${ownTracksRecorderIntegration?.enabled}">
+                            <span th:text="#{integrations.owntracks.recorder.enabled}">Enable Integration</span>
+                        </label>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button type="submit" class="btn" th:text="#{integrations.owntracks.recorder.save}">Save Configuration</button>
+                        <button type="button"
+                                class="btn"
+                                id="test-recorder-connection-btn"
+                                th:text="#{integrations.owntracks.recorder.test.connection}">Test Connection</button>
+                        <button type="button"
+                                class="btn"
+                                id="load-historical-btn"
+                                th:attr="hx-post=@{/settings/integrations/owntracks-recorder-integration/load-historical}, hx-confirm=#{integrations.owntracks.recorder.load.historical.confirm}, disabled=${!hasRecorderIntegration}"
+                                hx-target="#integrations"
+                                hx-swap="innerHTML"
+                                th:text="#{integrations.owntracks.recorder.load.historical}">Load Historical Data</button>
+                    </div>
+                </form>
+
+                <div id="recorder-connection-test-result" style="margin-top: 10px;"></div>
+
+                <script>
+                    document.getElementById('test-recorder-connection-btn').addEventListener('click', function() {
+                        const baseUrl = document.getElementById('recorderBaseUrl').value;
+                        const username = document.getElementById('recorderUsername').value;
+                        const deviceId = document.getElementById('recorderDeviceId').value;
+                        const authUsername = document.getElementById('recorderAuthUsername').value;
+                        const authPassword = document.getElementById('recorderAuthPassword').value;
+                        const resultDiv = document.getElementById('recorder-connection-test-result');
+
+                        if (!baseUrl || !username || !deviceId) {
+                            const message = window.locale?.['integrations.owntracks.recorder.test.missing.fields'] || 'Please fill in Base URL, Username, and Device ID';
+                            resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">' + message + '</div>';
+                            return;
+                        }
+
+                        // Show loading state
+                        const loadingMessage = window.locale?.['integrations.owntracks.recorder.test.loading'] || 'Testing connection...';
+                        resultDiv.innerHTML = '<div style="color: var(--color-text-white);">' + loadingMessage + '</div>';
+
+                        // Make AJAX request to test connection
+                        fetch(window.contextPath + '/settings/integrations/owntracks-recorder-integration/test', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            body: new URLSearchParams({
+                                baseUrl: baseUrl,
+                                username: username,
+                                deviceId: deviceId,
+                                authUsername: authUsername,
+                                authPassword: authPassword
+                            })
+                        })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    resultDiv.innerHTML = '<div class="alert alert-success" style="display: block;">' + data.message + '</div>';
+                                } else {
+                                    resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + data.message + '</div>';
+                                }
+                            })
+                            .catch(error => {
+                                const errorMessage = window.locale?.['integrations.owntracks.recorder.test.failed'] || 'Connection test failed';
+                                resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + errorMessage + ': ' + error.message + '</div>';
+                            });
+                    });
+
+                    // Add loading indicator for Load Historical Data button
+                    document.addEventListener('htmx:beforeRequest', function(evt) {
+                        if (evt.detail.elt.id === 'load-historical-btn') {
+                            const loadingText = window.locale?.['integrations.owntracks.recorder.loading.historical'] || 'Loading Historical Data...';
+                            evt.detail.elt.innerHTML = '<span style="display: inline-flex; align-items: center; gap: 8px;"><span style="width: 16px; height: 16px; border: 2px solid #ffffff; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></span>' + loadingText + '</span>';
+                            evt.detail.elt.disabled = true;
+                        }
+                    });
+
+                    // Add CSS for spinner animation
+                    if (!document.querySelector('#spinner-styles')) {
+                        const style = document.createElement('style');
+                        style.id = 'spinner-styles';
+                        style.textContent = `
+                                    @keyframes spin {
+                                        0% { transform: rotate(0deg); }
+                                        100% { transform: rotate(360deg); }
+                                    }
+                                `;
+                        document.head.appendChild(style);
+                    }
+                </script>
+            </div>
+        </details>
+        <details data-section="mqtt" th:attr="open=${openSection == 'mqtt' ? 'open' : null}">
+            <summary><span th:text="#{integrations.mqtt.title}">MQTT Integration</span></summary>
+            <div>
+                <p th:text="#{integrations.mqtt.description}">Connect to an MQTT broker to receive location data from OwnTracks or other compatible applications.</p>
+
+                <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+                    <span th:text="${successMessage}">Configuration saved successfully</span>
+                </div>
+                <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+                    <span th:text="${errorMessage}">Error message</span>
+                </div>
+
+                <form th:hx-post="@{/settings/integrations/mqtt-integration}" hx-target="#integrations" hx-swap="innerHTML" autocomplete="off" onsubmit="return validateMqttForm()">
+                    <div class="form-group">
+                        <label for="mqttHost" th:text="#{integrations.mqtt.host}">MQTT Host</label>
+                        <input type="text"
+                               id="mqttHost"
+                               name="mqtt_host"
+                               required
+                               autocomplete="new-password"
+                               th:placeholder="#{integrations.mqtt.host.placeholder}"
+                               th:value="${mqttIntegration?.host}">
+                    </div>
+                    <div class="form-group">
+                        <label for="mqttPort" th:text="#{integrations.mqtt.port}">Port</label>
+                        <input type="number"
+                               id="mqttPort"
+                               name="mqtt_port"
+                               required
+                               min="1"
+                               max="65535"
+                               autocomplete="new-password"
+                               th:placeholder="#{integrations.mqtt.port.placeholder}"
+                               th:value="${mqttIntegration?.port}">
+                    </div>
+                    <div class="form-group">
+                        <label for="mqttIdentifier" th:text="#{integrations.mqtt.identifier}">Client Identifier</label>
+                        <input type="text"
+                               id="mqttIdentifier"
+                               name="mqtt_identifier"
+                               required="required"
+                               readonly="readonly"
+                               autocomplete="new-password"
+                               th:value="${mqttIntegration?.identifier ?: generatedClientId}">
+                        <small th:text="#{integrations.mqtt.identifier.description}">Unique identifier for this MQTT client connection. Auto-generated and cannot be changed.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="mqttTopic" th:text="#{integrations.mqtt.topic}">Topic</label>
+                        <input type="text"
+                               id="mqttTopic"
+                               name="mqtt_topic"
+                               required
+                               autocomplete="new-password"
+                               th:placeholder="#{integrations.mqtt.topic.placeholder}"
+                               th:value="${mqttIntegration?.topic}">
+                        <small th:text="#{integrations.mqtt.topic.description}">MQTT topic pattern to subscribe to. Use + for single-level wildcards and # for multi-level wildcards (e.g., owntracks/+/+ for all OwnTracks users and devices).</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mqttUsername" th:text="#{integrations.mqtt.username}">Username</label>
+                        <input type="text"
+                               id="mqttUsername"
+                               name="mqtt_username"
+                               autocomplete="new-password"
+                               th:placeholder="#{integrations.mqtt.username.placeholder}"
+                               th:value="${mqttIntegration?.username}">
+                        <small th:text="#{integrations.mqtt.auth.optional}">Leave empty if no authentication is needed</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mqttPassword" th:text="#{integrations.mqtt.password}">Password</label>
+                        <input type="password"
+                               id="mqttPassword"
+                               name="mqtt_password"
+                               autocomplete="new-password"
+                               th:placeholder="#{integrations.mqtt.password.placeholder}"
+                               th:value="${mqttIntegration?.password}">
+                        <small th:text="#{integrations.mqtt.auth.optional}">Leave empty if no authentication is needed</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mqttPayloadType" th:text="#{integrations.mqtt.payload.type}">Payload Type</label>
+                        <select id="mqttPayloadType" name="mqtt_payloadType" class="form-control" required>
+                            <option value="OWNTRACKS" th:selected="${mqttIntegration?.payloadType?.name() == 'OWNTRACKS'}" th:text="#{integrations.mqtt.payload.type.owntracks}">OwnTracks</option>
+                        </select>
+                        <small th:text="#{integrations.mqtt.payload.type.help}">Select the format of the location data payload</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox"
+                                   name="mqtt_enabled"
+                                   value="true"
+                                   th:checked="${mqttIntegration?.enabled}">
+                            <span th:text="#{integrations.mqtt.enabled}">Enable Integration</span>
+                        </label>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button type="submit" class="btn" th:text="#{integrations.mqtt.save}">Save Configuration</button>
+                        <button type="button"
+                                class="btn"
+                                id="test-mqtt-connection-btn"
+                                th:text="#{integrations.mqtt.test.connection}">Test Connection</button>
+                    </div>
+                </form>
+
+                <div id="mqtt-connection-test-result" style="margin-top: 10px;"></div>
+
+                <script>
+                    function validateMqttForm() {
+                        const topic = document.getElementById('mqttTopic').value;
+                        const resultDiv = document.getElementById('mqtt-connection-test-result');
+
+                        // Check for wildcard characters in topic
+                        if (topic.includes('+') || topic.includes('#')) {
+                            const errorMessage = window.locale?.['integrations.mqtt.topic.no.wildcards'] || 'Topic cannot contain wildcard characters (+ or #) when saving the configuration. Wildcards are only for subscribing to topics.';
+                            resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + errorMessage + '</div>';
+                            return false; // Prevent form submission
+                        }
+
+                        // Clear any previous error messages
+                        resultDiv.innerHTML = '';
+                        return true; // Allow form submission
+                    }
+
+                    document.getElementById('test-mqtt-connection-btn').addEventListener('click', function() {
+                        const host = document.getElementById('mqttHost').value;
+                        const port = document.getElementById('mqttPort').value;
+                        const identifier = document.getElementById('mqttIdentifier').value;
+                        const topic = document.getElementById('mqttTopic').value;
+                        const username = document.getElementById('mqttUsername').value;
+                        const password = document.getElementById('mqttPassword').value;
+                        const payloadType = document.getElementById('mqttPayloadType').value;
+                        const resultDiv = document.getElementById('mqtt-connection-test-result');
+
+                        if (!host || !port || !identifier || !topic) {
+                            const message = window.locale?.['integrations.mqtt.test.missing.fields'] || 'Please fill in Host, Port, Client Identifier, and Topic';
+                            resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">' + message + '</div>';
+                            return;
+                        }
+
+                        // Show loading state
+                        const loadingMessage = window.locale?.['integrations.mqtt.test.loading'] || 'Testing connection...';
+                        resultDiv.innerHTML = '<div style="color: var(--color-text-white);">' + loadingMessage + '</div>';
+
+                        // Make AJAX request to test connection
+                        fetch(window.contextPath + '/settings/integrations/mqtt-integration/test', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            body: new URLSearchParams({
+                                mqtt_host: host,
+                                mqtt_port: port,
+                                mqtt_identifier: identifier,
+                                mqtt_topic: topic,
+                                mqtt_username: username,
+                                mqtt_password: password,
+                                mqtt_payloadType: payloadType
+                            })
+                        })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    resultDiv.innerHTML = '<div class="alert alert-success" style="display: block;">' + data.message + '</div>';
+                                } else {
+                                    resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + data.message + '</div>';
+                                }
+                            })
+                            .catch(error => {
+                                const errorMessage = window.locale?.['integrations.mqtt.test.failed'] || 'Connection test failed';
+                                resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + errorMessage + ': ' + error.message + '</div>';
+                            });
+                    });
+                </script>
+            </div>
+        </details>
+    </div>
+    <div class="divider left" th:text="#{integrations.photos.title}">Photos Integrations</div>
+    <div class="divider-description left" th:text="#{integrations.photos.description}">Configure photo management integration with Immich</div>
+    <div>
+        <details data-section="photos" th:attr="open=${openSection == 'photos' ? 'open' : null}">
+            <summary>
+                <i class="lni lni-photos"></i> <span th:text="#{integrations.immich.title}">Immich Integration</span>
+            </summary>
+            <div id="photos-section">
+                <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+                    <span th:text="${successMessage}">Configuration saved successfully</span>
+                </div>
+                <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+                    <span th:text="${errorMessage}">Error message</span>
+                </div>
+
+                <div class="integration-section">
+                    <h3 th:text="#{integrations.immich.title}">🖼️ Immich Integration</h3>
+                    <p th:text="#{integrations.immich.description}">Immich is a self-hosted photo and video backup solution. Connect
+                        your Immich instance to show photos taken at specific locations and dates on your timeline map.</p>
+
+                    <form th:hx-post="@{/settings/integrations/immich-integration}" hx-target="#integrations" hx-swap="innerHTML" class="immich-form"
+                          style="margin-top: 20px;" autocomplete="off">
+                        <div class="form-group">
+                            <label for="serverUrl" th:text="#{integrations.immich.server.url}">Server URL</label>
+                            <input type="url"
+                                   id="serverUrl"
+                                   name="serverUrl"
+                                   required
+                                   autocomplete="off"
+                                   th:placeholder="#{integrations.immich.server.url.placeholder}"
+                                   th:value="${hasIntegration ? immichIntegration.serverUrl : ''}">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="apiToken" th:text="#{integrations.immich.api.token}">API Token</label>
+                            <input type="password"
+                                   id="apiToken"
+                                   name="apiToken"
+                                   required
+                                   autocomplete="new-password"
+                                   th:placeholder="#{integrations.immich.api.token.placeholder}"
+                                   th:value="${hasIntegration ? immichIntegration.apiToken : ''}">
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox"
+                                       name="enabled"
+                                       value="true"
+                                       th:checked="${hasIntegration && immichIntegration.enabled}">
+                                <span th:text="#{integrations.immich.enabled}">Enable Integration</span>
+                            </label>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; margin-top: 20px;">
+                            <button type="submit" class="btn" th:text="#{integrations.immich.save}">Save Configuration</button>
+                            <button type="button"
+                                    class="btn"
+                                    id="test-connection-btn"
+                                    th:text="#{integrations.immich.test.connection}">Test Connection
+                            </button>
+                        </div>
+                    </form>
+
+                    <div id="connection-test-result" style="margin-top: 10px;"></div>
+
+                    <script>
+                        document.getElementById('test-connection-btn').addEventListener('click', function () {
+                            const serverUrl = document.getElementById('serverUrl').value;
+                            const apiToken = document.getElementById('apiToken').value;
+                            const resultDiv = document.getElementById('connection-test-result');
+
+                            if (!serverUrl || !apiToken) {
+                                resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">Please fill in both Server URL and API Token</div>';
+                                return;
+                            }
+
+                            // Show loading state
+                            resultDiv.innerHTML = '<div style="color: var(--color-text-white);">Testing connection...</div>';
+
+                            // Make AJAX request to test connection
+                            fetch(window.contextPath + '/settings/integrations/immich-integration/test', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                },
+                                body: new URLSearchParams({
+                                    serverUrl: serverUrl,
+                                    apiToken: apiToken
+                                })
+                            })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        resultDiv.innerHTML = '<div class="alert alert-success" style="display: block;">' + data.message + '</div>';
+                                    } else {
+                                        resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + data.message + '</div>';
+                                    }
+                                })
+                                .catch(error => {
+                                    resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">Connection test failed: ' + error.message + '</div>';
+                                });
+                        });
+                    </script>
+                </div>
+            </div>
+        </details>
+    </div>
+
+    <div class="divider left" th:text="#{integrations.shared.instances.title}">Federation</div>
+    <div class="divider-description left" th:text="#{integrations.shared.instances.description}">Connect to other Reitti instances to share location data with friends, family, or colleagues. This allows you to view their location data alongside yours on the timeline map.</div>
+    <div>
+        <details data-section="shared-instances" th:attr="open=${openSection == 'shared-instances' ? 'open' : null}">
+            <summary>
+                <i class="lni lni-network"></i> <span th:text="#{integrations.shared.instances.title}">Shared Instances</span>
+            </summary>
+            <div id="shared-instances-section" th:hx-get="@{/settings/integrations/shared-instances-content}" hx-trigger="load" hx-swap="innerHTML">
+                <!-- <span th:text="#{integrations.shared.instances.loading}">Shared instances content will be loaded here</span> -->
+            </div>
+        </details>
+    </div>
+    <script th:inline="javascript">
+        (function() {
+            const serverUrl = /*[[${serverUrl}]]*/ '';
+            const firstToken = /*[[${firstToken}]]*/ '';
+            const tokenSelect = document.getElementById('tokenSelect');
+            const currentToken = tokenSelect ? tokenSelect.value : firstToken;
+
+            if (currentToken == null) {
+                return;
+            }
+            // Set initial hrefs
+            const owntracksConfig = generateOwnTracksConfig(currentToken, serverUrl);
+            const gpsloggerPropertiesUrl = generateGpsLoggerPropertiesUrl(currentToken, serverUrl);
+            const overlandConfigUrl = generateOverlandUrl(currentToken, serverUrl);
+
+            document.getElementById('gpslogger-config-link').href = 'gpslogger://properties/' + gpsloggerPropertiesUrl;
+            document.getElementById('owntracks-config-link').href = 'owntracks:///config?inline=' + owntracksConfig;
+            document.getElementById('overland-config-link').href = overlandConfigUrl;
+
+            if (tokenSelect) {
+                tokenSelect.addEventListener('change', function () {
+                    const selectedToken = this.value;
+
+                    // Update config links
+                    const owntracksConfig = generateOwnTracksConfig(selectedToken, serverUrl);
+                    const gpsloggerPropertiesUrl = generateGpsLoggerPropertiesUrl(selectedToken, serverUrl);
+                    const overlandConfigUrl = generateOverlandUrl(selectedToken, serverUrl);
+
+                    document.getElementById('gpslogger-config-link').href = 'gpslogger://properties/' + gpsloggerPropertiesUrl;
+                    document.getElementById('owntracks-config-link').href = 'owntracks:///config?inline=' + owntracksConfig;
+                    document.getElementById('overland-config-link').href = overlandConfigUrl;
+                });
+            }
+
+            function generateOwnTracksConfig(token, serverUrl) {
+                const url = serverUrl + window.contextPath + '/api/v1/ingest/owntracks?token=' + token;
+                const json = JSON.stringify({
+                    "_type": "configuration",
+                    "url": url,
+                    "tid": "reitti",
+                    "locatorInterval": 15,
+                    "moveModeLocatorInterval": 15
+                });
+                return btoa(json);
+            }
+
+            function generateGpsLoggerPropertiesUrl(token, serverUrl) {
+                return serverUrl + window.contextPath +  '/settings/integrations/reitti.properties?token=' + token;
+            }
+
+            function generateOverlandUrl(token, serverUrl) {
+                const ingestUrl = serverUrl + window.contextPath + '/api/v1/ingest/overland?token=' + token;
+                const encodedUrl = encodeURIComponent(ingestUrl);
+                return 'overland://setup?url=' + encodedUrl + '&device_id=1&unique_id=yes';
+            }
+        })();
+    </script>
+</div>
+</body>
+</html>
