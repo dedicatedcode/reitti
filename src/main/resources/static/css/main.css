@@ -61,6 +61,7 @@
     --color-background-dark: #3b3b3b;
     --color-background-dark-light: #5c5c5c;
     --color-text-white: #e3e3e3;
+    --color-text-gray: #c0c0c0;
     --serif-font: "Fraunces", 'Noto Serif SC', 'PingFang SC', 'Microsoft YaHei', serif;;
     --memories-header-height: 550px;
     --box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
@@ -299,11 +300,15 @@ select option {
 }
 
 select:disabled,
-input:read-only,
 input:disabled {
     background-color: #3a3a3a;
     color: #d0d0d0;
     cursor: not-allowed;
+}
+
+input:read-only {
+    background-color: #3a3a3a;
+    color: #d0d0d0;
 }
 
 table {
@@ -411,6 +416,46 @@ tr:hover {
 .upload-option:hover {
     transform: translateY(-4px);
     box-shadow: var(--box-shadow);
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    font-size: 1.3rem;
+    color: var(--color-highlight);
+    font-weight: 500;
+    margin: 20px 0;
+}
+
+.divider::before,
+.divider::after {
+    content: "";
+    flex: 1;
+    border-bottom: 1px solid var(--color-highlight);
+    margin: 0 15px;
+}
+
+.divider.left::before {
+    display: none;
+}
+
+.divider-description {
+    color: var(--color-text-gray);
+    font-size: 1.1em;
+    margin-top: -15px;
+    margin-bottom: 20px;
+    padding-left: 15px;
+    max-width: 800px;
+    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+
+.divider-description.left {
+    margin-left: 0;
+    text-align: left;
+    padding-left: 0;
 }
 
 .settings-card h3 {

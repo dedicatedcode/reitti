@@ -53,6 +53,7 @@ class DynamicMqttProviderIntegrationTest {
                 null,
                 mosquitto.getHost(),
                 mosquitto.getMappedPort(1883),
+                false,
                 "test-client-" + System.currentTimeMillis(),
                 topic,
                 null,
