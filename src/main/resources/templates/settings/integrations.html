@@ -167,23 +167,6 @@
         'integrations.mqtt.test.failed': /*[[#{integrations.mqtt.test.failed}]]*/ 'Connection test failed',
         'integrations.mqtt.topic.no.wildcards': /*[[#{integrations.mqtt.topic.no.wildcards}]]*/ 'Topic cannot contain wildcard characters (+ or #) when saving the configuration.'
     };
-    document.addEventListener('DOMContentLoaded', function() {
-        const detailsElements = document.querySelectorAll('details');
-
-        detailsElements.forEach(details => {
-            details.addEventListener('toggle', function() {
-                if (this.open) {
-                    // Close all other details elements
-                    detailsElements.forEach(otherDetails => {
-                        if (otherDetails !== this && otherDetails.open) {
-                            otherDetails.open = false;
-                        }
-                    });
-                }
-            });
-        });
-    });
-
     function getCurrentOpenSection() {
         const detailsElements = document.querySelectorAll('details');
         for (const details of detailsElements) {

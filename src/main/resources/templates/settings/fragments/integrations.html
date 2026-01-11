@@ -19,7 +19,7 @@
     </div>
     <div class="divider left" th:text="#{integrations.data.ingestion.title}">Data</div>
     <div class="divider-description left" th:text="#{integrations.data.ingestion.description}">Configure mobile apps to automatically send location data to Reitti or let Reitti connect to external services like OwnTracks Recorder or MQTT.</div>
-    <div class="alert alert-info" style="margin-bottom: 20px;">
+    <div class="alert alert-info">
         <strong th:text="#{integrations.tracking.frequency.title}">📍 GPS Tracking Frequency</strong><br>
         <p style="color: var(--color-text-white)" th:text="#{integrations.tracking.frequency.description}">For optimal results, Reitti works best with a continuous stream of GPS locations. Make sure your tracking app records a point at least every 30 seconds to ensure accurate visit and trip detection.</p>
         <strong style="var(--color-highlight);" th:text="#{integrations.data.quality.title}">Data Quality Verification</strong>
@@ -33,9 +33,8 @@
             <span class="button-text" th:text="#{integrations.data.quality.button}">Verify Data Quality</span>
             <span id="data-quality-spinner" class="htmx-indicator"><i class="lni lni-is-spinning lni-spinner-2-sacle"></i></span>
         </button>
-
         <div style="margin-top: 24px;"><strong th:text="#{integrations.mobile.help.title}">Need Help?</strong></div>
-        <p style="color: var(--color-text-gray)">
+        <p style="color: var(--color-text-white)">
             <span th:text="#{integrations.mobile.help.description}">For detailed setup instructions and tips, visit our comprehensive guide:</span>
             <a href="https://www.dedicatedcode.com/projects/reitti/configurations/mobile-app-integration/"
                target="_blank"
@@ -667,6 +666,19 @@
                 const encodedUrl = encodeURIComponent(ingestUrl);
                 return 'overland://setup?url=' + encodedUrl + '&device_id=1&unique_id=yes';
             }
+            const detailsElements = document.querySelectorAll('details');
+            detailsElements.forEach(details => {
+                details.addEventListener('toggle', function() {
+                    if (this.open) {
+                        // Close all other details elements
+                        detailsElements.forEach(otherDetails => {
+                            if (otherDetails !== this && otherDetails.open) {
+                                otherDetails.open = false;
+                            }
+                        });
+                    }
+                });
+            });
         })();
     </script>
 </div>
