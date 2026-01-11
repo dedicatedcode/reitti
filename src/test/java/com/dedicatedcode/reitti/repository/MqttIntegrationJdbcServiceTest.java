@@ -47,6 +47,7 @@ class MqttIntegrationJdbcServiceTest {
         assertThat(saved.getId()).isNotNull();
         assertThat(saved.getHost()).isEqualTo("mqtt.example.com");
         assertThat(saved.getPort()).isEqualTo(1883);
+        assertThat(saved.isUseTLS()).isTrue();
         assertThat(saved.getIdentifier()).isEqualTo("test-client");
         assertThat(saved.getTopic()).isEqualTo("owntracks/+/+");
         assertThat(saved.getUsername()).isEqualTo("testuser");
@@ -78,19 +79,20 @@ class MqttIntegrationJdbcServiceTest {
         MqttIntegration saved = mqttIntegrationJdbcService.save(testUser, integration);
         
         MqttIntegration updated = new MqttIntegration(
-            saved.getId(),
-            "mqtt.updated.com",
-            8883,
-            "updated-client",
-            "updated/topic",
-            "updateduser",
-            "updatedpass",
-            PayloadType.OWNTRACKS,
-            false,
-            saved.getCreatedAt(),
-            saved.getUpdatedAt(),
-            saved.getLastUsed(),
-            saved.getVersion()
+                saved.getId(),
+                "mqtt.updated.com",
+                8883,
+                false,
+                "updated-client",
+                "updated/topic",
+                "updateduser",
+                "updatedpass",
+                PayloadType.OWNTRACKS,
+                false,
+                saved.getCreatedAt(),
+                saved.getUpdatedAt(),
+                saved.getLastUsed(),
+                saved.getVersion()
         );
         
         MqttIntegration result = mqttIntegrationJdbcService.save(testUser, updated);
@@ -114,19 +116,20 @@ class MqttIntegrationJdbcServiceTest {
         
         // Create an update with stale version
         MqttIntegration staleUpdate = new MqttIntegration(
-            saved.getId(),
-            "mqtt.stale.com",
-            1883,
-            "stale-client",
-            "stale/topic",
-            "staleuser",
-            "stalepass",
-            PayloadType.OWNTRACKS,
-            true,
-            saved.getCreatedAt(),
-            saved.getUpdatedAt(),
-            saved.getLastUsed(),
-            999L // Stale version
+                saved.getId(),
+                "mqtt.stale.com",
+                1883,
+                true,
+                "stale-client",
+                "stale/topic",
+                "staleuser",
+                "stalepass",
+                PayloadType.OWNTRACKS,
+                true,
+                saved.getCreatedAt(),
+                saved.getUpdatedAt(),
+                saved.getLastUsed(),
+                999L // Stale version
         );
         
         assertThatThrownBy(() -> mqttIntegrationJdbcService.save(testUser, staleUpdate))
@@ -147,19 +150,20 @@ class MqttIntegrationJdbcServiceTest {
 
     private MqttIntegration createTestIntegration() {
         return new MqttIntegration(
-            null,
-            "mqtt.example.com",
-            1883,
-            "test-client",
-            "owntracks/+/+",
-            "testuser",
-            "testpass",
-            PayloadType.OWNTRACKS,
-            true,
-            null,
-            null,
-            null,
-            null
+                null,
+                "mqtt.example.com",
+                1883,
+                true,
+                "test-client",
+                "owntracks/+/+",
+                "testuser",
+                "testpass",
+                PayloadType.OWNTRACKS,
+                true,
+                null,
+                null,
+                null,
+                null
         );
     }
 }

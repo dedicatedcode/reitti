@@ -65,46 +65,11 @@ public class IntegrationsSettingsController {
 
     @GetMapping
     public String getPage(@AuthenticationPrincipal User user,
-                          @RequestParam(required = false) String openSection,
                           HttpServletRequest request,
                           Model model) {
         model.addAttribute("activeSection", "integrations");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
-
-        List<ApiToken> tokens = apiTokenService.getTokensForUser(user);
-
-        // Add the first token if available
-        String selectedToken = null;
-        if (!tokens.isEmpty()) {
-            selectedToken = tokens.getFirst().getToken();
-            model.addAttribute("firstToken", selectedToken);
-            model.addAttribute("hasToken", true);
-        } else {
-            model.addAttribute("hasToken", false);
-        }
-
-        model.addAttribute("selectedToken", selectedToken);
-        model.addAttribute("tokens", tokens);
-
-        Optional<OwnTracksRecorderIntegration> recorderIntegration = ownTracksRecorderIntegrationService.getIntegrationForUser(user);
-        if (recorderIntegration.isPresent()) {
-            model.addAttribute("ownTracksRecorderIntegration", recorderIntegration.get());
-            model.addAttribute("hasRecorderIntegration", recorderIntegration.get().isEnabled());
-        } else {
-            model.addAttribute("hasRecorderIntegration", false);
-        }
-
-        Optional<MqttIntegration> mqttIntegration = this.mqttIntegrationJdbcService.findByUser(user);
-        if (mqttIntegration.isPresent()) {
-            model.addAttribute("mqttIntegration", mqttIntegration.get());
-        } else {
-            model.addAttribute("generatedClientId", "reitti-client-" + UUID.randomUUID().toString().substring(0, 8));
-        }
-        model.addAttribute("openSection", openSection);
-        model.addAttribute("serverUrl", calculateServerUrl(request));
-        model.addAttribute("contextPath", contextPathHolder.getContextPath());
-
         return "settings/integrations";
     }
 
@@ -148,12 +113,21 @@ public class IntegrationsSettingsController {
         } else {
             model.addAttribute("generatedClientId", "reitti-client-" + UUID.randomUUID().toString().substring(0, 8));
         }
+        Optional<ImmichIntegration> integration = immichIntegrationService.getIntegrationForUser(currentUser);
+
+        if (integration.isPresent()) {
+            model.addAttribute("immichIntegration", integration.get());
+            model.addAttribute("hasIntegration", true);
+        } else {
+            model.addAttribute("hasIntegration", false);
+        }
+
         model.addAttribute("openSection", openSection);
         model.addAttribute("serverUrl", calculateServerUrl(request));
         model.addAttribute("contextPath", contextPathHolder.getContextPath());
 
 
-        return "settings/integrations :: integrations-content";
+        return "settings/fragments/integrations :: integrations-content";
     }
 
     private String calculateServerUrl(HttpServletRequest request) {
@@ -190,42 +164,20 @@ public class IntegrationsSettingsController {
                 .body(properties);
     }
 
-    @GetMapping("/photos-content")
-    public String getPhotosContent(@AuthenticationPrincipal User user, Model model) {
-        Optional<ImmichIntegration> integration = immichIntegrationService.getIntegrationForUser(user);
-
-        if (integration.isPresent()) {
-            model.addAttribute("immichIntegration", integration.get());
-            model.addAttribute("hasIntegration", true);
-        } else {
-            model.addAttribute("hasIntegration", false);
-        }
-
-        return "fragments/photos :: photos-content";
-    }
-
     @PostMapping("/immich-integration")
     public String saveImmichIntegration(@RequestParam String serverUrl,
                                         @RequestParam String apiToken,
                                         @RequestParam(defaultValue = "false") boolean enabled,
                                         @AuthenticationPrincipal User currentUser,
-                                        Model model) {
+                                        RedirectAttributes model) {
         try {
-            ImmichIntegration integration = immichIntegrationService.saveIntegration(
-                    currentUser, serverUrl, apiToken, enabled);
-
-            model.addAttribute("immichIntegration", integration);
-            model.addAttribute("hasIntegration", true);
-            model.addAttribute("successMessage", i18n.translate("integrations.immich.config.saved"));
+            immichIntegrationService.saveIntegration(currentUser, serverUrl, apiToken, enabled);
+            model.addFlashAttribute("successMessage", i18n.translate("integrations.immich.config.saved"));
         } catch (Exception e) {
-            model.addAttribute("errorMessage", i18n.translate("integrations.immich.config.error", e.getMessage()));
-            // Re-populate form with submitted values
-            ImmichIntegration tempIntegration = new ImmichIntegration(serverUrl, apiToken, enabled);
-            model.addAttribute("immichIntegration", tempIntegration);
-            model.addAttribute("hasIntegration", true);
+            model.addFlashAttribute("errorMessage", i18n.translate("integrations.immich.config.error", e.getMessage()));
         }
 
-        return "fragments/photos :: photos-content";
+        return "redirect:/settings/integrations/integrations-content?openSection=photos";
     }
 
     @PostMapping("/immich-integration/test")
@@ -268,10 +220,7 @@ public class IntegrationsSettingsController {
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integrations.owntracks.recorder.config.error", e.getMessage()));
         }
-
-        redirectAttributes.addFlashAttribute("openSection", "external-data-stores");
-
-        return "redirect:/settings/integrations/integrations-content?openSection=external-data-stores";
+        return "redirect:/settings/integrations/integrations-content?openSection=owntracks-recorder";
     }
 
 
@@ -310,7 +259,7 @@ public class IntegrationsSettingsController {
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integrations.owntracks.recorder.load.historical.error", e.getMessage()));
         }
-        return "redirect:/settings/integrations/integrations-content?openSection=external-data-stores";
+        return "redirect:/settings/integrations/integrations-content?openSection=owntracks-recorder";
     }
 
     @PostMapping("/mqtt-integration")
@@ -318,6 +267,7 @@ public class IntegrationsSettingsController {
             @AuthenticationPrincipal User user,
             @RequestParam(name = "mqtt_host") String host,
             @RequestParam(name = "mqtt_port") int port,
+            @RequestParam(name = "mqtt_useTLS", defaultValue = "false") boolean useTLS,
             @RequestParam(name = "mqtt_identifier") String identifier,
             @RequestParam(name = "mqtt_topic") String topic,
             @RequestParam(name = "mqtt_username", required = false) String username,
@@ -347,6 +297,7 @@ public class IntegrationsSettingsController {
                     .withPort(port)
                     .withIdentifier(identifier)
                     .withTopic(topic)
+                    .withUseTLS(useTLS)
                     .withUsername(username)
                     .withPassword(password)
                     .withPayloadType(payloadType)
@@ -374,6 +325,7 @@ public class IntegrationsSettingsController {
     public ResponseEntity<Map<String, Object>> testMqttConnection(
             @RequestParam(name = "mqtt_host") String host,
             @RequestParam(name = "mqtt_port") int port,
+            @RequestParam(name = "mqtt_useTLS", defaultValue = "false") boolean useTLS,
             @RequestParam(name = "mqtt_identifier") String identifier,
             @RequestParam(name = "mqtt_topic") String topic,
             @RequestParam(name = "mqtt_username", required = false) String username,
@@ -411,6 +363,7 @@ public class IntegrationsSettingsController {
             CompletableFuture<DynamicMqttProvider.MqttTestResult> testResult = this.mqttProvider.testConnection(new MqttIntegration(null,
                                                                                                                                     host,
                                                                                                                                     port,
+                                                                                                                                    useTLS,
                                                                                                                                     null,
                                                                                                                                     topic,
                                                                                                                                     username,
