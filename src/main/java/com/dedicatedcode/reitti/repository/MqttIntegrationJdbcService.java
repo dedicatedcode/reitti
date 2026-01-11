@@ -137,6 +137,10 @@ public class MqttIntegrationJdbcService {
         );
     }
 
+    public void deleteForUser(User user) {
+        this.jdbcTemplate.update("DELETE FROM mqtt_integrations WHERE user_id = ?", user.getId());
+    }
+
     private static class MqttIntegrationRowMapper implements RowMapper<MqttIntegration> {
         @Override
         public MqttIntegration mapRow(ResultSet rs, int rowNum) throws SQLException {
