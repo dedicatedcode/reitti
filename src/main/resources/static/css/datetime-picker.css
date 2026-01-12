@@ -1,0 +1,197 @@
+/* DateTime Picker Styles */
+
+/* Main container and layout */
+.datetime-picker {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.datetime-picker .native-input {
+    flex: 1;
+    margin-right: 8px;
+}
+
+/* Trigger button */
+.picker-trigger {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.picker-trigger:hover {
+    background: #0056b3;
+}
+
+/* Popup container */
+.picker-popup {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1000;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    margin-top: 4px;
+    min-width: 600px;
+}
+
+.picker-container {
+    display: flex;
+    padding: 16px;
+    gap: 16px;
+}
+
+/* Calendar section */
+.calendar-section {
+    flex: 2;
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.calendar-header button {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.calendar-header button:hover {
+    background: #f0f0f0;
+}
+
+.month-year {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+/* Weekdays and days grid */
+.weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.weekday {
+    text-align: center;
+    font-weight: bold;
+    font-size: 12px;
+    color: #666;
+    padding: 4px;
+}
+
+.days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.day {
+    background: none;
+    border: none;
+    padding: 8px;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.day:hover {
+    background: #e3f2fd;
+}
+
+.day.selected {
+    background: #007bff;
+    color: white;
+}
+
+.day.other-month {
+    color: #ccc;
+}
+
+.day.disabled {
+    color: #ccc;
+    cursor: not-allowed;
+}
+
+/* Year and time scroll sections */
+.year-scroll, .time-scroll {
+    flex: 1;
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 4px;
+}
+
+.year-list, .time-list {
+    padding: 8px 0;
+}
+
+.year-item, .time-item {
+    display: block;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 8px 16px;
+    text-align: left;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.year-item:hover, .time-item:hover {
+    background: #f0f0f0;
+}
+
+.year-item.selected, .time-item.selected {
+    background: #007bff;
+    color: white;
+}
+
+/* Scrollbar styling */
+.year-scroll::-webkit-scrollbar, .time-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.year-scroll::-webkit-scrollbar-track, .time-scroll::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.year-scroll::-webkit-scrollbar-thumb, .time-scroll::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.year-scroll::-webkit-scrollbar-thumb:hover, .time-scroll::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .picker-popup {
+        min-width: 90vw;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .picker-container {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .year-scroll, .time-scroll {
+        max-height: 200px;
+    }
+}
