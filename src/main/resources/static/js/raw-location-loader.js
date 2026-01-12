@@ -1,6 +1,3 @@
-/**
- * RawLocationLoader - Handles loading and displaying raw location data on the map
- */
 class RawLocationLoader {
     constructor(map, userSettings, fitToBoundsConfig = null) {
         this.map = map;

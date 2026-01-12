@@ -83,6 +83,16 @@
             // User settings from server
             window.userSettings = /*[[${userSettings}]]*/ {};
 
+
+            startDatePicker = new DateTimePicker(document.getElementById('startDatePicker'), {
+                timeFormat: '24h',
+                onValidate: validateDates
+            });
+
+            endDatePicker = new DateTimePicker(document.getElementById('endDatePicker'), {
+                timeFormat: '24h',
+                onValidate: validateDates
+            });
             function getUserTimezone() {
                 if (window.userSettings.timezoneOverride) {
                     return window.userSettings.timezoneOverride;
@@ -117,19 +127,6 @@
                 errorDiv.style.display = 'none';
                 return true;
             }
-
-            // Initialize datetime pickers when DOM is loaded
-            document.addEventListener('htmx:afterSwap', function() {
-                const startDatePicker = new DateTimePicker(document.getElementById('startDatePicker'), {
-                    timeFormat: '24h',
-                    onValidate: validateDates
-                });
-
-                const endDatePicker = new DateTimePicker(document.getElementById('endDatePicker'), {
-                    timeFormat: '24h',
-                    onValidate: validateDates
-                });
-            });
         </script>
     </div>
 </div>

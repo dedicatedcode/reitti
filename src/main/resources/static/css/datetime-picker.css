@@ -9,7 +9,8 @@
     border: 1px solid #ddd;
     border-radius: 4px;
     padding: 4px;
-    background: white;
+    background-color: var(--color-background-dark-light);
+    color: var(--color-text-white);
 }
 
 .datetime-picker .date-input,
@@ -36,7 +37,7 @@
 
 /* Trigger button */
 .picker-trigger {
-    background: #007bff;
+    background: var(--color-background-dark-light);
     color: white;
     border: none;
     padding: 8px 12px;
@@ -50,16 +51,16 @@
 }
 
 .picker-trigger:hover {
-    background: #0056b3;
+    background: var(--color-background-dark);
 }
 
 /* Popup container */
 .picker-popup {
     position: absolute;
     top: 100%;
-    left: 0;
+    left: -1px;
     z-index: 1000;
-    background: white;
+    background: var(--color-background-dark);
     border: 1px solid #ddd;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -136,12 +137,14 @@
 }
 
 .day:hover {
-    background: #e3f2fd;
+    background: #767676;
+    color: var(--color-highlight);
 }
 
 .day.selected {
-    background: #007bff;
-    color: white;
+    background: var(--color-highlight);
+    color: var(--color-background-dark);
+    box-shadow: var(--box-shadow);
 }
 
 .day.other-month {
@@ -175,15 +178,18 @@
     text-align: left;
     cursor: pointer;
     font-size: 14px;
+    border-radius: 0;
 }
 
 .year-item:hover, .time-item:hover {
-    background: #f0f0f0;
+    background: #767676;
+    color: var(--color-highlight);
 }
 
 .year-item.selected, .time-item.selected {
-    background: #007bff;
-    color: white;
+    background: var(--color-highlight);
+    color: var(--color-background-dark);
+    box-shadow: var(--box-shadow);
 }
 
 /* Scrollbar styling */
