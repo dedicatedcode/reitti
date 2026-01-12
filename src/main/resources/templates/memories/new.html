@@ -110,7 +110,7 @@
             }
 
             // Initialize datetime pickers when DOM is loaded
-            document.addEventListener('DOMContentLoaded', function() {
+            document.addEventListener('htmx:afterSwap', function() {
                 const startDatePicker = new DateTimePicker(document.getElementById('startDatePicker'), {
                     timeFormat: '24h',
                     onValidate: validateDates
