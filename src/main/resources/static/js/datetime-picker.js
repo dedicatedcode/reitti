@@ -1,6 +1,7 @@
 /**
  * DateTimePicker - A custom datetime picker component
  * Provides calendar, year selection, and time selection functionality
+ * Updated to work with separate date and time inputs
  */
 class DateTimePicker {
     /**
@@ -23,8 +24,15 @@ class DateTimePicker {
         };
 
         this.element = element;
-        this.nativeInput = element.querySelector('.native-input');
+        this.dateInput = element.querySelector('.date-input');
+        this.timeInput = element.querySelector('.time-input');
         this.triggerButton = element.querySelector('.picker-trigger');
+
+        // Create popup structure if it doesn't exist
+        if (!element.querySelector('.picker-popup')) {
+            this.createPopupStructure();
+        }
+
         this.popup = element.querySelector('.picker-popup');
         this.calendarSection = element.querySelector('.calendar-section');
         this.yearScroll = element.querySelector('.year-scroll');
@@ -37,6 +45,77 @@ class DateTimePicker {
     }
 
     /**
+     * Create the popup structure dynamically
+     */
+    createPopupStructure() {
+        const popup = document.createElement('div');
+        popup.className = 'picker-popup';
+        popup.style.display = 'none';
+
+        const pickerContainer = document.createElement('div');
+        pickerContainer.className = 'picker-container';
+
+        // Calendar section
+        const calendarSection = document.createElement('div');
+        calendarSection.className = 'calendar-section';
+
+        const calendarHeader = document.createElement('div');
+        calendarHeader.className = 'calendar-header';
+
+        const prevMonthBtn = document.createElement('button');
+        prevMonthBtn.type = 'button';
+        prevMonthBtn.className = 'prev-month';
+        prevMonthBtn.innerHTML = '&lt;';
+
+        const monthYear = document.createElement('div');
+        monthYear.className = 'month-year';
+
+        const nextMonthBtn = document.createElement('button');
+        nextMonthBtn.type = 'button';
+        nextMonthBtn.className = 'next-month';
+        nextMonthBtn.innerHTML = '&gt;';
+
+        calendarHeader.appendChild(prevMonthBtn);
+        calendarHeader.appendChild(monthYear);
+        calendarHeader.appendChild(nextMonthBtn);
+
+        const weekdays = document.createElement('div');
+        weekdays.className = 'weekdays';
+
+        const daysGrid = document.createElement('div');
+        daysGrid.className = 'days-grid';
+
+        calendarSection.appendChild(calendarHeader);
+        calendarSection.appendChild(weekdays);
+        calendarSection.appendChild(daysGrid);
+
+        // Year scroll section
+        const yearScroll = document.createElement('div');
+        yearScroll.className = 'year-scroll';
+
+        const yearList = document.createElement('div');
+        yearList.className = 'year-list';
+
+        yearScroll.appendChild(yearList);
+
+        // Time scroll section
+        const timeScroll = document.createElement('div');
+        timeScroll.className = 'time-scroll';
+
+        const timeList = document.createElement('div');
+        timeList.className = 'time-list';
+
+        timeScroll.appendChild(timeList);
+
+        pickerContainer.appendChild(calendarSection);
+        pickerContainer.appendChild(yearScroll);
+        pickerContainer.appendChild(timeScroll);
+
+        popup.appendChild(pickerContainer);
+        this.element.appendChild(popup);
+    }
+
+    /**
      * Initialize the datetime picker
      */
     init() {
@@ -44,7 +123,7 @@ class DateTimePicker {
         this.renderCalendar();
         this.renderYearList();
         this.renderTimeList();
-        this.updateFromNativeInput();
+        this.updateFromInputs();
     }
 
     /**
@@ -56,10 +135,18 @@ class DateTimePicker {
             this.togglePopup();
         });
 
-        this.nativeInput.addEventListener('change', () => {
-            this.updateFromNativeInput();
+        // Input change events
+        this.dateInput.addEventListener('change', () => {
+            this.updateFromInputs();
             if (this.options.onValidate) {
-                this.options.onValidate(this.getValue());
+                this.options.onValidate();
+            }
+        });
+
+        this.timeInput.addEventListener('change', () => {
+            this.updateFromInputs();
+            if (this.options.onValidate) {
+                this.options.onValidate();
             }
         });
 
@@ -232,7 +319,7 @@ class DateTimePicker {
             this.selectedDate = new Date();
         }
         this.selectedDate.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
-        this.updateNativeInput();
+        this.updateInputs();
         this.renderCalendar();
     }
 
@@ -246,7 +333,7 @@ class DateTimePicker {
             this.selectedDate = new Date();
         }
         this.selectedDate.setHours(hour, minute, 0, 0);
-        this.updateNativeInput();
+        this.updateInputs();
         this.highlightSelectedTime();
     }
 
@@ -265,21 +352,30 @@ class DateTimePicker {
     }
 
     /**
-     * Update the native input with the selected date/time
+     * Update the date and time inputs with the selected date/time
      */
-    updateNativeInput() {
+    updateInputs() {
         if (this.selectedDate) {
-            const isoString = this.selectedDate.toISOString().slice(0, 16);
-            this.nativeInput.value = isoString;
+            // Format date as YYYY-MM-DD
+            const year = this.selectedDate.getFullYear();
+            const month = (this.selectedDate.getMonth() + 1).toString().padStart(2, '0');
+            const day = this.selectedDate.getDate().toString().padStart(2, '0');
+            this.dateInput.value = `${year}-${month}-${day}`;
+
+            // Format time as HH:MM
+            const hours = this.selectedDate.getHours().toString().padStart(2, '0');
+            const minutes = this.selectedDate.getMinutes().toString().padStart(2, '0');
+            this.timeInput.value = `${hours}:${minutes}`;
         }
     }
 
     /**
-     * Update the picker state from the native input value
+     * Update the picker state from the input values
      */
-    updateFromNativeInput() {
-        if (this.nativeInput.value) {
-            this.selectedDate = new Date(this.nativeInput.value);
+    updateFromInputs() {
+        if (this.dateInput.value && this.timeInput.value) {
+            const dateTimeString = `${this.dateInput.value}T${this.timeInput.value}`;
+            this.selectedDate = new Date(dateTimeString);
             this.currentDate = new Date(this.selectedDate);
             this.renderCalendar();
             this.renderYearList();
@@ -365,19 +461,26 @@ class DateTimePicker {
     }
 
     /**
-     * Get the current value
-     * @returns {string} Current input value
+     * Get the current value as ISO string
+     * @returns {string} Current datetime value
      */
     getValue() {
-        return this.nativeInput.value;
+        if (this.dateInput.value && this.timeInput.value) {
+            return `${this.dateInput.value}T${this.timeInput.value}`;
+        }
+        return '';
     }
 
     /**
-     * Set the value
-     * @param {string} value - Value to set
+     * Set the value from ISO string
+     * @param {string} value - ISO datetime string
      */
     setValue(value) {
-        this.nativeInput.value = value;
-        this.updateFromNativeInput();
+        if (value) {
+            const date = new Date(value);
+            this.dateInput.value = value.split('T')[0];
+            this.timeInput.value = value.split('T')[1]?.substring(0, 5) || '';
+            this.updateFromInputs();
+        }
     }
 }

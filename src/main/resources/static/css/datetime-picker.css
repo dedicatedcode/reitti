@@ -1,15 +1,37 @@
-/* DateTime Picker Styles */
+/* DateTime Picker Styles - Updated for separate date/time inputs */
 
 /* Main container and layout */
 .datetime-picker {
     position: relative;
     display: flex;
     align-items: center;
+    gap: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 4px;
+    background: white;
 }
 
-.datetime-picker .native-input {
+.datetime-picker .date-input,
+.datetime-picker .time-input {
     flex: 1;
-    margin-right: 8px;
+    border: none;
+    padding: 8px;
+    font-size: 14px;
+    background: transparent;
+}
+
+.datetime-picker .date-input:focus,
+.datetime-picker .time-input:focus {
+    outline: none;
+    border: none;
+}
+
+/* Hide default input controls */
+.datetime-picker .date-input::-webkit-calendar-picker-indicator,
+.datetime-picker .time-input::-webkit-calendar-picker-indicator {
+    display: none;
+    -webkit-appearance: none;
 }
 
 /* Trigger button */
@@ -21,6 +43,10 @@
     border-radius: 4px;
     cursor: pointer;
     font-size: 16px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .picker-trigger:hover {
