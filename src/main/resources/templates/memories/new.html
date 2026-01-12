@@ -43,7 +43,9 @@
                 <div class="form-group">
                     <label for="startDate" th:text="#{memory.form.start.date.label}">Start Date *</label>
                     <div class="datetime-picker" id="startDatePicker">
-                        <input type="datetime-local" id="startDate" name="startDate" required class="native-input form-control"
+                        <input type="date" id="startDate" name="startDate" required class="date-input form-control"
+                               th:value="${startDate}">
+                        <input type="time" id="startTime" name="startTime" required class="time-input form-control"
                                th:value="${startDate}">
                         <button type="button" class="picker-trigger">📅</button>
                     </div>
@@ -52,7 +54,9 @@
                 <div class="form-group">
                     <label for="endDate" th:text="#{memory.form.end.date.label}">End Date *</label>
                     <div class="datetime-picker" id="endDatePicker">
-                        <input type="datetime-local" id="endDate" name="endDate" required class="native-input form-control"
+                        <input type="date" id="endDate" name="endDate" required class="date-input form-control"
+                               th:value="${endDate}">
+                        <input type="time" id="endTime" name="endTime" required class="time-input form-control"
                                th:value="${endDate}">
                         <button type="button" class="picker-trigger">📅</button>
                     </div>
@@ -89,17 +93,22 @@
 
             function validateDates() {
                 const startDate = document.getElementById('startDate').value;
+                const startTime = document.getElementById('startTime').value;
                 const endDate = document.getElementById('endDate').value;
+                const endTime = document.getElementById('endTime').value;
                 const errorDiv = document.getElementById('dateError');
                 const errorText = document.getElementById('dateErrorText');
 
-                if (!startDate || !endDate) {
+                if (!startDate || !startTime || !endDate || !endTime) {
                     errorText.textContent = /*[[#{memory.form.date.error.empty}]]*/ 'Dates cannot be empty';
                     errorDiv.style.display = 'block';
                     return false;
                 }
 
-                if (new Date(startDate) > new Date(endDate)) {
+                const startDateTime = new Date(`${startDate}T${startTime}`);
+                const endDateTime = new Date(`${endDate}T${endTime}`);
+
+                if (startDateTime > endDateTime) {
                     errorText.textContent = /*[[#{memory.form.date.error.end.before.start}]]*/ 'End date must be on or after start date';
                     errorDiv.style.display = 'block';
                     return false;
