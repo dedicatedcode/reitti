@@ -314,13 +314,68 @@ class DateTimePicker {
 
             yearElement.addEventListener('click', (e) => {
                 e.stopPropagation();
-                this.currentDate.setFullYear(year);
-                this.renderCalendar();
-                this.renderYearList();
+                this.changeYear(year);
             });
 
             yearList.appendChild(yearElement);
         }
+    }
+
+    /**
+     * Change the current year and maintain the selected day if possible
+     * @param {number} year - The year to change to
+     */
+    changeYear(year) {
+        // Store the current day of month
+        const currentDay = this.selectedDate ? this.selectedDate.getDate() : 1;
+        const currentMonth = this.selectedDate ? this.selectedDate.getMonth() : this.currentDate.getMonth();
+
+        // Update current date to the new year
+        this.currentDate.setFullYear(year);
+
+        // Try to maintain the same month and day
+        let newDate = new Date(year, currentMonth, currentDay);
+
+        // If the day is invalid for the new month/year, find the next valid day
+        if (newDate.getMonth() !== currentMonth || this.isDateDisabled(newDate)) {
+            // Try the last day of the month if current day is invalid
+            const lastDayOfMonth = new Date(year, currentMonth + 1, 0).getDate();
+            newDate = new Date(year, currentMonth, Math.min(currentDay, lastDayOfMonth));
+
+            // If still disabled, find the next available day
+            if (this.isDateDisabled(newDate)) {
+                newDate = this.findNextValidDate(newDate);
+            }
+        }
+
+        // Update selected date if we have one
+        if (this.selectedDate) {
+            this.selectedDate.setFullYear(year, currentMonth, newDate.getDate());
+            this.updateInputs();
+        }
+
+        this.renderCalendar();
+        this.renderYearList();
+    }
+
+    /**
+     * Find the next valid date starting from a given date
+     * @param {Date} startDate - The date to start searching from
+     * @returns {Date} The next valid date
+     */
+    findNextValidDate(startDate) {
+        let currentDate = new Date(startDate);
+        const maxAttempts = 31; // Don't search more than a month ahead
+
+        for (let i = 0; i < maxAttempts; i++) {
+            currentDate.setDate(currentDate.getDate() + 1);
+            if (!this.isDateDisabled(currentDate)) {
+                return currentDate;
+            }
+        }
+
+        // If no valid date found in the next month, return the first day of the month
+        return new Date(startDate.getFullYear(), startDate.getMonth(), 1);
     }
 
     /**
