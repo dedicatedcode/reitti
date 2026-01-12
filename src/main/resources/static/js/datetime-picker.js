@@ -130,8 +130,10 @@ class DateTimePicker {
      * Set up event listeners for the picker
      */
     setupEventListeners() {
+        // Trigger button click handler
         this.triggerButton.addEventListener('click', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             this.togglePopup();
         });
 
@@ -151,21 +153,35 @@ class DateTimePicker {
         });
 
         // Calendar navigation
-        this.element.querySelector('.prev-month').addEventListener('click', () => {
-            this.currentDate.setMonth(this.currentDate.getMonth() - 1);
-            this.renderCalendar();
-        });
+        const prevMonthBtn = this.element.querySelector('.prev-month');
+        const nextMonthBtn = this.element.querySelector('.next-month');
 
-        this.element.querySelector('.next-month').addEventListener('click', () => {
-            this.currentDate.setMonth(this.currentDate.getMonth() + 1);
-            this.renderCalendar();
-        });
+        if (prevMonthBtn) {
+            prevMonthBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.currentDate.setMonth(this.currentDate.getMonth() - 1);
+                this.renderCalendar();
+            });
+        }
+
+        if (nextMonthBtn) {
+            nextMonthBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.currentDate.setMonth(this.currentDate.getMonth() + 1);
+                this.renderCalendar();
+            });
+        }
 
         // Close popup when clicking outside
         document.addEventListener('click', (e) => {
             if (!this.element.contains(e.target)) {
                 this.closePopup();
             }
+        });
+
+        // Prevent popup from closing when clicking inside it
+        this.popup.addEventListener('click', (e) => {
+            e.stopPropagation();
         });
     }
 
@@ -226,7 +242,8 @@ class DateTimePicker {
                 dayElement.classList.add('disabled');
             }
 
-            dayElement.addEventListener('click', () => {
+            dayElement.addEventListener('click', (e) => {
+                e.stopPropagation();
                 if (!this.isDateDisabled(date)) {
                     this.selectDate(date);
                 }
@@ -257,7 +274,8 @@ class DateTimePicker {
                 yearElement.classList.add('selected');
             }
 
-            yearElement.addEventListener('click', () => {
+            yearElement.addEventListener('click', (e) => {
+                e.stopPropagation();
                 this.currentDate.setFullYear(year);
                 this.renderCalendar();
                 this.renderYearList();
@@ -285,7 +303,8 @@ class DateTimePicker {
                 timeElement.dataset.hour = hour;
                 timeElement.dataset.minute = minute;
 
-                timeElement.addEventListener('click', () => {
+                timeElement.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     this.selectTime(hour, minute);
                 });
 
@@ -366,6 +385,10 @@ class DateTimePicker {
             const hours = this.selectedDate.getHours().toString().padStart(2, '0');
             const minutes = this.selectedDate.getMinutes().toString().padStart(2, '0');
             this.timeInput.value = `${hours}:${minutes}`;
+
+            // Trigger change events
+            this.dateInput.dispatchEvent(new Event('change'));
+            this.timeInput.dispatchEvent(new Event('change'));
         }
     }
 
