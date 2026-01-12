@@ -20,6 +20,7 @@
     padding: 8px;
     font-size: 14px;
     background: transparent;
+    color: var(--color-text-white);
 }
 
 .datetime-picker .date-input:focus,
