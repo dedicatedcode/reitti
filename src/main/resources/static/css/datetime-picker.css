@@ -72,11 +72,15 @@
     display: flex;
     padding: 16px;
     gap: 16px;
+    height: 400px; /* Fixed height for the container */
 }
 
 /* Calendar section */
 .calendar-section {
     flex: 2;
+    height: 100%; /* Take full height of container */
+    display: flex;
+    flex-direction: column;
 }
 
 .calendar-header {
@@ -124,6 +128,7 @@
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 2px;
+    flex: 1; /* Take remaining space */
 }
 
 .day {
@@ -159,7 +164,8 @@
 /* Year and time scroll sections */
 .year-scroll, .time-scroll {
     flex: 1;
-    max-height: 300px;
+    height: 100%; /* Take full height of container */
+    max-height: 100%; /* Remove fixed max-height */
     overflow-y: auto;
     border: 1px solid #eee;
     border-radius: 4px;
@@ -167,6 +173,7 @@
 
 .year-list, .time-list {
     padding: 8px 0;
+    height: 100%; /* Take full height */
 }
 
 .year-item, .time-item {
@@ -221,9 +228,18 @@
     .picker-container {
         flex-direction: column;
         gap: 12px;
+        height: auto; /* Reset height for mobile */
     }
 
     .year-scroll, .time-scroll {
         max-height: 200px;
+    }
+
+    .calendar-section {
+        height: auto;
+    }
+
+    .days-grid {
+        flex: none;
     }
 }
