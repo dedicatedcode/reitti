@@ -45,9 +45,9 @@
                     <div class="datetime-picker" id="startDatePicker">
                         <input type="date" id="startDate" name="startDate" required class="date-input form-control"
                                th:value="${startDate}">
-                        <input type="time" id="startTime" name="startTime" required class="time-input form-control"
-                               th:value="${startDate}">
-                        <button type="button" class="picker-trigger">📅</button>
+                        <input type="time" id="startTime" name="startTime" step="1" required class="time-input form-control"
+                               th:value="${startTime}">
+                        <button type="button" class="picker-trigger"><i class="lni lni-calendar-days"></i></button>
                     </div>
                 </div>
 
@@ -56,9 +56,9 @@
                     <div class="datetime-picker" id="endDatePicker">
                         <input type="date" id="endDate" name="endDate" required class="date-input form-control"
                                th:value="${endDate}">
-                        <input type="time" id="endTime" name="endTime" required class="time-input form-control"
-                               th:value="${endDate}">
-                        <button type="button" class="picker-trigger">📅</button>
+                        <input type="time" id="endTime" name="endTime" step="1" required class="time-input form-control"
+                               th:value="${endTime}">
+                        <button type="button" class="picker-trigger"><i class="lni lni-calendar-days"></i></button>
                     </div>
                 </div>
             </div>
@@ -85,21 +85,14 @@
 
 
             startDatePicker = new DateTimePicker(document.getElementById('startDatePicker'), {
-                timeFormat: '24h',
+                timeFormat: getBrowserTimeFormat(),
                 onValidate: validateDates
             });
 
             endDatePicker = new DateTimePicker(document.getElementById('endDatePicker'), {
-                timeFormat: '24h',
+                timeFormat: getBrowserTimeFormat(),
                 onValidate: validateDates
             });
-            function getUserTimezone() {
-                if (window.userSettings.timezoneOverride) {
-                    return window.userSettings.timezoneOverride;
-                } else {
-                    return Intl.DateTimeFormat().resolvedOptions().timeZone;
-                }
-            }
 
             function validateDates() {
                 const startDate = document.getElementById('startDate').value;

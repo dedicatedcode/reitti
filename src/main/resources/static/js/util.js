@@ -71,3 +71,24 @@ function lightenHexColor(col, amt) {
     // Return the new color with or without the original '#' prefix
     return (usePound ? "#" : "") + newColor;
 }
+
+function getBrowserTimeFormat() {
+    // Create a test date with hours > 12 to distinguish between 12h and 24h formats
+    const testDate = new Date(2023, 0, 1, 15, 0); // 3 PM
+
+    // Format the time using the browser's locale
+    const formatter = new Intl.DateTimeFormat(navigator.language, {
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: false
+    });
+
+    const formattedTime = formatter.format(testDate);
+
+    // Check if the formatted time contains "15" (24h format) or "3" (12h format)
+    if (formattedTime.includes('15')) {
+        return '24h';
+    } else {
+        return '12h';
+    }
+}

@@ -8,7 +8,6 @@
     gap: 8px;
     border: 1px solid #ddd;
     border-radius: 4px;
-    padding: 4px;
     background-color: var(--color-background-dark-light);
     color: var(--color-text-white);
     width: 20rem;
@@ -194,7 +193,10 @@
     height: 100%; /* Take full height of container */
     max-height: 100%; /* Remove fixed max-height */
     overflow-y: auto;
-    border: 1px solid #eee;
+}
+
+.time-scroll {
+    border: 1px solid #888;
     border-radius: 4px;
 }
 
