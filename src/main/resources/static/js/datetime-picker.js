@@ -85,9 +85,16 @@ class DateTimePicker {
         const daysGrid = document.createElement('div');
         daysGrid.className = 'days-grid';
 
+        // Today button
+        const todayButton = document.createElement('button');
+        todayButton.type = 'button';
+        todayButton.className = 'today-button';
+        todayButton.textContent = 'Today';
+
         calendarSection.appendChild(calendarHeader);
         calendarSection.appendChild(weekdays);
         calendarSection.appendChild(daysGrid);
+        calendarSection.appendChild(todayButton);
 
         // Year scroll section
         const yearScroll = document.createElement('div');
@@ -124,6 +131,11 @@ class DateTimePicker {
         this.renderYearList();
         this.renderTimeList();
         this.updateFromInputs();
+
+        // Preselect current date and closest time if no date is selected
+        if (!this.selectedDate) {
+            this.selectToday();
+        }
     }
 
     /**
@@ -155,6 +167,7 @@ class DateTimePicker {
         // Calendar navigation
         const prevMonthBtn = this.element.querySelector('.prev-month');
         const nextMonthBtn = this.element.querySelector('.next-month');
+        const todayBtn = this.element.querySelector('.today-button');
 
         if (prevMonthBtn) {
             prevMonthBtn.addEventListener('click', (e) => {
@@ -172,6 +185,13 @@ class DateTimePicker {
             });
         }
 
+        if (todayBtn) {
+            todayBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.selectToday();
+            });
+        }
+
         // Close popup when clicking outside
         document.addEventListener('click', (e) => {
             if (!this.element.contains(e.target)) {
@@ -183,6 +203,24 @@ class DateTimePicker {
         this.popup.addEventListener('click', (e) => {
             e.stopPropagation();
         });
+    }
+
+    /**
+     * Select today's date and closest time
+     */
+    selectToday() {
+        const now = new Date();
+        this.currentDate = new Date(now);
+        this.selectedDate = new Date(now);
+
+        // Round to nearest 15 minutes
+        const minutes = Math.round(now.getMinutes() / 15) * 15;
+        this.selectedDate.setMinutes(minutes, 0, 0);
+
+        this.updateInputs();
+        this.renderCalendar();
+        this.renderYearList();
+        this.highlightSelectedTime();
     }
 
     /**

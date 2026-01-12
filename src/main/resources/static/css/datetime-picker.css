@@ -161,6 +161,24 @@
     cursor: not-allowed;
 }
 
+/* Today button */
+.today-button {
+    background: var(--color-background-dark-light);
+    color: white;
+    border: none;
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 8px;
+    width: 100%;
+}
+
+.today-button:hover {
+    background: var(--color-highlight);
+    color: var(--color-background-dark);
+}
+
 /* Year and time scroll sections */
 .year-scroll, .time-scroll {
     flex: 1;
