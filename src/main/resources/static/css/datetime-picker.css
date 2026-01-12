@@ -11,6 +11,8 @@
     padding: 4px;
     background-color: var(--color-background-dark-light);
     color: var(--color-text-white);
+    width: auto;
+    max-width: none;
 }
 
 .datetime-picker .date-input,
@@ -21,6 +23,8 @@
     font-size: 14px;
     background: transparent;
     color: var(--color-text-white);
+    width: 100px;
+    max-width: 100px;
 }
 
 .datetime-picker .date-input:focus,
@@ -34,6 +38,18 @@
 .datetime-picker .time-input::-webkit-calendar-picker-indicator {
     display: none;
     -webkit-appearance: none;
+}
+
+/* Hide the default calendar icon in Firefox */
+.datetime-picker .date-input::-moz-calendar-picker-indicator,
+.datetime-picker .time-input::-moz-calendar-picker-indicator {
+    display: none;
+}
+
+/* Hide the default calendar icon in Edge */
+.datetime-picker .date-input::-ms-clear,
+.datetime-picker .time-input::-ms-clear {
+    display: none;
 }
 
 /* Trigger button */
