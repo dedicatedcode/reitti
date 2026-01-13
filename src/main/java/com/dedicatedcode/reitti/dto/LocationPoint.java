@@ -67,4 +67,8 @@ public class LocationPoint {
                 ", elevationMeters=" + elevationMeters +
                 '}';
     }
+
+    public boolean isValid() {
+        return latitude != null && longitude != null && timestamp != null;
+    }
 }

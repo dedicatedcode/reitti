@@ -65,16 +65,17 @@ public class LocationDataIngestPipeline {
 
             User user = userOpt.get();
 
+            List<LocationPoint> validPoints = points.stream().filter(LocationPoint::isValid).toList();
             // Store all points first
-            int updatedRows = rawLocationPointJdbcService.bulkInsert(user, points);
-            List<Instant> timestamp = points.stream().map(LocationPoint::getTimestamp).map(ZonedDateTime::parse).map(ChronoZonedDateTime::toInstant).sorted().toList();
+            int updatedRows = rawLocationPointJdbcService.bulkInsert(user, validPoints);
+            List<Instant> timestamp = validPoints.stream().map(LocationPoint::getTimestamp).map(ZonedDateTime::parse).map(ChronoZonedDateTime::toInstant).sorted().toList();
 
             anomalyProcessingService.processAndMarkAnomalies(user, timestamp.getFirst(), timestamp.getLast());
 
-            densityNormalizer.normalize(user, points);
-            userSettingsJdbcService.updateNewestData(user, points);
-            userNotificationService.newRawLocationData(user, points);
-            logger.info("Finished storing and normalizing points [{}] for user [{}] in [{}]ms. Filtered out [{}] after database.", points.size(), user, System.currentTimeMillis() - start, points.size() - updatedRows);
+            densityNormalizer.normalize(user, validPoints);
+            userSettingsJdbcService.updateNewestData(user, validPoints);
+            userNotificationService.newRawLocationData(user, validPoints);
+            logger.info("Finished storing and normalizing points [{}] for user [{}] in [{}]ms. Filtered out [{}] after database.", validPoints.size(), user, System.currentTimeMillis() - start, validPoints.size() - updatedRows);
         } catch (Exception e) {
             logger.error("Error during processing: ", e);
         }
