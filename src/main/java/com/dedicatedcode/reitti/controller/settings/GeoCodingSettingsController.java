@@ -10,6 +10,8 @@ import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceOverrideJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.service.I18nService;
+import com.dedicatedcode.reitti.service.geocoding.PhotonGeocodeService;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
@@ -19,7 +21,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.UUID;
@@ -33,17 +37,21 @@ public class GeoCodingSettingsController {
     private final SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
     private final UserJdbcService userJdbcService;
     private final RabbitTemplate rabbitTemplate;
-    private final MessageSource messageSource;
-
+    private final I18nService i18n;
+    private final PhotonGeocodeService photonGeocodeService;
     private final boolean dataManagementEnabled;
     private final int maxErrors;
+    private final boolean photonConfigured;
+    private final String photonBaseUrl;
 
     public GeoCodingSettingsController(GeocodeServiceJdbcService geocodeServiceJdbcService,
                                        SignificantPlaceJdbcService placeJdbcService,
                                        SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
                                        UserJdbcService userJdbcService,
                                        RabbitTemplate rabbitTemplate,
-                                       MessageSource messageSource,
+                                       I18nService i18n,
+                                       PhotonGeocodeService photonGeocodeService,
+                                       @Value("${reitti.geocoding.photon.base-url:}") String photonBaseUrl,
                                        @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                                        @Value("${reitti.geocoding.max-errors}") int maxErrors) {
         this.geocodeServiceJdbcService = geocodeServiceJdbcService;
@@ -51,9 +59,12 @@ public class GeoCodingSettingsController {
         this.significantPlaceOverrideJdbcService = significantPlaceOverrideJdbcService;
         this.userJdbcService = userJdbcService;
         this.rabbitTemplate = rabbitTemplate;
-        this.messageSource = messageSource;
+        this.i18n = i18n;
+        this.photonGeocodeService = photonGeocodeService;
         this.dataManagementEnabled = dataManagementEnabled;
         this.maxErrors = maxErrors;
+        this.photonConfigured = StringUtils.hasText(photonBaseUrl);
+        this.photonBaseUrl = photonBaseUrl;
     }
 
     @GetMapping
@@ -61,6 +72,8 @@ public class GeoCodingSettingsController {
         model.addAttribute("activeSection", "geocode-services");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+        model.addAttribute("photonConfigured", photonConfigured);
+        model.addAttribute("photonBaseUrl", photonBaseUrl);
         model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
         model.addAttribute("maxErrors", maxErrors);
         return "settings/geocode-services";
@@ -69,6 +82,39 @@ public class GeoCodingSettingsController {
     @GetMapping("/geocode-services-content")
     public String getGeocodeServicesContent(Model model) {
         model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
+        model.addAttribute("photonConfigured", photonConfigured);
+        model.addAttribute("photonBaseUrl", photonBaseUrl);
+        model.addAttribute("maxErrors", maxErrors);
+        return "settings/geocode-services :: geocode-services-content";
+    }
+
+    @PostMapping("/test-photon")
+    public String testPhotonConnection(Model model) {
+        try {
+            if (!photonConfigured || !StringUtils.hasText(photonBaseUrl)) {
+                model.addAttribute("errorMessage", i18n.translate("geocoding.photon.not.configured"));
+            } else {
+                String testUrl = photonGeocodeService.getUrlTemplate()
+                        .replace("{lat}", "52.5200")
+                        .replace("{lng}", "13.4050");
+
+                // Use RestTemplate to test the connection
+                RestTemplate restTemplate = new RestTemplate();
+                String response = restTemplate.getForObject(testUrl, String.class);
+
+                if (response != null && response.contains("\"type\":\"FeatureCollection\"")) {
+                    model.addAttribute("successMessage", i18n.translate("geocoding.photon.test.success"));
+                } else {
+                    model.addAttribute("errorMessage", i18n.translate("geocoding.photon.test.invalid.response"));
+                }
+            }
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", i18n.translate("geocoding.photon.test.error", e.getMessage()));
+        }
+
+        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
+        model.addAttribute("photonConfigured", photonConfigured);
+        model.addAttribute("photonBaseUrl", photonBaseUrl);
         model.addAttribute("maxErrors", maxErrors);
         return "settings/geocode-services :: geocode-services-content";
     }
@@ -80,12 +126,14 @@ public class GeoCodingSettingsController {
         try {
             RemoteGeocodeService service = new RemoteGeocodeService(name, urlTemplate, true, 0, null, null);
             geocodeServiceJdbcService.save(service);
-            model.addAttribute("successMessage", getMessage("message.success.geocode.created"));
+            model.addAttribute("successMessage", i18n.translate("message.success.geocode.created"));
         } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("message.error.geocode.creation", e.getMessage()));
+            model.addAttribute("errorMessage", i18n.translate("message.error.geocode.creation", e.getMessage()));
         }
 
         model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
+        model.addAttribute("photonConfigured", photonConfigured);
+        model.addAttribute("photonBaseUrl", photonBaseUrl);
         model.addAttribute("maxErrors", maxErrors);
         return "settings/geocode-services :: geocode-services-content";
     }
@@ -99,6 +147,8 @@ public class GeoCodingSettingsController {
         }
         geocodeServiceJdbcService.save(service);
         model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
+        model.addAttribute("photonConfigured", photonConfigured);
+        model.addAttribute("photonBaseUrl", photonBaseUrl);
         model.addAttribute("maxErrors", maxErrors);
         return "settings/geocode-services :: geocode-services-content";
     }
@@ -108,6 +158,8 @@ public class GeoCodingSettingsController {
         RemoteGeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
         geocodeServiceJdbcService.delete(service);
         model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
+        model.addAttribute("photonConfigured", photonConfigured);
+        model.addAttribute("photonBaseUrl", photonBaseUrl);
         model.addAttribute("maxErrors", maxErrors);
         return "settings/geocode-services :: geocode-services-content";
     }
@@ -117,6 +169,8 @@ public class GeoCodingSettingsController {
         RemoteGeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
         geocodeServiceJdbcService.save(service.resetErrorCount().withEnabled(true));
         model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
+        model.addAttribute("photonConfigured", photonConfigured);
+        model.addAttribute("photonBaseUrl", photonBaseUrl);
         model.addAttribute("maxErrors", maxErrors);
         return "settings/geocode-services :: geocode-services-content";
     }
@@ -132,7 +186,7 @@ public class GeoCodingSettingsController {
             List<SignificantPlace> nonGeocodedPlaces = placeJdbcService.findNonGeocodedByUser(currentUser);
 
             if (nonGeocodedPlaces.isEmpty()) {
-                model.addAttribute("successMessage", getMessage("geocoding.no.places"));
+                model.addAttribute("successMessage", i18n.translate("geocoding.no.places"));
             } else {
                 // Send SignificantPlaceCreatedEvent for each non-geocoded place
                 for (SignificantPlace place : nonGeocodedPlaces) {
@@ -147,13 +201,15 @@ public class GeoCodingSettingsController {
                     rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.SIGNIFICANT_PLACE_ROUTING_KEY, event);
                 }
 
-                model.addAttribute("successMessage", getMessage("geocoding.run.success", nonGeocodedPlaces.size()));
+                model.addAttribute("successMessage", i18n.translate("geocoding.run.success", nonGeocodedPlaces.size()));
             }
         } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("geocoding.run.error", e.getMessage()));
+            model.addAttribute("errorMessage", i18n.translate("geocoding.run.error", e.getMessage()));
         }
 
         model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
+        model.addAttribute("photonConfigured", photonConfigured);
+        model.addAttribute("photonBaseUrl", photonBaseUrl);
         model.addAttribute("maxErrors", maxErrors);
         return "settings/geocode-services :: geocode-services-content";
     }
@@ -169,7 +225,7 @@ public class GeoCodingSettingsController {
             List<SignificantPlace> allPlaces = placeJdbcService.findAllByUser(currentUser);
 
             if (allPlaces.isEmpty()) {
-                model.addAttribute("successMessage", getMessage("geocoding.no.places"));
+                model.addAttribute("successMessage", i18n.translate("geocoding.no.places"));
             } else {
                 // Clear geocoding data for all places
                 for (SignificantPlace place : allPlaces) {
@@ -191,20 +247,16 @@ public class GeoCodingSettingsController {
                     rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.SIGNIFICANT_PLACE_ROUTING_KEY, event);
                 }
 
-                model.addAttribute("successMessage", getMessage("geocoding.clear.success", allPlaces.size()));
+                model.addAttribute("successMessage", i18n.translate("geocoding.clear.success", allPlaces.size()));
             }
         } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("geocoding.clear.error", e.getMessage()));
+            model.addAttribute("errorMessage", i18n.translate("geocoding.clear.error", e.getMessage()));
         }
 
         model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
+        model.addAttribute("photonConfigured", photonConfigured);
+        model.addAttribute("photonBaseUrl", photonBaseUrl);
         model.addAttribute("maxErrors", maxErrors);
         return "settings/geocode-services :: geocode-services-content";
     }
-
-
-    private String getMessage(String key, Object... args) {
-        return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
-    }
-
 }

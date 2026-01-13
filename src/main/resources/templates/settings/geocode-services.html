@@ -48,10 +48,24 @@
                 </div>
                 <div class="settings-card">
                     <h3 th:text="#{geocoding.available.services}">Available Services</h3>
+                    <div th:if="${photonConfigured}">
+                        <div class="divider">Photon</div>
+                        <p th:text="#{geocoding.photon.address(${photonBaseUrl})}">Photon Reverse Geocoding service is configured to connect to http://photon</p>
+                        <button class="btn"
+                                th:hx-post="@{/settings/geocode-services/test-photon}"
+                                hx-target="#geocode-services"
+                                hx-swap="innerHTML"
+                                th:text="#{geocoding.test.connection}">Test Connection
+                        </button>
+                    </div>
+                    <div th:unless="${photonConfigured}">
+                        <p th:text="#{geocoding.photon.not.configured}">Photon Reverse Geocoding service is not configured.</p>
+                    </div>
+
                     <div th:if="${geocodeServices.isEmpty()}">
                         <p th:text="#{geocoding.no.services}">No geocoding services configured.</p>
                     </div>
-
+                    <div th:if="${photonConfigured}" class="divider" th:text="#{geocoding.external.services}">External Services</div>
                     <table th:if="${!geocodeServices.isEmpty()}">
                         <thead>
                         <tr>
