@@ -13,6 +13,7 @@
                 class="block-type-option"
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='TEXT', position=${position})}"
                 hx-target=".block-type-selection"
+                hx-vals="js:{timezone: getUserTimezone()}"
                 hx-swap="outerHTML">
             <span th:text="#{memory.block.type.text}">Text Block</span>
             <p th:text="#{memory.block.type.text.description}">Add text content with headlines and paragraphs</p>
@@ -22,6 +23,7 @@
                 class="block-type-option"
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='VISIT_CLUSTER', position=${position})}"
                 hx-target=".block-type-selection"
+                hx-vals="js:{timezone: getUserTimezone()}"
                 hx-swap="outerHTML">
             <span th:text="#{memory.block.type.visit}">Visit Block</span>
             <p th:text="#{memory.block.type.visit.description}">Add a location you visited during this memory</p>
@@ -31,6 +33,7 @@
                 class="block-type-option"
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='TRIP_CLUSTER', position=${position})}"
                 hx-target=".block-type-selection"
+                hx-vals="js:{timezone: getUserTimezone()}"
                 hx-swap="outerHTML">
             <span th:text="#{memory.block.type.trip}">Trip Block</span>
             <p th:text="#{memory.block.type.trip.description}">Add a journey or route from this memory</p>
@@ -40,6 +43,7 @@
                 class="block-type-option"
                 th:attr="hx-get=@{/memories/{id}/blocks/new(id=${memoryId}, type='IMAGE_GALLERY', position=${position})}"
                 hx-target=".block-type-selection"
+                hx-vals="js:{timezone: getUserTimezone()}"
                 hx-swap="outerHTML">
             <span th:text="#{memory.block.type.gallery}">Image Gallery</span>
             <p th:text="#{memory.block.type.gallery.description}">Add a collection of photos from this memory</p>
@@ -62,7 +66,10 @@
 <!-- Text block form -->
 <div th:fragment="text-block-form" class="block-form">
     <h3 th:text="#{memory.block.text.new}">Add Text Block</h3>
-    <form th:attr="hx-post=@{/memories/{id}/blocks/text(id=${memoryId}, position=${position})}" method="post" hx-target=".block-form" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}">
+    <form th:attr="hx-post=@{/memories/{id}/blocks/text(id=${memoryId}, position=${position})}" method="post"
+          hx-target=".block-form"
+          hx-swap="outerHTML"
+          hx-vals="js:{timezone: getUserTimezone()}">
 
         <div class="form-group">
             <label for="headline" th:text="#{memory.block.text.headline}">Headline</label>
@@ -89,7 +96,10 @@
 <!-- Visit block form -->
 <div th:fragment="visit-block-form" class="block-form">
     <h2 th:text="#{memory.block.visit.new}">Add Visit Block</h2>
-    <form th:attr="hx-post=@{/memories/{id}/blocks/cluster(id=${memoryId}, position=${position}, type='CLUSTER_VISIT')}" method="post" hx-target=".block-form" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}">
+    <form th:attr="hx-post=@{/memories/{id}/blocks/cluster(id=${memoryId}, position=${position}, type='CLUSTER_VISIT')}" method="post"
+          hx-target=".block-form"
+          hx-swap="outerHTML"
+          hx-vals="js:{timezone: getUserTimezone()}">
         <div class="form-group">
             <label th:text="#{memory.edit.block.title}" for="title">Title</label>
             <input type="text" id="title" name="title" class="form-control" th:placeholder="#{memory.edit.block.title.placeholder}" placeholder="Enter title">
@@ -130,7 +140,10 @@
 <!-- Trip block form -->
 <div th:fragment="trip-block-form" class="block-form">
     <h2 th:text="#{memory.block.trip.new}">Edit Trips Block</h2>
-    <form th:attr="hx-post=@{/memories/{id}/blocks/cluster(id=${memoryId}, position=${position}, type='CLUSTER_TRIP')}" method="post" hx-target=".block-form" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}">
+    <form th:attr="hx-post=@{/memories/{id}/blocks/cluster(id=${memoryId}, position=${position}, type='CLUSTER_TRIP')}" method="post"
+          hx-target=".block-form"
+          hx-swap="outerHTML"
+          hx-vals="js:{timezone: getUserTimezone()}">
         <div class="form-group">
             <label th:text="#{memory.edit.block.title}" for="title">Title</label>
             <input type="text" id="title" name="title" class="form-control" th:placeholder="#{memory.edit.block.title.placeholder}" placeholder="Enter title">

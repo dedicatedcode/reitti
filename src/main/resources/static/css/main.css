@@ -1282,7 +1282,6 @@ body.auto-update-mode .today-fab {
 
 .settings-content-area {
     flex: 1;
-    overflow-y: auto;
     padding-bottom: 24px;
     padding-right: 24px;
     line-height: 1.4;
@@ -2126,7 +2125,6 @@ button:disabled {
 
 .memories-page .settings-content-area {
     flex: 1;
-    overflow-y: auto;
     font-family: initial;
 }
 

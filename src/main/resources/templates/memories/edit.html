@@ -38,14 +38,24 @@
             <div class="form-row">
                 <div class="form-group">
                     <label for="startDate" th:text="#{memory.form.start.date.label}">Start Date *</label>
-                    <input type="date" id="startDate" name="startDate" required class="form-control" 
-                           th:value="${startDate}">
+                    <div class="datetime-picker" id="startDatePicker">
+                        <input type="date" id="startDate" name="startDate" required class="date-input form-control"
+                               th:value="${startDate}">
+                        <input type="time" id="startTime" step="1" name="startTime" required class="time-input form-control"
+                               th:value="${startTime}">
+                        <button type="button" class="picker-trigger"><i class="lni lni-calendar-days"></i></button>
+                    </div>
                 </div>
 
                 <div class="form-group">
                     <label for="endDate" th:text="#{memory.form.end.date.label}">End Date *</label>
-                    <input type="date" id="endDate" name="endDate" required class="form-control" 
-                           th:value="${endDate}">
+                    <div class="datetime-picker" id="endDatePicker">
+                        <input type="date" id="endDate" name="endDate" required class="date-input form-control"
+                               th:value="${endDate}">
+                        <input type="time" id="endTime" step="1" name="endTime" required class="time-input form-control"
+                               th:value="${endTime}">
+                        <button type="button" class="picker-trigger"><i class="lni lni-calendar-days"></i></button>
+                    </div>
                 </div>
             </div>
             <div class="form-actions">
@@ -53,6 +63,16 @@
                         th:href="@{/memories/{id}(id=${memory.id})}" th:text="#{memory.form.cancel}">Cancel</a>
                 <button type="submit" class="btn btn-primary" th:text="#{memory.form.update}">Save Changes</button>
             </div>
+            <script th:inline="javascript">
+                startDatePicker = new DateTimePicker(document.getElementById('startDatePicker'), {
+                    timeFormat: getBrowserTimeFormat()
+                });
+
+                endDatePicker = new DateTimePicker(document.getElementById('endDatePicker'), {
+                    timeFormat: getBrowserTimeFormat()
+                });
+
+            </script>
         </form>
     </div>
     </div>

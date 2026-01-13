@@ -35,8 +35,8 @@ public class MemoryControllerTimezoneTest {
         User user = testingService.randomUser();
         
         // Test data: Create memory for a specific local date range
-        LocalDate startDate = LocalDate.of(2023, 6, 15);
-        LocalDate endDate = LocalDate.of(2023, 6, 17);
+        LocalDateTime startDate = LocalDateTime.of(2023, 6, 15, 10,0,0);
+        LocalDateTime endDate = LocalDateTime.of(2023, 6, 17, 10,0,0);
         
         // Test different timezones
         ZoneId[] timezones = {
@@ -53,8 +53,10 @@ public class MemoryControllerTimezoneTest {
                     .with(user(user))
                     .param("title", "Test Memory " + timezone.getId())
                     .param("description", "Test description")
-                    .param("startDate", startDate.toString())
-                    .param("endDate", endDate.toString())
+                    .param("startDate", startDate.toLocalDate().toString())
+                    .param("startTime", startDate.toLocalTime().toString())
+                    .param("endDate", endDate.toLocalDate().toString())
+                    .param("endTime", endDate.toLocalTime().toString())
                     .param("timezone", timezone.getId()))
                     .andExpect(status().isOk())
                     .andReturn();
@@ -75,18 +77,10 @@ public class MemoryControllerTimezoneTest {
             MemoryDTO memoryDTO = (MemoryDTO) modelAndView.getModel().get("memory");
             
             // Verify that the local dates match what we sent
-            assertThat(memoryDTO.getStartDate().toLocalDate()).isEqualTo(startDate);
-            assertThat(memoryDTO.getEndDate().toLocalDate()).isEqualTo(endDate);
+            assertThat(memoryDTO.getStartDate()).isEqualTo(startDate);
+            assertThat(memoryDTO.getEndDate()).isEqualTo(endDate);
             assertThat(memoryDTO.getTimezone()).isEqualTo(timezone);
-            
-            // Verify that the start time is at the beginning of the day in the specified timezone
-            LocalDateTime expectedStartDateTime = startDate.atStartOfDay();
-            assertThat(memoryDTO.getStartDate()).isEqualTo(expectedStartDateTime);
-            
-            // Verify that the end time is at the end of the day in the specified timezone
-            LocalDateTime expectedEndDateTime = endDate.plusDays(1).atStartOfDay().minus(1, ChronoUnit.MILLIS);
-            assertThat(memoryDTO.getEndDate()).isEqualTo(expectedEndDateTime);
-            
+
             // Test retrieving the same memory with a different timezone
             ZoneId differentTimezone = timezone.equals(ZoneId.of("UTC")) ? 
                 ZoneId.of("Europe/Berlin") : ZoneId.of("UTC");
@@ -114,7 +108,8 @@ public class MemoryControllerTimezoneTest {
         User user = testingService.randomUser();
         
         // Test with a specific date and timezone that has DST
-        LocalDate testDate = LocalDate.of(2023, 7, 15); // Summer time
+        LocalDateTime testDate = LocalDateTime.of(2023, 7, 15, 10, 0, 0); // Summer time
+        LocalDateTime endDate = testDate.plusDays(1);
         ZoneId berlinTimezone = ZoneId.of("Europe/Berlin");
         
         // Create memory
@@ -122,8 +117,10 @@ public class MemoryControllerTimezoneTest {
                 .with(user(user))
                 .param("title", "DST Test Memory")
                 .param("description", "Testing daylight saving time")
-                .param("startDate", testDate.toString())
-                .param("endDate", testDate.toString())
+                .param("startDate", testDate.toLocalDate().toString())
+                .param("startTime", testDate.toLocalTime().toString())
+                .param("endDate", endDate.toLocalDate().toString())
+                .param("endTime", endDate.toLocalTime().toString())
                 .param("timezone", berlinTimezone.getId()))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -163,8 +160,8 @@ public class MemoryControllerTimezoneTest {
         assertThat(berlinInstant).isEqualTo(utcInstant);
         
         // Verify that Berlin local time is 2 hours ahead of UTC in summer
-        assertThat(berlinDTO.getStartDate().getHour()).isEqualTo(0); // Start of day in Berlin
-        assertThat(utcDTO.getStartDate().getHour()).isEqualTo(22); // 22:00 previous day in UTC (Berlin is UTC+2)
+        assertThat(berlinDTO.getStartDate().getHour()).isEqualTo(10); // Start of day in Berlin
+        assertThat(utcDTO.getStartDate().getHour()).isEqualTo(8); //08:00 previous day in UTC (Berlin is UTC+2)
     }
 
     @Test
@@ -173,14 +170,16 @@ public class MemoryControllerTimezoneTest {
         
         // Test with timezone that has unusual offset
         ZoneId chathamTimezone = ZoneId.of("Pacific/Chatham"); // UTC+12:45/+13:45
-        LocalDate testDate = LocalDate.of(2023, 12, 31); // New Year's Eve
-        
+        LocalDateTime testDate = LocalDateTime.of(2023, 12, 31, 10, 0); // New Year's Eve
+        LocalDateTime endDate = testDate.plusDays(1);
         MvcResult createResult = mockMvc.perform(post("/memories")
                 .with(user(user))
                 .param("title", "Edge Case Timezone Memory")
                 .param("description", "Testing unusual timezone offset")
-                .param("startDate", testDate.toString())
-                .param("endDate", testDate.toString())
+                 .param("startDate", testDate.toLocalDate().toString())
+                 .param("startTime", testDate.toLocalTime().toString())
+                 .param("endDate", endDate.toLocalDate().toString())
+                 .param("endTime", endDate.toLocalTime().toString())
                 .param("timezone", chathamTimezone.getId()))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -200,8 +199,8 @@ public class MemoryControllerTimezoneTest {
         MemoryDTO memoryDTO = (MemoryDTO) modelAndView.getModel().get("memory");
         
         // Verify the date is preserved correctly
-        assertThat(memoryDTO.getStartDate().toLocalDate()).isEqualTo(testDate);
-        assertThat(memoryDTO.getEndDate().toLocalDate()).isEqualTo(testDate);
+        assertThat(memoryDTO.getStartDate()).isEqualTo(testDate);
+        assertThat(memoryDTO.getEndDate()).isEqualTo(endDate);
         assertThat(memoryDTO.getTimezone()).isEqualTo(chathamTimezone);
     }
 }

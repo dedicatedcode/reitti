@@ -70,7 +70,7 @@
                                            th:value="${tripDto.memoryTrip() ? 'm-id:' + tripDto.id() : 't-id:' + tripDto.id() }"
                                            th:checked="${tripDto.memoryTrip()}">
                                 </td>
-                                <td th:text="${#temporals.format(tripDto.trip().startTime, 'MMM d, yyyy HH:mm')} + ' (' + ${tripDto.trip().startVisit.name} + ') -> ' + ${#temporals.format(tripDto.trip().endTime, 'MMM d, yyyy HH:mm')} + ' (' + ${tripDto.trip().endVisit.name} + ')'">Trip details</td>
+                                <td th:text="${#temporals.format(tripDto.startTime(), 'MMM d, yyyy HH:mm')} + ' (' + ${tripDto.startVisit().name()} + ') -> ' + ${#temporals.format(tripDto.endTime(), 'MMM d, yyyy HH:mm')} + ' (' + ${tripDto.endVisit().name()} + ')'">Trip details</td>
                             </tr>
                         </tbody>
                     </table>
@@ -111,7 +111,7 @@
                                            th:checked="${visitDto.memoryVisit()}">
                                     <input type="hidden" name="memoryPart" th:value="${visitDto.memoryVisit()}">
                                 </td>
-                                <td th:text="${visitDto.visit().name} + ' (' + ${#temporals.format(visitDto.visit().startTime, 'MMM d, yyyy HH:mm')} + ' -> ' + ${#temporals.format(visitDto.visit().endTime, 'MMM d, yyyy HH:mm')} + ')'">Visit details</td>
+                                <td th:text="${visitDto.name()} + ' (' + ${#temporals.format(visitDto.startTime(), 'MMM d, yyyy HH:mm')} + ' -> ' + ${#temporals.format(visitDto.endTime(), 'MMM d, yyyy HH:mm')} + ')'">Visit details</td>
                             </tr>
                         </tbody>
                     </table>

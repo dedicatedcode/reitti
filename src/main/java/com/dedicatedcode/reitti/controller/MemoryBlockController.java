@@ -1,6 +1,8 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.dto.PhotoResponse;
+import com.dedicatedcode.reitti.dto.TripDTO;
+import com.dedicatedcode.reitti.dto.VisitDTO;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
@@ -111,26 +113,30 @@ public class MemoryBlockController {
                         model.addAttribute("clusterVisitBlock", b));
                 List<ProcessedVisit> storedVisits = this.processedVisitJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate());
                 List<MemoryVisit> currentMemoryVisits = memoryVisitJdbcService.findByMemoryBlockId(blockId);
-                List<MemoryVisitDto> availableVisits = new ArrayList<>();
-                currentMemoryVisits.stream().map(v -> new MemoryVisitDto(v.getId(), v, true, true)).forEach(availableVisits::add);
-                storedVisits.stream().filter(v -> currentMemoryVisits.stream().noneMatch(mv -> mv.getStartTime().equals(v.getStartTime()))).forEach(v -> availableVisits.add(new MemoryVisitDto(v.getId(), MemoryVisit.create(v), false, false)));
-                model.addAttribute("availableVisits", availableVisits.stream().sorted(Comparator.comparing(memoryVisitDto -> memoryVisitDto.visit.getStartTime())).toList());
+                List<VisitDTO> availableVisits = new ArrayList<>();
+                currentMemoryVisits.stream()
+                        .map(v -> VisitDTO.create(v, timezone))
+                        .forEach(availableVisits::add);
+                storedVisits.stream()
+                        .filter(v -> currentMemoryVisits.stream()
+                                .noneMatch(mv -> mv.getStartTime().equals(v.getStartTime())))
+                        .forEach(v -> availableVisits.add(VisitDTO.create(v, timezone)));
+                model.addAttribute("availableVisits", availableVisits.stream().sorted(Comparator.comparing(VisitDTO::startTime)).toList());
                 return "memories/blocks/edit :: edit-cluster-visit-block";
             case CLUSTER_TRIP:
                 List<Trip> storedTrips = this.tripJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate());
                 List<MemoryTrip> currentMemoryTrips = memoryTripJdbcService.findByMemoryBlockId(blockId);
-                List<MemoryTripDto> availableTrips = new ArrayList<>();
-                currentMemoryTrips.stream().map(v -> new MemoryTripDto(v.getId(), v, true, true)).forEach(availableTrips::add);
+                List<TripDTO> availableTrips = new ArrayList<>();
+                currentMemoryTrips.stream().map(v -> TripDTO.create(v, timezone))
+                        .forEach(availableTrips::add);
 
                 storedTrips.stream().filter(v -> currentMemoryTrips.stream().noneMatch(mv -> mv.getStartTime().equals(v.getStartTime()))).forEach(t -> {
-                    MemoryVisit startVisit = MemoryVisit.create(t.getStartVisit());
-                    MemoryVisit endVisit = MemoryVisit.create(t.getEndVisit());
-                    availableTrips.add(new MemoryTripDto(t.getId(), MemoryTrip.create(t, startVisit, endVisit), false, false));
+                    availableTrips.add(TripDTO.create(t, timezone));
                 });
 
                 memoryService.getBlock(user, timezone, memoryId, blockId).ifPresent(b ->
                         model.addAttribute("clusterTripBlock", b));
-                model.addAttribute("availableTrips", availableTrips.stream().sorted(Comparator.comparing(memoryTripDto -> memoryTripDto.trip.getStartTime())).toList());
+                model.addAttribute("availableTrips", availableTrips.stream().sorted(Comparator.comparing(TripDTO::startTime)).toList());
                 return "memories/blocks/edit :: edit-cluster-trip-block";
         }
 
@@ -494,11 +500,5 @@ public class MemoryBlockController {
             TokenUser tokenUser = (TokenUser) user;
             return user.getAuthorities().contains(MagicLinkAccessLevel.MEMORY_EDIT_ACCESS.asAuthority()) && tokenUser.grantsAccessTo(MagicLinkResourceType.MEMORY, memory.getId());
         }
-    }
-
-    private record MemoryTripDto(long id, MemoryTrip trip, boolean selected, boolean memoryTrip) {
-    }
-
-    private record MemoryVisitDto(long id, MemoryVisit visit, boolean selected, boolean memoryVisit) {
     }
 }

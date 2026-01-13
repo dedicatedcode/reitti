@@ -2,6 +2,8 @@ package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.controller.error.ForbiddenException;
 import com.dedicatedcode.reitti.controller.error.PageNotFoundException;
+import com.dedicatedcode.reitti.dto.TripDTO;
+import com.dedicatedcode.reitti.dto.VisitDTO;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.memory.*;
 import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
@@ -21,10 +23,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -139,10 +138,14 @@ public class MemoryController {
             @AuthenticationPrincipal User user,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime,
             @RequestParam(required = false) String year,
             Model model) {
         model.addAttribute("startDate", startDate);
+        model.addAttribute("startTime", startTime);
         model.addAttribute("endDate", endDate);
+        model.addAttribute("endTime", endTime);
         model.addAttribute("year", year);
         return "memories/new :: new-memory";
     }
@@ -154,6 +157,8 @@ public class MemoryController {
             @RequestParam(required = false) String description,
             @RequestParam LocalDate startDate,
             @RequestParam LocalDate endDate,
+            @RequestParam LocalTime startTime,
+            @RequestParam LocalTime endTime,
             @RequestParam(required = false) String year,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             @RequestParam(required = false, defaultValue = "MAP") HeaderType headerType,
@@ -166,13 +171,15 @@ public class MemoryController {
             model.addAttribute("title", title);
             model.addAttribute("description", description);
             model.addAttribute("startDate", startDate);
+            model.addAttribute("startTime", startTime);
             model.addAttribute("endDate", endDate);
+            model.addAttribute("endTime", endTime);
             return "memories/new :: new-memory";
         }
         
         try {
-            Instant start = ZonedDateTime.of(startDate.atStartOfDay(), timezone).toInstant();
-            Instant end = ZonedDateTime.of(endDate.plusDays(1).atStartOfDay().minus(1, ChronoUnit.MILLIS), timezone).toInstant();
+            Instant start = LocalDateTime.of(startDate, startTime).atZone(timezone).toInstant();
+            Instant end = LocalDateTime.of(endDate, endTime).atZone(timezone).toInstant();
             Instant today = Instant.now();
             
             // Validate dates are not in the future
@@ -181,7 +188,9 @@ public class MemoryController {
                 model.addAttribute("title", title);
                 model.addAttribute("description", description);
                 model.addAttribute("startDate", startDate);
+                model.addAttribute("startTime", startTime);
                 model.addAttribute("endDate", endDate);
+                model.addAttribute("endTime", endTime);
                 model.addAttribute("year", year);
 
                 return "memories/new :: new-memory";
@@ -193,7 +202,9 @@ public class MemoryController {
                 model.addAttribute("title", title);
                 model.addAttribute("description", description);
                 model.addAttribute("startDate", startDate);
+                model.addAttribute("startTime", startTime);
                 model.addAttribute("endDate", endDate);
+                model.addAttribute("endTime", endTime);
                 model.addAttribute("year", year);
 
                 return "memories/new :: new-memory";
@@ -219,7 +230,9 @@ public class MemoryController {
             model.addAttribute("title", title);
             model.addAttribute("description", description);
             model.addAttribute("startDate", startDate);
+            model.addAttribute("startTime", startTime);
             model.addAttribute("endDate", endDate);
+            model.addAttribute("endTime", endTime);
             model.addAttribute("year", year);
 
             return "memories/new :: new-memory";
@@ -238,7 +251,9 @@ public class MemoryController {
         }
         model.addAttribute("memory", new MemoryDTO(memory, timezone));
         model.addAttribute("startDate", memory.getStartDate().atZone(timezone).toLocalDate());
+        model.addAttribute("startTime", memory.getStartDate().atZone(timezone).toLocalTime().truncatedTo(ChronoUnit.SECONDS));
         model.addAttribute("endDate", memory.getEndDate().atZone(timezone).toLocalDate());
+        model.addAttribute("endTime", memory.getEndDate().atZone(timezone).toLocalTime().truncatedTo(ChronoUnit.SECONDS));
         return "memories/edit :: edit-memory";
     }
 
@@ -250,6 +265,8 @@ public class MemoryController {
             @RequestParam(required = false) String description,
             @RequestParam LocalDate startDate,
             @RequestParam LocalDate endDate,
+            @RequestParam LocalTime startTime,
+            @RequestParam LocalTime endTime,
             @RequestParam Long version,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             @RequestParam(required = false, defaultValue = "MAP") HeaderType headerType,
@@ -277,8 +294,8 @@ public class MemoryController {
         }
         
         try {
-            Instant start = ZonedDateTime.of(startDate.atStartOfDay(), timezone).toInstant();
-            Instant end = ZonedDateTime.of(endDate.plusDays(1).atStartOfDay().minusSeconds(1), timezone).toInstant();
+            Instant start = LocalDateTime.of(startDate, startTime).atZone(timezone).toInstant();
+            Instant end = LocalDateTime.of(endDate, endTime).atZone(timezone).toInstant();
             Instant today = Instant.now();
             
             if (start.isAfter(today) || end.isAfter(today)) {
@@ -368,7 +385,9 @@ public class MemoryController {
     public String newBlockForm(@AuthenticationPrincipal User user,
                                @PathVariable Long id,
                                @RequestParam String type,
-                               @RequestParam(defaultValue = "-1") int position, Model model) {
+                               @RequestParam(defaultValue = "-1") int position,
+                               @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+                               Model model) {
 
         Memory memory = memoryService.getMemoryById(user, id).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
 
@@ -383,10 +402,14 @@ public class MemoryController {
             case "TEXT":
                 return "memories/fragments :: text-block-form";
             case "TRIP_CLUSTER":
-                model.addAttribute("availableTrips", this.tripJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate()));
+                model.addAttribute("availableTrips", this.tripJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate())
+                        .stream().map(t -> TripDTO.create(t, timezone))
+                        .toList());
                 return "memories/fragments :: trip-block-form";
             case "VISIT_CLUSTER":
-                model.addAttribute("availableVisits", this.processedVisitJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate()));
+                model.addAttribute("availableVisits", this.processedVisitJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate())
+                        .stream().map(v -> VisitDTO.create(v, timezone))
+                        .toList());
                 return "memories/fragments :: visit-block-form";
             case "IMAGE_GALLERY":
                 boolean immichEnabled = immichIntegrationService.getIntegrationForUser(user)

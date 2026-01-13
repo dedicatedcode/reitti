@@ -1,0 +1,274 @@
+/* DateTime Picker Styles - Updated for separate date/time inputs */
+
+/* Main container and layout */
+.datetime-picker {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: var(--color-background-dark-light);
+    color: var(--color-text-white);
+    width: 20rem;
+}
+
+.datetime-picker .date-input,
+.datetime-picker .time-input {
+    flex: 1;
+    border: none;
+    padding: 8px;
+    font-size: 14px;
+    background: transparent;
+    color: var(--color-text-white);
+}
+
+.datetime-picker .date-input:focus,
+.datetime-picker .time-input:focus {
+    outline: none;
+    border: none;
+}
+.datetime-picker  input[type="date"]::-webkit-calendar-picker-indicator {
+    display: none;
+    -webkit-appearance: none;
+}
+.datetime-picker input[type="date"] {
+    border: none;
+    clip-path: inset(0 30px 0 0);
+}
+
+/* Hide the default calendar icon in Edge */
+.datetime-picker .date-input::-ms-clear,
+.datetime-picker .time-input::-ms-clear {
+    display: none;
+}
+
+/* Trigger button */
+.picker-trigger {
+    background: var(--color-background-dark-light);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.picker-trigger:hover {
+    background: var(--color-background-dark);
+}
+
+/* Popup container */
+.picker-popup {
+    position: absolute;
+    top: 100%;
+    left: -1px;
+    z-index: 1000;
+    background: var(--color-background-dark);
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    margin-top: 4px;
+    min-width: 600px;
+}
+
+.picker-container {
+    display: flex;
+    padding: 16px;
+    gap: 16px;
+    height: 400px; /* Fixed height for the container */
+}
+
+/* Calendar section */
+.calendar-section {
+    flex: 2;
+    height: 100%; /* Take full height of container */
+    display: flex;
+    flex-direction: column;
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.calendar-header button {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.calendar-header button:hover {
+    background: #f0f0f0;
+}
+
+.month-year {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+/* Weekdays and days grid */
+.weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.weekday {
+    text-align: center;
+    font-weight: bold;
+    font-size: 12px;
+    color: #666;
+    padding: 4px;
+}
+
+.days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    flex: 1; /* Take remaining space */
+}
+
+.day {
+    background: none;
+    border: none;
+    padding: 8px;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.day:hover {
+    background: #767676;
+    color: var(--color-highlight);
+}
+
+.day.selected {
+    background: var(--color-highlight);
+    color: var(--color-background-dark);
+    box-shadow: var(--box-shadow);
+}
+
+.day.other-month {
+    color: #ccc;
+}
+
+.day.disabled {
+    color: #ccc;
+    cursor: not-allowed;
+}
+
+/* Today button */
+.today-button {
+    background: var(--color-background-dark-light);
+    color: white;
+    border: none;
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 8px;
+    width: 100%;
+}
+
+.today-button:hover {
+    background: var(--color-highlight);
+    color: var(--color-background-dark);
+}
+
+/* Year and time scroll sections */
+.year-scroll, .time-scroll {
+    flex: 1;
+    height: 100%; /* Take full height of container */
+    max-height: 100%; /* Remove fixed max-height */
+    overflow-y: auto;
+}
+
+.time-scroll {
+    border: 1px solid #888;
+    border-radius: 4px;
+}
+
+.year-list, .time-list {
+    padding: 8px 0;
+    height: 100%; /* Take full height */
+}
+
+.year-item, .time-item {
+    display: block;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 8px 16px;
+    text-align: left;
+    cursor: pointer;
+    font-size: 14px;
+    border-radius: 0;
+}
+
+.year-item:hover, .time-item:hover {
+    background: #767676;
+    color: var(--color-highlight);
+}
+
+.year-item.selected, .time-item.selected {
+    background: var(--color-highlight);
+    color: var(--color-background-dark);
+    box-shadow: var(--box-shadow);
+}
+
+/* Scrollbar styling */
+.year-scroll::-webkit-scrollbar, .time-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.year-scroll::-webkit-scrollbar-track, .time-scroll::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.year-scroll::-webkit-scrollbar-thumb, .time-scroll::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.year-scroll::-webkit-scrollbar-thumb:hover, .time-scroll::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .picker-popup {
+        min-width: 90vw;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .picker-container {
+        flex-direction: column;
+        gap: 12px;
+        height: auto; /* Reset height for mobile */
+    }
+
+    .year-scroll, .time-scroll {
+        max-height: 200px;
+    }
+
+    .calendar-section {
+        height: auto;
+    }
+
+    .days-grid {
+        flex: none;
+    }
+}
