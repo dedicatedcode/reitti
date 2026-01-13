@@ -85,6 +85,10 @@ public class UserSettings {
         return customCss;
     }
 
+    public UserSettings withHomeCoordinates(Double homeLatitude, Double homeLongitude) {
+        return new UserSettings(userId, preferColoredMap, selectedLanguage, unitSystem, homeLatitude, homeLongitude, timeZoneOverride, timeDisplayMode, customCss, latestData, color, version);
+    }
+
     public String getColor() {
         return color;
     }

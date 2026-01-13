@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.model.Language;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
+import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.TransportModeConfig;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
@@ -11,7 +12,7 @@ import com.dedicatedcode.reitti.model.processing.RecalculationState;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.*;
-import com.dedicatedcode.reitti.repository.TransportModeJdbcService;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class UserService {
@@ -33,6 +35,7 @@ public class UserService {
     private final ApiTokenJdbcService apiTokenJdbcService;
     private final MqttIntegrationJdbcService mqttIntegrationJdbcService;
     private final PasswordEncoder passwordEncoder;
+    private final JdbcTemplate jdbcTemplate;
 
     public UserService(UserJdbcService userJdbcService,
                        UserSettingsJdbcService userSettingsJdbcService,
@@ -44,7 +47,8 @@ public class UserService {
                        GeocodingResponseJdbcService geocodingResponseJdbcService,
                        ApiTokenJdbcService apiTokenJdbcService,
                        MqttIntegrationJdbcService mqttIntegrationJdbcService,
-                       PasswordEncoder passwordEncoder) {
+                       PasswordEncoder passwordEncoder,
+                       JdbcTemplate jdbcTemplate) {
         this.userJdbcService = userJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.visitDetectionParametersJdbcService = visitDetectionParametersJdbcService;
@@ -56,6 +60,7 @@ public class UserService {
         this.apiTokenJdbcService = apiTokenJdbcService;
         this.mqttIntegrationJdbcService = mqttIntegrationJdbcService;
         this.passwordEncoder = passwordEncoder;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     public User createNewUser(String username,
@@ -67,12 +72,14 @@ public class UserService {
                 .withRole(Role.USER)
                 .withExternalId(externalId)
                 .withProfileUrl(profileUrl));
+        UserSettings userSettings = UserSettings.defaultSettings(createdUser.getId());
+        userSettings = addRandomHomeLocation(userSettings);
         saveDefaultVisitDetectionParameters(createdUser);
         saveDefaultTransportationModeDetectionParameters(createdUser);
-
+        this.userSettingsJdbcService.save(userSettings);
         return createdUser;
-
     }
+
     public User createNewUser(String username,
                               String displayName,
                               String password,
@@ -102,11 +109,22 @@ public class UserService {
                                                      color,
                                                      null);
 
+        if (userSettings.getHomeLatitude() == null && userSettings.getHomeLongitude() == null) {
+            userSettings = addRandomHomeLocation(userSettings);
+        }
 
         saveDefaultVisitDetectionParameters(createdUser);
         saveDefaultTransportationModeDetectionParameters(createdUser);
         userSettingsJdbcService.save(userSettings);
         return createdUser;
+    }
+
+    private UserSettings addRandomHomeLocation(UserSettings userSettings) {
+        Optional<GeoPoint> geoPoint = this.jdbcTemplate.query("SELECT latitude, longitude FROM random_cities ORDER BY random() LIMIT 1", (rs, rowNum) -> new GeoPoint(rs.getDouble("latitude"), rs.getDouble("longitude"))).stream().findFirst();
+        if (geoPoint.isPresent()) {
+            userSettings = userSettings.withHomeCoordinates(geoPoint.get().latitude(), geoPoint.get().longitude());
+        }
+        return userSettings;
     }
 
     private void saveDefaultTransportationModeDetectionParameters(User createdUser) {
@@ -144,4 +162,5 @@ public class UserService {
         this.mqttIntegrationJdbcService.deleteForUser(user);
         this.userJdbcService.deleteUser(user.getId());
     }
+
 }

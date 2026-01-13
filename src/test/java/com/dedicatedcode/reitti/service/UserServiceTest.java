@@ -60,6 +60,12 @@ class UserServiceTest {
         assertThat(user.getRole()).isEqualTo(Role.USER);
         assertThat(user.getPassword()).isEmpty();
 
+
+        UserSettings settings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
+        assertThat(settings).isNotNull();
+        assertThat(settings.getHomeLatitude()).isNotNull().isNotEqualTo(0.0);
+        assertThat(settings.getHomeLongitude()).isNotNull().isNotEqualTo(0.0);
+
         // Verify default visit detection parameters are created
         List<DetectionParameter> detectionParams = visitDetectionParametersJdbcService.findAllConfigurationsForUser(user);
         assertThat(detectionParams).hasSize(1);
@@ -70,10 +76,35 @@ class UserServiceTest {
     }
 
     @Test
+    void shouldSelectRandomCityOfHomeLatitudeAndLongitudeNotSpecified() {
+        // When
+        User user = userService.createNewUser(
+                "adminuser3",
+                "Admin User",
+                "password123",
+                Role.ADMIN,
+                UnitSystem.IMPERIAL,
+                true,
+                Language.EN,
+                null,
+                null,
+                "Europe/Berlin",
+                TimeDisplayMode.DEFAULT,
+                "#f1ba63"
+        );
+
+        // Verify user settings were created
+        UserSettings settings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
+        assertThat(settings).isNotNull();
+        assertThat(settings.getHomeLatitude()).isNotNull().isNotEqualTo(0.0);
+        assertThat(settings.getHomeLongitude()).isNotNull().isNotEqualTo(0.0);
+    }
+
+    @Test
     void shouldCreateUserWithPasswordAndCustomSettings() {
         // When
         User user = userService.createNewUser(
-                "adminuser",
+                "adminuser2",
                 "Admin User",
                 "password123",
                 Role.ADMIN,
@@ -89,7 +120,7 @@ class UserServiceTest {
 
         // Then
         assertThat(user).isNotNull();
-        assertThat(user.getUsername()).isEqualTo("adminuser");
+        assertThat(user.getUsername()).isEqualTo("adminuser2");
         assertThat(user.getDisplayName()).isEqualTo("Admin User");
         assertThat(user.getRole()).isEqualTo(Role.ADMIN);
         assertThat(user.getPassword()).isNotEmpty();
