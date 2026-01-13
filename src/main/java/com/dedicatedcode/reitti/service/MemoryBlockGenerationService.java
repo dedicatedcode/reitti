@@ -177,8 +177,9 @@ public class MemoryBlockGenerationService {
             }
 
             if (!handledDays.contains(today)) {
-                blockParts.add(new MemoryBlockText(null, i18n.translate("memory.generator.day.text",
-                        Duration.between(startDate.truncatedTo(ChronoUnit.DAYS), cluster.getStartTime().truncatedTo(ChronoUnit.DAYS)).toDays(), cluster.getHighestScoredVisit().visit.getPlace().getCity()), null));
+                long daysFromStart = Duration.between(startDate.truncatedTo(ChronoUnit.DAYS), cluster.getStartTime().truncatedTo(ChronoUnit.DAYS)).toDays();
+                String headline = daysFromStart > 0 ? i18n.translate("memory.generator.day.text", daysFromStart, cluster.getHighestScoredVisit().visit.getPlace().getCity()) : cluster.getHighestScoredVisit().visit.getPlace().getCity();
+                blockParts.add(new MemoryBlockText(null, headline, null));
                 handledDays.add(today);
                 firstOfDay = true;
             } else {

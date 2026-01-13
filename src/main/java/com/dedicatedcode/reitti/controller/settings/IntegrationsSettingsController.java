@@ -7,22 +7,28 @@ import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.integration.OwnTracksRecorderIntegration;
 import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.MqttIntegrationJdbcService;
+import com.dedicatedcode.reitti.repository.OptimisticLockException;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.ApiTokenService;
 import com.dedicatedcode.reitti.service.ContextPathHolder;
+import com.dedicatedcode.reitti.service.DynamicMqttProvider;
+import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
 import com.dedicatedcode.reitti.service.integration.OwnTracksRecorderIntegrationService;
+import com.dedicatedcode.reitti.service.integration.mqtt.MqttIntegration;
+import com.dedicatedcode.reitti.service.integration.mqtt.PayloadType;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.MessageSource;
-import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 @Controller
 @RequestMapping("/settings/integrations")
@@ -32,7 +38,9 @@ public class IntegrationsSettingsController {
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final ImmichIntegrationService immichIntegrationService;
     private final OwnTracksRecorderIntegrationService ownTracksRecorderIntegrationService;
-    private final MessageSource messageSource;
+    private final DynamicMqttProvider mqttProvider;
+    private final MqttIntegrationJdbcService mqttIntegrationJdbcService;
+    private final I18nService i18n;
     private final boolean dataManagementEnabled;
 
     public IntegrationsSettingsController(ContextPathHolder contextPathHolder,
@@ -40,53 +48,28 @@ public class IntegrationsSettingsController {
                                           RawLocationPointJdbcService rawLocationPointJdbcService,
                                           ImmichIntegrationService immichIntegrationService,
                                           OwnTracksRecorderIntegrationService ownTracksRecorderIntegrationService,
-                                          MessageSource messageSource,
+                                          DynamicMqttProvider mqttProvider,
+                                          MqttIntegrationJdbcService mqttIntegrationJdbcService,
+                                          I18nService i18nService,
                                           @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.contextPathHolder = contextPathHolder;
         this.apiTokenService = apiTokenService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.immichIntegrationService = immichIntegrationService;
         this.ownTracksRecorderIntegrationService = ownTracksRecorderIntegrationService;
-        this.messageSource = messageSource;
+        this.mqttProvider = mqttProvider;
+        this.mqttIntegrationJdbcService = mqttIntegrationJdbcService;
+        this.i18n = i18nService;
         this.dataManagementEnabled = dataManagementEnabled;
     }
 
     @GetMapping
     public String getPage(@AuthenticationPrincipal User user,
-                          @RequestParam(required = false) String openSection,
                           HttpServletRequest request,
                           Model model) {
         model.addAttribute("activeSection", "integrations");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
-
-        List<ApiToken> tokens = apiTokenService.getTokensForUser(user);
-
-        // Add the first token if available
-        String selectedToken = null;
-        if (!tokens.isEmpty()) {
-            selectedToken = tokens.getFirst().getToken();
-            model.addAttribute("firstToken", selectedToken);
-            model.addAttribute("hasToken", true);
-        } else {
-            model.addAttribute("hasToken", false);
-        }
-
-        model.addAttribute("selectedToken", selectedToken);
-        model.addAttribute("tokens", tokens);
-
-        Optional<OwnTracksRecorderIntegration> recorderIntegration = ownTracksRecorderIntegrationService.getIntegrationForUser(user);
-        if (recorderIntegration.isPresent()) {
-            model.addAttribute("ownTracksRecorderIntegration", recorderIntegration.get());
-            model.addAttribute("hasRecorderIntegration", recorderIntegration.get().isEnabled());
-        } else {
-            model.addAttribute("hasRecorderIntegration", false);
-        }
-
-        model.addAttribute("openSection", openSection);
-        model.addAttribute("serverUrl", calculateServerUrl(request));
-        model.addAttribute("contextPath", contextPathHolder.getContextPath());
-
         return "settings/integrations";
     }
 
@@ -124,11 +107,27 @@ public class IntegrationsSettingsController {
             model.addAttribute("hasRecorderIntegration", false);
         }
 
+        Optional<MqttIntegration> mqttIntegration = this.mqttIntegrationJdbcService.findByUser(currentUser);
+        if (mqttIntegration.isPresent()) {
+            model.addAttribute("mqttIntegration", mqttIntegration.get());
+        } else {
+            model.addAttribute("generatedClientId", "reitti-client-" + UUID.randomUUID().toString().substring(0, 8));
+        }
+        Optional<ImmichIntegration> integration = immichIntegrationService.getIntegrationForUser(currentUser);
+
+        if (integration.isPresent()) {
+            model.addAttribute("immichIntegration", integration.get());
+            model.addAttribute("hasIntegration", true);
+        } else {
+            model.addAttribute("hasIntegration", false);
+        }
+
         model.addAttribute("openSection", openSection);
         model.addAttribute("serverUrl", calculateServerUrl(request));
         model.addAttribute("contextPath", contextPathHolder.getContextPath());
 
-        return "settings/integrations :: integrations-content";
+
+        return "settings/fragments/integrations :: integrations-content";
     }
 
     private String calculateServerUrl(HttpServletRequest request) {
@@ -151,32 +150,18 @@ public class IntegrationsSettingsController {
     @GetMapping("/reitti.properties")
     public ResponseEntity<String> getGpsLoggerProperties(@RequestParam String token, HttpServletRequest request) {
         String serverUrl = calculateServerUrl(request);
-        String url = serverUrl + contextPathHolder.getContextPath() + "/api/v1/ingest/owntracks?token=" + token;
+        String url = serverUrl + contextPathHolder.getContextPath() + "/api/v1/ingest/owntracks";
         String properties = "log_customurl_url=" + url + "\n" +
-                            "log_customurl_method=POST\n" +
-                            "log_customurl_body={\"_type\" : \"location\",\"t\": \"u\",\"acc\": \"%ACC\",\"alt\": \"%ALT\",\"batt\": \"%BATT\",\"bs\": \"%ISCHARGING\",\"lat\": \"%LAT\",\"lon\": \"%LON\",\"tst\": \"%TIMESTAMP\",\"vel\": \"%SPD\"}\n" +
-                            "log_customurl_headers=Content-Type: application/json\n" +
-                            "autosend_frequency_minutes=60\n" +
-                            "accuracy_before_logging=25\n" +
-                            "time_before_logging=15\n" +
-                            "autosend_enabled=true\n";
+                "log_customurl_method=POST\n" +
+                "log_customurl_body={\"_type\" : \"location\",\"t\": \"u\",\"acc\": \"%ACC\",\"alt\": \"%ALT\",\"batt\": \"%BATT\",\"bs\": \"%ISCHARGING\",\"lat\": \"%LAT\",\"lon\": \"%LON\",\"tst\": \"%TIMESTAMP\",\"vel\": \"%SPD\"}\n" +
+                "log_customurl_headers=Content-Type: application/json\\nX-API-TOKEN: " + token + "\n" +
+                "autosend_frequency_minutes=60\n" +
+                "accuracy_before_logging=25\n" +
+                "time_before_logging=15\n" +
+                "autosend_enabled=true\n";
         return ResponseEntity.ok()
                 .header("Content-Type", "text/plain")
                 .body(properties);
-    }
-
-    @GetMapping("/photos-content")
-    public String getPhotosContent(@AuthenticationPrincipal User user, Model model) {
-        Optional<ImmichIntegration> integration = immichIntegrationService.getIntegrationForUser(user);
-
-        if (integration.isPresent()) {
-            model.addAttribute("immichIntegration", integration.get());
-            model.addAttribute("hasIntegration", true);
-        } else {
-            model.addAttribute("hasIntegration", false);
-        }
-
-        return "fragments/photos :: photos-content";
     }
 
     @PostMapping("/immich-integration")
@@ -184,23 +169,15 @@ public class IntegrationsSettingsController {
                                         @RequestParam String apiToken,
                                         @RequestParam(defaultValue = "false") boolean enabled,
                                         @AuthenticationPrincipal User currentUser,
-                                        Model model) {
+                                        RedirectAttributes model) {
         try {
-            ImmichIntegration integration = immichIntegrationService.saveIntegration(
-                    currentUser, serverUrl, apiToken, enabled);
-
-            model.addAttribute("immichIntegration", integration);
-            model.addAttribute("hasIntegration", true);
-            model.addAttribute("successMessage", getMessage("integrations.immich.config.saved"));
+            immichIntegrationService.saveIntegration(currentUser, serverUrl, apiToken, enabled);
+            model.addFlashAttribute("successMessage", i18n.translate("integrations.immich.config.saved"));
         } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("integrations.immich.config.error", e.getMessage()));
-            // Re-populate form with submitted values
-            ImmichIntegration tempIntegration = new ImmichIntegration(serverUrl, apiToken, enabled);
-            model.addAttribute("immichIntegration", tempIntegration);
-            model.addAttribute("hasIntegration", true);
+            model.addFlashAttribute("errorMessage", i18n.translate("integrations.immich.config.error", e.getMessage()));
         }
 
-        return "fragments/photos :: photos-content";
+        return "redirect:/settings/integrations/integrations-content?openSection=photos";
     }
 
     @PostMapping("/immich-integration/test")
@@ -214,14 +191,14 @@ public class IntegrationsSettingsController {
 
             if (result.success()) {
                 response.put("success", true);
-                response.put("message", getMessage("integrations.immich.connection.success"));
+                response.put("message", i18n.translate("integrations.immich.connection.success"));
             } else {
                 response.put("success", false);
-                response.put("message", getMessage("integrations.immich.connection.failed", result.message()));
+                response.put("message", i18n.translate("integrations.immich.connection.failed", result.message()));
             }
         } catch (Exception e) {
             response.put("success", false);
-            response.put("message", getMessage("integrations.immich.connection.failed", e.getMessage()));
+            response.put("message", i18n.translate("integrations.immich.connection.failed", e.getMessage()));
         }
 
         return response;
@@ -236,39 +213,14 @@ public class IntegrationsSettingsController {
                                                    @RequestParam String authUsername,
                                                    @RequestParam String authPassword,
                                                    @AuthenticationPrincipal User currentUser,
-                                                   Model model) {
-
-        List<ApiToken> tokens = apiTokenService.getTokensForUser(currentUser);
-
-        if (!tokens.isEmpty()) {
-            model.addAttribute("firstToken", tokens.getFirst().getToken());
-            model.addAttribute("hasToken", true);
-        } else {
-            model.addAttribute("hasToken", false);
-        }
-
-        model.addAttribute("tokens", tokens);
-
+                                                   RedirectAttributes redirectAttributes) {
         try {
-            OwnTracksRecorderIntegration integration = ownTracksRecorderIntegrationService.saveIntegration(
-                    currentUser, baseUrl, username, authUsername, authPassword, deviceId, enabled);
-
-            model.addAttribute("successMessage", getMessage("integrations.owntracks.recorder.config.saved"));
-            model.addAttribute("ownTracksRecorderIntegration", integration);
-            model.addAttribute("hasRecorderIntegration", enabled);
+            ownTracksRecorderIntegrationService.saveIntegration(currentUser, baseUrl, username, authUsername, authPassword, deviceId, enabled);
+            redirectAttributes.addFlashAttribute("successMessage", i18n.translate("integrations.owntracks.recorder.config.saved"));
         } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("integrations.owntracks.recorder.config.error", e.getMessage()));
-
-            // Re-populate form with submitted values for error case
-            OwnTracksRecorderIntegration tempIntegration = new OwnTracksRecorderIntegration(baseUrl, username, deviceId, enabled, authUsername, authPassword);
-            model.addAttribute("ownTracksRecorderIntegration", tempIntegration);
-            model.addAttribute("hasRecorderIntegration", enabled);
+            redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integrations.owntracks.recorder.config.error", e.getMessage()));
         }
-
-        // Keep external data stores section open
-        model.addAttribute("openSection", "external-data-stores");
-
-        return "settings/integrations :: integrations-content";
+        return "redirect:/settings/integrations/integrations-content?openSection=owntracks-recorder";
     }
 
 
@@ -286,81 +238,160 @@ public class IntegrationsSettingsController {
 
             if (connectionSuccessful) {
                 response.put("success", true);
-                response.put("message", getMessage("integrations.owntracks.recorder.connection.success"));
+                response.put("message", i18n.translate("integrations.owntracks.recorder.connection.success"));
             } else {
                 response.put("success", false);
-                response.put("message", getMessage("integrations.owntracks.recorder.connection.failed", "Invalid configuration"));
+                response.put("message", i18n.translate("integrations.owntracks.recorder.connection.failed", "Invalid configuration"));
             }
         } catch (Exception e) {
             response.put("success", false);
-            response.put("message", getMessage("integrations.owntracks.recorder.connection.failed", e.getMessage()));
+            response.put("message", i18n.translate("integrations.owntracks.recorder.connection.failed", e.getMessage()));
         }
 
         return response;
     }
 
-    @PostMapping("/owntracks-recorder-integration/delete")
-    public String deleteOwnTracksRecorderIntegration(@AuthenticationPrincipal User currentUser, Model model, HttpServletRequest request) {
-        try {
-            ownTracksRecorderIntegrationService.deleteIntegration(currentUser);
-            model.addAttribute("successMessage", getMessage("integrations.owntracks.recorder.config.deleted"));
-        } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("integrations.owntracks.recorder.config.delete.error", e.getMessage()));
-        }
-
-        // Re-populate the integrations content
-        List<ApiToken> tokens = apiTokenService.getTokensForUser(currentUser);
-        if (!tokens.isEmpty()) {
-            model.addAttribute("firstToken", tokens.getFirst().getToken());
-            model.addAttribute("hasToken", true);
-        } else {
-            model.addAttribute("hasToken", false);
-        }
-
-        model.addAttribute("tokens", tokens);
-
-        // Build the server URL
-
-        model.addAttribute("serverUrl", calculateServerUrl(request));
-        model.addAttribute("hasRecorderIntegration", false);
-
-        return "settings/integrations :: integrations-content";
-    }
-
     @PostMapping("/owntracks-recorder-integration/load-historical")
-    public String loadOwnTracksRecorderHistoricalData(@AuthenticationPrincipal User currentUser, Model model, HttpServletRequest request) {
+    public String loadOwnTracksRecorderHistoricalData(@AuthenticationPrincipal User currentUser, RedirectAttributes redirectAttributes, HttpServletRequest request) {
         try {
             ownTracksRecorderIntegrationService.loadHistoricalData(currentUser);
-            model.addAttribute("successMessage", getMessage("integrations.owntracks.recorder.load.historical.success"));
+            redirectAttributes.addFlashAttribute("successMessage", i18n.translate("integrations.owntracks.recorder.load.historical.success"));
         } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("integrations.owntracks.recorder.load.historical.error", e.getMessage()));
+            redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integrations.owntracks.recorder.load.historical.error", e.getMessage()));
         }
-
-        // Re-populate the integrations content
-        List<ApiToken> tokens = apiTokenService.getTokensForUser(currentUser);
-        if (!tokens.isEmpty()) {
-            model.addAttribute("firstToken", tokens.getFirst().getToken());
-            model.addAttribute("hasToken", true);
-        } else {
-            model.addAttribute("hasToken", false);
-        }
-        model.addAttribute("tokens", tokens);
-        model.addAttribute("serverUrl", calculateServerUrl(request));
-
-        Optional<OwnTracksRecorderIntegration> recorderIntegration = ownTracksRecorderIntegrationService.getIntegrationForUser(currentUser);
-        if (recorderIntegration.isPresent()) {
-            model.addAttribute("ownTracksRecorderIntegration", recorderIntegration.get());
-            model.addAttribute("hasRecorderIntegration", recorderIntegration.get().isEnabled());
-        } else {
-            model.addAttribute("hasRecorderIntegration", false);
-        }
-
-        // Keep external data stores section open
-        model.addAttribute("openSection", "external-data-stores");
-
-        return "settings/integrations :: integrations-content";
+        return "redirect:/settings/integrations/integrations-content?openSection=owntracks-recorder";
     }
 
+    @PostMapping("/mqtt-integration")
+    public String saveMqttIntegration(
+            @AuthenticationPrincipal User user,
+            @RequestParam(name = "mqtt_host") String host,
+            @RequestParam(name = "mqtt_port") int port,
+            @RequestParam(name = "mqtt_useTLS", defaultValue = "false") boolean useTLS,
+            @RequestParam(name = "mqtt_identifier") String identifier,
+            @RequestParam(name = "mqtt_topic") String topic,
+            @RequestParam(name = "mqtt_username", required = false) String username,
+            @RequestParam(name = "mqtt_password", required = false) String password,
+            @RequestParam(name = "mqtt_payloadType") PayloadType payloadType,
+            @RequestParam(name = "mqtt_enabled",defaultValue = "false") boolean enabled,
+            RedirectAttributes redirectAttributes) {
+
+        try {
+            // Validate topic doesn't contain wildcard characters
+            if (topic.contains("+") || topic.contains("#")) {
+                redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integration.mqtt.error.wildcard"));
+                return "redirect:/settings/integrations/integrations-content?openSection=mqtt";
+            }
+
+            // Validate port range
+            if (port < 1 || port > 65535) {
+                redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integration.mqtt.error.port_range"));
+                return "redirect:/settings/integrations/integrations-content?openSection=mqtt";
+
+            }
+
+            MqttIntegration mqttIntegration = this.mqttIntegrationJdbcService.findByUser(user).orElse(MqttIntegration.empty());
+            boolean wasEnabled = mqttIntegration.isEnabled();
+            MqttIntegration updatedIntegration = mqttIntegration
+                    .withHost(host)
+                    .withPort(port)
+                    .withIdentifier(identifier)
+                    .withTopic(topic)
+                    .withUseTLS(useTLS)
+                    .withUsername(username)
+                    .withPassword(password)
+                    .withPayloadType(payloadType)
+                    .withEnabled(enabled);
+            mqttIntegrationJdbcService.save(user, updatedIntegration);
+            if (wasEnabled && !updatedIntegration.isEnabled()) {
+                this.mqttProvider.remove(user);
+            }
+            if (updatedIntegration.isEnabled()) {
+                this.mqttProvider.register(user, updatedIntegration);
+            }
+
+            redirectAttributes.addFlashAttribute("successMessage", i18n.translate("integration.mqtt.success.saved"));
+
+        } catch (OptimisticLockException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integration.mqtt.error.out_of_date"));
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integration.mqtt.error.saving", e.getMessage()));
+        }
+        return "redirect:/settings/integrations/integrations-content?openSection=mqtt";
+    }
+
+    @PostMapping("/mqtt-integration/test")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> testMqttConnection(
+            @RequestParam(name = "mqtt_host") String host,
+            @RequestParam(name = "mqtt_port") int port,
+            @RequestParam(name = "mqtt_useTLS", defaultValue = "false") boolean useTLS,
+            @RequestParam(name = "mqtt_identifier") String identifier,
+            @RequestParam(name = "mqtt_topic") String topic,
+            @RequestParam(name = "mqtt_username", required = false) String username,
+            @RequestParam(name = "mqtt_password", required = false) String password,
+            @RequestParam(name = "mqtt_payloadType") PayloadType payloadType) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            // Validate basic parameters
+            if (host == null || host.trim().isEmpty()) {
+                response.put("success", false);
+                response.put("message", i18n.translate("integration.mqtt.error.host_required"));
+                return ResponseEntity.ok(response);
+            }
+
+            if (port < 1 || port > 65535) {
+                response.put("success", false);
+                response.put("message", i18n.translate("integration.mqtt.error.port_range"));
+                return ResponseEntity.ok(response);
+            }
+
+            if (identifier == null || identifier.trim().isEmpty()) {
+                response.put("success", false);
+                response.put("message", i18n.translate("integration.mqtt.error.identifier_required"));
+                return ResponseEntity.ok(response);
+            }
+
+            if (topic == null || topic.trim().isEmpty()) {
+                response.put("success", false);
+                response.put("message", i18n.translate("integration.mqtt.error.topic_required"));
+                return ResponseEntity.ok(response);
+            }
+
+            CompletableFuture<DynamicMqttProvider.MqttTestResult> testResult = this.mqttProvider.testConnection(new MqttIntegration(null,
+                                                                                                                                    host,
+                                                                                                                                    port,
+                                                                                                                                    useTLS,
+                                                                                                                                    null,
+                                                                                                                                    topic,
+                                                                                                                                    username,
+                                                                                                                                    password,
+                                                                                                                                    payloadType,
+                                                                                                                                    true,
+                                                                                                                                    null,
+                                                                                                                                    null,
+                                                                                                                                    null,
+                                                                                                                                    null));
+
+            // Wait for the test result and handle it
+            DynamicMqttProvider.MqttTestResult result = testResult.get(); // This might throw an exception if the test fails
+            if (result.success()) {
+                response.put("success", true);
+                response.put("message", i18n.translate("integration.mqtt.success.test"));
+            } else {
+                response.put("success", false);
+                response.put("message", i18n.translate("integration.mqtt.error.test_failed", result.message()));
+            }
+
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", i18n.translate("integration.mqtt.error.test_failed", e.getMessage()));
+        }
+
+        return ResponseEntity.ok(response);
+    }
 
     @GetMapping("/data-quality-content")
     public String getDataQualityContent(@AuthenticationPrincipal User user, Model model) {
@@ -368,7 +399,7 @@ public class IntegrationsSettingsController {
             DataQualityReport dataQuality = generateDataQualityReport(user);
             model.addAttribute("dataQuality", dataQuality);
         } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("integrations.data.quality.error", e.getMessage()));
+            model.addAttribute("errorMessage", i18n.translate("integrations.data.quality.error", e.getMessage()));
         }
         return "settings/integrations :: data-quality-content";
     }
@@ -481,19 +512,19 @@ public class IntegrationsSettingsController {
         // Generate recommendations
         List<String> recommendations = new ArrayList<>();
         if (!isActivelyTracking) {
-            recommendations.add(getMessage("integrations.data.quality.recommendation.no.data"));
+            recommendations.add(i18n.translate("integrations.data.quality.recommendation.no.data"));
         }
         if (avgIntervalSeconds > recommendedFrequency) {
-            recommendations.add(getMessage("integrations.data.quality.recommendation.low.frequency"));
+            recommendations.add(i18n.translate("integrations.data.quality.recommendation.low.frequency"));
         }
         if (goodAccuracyPercentage != null && goodAccuracyPercentage < 70) {
-            recommendations.add(getMessage("integrations.data.quality.recommendation.poor.accuracy"));
+            recommendations.add(i18n.translate("integrations.data.quality.recommendation.poor.accuracy"));
         }
         if (avgAccuracy != null && avgAccuracy > 100) {
-            recommendations.add(getMessage("integrations.data.quality.recommendation.very.poor.accuracy"));
+            recommendations.add(i18n.translate("integrations.data.quality.recommendation.very.poor.accuracy"));
         }
         if (hasFluctuatingFrequency) {
-            recommendations.add(getMessage("integrations.data.quality.recommendation.fluctuating.frequency"));
+            recommendations.add(i18n.translate("integrations.data.quality.recommendation.fluctuating.frequency"));
         }
 
         return new DataQualityReport(
@@ -554,9 +585,4 @@ public class IntegrationsSettingsController {
         public boolean isHasFluctuatingFrequency() { return hasFluctuatingFrequency; }
         public List<String> getRecommendations() { return recommendations; }
     }
-
-    private String getMessage(String key, Object... args) {
-        return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
-    }
-
 }

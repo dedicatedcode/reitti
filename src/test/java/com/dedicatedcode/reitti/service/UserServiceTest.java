@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.IntegrationTest;
-import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.Language;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
@@ -10,9 +9,12 @@ import com.dedicatedcode.reitti.model.geo.TransportModeConfig;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
+import com.dedicatedcode.reitti.repository.MqttIntegrationJdbcService;
+import com.dedicatedcode.reitti.repository.TransportModeJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.repository.VisitDetectionParametersJdbcService;
-import com.dedicatedcode.reitti.repository.TransportModeJdbcService;
+import com.dedicatedcode.reitti.service.integration.mqtt.MqttIntegration;
+import com.dedicatedcode.reitti.service.integration.mqtt.PayloadType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -28,9 +30,6 @@ class UserServiceTest {
     private UserService userService;
 
     @Autowired
-    private TestingService testingService;
-
-    @Autowired
     private UserSettingsJdbcService userSettingsJdbcService;
 
     @Autowired
@@ -38,6 +37,9 @@ class UserServiceTest {
 
     @Autowired
     private TransportModeJdbcService transportModeJdbcService;
+
+    @Autowired
+    private MqttIntegrationJdbcService mqttIntegrationJdbcService;
 
     @Test
     void shouldCreateUserWithExternalIdAndDefaultSettings() {
@@ -149,6 +151,12 @@ class UserServiceTest {
         List<TransportModeConfig> transportConfigs = transportModeJdbcService.getTransportModeConfigs(user);
         assertThat(detectionParams).isNotEmpty();
         assertThat(transportConfigs).isNotEmpty();
+
+        this.mqttIntegrationJdbcService.save(user, MqttIntegration.empty()
+                .withHost("localhost")
+                .withIdentifier("identifier")
+                .withTopic( "topic")
+                .withPayloadType(PayloadType.OWNTRACKS));
 
         // When
         userService.deleteUser(user);

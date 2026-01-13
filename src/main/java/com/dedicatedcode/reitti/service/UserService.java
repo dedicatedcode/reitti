@@ -31,6 +31,7 @@ public class UserService {
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final GeocodingResponseJdbcService geocodingResponseJdbcService;
     private final ApiTokenJdbcService apiTokenJdbcService;
+    private final MqttIntegrationJdbcService mqttIntegrationJdbcService;
     private final PasswordEncoder passwordEncoder;
 
     public UserService(UserJdbcService userJdbcService,
@@ -42,6 +43,7 @@ public class UserService {
                        ProcessedVisitJdbcService processedVisitJdbcService,
                        GeocodingResponseJdbcService geocodingResponseJdbcService,
                        ApiTokenJdbcService apiTokenJdbcService,
+                       MqttIntegrationJdbcService mqttIntegrationJdbcService,
                        PasswordEncoder passwordEncoder) {
         this.userJdbcService = userJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
@@ -52,6 +54,7 @@ public class UserService {
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.geocodingResponseJdbcService = geocodingResponseJdbcService;
         this.apiTokenJdbcService = apiTokenJdbcService;
+        this.mqttIntegrationJdbcService = mqttIntegrationJdbcService;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -138,6 +141,7 @@ public class UserService {
         this.rawLocationPointJdbcService.deleteAllForUser(user);
         this.rawLocationPointJdbcService.deleteAllForUser(user);
         this.apiTokenJdbcService.deleteForUser(user);
+        this.mqttIntegrationJdbcService.deleteForUser(user);
         this.userJdbcService.deleteUser(user.getId());
     }
 }

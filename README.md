@@ -92,7 +92,7 @@ The easiest way to get started is using Docker Compose:
    or manually downloading it [here](https://raw.githubusercontent.com/dedicatedcode/reitti/refs/heads/main/docker-compose.yml)
 2. Adjust the compose file to your needs
    
-   Pay special attention to the Photon `REGION`. This should match your main location.
+   Pay special attention to the Photon `REGION`. This should match your main location,see [available-regions](https://github.com/rtuszik/photon-docker?tab=readme-ov-file#available-regions) for all available regions.
    
 4. Start all services (PostgreSQL, RabbitMQ, Redis and Reitti)
    ```bash
@@ -233,6 +233,7 @@ The included `docker-compose.yml` provides a complete setup with:
 | `APP_UID`                      | User ID to run the application as                                                                                                                                               | 1000                | 1000                                      |
 | `APP_GID`                      | Group ID to run the application as                                                                                                                                              | 1000                | 1000                                      |
 | `JAVA_OPTS`                    | JVM options                                                                                                                                                                     |                     |                                           |
+| `BASE_PATH`                    | Set to server reitti under a path.                                                                                                                                              | /                   | /reitti                                   |
 | `LOGGING_LEVEL`                | Used to adjust the verbosity of the logs                                                                                                                                        | INFO                | DEBUG                                     |
 
 ### Tags
@@ -309,6 +310,8 @@ photon:
   ports:
     - "2322:2322"
 ```
+
+When updating the REGION,see [available-regions](https://github.com/rtuszik/photon-docker?tab=readme-ov-file#available-regions) for all available regions.
 
 **Storage Requirements:**
 - **Country-specific**: 1-10GB depending on country size
