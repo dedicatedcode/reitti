@@ -150,7 +150,7 @@ public class IntegrationsSettingsController {
     @GetMapping("/reitti.properties")
     public ResponseEntity<String> getGpsLoggerProperties(@RequestParam String token, HttpServletRequest request) {
         String serverUrl = calculateServerUrl(request);
-        String url = serverUrl + contextPathHolder.getContextPath() + "/api/v1/ingest/owntracks";
+        String url = serverUrl + contextPathHolder.getContextPath() + "/api/v1/ingest/gpslogger";
         String properties = "log_customurl_url=" + url + "\n" +
                 "log_customurl_method=POST\n" +
                 "log_customurl_body={\"_type\" : \"location\",\"t\": \"u\",\"acc\": \"%ACC\",\"alt\": \"%ALT\",\"batt\": \"%BATT\",\"bs\": \"%ISCHARGING\",\"lat\": \"%LAT\",\"lon\": \"%LON\",\"tst\": \"%TIMESTAMP\",\"vel\": \"%SPD\"}\n" +
