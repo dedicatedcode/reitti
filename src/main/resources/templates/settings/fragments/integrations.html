@@ -57,7 +57,7 @@
                         <li th:text="#{integrations.gpslogger.step1}">Download GPSLogger from the Google Play Store</li>
                         <li th:utext="#{integrations.gpslogger.step2}">Open GPSLogger and go to <strong>Logging details → Log to custom URL</strong></li>
                         <li th:utext="#{integrations.gpslogger.step3}">Enable "Log to custom URL"</li>
-                        <li th:utext="#{integrations.gpslogger.step4.with.token(${serverUrl + contextPath + '/api/v1/ingest/owntracks'})}">Set the URL to: <code>https://your-domain.com/api/v1/location-data</code></li>
+                        <li th:utext="#{integrations.gpslogger.step4.with.token(${serverUrl + contextPath + '/api/v1/ingest/gpslogger'})}">Set the URL to: <code>https://your-domain.com/api/v1/location-data</code></li>
                         <li th:utext="#{integrations.gpslogger.step5}">Set HTTP Method to <strong>POST</strong></li>
                         <li><span th:utext="#{integrations.gpslogger.step6}">Set HTTP Body to:</span> <pre>
 {
