@@ -14,14 +14,9 @@ An interactive web-based tool for creating and editing GPX tracks for testing lo
 
 ## Docker Usage
 
-### Build the container:
-```bash
-docker build -t gpx-generator .
-```
-
 ### Run the container:
 ```bash
-docker run -p 8080:80 gpx-generator
+docker run -p 8080:80 dedicatedcode/reitti-gpx-generator
 ```
 
 Then open http://localhost:8080 in your browser.
