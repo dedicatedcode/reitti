@@ -15,7 +15,9 @@ import com.dedicatedcode.reitti.service.geocoding.PhotonGeocodeService;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.lang.Nullable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -50,7 +52,7 @@ public class GeoCodingSettingsController {
                                        UserJdbcService userJdbcService,
                                        RabbitTemplate rabbitTemplate,
                                        I18nService i18n,
-                                       PhotonGeocodeService photonGeocodeService,
+                                       @Nullable PhotonGeocodeService photonGeocodeService,
                                        @Value("${reitti.geocoding.photon.base-url:}") String photonBaseUrl,
                                        @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                                        @Value("${reitti.geocoding.max-errors}") int maxErrors) {
