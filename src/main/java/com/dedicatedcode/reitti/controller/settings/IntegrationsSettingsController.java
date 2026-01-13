@@ -150,15 +150,15 @@ public class IntegrationsSettingsController {
     @GetMapping("/reitti.properties")
     public ResponseEntity<String> getGpsLoggerProperties(@RequestParam String token, HttpServletRequest request) {
         String serverUrl = calculateServerUrl(request);
-        String url = serverUrl + contextPathHolder.getContextPath() + "/api/v1/ingest/owntracks?token=" + token;
+        String url = serverUrl + contextPathHolder.getContextPath() + "/api/v1/ingest/owntracks";
         String properties = "log_customurl_url=" + url + "\n" +
-                            "log_customurl_method=POST\n" +
-                            "log_customurl_body={\"_type\" : \"location\",\"t\": \"u\",\"acc\": \"%ACC\",\"alt\": \"%ALT\",\"batt\": \"%BATT\",\"bs\": \"%ISCHARGING\",\"lat\": \"%LAT\",\"lon\": \"%LON\",\"tst\": \"%TIMESTAMP\",\"vel\": \"%SPD\"}\n" +
-                            "log_customurl_headers=Content-Type: application/json\n" +
-                            "autosend_frequency_minutes=60\n" +
-                            "accuracy_before_logging=25\n" +
-                            "time_before_logging=15\n" +
-                            "autosend_enabled=true\n";
+                "log_customurl_method=POST\n" +
+                "log_customurl_body={\"_type\" : \"location\",\"t\": \"u\",\"acc\": \"%ACC\",\"alt\": \"%ALT\",\"batt\": \"%BATT\",\"bs\": \"%ISCHARGING\",\"lat\": \"%LAT\",\"lon\": \"%LON\",\"tst\": \"%TIMESTAMP\",\"vel\": \"%SPD\"}\n" +
+                "log_customurl_headers=Content-Type: application/json\\nX-API-TOKEN: " + token + "\n" +
+                "autosend_frequency_minutes=60\n" +
+                "accuracy_before_logging=25\n" +
+                "time_before_logging=15\n" +
+                "autosend_enabled=true\n";
         return ResponseEntity.ok()
                 .header("Content-Type", "text/plain")
                 .body(properties);
