@@ -3,19 +3,9 @@ package com.dedicatedcode.reitti.controller.api.ingestion.gpslogger;
 import com.dedicatedcode.reitti.controller.api.ingestion.owntracks.OwntracksFriendResponse;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
-import com.dedicatedcode.reitti.dto.ReittiRemoteInfo;
-import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
-import com.dedicatedcode.reitti.model.integration.ReittiIntegration;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.model.security.UserSharing;
-import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
-import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
-import com.dedicatedcode.reitti.service.AvatarService;
 import com.dedicatedcode.reitti.service.LocationBatchingService;
-import com.dedicatedcode.reitti.service.RequestFailedException;
-import com.dedicatedcode.reitti.service.RequestTemporaryFailedException;
-import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -29,8 +19,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/ingest")
@@ -46,14 +37,14 @@ public class GPSLoggerIngestionApiController {
     }
 
     @PostMapping("/gpslogger")
-    public ResponseEntity<?> receiveOwntracksData(@RequestBody OwntracksLocationRequest request) {
+    public ResponseEntity<?> receiveData(@RequestBody OwntracksLocationRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         User user = this.userJdbcService.findByUsername(userDetails.getUsername()).orElseThrow(() -> new UsernameNotFoundException(userDetails.getUsername()));
 
         try {
             if (!request.isLocationUpdate()) {
-                logger.debug("Ignoring non-location Owntracks message of type: {}", request.getType());
+                logger.debug("Ignoring non-location GpsLogger message of type: {}", request.getType());
                 // Return empty array for non-location messages
                 return ResponseEntity.ok(new ArrayList<OwntracksFriendResponse>());
             }
@@ -68,7 +59,7 @@ public class GPSLoggerIngestionApiController {
             }
 
             this.locationBatchingService.addLocationPoint(user, locationPoint);
-            logger.debug("Successfully received and queued Owntracks location point for user {}",
+            logger.debug("Successfully received and queued GpsLogger location point for user {}",
                          user.getUsername());
 
             return ResponseEntity.ok(Collections.emptyList());
