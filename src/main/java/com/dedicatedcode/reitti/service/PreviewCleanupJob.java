@@ -27,9 +27,8 @@ public class PreviewCleanupJob {
         int params = this.jdbcTemplate.update("DELETE FROM preview_visit_detection_parameters WHERE preview_created_at < ?", lastDay);
         int trips = this.jdbcTemplate.update("DELETE FROM preview_trips WHERE preview_created_at < ?", lastDay);
         int processedVisits = this.jdbcTemplate.update("DELETE FROM preview_processed_visits WHERE preview_created_at < ?", lastDay);
-        int visits = this.jdbcTemplate.update("DELETE FROM preview_visits WHERE preview_created_at < ?", lastDay);
         int places = this.jdbcTemplate.update("DELETE FROM preview_significant_places WHERE preview_created_at < ?", lastDay);
         int points = this.jdbcTemplate.update("DELETE FROM preview_raw_location_points WHERE preview_created_at < ?", lastDay);
-        log.debug("Preview data cleanup finished in [{}] ms with [{}] records", System.currentTimeMillis() - start, params + trips + processedVisits + visits + places + points);
+        log.debug("Preview data cleanup finished in [{}] ms with [{}] records", System.currentTimeMillis() - start, params + trips + processedVisits + places + points);
     }
 }
