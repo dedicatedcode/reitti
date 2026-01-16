@@ -38,7 +38,7 @@ public class StreamingRawLocationPointJdbcService {
             ps.setLong(1, userId);
             ps.setTimestamp(2, Timestamp.from(start));
             ps.setTimestamp(3, Timestamp.from(end));
-            ps.setFetchSize(10);
+            ps.setFetchSize(1000);
         }, rs -> {
             try {
                 Map<String, Object> point = new HashMap<>();

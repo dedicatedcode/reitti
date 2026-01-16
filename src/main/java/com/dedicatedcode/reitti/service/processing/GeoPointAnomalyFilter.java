@@ -56,10 +56,7 @@ public class GeoPointAnomalyFilter {
         // Calculate all successive speeds
         List<Double> speeds = new ArrayList<>();
         for (int i = 0; i < points.size() - 1; i++) {
-            double speed = calculateSpeed(points.get(i), points.get(i + 1));
-            if (speed >= 0) {
-                speeds.add(speed);
-            }
+            speeds.add(calculateSpeed(points.get(i), points.get(i + 1)));
         }
 
         if (speeds.isEmpty()) return anomalies;
@@ -79,7 +76,7 @@ public class GeoPointAnomalyFilter {
         }
 
         // Check middle points (have speeds before and after)
-        for (int i = 1; i < points.size() - 2; i++) {
+        for (int i = 1; i < points.size() - 1; i++) {
             double speedBefore = speeds.get(i - 1);
             double speedAfter = speeds.get(i);
 

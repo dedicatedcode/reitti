@@ -361,7 +361,7 @@
 
     let timeMultiplier = 60; // Default: 1 second = 1 minute
 
-    function calculateSpeed() {
+    function calculateSpeed(globalMinTimestamp, globalMaxTimestamp) {
         const totalSeconds = globalMaxTimestamp - globalMinTimestamp;
         const targetDuration = 60;
         timeMultiplier = totalSeconds / targetDuration;
@@ -471,6 +471,17 @@
     async function loadMetaData(loadingConfig) {
         const metaResponse = await fetch(window.contextPath + loadingConfig.map.metaDataUrl);
         const meta = await metaResponse.json();
+
+        globalMinTimestamp = meta.minTimestamp;
+        globalMaxTimestamp = meta.maxTimestamp;
+        calculateSpeed(globalMinTimestamp, globalMaxTimestamp);
+
+        // Initialize slider: 0 is the start of the range
+        const slider = document.getElementById('time-slider');
+        slider.min = 0;
+        slider.max = globalMaxTimestamp - globalMinTimestamp;
+        slider.value = 0;
+
         showLoadingProgress(0, meta.totalPoints);
         startStreamingPoints(loadingConfig, meta.totalPoints);
     }
@@ -515,7 +526,6 @@
             if (now - lastRenderTime > 100) {
                 updateTripsLayer(currentSliderValue);
                 showLoadingProgress(pointsProcessed, totalExpected);
-
                 lastRenderTime = now;
             }
         }
@@ -524,33 +534,29 @@
     const GAP_THRESHOLD_SECONDS = 900;
 
     function addPointToMapData(color, p) {
-        // 1. Calculate the relative timestamp based on the FIXED slider start
-        // p.ts is the absolute Unix Epoch from the DB
+        // 1. Convert absolute DB timestamp to a relative offset
+        // If globalMinTimestamp is 1,000,000 and p.ts is 1,233,086,
+        // the offset is 233,086.
         const relativeTs = p.ts - globalMinTimestamp;
 
-        // 2. Get the current active trip segment
         let currentTrip = globalTripData[globalTripData.length - 1];
 
-        // 3. Logic: Should we start a NEW trip segment?
-        // Case A: This is the very first point ever received
-        // Case B: The time gap since the last point is too large (e.g., overnight)
-        if (!currentTrip || (p.ts - currentTrip.lastAbsTs) > GAP_THRESHOLD_SECONDS) {
-
+        // 2. Use absolute timestamps to detect gaps (e.g., 15 mins)
+        const GAP_THRESHOLD = 900;
+        if (!currentTrip || (p.ts - currentTrip.lastAbsTs) > GAP_THRESHOLD) {
             currentTrip = {
                 path: [],
-                timestamps: [],
-                lastAbsTs: 0, // Helper to track gaps
-                color: color
+                timestamps: [], // These will now store relativeTs
+                lastAbsTs: p.ts,
+                color: color // Assign the color from your HTML here
             };
-
             globalTripData.push(currentTrip);
         }
 
-        // 4. Add the data to the current segment
+        // 3. Push the relative offset!
         currentTrip.path.push([p.lng, p.lat]);
         currentTrip.timestamps.push(relativeTs);
 
-        // Update the tracker for the next gap check
         currentTrip.lastAbsTs = p.ts;
     }
 
@@ -563,26 +569,35 @@
                 getPath: d => d.path,
                 getColor: d => {
                     const rgb = d.color
-                    return isPlaying ? [...rgb, 40] : [...rgb, 200];
+                    return offset !== 0 ? [...rgb, 40] : [...rgb, 255];
                 },
-                getWidth: isPlaying ? 20 : 30, // Slightly thicker when stopped
+                getWidth: 8,
+                widthMinPixels: 3,     // High visibility even when zoomed out
+                widthMaxPixels: 12,    // Don't let it overwhelm when zoomed in
+                capRounded: true,      // Smooth joins
                 updateTriggers: {
-                    getColor: [isPlaying], // Tell deck.gl to recalculate when state changes
-                    getWidth: [isPlaying]
+                    data: [globalTripData.length],
+                    getPath: [globalTripData[globalTripData.length - 1]?.path.length],
+                    getColor: [offset]
                 }
             }),
+
             new deck.TripsLayer({
                 id: 'trips-layer',
-                data: globalTripData,
+                data: [...globalTripData],
                 getPath: d => d.path,
                 getTimestamps: d => d.timestamps,
-                getColor: d => d.color,
-                opacity: isPlaying ? 1.0 : 0, // Hide the "comet" entirely when stopped
-                widthMinPixels: 4,
+                getColor: d => [...d.color, 255], // Ensure full opacity for the head
+                opacity: offset !== 0 ? 1.0 : 0,
+                getWidth: 12,
+                widthMinPixels: 6,     // This ensures it looks like a bold "head"
+                capRounded: true,
                 trailLength: dynamicTrail,
                 currentTime: offset,
                 updateTriggers: {
-                    opacity: [isPlaying]
+                    data: [globalTripData.length],
+                    opacity: [offset],
+                    currentTime: [offset] // Force update on slider move
                 }
             }),
 
@@ -1156,7 +1171,7 @@
             document.body.classList.add('timeline-hidden')
         }
 
-        function loadTimelineData(startDate, endDate) {
+        function loadTimelineData() {
             // photoClient.updatePhotosForRange(startDate, endDate, getUserTimezone());
             userConfigs.forEach(config => {
                 console.log('Loading timeline data for user:', JSON.stringify(config));
@@ -1196,11 +1211,10 @@
                 const requestedEnd = Math.floor(new Date(params.endDate).getTime() / 1000);
 
                 // 2. Setup the UI immediately
-                globalMinTimestamp = requestedStart;
-                globalMaxTimestamp = requestedEnd;
-
+                globalTripData = [];
+                updateTripsLayer(0);
                 initSlider(requestedStart, requestedEnd);
-                loadTimelineData(params.startDate, params.endDate);
+                loadTimelineData();
 
                 // Initialize scroll indicator after timeline is updated
                 if (window.timelineScrollIndicator) {
