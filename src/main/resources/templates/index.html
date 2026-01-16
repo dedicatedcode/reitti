@@ -152,6 +152,7 @@
     </button>
 </div>
 
+
 <button type="button" class="datepicker-toggle-btn" id="datepicker-toggle-btn" onclick="toggleDatePicker()" th:title="#{datepicker.state.hide.title}" title="Hide Date Picker">
     <i class="lni lni-exit-down"></i>
 </button>
@@ -165,11 +166,19 @@
     <span th:text="#{datepicker.today}">Today</span>
 </button>
 
-<button type="button" class="today-fab" id="play-btn" title="Start Animation"
-        style="top: 20px;bottom: initial;right: 20px;left: initial;">
-    <i class="lni lni-play"></i>
-    <span>Animate</span>
-</button>
+<div class="today-fab" style="top: 20px;bottom: initial;right: 20px;left: initial;">
+    <button type="button" class="btn" id="play-btn" title="Start Animation">
+        <i class="lni lni-play"></i>
+        <span>Animate</span>
+    </button>
+    <select id="speed-selector">
+        <option value="1">Normal (1x)</option>
+        <option value="60">Fast (60x)</option>
+        <option value="3600">Super Fast (3600x)</option>
+        <option value="auto" selected>Auto-Adjust</option>
+    </select>
+</div>
+
 
 <div id="timeline-controls">
     <div class="timer-display">
@@ -280,6 +289,8 @@
     let isAnimating = false;
     let currentTime = 0;
     let animationId = null;
+    let lastFrameTime = null;
+
     let isPlaying = false;
     let currentSliderValue = 0;
 
@@ -304,12 +315,6 @@
 
         // 3. Update the deck.gl layer
         updateTripsLayer(currentOffset);
-    };
-
-    // Button Trigger
-    document.getElementById('play-btn').onclick = () => {
-        isAnimating = true;
-        animate();
     };
 
     // Update display text when sliding
@@ -342,7 +347,8 @@
     function startAnimation() {
         isPlaying = true;
         playBtn.innerText = '⏸ Animate'; // Change icon to Pause
-        animate();
+        lastFrameTime = null;
+        animationId = requestAnimationFrame(animate);
     }
 
     function pauseAnimation() {
@@ -353,30 +359,48 @@
         }
     }
 
-    function animate() {
+    let timeMultiplier = 60; // Default: 1 second = 1 minute
+
+    function calculateSpeed() {
+        const totalSeconds = globalMaxTimestamp - globalMinTimestamp;
+        const targetDuration = 60;
+        timeMultiplier = totalSeconds / targetDuration;
+        console.log(`Animation speed set to: ${timeMultiplier}x real time`);
+    }
+
+    function animate(now) {
         if (!isPlaying) return;
+        if (lastFrameTime === null) {
+            lastFrameTime = now; // Capture the start time
+            animationId = requestAnimationFrame(animate); // Request next frame
+            return; // Exit early without moving the slider
+        }
+        // 1. Calculate how much real time has passed since the last frame
+        // 'now' is provided automatically by requestAnimationFrame
+        const deltaTime = (now - lastFrameTime) / 1000; // convert ms to seconds
+        lastFrameTime = now; // Update for the next frame
 
-        // 1. Advance the time
-        // Tip: Increase '60' to '3600' to fly through a year faster
-        let val = parseInt(slider.value) + 60;
-
-        // 2. Loop logic
-        if (val > parseInt(slider.max)) {
-            val = 0;
+        // 2. Logic to prevent "jumps" (e.g., if the user changes tabs)
+        if (deltaTime > 0.1) {
+            animationId = requestAnimationFrame(animate);
+            return;
         }
 
-        // 3. Update the Slider UI
-        slider.value = val;
-        currentSliderValue = val;
+        // 3. Advance the slider
+        let step = timeMultiplier * deltaTime;
+        let newValue = parseFloat(slider.value) + step;
 
-        // 4. Update the Clock/Date Text
-        // This reuses the logic we wrote for the slider's oninput
-        updateTimeDisplay(val);
+        // 4. Loop logic
+        if (newValue > parseFloat(slider.max)) {
+            newValue = 0;
+        }
 
-        // 5. Update the Map (The replacement for renderLayers)
-        updateTripsLayer(val);
+        // 5. Update UI and Map
+        slider.value = newValue;
+        updateTimeDisplay(newValue);
+        updateTripsLayer(newValue);
 
-        // 6. Request next frame
+        // 6. Request the next frame
         animationId = requestAnimationFrame(animate);
     }
 
@@ -531,8 +555,8 @@
     }
 
     function updateTripsLayer(offset) {
+        const dynamicTrail = (globalMaxTimestamp - globalMinTimestamp) * 0.02;
         const layers = [
-            // 1. STATIC PATH LAYER
             new deck.PathLayer({
                 id: 'static-paths',
                 data: globalTripData,
@@ -547,8 +571,6 @@
                     getWidth: [isPlaying]
                 }
             }),
-
-            // 2. ANIMATED TRIPS LAYER
             new deck.TripsLayer({
                 id: 'trips-layer',
                 data: globalTripData,
@@ -557,14 +579,13 @@
                 getColor: d => d.color,
                 opacity: isPlaying ? 1.0 : 0, // Hide the "comet" entirely when stopped
                 widthMinPixels: 4,
-                trailLength: 600,
+                trailLength: dynamicTrail,
                 currentTime: offset,
                 updateTriggers: {
                     opacity: [isPlaying]
                 }
             }),
 
-            // 3. VISITS LAYER (Optional: Always show or toggle)
             new deck.ScatterplotLayer({
                 id: 'visits-layer',
                 data: globalVisitData,
@@ -1313,24 +1334,15 @@
         const startingDate = loadStartingDate();
         console.log(`Starting date: ${startingDate[0]} - ${startingDate[1]}`)
         window.horizontalDatePicker.setSelectedRange(startingDate[0], startingDate[1]);
-    })
 
-    function splitIntoTrips(rawData, gapThresholdSeconds = 600) {
-        const trips = [];
-        let currentTrip = {path: [], timestamps: [], color: rawData[0].color};
-
-        for (let i = 0; i < rawData.length; i++) {
-            const p = rawData[i];
-            if (i > 0 && (p.ts - rawData[i - 1].ts) > gapThresholdSeconds) {
-                trips.push(currentTrip);
-                currentTrip = {path: [], timestamps: [], color: p.color};
+        document.getElementById('speed-selector').onchange = function(e) {
+            if (e.target.value === 'auto') {
+                calculateSpeed(globalMinTimestamp, globalMaxTimestamp);
+            } else {
+                timeMultiplier = parseInt(e.target.value);
             }
-            currentTrip.path.push([p.lng, p.lat]);
-            currentTrip.timestamps.push(p.ts - globalMinTimestamp);
-        }
-        trips.push(currentTrip);
-        return trips;
-    }
+        };
+    })
 
 </script>
 </body>

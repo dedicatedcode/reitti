@@ -79,7 +79,7 @@ public class GeoPointAnomalyFilter {
         }
 
         // Check middle points (have speeds before and after)
-        for (int i = 1; i < points.size() - 1; i++) {
+        for (int i = 1; i < points.size() - 2; i++) {
             double speedBefore = speeds.get(i - 1);
             double speedAfter = speeds.get(i);
 

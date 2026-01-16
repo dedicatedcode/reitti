@@ -94,7 +94,7 @@
 
                         <div th:unless="${deleteAllRequiresVerification}">
                             <button class="btn btn-danger"
-                                    thhx-post="@{/settings/manage-data/remove-all-data}"
+                                    th:hx-post="@{/settings/manage-data/remove-all-data}"
                                     hx-target="#manage-data"
                                     hx-swap="innerHTML"
                                     th:attr="hx-confirm=#{data.remove.all.confirm}"
