@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.dto.MapMetadata;
 import com.dedicatedcode.reitti.model.ClusteredPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
@@ -8,6 +9,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -597,5 +599,31 @@ public class RawLocationPointJdbcService {
     public void deleteSyntheticPointsInRange(User user, Instant start, Instant end) {
         String sql = "DELETE FROM raw_location_points WHERE user_id = ? AND timestamp >= ? AND timestamp < ? AND synthetic = true";
         jdbcTemplate.update(sql, user.getId(), Timestamp.from(start), Timestamp.from(end));
+    }
+
+    public MapMetadata getMetadata(Long userId, Instant start, Instant end) {
+        String sql = """
+                    SELECT
+                        MIN(EXTRACT(EPOCH FROM timestamp)) as min_ts,
+                        MAX(EXTRACT(EPOCH FROM timestamp)) as max_ts,
+                        COUNT(*) as total_count,
+                        MIN(ST_Y(geom)) as min_lat,
+                        MAX(ST_Y(geom)) as max_lat,
+                        MIN(ST_X(geom)) as min_lng,
+                        MAX(ST_X(geom)) as max_lng
+                    FROM raw_location_points
+                    WHERE user_id = ?
+                      AND timestamp >= ? AND timestamp < ?
+                """;
+
+        return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> new MapMetadata(
+                rs.getLong("min_ts"),
+                rs.getLong("max_ts"),
+                rs.getLong("total_count"),
+                rs.getDouble("min_lat"),
+                rs.getDouble("max_lat"),
+                rs.getDouble("min_lng"),
+                rs.getDouble("max_lng")
+        ), userId, Timestamp.from(start), Timestamp.from(end));
     }
 }

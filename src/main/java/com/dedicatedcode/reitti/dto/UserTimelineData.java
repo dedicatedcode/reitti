@@ -10,6 +10,7 @@ public record UserTimelineData(
         String baseColor,
         List<TimelineEntry> entries,
         String rawLocationPointsUrl,
-        String processedVisitsUrl
-) {
+        String processedVisitsUrl,
+        String mapMetaDataUrl,
+        String mapStreamDataUrl) {
 }

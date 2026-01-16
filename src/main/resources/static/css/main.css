@@ -140,6 +140,7 @@ header {
 
 /* Map */
 
+#new-map,
 #map {
     position: absolute;
     top: 0;

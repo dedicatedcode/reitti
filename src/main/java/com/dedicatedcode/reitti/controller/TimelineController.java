@@ -103,9 +103,20 @@ public class TimelineController {
 
         String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), startDate, endDate, timezone);
         String currentUserProcessedVisitsUrl = String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), startDate, endDate, timezone);
+        String mapMetaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone);
+        String mapStreamDataUrl = String.format("/api/v2/locations/stream/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone);
         String currentUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", user.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", user.getId()));
         String currentUserInitials = this.avatarService.generateInitials(user.getDisplayName());
-        allUsersData.add(new UserTimelineData(user.getId() + "", user.getDisplayName(), currentUserInitials, currentUserAvatarUrl, userSettings.getColor(), currentUserEntries, currentUserRawLocationPointsUrl, currentUserProcessedVisitsUrl));
+        allUsersData.add(new UserTimelineData(user.getId() + "",
+                                              user.getDisplayName(),
+                                              currentUserInitials,
+                                              currentUserAvatarUrl,
+                                              userSettings.getColor(),
+                                              currentUserEntries,
+                                              currentUserRawLocationPointsUrl,
+                                              currentUserProcessedVisitsUrl,
+                                              mapMetaDataUrl,
+                                              mapStreamDataUrl));
 
         if (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN")) {
             allUsersData.addAll(this.reittiIntegrationService.getTimelineDataRange(user, startDate, endDate, userTimezone));
@@ -177,17 +188,21 @@ public class TimelineController {
                         List<TimelineEntry> userTimelineEntries = this.timelineService.buildTimelineEntries(sharedWithUser, userTimezone, startDate, startOfRange, endOfRange);
                         String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
                         String currentUserProcessedVisitsUrl = String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
+                        String mapMetaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
+                        String mapStreamDataUrl = String.format("/api/v2/locations/stream/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
                         String currentUserAvatarUrl = this.avatarService.getInfo(sharedWithUser.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", sharedWithUser.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", sharedWithUser.getId()));
                         String currentUserInitials = this.avatarService.generateInitials(sharedWithUser.getDisplayName());
 
                         return new UserTimelineData(sharedWithUser.getId() + "",
-                                sharedWithUser.getDisplayName(),
-                                currentUserInitials,
-                                currentUserAvatarUrl,
-                                u.getColor(),
-                                userTimelineEntries,
-                                currentUserRawLocationPointsUrl,
-                                currentUserProcessedVisitsUrl);
+                                                    sharedWithUser.getDisplayName(),
+                                                    currentUserInitials,
+                                                    currentUserAvatarUrl,
+                                                    u.getColor(),
+                                                    userTimelineEntries,
+                                                    currentUserRawLocationPointsUrl,
+                                                    currentUserProcessedVisitsUrl,
+                                                    mapMetaDataUrl,
+                                                    mapStreamDataUrl);
                     });
                 })
                 .filter(Optional::isPresent)
