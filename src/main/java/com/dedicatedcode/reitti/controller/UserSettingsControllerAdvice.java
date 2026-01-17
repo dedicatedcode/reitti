@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @ControllerAdvice
@@ -48,17 +49,18 @@ public class UserSettingsControllerAdvice {
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
             // Return default settings for anonymous users
             return new UserSettingsDTO(false,
-                    Language.EN,
-                    Instant.now(),
-                    UnitSystem.METRIC,
-                    DEFAULT_HOME_LATITUDE,
-                    DEFAULT_HOME_LONGITUDE,
-                    tilesCustomizationProvider.getTilesConfiguration(),
-                    UserSettingsDTO.UIMode.FULL,
-                    UserSettingsDTO.PhotoMode.DISABLED,
-                    TimeDisplayMode.DEFAULT,
-                    null,
-                    null);
+                                       Language.EN,
+                                       Locale.ENGLISH,
+                                       Instant.now(),
+                                       UnitSystem.METRIC,
+                                       DEFAULT_HOME_LATITUDE,
+                                       DEFAULT_HOME_LONGITUDE,
+                                       tilesCustomizationProvider.getTilesConfiguration(),
+                                       UserSettingsDTO.UIMode.FULL,
+                                       UserSettingsDTO.PhotoMode.DISABLED,
+                                       TimeDisplayMode.DEFAULT,
+                                       null,
+                                       null);
         }
         
         String username = authentication.getName();
@@ -72,22 +74,25 @@ public class UserSettingsControllerAdvice {
             if (latestData == null) {
                 latestData = rawLocationPointJdbcService.findLatest(user).map(RawLocationPoint::getTimestamp).orElse(null);
             }
+            Language selectedLanguage = dbSettings.getSelectedLanguage();
             return new UserSettingsDTO(dbSettings.isPreferColoredMap(),
-                    dbSettings.getSelectedLanguage(),
-                    latestData,
-                    dbSettings.getUnitSystem(),
-                    dbSettings.getHomeLatitude(),
-                    dbSettings.getHomeLongitude(),
-                    tilesCustomizationProvider.getTilesConfiguration(),
-                    uiMode,
-                    photoMode,
-                    dbSettings.getTimeDisplayMode(),
-                    dbSettings.getTimeZoneOverride(),
-                    dbSettings.getCustomCss() !=null ? "/user-css/" + user.getId() : null);
+                                       selectedLanguage,
+                                       selectedLanguage.getLocale(),
+                                       latestData,
+                                       dbSettings.getUnitSystem(),
+                                       dbSettings.getHomeLatitude(),
+                                       dbSettings.getHomeLongitude(),
+                                       tilesCustomizationProvider.getTilesConfiguration(),
+                                       uiMode,
+                                       photoMode,
+                                       dbSettings.getTimeDisplayMode(),
+                                       dbSettings.getTimeZoneOverride(),
+                                       dbSettings.getCustomCss() !=null ? "/user-css/" + user.getId() : null);
         }
         // Fallback for authenticated users not found in database
         return new UserSettingsDTO(false,
                                    Language.EN,
+                                   Locale.ENGLISH,
                                    Instant.now(),
                                    UnitSystem.METRIC,
                                    DEFAULT_HOME_LATITUDE,

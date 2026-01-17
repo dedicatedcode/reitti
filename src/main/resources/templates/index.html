@@ -113,6 +113,20 @@
             color: #333;
             text-shadow: 0 0 2px white;
         }
+
+        #tooltip::-webkit-scrollbar {
+            width: 4px;
+        }
+        #tooltip::-webkit-scrollbar-thumb {
+            background: #666;
+            border-radius: 2px;
+        }
+        #tooltip {
+            /* Ensure the tooltip doesn't stay open if the mouse moves too fast */
+            pointer-events: auto; /* Changed to auto so user can scroll the list */
+            transition: opacity 0.1s ease-out;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
     </style>
 </head>
 <body>
@@ -152,13 +166,11 @@
     </button>
 </div>
 
-
 <button type="button" class="datepicker-toggle-btn" id="datepicker-toggle-btn" onclick="toggleDatePicker()" th:title="#{datepicker.state.hide.title}" title="Hide Date Picker">
     <i class="lni lni-exit-down"></i>
 </button>
-<div id="date-picker-container">
-
-</div>
+<div id="date-picker-container"></div>
+<div id="tooltip" style="position: absolute; z-index: 10; pointer-events: none; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 4px; display: none; font-family: sans-serif; font-size: 12px; max-width: 300px;"></div>
 
 <!-- Today FAB button -->
 <button type="button" class="today-fab" id="today-fab" onclick="goToToday()" th:title="#{datepicker.today.title}" title="Go to Today" style="display: none;">
@@ -245,6 +257,15 @@
                 show:  /*[[#{timeline.state.show.title}]]*/ 'Show Timeline'
 
             }
+        },
+        map: {
+            popup: {
+                labels: {
+                    totalDuration:  /*[[#{map.popup.labels.total_duration}]]*/ 'Total duration:',
+                    from:  /*[[#{map.popup.labels.from}]]*/ 'From',
+                    to:  /*[[#{map.popup.labels.to}]]*/ 'To',
+                }
+            }
         }
     };
 
@@ -266,7 +287,7 @@
 
     // #### NEW MAP ####
     let globalTripData = [];
-    let globalVisitData = [];
+    let globalPlacesData = [];
 
     let globalMinTimestamp = 0;
     let globalMaxTimestamp = 0;
@@ -286,7 +307,6 @@
 
 
     let userConfigs = [];
-    let isAnimating = false;
     let currentTime = 0;
     let animationId = null;
     let lastFrameTime = null;
@@ -306,7 +326,7 @@
         const date = new Date(actualTimeInSeconds * 1000); // JS needs milliseconds
 
         // 2. Format for display (e.g., "Jan 15, 14:30")
-        timeLabel.innerText = date.toLocaleString('en-GB', {
+        timeLabel.innerText = date.toLocaleString(window.userSettings.selectedLocale, {
             month: 'short',
             day: 'numeric',
             hour: '2-digit',
@@ -324,11 +344,11 @@
         const dateObj = new Date(absoluteSeconds * 1000);
         currentSliderValue = offset;
 
-        document.getElementById('current-date').innerText = dateObj.toLocaleDateString('de-DE', {
+        document.getElementById('current-date').innerText = dateObj.toLocaleDateString(window.userSettings.selectedLocale, {
             day: '2-digit', month: 'short', year: 'numeric'
         });
 
-        document.getElementById('current-time').innerText = dateObj.toLocaleTimeString('de-DE', {
+        document.getElementById('current-time').innerText = dateObj.toLocaleTimeString(window.userSettings.selectedLocale, {
             hour: '2-digit', minute: '2-digit'
         });
 
@@ -410,11 +430,11 @@
         const absoluteSeconds = globalMinTimestamp + parseInt(offset);
         const dateObj = new Date(absoluteSeconds * 1000);
 
-        document.getElementById('current-date').innerText = dateObj.toLocaleDateString('de-DE', {
+        document.getElementById('current-date').innerText = dateObj.toLocaleDateString(window.userSettings.selectedLocale, {
             day: '2-digit', month: 'short', year: 'numeric'
         });
 
-        document.getElementById('current-time').innerText = dateObj.toLocaleTimeString('de-DE', {
+        document.getElementById('current-time').innerText = dateObj.toLocaleTimeString(window.userSettings.selectedLocale, {
             hour: '2-digit', minute: '2-digit'
         });
     }
@@ -435,7 +455,7 @@
     }
 
     function formatDateTime(ts) {
-        return new Date(ts * 1000).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
+        return new Date(ts).toLocaleDateString(window.userSettings.selectedLocale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     }
 
     function showLoadingProgress(current, total) {
@@ -468,6 +488,26 @@
         }
     }
 
+    async function loadVisits(loadingConfig) {
+        const response = await fetch(window.contextPath + loadingConfig.map.visitsUrl);
+        const data = await response.json();
+
+        const color = hexToRgb(loadingConfig.color || "#646464");
+        globalPlacesData = data.places.map(p => ({
+            id: p.place.id,
+            coordinates: [p.lng, p.lat],
+            polygon: p.place.polygon,
+            totalDurationSec: p.totalDurationMs / 1000,
+            color: color,
+            name: p.place.name,
+            activeRanges: p.visits.map(v => ({
+                start: Math.floor(new Date(v.startTime).getTime() / 1000) - globalMinTimestamp,
+                end: Math.floor(new Date(v.endTime).getTime() / 1000) - globalMinTimestamp
+            })),
+            originalVisits: p.visits
+        }));
+    }
+
     async function loadMetaData(loadingConfig) {
         const metaResponse = await fetch(window.contextPath + loadingConfig.map.metaDataUrl);
         const meta = await metaResponse.json();
@@ -476,6 +516,21 @@
         globalMaxTimestamp = meta.maxTimestamp;
         calculateSpeed(globalMinTimestamp, globalMaxTimestamp);
 
+        if (meta.totalPoints > 0) {
+            mapNew.fitBounds([
+                [meta.minLng, meta.minLat], // Southwest corner
+                [meta.maxLng, meta.maxLat]  // Northeast corner
+            ], {
+                padding: {
+                    top: 50,
+                    bottom: 100,
+                    right: 100,
+                    left: 450
+                },
+                duration: 2000,
+                essential: true
+            });
+        }
         // Initialize slider: 0 is the start of the range
         const slider = document.getElementById('time-slider');
         slider.min = 0;
@@ -483,6 +538,7 @@
         slider.value = 0;
 
         showLoadingProgress(0, meta.totalPoints);
+        await loadVisits(loadingConfig);
         startStreamingPoints(loadingConfig, meta.totalPoints);
     }
 
@@ -531,12 +587,7 @@
         }
     }
 
-    const GAP_THRESHOLD_SECONDS = 900;
-
     function addPointToMapData(color, p) {
-        // 1. Convert absolute DB timestamp to a relative offset
-        // If globalMinTimestamp is 1,000,000 and p.ts is 1,233,086,
-        // the offset is 233,086.
         const relativeTs = p.ts - globalMinTimestamp;
 
         let currentTrip = globalTripData[globalTripData.length - 1];
@@ -569,12 +620,12 @@
                 getPath: d => d.path,
                 getColor: d => {
                     const rgb = d.color
-                    return offset !== 0 ? [...rgb, 40] : [...rgb, 255];
+                    return offset !== 0 ? [...rgb, 100] : [...rgb, 255];
                 },
                 getWidth: 8,
-                widthMinPixels: 3,     // High visibility even when zoomed out
-                widthMaxPixels: 12,    // Don't let it overwhelm when zoomed in
-                capRounded: true,      // Smooth joins
+                widthMinPixels: 3,
+                widthMaxPixels: 6,
+                capRounded: true,
                 updateTriggers: {
                     data: [globalTripData.length],
                     getPath: [globalTripData[globalTripData.length - 1]?.path.length],
@@ -589,8 +640,9 @@
                 getTimestamps: d => d.timestamps,
                 getColor: d => [...d.color, 255], // Ensure full opacity for the head
                 opacity: offset !== 0 ? 1.0 : 0,
-                getWidth: 12,
-                widthMinPixels: 6,     // This ensures it looks like a bold "head"
+                getWidth: 8,
+                widthMinPixels: 3,
+                widthMaxPixels: 6,
                 capRounded: true,
                 trailLength: dynamicTrail,
                 currentTime: offset,
@@ -598,20 +650,104 @@
                     data: [globalTripData.length],
                     opacity: [offset],
                     currentTime: [offset] // Force update on slider move
-                }
+                },
+                miterLimit: 2
             }),
-
-            new deck.ScatterplotLayer({
-                id: 'visits-layer',
-                data: globalVisitData,
-                getPosition: d => d.coordinates,
-                getRadius: d => (isPlaying && offset >= d.startOffset && offset <= d.endOffset) ? 30 : 8,
-                getFillColor: d => [...d.color, isPlaying ? 100 : 255],
-                radiusMinPixels: d => d.radius
-            })
+            ...getVisitLayers(offset)
         ];
 
         deckOverlay.setProps({layers});
+    }
+
+    function getVisitLayers(offset) {
+        const isOverview = offset === 0;
+
+        return [
+            // 1. Polygon Layer
+            new deck.PolygonLayer({
+                id: 'visit-polygons',
+                data: globalPlacesData.filter(p => p.polygon),
+                getPolygon: d => d.polygon.coordinates,
+                getFillColor: d => [...d.color, 40],
+                getLineColor: d => [...d.color, 255],
+                visible: mapNew.getZoom() > 14
+            }),
+
+            new deck.ScatterplotLayer({
+                id: 'place-outer-circles',
+                data: globalPlacesData,
+                getPosition: d => d.coordinates,
+                getRadius: d => {
+                    const logValue = Math.log10(d.totalDurationSec + 1);
+                    // 15 is the "multiplier" to make it look good on screen
+                    // 5 is the "base" minimum size
+                    return 5 + (logValue * 15);
+                },
+
+                getFillColor: d => {
+                    const isActive = d.activeRanges.some(r => offset >= r.start && offset <= r.end);
+                    const alpha = (isOverview || isActive) ? 40 : 0;
+                    return [...d.color, alpha];
+                },
+                updateTriggers: { getFillColor: [offset, isOverview] },
+                stroked: true,
+                getLineColor: d => {
+                    const isActive = d.activeRanges.some(r => offset >= r.start && offset <= r.end);
+                    const alpha = (isOverview || isActive) ? 80 : 0;
+                    return [...d.color, alpha];
+                },
+                lineWidthMinPixels: 3,
+                pickable: true, // MUST BE TRUE
+                onHover: info => updateTooltip(info),
+            }),
+
+            new deck.ScatterplotLayer({
+                id: 'place-inner-circles',
+                data: globalPlacesData,
+                getPosition: d => d.coordinates,
+                getRadius: 8,
+                stroked: true,
+                lineWidthMinPixels: 3,
+                getLineColor: d => {
+                    const isActive = d.activeRanges.some(r => offset >= r.start && offset <= r.end);
+                    const alpha = (isOverview || isActive) ? 80 : 0;
+                    return [...d.color, alpha];
+                },
+                getFillColor: d => {
+                    const isActive = d.activeRanges.some(r => offset >= r.start && offset <= r.end);
+                    const alpha = (isOverview || isActive) ? 80 : 0;
+                    return [255,255,255, alpha];
+                },
+                updateTriggers: { getFillColor: [offset, isOverview] },
+                pickable: true, // MUST BE TRUE
+                onHover: info => updateTooltip(info),
+            })
+        ];
+    }
+
+    function updateTooltip({x, y, object}) {
+        const tooltip = document.getElementById('tooltip');
+        if (object) {
+            const visitListHtml = object.originalVisits.map(v => `
+            <div style="border-top: 1px solid #444; margin-top: 5px; padding-top: 5px;">
+                <b>${locale.map.popup.labels.from}</b> ${formatDateTime(v.startTime)}<br>
+                <b>${locale.map.popup.labels.to}</b> ${formatDateTime(v.endTime)}
+            </div>
+        `).join('');
+
+            tooltip.innerHTML = `
+            <div style="font-size: 14px; font-weight: bold; margin-bottom: 5px;">${object.name}</div>
+            <div><b>${window.locale.map.popup.labels.totalDuration}</b> ${humanizeDuration(object.totalDurationSec * 1000)}</div>
+            <div style="max-height: 150px; overflow-y: auto; margin-top: 10px;">
+                ${visitListHtml}
+            </div>
+        `;
+            tooltip.style.display = 'block';
+            tooltip.style.left = `${x + 15}px`;
+            tooltip.style.top = `${y + 15}px`;
+        } else {
+            tooltip.style.display = 'none';
+        }
     }
 
     function getSelectedDate() {
@@ -1192,7 +1328,8 @@
                     displayName: container.dataset.displayName,
                     map: {
                         metaDataUrl: container.dataset.locationMetadataUrl,
-                        streamUrl: container.dataset.locationStreamUrl
+                        streamUrl: container.dataset.locationStreamUrl,
+                        visitsUrl: container.dataset.processedVisitsUrl
                     }
                 };
                 configs.push(config);
