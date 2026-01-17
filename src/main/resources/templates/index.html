@@ -371,6 +371,7 @@
         .settings-menu-content .divider {
             font-size: 1rem;
             margin: 0;
+            margin-bottom: 8px;
         }
 
         /* Responsive adjustments for settings menu */
@@ -481,7 +482,7 @@
 </div>
 
 <!-- Settings Menu (hidden by default) -->
-<div id="settings-menu" class="settings-menu" style="display: none;">
+<div id="settings-menu" class="settings-menu visible" style="display: block">
     <div class="settings-menu-header">
         <h3 th:text="#{settings.title}">Settings</h3>
         <button class="close-settings-btn" onclick="closeSettingsMenu()">
@@ -489,12 +490,23 @@
         </button>
     </div>
     <div class="settings-menu-content">
-        <!-- Placeholder for future settings -->
+        <div class="divider left">Map Appearance</div>
         <div class="settings-section">
-            <div class="divider left">Map Appearance</div>
+            <div class="form-group">
+                <label for="view-mode">View Mode</label>
+                <select id="view-mode">
+                    <option value="linear">Standard Paths</option>
+                    <option value="heatmap">Density Heatmap</option>
+                    <option value="bundled">Edge Bundling</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="aggregate-toggle">24h aggregate?</label>
+                <input type="checkbox" id="aggregate-toggle">
+            </div>
         </div>
+        <div class="divider left">Date Selection</div>
         <div class="settings-section">
-            <div class="divider left">Date Selection</div>
         </div>
     </div>
 </div>
@@ -1597,6 +1609,7 @@
     if (window.userSettings.uiMode === "SHARED_LIVE_MODE_ONLY") {
         toggleAutoUpdate();
     }
+
     document.addEventListener('DOMContentLoaded', function () {
         if (window.userSettings.uiMode !== 'SHARED_LIVE_MODE_ONLY') {
             // Restore timeline state on page load
@@ -1818,13 +1831,7 @@
         });
 
         // Load and apply settings on page load
-        loadSettings();
-        const savedSettings = {
-            darkMode: localStorage.getItem('darkMode') === 'true',
-            compactTimeline: localStorage.getItem('compactTimeline') === 'true',
-            autoPlay: localStorage.getItem('autoPlay') === 'true',
-            defaultSpeed: localStorage.getItem('defaultSpeed') || 'auto'
-        };
+        const savedSettings = loadSettings();
         applySettings(savedSettings);
 
         const toggleTimeControlsBtn = document.getElementById('toggle-time-control-btn');
@@ -1833,8 +1840,35 @@
                 toggleTimeControls();
             });
         }
+
+        document.getElementById('view-mode').onchange = function(e) {
+            updateMapMode(e.target.value);
+        };
+
         restoreTimelineControlsState();
+
+        document.getElementById('aggregate-toggle').onchange = (e) => {
+            debugger
+            const isAggregate = e.target.checked;
+            const slider = document.getElementById('time-slider');
+
+            if (isAggregate) {
+                slider.max = 86400; // 24 hours
+                slider.step = 60;    // 1 minute increments
+            } else {
+                slider.max = globalMaxTimestamp - globalMinTimestamp;
+                slider.step = 1;
+            }
+            slider.value = 0; // Reset to start of day/range
+            localStorage.setItem('aggregate', isAggregate);
+            updateTripsLayer(0);
+        };
     })
+
+    function updateMapMode(value) {
+        localStorage.setItem('view-mode', value);
+        updateTripsLayer(0);
+    }
 
     function openSettingsMenu() {
         const menu = document.getElementById('settings-menu');
@@ -1849,9 +1883,6 @@
                 menu.classList.add('visible');
                 overlay.classList.add('visible');
             }, 10);
-
-            // Load current settings
-            loadSettings();
         }
     }
 
@@ -1868,23 +1899,23 @@
                 menu.style.display = 'none';
                 overlay.style.display = 'none';
             }, 300);
-
-            // Save settings when closing
-            saveSettings();
         }
     }
 
 
     function loadSettings() {
-        // Load settings from localStorage or user settings
-    }
-
-    function saveSettings() {
-        // Get current values
-        applySettings({});
+        return  {
+            aggregate: localStorage.getItem('aggregate') === 'true',
+            mapMode: localStorage.getItem('mapMode') || 'LINEAR',
+        };
     }
 
     function applySettings(settings) {
+        const aggregateToggle = document.getElementById('aggregate-toggle');
+        aggregateToggle.checked = settings.aggregate;
+
+        const viewMode = localStorage.getItem('view-mode') || 'linear';
+        document.getElementById('view-mode').value = viewMode;
     }
 
     function toggleTimeControls() {
