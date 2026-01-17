@@ -243,18 +243,23 @@ public class RawLocationPointJdbcService {
             int maxPoints) {
         String countSql = """
             SELECT COUNT(*)
-            FROM raw_location_points
-            WHERE user_id = ?
-              AND ST_Within(geom, ST_MakeEnvelope(?, ?, ?, ?, 4326))
-              AND timestamp >= ?::timestamp AND timestamp < ?::timestamp
-              AND ignored = false AND invalid = false
+            FROM (
+                SELECT *
+                FROM raw_location_points
+                WHERE user_id = ?
+                  AND ST_Within(geom, ST_MakeEnvelope(?, ?, ?, ?, 4326))
+                  AND timestamp >= ?::timestamp AND timestamp < ?::timestamp
+                  AND ignored = false AND invalid = false
+                LIMIT ?
+            )
         """;
 
         Long relevantPointCount = jdbcTemplate.queryForObject(countSql, Long.class,
                                                               minLon, minLat, maxLon, maxLat,
                                                               user.getId(),
                                                               Timestamp.from(startTime),
-                                                              Timestamp.from(endTime)
+                                                              Timestamp.from(endTime),
+                                                              maxPoints == Integer.MAX_VALUE ? maxPoints : maxPoints + 1
         );
 
         // If we have fewer points than the budget, return all without sampling
