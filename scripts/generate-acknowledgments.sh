@@ -2,6 +2,11 @@
 
 # Script to generate contributors.json and translators.json for the acknowledgments page
 # This script should be run before building the application
+# For nix builds, network access is not available, so local mode must be used and the contributors.json must be generated via flake inputs
+#
+# Usage:
+#   ./generate-acknowledgments.sh          # Generate both files (CI mode)
+#   ./generate-acknowledgments.sh --local  # Only generate projects.json (Nix dev mode)
 
 set -e
 
@@ -12,6 +17,10 @@ RESOURCES_DIR="$SCRIPT_DIR/../src/main/resources"
 GITHUB_REPO="${GITHUB_REPOSITORY:-dedicatedcode/reitti}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
+LOCAL_MODE=false
+if [ "$1" = "--local" ]; then
+    LOCAL_MODE=true
+fi
 
 echo "Generating acknowledgments data..."
 
@@ -109,23 +118,26 @@ main() {
         echo "Error: jq is required but not installed."
         exit 1
     fi
-    
-    # Check if curl is available
-    if ! command -v curl &> /dev/null; then
-        echo "Error: curl is required but not installed."
-        exit 1
-    fi
-    
+
     # Create resources directory if it doesn't exist
     mkdir -p "$RESOURCES_DIR"
-    
+
     # Generate all acknowledgment files
-    fetch_contributors
+    if [ "$LOCAL_MODE" = false ]; then
+        # Check if curl is available
+        if ! command -v curl &> /dev/null; then
+            echo "Error: curl is required but not installed."
+            exit 1
+        fi
+        fetch_contributors
+    fi
     create_projects_data
     
     echo "✅ Acknowledgments data generation completed!"
     echo "Generated files:"
-    echo "  - $RESOURCES_DIR/contributors.json"
+    if [ "$LOCAL_MODE" = false ]; then
+        echo "  - $RESOURCES_DIR/contributors.json"
+    fi
     echo "  - $RESOURCES_DIR/projects.json"
 }
 
