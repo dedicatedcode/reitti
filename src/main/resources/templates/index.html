@@ -186,23 +186,20 @@
         }
 
         .speed-control {
-            position: absolute;
-            left: 50px;
-            top: 50%;
-            transform: translateY(-50%);
             opacity: 0;
             visibility: hidden;
-            transition: all 0.3s ease;
-            background: white;
-            padding: 4px;
+            transition: all .3s ease;
             border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            width: 0;
             white-space: nowrap;
+            pointer-events: none; /* Add this to prevent interference */
         }
 
-        .play-section:hover .speed-control {
+        .fab-container:hover .speed-control {
             opacity: 1;
             visibility: visible;
+            width: 120px;
+            pointer-events: auto; /* Re-enable pointer events when visible */
         }
 
         .speed-control select {
@@ -210,7 +207,6 @@
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 12px;
-            background: white;
         }
 
         /* Today button specific styles */
@@ -319,7 +315,7 @@
         <button type="button" class="btn fab-btn" id="play-btn" title="Start Animation">
             <i class="lni lni-play"></i>
         </button>
-        <div class="speed-control" id="speed-control" style="opacity: 0; visibility: hidden;">
+        <div class="speed-control" id="speed-control">
             <select id="speed-selector">
                 <option value="1">Normal (1x)</option>
                 <option value="60">Fast (60x)</option>
