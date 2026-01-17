@@ -123,6 +123,138 @@
             transition: opacity 0.1s ease-out;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
+
+        .today-fab i {
+            font-size: 1rem;
+        }
+
+        /* FAB Container Styles */
+        .fab-container {
+            position: fixed;
+            bottom: 117px;
+            left: 50%;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--color-background-dark-light);
+            color: var(--color-highlight);
+            border: 1px solid var(--color-highlight);
+            padding: 0;
+            border-radius: 24px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+        }
+
+        .fab-btn {
+            height: 40px;
+            min-width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--color-background-dark-light);
+            color: var(--color-highlight);
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 16px;
+            padding: 0;
+        }
+
+        .fab-btn:first-child {
+            border-top-left-radius: 24px;
+            border-bottom-left-radius: 24px;
+        }
+
+        .fab-btn:last-child {
+            border-top-right-radius: 24px;
+            border-bottom-right-radius: 24px;
+        }
+
+        .fab-btn:hover {
+            background: var(--color-highlight);
+            color: var(--color-background-dark);
+            box-shadow: 0 6px 16px rgba(245, 222, 179, 0.4);
+        }
+
+        /* Play button section with hover-triggered speed control */
+        .play-section {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .speed-control {
+            position: absolute;
+            left: 50px;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            background: white;
+            padding: 4px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            white-space: nowrap;
+        }
+
+        .play-section:hover .speed-control {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .speed-control select {
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+            background: white;
+        }
+
+        /* Today button specific styles */
+        .today-btn {
+            background: var(--color-background-dark-light);
+            min-width: 40px;
+            padding: 0 12px;
+        }
+
+        .today-btn span {
+            margin-left: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+
+        /* Expanded state when today button is visible */
+        .fab-container.has-today {
+            padding: 8px 12px;
+            gap: 12px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .fab-container {
+                bottom: 15px;
+                right: 15px;
+                padding: 6px 10px;
+            }
+
+            .fab-btn {
+                width: 36px;
+                height: 36px;
+                font-size: 14px;
+            }
+
+            .speed-control {
+                left: 46px;
+            }
+
+            .today-btn span {
+                display: none; /* Hide text on small screens */
+            }
+        }
     </style>
 </head>
 <body>
@@ -167,26 +299,6 @@
 </button>
 <div id="date-picker-container"></div>
 <div id="tooltip" style="position: absolute; z-index: 10; pointer-events: none; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 4px; display: none; font-family: sans-serif; font-size: 12px; max-width: 300px;"></div>
-
-<button type="button" class="today-fab" id="today-fab" onclick="goToToday()" th:title="#{datepicker.today.title}" title="Go to Today" style="display: none;">
-    <i class="lni lni-calendar-days"></i>
-    <span th:text="#{datepicker.today}">Today</span>
-</button>
-
-<div class="today-fab" style="top: 20px;bottom: initial;right: 20px;left: initial;">
-    <button type="button" class="btn" id="play-btn" title="Start Animation">
-        <i class="lni lni-play"></i>
-        <span>Animate</span>
-    </button>
-    <select id="speed-selector">
-        <option value="1">Normal (1x)</option>
-        <option value="60">Fast (60x)</option>
-        <option value="3600">Super Fast (3600x)</option>
-        <option value="auto" selected>Auto-Adjust</option>
-    </select>
-</div>
-
-
 <div id="timeline-controls">
     <div class="timer-display">
         <span id="current-date">Select Date</span>
@@ -199,6 +311,35 @@
         <span id="start-label">--</span>
         <span id="end-label">--</span>
     </div>
+</div>
+
+<div class="fab-container" id="fab-container">
+    <!-- Play button with hover-triggered speed control -->
+    <div class="play-section">
+        <button type="button" class="btn fab-btn" id="play-btn" title="Start Animation">
+            <i class="lni lni-play"></i>
+        </button>
+        <div class="speed-control" id="speed-control" style="opacity: 0; visibility: hidden;">
+            <select id="speed-selector">
+                <option value="1">Normal (1x)</option>
+                <option value="60">Fast (60x)</option>
+                <option value="3600">Super Fast (3600x)</option>
+                <option value="auto" selected>Auto-Adjust</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Today button (hidden by default) -->
+    <button type="button" class="btn fab-btn today-btn" id="today-fab" onclick="goToToday()" style="display: none;"
+            th:title="#{datepicker.today.title}" title="Go to Today">
+        <i class="lni lni-calendar-days"></i>
+        <span th:text="#{datepicker.today}">Today</span>
+    </button>
+
+    <!-- Settings button -->
+    <button type="button" class="btn fab-btn settings-btn" id="settings-btn" title="Settings">
+        <i class="lni lni-gear-1"></i>
+    </button>
 </div>
 <script th:inline="javascript">
     window.contextPath = /*[[@{/}]]*/ "/";
@@ -361,14 +502,14 @@
 
     function startAnimation() {
         isPlaying = true;
-        playBtn.innerText = '⏸ Animate'; // Change icon to Pause
+        playBtn.innerHTML = '<i class="lni lni-pause"></i>'; // Change icon to Pause
         lastFrameTime = null;
         animationId = requestAnimationFrame(animate);
     }
 
     function pauseAnimation() {
         isPlaying = false;
-        playBtn.innerText = '▶ Animate'; // Change icon to Play
+        playBtn.innerHTML = '<i class="lni lni-play"></i>'; // Change icon to Play
         if (animationId) {
             cancelAnimationFrame(animationId);
         }
