@@ -468,6 +468,7 @@
 
         if (total === 0) {
             text.innerText = "No data found";
+            bar.style.width = `100%`;
             setTimeout(() => {
                 overlay.style.transition = 'opacity 1s ease';
                 overlay.style.opacity = '0';
