@@ -28,33 +28,34 @@
     <style>
         #timeline-controls {
             position: absolute;
-            top: 30px;
+            bottom: 170px;
+            color: var( --color-highlight);
+            display: block;
+            background: #3b3b3ba6;
             left: 50%;
             transform: translateX(-50%);
             width: 80%;
             max-width: 800px;
-            background: rgba(255, 255, 255, 0.9);
             padding: 15px 25px;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             z-index: 10;
-            font-family: 'Noto Sans Regular', sans-serif;
+            font-family: var(--serif-font);
+        }
+
+        #timeline-controls.hidden {
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(-50%) translateY(-10px);
+            pointer-events: none;
         }
 
         .timer-display {
             text-align: center;
-            margin-bottom: 10px;
         }
 
         #current-date {
-            font-weight: bold;
-            font-size: 1.1em;
             display: block;
-        }
-
-        #current-time {
-            color: #666;
-            font-size: 0.9em;
         }
 
         .slider-container {
@@ -71,9 +72,8 @@
         .time-bounds {
             display: flex;
             justify-content: space-between;
-            font-size: 0.75em;
-            color: #888;
             margin-top: 5px;
+            align-self: end;
         }
 
         #loading-overlay {
@@ -175,6 +175,7 @@
             border-bottom-right-radius: 24px;
         }
 
+        .fab-btn.active,
         .fab-btn:hover {
             background: var(--color-highlight);
             color: var(--color-background-dark);
@@ -336,7 +337,7 @@
         }
 
         .settings-action-btn {
-            background: var(--color-highlight, #4CAF50);
+            background: var(--color-highlight);
             color: var(--color-text-white);
             border: none;
             padding: 8px 16px;
@@ -414,7 +415,6 @@
     <div class="date" id="auto-update-date"></div>
     <div class="time" id="auto-update-time"></div>
 </div>
-
 <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('index')}"></div>
 <div class="timeline">
     <div class="timeline-container"
@@ -428,24 +428,25 @@
         <i class="lni lni-exit"></i>
     </button>
 </div>
-
 <button type="button" class="datepicker-toggle-btn" id="datepicker-toggle-btn" onclick="toggleDatePicker()" th:title="#{datepicker.state.hide.title}" title="Hide Date Picker">
     <i class="lni lni-exit-down"></i>
 </button>
 <div id="date-picker-container"></div>
-<div id="tooltip" style="position: absolute; z-index: 10; pointer-events: none; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 4px; display: none; font-family: sans-serif; font-size: 12px; max-width: 300px;"></div>
-<div id="timeline-controls">
-    <div class="timer-display">
-        <span id="current-date">Select Date</span>
-        <span id="current-time">00:00</span>
-    </div>
 
+<div id="tooltip" style="position: absolute; z-index: 10; pointer-events: none; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 4px; display: none; font-family: sans-serif; font-size: 12px; max-width: 300px;"></div>
+
+<div id="timeline-controls">
+    <div class="time-bounds">
+        <span id="start-label" style="align-self: end;">--</span>
+        <div class="timer-display">
+            <span id="current-date">Select Date</span>
+            <span id="current-time">00:00</span>
+        </div>
+
+        <span id="end-label" style="align-self: end;">--</span>
+    </div>
     <div class="slider-container">
         <input type="range" id="time-slider" min="0" max="100" value="0" step="1"></div>
-    <div class="time-bounds">
-        <span id="start-label">--</span>
-        <span id="end-label">--</span>
-    </div>
 </div>
 
 <div class="fab-container" id="fab-container">
@@ -463,8 +464,8 @@
             </select>
         </div>
     </div>
-    <button type="button" class="btn fab-btn" id="toggle-time-controll-btn" title="Show time controls">
-        <i class="lni lni-refresh-circle-1-clockwise"></i>
+    <button type="button" class="btn fab-btn" id="toggle-time-control-btn" title="Show time controls">
+        <i class="lni lni-stopwatch"></i>
     </button>
     <!-- Today button (hidden by default) -->
     <button type="button" class="btn fab-btn today-btn" id="today-fab" onclick="goToToday()" style="display: none;"
@@ -747,8 +748,8 @@
         slider.value = 0;
         currentSliderValue = 0;
         // Set the labels
-        startLabel.innerText = formatDateTime(minTimestamp);
-        endLabel.innerText = formatDateTime(maxTimestamp);
+        startLabel.innerText = formatDateTime(minTimestamp * 1000);
+        endLabel.innerText = formatDateTime(maxTimestamp * 1000);
     }
 
     function formatDateTime(ts) {
@@ -833,11 +834,8 @@
                 essential: true
             });
         }
-        // Initialize slider: 0 is the start of the range
-        const slider = document.getElementById('time-slider');
-        slider.min = 0;
-        slider.max = globalMaxTimestamp - globalMinTimestamp;
-        slider.value = 0;
+
+        initSlider(globalMinTimestamp, globalMaxTimestamp);
 
         showLoadingProgress(0, meta.totalPoints);
         await loadVisits(loadingConfig);
@@ -1828,6 +1826,14 @@
             defaultSpeed: localStorage.getItem('defaultSpeed') || 'auto'
         };
         applySettings(savedSettings);
+
+        const toggleTimeControlsBtn = document.getElementById('toggle-time-control-btn');
+        if (toggleTimeControlsBtn) {
+            toggleTimeControlsBtn.addEventListener('click', function() {
+                toggleTimeControls();
+            });
+        }
+        restoreTimelineControlsState();
     })
 
     function openSettingsMenu() {
@@ -1879,6 +1885,53 @@
     }
 
     function applySettings(settings) {
+    }
+
+    function toggleTimeControls() {
+        const timelineControls = document.getElementById('timeline-controls');
+        const toggleBtn = document.getElementById('toggle-time-control-btn');
+
+        if (!timelineControls || !toggleBtn) return;
+
+        // Check if controls are currently visible
+        const isVisible = !timelineControls.classList.contains('hidden');
+
+        if (isVisible) {
+            // Hide the controls
+            timelineControls.classList.add('hidden');
+            toggleBtn.classList.remove('active');
+            toggleBtn.title = window.locale.timeline.state.show;
+
+            // Save state to localStorage
+            localStorage.setItem('timelineControlsHidden', 'true');
+        } else {
+            // Show the controls
+            timelineControls.classList.remove('hidden');
+            toggleBtn.classList.add('active');
+            toggleBtn.title = window.locale.timeline.state.hide;
+
+            // Save state to localStorage
+            localStorage.setItem('timelineControlsHidden', 'false');
+        }
+    }
+
+    function restoreTimelineControlsState() {
+        const timelineControls = document.getElementById('timeline-controls');
+        const toggleBtn = document.getElementById('toggle-time-control-btn');
+
+        if (!timelineControls || !toggleBtn) return;
+
+        const isHidden = localStorage.getItem('timelineControlsHidden') === 'true';
+
+        if (isHidden) {
+            timelineControls.classList.add('hidden');
+            toggleBtn.title = window.locale.timeline.state.show;
+            toggleBtn.classList.remove('active');
+        } else {
+            timelineControls.classList.remove('hidden');
+            toggleBtn.title = window.locale.timeline.state.hide;
+            toggleBtn.classList.add('active');
+        }
     }
 </script>
 </body>
