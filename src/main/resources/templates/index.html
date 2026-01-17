@@ -79,7 +79,6 @@
         #loading-overlay {
             opacity: 0;
             position: absolute;
-            bottom: 99px;
             width: 100%;
             z-index: 1000;
             pointer-events: none;
@@ -145,6 +144,10 @@
             z-index: 1000;
             transition: all 0.3s ease;
             transform: translateX(-50%);
+        }
+
+        body.datepicker-hidden .fab-container {
+            bottom: 20px;
         }
 
         .fab-btn {
@@ -252,6 +255,141 @@
                 display: none; /* Hide text on small screens */
             }
         }
+
+        .settings-menu {
+            position: fixed;
+            bottom: 180px; /* Above the FAB container */
+            right: 20px;
+            width: 300px;
+            max-height: 400px;
+            background: var(--color-background-dark);
+            color: var(--color-text-white);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            z-index: 1001;
+            overflow: hidden;
+            transform: translateY(20px);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .settings-menu.visible {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .settings-menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            background: var(--color-background-dark);
+            color: var(--color-text-white);
+            border-radius: 12px 12px 0 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .settings-menu-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            padding-left: 8px;
+        }
+
+        .close-settings-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .close-settings-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .settings-menu-content {
+            padding: 16px;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .settings-section {
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+        }
+
+        .settings-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding: 8px 0;
+        }
+
+        .settings-action-btn {
+            background: var(--color-highlight, #4CAF50);
+            color: var(--color-text-white);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+            width: 100%;
+        }
+
+        .settings-action-btn:hover {
+            background: #45a049;
+        }
+
+        .settings-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .settings-overlay.visible {
+            opacity: 1;
+        }
+
+        .settings-menu-content .divider {
+            font-size: 1rem;
+            margin: 0;
+        }
+
+        /* Responsive adjustments for settings menu */
+        @media (max-width: 768px) {
+            .settings-menu {
+                right: 10px;
+                left: 10px;
+                width: auto;
+                bottom: 160px;
+                max-height: 60vh;
+            }
+
+            .settings-menu-header {
+                padding: 12px 16px;
+            }
+
+            .settings-menu-content {
+                padding: 12px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -260,10 +398,10 @@
 </div>
 <div id="new-map" style="display: block"></div>
 <div id="loading-overlay">
-    <div id="status-text">Ready</div>
     <div class="progress-container">
         <div id="progress-bar"></div>
     </div>
+    <div id="status-text">Ready</div>
 </div>
 <!-- Auto-update overlay -->
 <div id="auto-update-overlay" class="auto-update-overlay">
@@ -325,7 +463,9 @@
             </select>
         </div>
     </div>
-
+    <button type="button" class="btn fab-btn" id="toggle-time-controll-btn" title="Show time controls">
+        <i class="lni lni-refresh-circle-1-clockwise"></i>
+    </button>
     <!-- Today button (hidden by default) -->
     <button type="button" class="btn fab-btn today-btn" id="today-fab" onclick="goToToday()" style="display: none;"
             th:title="#{datepicker.today.title}" title="Go to Today">
@@ -338,6 +478,29 @@
         <i class="lni lni-gear-1"></i>
     </button>
 </div>
+
+<!-- Settings Menu (hidden by default) -->
+<div id="settings-menu" class="settings-menu" style="display: none;">
+    <div class="settings-menu-header">
+        <h3 th:text="#{settings.title}">Settings</h3>
+        <button class="close-settings-btn" onclick="closeSettingsMenu()">
+            <i class="lni lni-xmark-circle"></i>
+        </button>
+    </div>
+    <div class="settings-menu-content">
+        <!-- Placeholder for future settings -->
+        <div class="settings-section">
+            <div class="divider left">Map Appearance</div>
+        </div>
+        <div class="settings-section">
+            <div class="divider left">Date Selection</div>
+        </div>
+    </div>
+</div>
+
+<!-- Settings Overlay (for closing when clicking outside) -->
+<div id="settings-overlay" class="settings-overlay" style="display: none;" onclick="closeSettingsMenu()"></div>
+
 <script th:inline="javascript">
     window.contextPath = /*[[@{/}]]*/ "/";
     window.contextPath = window.contextPath.replace(/\/$/, '');
@@ -436,6 +599,7 @@
     const deckOverlay = new deck.MapboxOverlay({
         layers: []
     });
+
     mapNew.addControl(deckOverlay);
 
 
@@ -1632,8 +1796,90 @@
                 timeMultiplier = parseInt(e.target.value);
             }
         };
+
+        const settingsBtn = document.getElementById('settings-btn');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', function(e) {
+                e.stopPropagation(); // Prevent event bubbling
+                openSettingsMenu();
+            });
+        }
+
+        // Close settings menu when clicking outside
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('settings-menu');
+            const overlay = document.getElementById('settings-overlay');
+            const settingsBtn = document.getElementById('settings-btn');
+
+            if (menu && overlay && menu.classList.contains('visible')) {
+                // Check if click is outside menu and not on settings button
+                if (!menu.contains(e.target) && !settingsBtn.contains(e.target)) {
+                    closeSettingsMenu();
+                }
+            }
+        });
+
+        // Load and apply settings on page load
+        loadSettings();
+        const savedSettings = {
+            darkMode: localStorage.getItem('darkMode') === 'true',
+            compactTimeline: localStorage.getItem('compactTimeline') === 'true',
+            autoPlay: localStorage.getItem('autoPlay') === 'true',
+            defaultSpeed: localStorage.getItem('defaultSpeed') || 'auto'
+        };
+        applySettings(savedSettings);
     })
 
+    function openSettingsMenu() {
+        const menu = document.getElementById('settings-menu');
+        const overlay = document.getElementById('settings-overlay');
+
+        if (menu && overlay) {
+            menu.style.display = 'block';
+            overlay.style.display = 'block';
+
+            // Trigger reflow to enable transition
+            setTimeout(() => {
+                menu.classList.add('visible');
+                overlay.classList.add('visible');
+            }, 10);
+
+            // Load current settings
+            loadSettings();
+        }
+    }
+
+    function closeSettingsMenu() {
+        const menu = document.getElementById('settings-menu');
+        const overlay = document.getElementById('settings-overlay');
+
+        if (menu && overlay) {
+            menu.classList.remove('visible');
+            overlay.classList.remove('visible');
+
+            // Wait for transition to complete before hiding
+            setTimeout(() => {
+                menu.style.display = 'none';
+                overlay.style.display = 'none';
+            }, 300);
+
+            // Save settings when closing
+            saveSettings();
+        }
+    }
+
+
+    function loadSettings() {
+        // Load settings from localStorage or user settings
+    }
+
+    function saveSettings() {
+        // Get current values
+        applySettings({});
+    }
+
+    function applySettings(settings) {
+    }
 </script>
 </body>
 </html>
