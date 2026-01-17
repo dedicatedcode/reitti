@@ -21,11 +21,7 @@
     <script th:src="@{/js/timeline-scroll-indicator.js}"></script>
     <script th:src="@{/js/photo-client.js}"></script>
     <script th:src="@{/js/htmx.min.js}"></script>
-    <script th:src="@{/js/leaflet.js}"></script>
-    <script th:src="@{/js/TileLayer.Grayscale.js}"></script>
     <script th:src="@{/js/polygon-editor.js}"></script>
-    <script th:src="@{/js/leaflet.geodesic.2.7.2.js}"></script>
-    <script th:src="@{/js/leaflet.markercluster.js}"></script>
     <script th:src="@{/js/util.js}"></script>
     <script th:src="@{/js/deckgl.9.2.5.min.js}"></script>
     <script th:src="@{/js/maplibre-gl.5.16.0.min.js}"></script>
@@ -172,7 +168,6 @@
 <div id="date-picker-container"></div>
 <div id="tooltip" style="position: absolute; z-index: 10; pointer-events: none; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 4px; display: none; font-family: sans-serif; font-size: 12px; max-width: 300px;"></div>
 
-<!-- Today FAB button -->
 <button type="button" class="today-fab" id="today-fab" onclick="goToToday()" th:title="#{datepicker.today.title}" title="Go to Today" style="display: none;">
     <i class="lni lni-calendar-days"></i>
     <span th:text="#{datepicker.today}">Today</span>
