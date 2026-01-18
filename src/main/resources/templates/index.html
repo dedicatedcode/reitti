@@ -320,7 +320,6 @@
 
         .settings-section {
             margin-bottom: 20px;
-            padding-bottom: 16px;
         }
 
         .settings-section:last-child {
@@ -495,9 +494,9 @@
             <div class="form-group">
                 <label for="view-mode">View Mode</label>
                 <select id="view-mode">
-                    <option value="linear">Standard Paths</option>
-                    <option value="heatmap">Density Heatmap</option>
-                    <option value="bundled">Edge Bundling</option>
+                    <option value="LINEAR">Standard Paths</option>
+                    <option value="HEATMAP">Density Heatmap</option>
+                    <option value="BUNDLED">Edge Bundling</option>
                 </select>
             </div>
             <div class="form-group">
@@ -901,77 +900,175 @@
     }
 
     function addPointToMapData(color, p) {
-        const relativeTs = p.ts - globalMinTimestamp;
+        const tsLinear = p.ts - globalMinTimestamp;
+        const tsAggregate = p.ts % 86400;
 
         let currentTrip = globalTripData[globalTripData.length - 1];
-
-        // 2. Use absolute timestamps to detect gaps (e.g., 15 mins)
         const GAP_THRESHOLD = 900;
+
         if (!currentTrip || (p.ts - currentTrip.lastAbsTs) > GAP_THRESHOLD) {
             currentTrip = {
                 path: [],
-                timestamps: [], // These will now store relativeTs
+                snappedPath: [],
+                timestampsLinear: [],
+                timestampsAggregate: [],
                 lastAbsTs: p.ts,
-                color: color // Assign the color from your HTML here
+                color: color
             };
             globalTripData.push(currentTrip);
         }
 
-        // 3. Push the relative offset!
-        currentTrip.path.push([p.lng, p.lat]);
-        currentTrip.timestamps.push(relativeTs);
-
+        const point = [p.lng, p.lat];
+        currentTrip.path.push(point);
+        currentTrip.snappedPath.push(snapPoint(point, 0.00002));
+        currentTrip.timestampsLinear.push(tsLinear);
+        currentTrip.timestampsAggregate.push(tsAggregate);
         currentTrip.lastAbsTs = p.ts;
     }
 
+    function snapPoint(point, precision = 0.0008) {
+        return [
+            Math.round(point[0] / precision) * precision,
+            Math.round(point[1] / precision) * precision
+        ];
+    }
     function updateTripsLayer(offset) {
-        const dynamicTrail = (globalMaxTimestamp - globalMinTimestamp) * 0.02;
-        const layers = [
-            new deck.PathLayer({
+        const isAggregate = document.getElementById('aggregate-toggle')?.checked || false;
+        const viewMode = document.getElementById('view-mode')?.value || 'LINEAR';
+
+        // Trail: 30 mins for 24h mode, or 2% of the year for linear
+        const trailLength = isAggregate
+            ? 1800
+            : (globalMaxTimestamp - globalMinTimestamp) * 0.02;
+
+        const layers = [];
+
+        // --- BASE VISUALIZATION ---
+        if (viewMode === 'HEATMAP') {
+            layers.push(new deck.HeatmapLayer({
+                id: 'heatmap-base',
+                data: globalTripData.flatMap(t => t.path),
+                getPosition: d => d,
+                radiusPixels: 25,
+                intensity: 5,     // Crank this up to see thin paths
+                threshold: 0.01,  // Lower threshold to show faint movements
+                aggregation: 'SUM',
+                getPath: [globalTripData[globalTripData.length - 1]?.path.length]
+            }));
+        } else if (viewMode === 'BUNDLED') {
+            const BUNDLE_PRECISION = 0.0001; // Roughly 100m. Adjust for "tightness"
+            layers.push(new deck.PathLayer({
+                id: 'bundled-aura',
+                data: globalTripData,
+                getPath: d => d.snappedPath,
+                getColor: d => [...d.color, 15], // Very faint
+                getWidth: 25,                   // Large spread
+                widthMinPixels: 6,
+                capRounded: true,
+                jointRounded: true,
+                parameters: {
+                    blendFunc: [770, 1],   // [SRC_ALPHA, ONE]
+                    blendEquation: 32774, // FUNC_ADD
+                    depthTest: false
+                },
+                updateTriggers: {
+                    data: [globalTripData.length],
+                    getPath: [globalTripData[globalTripData.length - 1]?.path.length]
+                }
+            }));
+
+            // 2. The "Core" - Narrow, higher opacity, keeps the color saturated
+            layers.push(new deck.PathLayer({
+                id: 'bundled-core',
+                data: globalTripData,
+                getPath: d => d.snappedPath,
+                getColor: d => [...d.color, 200], // Stronger color
+                getWidth: 6,                    // Sharp center
+                widthMinPixels: 2,
+                parameters: {
+                    blendFunc: [770, 771],   // [SRC_ALPHA, ONE]
+                    blendEquation: 32774, // FUNC_ADD
+                    depthTest: false
+                },
+                updateTriggers: {
+                    data: [globalTripData.length],
+                    getPath: [globalTripData[globalTripData.length - 1]?.path.length]
+                }
+            }));
+
+            layers.push(new deck.PathLayer({
+                id: 'bundled-paths',
+                data: globalTripData,
+                getPath: d => {
+                    const p = 0.00008;
+                    return d.path.map(coord => [
+                        Math.round(coord[0] / p) * p,
+                        Math.round(coord[1] / p) * p
+                    ]);
+                },
+                getWidth: 6,
+                widthMinPixels: 2,
+                // Use a very low alpha (e.g., 15/255).
+                // 17 overlaps will result in a fully bright "hotspot"
+                getColor: d => [...d.color, 30],
+
+                // This allows the colors to "sum" together mathematically
+                parameters: {
+                    blendFunc: [770, 1], // GL_SRC_ALPHA, GL_ONE
+                    blendEquation: 32774 // GL_FUNC_ADD
+                },
+                capRounded: true,
+                jointRounded: true,
+                updateTriggers: {
+                    getColor: [offset],
+                    getPath: [globalTripData[globalTripData.length - 1]?.path.length]
+                }
+            }));
+        } else {
+            // STANDARD PATHS
+            layers.push(new deck.PathLayer({
                 id: 'static-paths',
                 data: globalTripData,
                 getPath: d => d.path,
                 getColor: d => {
-                    const rgb = d.color
-                    return offset !== 0 ? [...rgb, 100] : [...rgb, 255];
+                    const alpha = offset !== 0 ? 40 : 255; // Dim paths when animating
+                    return [...d.color, alpha];
                 },
                 getWidth: 8,
-                widthMinPixels: 3,
-                widthMaxPixels: 6,
+                widthMinPixels: 2,
                 capRounded: true,
                 updateTriggers: {
-                    data: [globalTripData.length],
-                    getPath: [globalTripData[globalTripData.length - 1]?.path.length],
-                    getColor: [offset]
+                    getColor: [offset],
+                    getPath: [globalTripData[globalTripData.length - 1]?.path.length]
                 }
-            }),
+            }));
+        }
 
-            new deck.TripsLayer({
-                id: 'trips-layer',
-                data: [...globalTripData],
-                getPath: d => d.path,
-                getTimestamps: d => d.timestamps,
-                getColor: d => [...d.color, 255], // Ensure full opacity for the head
-                opacity: offset !== 0 ? 1.0 : 0,
-                getWidth: 8,
-                widthMinPixels: 3,
-                widthMaxPixels: 6,
-                capRounded: true,
-                trailLength: dynamicTrail,
-                currentTime: offset,
-                updateTriggers: {
-                    data: [globalTripData.length],
-                    opacity: [offset],
-                    currentTime: [offset] // Force update on slider move
-                },
-                miterLimit: 2
-            }),
-            ...getVisitLayers(offset)
-        ];
+        // --- THE ANIMATED COMET (Always Top) ---
+        layers.push(new deck.TripsLayer({
+            id: `trips-layer-${isAggregate ? 'aggregate' : 'linear'}`,
+            data: globalTripData,
+            getPath: d => d.path,
+            // CRITICAL: Matches the data structure in addPointToMapData
+            getTimestamps: d => isAggregate ? d.timestampsAggregate : d.timestampsLinear,
+            getColor: d => [...d.color, 255],
+            opacity: offset !== 0 ? 1.0 : 0,
+            getWidth: 10,
+            widthMinPixels: 4,
+            trailLength: trailLength,
+            currentTime: offset,
+            updateTriggers: {
+                getTimestamps: [isAggregate],
+                currentTime: [offset],
+                getPath: [globalTripData[globalTripData.length - 1]?.path.length]
+            }
+        }));
+
+        // --- THE VISITS ---
+        layers.push(...getVisitLayers(offset));
 
         deckOverlay.setProps({layers});
     }
-
     function getVisitLayers(offset) {
         const isOverview = offset === 0;
 
@@ -1848,7 +1945,6 @@
         restoreTimelineControlsState();
 
         document.getElementById('aggregate-toggle').onchange = (e) => {
-            debugger
             const isAggregate = e.target.checked;
             const slider = document.getElementById('time-slider');
 
@@ -1906,16 +2002,14 @@
     function loadSettings() {
         return  {
             aggregate: localStorage.getItem('aggregate') === 'true',
-            mapMode: localStorage.getItem('mapMode') || 'LINEAR',
+            mapMode: localStorage.getItem('view-mode') || 'LINEAR',
         };
     }
 
     function applySettings(settings) {
         const aggregateToggle = document.getElementById('aggregate-toggle');
         aggregateToggle.checked = settings.aggregate;
-
-        const viewMode = localStorage.getItem('view-mode') || 'linear';
-        document.getElementById('view-mode').value = viewMode;
+        document.getElementById('view-mode').value = settings.mapMode;
     }
 
     function toggleTimeControls() {
