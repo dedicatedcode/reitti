@@ -227,7 +227,6 @@
             font-weight: 500;
         }
 
-
         /* Expanded state when today button is visible */
         .fab-container.has-today {
             padding: 8px 12px;
@@ -395,15 +394,19 @@
 </head>
 <body>
 
-
-<div id="deck-controls"
-     style="position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.8); color: white; padding: 15px; border-radius: 8px; z-index: 10000; width: 250px; font-family: sans-serif; font-size: 12px;">
+<div id="deck-controls" style="position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.8); color: white; padding: 15px; border-radius: 8px; z-index: 10000; width: 250px; font-family: sans-serif; font-size: 12px;">
     <h4 style="margin: 0 0 10px 0; text-align: center;">Deck.gl Parameters</h4>
 
     <div style="margin-bottom: 10px;">
         <label for="trail-length">Trail Length (seconds):</label>
         <input type="range" id="trail-length" min="100" max="10000" value="1800" step="100" style="width: 100%;">
         <span id="trail-length-value">1800</span>
+    </div>
+
+    <div style="margin-bottom: 10px;">
+        <label for="comet-width">Comet Width (pixels):</label>
+        <input type="range" id="comet-width" min="1" max="20" value="8" step="1" style="width: 100%;">
+        <span id="comet-width-value">8</span>
     </div>
 
     <div style="margin-bottom: 10px;">
@@ -567,13 +570,13 @@
     ///delete later
     let deckParams = {
         trailLength: 1800,
+        cometWidth: 8,
         pathWidth: 8,
         pathOpacity: 40,
         visitRadius: 15,
-        visitOpacity: 140,
+        visitOpacity: 40,
         bundledPrecision: 0.0001
     };
-
 
     window.contextPath = /*[[@{/}]]*/ "/";
     window.contextPath = window.contextPath.replace(/\/$/, '');
@@ -674,7 +677,6 @@
     });
 
     mapNew.addControl(deckOverlay);
-
 
     let userConfigs = [];
     let currentTime = 0;
@@ -1115,14 +1117,14 @@
             getTimestamps: d => isAggregate ? d.timestampsAggregate : d.timestampsLinear,
             getColor: d => [...d.color, 255],
             opacity: offset !== 0 ? 1.0 : 0,
-            getWidth: deckParams.pathWidth, // Use parameter
+            getWidth: deckParams.cometWidth, // Use cometWidth parameter
             widthMinPixels: 2,
             trailLength: deckParams.trailLength, // Use parameter
             currentTime: offset,
             updateTriggers: {
                 getTimestamps: [isAggregate],
                 currentTime: [offset],
-                getWidth: [deckParams.pathWidth],
+                getWidth: [deckParams.cometWidth],
                 trailLength: [deckParams.trailLength],
                 getPath: [globalTripData[globalTripData.length - 1]?.path.length]
             }
@@ -1280,7 +1282,7 @@
     function toggleTimeline() {
         const body = document.body;
         const isHidden = body.classList.contains('timeline-hidden');
-        
+
         if (isHidden) {
             body.classList.remove('timeline-hidden');
             localStorage.setItem('timelineHidden', 'false');
@@ -1293,15 +1295,15 @@
             body.classList.add('timeline-hidden');
             localStorage.setItem('timelineHidden', 'true');
         }
-        
+
         updateTimelineToggleButton();
     }
-    
+
     function updateTimelineToggleButton() {
         const btn = document.getElementById('timeline-toggle-btn');
         const icon = btn.querySelector('i');
         const isHidden = document.body.classList.contains('timeline-hidden');
-        
+
         if (isHidden) {
             icon.className = 'lni lni-enter';
             btn.title = window.locale.timeline.state.show;
@@ -1310,7 +1312,7 @@
             btn.title = window.locale.timeline.state.hide;
         }
     }
-    
+
     // Restore timeline visibility state from localStorage
     function restoreTimelineState() {
         const timelineHidden = localStorage.getItem('timelineHidden');
@@ -1319,12 +1321,12 @@
         }
         updateTimelineToggleButton();
     }
-    
+
     // Date picker visibility functions
     function toggleDatePicker() {
         const body = document.body;
         const isHidden = body.classList.contains('datepicker-hidden');
-        
+
         if (isHidden) {
             body.classList.remove('datepicker-hidden');
             localStorage.setItem('datepickerHidden', 'false');
@@ -1332,15 +1334,15 @@
             body.classList.add('datepicker-hidden');
             localStorage.setItem('datepickerHidden', 'true');
         }
-        
+
         updateDatePickerToggleButton();
     }
-    
+
     function updateDatePickerToggleButton() {
         const btn = document.getElementById('datepicker-toggle-btn');
         const icon = btn.querySelector('i');
         const isHidden = document.body.classList.contains('datepicker-hidden');
-        
+
         if (isHidden) {
             icon.className = 'lni lni-exit-up';
             btn.title = window.locale.datepicker.state.show;
@@ -1352,7 +1354,7 @@
         // Update today FAB visibility when date picker visibility changes
         updateTodayFabVisibility();
     }
-    
+
     // Restore date picker visibility state from localStorage
     function restoreDatePickerState() {
         const datepickerHidden = localStorage.getItem('datepickerHidden');
@@ -1415,7 +1417,7 @@
     function toggleAutoUpdate() {
         const btn = document.getElementById('auto-update-btn');
         const icon = btn ? btn.querySelector('i') : null;
-        
+
         if (!autoUpdateMode) {
             document.body.classList.add('auto-update-mode');
 
@@ -1429,10 +1431,10 @@
 
             // Hide timeline and date picker smoothly
             hideUIElements();
-            
+
             // Show auto-update overlay
             showAutoUpdateOverlay();
-            
+
             // Update the date picker to today
             if (window.horizontalDatePicker) {
                 window.horizontalDatePicker.setSelectedRange(getCurrentLocalDate(), null);
@@ -1452,54 +1454,54 @@
 
     function disableAutoUpdate() {
         autoUpdateMode = false;
-        
+
         // Clear the timer
         if (autoUpdateTimer) {
             clearInterval(autoUpdateTimer);
             autoUpdateTimer = null;
         }
-        
+
         // Clear time update interval
         if (autoUpdateTimeInterval) {
             clearInterval(autoUpdateTimeInterval);
             autoUpdateTimeInterval = null;
         }
-        
+
         // Clear any pending reload timeout
         if (reloadTimeoutId) {
             clearTimeout(reloadTimeoutId);
             reloadTimeoutId = null;
         }
-        
+
         // Clear max wait timeout
         if (maxWaitTimeoutId) {
             clearTimeout(maxWaitTimeoutId);
             maxWaitTimeoutId = null;
         }
-        
+
         // Clear pending events
         pendingEvents = [];
         firstEventTime = null;
-        
+
         // Clear reconnect timeout
         if (reconnectTimeoutId) {
             clearTimeout(reconnectTimeoutId);
             reconnectTimeoutId = null;
         }
-        
+
         if (eventSource) {
             eventSource.close();
             eventSource = null;
         }
-        
+
         rawLocationLoader.removePulsatingMarkers();
-        
+
         // Hide auto-update overlay
         hideAutoUpdateOverlay();
-        
+
         // Show timeline and date picker again
         showUIElements();
-        
+
         const btn = document.getElementById('auto-update-btn');
         const icon = btn.querySelector('i');
         icon.className = 'lni lni-play';
@@ -1518,7 +1520,7 @@
             if (!autoUpdateMode) {
                 return; // Exit if auto-update mode was disabled
             }
-            
+
             // If the selected date is not today, switch to today
             if (!isSelectedDateToday()) {
                 console.log('Auto-update: Switching to today\'s date');
@@ -1538,10 +1540,10 @@
     function scheduleTimelineReload(eventData) {
         // Add event to pending events
         pendingEvents.push(eventData);
-        
+
         if (firstEventTime === null) {
             firstEventTime = Date.now();
-            
+
             // Set maximum wait timeout (30 seconds from first event)
             maxWaitTimeoutId = setTimeout(() => {
                 if (autoUpdateMode && pendingEvents.length > 0) {
@@ -1550,11 +1552,11 @@
                 }
             }, 30000);
         }
-        
+
         if (reloadTimeoutId) {
             clearTimeout(reloadTimeoutId);
         }
-        
+
         reloadTimeoutId = setTimeout(() => {
             if (autoUpdateMode && pendingEvents.length > 0) {
                 console.log(`Auto-update: Reloading timeline data after 5s settle time with ${pendingEvents.length} accumulated events`);
@@ -1562,7 +1564,7 @@
             }
         }, 5000);
     }
-    
+
     function executeTimelineReload() {
         // Clear all timeouts
         if (reloadTimeoutId) {
@@ -1573,10 +1575,10 @@
             clearTimeout(maxWaitTimeoutId);
             maxWaitTimeoutId = null;
         }
-        
+
         // Reload timeline
         document.body.dispatchEvent(new CustomEvent('dateChanged'));
-        
+
         // Clear pending events and reset first event time
         pendingEvents = [];
         firstEventTime = null;
@@ -1594,7 +1596,7 @@
             console.log('SSE connection opened.');
             messagesDiv.innerHTML = ''; // Clear any error messages
             messagesDiv.classList.remove('active');
-            
+
             // Clear any pending reconnect timeout since we're connected
             if (reconnectTimeoutId) {
                 clearTimeout(reconnectTimeoutId);
@@ -1606,13 +1608,13 @@
             console.error('EventSource failed:', error);
             messagesDiv.innerHTML = `<p><strong>${window.locale.sse.error}</strong></p>`;
             messagesDiv.classList.add('active');
-            
+
             // Close the current connection
             if (eventSource) {
                 eventSource.close();
                 eventSource = null;
             }
-            
+
             // Schedule reconnection after 5 seconds if still in auto-update mode
             if (autoUpdateMode && !reconnectTimeoutId) {
                 console.log('Scheduling SSE reconnection in 5 seconds...');
@@ -1625,28 +1627,28 @@
 
         eventSource.onmessage = function(event) {
             console.log('Received generic event:', event.data);
-            
+
             // Clear error messages on successful message receipt (fallback for onopen)
             if (messagesDiv.classList.contains('active')) {
                 messagesDiv.innerHTML = '';
                 messagesDiv.classList.remove('active');
             }
-            
+
             // Clear any pending reconnect timeout since we're receiving messages
             if (reconnectTimeoutId) {
                 clearTimeout(reconnectTimeoutId);
                 reconnectTimeoutId = null;
             }
-            
+
             // Parse the event data
             try {
                 const eventData = JSON.parse(event.data);
-                
+
                 // Check if the event has a date field and it matches today
                 if (eventData.date) {
                     const today = getCurrentLocalDate(); // YYYY-MM-DD format
                     const eventDate = eventData.date;
-                    
+
                     // If event date matches today and we're in auto-update mode, schedule reload
                     if (eventDate === today && autoUpdateMode) {
                         console.log('Auto-update: Scheduling timeline reload due to SSE event for today');
@@ -1670,20 +1672,20 @@
     function showUIElements() {
         const timeline = document.querySelector('.timeline');
         const datePicker = document.getElementById('date-picker-container');
-        
+
         timeline.classList.remove('hidden');
         datePicker.classList.remove('hidden');
     }
 
     function showAutoUpdateOverlay() {
         const overlay = document.getElementById('auto-update-overlay');
-        
+
         // Update initial time
         updateAutoUpdateTime();
-        
+
         // Show overlay
         overlay.classList.add('visible');
-        
+
         // Start updating time every second
         autoUpdateTimeInterval = setInterval(updateAutoUpdateTime, 1000);
     }
@@ -1697,24 +1699,24 @@
         const now = new Date();
         const dateElement = document.getElementById('auto-update-date');
         const timeElement = document.getElementById('auto-update-time');
-        
+
         // Use browser locale for date formatting
-        const dateOptions = { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
+        const dateOptions = {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
         };
         const formattedDate = now.toLocaleDateString(navigator.language, dateOptions);
-        
+
         // Use browser locale for time formatting
-        const timeOptions = { 
-            hour: '2-digit', 
+        const timeOptions = {
+            hour: '2-digit',
             minute: '2-digit',
             hour12: false
         };
         const formattedTime = now.toLocaleTimeString(navigator.language, timeOptions);
-        
+
         dateElement.textContent = formattedDate;
         timeElement.textContent = formattedTime;
     }
@@ -1759,7 +1761,7 @@
     function updateEditPlaceLinks() {
         const currentUrl = window.location.href;
         const editLinks = document.querySelectorAll('.timeline-container .edit-icon[href*="/settings/places/"]');
-        
+
         editLinks.forEach(link => {
             const href = link.getAttribute('href');
             const url = new URL(href, window.location.origin);
@@ -2063,7 +2065,6 @@
         }
     }
 
-
     function loadSettings() {
         return  {
             aggregate: localStorage.getItem('aggregate') === 'true',
@@ -2127,6 +2128,7 @@
     // Function to update the display values for sliders
     function updateSliderDisplays() {
         document.getElementById('trail-length-value').textContent = deckParams.trailLength;
+        document.getElementById('comet-width-value').textContent = deckParams.cometWidth;
         document.getElementById('path-width-value').textContent = deckParams.pathWidth;
         document.getElementById('path-opacity-value').textContent = deckParams.pathOpacity;
         document.getElementById('visit-radius-value').textContent = deckParams.visitRadius;
@@ -2154,6 +2156,12 @@
 
     document.getElementById('trail-length').addEventListener('input', function (e) {
         deckParams.trailLength = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams(); // Apply immediately
+    });
+
+    document.getElementById('comet-width').addEventListener('input', function (e) {
+        deckParams.cometWidth = parseInt(e.target.value);
         updateSliderDisplays();
         applyDeckParams(); // Apply immediately
     });
@@ -2192,6 +2200,7 @@
     document.getElementById('reset-params').addEventListener('click', function () {
         deckParams = {
             trailLength: 1800,
+            cometWidth: 8,
             pathWidth: 8,
             pathOpacity: 40,
             visitRadius: 15,
@@ -2201,6 +2210,7 @@
 
         // Reset sliders to default values
         document.getElementById('trail-length').value = deckParams.trailLength;
+        document.getElementById('comet-width').value = deckParams.cometWidth;
         document.getElementById('path-width').value = deckParams.pathWidth;
         document.getElementById('path-opacity').value = deckParams.pathOpacity;
         document.getElementById('visit-radius').value = deckParams.visitRadius;
