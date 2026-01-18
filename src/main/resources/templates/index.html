@@ -394,6 +394,55 @@
     </style>
 </head>
 <body>
+
+
+<div id="deck-controls"
+     style="position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.8); color: white; padding: 15px; border-radius: 8px; z-index: 10000; width: 250px; font-family: sans-serif; font-size: 12px;">
+    <h4 style="margin: 0 0 10px 0; text-align: center;">Deck.gl Parameters</h4>
+
+    <div style="margin-bottom: 10px;">
+        <label for="trail-length">Trail Length (seconds):</label>
+        <input type="range" id="trail-length" min="100" max="10000" value="1800" step="100" style="width: 100%;">
+        <span id="trail-length-value">1800</span>
+    </div>
+
+    <div style="margin-bottom: 10px;">
+        <label for="path-width">Path Width (pixels):</label>
+        <input type="range" id="path-width" min="1" max="20" value="8" step="1" style="width: 100%;">
+        <span id="path-width-value">8</span>
+    </div>
+
+    <div style="margin-bottom: 10px;">
+        <label for="path-opacity">Path Opacity (0-255):</label>
+        <input type="range" id="path-opacity" min="0" max="255" value="40" step="5" style="width: 100%;">
+        <span id="path-opacity-value">40</span>
+    </div>
+
+    <div style="margin-bottom: 10px;">
+        <label for="visit-radius">Visit Radius (pixels):</label>
+        <input type="range" id="visit-radius" min="5" max="50" value="15" step="1" style="width: 100%;">
+        <span id="visit-radius-value">15</span>
+    </div>
+
+    <div style="margin-bottom: 10px;">
+        <label for="visit-opacity">Visit Opacity (0-255):</label>
+        <input type="range" id="visit-opacity" min="0" max="255" value="40" step="5" style="width: 100%;">
+        <span id="visit-opacity-value">40</span>
+    </div>
+
+    <div style="margin-bottom: 10px;">
+        <label for="bundled-precision">Bundled Precision (degrees):</label>
+        <input type="range" id="bundled-precision" min="0.00001" max="0.001" value="0.0001" step="0.00001"
+               style="width: 100%;">
+        <span id="bundled-precision-value">0.0001</span>
+    </div>
+
+    <button id="reset-params"
+            style="width: 100%; padding: 8px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 5px;">
+        Reset to Defaults
+    </button>
+</div>
+
 <div id="message-container">
     <div id="sse-message"></div>
 </div>
@@ -514,6 +563,18 @@
 <div id="settings-overlay" class="settings-overlay" style="display: none;" onclick="closeSettingsMenu()"></div>
 
 <script th:inline="javascript">
+
+    ///delete later
+    let deckParams = {
+        trailLength: 1800,
+        pathWidth: 8,
+        pathOpacity: 40,
+        visitRadius: 15,
+        visitOpacity: 140,
+        bundledPrecision: 0.0001
+    };
+
+
     window.contextPath = /*[[@{/}]]*/ "/";
     window.contextPath = window.contextPath.replace(/\/$/, '');
 
@@ -961,14 +1022,14 @@
                 id: 'bundled-aura',
                 data: globalTripData,
                 getPath: d => d.snappedPath,
-                getColor: d => [...d.color, 15], // Very faint
-                getWidth: 25,                   // Large spread
+                getColor: d => [...d.color, 15],
+                getWidth: deckParams.pathWidth * 3, // Use parameter (scaled up for aura)
                 widthMinPixels: 6,
                 capRounded: true,
                 jointRounded: true,
                 parameters: {
-                    blendFunc: [770, 1],   // [SRC_ALPHA, ONE]
-                    blendEquation: 32774, // FUNC_ADD
+                    blendFunc: [770, 1],
+                    blendEquation: 32774,
                     depthTest: false
                 },
                 updateTriggers: {
@@ -982,17 +1043,18 @@
                 id: 'bundled-core',
                 data: globalTripData,
                 getPath: d => d.snappedPath,
-                getColor: d => [...d.color, 200], // Stronger color
-                getWidth: 6,                    // Sharp center
+                getColor: d => [...d.color, 200],
+                getWidth: deckParams.pathWidth, // Use parameter
                 widthMinPixels: 2,
                 parameters: {
-                    blendFunc: [770, 771],   // [SRC_ALPHA, ONE]
-                    blendEquation: 32774, // FUNC_ADD
+                    blendFunc: [770, 771],
+                    blendEquation: 32774,
                     depthTest: false
                 },
                 updateTriggers: {
                     data: [globalTripData.length],
-                    getPath: [globalTripData[globalTripData.length - 1]?.path.length]
+                    getPath: [globalTripData[globalTripData.length - 1]?.path.length],
+                    getWidth: [deckParams.pathWidth]
                 }
             }));
 
@@ -1031,14 +1093,15 @@
                 data: globalTripData,
                 getPath: d => d.path,
                 getColor: d => {
-                    const alpha = offset !== 0 ? 40 : 255; // Dim paths when animating
+                    const alpha = offset !== 0 ? deckParams.pathOpacity : 255; // Use parameter
                     return [...d.color, alpha];
                 },
-                getWidth: 8,
+                getWidth: deckParams.pathWidth, // Use parameter
                 widthMinPixels: 2,
                 capRounded: true,
                 updateTriggers: {
-                    getColor: [offset],
+                    getColor: [offset, deckParams.pathOpacity],
+                    getWidth: [deckParams.pathWidth],
                     getPath: [globalTripData[globalTripData.length - 1]?.path.length]
                 }
             }));
@@ -1049,17 +1112,18 @@
             id: `trips-layer-${isAggregate ? 'aggregate' : 'linear'}`,
             data: globalTripData,
             getPath: d => d.path,
-            // CRITICAL: Matches the data structure in addPointToMapData
             getTimestamps: d => isAggregate ? d.timestampsAggregate : d.timestampsLinear,
             getColor: d => [...d.color, 255],
             opacity: offset !== 0 ? 1.0 : 0,
-            getWidth: 10,
-            widthMinPixels: 4,
-            trailLength: trailLength,
+            getWidth: deckParams.pathWidth, // Use parameter
+            widthMinPixels: 2,
+            trailLength: deckParams.trailLength, // Use parameter
             currentTime: offset,
             updateTriggers: {
                 getTimestamps: [isAggregate],
                 currentTime: [offset],
+                getWidth: [deckParams.pathWidth],
+                trailLength: [deckParams.trailLength],
                 getPath: [globalTripData[globalTripData.length - 1]?.path.length]
             }
         }));
@@ -1078,7 +1142,7 @@
                 id: 'visit-polygons',
                 data: globalPlacesData.filter(p => p.polygon),
                 getPolygon: d => d.polygon.coordinates,
-                getFillColor: d => [...d.color, 40],
+                getFillColor: d => [...d.color, 140], // Use parameter
                 getLineColor: d => [...d.color, 255],
                 visible: mapNew.getZoom() > 14
             }),
@@ -1089,25 +1153,26 @@
                 getPosition: d => d.coordinates,
                 getRadius: d => {
                     const logValue = Math.log10(d.totalDurationSec + 1);
-                    // 15 is the "multiplier" to make it look good on screen
-                    // 5 is the "base" minimum size
-                    return 5 + (logValue * 15);
+                    return deckParams.visitRadius + (logValue * 15); // Use parameter as base
                 },
-
                 getFillColor: d => {
                     const isActive = d.activeRanges.some(r => offset >= r.start && offset <= r.end);
-                    const alpha = (isOverview || isActive) ? 40 : 0;
+                    const alpha = (isOverview || isActive) ? deckParams.visitOpacity : 0; // Use parameter
                     return [...d.color, alpha];
                 },
-                updateTriggers: { getFillColor: [offset, isOverview] },
+                updateTriggers: {
+                    getFillColor: [offset, isOverview, deckParams.visitOpacity],
+                    getLineColor: [offset, isOverview, deckParams.visitOpacity],
+                    getRadius: [deckParams.visitRadius]
+                },
                 stroked: true,
                 getLineColor: d => {
                     const isActive = d.activeRanges.some(r => offset >= r.start && offset <= r.end);
-                    const alpha = (isOverview || isActive) ? 80 : 0;
+                    const alpha = (isOverview || isActive) ? deckParams.visitOpacity : 0; // Use parameter
                     return [...d.color, alpha];
                 },
                 lineWidthMinPixels: 3,
-                pickable: true, // MUST BE TRUE
+                pickable: true,
                 onHover: info => updateTooltip(info),
             }),
 
@@ -2058,6 +2123,100 @@
             toggleBtn.classList.add('active');
         }
     }
+
+    // Function to update the display values for sliders
+    function updateSliderDisplays() {
+        document.getElementById('trail-length-value').textContent = deckParams.trailLength;
+        document.getElementById('path-width-value').textContent = deckParams.pathWidth;
+        document.getElementById('path-opacity-value').textContent = deckParams.pathOpacity;
+        document.getElementById('visit-radius-value').textContent = deckParams.visitRadius;
+        document.getElementById('visit-opacity-value').textContent = deckParams.visitOpacity;
+        document.getElementById('bundled-precision-value').textContent = deckParams.bundledPrecision;
+    }
+
+    // Function to apply the parameters to deck.gl layers
+    function applyDeckParams() {
+        // Update the globalTripData with new bundled precision if needed
+        if (globalTripData.length > 0) {
+            globalTripData.forEach(trip => {
+                // Recalculate snappedPath based on new bundled precision
+                const p = deckParams.bundledPrecision;
+                trip.snappedPath = trip.path.map(coord => [
+                    Math.round(coord[0] / p) * p,
+                    Math.round(coord[1] / p) * p
+                ]);
+            });
+        }
+
+        // Trigger a re-render of the deck.gl layers
+        updateTripsLayer(currentSliderValue);
+    }
+
+    document.getElementById('trail-length').addEventListener('input', function (e) {
+        deckParams.trailLength = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams(); // Apply immediately
+    });
+
+    document.getElementById('path-width').addEventListener('input', function (e) {
+        deckParams.pathWidth = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams(); // Apply immediately
+    });
+
+    document.getElementById('path-opacity').addEventListener('input', function (e) {
+        deckParams.pathOpacity = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams(); // Apply immediately
+    });
+
+    document.getElementById('visit-radius').addEventListener('input', function (e) {
+        deckParams.visitRadius = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams(); // Apply immediately
+    });
+
+    document.getElementById('visit-opacity').addEventListener('input', function (e) {
+        deckParams.visitOpacity = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams(); // Apply immediately
+    });
+
+    document.getElementById('bundled-precision').addEventListener('input', function (e) {
+        deckParams.bundledPrecision = parseFloat(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams(); // Apply immediately
+    });
+
+    // Reset button
+    document.getElementById('reset-params').addEventListener('click', function () {
+        deckParams = {
+            trailLength: 1800,
+            pathWidth: 8,
+            pathOpacity: 40,
+            visitRadius: 15,
+            visitOpacity: 40,
+            bundledPrecision: 0.0001
+        };
+
+        // Reset sliders to default values
+        document.getElementById('trail-length').value = deckParams.trailLength;
+        document.getElementById('path-width').value = deckParams.pathWidth;
+        document.getElementById('path-opacity').value = deckParams.pathOpacity;
+        document.getElementById('visit-radius').value = deckParams.visitRadius;
+        document.getElementById('visit-opacity').value = deckParams.visitOpacity;
+        document.getElementById('bundled-precision').value = deckParams.bundledPrecision;
+
+        updateSliderDisplays();
+        applyDeckParams();
+        console.log('Reset deck.gl parameters to defaults');
+    });
+
+    // Initialize displays on page load
+    document.addEventListener('DOMContentLoaded', function () {
+        updateSliderDisplays();
+    });
 </script>
+
 </body>
 </html>
