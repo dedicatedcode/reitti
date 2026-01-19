@@ -394,7 +394,7 @@
 </head>
 <body>
 
-<div id="deck-controls" style="position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.8); color: white; padding: 15px; border-radius: 8px; z-index: 10000; width: 250px; font-family: sans-serif; font-size: 12px;">
+<div id="deck-controls" style="position: fixed; top: 50px; right: 20px; background: rgba(0,0,0,0.8); color: white; padding: 15px; border-radius: 8px; z-index: 10000; width: 250px; font-family: sans-serif; font-size: 12px;">
     <h4 style="margin: 0 0 10px 0; text-align: center;">Deck.gl Parameters</h4>
 
     <div style="margin-bottom: 10px;">
@@ -569,13 +569,19 @@
 
     ///delete later
     let deckParams = {
-        trailLength: 1800,
-        cometWidth: 8,
-        pathWidth: 8,
-        pathOpacity: 40,
-        visitRadius: 15,
-        visitOpacity: 40,
-        bundledPrecision: 0.0001
+        trailLength: 5400,
+        cometWidth: 7,
+        pathWidth: 2,
+        pathOpacity: 170,
+        visitRadius: 5,
+        visitOpacity: 140,
+        bundledPrecision: 0.0001,
+        glowWidth: 18,
+        shadowWidth: 6,
+        cometOpacity: 1.0,
+        glowOpacity: 0.4,
+        shadowOpacity: 0.2,
+        shadowOffset: [0.00005, -0.00005] // [lng, lat] offset
     };
 
     window.contextPath = /*[[@{/}]]*/ "/";
@@ -919,38 +925,48 @@
     async function startStreamingPoints(loadingConfig, totalExpected) {
         const response = await fetch(window.contextPath + loadingConfig.map.streamUrl);
         const reader = response.body.getReader();
-        const decoder = new TextDecoder();
         const color = hexToRgb(loadingConfig.color);
-        let pointsProcessed = 0;
-        let partialChunk = '';
         let lastRenderTime = 0;
-        while (true) {
-            const { value, done } = await reader.read();
-            if (done) {
-                // 1. Process any remaining data in the buffer
-                if (partialChunk.trim()) {
-                    const point = JSON.parse(partialChunk);
-                    addPointToMapData(color, point);
-                    pointsProcessed++;
-                }
+        let pointsProcessed = 0;
+        let leftover = null;
 
-                // 2. Final UI Update: Catch the "remainder" points
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
                 showLoadingProgress(pointsProcessed, totalExpected);
                 updateTripsLayer(currentSliderValue);
-
-                console.log(`Stream finished. Total points: ${pointsProcessed}`);
                 break;
             }
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = (partialChunk + chunk).split('\n');
-            partialChunk = lines.pop(); // Save the incomplete last line
 
-            for (const line of lines) {
-                if (line.trim()) {
-                    const point = JSON.parse(line);
-                    addPointToMapData(color, point);
-                    pointsProcessed++;
-                }
+            // 1. Combine leftover bytes from the previous chunk with the new chunk
+            let combinedValue = value;
+            if (leftover) {
+                combinedValue = new Uint8Array(leftover.length + value.length);
+                combinedValue.set(leftover);
+                combinedValue.set(value, leftover.length);
+                leftover = null;
+            }
+
+            // 2. Calculate how many full 12-byte points we have
+            const totalBytes = combinedValue.length;
+            const pointsCount = Math.floor(totalBytes / 12);
+            const validBytesLength = pointsCount * 12;
+
+            // 3. Keep any trailing bytes that don't make a full point
+            if (validBytesLength < totalBytes) {
+                leftover = combinedValue.slice(validBytesLength);
+            }
+
+            // 4. Process only the full points
+            const floatArray = new Float32Array(
+                combinedValue.buffer,
+                combinedValue.byteOffset,
+                pointsCount * 3 // 3 floats per point
+            );
+
+            for (let i = 0; i < floatArray.length; i += 3) {
+                addPointToMapData(color, floatArray[i+1], floatArray[i], floatArray[i+2]);
+                pointsProcessed++;
             }
             const now = performance.now();
             if (now - lastRenderTime > 100) {
@@ -959,34 +975,76 @@
                 lastRenderTime = now;
             }
         }
-        showLoadingProgress(pointsProcessed, totalExpected);
     }
 
-    function addPointToMapData(color, p) {
-        const tsLinear = p.ts - globalMinTimestamp;
-        const tsAggregate = p.ts % 86400;
+    function addPointToMapData(color, lng, lat, ts) {
+        const tsLinear = ts - globalMinTimestamp;
+        const tsAggregate = ts % 86400;
 
         let currentTrip = globalTripData[globalTripData.length - 1];
-        const GAP_THRESHOLD = 900;
 
-        if (!currentTrip || (p.ts - currentTrip.lastAbsTs) > GAP_THRESHOLD) {
+        // 1. Check for redundancy BEFORE doing any math
+        if (currentTrip && currentTrip.path.length > 0) {
+            const lastIdx = currentTrip.path.length - 1;
+            if (isRedundant(
+                currentTrip.path[lastIdx],
+                currentTrip.absTimestamps[lastIdx],
+                [lng, lat],
+                ts
+            )) {
+                return; // Drop the point safely
+            }
+        }
+
+        const GAP_THRESHOLD = 900;
+        if (!currentTrip || (ts - currentTrip.lastAbsTs) > GAP_THRESHOLD) {
             currentTrip = {
                 path: [],
+                shadowPath: [],
                 snappedPath: [],
                 timestampsLinear: [],
                 timestampsAggregate: [],
-                lastAbsTs: p.ts,
+                absTimestamps: [], // We track this for the filter logic
+                lastAbsTs: ts,
                 color: color
             };
             globalTripData.push(currentTrip);
         }
 
-        const point = [p.lng, p.lat];
+        const point = [lng, lat];
         currentTrip.path.push(point);
-        currentTrip.snappedPath.push(snapPoint(point, 0.00002));
+
+        // PRE-CALCULATE SHADOW: Avoids .map() in the render loop
+        currentTrip.shadowPath.push([
+            point[0] + deckParams.shadowOffset[0],
+            point[1] + deckParams.shadowOffset[1]
+        ]);
+
+        currentTrip.snappedPath.push(snapPoint(point));
         currentTrip.timestampsLinear.push(tsLinear);
         currentTrip.timestampsAggregate.push(tsAggregate);
-        currentTrip.lastAbsTs = p.ts;
+        currentTrip.absTimestamps.push(ts);
+        currentTrip.lastAbsTs = ts;
+    }
+
+    function isRedundant(lastPoint, lastTs, newPoint, newTs) {
+        if (!lastPoint) return false;
+
+        const spatialThreshold = 0.00002; // ~2 meters
+        const temporalThreshold = 30;    // 30 seconds
+
+        const dx = lastPoint[0] - newPoint[0];
+        const dy = lastPoint[1] - newPoint[1];
+        const distSq = dx * dx + dy * dy;
+
+        const timeDiff = newTs - lastTs;
+
+        // If we've stayed in the same spot for more than 30s,
+        // we keep the point to prevent "time-skipping" in the animation.
+        if (timeDiff > temporalThreshold) return false;
+
+        // If we haven't moved much AND not much time has passed, it's redundant.
+        return distSq < (spatialThreshold * spatialThreshold);
     }
 
     function snapPoint(point, precision = 0.0008) {
@@ -1000,9 +1058,7 @@
         const viewMode = document.getElementById('view-mode')?.value || 'LINEAR';
 
         // Trail: 30 mins for 24h mode, or 2% of the year for linear
-        const trailLength = isAggregate
-            ? 1800
-            : (globalMaxTimestamp - globalMinTimestamp) * 0.02;
+        const trailLength = isAggregate ? 1800 : (globalMaxTimestamp - globalMinTimestamp) * 0.02;
 
         const layers = [];
 
@@ -1019,7 +1075,6 @@
                 getPath: [globalTripData[globalTripData.length - 1]?.path.length]
             }));
         } else if (viewMode === 'BUNDLED') {
-            const BUNDLE_PRECISION = 0.0001; // Roughly 100m. Adjust for "tightness"
             layers.push(new deck.PathLayer({
                 id: 'bundled-aura',
                 data: globalTripData,
@@ -1108,28 +1163,71 @@
                 }
             }));
         }
+        const trail = deckParams.trailLength || 1800;
+        const mode = isAggregate ? 'agg' : 'lin';
+        const visibility = offset !== 0;
+        if (!globalTripData || globalTripData.length === 0) return;
 
-        // --- THE ANIMATED COMET (Always Top) ---
+        // --- 1. THE SHADOW (Static Path) ---
+        // We use a PathLayer because it is the most stable layer type in deck.gl
+        // layers.push(new deck.TripsLayer({
+        //     id: `trips-shadow-${mode}`,
+        //     data: globalTripData,
+        //     // We offset the path coordinates slightly for the shadow effect
+        //     getPath: d => d.shadowPath,
+        //     getTimestamps: d => isAggregate ? d.timestampsAggregate : d.timestampsLinear,
+        //     getColor: [0, 0, 0],
+        //     opacity: deckParams.shadowOpacity * visibility,
+        //     widthMinPixels: deckParams.shadowWidth,
+        //     trailLength: deckParams.trailLength,
+        //     currentTime: offset,
+        //     updateTriggers: {
+        //         getTimestamps: [isAggregate],
+        //         currentTime: [offset],
+        //         opacity: [visibility],
+        //         getPath: [
+        //             deckParams.shadowOffset,
+        //             globalTripData[globalTripData.length - 1]?.path.length]
+        //     }
+        // }));
+
+        // --- 2. THE GLOW (Wide TripsLayer) ---
+        // layers.push(new deck.TripsLayer({
+        //     id: `trips-glow-${mode}`,
+        //     data: globalTripData,
+        //     getPath: d => d.path,
+        //     getTimestamps: d => isAggregate ? d.timestampsAggregate : d.timestampsLinear,
+        //     getColor: d => [...d.color, 255],
+        //     opacity: deckParams.glowOpacity * visibility, widthMinPixels: deckParams.glowWidth,
+        //     trailLength: deckParams.trailLength,
+        //     currentTime: offset,
+        //     // Using basic alpha blending to ensure visibility
+        //     updateTriggers: {
+        //         getTimestamps: [isAggregate],
+        //         currentTime: [offset],
+        //         opacity: [visibility],
+        //         getPath: [globalTripData[globalTripData.length - 1]?.path.length]
+        //     }
+        // }));
+
+        // --- 3. THE CORE (Moving Comet) ---
         layers.push(new deck.TripsLayer({
-            id: `trips-layer-${isAggregate ? 'aggregate' : 'linear'}`,
+            id: `trips-core-${mode}`,
             data: globalTripData,
             getPath: d => d.path,
             getTimestamps: d => isAggregate ? d.timestampsAggregate : d.timestampsLinear,
             getColor: d => [...d.color, 255],
-            opacity: offset !== 0 ? 1.0 : 0,
-            getWidth: deckParams.cometWidth, // Use cometWidth parameter
-            widthMinPixels: 2,
-            trailLength: deckParams.trailLength, // Use parameter
+            opacity: deckParams.cometOpacity * visibility,
+            widthMinPixels: deckParams.cometWidth,
+            trailLength: deckParams.trailLength,
             currentTime: offset,
             updateTriggers: {
                 getTimestamps: [isAggregate],
                 currentTime: [offset],
-                getWidth: [deckParams.cometWidth],
-                trailLength: [deckParams.trailLength],
+                opacity: [visibility],
                 getPath: [globalTripData[globalTripData.length - 1]?.path.length]
             }
         }));
-
         // --- THE VISITS ---
         layers.push(...getVisitLayers(offset));
 
@@ -2199,12 +2297,12 @@
     // Reset button
     document.getElementById('reset-params').addEventListener('click', function () {
         deckParams = {
-            trailLength: 1800,
-            cometWidth: 8,
-            pathWidth: 8,
-            pathOpacity: 40,
-            visitRadius: 15,
-            visitOpacity: 40,
+            trailLength: 5400,
+            cometWidth: 7,
+            pathWidth: 2,
+            pathOpacity: 170,
+            visitRadius: 5,
+            visitOpacity: 140,
             bundledPrecision: 0.0001
         };
 

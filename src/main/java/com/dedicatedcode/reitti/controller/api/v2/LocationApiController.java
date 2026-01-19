@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.dto.MapMetadata;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.StreamingRawLocationPointJdbcService;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -57,7 +58,12 @@ public class LocationApiController {
             }
         });
 
-        return ResponseEntity.ok(emitter);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE)
+                // Note: GZIP with Binary can sometimes be slower due to CPU overhead.
+                // Test your specific data to see if you want to keep this.
+                .header(HttpHeaders.CONTENT_ENCODING, "identity")
+                .body(emitter);
     }
 
     private Instant parseInstant(String input, ZoneId timezone, boolean end) {

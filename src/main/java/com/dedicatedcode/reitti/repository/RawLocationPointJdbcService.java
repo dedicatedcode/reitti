@@ -603,17 +603,17 @@ public class RawLocationPointJdbcService {
 
     public MapMetadata getMetadata(Long userId, Instant start, Instant end) {
         String sql = """
-                    SELECT
-                        MIN(EXTRACT(EPOCH FROM timestamp)) as min_ts,
-                        MAX(EXTRACT(EPOCH FROM timestamp)) as max_ts,
-                        COUNT(*) as total_count,
-                        MIN(ST_Y(geom)) as min_lat,
-                        MAX(ST_Y(geom)) as max_lat,
-                        MIN(ST_X(geom)) as min_lng,
-                        MAX(ST_X(geom)) as max_lng
-                    FROM raw_location_points
-                    WHERE user_id = ?
-                      AND timestamp >= ? AND timestamp < ?
+                SELECT
+                  EXTRACT(EPOCH FROM MIN(timestamp)) as min_ts,
+                  EXTRACT(EPOCH FROM MAX(timestamp)) as max_ts,
+                  COUNT(*) as total_count,
+                  ST_YMin(ST_Extent(geom)) as min_lat,
+                  ST_YMax(ST_Extent(geom)) as max_lat,
+                  ST_XMin(ST_Extent(geom)) as min_lng,
+                  ST_XMax(ST_Extent(geom)) as max_lng
+                FROM raw_location_points
+                WHERE user_id = ?
+                 AND timestamp >= ? AND timestamp < ?;
                 """;
 
         return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> new MapMetadata(
