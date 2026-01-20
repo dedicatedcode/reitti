@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.controller.api.ingestion.gpslogger;
 
 import com.dedicatedcode.reitti.controller.api.ingestion.owntracks.OwntracksFriendResponse;
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
@@ -50,7 +51,7 @@ public class GPSLoggerIngestionApiController {
             }
 
             // Convert an Owntracks format to our LocationPoint format
-            LocationPoint locationPoint = request.toLocationPoint();
+            LocationPoint2 locationPoint = request.toLocationPoint();
 
             if (locationPoint.getTimestamp() == null) {
                 logger.warn("Ignoring location point [{}] because timestamp is null", locationPoint);

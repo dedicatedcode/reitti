@@ -387,9 +387,14 @@ public class UnifiedLocationProcessingService {
             ProcessedVisit startVisit = processedVisits.get(i);
             ProcessedVisit endVisit = processedVisits.get(i + 1);
 
-            Trip trip = createTripBetweenVisits(user, previewId, startVisit, endVisit);
-            if (trip != null) {
-                trips.add(trip);
+            try {
+
+                Trip trip = createTripBetweenVisits(user, previewId, startVisit, endVisit);
+                if (trip != null) {
+                    trips.add(trip);
+                }
+            } catch (Exception e) {
+                logger.error("Error creating trip between visits [{}] and [{}]", startVisit, endVisit, e);
             }
         }
 
@@ -757,12 +762,17 @@ public class UnifiedLocationProcessingService {
             }
         }
 
+
         // Get location points between the two visits
         List<RawLocationPoint> tripPoints;
         if (previewId == null) {
-            tripPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, tripStartTime, tripEndTime);
+            tripPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, tripStartTime, tripEndTime.plusMillis(1));
         } else {
-            tripPoints = previewRawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, previewId, tripStartTime, tripEndTime);
+            tripPoints = previewRawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, previewId, tripStartTime, tripEndTime.plusMillis(1));
+        }
+
+        if (tripPoints.size() < 2) {
+            System.out.println();
         }
         double estimatedDistanceInMeters = calculateDistanceBetweenPlaces(startVisit.getPlace(), endVisit.getPlace());
         double travelledDistanceMeters = GeoUtils.calculateTripDistance(tripPoints);

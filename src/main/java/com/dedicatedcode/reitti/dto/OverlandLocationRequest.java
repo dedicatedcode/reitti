@@ -79,7 +79,7 @@ public class OverlandLocationRequest {
             this.properties = properties;
         }
         
-        public LocationPoint toLocationPoint() {
+        public LocationPoint2 toLocationPoint() {
             if (geometry == null || geometry.getCoordinates() == null || 
                 geometry.getCoordinates().size() < 2 || properties == null) {
                 return null;
@@ -88,21 +88,21 @@ public class OverlandLocationRequest {
             double longitude = geometry.getCoordinates().get(0);
             double latitude = geometry.getCoordinates().get(1);
 
-            String timestamp = null;
+            Instant timestamp = null;
             if (properties.getTimestamp() != null) {
                 try {
-                    timestamp = Instant.from(DateTimeFormatter.ISO_OFFSET_DATE_TIME.parse(properties.getTimestamp())).toString();
+                    timestamp = Instant.from(DateTimeFormatter.ISO_OFFSET_DATE_TIME.parse(properties.getTimestamp()));
                 } catch (Exception e) {
                     // Try parsing as ISO instant
                     try {
-                        timestamp = Instant.parse(properties.getTimestamp()).toString();
+                        timestamp = Instant.parse(properties.getTimestamp());
                     } catch (Exception ex) {
                         log.warn("Could not parse timestamp [{}]", properties.getTimestamp());
                     }
                 }
             }
 
-            LocationPoint locationPoint = new LocationPoint();
+            LocationPoint2 locationPoint = new LocationPoint2();
             locationPoint.setLatitude(latitude);
             locationPoint.setLongitude(longitude);
             locationPoint.setElevationMeters(properties.getAltitude());

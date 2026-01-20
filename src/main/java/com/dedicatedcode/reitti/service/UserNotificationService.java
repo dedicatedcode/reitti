@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.event.SSEEvent;
 import com.dedicatedcode.reitti.event.SSEType;
 import com.dedicatedcode.reitti.model.NotificationData;
