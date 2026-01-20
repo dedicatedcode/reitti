@@ -472,19 +472,19 @@
     <div id="tab-visits" class="tab-content" style="display: none;">
         <div style="margin-bottom: 10px;">
             <label for="visit-radius">Visit Radius (pixels):</label>
-            <input type="range" id="visit-radius" min="5" max="50" value="15" step="1" style="width: 100%;">
-            <span id="visit-radius-value">15</span>
+            <input type="range" id="visit-radius" min="5" max="50" value="50" step="1" style="width: 100%;">
+            <span id="visit-radius-value">50</span>
         </div>
 
         <div style="margin-bottom: 10px;">
             <label for="visit-opacity">Visit Opacity (0-255):</label>
-            <input type="range" id="visit-opacity" min="0" max="255" value="40" step="5" style="width: 100%;">
-            <span id="visit-opacity-value">40</span>
+            <input type="range" id="visit-opacity" min="0" max="255" value="140" step="1" style="width: 100%;">
+            <span id="visit-opacity-value">140</span>
         </div>
 
         <div style="margin-bottom: 10px;">
             <label for="visit-polygon-opacity">Polygon Opacity (0-255):</label>
-            <input type="range" id="visit-polygon-opacity" min="0" max="255" value="140" step="5" style="width: 100%;">
+            <input type="range" id="visit-polygon-opacity" min="0" max="255" value="140" step="1" style="width: 100%;">
             <span id="visit-polygon-opacity-value">140</span>
         </div>
 
@@ -493,14 +493,20 @@
             <input type="range" id="visit-line-width" min="1" max="10" value="3" step="1" style="width: 100%;">
             <span id="visit-line-width-value">3</span>
         </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="visit-min-zoom">Minimum Zoon:</label>
+            <input type="range" id="visit-min-zoom" min="1" max="22" value="15" step="1" style="width: 100%;">
+            <span id="visit-min-zoom-value">3</span>
+        </div>
     </div>
 
     <!-- Paths Tab -->
     <div id="tab-paths" class="tab-content" style="display: none;">
         <div style="margin-bottom: 10px;">
             <label for="path-width">Path Width (pixels):</label>
-            <input type="range" id="path-width" min="1" max="20" value="8" step="1" style="width: 100%;">
-            <span id="path-width-value">8</span>
+            <input type="range" id="path-width" min="1" max="20" value="4" step="1" style="width: 100%;">
+            <span id="path-width-value">4</span>
         </div>
 
         <div style="margin-bottom: 10px;">
@@ -511,7 +517,7 @@
         <div style="margin-bottom: 10px;">
             <label for="path-opacity_static">Path Opacity Static (0-255):</label>
             <input type="range" id="path-opacity_static" min="0" max="255" value="200" step="1" style="width: 100%;">
-            <span id="path-opacity_static-value">255</span>
+            <span id="path-opacity_static-value">200</span>
         </div>
     </div>
 
@@ -725,10 +731,11 @@
             shadowOffset: [0.00005, -0.00005] //  offset
         },
         visits: {
+            minZoom: 15,
             radius: 50,
-            opacity: 155,
+            opacity: 140,
             polygonOpacity: 140,
-            lineWidth: 3
+            lineWidth: 1
         },
         paths: {
             width: 4,
@@ -1401,7 +1408,6 @@
     }
     function getVisitLayers(offset) {
         const isOverview = offset === 0;
-
         return [
             // 1. Polygon Layer
             new deck.PolygonLayer({
@@ -1410,9 +1416,10 @@
                 getPolygon: d => d.polygon.coordinates,
                 getFillColor: d => [...d.color, deckParams.visits.polygonOpacity],
                 getLineColor: d => [...d.color, 255],
-                visible: mapNew.getZoom() > 14,
+                visible: mapNew.getZoom() > deckParams.visits.minZoom,
                 updateTripsLayer: {
                     getFillColor: [deckParams.visits.polygonOpacity],
+                    visible: [mapNew.zoom, deckParams.visits.minZoom],
                     data: globalPlacesData.filter(p => p.activeRanges.some(r => r.start <= offset && r.end >= offset))
                 }
             }),
@@ -1438,10 +1445,12 @@
                 },
                 lineWidthMinPixels: 3,
                 pickable: true,
+                visible: mapNew.getZoom() > deckParams.visits.minZoom,
                 onHover: info => updateTooltip(info),
                 updateTriggers: {
-                    getFillColor: [offset, isOverview, deckParams.visits.opacity],
-                    getLineColor: [offset, isOverview, deckParams.visits.opacity],
+                    visible: [mapNew.zoom, deckParams.visits.minZoom],
+                    getFillColor: [offset, isOverview, deckParams.visits.opacity, deckParams.visits.minZoom],
+                    getLineColor: [offset, isOverview, deckParams.visits.opacity, deckParams.visits.minZoom],
                     getRadius: [deckParams.visits.radius]
                 },
             }),
@@ -1455,12 +1464,12 @@
                 lineWidthMinPixels: deckParams.visits.lineWidth,
                 getLineColor: d => {
                     const isActive = d.activeRanges.some(r => offset >= r.start && offset <= r.end);
-                    const alpha = (isOverview || isActive) ? 80 : 0;
-                    return [...d.color, alpha];
+                    const alpha = (isOverview || isActive) ? 255 : 0;
+                    return [0,0,0 , alpha];
                 },
                 getFillColor: d => {
                     const isActive = d.activeRanges.some(r => offset >= r.start && offset <= r.end);
-                    const alpha = (isOverview || isActive) ? 80 : 0;
+                    const alpha = (isOverview || isActive) ? 255 : 0;
                     return [255,255,255, alpha];
                 },
                 updateTriggers: {
@@ -2438,6 +2447,7 @@
         document.getElementById('visit-opacity-value').textContent = deckParams.visits.opacity;
         document.getElementById('visit-polygon-opacity-value').textContent = deckParams.visits.polygonOpacity;
         document.getElementById('visit-line-width-value').textContent = deckParams.visits.lineWidth;
+        document.getElementById('visit-min-zoom-value').textContent = deckParams.visits.minZoom;
 
         // Paths
         document.getElementById('path-width-value').textContent = deckParams.paths.width;
@@ -2523,6 +2533,12 @@
 
     document.getElementById('visit-line-width').addEventListener('input', function (e) {
         deckParams.visits.lineWidth = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('visit-min-zoom').addEventListener('input', function (e) {
+        deckParams.visits.minZoom = parseInt(e.target.value);
         updateSliderDisplays();
         applyDeckParams();
     });
@@ -2627,7 +2643,8 @@
                 radius: 50,
                 opacity: 155,
                 polygonOpacity: 140,
-                lineWidth: 3
+                lineWidth: 3,
+                minZoom: 15,
             },
             paths: {
                 width: 4,
@@ -2664,6 +2681,7 @@
         document.getElementById('visit-opacity').value = deckParams.visits.opacity;
         document.getElementById('visit-polygon-opacity').value = deckParams.visits.polygonOpacity;
         document.getElementById('visit-line-width').value = deckParams.visits.lineWidth;
+        document.getElementById('visit-min-zoom').value = deckParams.visits.minZoom;
 
         document.getElementById('path-width').value = deckParams.paths.width;
         document.getElementById('path-opacity').value = deckParams.paths.opacity;
