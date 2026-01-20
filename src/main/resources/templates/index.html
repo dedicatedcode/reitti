@@ -397,55 +397,202 @@
 <div id="deck-controls" style="position: fixed; top: 50px; right: 20px; background: rgba(0,0,0,0.8); color: white; padding: 15px; border-radius: 8px; z-index: 10000; width: 250px; font-family: sans-serif; font-size: 12px;">
     <h4 style="margin: 0 0 10px 0; text-align: center;">Deck.gl Parameters</h4>
 
-    <div style="margin-bottom: 10px;">
-        <label for="trail-length">Trail Length (seconds):</label>
-        <input type="range" id="trail-length" min="100" max="10000" value="1800" step="100" style="width: 100%;">
-        <span id="trail-length-value">1800</span>
+    <!-- Tab Navigation -->
+    <div style="display: flex; gap: 5px; margin-bottom: 10px; flex-wrap: wrap;">
+        <button class="tab-btn active" data-tab="trips"
+                style="flex: 1; padding: 5px; background: #444; border: none; color: white; cursor: pointer; border-radius: 3px;">
+            Trips
+        </button>
+        <button class="tab-btn" data-tab="visits"
+                style="flex: 1; padding: 5px; background: #444; border: none; color: white; cursor: pointer; border-radius: 3px;">
+            Visits
+        </button>
+        <button class="tab-btn" data-tab="paths"
+                style="flex: 1; padding: 5px; background: #444; border: none; color: white; cursor: pointer; border-radius: 3px;">
+            Paths
+        </button>
+        <button class="tab-btn" data-tab="bundled"
+                style="flex: 1; padding: 5px; background: #444; border: none; color: white; cursor: pointer; border-radius: 3px;">
+            Bundled
+        </button>
+        <button class="tab-btn" data-tab="heatmap"
+                style="flex: 1; padding: 5px; background: #444; border: none; color: white; cursor: pointer; border-radius: 3px;">
+            Heatmap
+        </button>
     </div>
 
-    <div style="margin-bottom: 10px;">
-        <label for="comet-width">Comet Width (pixels):</label>
-        <input type="range" id="comet-width" min="1" max="20" value="8" step="1" style="width: 100%;">
-        <span id="comet-width-value">8</span>
+    <!-- Trips Tab -->
+    <div id="tab-trips" class="tab-content" style="display: block;">
+        <div style="margin-bottom: 10px;">
+            <label for="trail-length">Trail Length (seconds):</label>
+            <input type="range" id="trail-length" min="100" max="10000" value="1800" step="100" style="width: 100%;">
+            <span id="trail-length-value">1800</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="comet-width">Comet Width (pixels):</label>
+            <input type="range" id="comet-width" min="1" max="20" value="8" step="1" style="width: 100%;">
+            <span id="comet-width-value">8</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="comet-opacity">Comet Opacity (0-255):</label>
+            <input type="range" id="comet-opacity" min="0" max="255" value="255" step="5" style="width: 100%;">
+            <span id="comet-opacity-value">255</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="shadow-width">Shadow Width (pixels):</label>
+            <input type="range" id="shadow-width" min="1" max="20" value="6" step="1" style="width: 100%;">
+            <span id="shadow-width-value">6</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="shadow-opacity">Shadow Opacity (0-255):</label>
+            <input type="range" id="shadow-opacity" min="0" max="255" value="51" step="5" style="width: 100%;">
+            <span id="shadow-opacity-value">51</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="shadow-offset-x">Shadow Offset X:</label>
+            <input type="range" id="shadow-offset-x" min="-0.001" max="0.001" value="0.00005" step="0.00001"
+                   style="width: 100%;">
+            <span id="shadow-offset-x-value">0.00005</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="shadow-offset-y">Shadow Offset Y:</label>
+            <input type="range" id="shadow-offset-y" min="-0.001" max="0.001" value="-0.00005" step="0.00001"
+                   style="width: 100%;">
+            <span id="shadow-offset-y-value">-0.00005</span>
+        </div>
     </div>
 
-    <div style="margin-bottom: 10px;">
-        <label for="path-width">Path Width (pixels):</label>
-        <input type="range" id="path-width" min="1" max="20" value="8" step="1" style="width: 100%;">
-        <span id="path-width-value">8</span>
+    <!-- Visits Tab -->
+    <div id="tab-visits" class="tab-content" style="display: none;">
+        <div style="margin-bottom: 10px;">
+            <label for="visit-radius">Visit Radius (pixels):</label>
+            <input type="range" id="visit-radius" min="5" max="50" value="15" step="1" style="width: 100%;">
+            <span id="visit-radius-value">15</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="visit-opacity">Visit Opacity (0-255):</label>
+            <input type="range" id="visit-opacity" min="0" max="255" value="40" step="5" style="width: 100%;">
+            <span id="visit-opacity-value">40</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="visit-polygon-opacity">Polygon Opacity (0-255):</label>
+            <input type="range" id="visit-polygon-opacity" min="0" max="255" value="140" step="5" style="width: 100%;">
+            <span id="visit-polygon-opacity-value">140</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="visit-line-width">Line Width (pixels):</label>
+            <input type="range" id="visit-line-width" min="1" max="10" value="3" step="1" style="width: 100%;">
+            <span id="visit-line-width-value">3</span>
+        </div>
     </div>
 
-    <div style="margin-bottom: 10px;">
-        <label for="path-opacity">Path Opacity (0-255):</label>
-        <input type="range" id="path-opacity" min="0" max="255" value="40" step="5" style="width: 100%;">
-        <span id="path-opacity-value">40</span>
+    <!-- Paths Tab -->
+    <div id="tab-paths" class="tab-content" style="display: none;">
+        <div style="margin-bottom: 10px;">
+            <label for="path-width">Path Width (pixels):</label>
+            <input type="range" id="path-width" min="1" max="20" value="8" step="1" style="width: 100%;">
+            <span id="path-width-value">8</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="path-opacity">Path Opacity (0-255):</label>
+            <input type="range" id="path-opacity" min="0" max="255" value="40" step="1" style="width: 100%;">
+            <span id="path-opacity-value">40</span>
+        </div>
+        <div style="margin-bottom: 10px;">
+            <label for="path-opacity_static">Path Opacity Static (0-255):</label>
+            <input type="range" id="path-opacity_static" min="0" max="255" value="200" step="1" style="width: 100%;">
+            <span id="path-opacity_static-value">255</span>
+        </div>
     </div>
 
-    <div style="margin-bottom: 10px;">
-        <label for="visit-radius">Visit Radius (pixels):</label>
-        <input type="range" id="visit-radius" min="5" max="50" value="15" step="1" style="width: 100%;">
-        <span id="visit-radius-value">15</span>
+    <!-- Bundled Tab -->
+    <div id="tab-bundled" class="tab-content" style="display: none;">
+        <div style="margin-bottom: 10px;">
+            <label for="bundled-precision">Bundled Precision (degrees):</label>
+            <input type="range" id="bundled-precision" min="0.00001" max="0.001" value="0.0001" step="0.00001"
+                   style="width: 100%;">
+            <span id="bundled-precision-value">0.0001</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="bundled-aura-width">Aura Width (pixels):</label>
+            <input type="range" id="bundled-aura-width" min="1" max="30" value="24" step="1" style="width: 100%;">
+            <span id="bundled-aura-width-value">24</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="bundled-aura-opacity">Aura Opacity (0-255):</label>
+            <input type="range" id="bundled-aura-opacity" min="0" max="255" value="15" step="5" style="width: 100%;">
+            <span id="bundled-aura-opacity-value">15</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="bundled-core-width">Core Width (pixels):</label>
+            <input type="range" id="bundled-core-width" min="1" max="20" value="8" step="1" style="width: 100%;">
+            <span id="bundled-core-width-value">8</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="bundled-core-opacity">Core Opacity (0-255):</label>
+            <input type="range" id="bundled-core-opacity" min="0" max="255" value="200" step="5" style="width: 100%;">
+            <span id="bundled-core-opacity-value">200</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="bundled-path-width">Path Width (pixels):</label>
+            <input type="range" id="bundled-path-width" min="1" max="20" value="6" step="1" style="width: 100%;">
+            <span id="bundled-path-width-value">6</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="bundled-path-opacity">Path Opacity (0-255):</label>
+            <input type="range" id="bundled-path-opacity" min="0" max="255" value="30" step="5" style="width: 100%;">
+            <span id="bundled-path-opacity-value">30</span>
+        </div>
     </div>
 
-    <div style="margin-bottom: 10px;">
-        <label for="visit-opacity">Visit Opacity (0-255):</label>
-        <input type="range" id="visit-opacity" min="0" max="255" value="40" step="5" style="width: 100%;">
-        <span id="visit-opacity-value">40</span>
-    </div>
+    <!-- Heatmap Tab -->
+    <div id="tab-heatmap" class="tab-content" style="display: none;">
+        <div style="margin-bottom: 10px;">
+            <label for="heatmap-radius">Radius (pixels):</label>
+            <input type="range" id="heatmap-radius" min="5" max="100" value="25" step="1" style="width: 100%;">
+            <span id="heatmap-radius-value">25</span>
+        </div>
 
-    <div style="margin-bottom: 10px;">
-        <label for="bundled-precision">Bundled Precision (degrees):</label>
-        <input type="range" id="bundled-precision" min="0.00001" max="0.001" value="0.0001" step="0.00001"
-               style="width: 100%;">
-        <span id="bundled-precision-value">0.0001</span>
+        <div style="margin-bottom: 10px;">
+            <label for="heatmap-intensity">Intensity:</label>
+            <input type="range" id="heatmap-intensity" min="0.1" max="20" value="5" step="0.1" style="width: 100%;">
+            <span id="heatmap-intensity-value">5</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="heatmap-threshold">Threshold:</label>
+            <input type="range" id="heatmap-threshold" min="0" max="1" value="0.01" step="0.001" style="width: 100%;">
+            <span id="heatmap-threshold-value">0.01</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="heatmap-opacity">Opacity (0-255):</label>
+            <input type="range" id="heatmap-opacity" min="0" max="255" value="200" step="5" style="width: 100%;">
+            <span id="heatmap-opacity-value">200</span>
+        </div>
     </div>
 
     <button id="reset-params"
-            style="width: 100%; padding: 8px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 5px;">
+            style="width: 100%; padding: 8px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px;">
         Reset to Defaults
     </button>
 </div>
-
 <div id="message-container">
     <div id="sse-message"></div>
 </div>
@@ -569,21 +716,41 @@
 
     ///delete later
     let deckParams = {
-        trailLength: 5400,
-        cometWidth: 7,
-        pathWidth: 2,
-        pathOpacity: 170,
-        visitRadius: 5,
-        visitOpacity: 140,
-        bundledPrecision: 0.0001,
-        glowWidth: 18,
-        shadowWidth: 6,
-        cometOpacity: 1.0,
-        glowOpacity: 0.4,
-        shadowOpacity: 0.2,
-        shadowOffset: [0.00005, -0.00005] // [lng, lat] offset
+        trips: {
+            trailLength: 5400,
+            cometWidth: 7,
+            cometOpacity: 255,
+            shadowWidth: 6,
+            shadowOpacity: 51,
+            shadowOffset: [0.00005, -0.00005] //  offset
+        },
+        visits: {
+            radius: 50,
+            opacity: 155,
+            polygonOpacity: 140,
+            lineWidth: 3
+        },
+        paths: {
+            width: 4,
+            opacity: 30,
+            opacity_static: 200
+        },
+        bundled: {
+            precision: 0.0001,
+            auraWidth: 24,
+            auraOpacity: 15,
+            coreWidth: 8,
+            coreOpacity: 200,
+            pathWidth: 6,
+            pathOpacity: 30
+        },
+        heatmap: {
+            radius: 25,
+            intensity: 5,
+            threshold: 0.01,
+            opacity: 200
+        }
     };
-
     window.contextPath = /*[[@{/}]]*/ "/";
     window.contextPath = window.contextPath.replace(/\/$/, '');
 
@@ -891,6 +1058,15 @@
         }));
     }
 
+    function flyToHomeLocation() {
+        debugger
+        mapNew.flyTo({
+            center: [window.userSettings.homeLongitude, window.userSettings.homeLatitude],
+            zoom: 15,
+            pitch: 45
+        });
+    }
+
     async function loadMetaData(loadingConfig) {
         const metaResponse = await fetch(window.contextPath + loadingConfig.map.metaDataUrl);
         const meta = await metaResponse.json();
@@ -913,13 +1089,15 @@
                 duration: 2000,
                 essential: true
             });
+        } else {
+            flyToHomeLocation();
         }
 
         initSlider(globalMinTimestamp, globalMaxTimestamp);
 
         showLoadingProgress(0, meta.totalPoints);
         await loadVisits(loadingConfig);
-        startStreamingPoints(loadingConfig, meta.totalPoints);
+        await startStreamingPoints(loadingConfig, meta.totalPoints);
     }
 
     async function startStreamingPoints(loadingConfig, totalExpected) {
@@ -1014,13 +1192,12 @@
         const point = [lng, lat];
         currentTrip.path.push(point);
 
-        // PRE-CALCULATE SHADOW: Avoids .map() in the render loop
         currentTrip.shadowPath.push([
-            point[0] + deckParams.shadowOffset[0],
-            point[1] + deckParams.shadowOffset[1]
+            point[0] + deckParams.trips.shadowOffset[0],
+            point[1] + deckParams.trips.shadowOffset[1]
         ]);
 
-        currentTrip.snappedPath.push(snapPoint(point));
+        currentTrip.snappedPath.push(snapPoint(point, 0.0016));
         currentTrip.timestampsLinear.push(tsLinear);
         currentTrip.timestampsAggregate.push(tsAggregate);
         currentTrip.absTimestamps.push(ts);
@@ -1057,9 +1234,6 @@
         const isAggregate = document.getElementById('aggregate-toggle')?.checked || false;
         const viewMode = document.getElementById('view-mode')?.value || 'LINEAR';
 
-        // Trail: 30 mins for 24h mode, or 2% of the year for linear
-        const trailLength = isAggregate ? 1800 : (globalMaxTimestamp - globalMinTimestamp) * 0.02;
-
         const layers = [];
 
         // --- BASE VISUALIZATION ---
@@ -1068,19 +1242,27 @@
                 id: 'heatmap-base',
                 data: globalTripData.flatMap(t => t.path),
                 getPosition: d => d,
-                radiusPixels: 25,
-                intensity: 5,     // Crank this up to see thin paths
-                threshold: 0.01,  // Lower threshold to show faint movements
+                radiusPixels: deckParams.heatmap.radius,
+                intensity: deckParams.heatmap.intensity,
+                threshold: deckParams.heatmap.threshold,
+                opacity: deckParams.heatmap.opacity / 255,
                 aggregation: 'SUM',
-                getPath: [globalTripData[globalTripData.length - 1]?.path.length]
+                getPath: [globalTripData[globalTripData.length - 1]?.path.length],
+                updateTriggers: {
+                    radiusPixels: [deckParams.heatmap.radius],
+                    intensity: [deckParams.heatmap.intensity],
+                    threshold: [deckParams.heatmap.threshold],
+                    opacity: [deckParams.heatmap.opacity],
+                    data: [globalTripData.length, globalTripData[globalTripData.length - 1]?.path.length],
+                }
             }));
         } else if (viewMode === 'BUNDLED') {
             layers.push(new deck.PathLayer({
                 id: 'bundled-aura',
                 data: globalTripData,
                 getPath: d => d.snappedPath,
-                getColor: d => [...d.color, 15],
-                getWidth: deckParams.pathWidth * 3, // Use parameter (scaled up for aura)
+                getColor: d => [...d.color, deckParams.bundled.auraOpacity],
+                getWidth: deckParams.bundled.auraWidth,
                 widthMinPixels: 6,
                 capRounded: true,
                 jointRounded: true,
@@ -1091,7 +1273,9 @@
                 },
                 updateTriggers: {
                     data: [globalTripData.length],
-                    getPath: [globalTripData[globalTripData.length - 1]?.path.length]
+                    getPath: [globalTripData[globalTripData.length - 1]?.path.length],
+                    getColor: [deckParams.bundled.auraOpacity],
+                    getWidth: [deckParams.bundled.auraWidth]
                 }
             }));
 
@@ -1100,8 +1284,8 @@
                 id: 'bundled-core',
                 data: globalTripData,
                 getPath: d => d.snappedPath,
-                getColor: d => [...d.color, 200],
-                getWidth: deckParams.pathWidth, // Use parameter
+                getColor: d => [...d.color, deckParams.bundled.coreOpacity],
+                getWidth: deckParams.bundled.coreWidth,
                 widthMinPixels: 2,
                 parameters: {
                     blendFunc: [770, 771],
@@ -1111,7 +1295,8 @@
                 updateTriggers: {
                     data: [globalTripData.length],
                     getPath: [globalTripData[globalTripData.length - 1]?.path.length],
-                    getWidth: [deckParams.pathWidth]
+                    getWidth: [deckParams.bundled.coreWidth],
+                    getColor: [deckParams.bundled.coreOpacity]
                 }
             }));
 
@@ -1119,17 +1304,15 @@
                 id: 'bundled-paths',
                 data: globalTripData,
                 getPath: d => {
-                    const p = 0.00008;
+                    const p = deckParams.bundled.precision;
                     return d.path.map(coord => [
                         Math.round(coord[0] / p) * p,
                         Math.round(coord[1] / p) * p
                     ]);
                 },
-                getWidth: 6,
+                getWidth: deckParams.bundled.pathWidth,
                 widthMinPixels: 2,
-                // Use a very low alpha (e.g., 15/255).
-                // 17 overlaps will result in a fully bright "hotspot"
-                getColor: d => [...d.color, 30],
+                getColor: d => [...d.color, deckParams.bundled.pathOpacity],
 
                 // This allows the colors to "sum" together mathematically
                 parameters: {
@@ -1139,8 +1322,9 @@
                 capRounded: true,
                 jointRounded: true,
                 updateTriggers: {
-                    getColor: [offset],
-                    getPath: [globalTripData[globalTripData.length - 1]?.path.length]
+                    getColor: [deckParams.bundled.pathOpacity],
+                    getWidth: [deckParams.bundled.pathWidth],
+                    getPath: [globalTripData[globalTripData.length - 1]?.path.length, deckParams.bundled.precision]
                 }
             }));
         } else {
@@ -1150,81 +1334,63 @@
                 data: globalTripData,
                 getPath: d => d.path,
                 getColor: d => {
-                    const alpha = offset !== 0 ? deckParams.pathOpacity : 255; // Use parameter
+                    const alpha = offset !== 0 ? deckParams.paths.opacity : deckParams.paths.opacity_static;
                     return [...d.color, alpha];
                 },
-                getWidth: deckParams.pathWidth, // Use parameter
+                getWidth: deckParams.paths.width,
                 widthMinPixels: 2,
                 capRounded: true,
                 updateTriggers: {
-                    getColor: [offset, deckParams.pathOpacity],
-                    getWidth: [deckParams.pathWidth],
+                    getColor: [offset, deckParams.paths.opacity, deckParams.paths.opacity_static],
+                    getWidth: [deckParams.paths.width],
                     getPath: [globalTripData[globalTripData.length - 1]?.path.length]
                 }
             }));
         }
-        const trail = deckParams.trailLength || 1800;
         const mode = isAggregate ? 'agg' : 'lin';
         const visibility = offset !== 0;
         if (!globalTripData || globalTripData.length === 0) return;
 
-        // --- 1. THE SHADOW (Static Path) ---
-        // We use a PathLayer because it is the most stable layer type in deck.gl
-        // layers.push(new deck.TripsLayer({
-        //     id: `trips-shadow-${mode}`,
-        //     data: globalTripData,
-        //     // We offset the path coordinates slightly for the shadow effect
-        //     getPath: d => d.shadowPath,
-        //     getTimestamps: d => isAggregate ? d.timestampsAggregate : d.timestampsLinear,
-        //     getColor: [0, 0, 0],
-        //     opacity: deckParams.shadowOpacity * visibility,
-        //     widthMinPixels: deckParams.shadowWidth,
-        //     trailLength: deckParams.trailLength,
-        //     currentTime: offset,
-        //     updateTriggers: {
-        //         getTimestamps: [isAggregate],
-        //         currentTime: [offset],
-        //         opacity: [visibility],
-        //         getPath: [
-        //             deckParams.shadowOffset,
-        //             globalTripData[globalTripData.length - 1]?.path.length]
-        //     }
-        // }));
+        layers.push(new deck.TripsLayer({
+            id: `trips-shadow-${mode}`,
+            data: globalTripData,
+            // We offset the path coordinates slightly for the shadow effect
+            getPath: d => d.shadowPath,
+            getTimestamps: d => isAggregate ? d.timestampsAggregate : d.timestampsLinear,
+            getColor: [0, 0, 0],
+            opacity: deckParams.trips.shadowOpacity * visibility,
+            widthMinPixels: deckParams.trips.shadowWidth,
+            trailLength: deckParams.trips.trailLength,
+            currentTime: offset,
+            updateTriggers: {
+                getTimestamps: [isAggregate],
+                currentTime: [offset],
+                widthMinPixels: [deckParams.trips.shadowWidth],
+                trailLength: [deckParams.trips.trailLength],
+                opacity: [visibility, deckParams.trips.shadowOpacity],
+                getPath: [
+                    deckParams.shadowOffset,
+                    globalTripData[globalTripData.length - 1]?.path.length]
+            }
+        }));
 
-        // --- 2. THE GLOW (Wide TripsLayer) ---
-        // layers.push(new deck.TripsLayer({
-        //     id: `trips-glow-${mode}`,
-        //     data: globalTripData,
-        //     getPath: d => d.path,
-        //     getTimestamps: d => isAggregate ? d.timestampsAggregate : d.timestampsLinear,
-        //     getColor: d => [...d.color, 255],
-        //     opacity: deckParams.glowOpacity * visibility, widthMinPixels: deckParams.glowWidth,
-        //     trailLength: deckParams.trailLength,
-        //     currentTime: offset,
-        //     // Using basic alpha blending to ensure visibility
-        //     updateTriggers: {
-        //         getTimestamps: [isAggregate],
-        //         currentTime: [offset],
-        //         opacity: [visibility],
-        //         getPath: [globalTripData[globalTripData.length - 1]?.path.length]
-        //     }
-        // }));
-
-        // --- 3. THE CORE (Moving Comet) ---
         layers.push(new deck.TripsLayer({
             id: `trips-core-${mode}`,
             data: globalTripData,
             getPath: d => d.path,
             getTimestamps: d => isAggregate ? d.timestampsAggregate : d.timestampsLinear,
-            getColor: d => [...d.color, 255],
-            opacity: deckParams.cometOpacity * visibility,
-            widthMinPixels: deckParams.cometWidth,
-            trailLength: deckParams.trailLength,
+            getColor: d => [...d.color, deckParams.trips.cometOpacity],
+            opacity: deckParams.trips.cometOpacity * visibility,
+            widthMinPixels: deckParams.trips.cometWidth,
+            trailLength: deckParams.trips.trailLength,
             currentTime: offset,
             updateTriggers: {
+                getColor: [deckParams.trips.cometOpacity],
+                widthMinPixels: [deckParams.trips.cometWidth],
+                trailLength: [deckParams.trips.trailLength],
                 getTimestamps: [isAggregate],
                 currentTime: [offset],
-                opacity: [visibility],
+                opacity: [visibility, deckParams.trips.cometOpacity],
                 getPath: [globalTripData[globalTripData.length - 1]?.path.length]
             }
         }));
@@ -1242,9 +1408,13 @@
                 id: 'visit-polygons',
                 data: globalPlacesData.filter(p => p.polygon),
                 getPolygon: d => d.polygon.coordinates,
-                getFillColor: d => [...d.color, 140], // Use parameter
+                getFillColor: d => [...d.color, deckParams.visits.polygonOpacity],
                 getLineColor: d => [...d.color, 255],
-                visible: mapNew.getZoom() > 14
+                visible: mapNew.getZoom() > 14,
+                updateTripsLayer: {
+                    getFillColor: [deckParams.visits.polygonOpacity],
+                    data: globalPlacesData.filter(p => p.activeRanges.some(r => r.start <= offset && r.end >= offset))
+                }
             }),
 
             new deck.ScatterplotLayer({
@@ -1253,27 +1423,27 @@
                 getPosition: d => d.coordinates,
                 getRadius: d => {
                     const logValue = Math.log10(d.totalDurationSec + 1);
-                    return deckParams.visitRadius + (logValue * 15); // Use parameter as base
+                    return deckParams.visits.radius + (logValue * 15); // Use parameter as base
                 },
                 getFillColor: d => {
                     const isActive = d.activeRanges.some(r => offset >= r.start && offset <= r.end);
-                    const alpha = (isOverview || isActive) ? deckParams.visitOpacity : 0; // Use parameter
+                    const alpha = (isOverview || isActive) ? deckParams.visits.opacity : 0;
                     return [...d.color, alpha];
-                },
-                updateTriggers: {
-                    getFillColor: [offset, isOverview, deckParams.visitOpacity],
-                    getLineColor: [offset, isOverview, deckParams.visitOpacity],
-                    getRadius: [deckParams.visitRadius]
                 },
                 stroked: true,
                 getLineColor: d => {
                     const isActive = d.activeRanges.some(r => offset >= r.start && offset <= r.end);
-                    const alpha = (isOverview || isActive) ? deckParams.visitOpacity : 0; // Use parameter
+                    const alpha = (isOverview || isActive) ? deckParams.visits.opacity : 0;
                     return [...d.color, alpha];
                 },
                 lineWidthMinPixels: 3,
                 pickable: true,
                 onHover: info => updateTooltip(info),
+                updateTriggers: {
+                    getFillColor: [offset, isOverview, deckParams.visits.opacity],
+                    getLineColor: [offset, isOverview, deckParams.visits.opacity],
+                    getRadius: [deckParams.visits.radius]
+                },
             }),
 
             new deck.ScatterplotLayer({
@@ -1282,7 +1452,7 @@
                 getPosition: d => d.coordinates,
                 getRadius: 8,
                 stroked: true,
-                lineWidthMinPixels: 3,
+                lineWidthMinPixels: deckParams.visits.lineWidth,
                 getLineColor: d => {
                     const isActive = d.activeRanges.some(r => offset >= r.start && offset <= r.end);
                     const alpha = (isOverview || isActive) ? 80 : 0;
@@ -1293,7 +1463,10 @@
                     const alpha = (isOverview || isActive) ? 80 : 0;
                     return [255,255,255, alpha];
                 },
-                updateTriggers: { getFillColor: [offset, isOverview] },
+                updateTriggers: {
+                    getFillColor: [offset, isOverview],
+                    lineWidth: [deckParams.visits.lineWidth]
+                },
                 pickable: true, // MUST BE TRUE
                 onHover: info => updateTooltip(info),
             })
@@ -2223,24 +2396,303 @@
         }
     }
 
-    // Function to update the display values for sliders
+
+    // Tab switching functionality
+    document.addEventListener('DOMContentLoaded', function () {
+        // Tab switching
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', function () {
+                const tabName = this.getAttribute('data-tab');
+
+                // Update active button
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+
+                // Show corresponding content
+                tabContents.forEach(content => {
+                    content.style.display = content.id === `tab-${tabName}` ? 'block' : 'none';
+                });
+            });
+        });
+
+        // Initialize displays on page load
+        updateSliderDisplays();
+    });
+
+    // Update slider displays function
     function updateSliderDisplays() {
-        document.getElementById('trail-length-value').textContent = deckParams.trailLength;
-        document.getElementById('comet-width-value').textContent = deckParams.cometWidth;
-        document.getElementById('path-width-value').textContent = deckParams.pathWidth;
-        document.getElementById('path-opacity-value').textContent = deckParams.pathOpacity;
-        document.getElementById('visit-radius-value').textContent = deckParams.visitRadius;
-        document.getElementById('visit-opacity-value').textContent = deckParams.visitOpacity;
-        document.getElementById('bundled-precision-value').textContent = deckParams.bundledPrecision;
+        // Trips
+        document.getElementById('trail-length-value').textContent = deckParams.trips.trailLength;
+        document.getElementById('comet-width-value').textContent = deckParams.trips.cometWidth;
+        document.getElementById('comet-opacity-value').textContent = deckParams.trips.cometOpacity;
+        document.getElementById('shadow-width-value').textContent = deckParams.trips.shadowWidth;
+        document.getElementById('shadow-opacity-value').textContent = deckParams.trips.shadowOpacity;
+        document.getElementById('shadow-offset-x-value').textContent = deckParams.trips.shadowOffset[0];
+        document.getElementById('shadow-offset-y-value').textContent = deckParams.trips.shadowOffset[1];
+
+        // Visits
+        document.getElementById('visit-radius-value').textContent = deckParams.visits.radius;
+        document.getElementById('visit-opacity-value').textContent = deckParams.visits.opacity;
+        document.getElementById('visit-polygon-opacity-value').textContent = deckParams.visits.polygonOpacity;
+        document.getElementById('visit-line-width-value').textContent = deckParams.visits.lineWidth;
+
+        // Paths
+        document.getElementById('path-width-value').textContent = deckParams.paths.width;
+        document.getElementById('path-opacity-value').textContent = deckParams.paths.opacity;
+        document.getElementById('path-opacity_static-value').textContent = deckParams.paths.opacity_static;
+
+        // Bundled
+        document.getElementById('bundled-precision-value').textContent = deckParams.bundled.precision;
+        document.getElementById('bundled-aura-width-value').textContent = deckParams.bundled.auraWidth;
+        document.getElementById('bundled-aura-opacity-value').textContent = deckParams.bundled.auraOpacity;
+        document.getElementById('bundled-core-width-value').textContent = deckParams.bundled.coreWidth;
+        document.getElementById('bundled-core-opacity-value').textContent = deckParams.bundled.coreOpacity;
+        document.getElementById('bundled-path-width-value').textContent = deckParams.bundled.pathWidth;
+        document.getElementById('bundled-path-opacity-value').textContent = deckParams.bundled.pathOpacity;
+
+        // Heatmap
+        document.getElementById('heatmap-radius-value').textContent = deckParams.heatmap.radius;
+        document.getElementById('heatmap-intensity-value').textContent = deckParams.heatmap.intensity;
+        document.getElementById('heatmap-threshold-value').textContent = deckParams.heatmap.threshold;
+        document.getElementById('heatmap-opacity-value').textContent = deckParams.heatmap.opacity;
     }
 
-    // Function to apply the parameters to deck.gl layers
+    // Event listeners for all sliders
+    document.getElementById('trail-length').addEventListener('input', function (e) {
+        deckParams.trips.trailLength = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('comet-width').addEventListener('input', function (e) {
+        deckParams.trips.cometWidth = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('comet-opacity').addEventListener('input', function (e) {
+        deckParams.trips.cometOpacity = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('shadow-width').addEventListener('input', function (e) {
+        deckParams.trips.shadowWidth = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('shadow-opacity').addEventListener('input', function (e) {
+        deckParams.trips.shadowOpacity = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('shadow-offset-x').addEventListener('input', function (e) {
+        deckParams.trips.shadowOffset[0] = parseFloat(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('shadow-offset-y').addEventListener('input', function (e) {
+        deckParams.trips.shadowOffset[1] = parseFloat(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('visit-radius').addEventListener('input', function (e) {
+        deckParams.visits.radius = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('visit-opacity').addEventListener('input', function (e) {
+        deckParams.visits.opacity = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('visit-polygon-opacity').addEventListener('input', function (e) {
+        deckParams.visits.polygonOpacity = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('visit-line-width').addEventListener('input', function (e) {
+        deckParams.visits.lineWidth = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('path-width').addEventListener('input', function (e) {
+        deckParams.paths.width = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('path-opacity').addEventListener('input', function (e) {
+        deckParams.paths.opacity = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('path-opacity_static').addEventListener('input', function (e) {
+        deckParams.paths.opacity_static = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('bundled-precision').addEventListener('input', function (e) {
+        deckParams.bundled.precision = parseFloat(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('bundled-aura-width').addEventListener('input', function (e) {
+        deckParams.bundled.auraWidth = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('bundled-aura-opacity').addEventListener('input', function (e) {
+        deckParams.bundled.auraOpacity = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('bundled-core-width').addEventListener('input', function (e) {
+        deckParams.bundled.coreWidth = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('bundled-core-opacity').addEventListener('input', function (e) {
+        deckParams.bundled.coreOpacity = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('bundled-path-width').addEventListener('input', function (e) {
+        deckParams.bundled.pathWidth = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('bundled-path-opacity').addEventListener('input', function (e) {
+        deckParams.bundled.pathOpacity = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    // Heatmap event listeners
+    document.getElementById('heatmap-radius').addEventListener('input', function (e) {
+        deckParams.heatmap.radius = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('heatmap-intensity').addEventListener('input', function (e) {
+        deckParams.heatmap.intensity = parseFloat(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('heatmap-threshold').addEventListener('input', function (e) {
+        deckParams.heatmap.threshold = parseFloat(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    document.getElementById('heatmap-opacity').addEventListener('input', function (e) {
+        deckParams.heatmap.opacity = parseInt(e.target.value);
+        updateSliderDisplays();
+        applyDeckParams();
+    });
+
+    // Reset button
+    document.getElementById('reset-params').addEventListener('click', function () {
+        deckParams = {
+            trips: {
+                trailLength: 5400,
+                cometWidth: 7,
+                cometOpacity: 255,
+                shadowWidth: 6,
+                shadowOpacity: 51,
+                shadowOffset: [0.00005, -0.00005]
+            },
+            visits: {
+                radius: 50,
+                opacity: 155,
+                polygonOpacity: 140,
+                lineWidth: 3
+            },
+            paths: {
+                width: 4,
+                opacity: 30,
+                opacity_static: 200
+            },
+            bundled: {
+                precision: 0.0001,
+                auraWidth: 24,
+                auraOpacity: 15,
+                coreWidth: 8,
+                coreOpacity: 200,
+                pathWidth: 6,
+                pathOpacity: 30
+            },
+            heatmap: {
+                radius: 25,
+                intensity: 5,
+                threshold: 0.01,
+                opacity: 200
+            }
+        };
+
+        // Reset all sliders to default values
+        document.getElementById('trail-length').value = deckParams.trips.trailLength;
+        document.getElementById('comet-width').value = deckParams.trips.cometWidth;
+        document.getElementById('comet-opacity').value = deckParams.trips.cometOpacity;
+        document.getElementById('shadow-width').value = deckParams.trips.shadowWidth;
+        document.getElementById('shadow-opacity').value = deckParams.trips.shadowOpacity;
+        document.getElementById('shadow-offset-x').value = deckParams.trips.shadowOffset[0];
+        document.getElementById('shadow-offset-y').value = deckParams.trips.shadowOffset[1];
+
+        document.getElementById('visit-radius').value = deckParams.visits.radius;
+        document.getElementById('visit-opacity').value = deckParams.visits.opacity;
+        document.getElementById('visit-polygon-opacity').value = deckParams.visits.polygonOpacity;
+        document.getElementById('visit-line-width').value = deckParams.visits.lineWidth;
+
+        document.getElementById('path-width').value = deckParams.paths.width;
+        document.getElementById('path-opacity').value = deckParams.paths.opacity;
+
+        document.getElementById('bundled-precision').value = deckParams.bundled.precision;
+        document.getElementById('bundled-aura-width').value = deckParams.bundled.auraWidth;
+        document.getElementById('bundled-aura-opacity').value = deckParams.bundled.auraOpacity;
+        document.getElementById('bundled-core-width').value = deckParams.bundled.coreWidth;
+        document.getElementById('bundled-core-opacity').value = deckParams.bundled.coreOpacity;
+        document.getElementById('bundled-path-width').value = deckParams.bundled.pathWidth;
+        document.getElementById('bundled-path-opacity').value = deckParams.bundled.pathOpacity;
+
+        document.getElementById('heatmap-radius').value = deckParams.heatmap.radius;
+        document.getElementById('heatmap-intensity').value = deckParams.heatmap.intensity;
+        document.getElementById('heatmap-threshold').value = deckParams.heatmap.threshold;
+        document.getElementById('heatmap-opacity').value = deckParams.heatmap.opacity;
+
+        updateSliderDisplays();
+        applyDeckParams();
+        console.log('Reset deck.gl parameters to defaults');
+    });
+
+    // Apply deck parameters function
     function applyDeckParams() {
         // Update the globalTripData with new bundled precision if needed
         if (globalTripData.length > 0) {
             globalTripData.forEach(trip => {
                 // Recalculate snappedPath based on new bundled precision
-                const p = deckParams.bundledPrecision;
+                const p = deckParams.bundled.precision;
                 trip.snappedPath = trip.path.map(coord => [
                     Math.round(coord[0] / p) * p,
                     Math.round(coord[1] / p) * p
@@ -2251,79 +2703,6 @@
         // Trigger a re-render of the deck.gl layers
         updateTripsLayer(currentSliderValue);
     }
-
-    document.getElementById('trail-length').addEventListener('input', function (e) {
-        deckParams.trailLength = parseInt(e.target.value);
-        updateSliderDisplays();
-        applyDeckParams(); // Apply immediately
-    });
-
-    document.getElementById('comet-width').addEventListener('input', function (e) {
-        deckParams.cometWidth = parseInt(e.target.value);
-        updateSliderDisplays();
-        applyDeckParams(); // Apply immediately
-    });
-
-    document.getElementById('path-width').addEventListener('input', function (e) {
-        deckParams.pathWidth = parseInt(e.target.value);
-        updateSliderDisplays();
-        applyDeckParams(); // Apply immediately
-    });
-
-    document.getElementById('path-opacity').addEventListener('input', function (e) {
-        deckParams.pathOpacity = parseInt(e.target.value);
-        updateSliderDisplays();
-        applyDeckParams(); // Apply immediately
-    });
-
-    document.getElementById('visit-radius').addEventListener('input', function (e) {
-        deckParams.visitRadius = parseInt(e.target.value);
-        updateSliderDisplays();
-        applyDeckParams(); // Apply immediately
-    });
-
-    document.getElementById('visit-opacity').addEventListener('input', function (e) {
-        deckParams.visitOpacity = parseInt(e.target.value);
-        updateSliderDisplays();
-        applyDeckParams(); // Apply immediately
-    });
-
-    document.getElementById('bundled-precision').addEventListener('input', function (e) {
-        deckParams.bundledPrecision = parseFloat(e.target.value);
-        updateSliderDisplays();
-        applyDeckParams(); // Apply immediately
-    });
-
-    // Reset button
-    document.getElementById('reset-params').addEventListener('click', function () {
-        deckParams = {
-            trailLength: 5400,
-            cometWidth: 7,
-            pathWidth: 2,
-            pathOpacity: 170,
-            visitRadius: 5,
-            visitOpacity: 140,
-            bundledPrecision: 0.0001
-        };
-
-        // Reset sliders to default values
-        document.getElementById('trail-length').value = deckParams.trailLength;
-        document.getElementById('comet-width').value = deckParams.cometWidth;
-        document.getElementById('path-width').value = deckParams.pathWidth;
-        document.getElementById('path-opacity').value = deckParams.pathOpacity;
-        document.getElementById('visit-radius').value = deckParams.visitRadius;
-        document.getElementById('visit-opacity').value = deckParams.visitOpacity;
-        document.getElementById('bundled-precision').value = deckParams.bundledPrecision;
-
-        updateSliderDisplays();
-        applyDeckParams();
-        console.log('Reset deck.gl parameters to defaults');
-    });
-
-    // Initialize displays on page load
-    document.addEventListener('DOMContentLoaded', function () {
-        updateSliderDisplays();
-    });
 </script>
 
 </body>
