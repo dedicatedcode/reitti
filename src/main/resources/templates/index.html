@@ -20,12 +20,13 @@
     <script th:src="@{/js/date-picker-combined.js}"></script>
     <script th:src="@{/js/timeline-scroll-indicator.js}"></script>
     <script th:src="@{/js/photo-client.js}"></script>
-    <script th:src="@{/js/htmx.min.js}"></script>
+    <script th:src="@{/js/vendor/htmx.min.js}"></script>
     <script th:src="@{/js/polygon-editor.js}"></script>
     <script th:src="@{/js/util.js}"></script>
-    <script th:src="@{/js/deckgl.9.2.5.min.js}"></script>
-    <script th:src="@{/js/maplibre-gl.5.16.0.min.js}"></script>
-    <script th:src="@{/js/supercluster.7.0.0.min.js}"></script>
+    <script th:src="@{/js/vendor/deckgl.9.2.5.min.js}"></script>
+    <script th:src="@{/js/vendor/maplibre-gl.5.16.0.min.js}"></script>
+    <script th:src="@{/js/vendor/supercluster.7.0.0.min.js}"></script>
+    <script th:src="@{/js/timeline-control.js}"></script>
     <style>
         #timeline-controls {
             position: absolute;
@@ -641,19 +642,7 @@
 
 <div id="tooltip" style="position: absolute; z-index: 10; pointer-events: none; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 4px; display: none; font-family: sans-serif; font-size: 12px; max-width: 300px;"></div>
 
-<div id="timeline-controls">
-    <div class="time-bounds">
-        <span id="start-label" style="align-self: end;">--</span>
-        <div class="timer-display">
-            <span id="current-date">Select Date</span>
-            <span id="current-time">00:00</span>
-        </div>
-
-        <span id="end-label" style="align-self: end;">--</span>
-    </div>
-    <div class="slider-container">
-        <input type="range" id="time-slider" min="0" max="100" value="0" step="1"></div>
-</div>
+<div id="timeline-controls"></div>
 
 <div class="fab-container" id="fab-container">
     <!-- Play button with hover-triggered speed control -->
@@ -724,11 +713,11 @@
     ///delete later
     let deckParams = {
         trips: {
-            trailLength: 5400,
-            cometWidth: 7,
-            cometOpacity: 255,
+            trailLength: 700,
+            cometWidth: 6,
+            cometOpacity: 80,
             shadowWidth: 6,
-            shadowOpacity: 51,
+            shadowOpacity: 60,
             shadowOffset: [0.00005, -0.00005] //  offset
         },
         visits: {
@@ -739,8 +728,8 @@
             lineWidth: 1
         },
         paths: {
-            width: 4,
-            opacity: 30,
+            width: 5,
+            opacity: 128,
             opacity_static: 200
         },
         bundled: {
@@ -854,10 +843,16 @@
         pitch: 45,
     });
 
+    const timelineControl = new TimelineControl(document.getElementById('timeline-controls'), map);
+    timelineControl.on('offsetChanged', (data) => {
+        updateTripsLayer(data.offset);
+    })
+
     const deckOverlay = new deck.MapboxOverlay({
         layers: []
     });
     map.addControl(deckOverlay);
+
     map.on('move', () => {
         const currentState = {
             longitude: map.getCenter().lng,
@@ -866,8 +861,9 @@
         };
 
         photoClient.updateClusters(currentState);
-        updateTripsLayer(currentSliderValue)
+        updateTripsLayer(timelineControl.getOffset())
     });
+
     const photoClient = new PhotoClient(true);
 
     let userConfigs = [];
@@ -879,46 +875,7 @@
     let currentSliderValue = 0;
 
     const playBtn = document.getElementById('play-btn');
-    const slider = document.getElementById('time-slider');
-    const timeLabel = document.getElementById('time-display');
 
-    slider.oninput = (e) => {
-        const currentOffset = parseFloat(e.target.value); // 0 to totalDuration
-
-        // 1. Calculate actual date
-        const actualTimeInSeconds = minTimestamp + currentOffset;
-        const date = new Date(actualTimeInSeconds * 1000); // JS needs milliseconds
-
-        // 2. Format for display (e.g., "Jan 15, 14:30")
-        timeLabel.innerText = date.toLocaleString(window.userSettings.selectedLocale, {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-
-        // 3. Update the deck.gl layer
-        updateTripsLayer(currentOffset);
-    };
-
-    // Update display text when sliding
-    document.getElementById('time-slider').oninput = function (e) {
-        const offset = parseInt(e.target.value);
-        const absoluteSeconds = globalMinTimestamp + offset;
-        const dateObj = new Date(absoluteSeconds * 1000);
-        currentSliderValue = offset;
-
-        document.getElementById('current-date').innerText = dateObj.toLocaleDateString(window.userSettings.selectedLocale, {
-            day: '2-digit', month: 'short', year: 'numeric'
-        });
-
-        document.getElementById('current-time').innerText = dateObj.toLocaleTimeString(window.userSettings.selectedLocale, {
-            hour: '2-digit', minute: '2-digit'
-        });
-
-        // Trigger deck.gl update
-        updateTripsLayer(offset);
-    };
 
     playBtn.onclick = () => {
         if (isPlaying) {
@@ -972,50 +929,19 @@
 
         // 3. Advance the slider
         let step = timeMultiplier * deltaTime;
-        let newValue = parseFloat(slider.value) + step;
+        let newValue = parseFloat(timelineControl.getOffset()) + step;
 
         // 4. Loop logic
-        if (newValue > parseFloat(slider.max)) {
+        if (newValue > parseFloat(timelineControl.getMax())) {
             newValue = 0;
         }
 
         // 5. Update UI and Map
-        slider.value = newValue;
-        updateTimeDisplay(newValue);
+        timelineControl.setOffset(newValue);
         updateTripsLayer(newValue);
 
         // 6. Request the next frame
         animationId = requestAnimationFrame(animate);
-    }
-
-    function updateTimeDisplay(offset) {
-        // offset is the "seconds since start" from the slider
-        // globalMinTimestamp is the "Unix start time" from the backend
-        const absoluteSeconds = globalMinTimestamp + parseInt(offset);
-        const dateObj = new Date(absoluteSeconds * 1000);
-
-        document.getElementById('current-date').innerText = dateObj.toLocaleDateString(window.userSettings.selectedLocale, {
-            day: '2-digit', month: 'short', year: 'numeric'
-        });
-
-        document.getElementById('current-time').innerText = dateObj.toLocaleTimeString(window.userSettings.selectedLocale, {
-            hour: '2-digit', minute: '2-digit'
-        });
-    }
-
-    function initSlider(minTimestamp, maxTimestamp) {
-        const slider = document.getElementById('time-slider');
-        const startLabel = document.getElementById('start-label');
-        const endLabel = document.getElementById('end-label');
-
-        // Set the range in seconds
-        slider.min = 0;
-        slider.max = maxTimestamp - minTimestamp;
-        slider.value = 0;
-        currentSliderValue = 0;
-        // Set the labels
-        startLabel.innerText = formatDateTime(minTimestamp * 1000);
-        endLabel.innerText = formatDateTime(maxTimestamp * 1000);
     }
 
     function formatDateTime(ts) {
@@ -1078,7 +1004,6 @@
     }
 
     function flyToHomeLocation() {
-        debugger
         map.flyTo({
             center: [window.userSettings.homeLongitude, window.userSettings.homeLatitude],
             zoom: 15,
@@ -1112,7 +1037,11 @@
             flyToHomeLocation();
         }
 
-        initSlider(globalMinTimestamp, globalMaxTimestamp);
+        timelineControl.setup({
+            minTimestamp: globalMinTimestamp,
+            maxTimestamp: globalMaxTimestamp,
+            aggregate: document.getElementById('aggregate-toggle').checked
+        });
 
         showLoadingProgress(0, meta.totalPoints);
         await loadVisits(loadingConfig);
@@ -1131,7 +1060,7 @@
             const { done, value } = await reader.read();
             if (done) {
                 showLoadingProgress(pointsProcessed, totalExpected);
-                updateTripsLayer(currentSliderValue);
+                updateTripsLayer(timelineControl.getOffset());
                 break;
             }
 
@@ -1167,7 +1096,7 @@
             }
             const now = performance.now();
             if (now - lastRenderTime > 100) {
-                updateTripsLayer(currentSliderValue);
+                updateTripsLayer(timelineControl.getOffset());
                 showLoadingProgress(pointsProcessed, totalExpected);
                 lastRenderTime = now;
             }
@@ -1251,6 +1180,7 @@
     }
 
     function updateTripsLayer(offset) {
+        console.log(`Updating layer with offset ${offset}`);
         const viewState = {
             longitude: map.getCenter().lng,
             latitude: map.getCenter().lat,
@@ -1360,11 +1290,12 @@
                 data: globalTripData,
                 getPath: d => d.path,
                 getColor: d => {
-                    const alpha = offset !== 0 ? deckParams.paths.opacity : deckParams.paths.opacity_static;
+                    const alpha = timelineControl.isIdle() ? deckParams.paths.opacity_static : deckParams.paths.opacity;
+                    debugger
                     return [...d.color, alpha];
                 },
                 getWidth: deckParams.paths.width,
-                widthMinPixels: 2,
+                widthMinPixels: deckParams.paths.width,
                 capRounded: true,
                 updateTriggers: {
                     getColor: [offset, deckParams.paths.opacity, deckParams.paths.opacity_static],
@@ -1374,7 +1305,7 @@
             }));
         }
         const mode = isAggregate ? 'agg' : 'lin';
-        const visibility = offset !== 0;
+        const visibility = !timelineControl.isIdle();
         if (!globalTripData || globalTripData.length === 0) return;
 
         layers.push(new deck.TripsLayer({
@@ -1383,12 +1314,16 @@
             // We offset the path coordinates slightly for the shadow effect
             getPath: d => d.shadowPath,
             getTimestamps: d => isAggregate ? d.timestampsAggregate : d.timestampsLinear,
-            getColor: [0, 0, 0],
+            getColor: [255, 255, 255],
             opacity: deckParams.trips.shadowOpacity * visibility,
             widthMinPixels: deckParams.trips.shadowWidth,
             trailLength: deckParams.trips.trailLength,
             currentTime: offset,
-            updateTriggers: {
+            parameters: {
+                blendFunc: [770, 1],
+                blendEquation: 32774,
+                depthTest: false
+            },updateTriggers: {
                 getTimestamps: [isAggregate],
                 currentTime: [offset],
                 widthMinPixels: [deckParams.trips.shadowWidth],
@@ -2130,7 +2065,7 @@
                 // 2. Setup the UI immediately
                 globalTripData = [];
                 updateTripsLayer(0);
-                initSlider(requestedStart, requestedEnd);
+                timelineControl.setup({minTimestamp: requestedStart, maxTimestamp: requestedEnd, aggregate: document.getElementById('aggregate-toggle').checked });
                 loadTimelineData();
 
 
@@ -2740,7 +2675,7 @@
         }
 
         // Trigger a re-render of the deck.gl layers
-        updateTripsLayer(currentSliderValue);
+        updateTripsLayer(timelineControl.getOffset());
     }
 </script>
 
