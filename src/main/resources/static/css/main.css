@@ -150,33 +150,10 @@ header {
     z-index: 1;
 }
 
-.leaflet-container .visit-popup {
-    white-space: preserve-breaks;
-    width: 14rem;
-    font-family: var(--serif-font);
-    font-size: 0.8rem;
-    line-height: 1.5rem;
-    border-radius: 8px;
-    padding: 8px;
-    background: #3b3b3bbf;
-    color: white;
-}
-
-.leaflet-container .visit-popup .visit-title {
-    font-size: 1.4rem;
-    color: var(--color-highlight);
-}
-
-.leaflet-container .visit-popup .visit-description {
-    margin-top: 4px;
-    font-weight: bold;
-}
-
-/* Elements */
 
 .btn {
     background-color: var(--color-background-dark);
-    font-family: var(--sans-font);
+    font-family: var(--sans-serif-font);
 }
 
 a.btn-default,
@@ -852,10 +829,6 @@ input[type=file]::file-selector-button:hover {
     background: var(--color-highlight);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     transition: transform 0.3s ease-in-out;
-}
-
-.leaflet-container .photo-marker-icon img {
-    width: 100%;
 }
 
 
