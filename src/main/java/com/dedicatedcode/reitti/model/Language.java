@@ -10,6 +10,7 @@ public enum Language {
     FR(Locale.FRANCE, "language.french", "\uD83C\uDDEB\uD83C\uDDF7"),
     PL(Locale.of("pl"), "language.polish", "\uD83C\uDDF5\uD83C\uDDF1"),
     RU(Locale.of("ru"), "language.russian", "\uD83C\uDDF7\uD83C\uDDFA"),
+    JA(Locale.of("ja"), "language.japanese", "\uD83C\uDDEF\uD83C\uDDF5"),
     PT_BR(Locale.of("pt", "br"), "language.brazilian_portuguese", "\uD83C\uDDE7\uD83C\uDDF7"),
     TR(Locale.of("tr"), "language.turkish", "\uD83C\uDDF9\uD83C\uDDF7"),
     UK(Locale.of("uk"), "language.ukrainian", "\uD83C\uDDFA\uD83C\uDDE6"),
