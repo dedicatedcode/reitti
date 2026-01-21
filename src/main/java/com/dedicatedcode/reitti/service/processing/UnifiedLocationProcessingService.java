@@ -760,9 +760,9 @@ public class UnifiedLocationProcessingService {
         // Get location points between the two visits
         List<RawLocationPoint> tripPoints;
         if (previewId == null) {
-            tripPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, tripStartTime, tripEndTime);
+            tripPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, tripStartTime, tripEndTime.plusMillis(1));
         } else {
-            tripPoints = previewRawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, previewId, tripStartTime, tripEndTime);
+            tripPoints = previewRawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, previewId, tripStartTime, tripEndTime.plusMillis(1));
         }
         double estimatedDistanceInMeters = calculateDistanceBetweenPlaces(startVisit.getPlace(), endVisit.getPlace());
         double travelledDistanceMeters = GeoUtils.calculateTripDistance(tripPoints);
