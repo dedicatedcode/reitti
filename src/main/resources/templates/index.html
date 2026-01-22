@@ -877,7 +877,7 @@
 
     playBtn.onclick = () => {
         if (isPlaying) {
-            pauseAnimation();
+            stopAnimation();
         } else {
             startAnimation();
         }
@@ -890,12 +890,13 @@
         animationId = requestAnimationFrame(animate);
     }
 
-    function pauseAnimation() {
+    function stopAnimation() {
         isPlaying = false;
         playBtn.innerHTML = '<i class="lni lni-play"></i>'; // Change icon to Play
         if (animationId) {
             cancelAnimationFrame(animationId);
         }
+        timelineControl.setOffset(0);
     }
 
     let timeMultiplier = 30; // Default: 1 second = 1 minute
@@ -2134,7 +2135,6 @@
         }
 
         function loadTimelineData() {
-            // photoClient.updatePhotosForRange(startDate, endDate, getUserTimezone());
             userConfigs.forEach(config => {
                 console.log('Loading timeline data for user:', JSON.stringify(config));
                 loadMetaData(config)
@@ -2169,6 +2169,8 @@
                 userConfigs = calculateUserConfigs();
                 globalTripData = [];
                 globalVisitsData = [];
+                stopAnimation();
+
                 // Timeline content has been updated, update map markers
                 const params = getTimelineParams();
                 const requestedStart = Math.floor(new Date(params.startDate).getTime() / 1000);
