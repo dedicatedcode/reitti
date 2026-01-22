@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml" th:lang="${#locale.toLanguageTag()}">
 <body>
     <div th:fragment="settings-nav(activeSection, dataManagementEnabled, isAdmin)" class="settings-nav">
         <a th:href="@{/settings/job-status}"
