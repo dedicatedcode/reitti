@@ -40,17 +40,24 @@ class TimelineControl {
     _updateLabels(offset) {
         const absoluteSeconds = this.minTimestamp + parseInt(offset);
         const dateObj = new Date(absoluteSeconds * 1000);
+        if (this.aggregate) {
+            this.dateLabel.innerText = '';
+            this.timeLabel.innerText = dateObj.toLocaleTimeString(window.userSettings.selectedLocale, {
+                hour: '2-digit', minute: '2-digit', timeZone: 'UTC'
+            });
+            this.startLabel.innerText = "Start"
+            this.endLabel.innerText = "End"
+        } else {
+            this.dateLabel.innerText = dateObj.toLocaleDateString(window.userSettings.selectedLocale, {
+                day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC'
+            });
+            this.timeLabel.innerText = dateObj.toLocaleTimeString(window.userSettings.selectedLocale, {
+                hour: '2-digit', minute: '2-digit', timeZone: 'UTC'
+            });
+            this.startLabel.innerText = this._formatDateTime(this.minTimestamp * 1000);
+            this.endLabel.innerText = this._formatDateTime(this.maxTimestamp * 1000);
+        }
 
-       this.dateLabel.innerText = dateObj.toLocaleDateString(window.userSettings.selectedLocale, {
-            day: '2-digit', month: 'short', year: 'numeric'
-        });
-
-        this.timeLabel.innerText = dateObj.toLocaleTimeString(window.userSettings.selectedLocale, {
-            hour: '2-digit', minute: '2-digit'
-        });
-
-        this.startLabel.innerText = this._formatDateTime(this.minTimestamp * 1000);
-        this.endLabel.innerText = this._formatDateTime(this.maxTimestamp * 1000);
     }
 
     _formatDateTime(ts) {
@@ -58,14 +65,25 @@ class TimelineControl {
     }
 
     setup(config) {
-        this.minTimestamp = config.minTimestamp;
-        this.maxTimestamp = config.maxTimestamp;
-        this.aggregate = config.aggregate;
+        console.log(config);
+        if (config.aggregate) {
+            this.aggregate = true;
+            this.minTimestamp = 0;
+            this.maxTimestamp = 86400;
+            this.slider.min = 0;
+            this.slider.step = 1;
+            this.slider.max = 86400;
+            this.setOffset(0);
 
-        this.slider.min = 0;
-        this.slider.max = this.maxTimestamp - this.minTimestamp;
-
-        this.setOffset(0);
+        } else {
+            this.minTimestamp = config.minTimestamp;
+            this.maxTimestamp = config.maxTimestamp;
+            this.aggregate = config.aggregate;
+            this.slider.step = 1;
+            this.slider.min = 0;
+            this.slider.max = this.maxTimestamp - this.minTimestamp;
+            this.setOffset(0);
+        }
     }
 
     setOffset(offset) {

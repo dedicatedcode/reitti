@@ -729,7 +729,7 @@
         },
         paths: {
             width: 5,
-            opacity: 128,
+            opacity: 40,
             opacity_static: 200
         },
         bundled: {
@@ -898,13 +898,17 @@
         }
     }
 
-    let timeMultiplier = 60; // Default: 1 second = 1 minute
+    let timeMultiplier = 30; // Default: 1 second = 1 minute
 
     function calculateSpeed(globalMinTimestamp, globalMaxTimestamp) {
-        const totalSeconds = globalMaxTimestamp - globalMinTimestamp;
-        const targetDuration = 60;
-        timeMultiplier = totalSeconds / targetDuration;
-        console.log(`Animation speed set to: ${timeMultiplier}x real time`);
+        if (document.getElementById('aggregate-toggle').checked) {
+            timeMultiplier = 60 * 60 * 24 / 30;
+        } else {
+            const totalSeconds = globalMaxTimestamp - globalMinTimestamp;
+            const targetDuration = 30;
+            timeMultiplier = totalSeconds / targetDuration;
+            console.log(`Animation speed set to: ${timeMultiplier}x real time`);
+        }
     }
 
     function animate(now) {
@@ -946,6 +950,22 @@
         return new Date(ts).toLocaleDateString(window.userSettings.selectedLocale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     }
 
+    function showLoadingMetadate(done) {
+        const bar = document.getElementById('progress-bar');
+        const text = document.getElementById('status-text');
+        const overlay = document.getElementById('loading-overlay');
+        // Make sure it's visible if we just started
+        overlay.style.opacity = '1';
+        if (done) {
+            text.innerText = "Loading metadata ...";
+            bar.style.width = '0%';
+            bar.style.transition = 'width 0.5s ease-in-out';
+        } else {
+            text.innerText = "Metadata loaded";
+            bar.style.width = '100%';
+            bar.style.transition = 'width 0.5s ease-in-out';
+        }
+    }
     function showLoadingProgress(current, total) {
         const bar = document.getElementById('progress-bar');
         const text = document.getElementById('status-text');
@@ -1010,9 +1030,10 @@
     }
 
     async function loadMetaData(loadingConfig) {
+        showLoadingMetadate(false);
         const metaResponse = await fetch(window.contextPath + loadingConfig.map.metaDataUrl);
         const meta = await metaResponse.json();
-
+        showLoadingMetadate(true);
         globalMinTimestamp = meta.minTimestamp;
         globalMaxTimestamp = meta.maxTimestamp;
         calculateSpeed(globalMinTimestamp, globalMaxTimestamp);
@@ -1040,8 +1061,8 @@
             maxTimestamp: globalMaxTimestamp,
             aggregate: document.getElementById('aggregate-toggle').checked
         });
-
         showLoadingProgress(0, meta.totalPoints);
+
         await loadVisits(loadingConfig);
         await startStreamingPoints(loadingConfig, meta.totalPoints);
     }
@@ -1178,7 +1199,6 @@
     }
 
     function updateTripsLayer(offset) {
-        console.log(`Updating layer with offset ${offset}`);
         const viewState = {
             longitude: map.getCenter().lng,
             latitude: map.getCenter().lat,
@@ -1187,9 +1207,16 @@
 
         const isAggregate = document.getElementById('aggregate-toggle')?.checked || false;
         const viewMode = document.getElementById('view-mode')?.value || 'LINEAR';
-
+        const totalTimeSpanSec = globalMaxTimestamp - globalMinTimestamp;
+        const calculatedTrail = Math.max(1800, totalTimeSpanSec * 0.02);
         const layers = [];
 
+
+        if (globalTripData.length === 0) {
+            layers.push(...photoClient.getLayers(offset, viewState))
+            deckOverlay.setProps({layers});
+            return
+        }
         // --- BASE VISUALIZATION ---
         if (viewMode === 'HEATMAP') {
             layers.push(new deck.HeatmapLayer({
@@ -1314,7 +1341,7 @@
             getColor: [255, 255, 255],
             opacity: deckParams.trips.shadowOpacity * visibility,
             widthMinPixels: deckParams.trips.shadowWidth,
-            trailLength: deckParams.trips.trailLength,
+            trailLength: calculatedTrail,
             currentTime: offset,
             parameters: {
                 blendFunc: [770, 1],
@@ -1340,7 +1367,7 @@
             getColor: d => [...d.color, deckParams.trips.cometOpacity],
             opacity: deckParams.trips.cometOpacity * visibility,
             widthMinPixels: deckParams.trips.cometWidth,
-            trailLength: deckParams.trips.trailLength,
+            trailLength: calculatedTrail,
             currentTime: offset,
             updateTriggers: {
                 getColor: [deckParams.trips.cometOpacity],
@@ -1360,9 +1387,12 @@
     }
 
     function getVisitLayers(offset) {
+        const totalTimeSpanSec = globalMaxTimestamp - globalMinTimestamp;
+        const oneDaySec = 86400;
+
+        // Adjustment factor: how many 'days' are we looking at?
+        const dayMultiplier = totalTimeSpanSec / oneDaySec;
         const isOverview = timelineControl.isIdle();
-        const growDuration = 600; // 10 minutes for a full grow-in effect
-        const baseRadius = 30;    // Final size in meters
 
         return [
             // 1. Polygon Layer
@@ -1380,18 +1410,6 @@
                 }
             }),
             new deck.ScatterplotLayer({
-                id: 'visit-active-glow',
-                data: globalVisitsData,
-                getPosition: d => [d.lng, d.lat],
-                getRadius: d => (offset >= d.startTime && offset <= d.endTime) ? baseRadius * 1.5 : 0,
-                getFillColor: d => [...d.color, 40],
-                visible: !isOverview,
-                updateTriggers: {
-                    getRadius: [offset],
-                    visible: [isOverview]
-                }
-            }),
-            new deck.ScatterplotLayer({
                 id: 'place-outer-circles',
                 data: globalVisitsData,
                 getPosition: d => d.coordinates,
@@ -1404,9 +1422,13 @@
                     } else {
                         const seconds = getAccumulatedSeconds(d, offset);
                         if (seconds <= 0) return 0;
-                        const radius = (Math.pow(seconds, 0.6) * 0.6);
-                        if (offset >= 0 && offset < 1) return radius * 1.5;
-                        return radius;
+                        // Use a Power scale (0.5 to 0.7) but divide the input by the dayMultiplier.
+                        // This "compresses" the growth as the timeframe gets longer.
+                        const normalizedSeconds = seconds / Math.sqrt(dayMultiplier);
+                        const minRadius = 15;
+                        const maxRadius = 300; // Hard physical limit in meters
+                        const calculatedRadius = minRadius + (Math.pow(normalizedSeconds, 0.6) * 0.5);
+                        return Math.min(calculatedRadius, maxRadius);
                     }
                 },
 
@@ -2145,15 +2167,14 @@
         document.body.addEventListener('htmx:afterSwap', function (event) {
             if (event.detail.target.classList.contains('timeline-container')) {
                 userConfigs = calculateUserConfigs();
-
+                globalTripData = [];
+                globalVisitsData = [];
                 // Timeline content has been updated, update map markers
                 const params = getTimelineParams();
                 const requestedStart = Math.floor(new Date(params.startDate).getTime() / 1000);
                 const requestedEnd = Math.floor(new Date(params.endDate).getTime() / 1000);
                 photoClient.updatePhotosForRange(params.startDate, params.endDate, getUserTimezone());
 
-                // 2. Setup the UI immediately
-                globalTripData = [];
                 updateTripsLayer(0);
                 timelineControl.setup({minTimestamp: requestedStart, maxTimestamp: requestedEnd, aggregate: document.getElementById('aggregate-toggle').checked });
                 loadTimelineData();
@@ -2323,7 +2344,6 @@
         // Load and apply settings on page load
         const savedSettings = loadSettings();
         applySettings(savedSettings);
-
         const toggleTimeControlsBtn = document.getElementById('toggle-time-control-btn');
         if (toggleTimeControlsBtn) {
             toggleTimeControlsBtn.addEventListener('click', function() {
@@ -2339,17 +2359,13 @@
 
         document.getElementById('aggregate-toggle').onchange = (e) => {
             const isAggregate = e.target.checked;
-            const slider = document.getElementById('time-slider');
-
-            if (isAggregate) {
-                slider.max = 86400; // 24 hours
-                slider.step = 60;    // 1 minute increments
-            } else {
-                slider.max = globalMaxTimestamp - globalMinTimestamp;
-                slider.step = 1;
-            }
-            slider.value = 0; // Reset to start of day/range
+            timelineControl.setup({
+                minTimestamp: globalMinTimestamp,
+                maxTimestamp: globalMaxTimestamp,
+                aggregate: isAggregate
+            });
             localStorage.setItem('aggregate', isAggregate);
+            calculateSpeed(globalMinTimestamp, globalMaxTimestamp);
             updateTripsLayer(0);
         };
     })
