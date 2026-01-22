@@ -32,7 +32,6 @@ class TimelineControl {
     _init() {
         this.slider.oninput = (e) => {
             const offset = parseInt(e.target.value);
-            currentSliderValue = offset;
             this._updateLabels(offset);
             this.emit('offsetChanged', {offset: offset});
         };

@@ -721,7 +721,7 @@
             shadowOffset: [0.00005, -0.00005] //  offset
         },
         visits: {
-            minZoom: 15,
+            minZoom: 12,
             radius: 50,
             opacity: 140,
             polygonOpacity: 140,
@@ -829,7 +829,7 @@
 
     // #### NEW MAP ####
     let globalTripData = [];
-    let globalPlacesData = [];
+    let globalVisitsData = [];
 
     let globalMinTimestamp = 0;
     let globalMaxTimestamp = 0;
@@ -867,12 +867,10 @@
     const photoClient = new PhotoClient(true);
 
     let userConfigs = [];
-    let currentTime = 0;
     let animationId = null;
     let lastFrameTime = null;
 
     let isPlaying = false;
-    let currentSliderValue = 0;
 
     const playBtn = document.getElementById('play-btn');
 
@@ -988,7 +986,7 @@
         const data = await response.json();
 
         const color = hexToRgb(loadingConfig.color || "#646464");
-        globalPlacesData = data.places.map(p => ({
+        globalVisitsData = data.places.map(p => ({
             id: p.place.id,
             coordinates: [p.lng, p.lat],
             polygon: p.place.polygon,
@@ -998,7 +996,7 @@
             activeRanges: p.visits.map(v => ({
                 start: Math.floor(new Date(v.startTime).getTime() / 1000) - globalMinTimestamp,
                 end: Math.floor(new Date(v.endTime).getTime() / 1000) - globalMinTimestamp
-            })),
+            })).sort((a, b) => a.start - b.start),
             originalVisits: p.visits
         }));
     }
@@ -1291,7 +1289,6 @@
                 getPath: d => d.path,
                 getColor: d => {
                     const alpha = timelineControl.isIdle() ? deckParams.paths.opacity_static : deckParams.paths.opacity;
-                    debugger
                     return [...d.color, alpha];
                 },
                 getWidth: deckParams.paths.width,
@@ -1363,57 +1360,100 @@
     }
 
     function getVisitLayers(offset) {
-        const isOverview = offset === 0;
+        const isOverview = timelineControl.isIdle();
+        const growDuration = 600; // 10 minutes for a full grow-in effect
+        const baseRadius = 30;    // Final size in meters
+
         return [
             // 1. Polygon Layer
             new deck.PolygonLayer({
                 id: 'visit-polygons',
-                data: globalPlacesData.filter(p => p.polygon),
+                data: globalVisitsData.filter(p => p.polygon),
                 getPolygon: d => d.polygon.coordinates,
                 getFillColor: d => [...d.color, deckParams.visits.polygonOpacity],
                 getLineColor: d => [...d.color, 255],
-                visible: map.getZoom() > deckParams.visits.minZoom,
+                visible: isOverview && map.getZoom() > deckParams.visits.minZoom,
                 updateTripsLayer: {
                     getFillColor: [deckParams.visits.polygonOpacity],
-                    visible: [map.zoom, deckParams.visits.minZoom],
-                    data: globalPlacesData.filter(p => p.activeRanges.some(r => r.start <= offset && r.end >= offset))
+                    visible: [isOverview, map.zoom, deckParams.visits.minZoom],
+                    data: globalVisitsData.filter(p => p.activeRanges.some(r => r.start <= offset && r.end >= offset))
                 }
             }),
-
+            new deck.ScatterplotLayer({
+                id: 'visit-active-glow',
+                data: globalVisitsData,
+                getPosition: d => [d.lng, d.lat],
+                getRadius: d => (offset >= d.startTime && offset <= d.endTime) ? baseRadius * 1.5 : 0,
+                getFillColor: d => [...d.color, 40],
+                visible: !isOverview,
+                updateTriggers: {
+                    getRadius: [offset],
+                    visible: [isOverview]
+                }
+            }),
             new deck.ScatterplotLayer({
                 id: 'place-outer-circles',
-                data: globalPlacesData,
+                data: globalVisitsData,
                 getPosition: d => d.coordinates,
                 getRadius: d => {
-                    const logValue = Math.log10(d.totalDurationSec + 1);
-                    return deckParams.visits.radius + (logValue * 15); // Use parameter as base
+                    if (timelineControl.isIdle()) {
+                        const seconds = d.totalDurationSec;
+                        if (seconds <= 0) return 0;
+                        const minRadius = deckParams.visits.radius;
+                        return minRadius + (Math.pow(seconds, 0.6) * 0.2);
+                    } else {
+                        const seconds = getAccumulatedSeconds(d, offset);
+                        if (seconds <= 0) return 0;
+                        const radius = (Math.pow(seconds, 0.6) * 0.6);
+                        if (offset >= 0 && offset < 1) return radius * 1.5;
+                        return radius;
+                    }
                 },
+
                 getFillColor: d => {
-                    const isActive = d.activeRanges.some(r => offset >= r.start && offset <= r.end);
-                    const alpha = (isOverview || isActive) ? deckParams.visits.opacity : 0;
-                    return [...d.color, alpha];
+                    if (timelineControl.isIdle()) {
+                        return [...d.color, deckParams.visits.opacity];
+                    } else {
+                        const effect = getActiveVisitEffect(d, offset);
+                        // Fade the alpha channel as it leaves
+                        const alpha = 140 * effect.opacity;
+                        return [...d.color, alpha];
+                    }
                 },
-                stroked: true,
+
                 getLineColor: d => {
-                    const isActive = d.activeRanges.some(r => offset >= r.start && offset <= r.end);
-                    const alpha = (isOverview || isActive) ? deckParams.visits.opacity : 0;
-                    return [...d.color, alpha];
+                    if (timelineControl.isIdle()) {
+                        return [...d.color, 255];
+                    } else {
+                        const effect = getActiveVisitEffect(d, offset);
+                        // Fade the alpha channel as it leaves
+                        const alpha = 140 * effect.opacity;
+                        return [...d.color, alpha];
+                    }
+                },
+                transitions: {
+                    getRadius: {
+                        type: 'spring',
+                        stiffness: 0.05,
+                        damping: 0.15
+                    }
                 },
                 lineWidthMinPixels: 3,
                 pickable: true,
-                visible: map.getZoom() > deckParams.visits.minZoom,
+                visible: !isOverview || map.getZoom() > deckParams.visits.minZoom,
                 onHover: info => updateTooltip(info),
                 updateTriggers: {
                     visible: [map.zoom, deckParams.visits.minZoom],
                     getFillColor: [offset, isOverview, deckParams.visits.opacity, deckParams.visits.minZoom],
                     getLineColor: [offset, isOverview, deckParams.visits.opacity, deckParams.visits.minZoom],
-                    getRadius: [deckParams.visits.radius]
+                    getRadius: [deckParams.visits.radius, offset]
                 },
+
             }),
 
             new deck.ScatterplotLayer({
                 id: 'place-inner-circles',
-                data: globalPlacesData,
+                data: globalVisitsData,
                 getPosition: d => d.coordinates,
                 getRadius: 8,
                 stroked: true,
@@ -1436,6 +1476,56 @@
                 onHover: info => updateTooltip(info),
             })
         ];
+    }
+
+    function getAccumulatedSeconds(visit, offset) {
+        let accumulated = 0;
+
+        for (const range of visit.activeRanges) {
+            if (offset < range.start) {
+                // Comet hasn't reached this stay yet
+                break;
+            } else if (offset >= range.end) {
+                // Stay is fully completed, add the whole duration
+                accumulated += (range.end - range.start);
+            } else {
+                // Comet is currently inside this stay range
+                accumulated += (offset - range.start);
+                // Since ranges are chronological, we can stop here
+                break;
+            }
+        }
+        return accumulated;
+    }
+
+    function getActiveVisitEffect(visit, offset) {
+        const exitFadeDuration = 300; // 5 minutes (in seconds) to shrink/fade completely
+        let accumulated = 0;
+        let multiplier = 0;
+
+        for (const range of visit.activeRanges) {
+            if (offset < range.start) {
+                // Future visit: do nothing
+                break;
+            } else if (offset >= range.start && offset <= range.end) {
+                // Currently visiting: Full size
+                accumulated += (offset - range.start);
+                multiplier = 1.0;
+            } else if (offset > range.end) {
+                // Past visit: Add full duration
+                accumulated += (range.end - range.start);
+
+                // Calculate decay: how recently did we leave?
+                const timeSinceLeft = offset - range.end;
+                const decay = 1.0 - (timeSinceLeft / exitFadeDuration);
+
+                // We take the "freshest" decay. If we just left, multiplier is near 1.
+                // If we left a long time ago, multiplier is 0.
+                multiplier = Math.max(multiplier, Math.min(1, decay));
+            }
+        }
+
+        return { seconds: accumulated, opacity: multiplier };
     }
 
     function updateTooltip({x, y, object}) {
