@@ -50,10 +50,42 @@
 }
 @font-face {
     font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
-    font-family: 'Noto Sans';
+    font-family: 'Noto Sans SC';
     font-style: normal;
     font-weight: 400;
     src: url('../fonts/noto-sans-sc-chinese-simplified-400-normal.woff2') format('woff2'); /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+}
+
+@font-face {
+    font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+    font-family: 'Noto Serif JP';
+    font-style: normal;
+    font-weight: 200;
+    src: url('../fonts/noto-serif-jp-japanese-200-normal.woff2') format('woff2'); /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+}
+
+@font-face {
+    font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+    font-family: 'Noto Serif JP';
+    font-style: normal;
+    font-weight: 400;
+    src: url('../fonts/noto-serif-jp-japanese-400-normal.woff2') format('woff2'); /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+}
+
+@font-face {
+    font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+    font-family: 'Noto Serif JP';
+    font-style: normal;
+    font-weight: 900;
+    src: url('../fonts/noto-serif-jp-japanese-900-normal.woff2') format('woff2'); /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+}
+
+@font-face {
+    font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+    font-family: 'Noto Sans JP';
+    font-style: normal;
+    font-weight: 400;
+    src: url('../fonts/noto-sans-jp-japanese-400-normal.woff2') format('woff2'); /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
 }
 
 :root {
@@ -62,10 +94,21 @@
     --color-background-dark-light: #5c5c5c;
     --color-text-white: #e3e3e3;
     --color-text-gray: #c0c0c0;
-    --serif-font: "Fraunces", 'Noto Serif SC', 'PingFang SC', 'Microsoft YaHei', serif;;
+    --serif-font: "Fraunces", 'Noto Serif SC', 'PingFang SC', 'Microsoft YaHei', serif;
     --memories-header-height: 550px;
     --box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
-    --sans-serif-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC",  'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    --sans-serif-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+}
+
+/* CJK Language-specific font stacks */
+:root:lang(ja) {
+    --serif-font: "Fraunces", 'Noto Serif JP', 'Hiragino Mincho ProN', 'YuMincho', serif;
+    --sans-serif-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'YuGothic', 'Meiryo', sans-serif;
+}
+
+:root:lang(zh-CN) {
+    --serif-font: "Fraunces", 'Noto Serif SC', 'PingFang SC', 'Microsoft YaHei', serif;
+    --sans-serif-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
 }
 
 body {

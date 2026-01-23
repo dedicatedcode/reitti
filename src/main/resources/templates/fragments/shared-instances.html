@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
 <body>
 <div th:fragment="shared-instances-content">
     <p th:text="#{integrations.shared.instances.description}" style="margin-bottom: 20px; color: var(--color-text-white);">Connect to other Reitti instances to share location data with friends, family, or colleagues. This allows you to view their location data alongside yours on the timeline map.</p>
