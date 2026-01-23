@@ -723,13 +723,13 @@
         visits: {
             minZoom: 12,
             radius: 50,
-            opacity: 140,
-            polygonOpacity: 140,
+            opacity: 70,
+            polygonOpacity: 110,
             lineWidth: 1
         },
         paths: {
             width: 5,
-            opacity: 40,
+            opacity: 110,
             opacity_static: 200
         },
         bundled: {
@@ -852,6 +852,7 @@
     const deckOverlay = new deck.MapboxOverlay({
         layers: []
     });
+
     map.addControl(deckOverlay);
 
     map.on('move', () => {
@@ -874,7 +875,6 @@
     let isPlaying = false;
 
     const playBtn = document.getElementById('play-btn');
-
 
     playBtn.onclick = () => {
         if (isPlaying) {
@@ -1213,7 +1213,7 @@
 
         const isAggregate = document.getElementById('aggregate-toggle')?.checked || false;
         const viewMode = document.getElementById('view-mode')?.value || 'LINEAR';
-        const totalTimeSpanSec = globalMaxTimestamp - globalMinTimestamp;
+        const totalTimeSpanSec = isAggregate ? 24 * 60 * 60 : globalMaxTimestamp - globalMinTimestamp;
         const calculatedTrail = Math.max(1800, totalTimeSpanSec * 0.02);
         const layers = [];
 
@@ -1321,7 +1321,10 @@
                 data: globalTripData,
                 getPath: d => d.path,
                 getColor: d => {
-                    const alpha = timelineControl.isIdle() ? deckParams.paths.opacity_static : deckParams.paths.opacity;
+                    let alpha = timelineControl.isIdle() ? deckParams.paths.opacity_static : deckParams.paths.opacity;
+                    if (isAggregate) {
+                        alpha = alpha * 0.5;
+                    }
                     return [...d.color, alpha];
                 },
                 getWidth: deckParams.paths.width,
@@ -1450,7 +1453,7 @@
 
                 getLineColor: d => {
                     if (timelineControl.isIdle()) {
-                        return [...d.color, 255];
+                        return [...d.color, 200];
                     } else {
                         const effect = getActiveVisitEffect(d, offset);
                         // Fade the alpha channel as it leaves
@@ -1468,7 +1471,8 @@
                 parameters: {
                   depthTest: false
                 },
-                lineWidthMinPixels: 3,
+                stroked: true,
+                lineWidthMinPixels: 2,
                 pickable: true,
                 visible: !isOverview || map.getZoom() > deckParams.visits.minZoom,
                 onHover: info => updateTooltip(info),
