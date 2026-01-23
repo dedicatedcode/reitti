@@ -823,8 +823,9 @@
     let pendingEvents = [];
     let firstEventTime = null;
     let reconnectTimeoutId = null;
+    let globalBounds = [];
+    let highlightTimes = [];
 
-    // Store current date range selection
     let currentDateRange = null;
 
     // #### NEW MAP ####
@@ -1030,6 +1031,19 @@
         });
     }
 
+    function fitMapToBounds(bounds) {
+        map.fitBounds(bounds, {
+            padding: {
+                top: 50,
+                bottom: 100,
+                right: 100,
+                left: 450
+            },
+            duration: 2000,
+            essential: true
+        });
+    }
+
     async function loadMetaData(loadingConfig) {
         showLoadingMetadate(false);
         const metaResponse = await fetch(window.contextPath + loadingConfig.map.metaDataUrl);
@@ -1038,21 +1052,12 @@
         globalMinTimestamp = meta.minTimestamp;
         globalMaxTimestamp = meta.maxTimestamp;
         calculateSpeed(globalMinTimestamp, globalMaxTimestamp);
-
+        globalBounds = [
+            [meta.minLng, meta.minLat], // Southwest corner
+            [meta.maxLng, meta.maxLat]  // Northeast corner
+        ];
         if (meta.totalPoints > 0) {
-            map.fitBounds([
-                [meta.minLng, meta.minLat], // Southwest corner
-                [meta.maxLng, meta.maxLat]  // Northeast corner
-            ], {
-                padding: {
-                    top: 50,
-                    bottom: 100,
-                    right: 100,
-                    left: 450
-                },
-                duration: 2000,
-                essential: true
-            });
+            fitMapToBounds(globalBounds);
         } else {
             flyToHomeLocation();
         }
@@ -1380,7 +1385,6 @@
                 getPath: [globalTripData[globalTripData.length - 1]?.path.length]
             }
         }));
-        // --- THE VISITS ---
         layers.push(...getVisitLayers(offset));
         layers.push(...photoClient.getLayers(offset, viewState));
 
@@ -1460,6 +1464,9 @@
                         stiffness: 0.05,
                         damping: 0.15
                     }
+                },
+                parameters: {
+                  depthTest: false
                 },
                 lineWidthMinPixels: 3,
                 pickable: true,
@@ -2207,46 +2214,31 @@
             // Remove active class from all entries
             document.querySelectorAll('.timeline-container .timeline-entry')
                 .forEach(e => e.classList.remove('active'));
+
             const isTrip = entry.classList.contains('trip');
 
             if (isCurrentlyActive) {
-                if (window.originalBounds && window.originalBounds.isValid()) {
-                    map.flyToBounds(window.originalBounds, rawLocationLoader.fitToBoundsConfig);
-                }
+                fitMapToBounds(globalBounds);
+                highlightTimes = [];
             } else {
-                // Selection: set time range and zoom to specific entry
                 entry.classList.add('active');
-                const newBounds = L.latLngBounds();
 
                 const lat = parseFloat(entry.dataset.lat);
                 const lng = parseFloat(entry.dataset.lng);
                 const startTime = entry.dataset.start;
                 const endTime = entry.dataset.end;
 
-                // Set selected time range in raw location loader
-                if (isTrip && startTime && endTime) {
-                    rawLocationLoader.setSelectedTimeRange(startTime, endTime).then(selectedRangeBounds => {
-                        if (selectedRangeBounds && selectedRangeBounds.isValid()) {
-                            newBounds.extend(selectedRangeBounds);
-                        }
-
-                        if (!isNaN(lat) && !isNaN(lng)) {
-                            newBounds.extend([lat, lng]);
-                        }
-
-                        if (newBounds.isValid()) {
-                            map.flyToBounds(newBounds, rawLocationLoader.fitToBoundsConfig);
-                        }
+                if (isTrip) {
+                    debugger
+                    highlightTimes = [Math.floor(new Date(startTime).getTime() / 1000 - globalMinTimestamp), Math.floor(new Date(endTime).getTime() / 1000 - globalMinTimestamp)];
+                    updateTripsLayer(0)
+                } else {
+                    highlightTimes = [];
+                    map.flyTo({
+                        center: [lng, lat],
+                        zoom: 15,
+                        pitch: 45
                     });
-                    return; // Exit early since we handle bounds in the promise
-                }
-
-                if (!isNaN(lat) && !isNaN(lng)) {
-                    newBounds.extend([lat, lng]);
-                }
-
-                if (newBounds.isValid()) {
-                    map.flyToBounds(newBounds, rawLocationLoader.fitToBoundsConfig);
                 }
             }
         });
