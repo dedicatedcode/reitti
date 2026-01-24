@@ -512,10 +512,10 @@
     let deckParams = {
         trips: {
             trailLength: 700,
-            cometWidth: 6,
-            cometOpacity: 80,
-            shadowWidth: 6,
-            shadowOpacity: 60,
+            cometWidth: 3,
+            cometOpacity: 100,
+            shadowWidth: 3,
+            shadowOpacity: 35,
             shadowOffset: [0.00005, -0.00005] //  offset
         },
         visits: {
@@ -526,18 +526,21 @@
             lineWidth: 1
         },
         paths: {
-            width: 5,
+            width: 2,
             opacity: 110,
-            opacity_static: 200
+            opacity_static: 220
         },
         bundled: {
-            precision: 0.0001,
-            auraWidth: 24,
-            auraOpacity: 15,
-            coreWidth: 8,
-            coreOpacity: 200,
-            pathWidth: 6,
-            pathOpacity: 30
+            precision: 0.0002,
+            weight: 0.1,
+            coreWidth: 7,
+            coreOpacity: 225,
+            pathWidth: 1,
+            pathOpacity: 10,
+            cometWidth: 1.5,
+            cometOpacity: 185,
+            shadowWidth: 4,
+            shadowOpacity: 230,
         },
         heatmap: {
             radius: 25,
@@ -650,12 +653,15 @@
     const mapCustomizationControl = new MapCustomization(document.getElementById('deck-controls'), deckParams);
     mapCustomizationControl.on('update-deck-params', (data) => {
         deckParams = data.params;
+        if (data.field === 'bundled.weight' || data.field === 'bundled.precision') {
+            calculateBundledPath();
+        }
         updateTripsLayer(timelineControl.getOffset())
     })
+
     const deckOverlay = new deck.MapboxOverlay({
         layers: []
     });
-
     map.addControl(deckOverlay);
 
     map.on('move', () => {
@@ -876,6 +882,18 @@
         await startStreamingPoints(loadingConfig, meta.totalPoints);
     }
 
+    async function calculateBundledPath() {
+        const bundledResults = await processBundlingAsync(globalTripData, (progress) => {
+            console.log(`Bundling progress: ${progress}%`);
+        })
+
+        // Update the objects in place
+        for (let i = 0; i < globalTripData.length; i++) {
+            globalTripData[i].snappedPath = bundledResults[i].snappedPath;
+        }
+        updateTripsLayer(timelineControl.getOffset());
+    }
+
     async function startStreamingPoints(loadingConfig, totalExpected) {
         const response = await fetch(window.contextPath + loadingConfig.map.streamUrl);
         const reader = response.body.getReader();
@@ -929,8 +947,88 @@
                 lastRenderTime = now;
             }
         }
+
+        await calculateBundledPath();
+
     }
 
+    async function processBundlingAsync(data, onProgress) {
+        const precision = 1 / (deckParams.bundled.precision); // e.g., 0.0005 for ~50m
+        const weight = deckParams.bundled.weight;
+
+        // 2^22 entries to handle global travel without overlapping cells
+        const TABLE_SIZE = 4194304;
+        const TABLE_MASK = TABLE_SIZE - 1;
+
+        // [SumX, SumY, Count]
+        const grid = new Float64Array(TABLE_SIZE * 3);
+
+        // Phase 1: Accumulate Global Centroids
+        for (let i = 0; i < data.length; i++) {
+            const path = data[i].path;
+            for (let j = 0; j < path.length; j++) {
+                const p = path[j];
+
+                // 1. Convert to integer grid coordinates
+                const gx = Math.floor(p[0] * precision);
+                const gy = Math.floor(p[1] * precision);
+
+                // 2. Optimized Spatial Hash (Prime Multipliers)
+                // This prevents coordinates in different countries from hitting the same index
+                const h = ((gx * 73856093) ^ (gy * 19349663)) & TABLE_MASK;
+                const idx = h * 3;
+
+                grid[idx] += p[0];
+                grid[idx + 1] += p[1];
+                grid[idx + 2]++;
+            }
+
+            if (i % 100 === 0) {
+                onProgress((i / data.length) * 50);
+                await new Promise(r => setTimeout(r, 0));
+            }
+        }
+
+        // Phase 2: Map Paths to Centroids
+        const result = [];
+        for (let i = 0; i < data.length; i++) {
+            const trip = data[i];
+            const newPath = new Float64Array(trip.path.length * 2); // Use typed array for result path
+
+            for (let j = 0; j < trip.path.length; j++) {
+                const p = trip.path[j];
+                const gx = Math.floor(p[0] * precision);
+                const gy = Math.floor(p[1] * precision);
+                const h = ((gx * 73856093) ^ (gy * 19349663)) & TABLE_MASK;
+                const idx = h * 3;
+
+                const count = grid[idx + 2];
+                const centerX = grid[idx] / count;
+                const centerY = grid[idx + 1] / count;
+
+                // Apply the pull (weight)
+                newPath[j * 2] = p[0] * (1 - weight) + centerX * weight;
+                newPath[j * 2 + 1] = p[1] * (1 - weight) + centerY * weight;
+            }
+
+            for (let k = 1; k < newPath.length / 2 - 1; k++) {
+                const idx = k * 2;
+                // Average the current point with its previous and next point
+                // This rounds off the "sharp corners" created by the grid
+                newPath[idx]     = (newPath[idx-2] + newPath[idx] + newPath[idx+2]) / 3;
+                newPath[idx + 1] = (newPath[idx-1] + newPath[idx+1] + newPath[idx+3]) / 3;
+            }
+            // Store as a flat array (Deck.gl prefers this for performance)
+            result.push({ ...trip, snappedPath: newPath });
+
+            if (i % 100 === 0) {
+                onProgress(50 + (i / data.length) * 50);
+                await new Promise(r => setTimeout(r, 0));
+            }
+        }
+
+        return result;
+    }
     function addPointToMapData(color, lng, lat, ts) {
         const tsLinear = ts - globalMinTimestamp;
         const tsAggregate = ts % 86400;
@@ -973,7 +1071,6 @@
             point[1] + deckParams.trips.shadowOffset[1]
         ]);
 
-        currentTrip.snappedPath.push(snapPoint(point, 0.0016));
         currentTrip.timestampsLinear.push(tsLinear);
         currentTrip.timestampsAggregate.push(tsAggregate);
         currentTrip.absTimestamps.push(ts);
@@ -1000,13 +1097,6 @@
         return distSq < (spatialThreshold * spatialThreshold);
     }
 
-    function snapPoint(point, precision = 0.0008) {
-        return [
-            Math.round(point[0] / precision) * precision,
-            Math.round(point[1] / precision) * precision
-        ];
-    }
-
     function updateTripsLayer(offset) {
         const viewState = {
             longitude: map.getCenter().lng,
@@ -1018,14 +1108,19 @@
         const viewMode = document.getElementById('view-mode')?.value || 'LINEAR';
         const totalTimeSpanSec = isAggregate ? 24 * 60 * 60 : globalMaxTimestamp - globalMinTimestamp;
         const calculatedTrail = Math.max(1800, totalTimeSpanSec * 0.02);
+
+        const mode = isAggregate ? 'agg' : 'lin';
+        const visibility = !timelineControl.isIdle();
+
         const layers = [];
 
 
-        if (globalTripData.length === 0) {
+        if (!globalTripData || globalTripData.length === 0) {
             layers.push(...photoClient.getLayers(offset, viewState))
             deckOverlay.setProps({layers});
             return
         }
+
         // --- BASE VISUALIZATION ---
         if (viewMode === 'HEATMAP') {
             layers.push(new deck.HeatmapLayer({
@@ -1047,80 +1142,11 @@
                 }
             }));
         } else if (viewMode === 'BUNDLED') {
-            layers.push(new deck.PathLayer({
-                id: 'bundled-aura',
-                data: globalTripData,
-                getPath: d => d.snappedPath,
-                getColor: d => [...d.color, deckParams.bundled.auraOpacity],
-                getWidth: deckParams.bundled.auraWidth,
-                widthMinPixels: 6,
-                capRounded: true,
-                jointRounded: true,
-                parameters: {
-                    blendFunc: [770, 1],
-                    blendEquation: 32774,
-                    depthTest: false
-                },
-                updateTriggers: {
-                    data: [globalTripData.length],
-                    getPath: [globalTripData[globalTripData.length - 1]?.path.length],
-                    getColor: [deckParams.bundled.auraOpacity],
-                    getWidth: [deckParams.bundled.auraWidth]
-                }
-            }));
-
-            // 2. The "Core" - Narrow, higher opacity, keeps the color saturated
-            layers.push(new deck.PathLayer({
-                id: 'bundled-core',
-                data: globalTripData,
-                getPath: d => d.snappedPath,
-                getColor: d => [...d.color, deckParams.bundled.coreOpacity],
-                getWidth: deckParams.bundled.coreWidth,
-                widthMinPixels: 2,
-                parameters: {
-                    blendFunc: [770, 771],
-                    blendEquation: 32774,
-                    depthTest: false
-                },
-                updateTriggers: {
-                    data: [globalTripData.length],
-                    getPath: [globalTripData[globalTripData.length - 1]?.path.length],
-                    getWidth: [deckParams.bundled.coreWidth],
-                    getColor: [deckParams.bundled.coreOpacity]
-                }
-            }));
-
-            layers.push(new deck.PathLayer({
-                id: 'bundled-paths',
-                data: globalTripData,
-                getPath: d => {
-                    const p = deckParams.bundled.precision;
-                    return d.path.map(coord => [
-                        Math.round(coord[0] / p) * p,
-                        Math.round(coord[1] / p) * p
-                    ]);
-                },
-                getWidth: deckParams.bundled.pathWidth,
-                widthMinPixels: 2,
-                getColor: d => [...d.color, deckParams.bundled.pathOpacity],
-
-                // This allows the colors to "sum" together mathematically
-                parameters: {
-                    blendFunc: [770, 1], // GL_SRC_ALPHA, GL_ONE
-                    blendEquation: 32774 // GL_FUNC_ADD
-                },
-                capRounded: true,
-                jointRounded: true,
-                updateTriggers: {
-                    getColor: [deckParams.bundled.pathOpacity],
-                    getWidth: [deckParams.bundled.pathWidth],
-                    getPath: [globalTripData[globalTripData.length - 1]?.path.length, deckParams.bundled.precision]
-                }
-            }));
+            layers.push(...getBundleLayers(offset));
         } else {
             // STANDARD PATHS
             layers.push(new deck.PathLayer({
-                id: 'static-paths',
+                id: 'paths',
                 data: globalTripData,
                 getPath: d => d.path,
                 getColor: d => {
@@ -1130,73 +1156,192 @@
                     }
                     return [...d.color, alpha];
                 },
+                transitions: {
+                    getPath: 600 // paths will physically slide into the bundled center
+                },
                 getWidth: deckParams.paths.width,
                 widthMinPixels: deckParams.paths.width,
                 capRounded: true,
                 updateTriggers: {
                     getColor: [offset, deckParams.paths.opacity, deckParams.paths.opacity_static],
                     getWidth: [deckParams.paths.width],
+                    getPath: [globalTripData[globalTripData.length - 1]?.path.length, viewMode,  deckParams.bundled.precision, deckParams.bundled.weight]
+                }
+            }));
+
+
+            layers.push(new deck.TripsLayer({
+                id: `trips-shadow-${mode}`,
+                data: globalTripData,
+                // We offset the path coordinates slightly for the shadow effect
+                getPath: d => d.shadowPath,
+                getTimestamps: d => isAggregate ? d.timestampsAggregate : d.timestampsLinear,
+                getColor: [255, 255, 255],
+                opacity: deckParams.trips.shadowOpacity * visibility,
+                widthMinPixels: deckParams.trips.shadowWidth,
+                visible: visibility,
+                trailLength: calculatedTrail,
+                currentTime: offset,
+                parameters: {
+                    blendFunc: [770, 1],
+                    blendEquation: 32774,
+                    depthTest: false
+                },updateTriggers: {
+                    getTimestamps: [isAggregate],
+                    currentTime: [offset],
+                    widthMinPixels: [deckParams.trips.shadowWidth],
+                    trailLength: [deckParams.trips.trailLength],
+                    opacity: [visibility, deckParams.trips.shadowOpacity],
+                    getPath: [
+                        deckParams.shadowOffset,
+                        globalTripData[globalTripData.length - 1]?.path.length]
+                }
+            }));
+
+            layers.push(new deck.TripsLayer({
+                id: `trips-core-${mode}`,
+                data: globalTripData,
+                getPath: d => d.path,
+                getTimestamps: d => isAggregate ? d.timestampsAggregate : d.timestampsLinear,
+                getColor: d => [...d.color, deckParams.trips.cometOpacity],
+                opacity: deckParams.trips.cometOpacity * visibility,
+                widthMinPixels: deckParams.trips.cometWidth,
+                trailLength: calculatedTrail,
+                currentTime: offset,
+                updateTriggers: {
+                    getColor: [deckParams.trips.cometOpacity],
+                    widthMinPixels: [deckParams.trips.cometWidth],
+                    trailLength: [deckParams.trips.trailLength],
+                    getTimestamps: [isAggregate],
+                    currentTime: [offset],
+                    opacity: [visibility, deckParams.trips.cometOpacity],
                     getPath: [globalTripData[globalTripData.length - 1]?.path.length]
                 }
             }));
+
         }
-        const mode = isAggregate ? 'agg' : 'lin';
-        const visibility = !timelineControl.isIdle();
-        if (!globalTripData || globalTripData.length === 0) return;
-
-        layers.push(new deck.TripsLayer({
-            id: `trips-shadow-${mode}`,
-            data: globalTripData,
-            // We offset the path coordinates slightly for the shadow effect
-            getPath: d => d.shadowPath,
-            getTimestamps: d => isAggregate ? d.timestampsAggregate : d.timestampsLinear,
-            getColor: [255, 255, 255],
-            opacity: deckParams.trips.shadowOpacity * visibility,
-            widthMinPixels: deckParams.trips.shadowWidth,
-            trailLength: calculatedTrail,
-            currentTime: offset,
-            parameters: {
-                blendFunc: [770, 1],
-                blendEquation: 32774,
-                depthTest: false
-            },updateTriggers: {
-                getTimestamps: [isAggregate],
-                currentTime: [offset],
-                widthMinPixels: [deckParams.trips.shadowWidth],
-                trailLength: [deckParams.trips.trailLength],
-                opacity: [visibility, deckParams.trips.shadowOpacity],
-                getPath: [
-                    deckParams.shadowOffset,
-                    globalTripData[globalTripData.length - 1]?.path.length]
-            }
-        }));
-
-        layers.push(new deck.TripsLayer({
-            id: `trips-core-${mode}`,
-            data: globalTripData,
-            getPath: d => d.path,
-            getTimestamps: d => isAggregate ? d.timestampsAggregate : d.timestampsLinear,
-            getColor: d => [...d.color, deckParams.trips.cometOpacity],
-            opacity: deckParams.trips.cometOpacity * visibility,
-            widthMinPixels: deckParams.trips.cometWidth,
-            trailLength: calculatedTrail,
-            currentTime: offset,
-            updateTriggers: {
-                getColor: [deckParams.trips.cometOpacity],
-                widthMinPixels: [deckParams.trips.cometWidth],
-                trailLength: [deckParams.trips.trailLength],
-                getTimestamps: [isAggregate],
-                currentTime: [offset],
-                opacity: [visibility, deckParams.trips.cometOpacity],
-                getPath: [globalTripData[globalTripData.length - 1]?.path.length]
-            }
-        }));
         layers.push(...getVisitLayers(offset));
         layers.push(...photoClient.getLayers(offset, viewState));
 
         deckOverlay.setProps({layers});
     }
 
+    function getBundleLayers(offset) {
+        const isAggregate = document.getElementById('aggregate-toggle')?.checked || false;
+        const totalTimeSpanSec = isAggregate ? 24 * 60 * 60 : globalMaxTimestamp - globalMinTimestamp;
+        const calculatedTrail = Math.max(1800, totalTimeSpanSec * 0.02);
+        const mode = isAggregate ? 'agg' : 'lin';
+        const visibility = !timelineControl.isIdle();
+        const layers = [];
+        console.log(globalTripData[0].path.length, globalTripData[0].snappedPath.length, globalTripData[0].timestampsLinear.length, globalTripData[0].timestampsAggregate.length );
+
+        if (globalTripData.length === 0 || globalTripData[0].snappedPath.length === 0) return layers;
+        // 2. The "Core" - Narrow, higher opacity, keeps the color saturated
+        layers.push(new deck.PathLayer({
+            id: 'bundled-core',
+            data: globalTripData,
+            getPath: d => d.snappedPath,
+            positionFormat: 'XY',
+            getColor: d => [...d.color, deckParams.bundled.coreOpacity],
+            getWidth: deckParams.bundled.coreWidth,
+            widthMinPixels: 2,
+            parameters: {
+                blendFunc: [770, 771],
+                blendEquation: 32774,
+                depthTest: false
+            },
+            updateTriggers: {
+                data: [globalTripData.length],
+                getPath: [globalTripData[globalTripData.length - 1]?.snappedPath?.length, deckParams.bundled.precision, deckParams.bundled.weight],
+                getWidth: [deckParams.bundled.coreWidth],
+                getColor: [deckParams.bundled.coreOpacity]
+            }
+        }));
+
+        layers.push(new deck.PathLayer({
+            id: 'paths',
+            data: globalTripData,
+            getPath: d => d.snappedPath,
+            positionFormat: 'XY',
+            getWidth: deckParams.bundled.pathWidth,
+            widthMinPixels: 2,
+            getColor: d => [...d.color, deckParams.bundled.pathOpacity],
+            parameters: {
+                blendFunc: [770, 1], // GL_SRC_ALPHA, GL_ONE
+                blendEquation: 32774 // GL_FUNC_ADD
+            },
+            transitions: {
+                getPath: 600
+            },
+            capRounded: true,
+            jointRounded: true,
+            updateTriggers: {
+                getColor: [deckParams.bundled.pathOpacity],
+                getWidth: [deckParams.bundled.pathWidth],
+                getPath: [globalTripData[globalTripData.length - 1]?.snappedPath.length, deckParams.bundled.precision, deckParams.bundled.weight]
+            }
+        }));
+
+        // Animated Trail
+        layers.push(new deck.TripsLayer({
+            id: `trips-shadow-${mode}`,
+            data: globalTripData,
+            getPath: d => d.snappedPath,
+            positionFormat: 'XY',
+            getTimestamps: d => isAggregate ? d.timestampsAggregate : d.timestampsLinear,
+            getColor: [255, 255, 255],
+            opacity: deckParams.bundled.shadowOpacity,
+            widthMinPixels: deckParams.bundled.shadowWidth,
+            visible: visibility,
+            trailLength: calculatedTrail / 5  * 1.2,
+            currentTime: offset,
+            parameters: {
+                blendFunc: [770, 1],
+                blendEquation: 32774,
+                depthTest: false
+            },updateTriggers: {
+                visible: [visibility],
+                getTimestamps: [isAggregate],
+                widthMinPixels: [deckParams.bundled.shadowWidth],
+                trailLength: [calculatedTrail],
+                opacity: [visibility, deckParams.bundled.shadowOpacity],
+                getPath: [
+                    deckParams.shadowOffset,
+                    globalTripData[globalTripData.length - 1]?.path.length]
+
+            }
+        }));
+
+        layers.push(new deck.TripsLayer({
+            id: `trips-core-${mode}`,
+            data: globalTripData,
+            getPath: d => d.snappedPath,
+            positionFormat: 'XY',
+            getTimestamps: d => isAggregate ? d.timestampsAggregate : d.timestampsLinear,
+            getColor: d => d.color,
+            opacity: deckParams.bundled.cometOpacity,
+            visible: visibility,
+            widthMinPixels: deckParams.bundled.cometWidth,
+            trailLength: calculatedTrail / 5,
+            currentTime: offset,
+            // parameters: {
+            //     depthTest: false,
+            //     blendFunc: [770, 1],
+            //     blendEquation: 32774
+            // },
+            //
+            updateTriggers: {
+                // Only trigger on structural changes, not time changes
+                getPath: [deckParams.bundled.weight, deckParams.bundled.precision],
+                getTimestamps: [isAggregate],
+                opacity: [deckParams.bundled.cometOpacity],
+                widthMinPixels: [deckParams.bundled.cometWidth],
+                visible: [visibility]
+            }
+        }));
+
+        return layers;
+    }
     function getVisitLayers(offset) {
         const totalTimeSpanSec = globalMaxTimestamp - globalMinTimestamp;
         const oneDaySec = 86400;
@@ -2036,7 +2181,6 @@
                 const endTime = entry.dataset.end;
 
                 if (isTrip) {
-                    debugger
                     highlightTimes = [Math.floor(new Date(startTime).getTime() / 1000 - globalMinTimestamp), Math.floor(new Date(endTime).getTime() / 1000 - globalMinTimestamp)];
                     updateTripsLayer(0)
                 } else {
@@ -2267,8 +2411,6 @@
             toggleBtn.classList.add('active');
         }
     }
-
-
 </script>
 
 </body>

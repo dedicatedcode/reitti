@@ -135,26 +135,21 @@ class MapCustomization {
     <div id="tab-bundled" class="tab-content" style="display: none;">
         <div style="margin-bottom: 10px;">
             <label for="bundled-precision">Bundled Precision (degrees):</label>
-            <input type="range" id="bundled-precision" min="0.00001" max="0.001" value="0.0001" step="0.00001"
+            <input type="range" id="bundled-precision" min="0.0001" max="0.1" value="0.0005" step="0.0001"
                    style="width: 100%;">
             <span id="bundled-precision-value">0.0001</span>
         </div>
-
+        
         <div style="margin-bottom: 10px;">
-            <label for="bundled-aura-width">Aura Width (pixels):</label>
-            <input type="range" id="bundled-aura-width" min="1" max="30" value="24" step="1" style="width: 100%;">
-            <span id="bundled-aura-width-value">24</span>
-        </div>
-
-        <div style="margin-bottom: 10px;">
-            <label for="bundled-aura-opacity">Aura Opacity (0-255):</label>
-            <input type="range" id="bundled-aura-opacity" min="0" max="255" value="15" step="5" style="width: 100%;">
-            <span id="bundled-aura-opacity-value">15</span>
+            <label for="bundled-weight">Bundled Weight:</label>
+            <input type="range" id="bundled-weight" min="0" max="100" value="0.5" step="0.1"
+                   style="width: 100%;">
+            <span id="bundled-weight-value">0.05</span>
         </div>
 
         <div style="margin-bottom: 10px;">
             <label for="bundled-core-width">Core Width (pixels):</label>
-            <input type="range" id="bundled-core-width" min="1" max="20" value="8" step="1" style="width: 100%;">
+            <input type="range" id="bundled-core-width" min="0" max="20" value="8" step="0.1" style="width: 100%;">
             <span id="bundled-core-width-value">8</span>
         </div>
 
@@ -166,7 +161,7 @@ class MapCustomization {
 
         <div style="margin-bottom: 10px;">
             <label for="bundled-path-width">Path Width (pixels):</label>
-            <input type="range" id="bundled-path-width" min="1" max="20" value="6" step="1" style="width: 100%;">
+            <input type="range" id="bundled-path-width" min="0" max="20" value="6" step="0.1" style="width: 100%;">
             <span id="bundled-path-width-value">6</span>
         </div>
 
@@ -174,7 +169,32 @@ class MapCustomization {
             <label for="bundled-path-opacity">Path Opacity (0-255):</label>
             <input type="range" id="bundled-path-opacity" min="0" max="255" value="30" step="5" style="width: 100%;">
             <span id="bundled-path-opacity-value">30</span>
+        </div>        
+        
+        <div style="margin-bottom: 10px;">
+            <label for="bundled-comet-width">Comet Width (pixels):</label>
+            <input type="range" id="bundled-comet-width" min="0" max="20" value="6" step="0.1" style="width: 100%;">
+            <span id="bundled-comet-width-value">6</span>
         </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="bundled-comet-opacity">Comet Opacity (0-255):</label>
+            <input type="range" id="bundled-comet-opacity" min="0" max="255" value="30" step="5" style="width: 100%;">
+            <span id="bundled-comet-opacity-value">30</span>
+        </div>        
+        
+        <div style="margin-bottom: 10px;">
+            <label for="bundled-shadow-width">Shadow Width (pixels):</label>
+            <input type="range" id="bundled-shadow-width" min="0" max="20" value="6" step="0.1" style="width: 100%;">
+            <span id="bundled-shadow-width-value">6</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="bundled-shadow-opacity">Shadow Opacity (0-255):</label>
+            <input type="range" id="bundled-shadow-opacity" min="0" max="255" value="30" step="5" style="width: 100%;">
+            <span id="bundled-shadow-opacity-value">30</span>
+        </div>        
+        
     </div>
 
     <!-- Heatmap Tab -->
@@ -236,12 +256,15 @@ class MapCustomization {
 
         // Bundled
         document.getElementById('bundled-precision-value').textContent = deckParams.bundled.precision;
-        document.getElementById('bundled-aura-width-value').textContent = deckParams.bundled.auraWidth;
-        document.getElementById('bundled-aura-opacity-value').textContent = deckParams.bundled.auraOpacity;
+        document.getElementById('bundled-weight-value').textContent = deckParams.bundled.weight;
         document.getElementById('bundled-core-width-value').textContent = deckParams.bundled.coreWidth;
         document.getElementById('bundled-core-opacity-value').textContent = deckParams.bundled.coreOpacity;
         document.getElementById('bundled-path-width-value').textContent = deckParams.bundled.pathWidth;
         document.getElementById('bundled-path-opacity-value').textContent = deckParams.bundled.pathOpacity;
+        document.getElementById('bundled-comet-width-value').textContent = deckParams.bundled.cometWidth;
+        document.getElementById('bundled-comet-opacity-value').textContent = deckParams.bundled.cometOpacity;
+        document.getElementById('bundled-shadow-width-value').textContent = deckParams.bundled.shadowWidth;
+        document.getElementById('bundled-shadow-opacity-value').textContent = deckParams.bundled.shadowOpacity;
 
         // Heatmap
         document.getElementById('heatmap-radius-value').textContent = deckParams.heatmap.radius;
@@ -269,142 +292,223 @@ class MapCustomization {
             });
         });
 
+        document.getElementById('trail-length').value = deckParams.trips.trailLength;
+        document.getElementById('comet-width').value = deckParams.trips.cometWidth;
+        document.getElementById('comet-opacity').value = deckParams.trips.cometOpacity;
+        document.getElementById('shadow-width').value = deckParams.trips.shadowWidth;
+        document.getElementById('shadow-opacity').value = deckParams.trips.shadowOpacity;
+        document.getElementById('shadow-offset-x').value = deckParams.trips.shadowOffset[0];
+        document.getElementById('shadow-offset-y').value = deckParams.trips.shadowOffset[1];
+
+        // Visits
+        document.getElementById('visit-radius').value = deckParams.visits.radius;
+        document.getElementById('visit-opacity').value = deckParams.visits.opacity;
+        document.getElementById('visit-polygon-opacity').value = deckParams.visits.polygonOpacity;
+        document.getElementById('visit-line-width').value = deckParams.visits.lineWidth;
+        document.getElementById('visit-min-zoom').value = deckParams.visits.minZoom;
+
+        // Paths
+        document.getElementById('path-width').value = deckParams.paths.width;
+        document.getElementById('path-opacity').value = deckParams.paths.opacity;
+        document.getElementById('path-opacity_static').value = deckParams.paths.opacity_static;
+
+        // Bundled
+        document.getElementById('bundled-precision').value = deckParams.bundled.precision;
+        document.getElementById('bundled-weight').value = deckParams.bundled.weight;
+        document.getElementById('bundled-core-width').value = deckParams.bundled.coreWidth;
+        document.getElementById('bundled-core-opacity').value = deckParams.bundled.coreOpacity;
+        document.getElementById('bundled-path-width').value = deckParams.bundled.pathWidth;
+        document.getElementById('bundled-path-opacity').value = deckParams.bundled.pathOpacity;
+        document.getElementById('bundled-comet-width').value = deckParams.bundled.cometWidth;
+        document.getElementById('bundled-comet-opacity').value = deckParams.bundled.cometOpacity;
+        document.getElementById('bundled-shadow-width').value = deckParams.bundled.shadowWidth;
+        document.getElementById('bundled-shadow-opacity').value = deckParams.bundled.shadowOpacity;
+
+        // Heatmap
+        document.getElementById('heatmap-radius').value = deckParams.heatmap.radius;
+        document.getElementById('heatmap-intensity').value = deckParams.heatmap.intensity;
+        document.getElementById('heatmap-threshold').value = deckParams.heatmap.threshold;
+        document.getElementById('heatmap-opacity').value = deckParams.heatmap.opacity;
+
         // Event listeners for all sliders
         document.getElementById('trail-length').oninput = (e) => {
             deckParams.trips.trailLength = parseInt(e.target.value);
-            this.emit('update-deck-params', deckParams);
+            this._updateSliderDisplays();
+            this.emit('update-deck-params', {params: this.deckParams});
         };
 
         document.getElementById('comet-width').oninput = (e) => {
             deckParams.trips.cometWidth = parseInt(e.target.value);
-            this.emit('update-deck-params', deckParams);
-
+            this._updateSliderDisplays();
+            this.emit('update-deck-params', {params: this.deckParams});
         };
 
         document.getElementById('comet-opacity').oninput = (e) => {
             deckParams.trips.cometOpacity = parseInt(e.target.value);
-            this.emit('update-deck-params', deckParams);
+            this._updateSliderDisplays();
+            this.emit('update-deck-params', {params: this.deckParams});
 
         };
 
         document.getElementById('shadow-width').oninput = (e) => {
             deckParams.trips.shadowWidth = parseInt(e.target.value);
-            this.emit('update-deck-params', deckParams);
+            this._updateSliderDisplays();
+            this.emit('update-deck-params', {params: this.deckParams});
 
         };
 
         document.getElementById('shadow-opacity').oninput = (e) => {
             deckParams.trips.shadowOpacity = parseInt(e.target.value);
-            this.emit('update-deck-params', deckParams);
+            this._updateSliderDisplays();
+            this.emit('update-deck-params', {params: this.deckParams});
 
         };
 
         document.getElementById('shadow-offset-x').oninput = (e) => {
             deckParams.trips.shadowOffset[0] = parseFloat(e.target.value);
-            this.emit('update-deck-params', deckParams);
+            this._updateSliderDisplays();
+            this.emit('update-deck-params', {params: this.deckParams});
 
         };
 
         document.getElementById('shadow-offset-y').oninput = (e) => {
             deckParams.trips.shadowOffset[1] = parseFloat(e.target.value);
-            this.emit('update-deck-params', deckParams);
+            this._updateSliderDisplays();
+            this.emit('update-deck-params', {params: this.deckParams});
 
         };
 
         document.getElementById('visit-radius').oninput = (e) => {
             deckParams.visits.radius = parseInt(e.target.value);
-            this.emit('update-deck-params', deckParams);
+            this._updateSliderDisplays();
+            this.emit('update-deck-params', {params: this.deckParams});
 
         };
 
         document.getElementById('visit-opacity').oninput = (e) => {
             deckParams.visits.opacity = parseInt(e.target.value);
+            this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
         };
 
         document.getElementById('visit-polygon-opacity').oninput = (e) => {
             deckParams.visits.polygonOpacity = parseInt(e.target.value);
+            this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
         };
 
         document.getElementById('visit-line-width').oninput = (e) => {
             deckParams.visits.lineWidth = parseInt(e.target.value);
+            this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
         };
 
         document.getElementById('visit-min-zoom').oninput = (e) => {
             deckParams.visits.minZoom = parseInt(e.target.value);
+            this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
         };
 
         document.getElementById('path-width').oninput = (e) => {
             deckParams.paths.width = parseInt(e.target.value);
+            this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
         };
 
         document.getElementById('path-opacity').oninput = (e) => {
             deckParams.paths.opacity = parseInt(e.target.value);
+            this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
         };
 
         document.getElementById('path-opacity_static').oninput = (e) => {
             deckParams.paths.opacity_static = parseInt(e.target.value);
+            this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
         };
 
         document.getElementById('bundled-precision').oninput = (e) => {
             deckParams.bundled.precision = parseFloat(e.target.value);
-            this.emit('update-deck-params', {params: this.deckParams});
+            this._updateSliderDisplays();
+            this.emit('update-deck-params', {params: this.deckParams, field: 'bundled.precision'});
         };
 
-        document.getElementById('bundled-aura-width').oninput = (e) => {
-            deckParams.bundled.auraWidth = parseInt(e.target.value);
-            this.emit('update-deck-params', {params: this.deckParams});
-        };
-
-        document.getElementById('bundled-aura-opacity').oninput = (e) => {
-            deckParams.bundled.auraOpacity = parseInt(e.target.value);
-            this.emit('update-deck-params', {params: this.deckParams});
+        document.getElementById('bundled-weight').oninput = (e) => {
+            deckParams.bundled.weight = parseFloat(e.target.value);
+            this._updateSliderDisplays();
+            this.emit('update-deck-params', {params: this.deckParams, field: 'bundled.weight'});
         };
 
         document.getElementById('bundled-core-width').oninput = (e) => {
-            deckParams.bundled.coreWidth = parseInt(e.target.value);
+            deckParams.bundled.coreWidth = parseFloat(e.target.value);
+            this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
         };
 
         document.getElementById('bundled-core-opacity').oninput = (e) => {
-            deckParams.bundled.coreOpacity = parseInt(e.target.value);
+            deckParams.bundled.coreOpacity = parseFloat(e.target.value);
+            this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
         };
 
         document.getElementById('bundled-path-width').oninput = (e) => {
-            deckParams.bundled.pathWidth = parseInt(e.target.value);
+            deckParams.bundled.pathWidth = parseFloat(e.target.value);
+            this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
         };
 
         document.getElementById('bundled-path-opacity').oninput = (e) => {
-            deckParams.bundled.pathOpacity = parseInt(e.target.value);
+            deckParams.bundled.pathOpacity = parseFloat(e.target.value);
+            this._updateSliderDisplays();
+            this.emit('update-deck-params', {params: this.deckParams});
+        };
+
+        document.getElementById('bundled-comet-width').oninput = (e) => {
+            deckParams.bundled.cometWidth = parseFloat(e.target.value);
+            this._updateSliderDisplays();
+            this.emit('update-deck-params', {params: this.deckParams});
+        };
+
+        document.getElementById('bundled-comet-opacity').oninput = (e) => {
+            deckParams.bundled.cometOpacity = parseFloat(e.target.value);
+            this._updateSliderDisplays();
+            this.emit('update-deck-params', {params: this.deckParams});
+        };
+
+        document.getElementById('bundled-shadow-width').oninput = (e) => {
+            deckParams.bundled.shadowWidth = parseFloat(e.target.value);
+            this._updateSliderDisplays();
+            this.emit('update-deck-params', {params: this.deckParams});
+        };
+
+        document.getElementById('bundled-shadow-opacity').oninput = (e) => {
+            deckParams.bundled.shadowOpacity = parseFloat(e.target.value);
+            this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
         };
 
         // Heatmap event listeners
         document.getElementById('heatmap-radius').oninput = (e) => {
-            deckParams.heatmap.radius = parseInt(e.target.value);
+            deckParams.heatmap.radius = parseFloat(e.target.value);
+            this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
         };
 
         document.getElementById('heatmap-intensity').oninput = (e) => {
             deckParams.heatmap.intensity = parseFloat(e.target.value);
+            this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
         };
 
         document.getElementById('heatmap-threshold').oninput = (e) => {
             deckParams.heatmap.threshold = parseFloat(e.target.value);
+            this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
         };
 
         document.getElementById('heatmap-opacity').oninput = (e) => {
-            deckParams.heatmap.opacity = parseInt(e.target.value);
+            deckParams.heatmap.opacity = parseFloat(e.target.value);
+            this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
         };
 
@@ -414,6 +518,8 @@ class MapCustomization {
             this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
         };
+
+        this._updateSliderDisplays()
 
     }
 
