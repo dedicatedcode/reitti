@@ -90,19 +90,19 @@ class TimelineControl {
             this.maxTimestamp = config.maxTimestamp;
             this.aggregate = config.aggregate;
             this.slider.step = 1;
-            this.slider.min = 0;
-            this.slider.max = this.maxTimestamp - this.minTimestamp;
+            this.slider.min = config.minTimestamp;
+            this.slider.max = this.maxTimestamp;
             this.setOffset(0);
         }
     }
 
     setOffset(offset) {
-        this.slider.value = offset;
+        this.slider.value = this.minTimestamp + offset;
         this._updateLabels(offset);
     }
 
     getOffset() {
-        return this.slider.value;
+        return this.slider.value - this.minTimestamp;
     }
 
     getSelectedDays() {
@@ -119,7 +119,7 @@ class TimelineControl {
     }
 
     isIdle() {
-        return parseFloat(this.slider.value) === 0;
+        return (this.slider.value - this.minTimestamp) === 0;
     }
 
     hide() {

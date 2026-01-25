@@ -647,6 +647,7 @@
 
     const timelineControl = new TimelineControl(document.getElementById('timeline-controls'), map);
     timelineControl.on('offsetChanged', (data) => {
+        console.log(`Timeline offset changed to ${data.offset}`);
         for (const manager of gpsDataManagers) {
             updateTripsLayer(manager, data.offset);
         }
@@ -1064,6 +1065,7 @@
         let multiplier = 0;
 
         for (const range of visit.activeRanges) {
+            console.log(range.start, range.end, offset);
             if (offset < range.start) {
                 // Future visit: do nothing
                 break;
@@ -1659,7 +1661,7 @@
     function loadTimelineData(requestedStart, requestedEnd) {
         gpsDataManagers = [];
         userConfigs.forEach(config => {
-            const gpsDataManager = new GpsDataManager(config);
+            const gpsDataManager = new GpsDataManager(config, getUserTimezone());
             gpsDataManagers.push(gpsDataManager)
             console.log('Loading timeline data for user:', JSON.stringify(config));
             gpsDataManager.load(requestedStart, requestedEnd, (current, total, stage) => {
@@ -1734,13 +1736,16 @@
 
                 stopAnimation();
 
-                // Timeline content has been updated, update map markers
                 const params = getTimelineParams();
-                const requestedStart = Math.floor(new Date(params.startDate).getTime() / 1000);
-                const requestedEnd = Math.floor(new Date(params.endDate).getTime() / 1000);
+                const startDate = new Date(params.startDate);
+                startDate.setHours(0, 0, 0, 0);
+                const requestedStartUTC = Math.floor(startDate.getTime() / 1000);
+                const endDate = new Date(params.endDate);
+                endDate.setHours(23, 59, 59);
+                const requestedEndUTC = Math.floor(endDate.getTime() / 1000);
                 photoClient.updatePhotosForRange(params.startDate, params.endDate, getUserTimezone());
-                timelineControl.setup({minTimestamp: requestedStart, maxTimestamp: requestedEnd, aggregate: document.getElementById('aggregate-toggle').checked });
-                loadTimelineData(requestedStart, requestedEnd);
+                timelineControl.setup({minTimestamp: requestedStartUTC, maxTimestamp: requestedEndUTC, aggregate: document.getElementById('aggregate-toggle').checked });
+                loadTimelineData(requestedStartUTC, requestedEndUTC);
 
 
                 // Initialize scroll indicator after timeline is updated

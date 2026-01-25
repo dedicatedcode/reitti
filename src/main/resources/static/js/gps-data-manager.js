@@ -1,9 +1,14 @@
 class GpsDataManager {
-    constructor(userConfig) {
+    constructor(userConfig, timeZone) {
         this.config = userConfig;
         this.color = this._hexToRgb(userConfig.color || '#3388ff');
         this.id = userConfig.id || 'default';
 
+        this.timeZone = timeZone || "UTC";
+
+        // Offset Caching to keep the loop fast
+        this._currentOffset = 0;
+        this._lastOffsetCheckTs = -Infinity;
         // 1. Buffers
         this.buffer = new Float32Array(16000 * 5); // Raw: [x, y, ts, tod, dow]
         this.cleanedBuffer = new Float32Array(16000 * 5); // Filtered: [x, y, ts, tod, dow]
@@ -20,15 +25,15 @@ class GpsDataManager {
 
     /**
      * Range-Aware Load
-     * @param {number} requestedStart - Unix timestamp
-     * @param {number} requestedEnd - Unix timestamp
+     * @param {number} startUTC - Unix timestamp
+     * @param {number} endUTC - Unix timestamp
      * @param {Function} onProgress - Progress callback
      */
-    async load(requestedStart, requestedEnd, onProgress) {
+    async load(startUTC, endUTC, onProgress) {
         // 1. Check if we already have this data in memory
         if (this.loadingState === 'complete' &&
-            requestedStart >= this.minTimestamp &&
-            requestedEnd <= this.maxTimestamp) {
+            startUTC >= this.minTimestamp &&
+            endUTC <= this.maxTimestamp) {
 
             console.log("Range already in memory. Skipping fetch.");
             if (onProgress) onProgress(this.cursor, this.totalExpected, 'complete');
@@ -53,14 +58,14 @@ class GpsDataManager {
                 totalDurationSec: p.totalDurationMs / 1000,
                 name: p.place.name,
                 activeRanges: p.visits.map(v => ({
-                    start: Math.floor(new Date(v.startTime).getTime()) - requestedStart,
-                    end: Math.floor(new Date(v.endTime).getTime()) - requestedStart
+                    start: Math.floor(new Date(v.startTime).getTime()) - startUTC,
+                    end: Math.floor(new Date(v.endTime).getTime()) - startUTC
                 })).sort((a, b) => a.start - b.start),
                 originalVisits: p.visits
             }));
             // Update internal range trackers
-            this.minTimestamp = meta.minTimestamp;
-            this.maxTimestamp = meta.maxTimestamp;
+            this.minTimestamp = startUTC;
+            this.maxTimestamp = endUTC;
             this.totalExpected = meta.totalPoints;
 
             // Clear old data to make room for the new range
@@ -195,20 +200,25 @@ class GpsDataManager {
         }
     }
 
-    _addPoint(lng, lat, ts) {
-        if (this.minTimestamp === null) this.minTimestamp = ts;
+    _addPoint(lng, lat, tsUtc) {
+        if (this.minTimestamp === null) this.minTimestamp = tsUtc;
         this._ensureCapacity(this.cursor + 1);
 
-        const date = new Date(ts * 1000);
-        const dayOfWeek = date.getDay(); // 0 (Sun) to 6 (Sat)
-        const tsLinear = ts - this.minTimestamp;
-        const tsAggregate = ts % 86400;
-
+        // This handles DST transitions or long-distance travel
+        if (Math.abs(tsUtc - this._lastOffsetCheckTs) > 3600) {
+            this._currentOffset = this._getOffsetSeconds(tsUtc);
+            this._lastOffsetCheckTs = tsUtc;
+        }
+        const date = new Date(tsUtc * 1000);
+        const tsLinear = tsUtc - this.minTimestamp;
+        const localTs = tsUtc + this._currentOffset;
+        const tsAggregate = ((localTs % 86400) + 86400) % 86400;
+        const dayOfWeek = new Date(localTs * 1000).getUTCDay();
         // Write to Raw Buffer
         this._writeToBuffer(this.buffer, this.cursor++, lng, lat, tsLinear, tsAggregate, dayOfWeek);
 
         // Write to Cleaned Buffer (Spatial Redundancy Check)
-        if (!this._isRedundant(lng, lat, ts)) {
+        if (!this._isRedundant(lng, lat, tsUtc)) {
             this._writeToBuffer(this.cleanedBuffer, this.cleanedCursor++, lng, lat, tsLinear, tsAggregate, dayOfWeek);
         }
     }
@@ -243,6 +253,12 @@ class GpsDataManager {
         }
     }
 
+    _getOffsetSeconds(tsUtc) {
+        // Get the offset for this specific second in the target timezone
+        const instant = Temporal.Instant.fromEpochMilliseconds(tsUtc * 1000);
+        const zonedDateTime = instant.toZonedDateTimeISO(this.timeZone);
+        return zonedDateTime.offsetNanoseconds / 1e9;
+    }
     async _generateBundledPath(onProgress, precisionValue = 0.0005, weight = 0.5) {
         const precision = 1 / precisionValue;
         const TABLE_SIZE = 4194304;
