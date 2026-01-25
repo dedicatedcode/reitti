@@ -41,37 +41,58 @@ class TimelineControl {
 
     _init() {
         this.slider.oninput = (e) => {
-            const offset = parseInt(e.target.value);
-            this._updateLabels(offset);
-            this.emit('offsetChanged', {offset: offset});
+            const value = parseInt(e.target.value);
+            this._updateLabels(value - this.minTimestamp);
+            this.emit('offsetChanged', {offset: value - this.minTimestamp, value: value});
         };
     }
 
     _updateLabels(offset) {
-        const absoluteSeconds = this.minTimestamp + parseInt(offset);
-        const dateObj = new Date(absoluteSeconds * 1000);
+        const tz = getUserTimezone() || 'UTC';
+        const locale = window.userSettings.selectedLocale || 'de-DE';
+        const numericOffset = parseInt(offset);
+
+        let dateObj;
+
         if (this.aggregate) {
-            this.dateLabel.innerText = '';
-            this.timeLabel.innerText = dateObj.toLocaleTimeString(window.userSettings.selectedLocale, {
+            dateObj = new Date(numericOffset * 1000);
+            this.dateLabel.innerText = 'Daily Pattern';
+            this.timeLabel.innerText = dateObj.toLocaleTimeString(locale, {
                 hour: '2-digit', minute: '2-digit', timeZone: 'UTC'
             });
-            this.startLabel.innerText = "Start"
-            this.endLabel.innerText = "End"
+
+            this.startLabel.innerText = "00:00";
+            this.endLabel.innerText = "23:59";
+
         } else {
-            this.dateLabel.innerText = dateObj.toLocaleDateString(window.userSettings.selectedLocale, {
-                day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC'
+            const absoluteSeconds = this.minTimestamp + numericOffset;
+            dateObj = new Date(absoluteSeconds * 1000);
+
+            this.dateLabel.innerText = dateObj.toLocaleDateString(locale, {
+                day: '2-digit', month: 'short', year: 'numeric', timeZone: tz
             });
-            this.timeLabel.innerText = dateObj.toLocaleTimeString(window.userSettings.selectedLocale, {
-                hour: '2-digit', minute: '2-digit', timeZone: 'UTC'
+
+            this.timeLabel.innerText = dateObj.toLocaleTimeString(locale, {
+                hour: '2-digit', minute: '2-digit', timeZone: tz, hour12: false
             });
-            this.startLabel.innerText = this._formatDateTime(this.minTimestamp * 1000);
-            this.endLabel.innerText = this._formatDateTime(this.maxTimestamp * 1000);
+
+            // Use your helper for the bounds
+            this.startLabel.innerText = this._formatDateTime(this.minTimestamp * 1000, tz);
+            this.endLabel.innerText = this._formatDateTime(this.maxTimestamp * 1000, tz);
         }
-
     }
-
-    _formatDateTime(ts) {
-        return new Date(ts).toLocaleDateString(window.userSettings.selectedLocale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    /**
+     * Helper to ensure boundary labels also respect the selected timezone
+     */
+    _formatDateTime(ms, tz) {
+        return new Date(ms).toLocaleString(window.userSettings.selectedLocale, {
+            day: '2-digit',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: tz,
+            hour12: false
+        });
     }
 
     setup(config) {

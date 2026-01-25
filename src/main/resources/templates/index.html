@@ -647,9 +647,8 @@
 
     const timelineControl = new TimelineControl(document.getElementById('timeline-controls'), map);
     timelineControl.on('offsetChanged', (data) => {
-        console.log(`Timeline offset changed to ${data.offset}`);
         for (const manager of gpsDataManagers) {
-            updateTripsLayer(manager, data.offset);
+            updateTripsLayer(manager, data.value);
         }
     })
 
@@ -943,7 +942,6 @@
         if (places === undefined) {
             return [];
         }
-        console.log(JSON.stringify(places));
         return [
             // 1. Polygon Layer
             new deck.PolygonLayer({
@@ -1065,7 +1063,6 @@
         let multiplier = 0;
 
         for (const range of visit.activeRanges) {
-            console.log(range.start, range.end, offset);
             if (offset < range.start) {
                 // Future visit: do nothing
                 break;
