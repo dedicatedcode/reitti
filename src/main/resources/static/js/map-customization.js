@@ -222,6 +222,11 @@ class MapCustomization {
             <input type="range" id="heatmap-opacity" min="0" max="255" value="200" step="5" style="width: 100%;">
             <span id="heatmap-opacity-value">200</span>
         </div>
+        <div style="margin-bottom: 10px;">
+            <label for="heatmap-persistence">Opacity (0-255):</label>
+            <input type="range" id="heatmap-persistence" min="0" max="3600" value="900" step="5" style="width: 100%;">
+            <span id="heatmap-persistence-value">900</span>
+        </div>
     </div>
 
     <button id="reset-params"
@@ -271,6 +276,7 @@ class MapCustomization {
         document.getElementById('heatmap-intensity-value').textContent = deckParams.heatmap.intensity;
         document.getElementById('heatmap-threshold-value').textContent = deckParams.heatmap.threshold;
         document.getElementById('heatmap-opacity-value').textContent = deckParams.heatmap.opacity;
+        document.getElementById('heatmap-persistence-value').textContent = deckParams.heatmap.persistence;
     }
 
     _init() {
@@ -329,6 +335,7 @@ class MapCustomization {
         document.getElementById('heatmap-intensity').value = deckParams.heatmap.intensity;
         document.getElementById('heatmap-threshold').value = deckParams.heatmap.threshold;
         document.getElementById('heatmap-opacity').value = deckParams.heatmap.opacity;
+        document.getElementById('heatmap-persistence').value = deckParams.heatmap.persistence;
 
         // Event listeners for all sliders
         document.getElementById('trail-length').oninput = (e) => {
@@ -508,6 +515,12 @@ class MapCustomization {
 
         document.getElementById('heatmap-opacity').oninput = (e) => {
             deckParams.heatmap.opacity = parseFloat(e.target.value);
+            this._updateSliderDisplays();
+            this.emit('update-deck-params', {params: this.deckParams});
+        };
+
+        document.getElementById('heatmap-persistence').oninput = (e) => {
+            deckParams.heatmap.persistence = parseFloat(e.target.value);
             this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
         };

@@ -14,6 +14,16 @@ class TimelineControl {
                 <span id="end-label" style="align-self: end;">--</span>
             </div>
             <div class="slider-container"><input type="range" id="time-slider" min="0" max="100" value="0" step="1">
+            <div id="day-selector" class="toggle-buttons">
+                <button class="btn day-btn active" data-day="0">S</button>
+                <button class="btn day-btn active" data-day="1">M</button>
+                <button class="btn day-btn active" data-day="2">T</button>
+                <button class="btn day-btn active" data-day="3">W</button>
+                <button class="btn day-btn active" data-day="4">T</button>
+                <button class="btn day-btn active" data-day="5">S</button>
+                <button class="btn day-btn active" data-day="6">S</button>
+            </div>
+            </div>
         `;
         this.slider = timeline.getElementsByTagName('input')[0];
         this.startLabel = timeline.getElementsByTagName('span')[0];
@@ -93,6 +103,15 @@ class TimelineControl {
 
     getOffset() {
         return this.slider.value;
+    }
+
+    getSelectedDays() {
+        this.dayButtons = document.getElementsByClassName('day-btn active');
+        const days = [];
+        for (let i = 0; i < this.dayButtons.length; i++) {
+            days.push(parseInt(this.dayButtons[i].dataset.day));
+        }
+        return days;
     }
 
     getMax() {
