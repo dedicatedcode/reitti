@@ -130,6 +130,15 @@ body {
     font-size: 1.4rem;
 }
 
+.statistics-page .navbar {
+    margin-left: 0;
+}
+
+.statistics-page .navigation-container {
+    background-color: rgba(59, 59, 59, 0.68);
+    backdrop-filter: blur(10px);
+}
+
 .navbar i {
     font-size: 1.4rem;
 }
@@ -2643,4 +2652,20 @@ button:disabled {
 }
 .timeband-item.selected:hover::before {
     opacity: 1;
+}
+
+@media (max-width: 900px) {
+    .statistics-page .timeline {
+        width: 24%;
+    }
+
+    .statistics-page .navigation-container {
+        width: 100%;
+    }
+
+    .statistics-page .statistics-content {
+        margin-left: 22%;
+        padding: 72px 1rem 1rem;
+        z-index: 1;
+    }
 }
