@@ -58,8 +58,8 @@ class GpsDataManager {
                 totalDurationSec: p.totalDurationMs / 1000,
                 name: p.place.name,
                 activeRanges: p.visits.map(v => ({
-                    start: Math.floor(new Date(v.startTime).getTime()) - startUTC,
-                    end: Math.floor(new Date(v.endTime).getTime()) - startUTC
+                    start: Math.floor(new Date(v.startTime).getTime() / 1000) - startUTC,
+                    end: Math.floor(new Date(v.endTime).getTime() / 1000) - startUTC
                 })).sort((a, b) => a.start - b.start),
                 originalVisits: p.visits
             }));
@@ -201,7 +201,6 @@ class GpsDataManager {
     }
 
     _addPoint(lng, lat, tsUtc) {
-        if (this.minTimestamp === null) this.minTimestamp = tsUtc;
         this._ensureCapacity(this.cursor + 1);
 
         // This handles DST transitions or long-distance travel
@@ -209,7 +208,6 @@ class GpsDataManager {
             this._currentOffset = this._getOffsetSeconds(tsUtc);
             this._lastOffsetCheckTs = tsUtc;
         }
-        const date = new Date(tsUtc * 1000);
         const tsLinear = tsUtc - this.minTimestamp;
         const localTs = tsUtc + this._currentOffset;
         const tsAggregate = ((localTs % 86400) + 86400) % 86400;

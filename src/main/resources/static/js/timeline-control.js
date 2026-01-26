@@ -126,6 +126,10 @@ class TimelineControl {
         return this.slider.value - this.minTimestamp;
     }
 
+    getValue() {
+        return parseInt(this.slider.value);
+    }
+
     getSelectedDays() {
         this.dayButtons = document.getElementsByClassName('day-btn active');
         const days = [];

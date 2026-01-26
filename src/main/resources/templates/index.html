@@ -634,7 +634,6 @@
     let currentDateRange = null;
 
     let globalMinTimestamp = 0;
-    let globalMaxTimestamp = 0;
 
 
     const map = new maplibregl.Map({
@@ -647,9 +646,9 @@
 
     const timelineControl = new TimelineControl(document.getElementById('timeline-controls'), map);
     timelineControl.on('offsetChanged', (data) => {
-        for (const manager of gpsDataManagers) {
+        gpsDataManagers.forEach(manager => {
             updateTripsLayer(manager, data.value);
-        }
+        })
     })
 
     const mapCustomizationControl = new MapCustomization(document.getElementById('deck-controls'), deckParams);
@@ -714,11 +713,13 @@
 
     let timeMultiplier = 30; // Default: 1 second = 1 minute
 
-    function calculateSpeed(globalMinTimestamp, globalMaxTimestamp) {
+    function calculateTimelineMultiplier() {
+        const params = getTimelineParams();
+
         if (document.getElementById('aggregate-toggle').checked) {
             timeMultiplier = 60 * 60 * 24 / 30;
         } else {
-            const totalSeconds = globalMaxTimestamp - globalMinTimestamp;
+            const totalSeconds = params.startDateUtcSeconds - params.endDateUtcSeconds;
             const targetDuration = 30;
             timeMultiplier = totalSeconds / targetDuration;
             console.log(`Animation speed set to: ${timeMultiplier}x real time`);
@@ -755,7 +756,7 @@
         // 5. Update UI and Map
         timelineControl.setOffset(newValue);
         gpsDataManagers.forEach(manager => {
-            updateTripsLayer(manager, newValue)
+            updateTripsLayer(manager, timelineControl.getValue())
         })
 
         // 6. Request the next frame
@@ -829,7 +830,7 @@
 
         const isAggregate = document.getElementById('aggregate-toggle')?.checked || false;
         const viewMode = document.getElementById('view-mode')?.value || 'LINEAR';
-        const totalTimeSpanSec = isAggregate ? 24 * 60 * 60 : globalMaxTimestamp - globalMinTimestamp;
+        const totalTimeSpanSec = isAggregate ? 24 * 60 * 60 : manager.maxTimestamp - manager.minTimestamp;
         const calculatedTrail = Math.max(1800, totalTimeSpanSec * 0.02);
 
         const mode = isAggregate ? 'agg' : 'lin';
@@ -937,7 +938,9 @@
     }
 
     function getVisitLayers(manager, offset) {
+        console.log('rendering visit layers with offset:', offset)
         const isOverview = timelineControl.isIdle();
+        const currentTime = offset;
         const places = manager.visits;
         if (places === undefined) {
             return [];
@@ -954,7 +957,7 @@
                 onHover: info => updateTooltip(info),
                 visible: isOverview && map.getZoom() > deckParams.visits.minZoom,
                 updateTripsLayer: {
-                    getFillColor: [deckParams.visits.polygonOpacity],
+                    getFillColor: [deckParams.visits.polygonOpacity, currentTime],
                     visible: [isOverview, map.zoom, deckParams.visits.minZoom],
                     data: manager.visits?.length
                 }
@@ -965,17 +968,26 @@
                 getPosition: d => d.coordinates,
                 getRadius: d => {
                     if (isOverview) return deckParams.visits.radius + (Math.pow(d.totalDurationSec || 0, 0.6) * 0.2);
-                    const seconds = getAccumulatedSeconds(d, offset);
+                    const seconds = getAccumulatedSeconds(d, currentTime);
                     return seconds > 0 ? 15 + (Math.pow(seconds, 0.6) * 0.5) : 0;
                 },
-                getFillColor: d => [...manager.color, isOverview ? deckParams.visits.opacity : (getActiveVisitEffect(d, offset).opacity * 140)],
+                getFillColor: d => [...manager.color, isOverview ? deckParams.visits.opacity : (getActiveVisitEffect(d, currentTime).opacity * 140)],
                 pickable: true,
                 onHover: info => updateTooltip(info),
                 visible: !isOverview || map.getZoom() > deckParams.visits.minZoom,
                 updateTriggers: {
-                    getRadius: [offset, isOverview],
-                    getFillColor: [offset, isOverview],
+                    getRadius: [offset, currentTime, isOverview],
+                    getFillColor: [offset, currentTime, isOverview],
                     data: manager.visits?.length
+                },
+                // Optional: Smooth the appearance/disappearance
+                transitions: {
+                    getRadius: {
+                        type: 'spring',
+                        stiffness: 0.1,
+                        damping: 0.15,
+                        enter: d => [0] // Starts at 0 radius when appearing
+                    }
                 }
             }),
 
@@ -997,7 +1009,8 @@
                     return [255,255,255, alpha];
                 },
                 updateTriggers: {
-                    getFillColor: [offset, isOverview],
+                    getFillColor: [offset, currentTime, isOverview],
+                    getLineColor: [offset, currentTime, isOverview],
                     lineWidth: [deckParams.visits.lineWidth],
                     data: manager.visits?.length
                 },
@@ -1057,25 +1070,25 @@
         return accumulated;
     }
 
-    function getActiveVisitEffect(visit, offset) {
-        const exitFadeDuration = 300; // 5 minutes (in seconds) to shrink/fade completely
+    function getActiveVisitEffect(visit, time) {
+        const exitFadeDuration = 3000; // 5 minutes (in seconds) to shrink/fade completely
         let accumulated = 0;
         let multiplier = 0;
 
         for (const range of visit.activeRanges) {
-            if (offset < range.start) {
+            if (time < range.start) {
                 // Future visit: do nothing
                 break;
-            } else if (offset >= range.start && offset <= range.end) {
+            } else if (time >= range.start && time <= range.end) {
                 // Currently visiting: Full size
-                accumulated += (offset - range.start);
+                accumulated += (time - range.start);
                 multiplier = 1.0;
-            } else if (offset > range.end) {
+            } else if (time > range.end) {
                 // Past visit: Add full duration
                 accumulated += (range.end - range.start);
 
                 // Calculate decay: how recently did we leave?
-                const timeSinceLeft = offset - range.end;
+                const timeSinceLeft = time - range.end;
                 const decay = 1.0 - (timeSinceLeft / exitFadeDuration);
 
                 // We take the "freshest" decay. If we just left, multiplier is near 1.
@@ -1129,9 +1142,17 @@
         const timezone = getUserTimezone();
         if (currentDateRange && currentDateRange.startDate && currentDateRange.endDate) {
             // Range mode - use actual range
+            const startDate = new Date(currentDateRange.startDate);
+            startDate.setHours(0, 0, 0, 0);
+            const requestedStartUTCSeconds = Math.floor(startDate.getTime() / 1000);
+            const endDate = new Date(currentDateRange.endDate);
+            endDate.setHours(23, 59, 59);
+            const requestedEndUTCSeconds = Math.floor(endDate.getTime() / 1000);
             return {
                 startDate: currentDateRange.startDate,
+                startDateUtcSeconds: requestedStartUTCSeconds,
                 endDate: currentDateRange.endDate,
+                endDateUtcSeconds: requestedEndUTCSeconds,
                 timezone: timezone
             };
         } else {
@@ -1657,6 +1678,7 @@
 
     function loadTimelineData(requestedStart, requestedEnd) {
         gpsDataManagers = [];
+
         userConfigs.forEach(config => {
             const gpsDataManager = new GpsDataManager(config, getUserTimezone());
             gpsDataManagers.push(gpsDataManager)
@@ -1674,7 +1696,7 @@
                         updateStatus("Optimizing routes: {0} / {1} points", current, total);
                         break;
                     case 'complete':
-                        calculateSpeed(gpsDataManager.minTimestamp, gpsDataManager.maxTimestamp);
+                        calculateTimelineMultiplier();
                         timelineControl.setup({
                             aggregate: document.getElementById('aggregate-toggle').checked,
                             minTimestamp: gpsDataManager.minTimestamp,
@@ -1734,16 +1756,9 @@
                 stopAnimation();
 
                 const params = getTimelineParams();
-                const startDate = new Date(params.startDate);
-                startDate.setHours(0, 0, 0, 0);
-                const requestedStartUTC = Math.floor(startDate.getTime() / 1000);
-                const endDate = new Date(params.endDate);
-                endDate.setHours(23, 59, 59);
-                const requestedEndUTC = Math.floor(endDate.getTime() / 1000);
                 photoClient.updatePhotosForRange(params.startDate, params.endDate, getUserTimezone());
-                timelineControl.setup({minTimestamp: requestedStartUTC, maxTimestamp: requestedEndUTC, aggregate: document.getElementById('aggregate-toggle').checked });
-                loadTimelineData(requestedStartUTC, requestedEndUTC);
-
+                timelineControl.setup({minTimestamp: params.startDateUtcSeconds, maxTimestamp: params.endDateUtcSeconds, aggregate: document.getElementById('aggregate-toggle').checked });
+                loadTimelineData(params.startDateUtcSeconds, params.endDateUtcSeconds);
 
                 // Initialize scroll indicator after timeline is updated
                 if (window.timelineScrollIndicator) {
@@ -1785,7 +1800,7 @@
                 const endTime = entry.dataset.end;
 
                 if (isTrip) {
-                    highlightTimes = [Math.floor(new Date(startTime).getTime() / 1000 - globalMinTimestamp), Math.floor(new Date(endTime).getTime() / 1000 - globalMinTimestamp)];
+                    highlightTimes = [Math.floor(new Date(startTime).getTime() / 1000), Math.floor(new Date(endTime).getTime() / 1000 )];
                     gpsDataManagers.forEach(manager => {
                         updateTripsLayer(manager, 0)
                     })
@@ -1864,7 +1879,7 @@
 
         document.getElementById('speed-selector').onchange = function(e) {
             if (e.target.value === 'auto') {
-                calculateSpeed(globalMinTimestamp, globalMaxTimestamp);
+                calculateTimelineMultiplier();
             } else {
                 timeMultiplier = parseInt(e.target.value);
             }
@@ -1910,15 +1925,17 @@
 
         document.getElementById('aggregate-toggle').onchange = (e) => {
             const isAggregate = e.target.checked;
+            const params = getTimelineParams();
+
             timelineControl.setup({
-                minTimestamp: globalMinTimestamp,
-                maxTimestamp: globalMaxTimestamp,
+                minTimestamp: params.startDateUtcSeconds,
+                maxTimestamp: params.endDateUtcSeconds,
                 aggregate: isAggregate
             });
             localStorage.setItem('aggregate', isAggregate);
-            calculateSpeed(globalMinTimestamp, globalMaxTimestamp);
+            calculateTimelineMultiplier();
             gpsDataManagers.forEach(manager => {
-                updateTripsLayer(manager, 0)
+                updateTripsLayer(manager, timelineControl.getValue())
             })
         };
     })
