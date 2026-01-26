@@ -57,10 +57,22 @@ class GpsDataManager {
                 polygon: p.place.polygon,
                 totalDurationSec: p.totalDurationMs / 1000,
                 name: p.place.name,
-                activeRanges: p.visits.map(v => ({
-                    start: Math.floor(new Date(v.startTime).getTime() / 1000) - startUTC,
-                    end: Math.floor(new Date(v.endTime).getTime() / 1000) - startUTC
-                })).sort((a, b) => a.start - b.start),
+                activeRanges: p.visits.map(v => {
+                    const startUtcSeconds = Math.floor(new Date(v.startTime).getTime() / 1000);
+                    const startOffset = this._getOffsetSeconds(startUtcSeconds);
+                    const endUtcSeconds = Math.floor(new Date(v.endTime).getTime() / 1000);
+                    const endOffset = this._getOffsetSeconds(endUtcSeconds);
+                    const localStartTs = startUtcSeconds + startOffset;
+                    const localEndTs = endUtcSeconds + endOffset;
+                    return ({
+                        start: startUtcSeconds,
+                        end: endUtcSeconds,
+                        startAggregate: localStartTs % 86400,
+                        endAggregate: localEndTs % 86400,
+                        startDayOfWeek: new Date(localStartTs * 1000).getUTCDay(),
+                        endDayOfWeek: new Date(localEndTs * 1000).getUTCDay()
+                    });
+                }).sort((a, b) => a.start - b.start),
                 originalVisits: p.visits
             }));
             // Update internal range trackers
@@ -257,6 +269,7 @@ class GpsDataManager {
         const zonedDateTime = instant.toZonedDateTimeISO(this.timeZone);
         return zonedDateTime.offsetNanoseconds / 1e9;
     }
+
     async _generateBundledPath(onProgress, precisionValue = 0.0005, weight = 0.5) {
         const precision = 1 / precisionValue;
         const TABLE_SIZE = 4194304;

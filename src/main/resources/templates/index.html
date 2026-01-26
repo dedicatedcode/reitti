@@ -633,9 +633,6 @@
 
     let currentDateRange = null;
 
-    let globalMinTimestamp = 0;
-
-
     const map = new maplibregl.Map({
         container: 'new-map',
         style: '/map/reitti.json',
@@ -673,7 +670,7 @@
 
         photoClient.updateClusters(currentState);
         gpsDataManagers.forEach(manager => {
-            updateTripsLayer(manager, timelineControl.getOffset())
+            updateTripsLayer(manager, timelineControl.getValue())
         })
     });
 
@@ -844,7 +841,7 @@
         }
         // --- BASE VISUALIZATION ---
         if (viewMode === 'HEATMAP') {
-            layers.push(getHeatmapLayer(manager, offset));
+            layers.push(getHeatmapLayer(manager, offset, isAggregate));
         } else if (viewMode === 'BUNDLED') {
             layers.push(...getBundleLayers(manager, offset));
         } else {
@@ -890,14 +887,13 @@
             }));
         }
 
-        layers.push(...getVisitLayers(manager, offset));
+        layers.push(...getVisitLayers(manager, offset, isAggregate));
         layers.push(...photoClient.getLayers(offset, viewState));
 
         deckOverlay.setProps({layers})
     }
 
-    function getBundleLayers(manager, offset) {
-        const isAggregate = document.getElementById('aggregate-toggle')?.checked || false;
+    function getBundleLayers(manager, offset, isAggregate) {
         const timeSpan = isAggregate ? 86400 : (manager.maxTimestamp - manager.minTimestamp);
         const calculatedTrail = Math.max(1800, timeSpan * 0.02);
         const visibility = !timelineControl.isIdle();
@@ -937,7 +933,7 @@
         ];
     }
 
-    function getVisitLayers(manager, offset) {
+    function getVisitLayers(manager, offset, isAggregate) {
         console.log('rendering visit layers with offset:', offset)
         const isOverview = timelineControl.isIdle();
         const currentTime = offset;
@@ -968,16 +964,16 @@
                 getPosition: d => d.coordinates,
                 getRadius: d => {
                     if (isOverview) return deckParams.visits.radius + (Math.pow(d.totalDurationSec || 0, 0.6) * 0.2);
-                    const seconds = getAccumulatedSeconds(d, currentTime);
+                    const seconds = getActiveVisitEffect(d, currentTime, isAggregate).seconds;
                     return seconds > 0 ? 15 + (Math.pow(seconds, 0.6) * 0.5) : 0;
                 },
-                getFillColor: d => [...manager.color, isOverview ? deckParams.visits.opacity : (getActiveVisitEffect(d, currentTime).opacity * 140)],
+                getFillColor: d => [...manager.color, isOverview ? deckParams.visits.opacity : (getActiveVisitEffect(d, currentTime, isAggregate).opacity * 140)],
                 pickable: true,
                 onHover: info => updateTooltip(info),
                 visible: !isOverview || map.getZoom() > deckParams.visits.minZoom,
                 updateTriggers: {
-                    getRadius: [offset, currentTime, isOverview],
-                    getFillColor: [offset, currentTime, isOverview],
+                    getRadius: [currentTime, isOverview],
+                    getFillColor: [currentTime, isOverview],
                     data: manager.visits?.length
                 },
                 // Optional: Smooth the appearance/disappearance
@@ -999,18 +995,18 @@
                 stroked: true,
                 lineWidthMinPixels: deckParams.visits.lineWidth,
                 getLineColor: d => {
-                    const isActive = d.activeRanges.some(r => offset >= r.start && offset <= r.end);
+                    const isActive = d.activeRanges.some(r => currentTime >= r.start && currentTime <= r.end);
                     const alpha = (isOverview || isActive) ? 255 : 0;
                     return [0,0,0 , alpha];
                 },
                 getFillColor: d => {
-                    const isActive = d.activeRanges.some(r => offset >= r.start && offset <= r.end);
+                    const isActive = d.activeRanges.some(r => currentTime >= r.start && currentTime <= r.end);
                     const alpha = (isOverview || isActive) ? 255 : 0;
                     return [255,255,255, alpha];
                 },
                 updateTriggers: {
-                    getFillColor: [offset, currentTime, isOverview],
-                    getLineColor: [offset, currentTime, isOverview],
+                    getFillColor: [currentTime, isOverview],
+                    getLineColor: [currentTime, isOverview],
                     lineWidth: [deckParams.visits.lineWidth],
                     data: manager.visits?.length
                 },
@@ -1020,8 +1016,7 @@
         ];
     }
 
-    function getHeatmapLayer(manager, offset) {
-        const isAggregate = document.getElementById('aggregate-toggle')?.checked || false;
+    function getHeatmapLayer(manager, offset, isAggregate) {
         const isIdle = timelineControl.isIdle();
         const persistence = deckParams.heatmap.persistence || 900;
 
@@ -1050,45 +1045,29 @@
             ]
         });
     }
-    function getAccumulatedSeconds(visit, offset) {
-        let accumulated = 0;
 
-        for (const range of visit.activeRanges) {
-            if (offset < range.start) {
-                // Comet hasn't reached this stay yet
-                break;
-            } else if (offset >= range.end) {
-                // Stay is fully completed, add the whole duration
-                accumulated += (range.end - range.start);
-            } else {
-                // Comet is currently inside this stay range
-                accumulated += (offset - range.start);
-                // Since ranges are chronological, we can stop here
-                break;
-            }
-        }
-        return accumulated;
-    }
-
-    function getActiveVisitEffect(visit, time) {
+    function getActiveVisitEffect(visit, time, isAggregate) {
         const exitFadeDuration = 3000; // 5 minutes (in seconds) to shrink/fade completely
         let accumulated = 0;
         let multiplier = 0;
 
         for (const range of visit.activeRanges) {
-            if (time < range.start) {
+            const start = isAggregate ? range.startAggregate : range.start;
+            const end = isAggregate ? range.endAggregate : range.end;
+            console.log('range:', range, 'start:', start, 'end:', end, 'time:', time)
+            if (time < start) {
                 // Future visit: do nothing
                 break;
-            } else if (time >= range.start && time <= range.end) {
+            } else if (time >= start && time <= end) {
                 // Currently visiting: Full size
-                accumulated += (time - range.start);
+                accumulated += (time - start);
                 multiplier = 1.0;
-            } else if (time > range.end) {
+            } else if (time > end) {
                 // Past visit: Add full duration
-                accumulated += (range.end - range.start);
+                accumulated += (end - start);
 
                 // Calculate decay: how recently did we leave?
-                const timeSinceLeft = time - range.end;
+                const timeSinceLeft = time - end;
                 const decay = 1.0 - (timeSinceLeft / exitFadeDuration);
 
                 // We take the "freshest" decay. If we just left, multiplier is near 1.

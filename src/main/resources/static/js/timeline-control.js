@@ -102,7 +102,7 @@ class TimelineControl {
             this.minTimestamp = 0;
             this.maxTimestamp = 86400;
             this.slider.min = 0;
-            this.slider.step = 1;
+            this.slider.step = 60;
             this.slider.max = 86400;
             this.setOffset(0);
 
