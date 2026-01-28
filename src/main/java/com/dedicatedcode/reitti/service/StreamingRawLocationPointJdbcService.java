@@ -28,6 +28,7 @@ public class StreamingRawLocationPointJdbcService {
             SELECT
                 ST_X(geom) as lng,
                 ST_Y(geom) as lat,
+                elevation_meters as alt,
                 EXTRACT(EPOCH FROM timestamp) as ts
             FROM raw_location_points
             WHERE user_id = ?
@@ -35,7 +36,7 @@ public class StreamingRawLocationPointJdbcService {
             ORDER BY timestamp
         """;
         int pointsPerBatch = 8192;
-        ByteBuffer buffer = ByteBuffer.allocate(pointsPerBatch * 12);
+        ByteBuffer buffer = ByteBuffer.allocate(pointsPerBatch * 16);
         buffer.order(ByteOrder.LITTLE_ENDIAN); // Essential for JS Float32Array
 
         jdbcTemplate.query(sql, ps -> {
@@ -47,9 +48,10 @@ public class StreamingRawLocationPointJdbcService {
         }, rs -> {
             buffer.putFloat(rs.getFloat("lat"));
             buffer.putFloat(rs.getFloat("lng"));
+            buffer.putFloat(rs.getFloat("alt"));
             buffer.putFloat(rs.getFloat("ts"));
 
-            if (buffer.remaining() < 12) {
+            if (buffer.remaining() < 16) {
                 try {
                     // Send the full raw byte array
                     emitter.send(buffer.array(), MediaType.APPLICATION_OCTET_STREAM);

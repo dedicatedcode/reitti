@@ -96,7 +96,6 @@ class TimelineControl {
     }
 
     setup(config) {
-        console.log(config);
         if (config.aggregate) {
             this.aggregate = true;
             this.minTimestamp = 0;
@@ -139,8 +138,8 @@ class TimelineControl {
         return days;
     }
 
-    getMax() {
-        return this.slider.max;
+    getMaxOffset() {
+        return this.slider.max - this.slider.min;
     }
 
     isIdle() {
@@ -168,5 +167,4 @@ class TimelineControl {
         if (!list || !list.length) return;
         list.forEach(cb => cb(data));
     }
-
 }

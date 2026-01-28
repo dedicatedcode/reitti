@@ -2,7 +2,7 @@ class MapCustomization {
     constructor(element, deckParams) {
         this.element = element;
         this.defaultParams = structuredClone(deckParams);
-        this.deckParams = structuredClone(deckParams);
+        this.deckParams = deckParams;
         this.eventListeners = [];
         this.element.innerHTML = `
     <h4 style="margin: 0 0 10px 0; text-align: center;">Deck.gl Parameters</h4>
@@ -24,10 +24,6 @@ class MapCustomization {
         <button class="tab-btn" data-tab="bundled"
                 style="flex: 1; padding: 5px; background: #444; border: none; color: white; cursor: pointer; border-radius: 3px;">
             Bundled
-        </button>
-        <button class="tab-btn" data-tab="heatmap"
-                style="flex: 1; padding: 5px; background: #444; border: none; color: white; cursor: pointer; border-radius: 3px;">
-            Heatmap
         </button>
     </div>
 
@@ -61,20 +57,6 @@ class MapCustomization {
             <label for="shadow-opacity">Shadow Opacity (0-255):</label>
             <input type="range" id="shadow-opacity" min="0" max="255" value="51" step="5" style="width: 100%;">
             <span id="shadow-opacity-value">51</span>
-        </div>
-
-        <div style="margin-bottom: 10px;">
-            <label for="shadow-offset-x">Shadow Offset X:</label>
-            <input type="range" id="shadow-offset-x" min="-0.001" max="0.001" value="0.00005" step="0.00001"
-                   style="width: 100%;">
-            <span id="shadow-offset-x-value">0.00005</span>
-        </div>
-
-        <div style="margin-bottom: 10px;">
-            <label for="shadow-offset-y">Shadow Offset Y:</label>
-            <input type="range" id="shadow-offset-y" min="-0.001" max="0.001" value="-0.00005" step="0.00001"
-                   style="width: 100%;">
-            <span id="shadow-offset-y-value">-0.00005</span>
         </div>
     </div>
 
@@ -148,18 +130,6 @@ class MapCustomization {
         </div>
 
         <div style="margin-bottom: 10px;">
-            <label for="bundled-core-width">Core Width (pixels):</label>
-            <input type="range" id="bundled-core-width" min="0" max="20" value="8" step="0.1" style="width: 100%;">
-            <span id="bundled-core-width-value">8</span>
-        </div>
-
-        <div style="margin-bottom: 10px;">
-            <label for="bundled-core-opacity">Core Opacity (0-255):</label>
-            <input type="range" id="bundled-core-opacity" min="0" max="255" value="200" step="5" style="width: 100%;">
-            <span id="bundled-core-opacity-value">200</span>
-        </div>
-
-        <div style="margin-bottom: 10px;">
             <label for="bundled-path-width">Path Width (pixels):</label>
             <input type="range" id="bundled-path-width" min="0" max="20" value="6" step="0.1" style="width: 100%;">
             <span id="bundled-path-width-value">6</span>
@@ -169,6 +139,18 @@ class MapCustomization {
             <label for="bundled-path-opacity">Path Opacity (0-255):</label>
             <input type="range" id="bundled-path-opacity" min="0" max="255" value="30" step="5" style="width: 100%;">
             <span id="bundled-path-opacity-value">30</span>
+        </div>       
+         
+        <div style="margin-bottom: 10px;">
+            <label for="bundled-static-path-width">Static Path Width (pixels):</label>
+            <input type="range" id="bundled-static-path-width" min="0" max="20" value="6" step="0.1" style="width: 100%;">
+            <span id="bundled-static-path-width-value">6</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="bundled-static-path-opacity">Static Path Opacity (0-255):</label>
+            <input type="range" id="bundled-static-path-opacity" min="0" max="255" value="30" step="5" style="width: 100%;">
+            <span id="bundled-static-path-opacity-value">30</span>
         </div>        
         
         <div style="margin-bottom: 10px;">
@@ -197,38 +179,6 @@ class MapCustomization {
         
     </div>
 
-    <!-- Heatmap Tab -->
-    <div id="tab-heatmap" class="tab-content" style="display: none;">
-        <div style="margin-bottom: 10px;">
-            <label for="heatmap-radius">Radius (pixels):</label>
-            <input type="range" id="heatmap-radius" min="5" max="100" value="25" step="1" style="width: 100%;">
-            <span id="heatmap-radius-value">25</span>
-        </div>
-
-        <div style="margin-bottom: 10px;">
-            <label for="heatmap-intensity">Intensity:</label>
-            <input type="range" id="heatmap-intensity" min="0.1" max="20" value="5" step="0.1" style="width: 100%;">
-            <span id="heatmap-intensity-value">5</span>
-        </div>
-
-        <div style="margin-bottom: 10px;">
-            <label for="heatmap-threshold">Threshold:</label>
-            <input type="range" id="heatmap-threshold" min="0" max="1" value="0.01" step="0.001" style="width: 100%;">
-            <span id="heatmap-threshold-value">0.01</span>
-        </div>
-
-        <div style="margin-bottom: 10px;">
-            <label for="heatmap-opacity">Opacity (0-255):</label>
-            <input type="range" id="heatmap-opacity" min="0" max="255" value="200" step="5" style="width: 100%;">
-            <span id="heatmap-opacity-value">200</span>
-        </div>
-        <div style="margin-bottom: 10px;">
-            <label for="heatmap-persistence">Opacity (0-255):</label>
-            <input type="range" id="heatmap-persistence" min="0" max="3600" value="900" step="5" style="width: 100%;">
-            <span id="heatmap-persistence-value">900</span>
-        </div>
-    </div>
-
     <button id="reset-params"
             style="width: 100%; padding: 8px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px;">
         Reset to Defaults
@@ -244,8 +194,6 @@ class MapCustomization {
         document.getElementById('comet-opacity-value').textContent = deckParams.trips.cometOpacity;
         document.getElementById('shadow-width-value').textContent = deckParams.trips.shadowWidth;
         document.getElementById('shadow-opacity-value').textContent = deckParams.trips.shadowOpacity;
-        document.getElementById('shadow-offset-x-value').textContent = deckParams.trips.shadowOffset[0];
-        document.getElementById('shadow-offset-y-value').textContent = deckParams.trips.shadowOffset[1];
 
         // Visits
         document.getElementById('visit-radius-value').textContent = deckParams.visits.radius;
@@ -262,8 +210,9 @@ class MapCustomization {
         // Bundled
         document.getElementById('bundled-precision-value').textContent = deckParams.bundled.precision;
         document.getElementById('bundled-weight-value').textContent = deckParams.bundled.weight;
-        document.getElementById('bundled-core-width-value').textContent = deckParams.bundled.coreWidth;
-        document.getElementById('bundled-core-opacity-value').textContent = deckParams.bundled.coreOpacity;
+        document.getElementById('bundled-static-path-width-value').textContent = deckParams.bundled.staticPathWidth;
+        document.getElementById('bundled-static-path-opacity-value').textContent = deckParams.paths.staticPathOpacity;
+
         document.getElementById('bundled-path-width-value').textContent = deckParams.bundled.pathWidth;
         document.getElementById('bundled-path-opacity-value').textContent = deckParams.bundled.pathOpacity;
         document.getElementById('bundled-comet-width-value').textContent = deckParams.bundled.cometWidth;
@@ -271,12 +220,6 @@ class MapCustomization {
         document.getElementById('bundled-shadow-width-value').textContent = deckParams.bundled.shadowWidth;
         document.getElementById('bundled-shadow-opacity-value').textContent = deckParams.bundled.shadowOpacity;
 
-        // Heatmap
-        document.getElementById('heatmap-radius-value').textContent = deckParams.heatmap.radius;
-        document.getElementById('heatmap-intensity-value').textContent = deckParams.heatmap.intensity;
-        document.getElementById('heatmap-threshold-value').textContent = deckParams.heatmap.threshold;
-        document.getElementById('heatmap-opacity-value').textContent = deckParams.heatmap.opacity;
-        document.getElementById('heatmap-persistence-value').textContent = deckParams.heatmap.persistence;
     }
 
     _init() {
@@ -303,8 +246,6 @@ class MapCustomization {
         document.getElementById('comet-opacity').value = deckParams.trips.cometOpacity;
         document.getElementById('shadow-width').value = deckParams.trips.shadowWidth;
         document.getElementById('shadow-opacity').value = deckParams.trips.shadowOpacity;
-        document.getElementById('shadow-offset-x').value = deckParams.trips.shadowOffset[0];
-        document.getElementById('shadow-offset-y').value = deckParams.trips.shadowOffset[1];
 
         // Visits
         document.getElementById('visit-radius').value = deckParams.visits.radius;
@@ -321,21 +262,14 @@ class MapCustomization {
         // Bundled
         document.getElementById('bundled-precision').value = deckParams.bundled.precision;
         document.getElementById('bundled-weight').value = deckParams.bundled.weight;
-        document.getElementById('bundled-core-width').value = deckParams.bundled.coreWidth;
-        document.getElementById('bundled-core-opacity').value = deckParams.bundled.coreOpacity;
         document.getElementById('bundled-path-width').value = deckParams.bundled.pathWidth;
         document.getElementById('bundled-path-opacity').value = deckParams.bundled.pathOpacity;
+        document.getElementById('bundled-static-path-width').value = deckParams.bundled.staticPathWidth;
+        document.getElementById('bundled-static-path-opacity').value = deckParams.bundled.staticPathOpacity;
         document.getElementById('bundled-comet-width').value = deckParams.bundled.cometWidth;
         document.getElementById('bundled-comet-opacity').value = deckParams.bundled.cometOpacity;
         document.getElementById('bundled-shadow-width').value = deckParams.bundled.shadowWidth;
         document.getElementById('bundled-shadow-opacity').value = deckParams.bundled.shadowOpacity;
-
-        // Heatmap
-        document.getElementById('heatmap-radius').value = deckParams.heatmap.radius;
-        document.getElementById('heatmap-intensity').value = deckParams.heatmap.intensity;
-        document.getElementById('heatmap-threshold').value = deckParams.heatmap.threshold;
-        document.getElementById('heatmap-opacity').value = deckParams.heatmap.opacity;
-        document.getElementById('heatmap-persistence').value = deckParams.heatmap.persistence;
 
         // Event listeners for all sliders
         document.getElementById('trail-length').oninput = (e) => {
@@ -366,20 +300,6 @@ class MapCustomization {
 
         document.getElementById('shadow-opacity').oninput = (e) => {
             deckParams.trips.shadowOpacity = parseInt(e.target.value);
-            this._updateSliderDisplays();
-            this.emit('update-deck-params', {params: this.deckParams});
-
-        };
-
-        document.getElementById('shadow-offset-x').oninput = (e) => {
-            deckParams.trips.shadowOffset[0] = parseFloat(e.target.value);
-            this._updateSliderDisplays();
-            this.emit('update-deck-params', {params: this.deckParams});
-
-        };
-
-        document.getElementById('shadow-offset-y').oninput = (e) => {
-            deckParams.trips.shadowOffset[1] = parseFloat(e.target.value);
             this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
 
@@ -446,18 +366,6 @@ class MapCustomization {
             this.emit('update-deck-params', {params: this.deckParams, field: 'bundled.weight'});
         };
 
-        document.getElementById('bundled-core-width').oninput = (e) => {
-            deckParams.bundled.coreWidth = parseFloat(e.target.value);
-            this._updateSliderDisplays();
-            this.emit('update-deck-params', {params: this.deckParams});
-        };
-
-        document.getElementById('bundled-core-opacity').oninput = (e) => {
-            deckParams.bundled.coreOpacity = parseFloat(e.target.value);
-            this._updateSliderDisplays();
-            this.emit('update-deck-params', {params: this.deckParams});
-        };
-
         document.getElementById('bundled-path-width').oninput = (e) => {
             deckParams.bundled.pathWidth = parseFloat(e.target.value);
             this._updateSliderDisplays();
@@ -466,6 +374,17 @@ class MapCustomization {
 
         document.getElementById('bundled-path-opacity').oninput = (e) => {
             deckParams.bundled.pathOpacity = parseFloat(e.target.value);
+            this._updateSliderDisplays();
+            this.emit('update-deck-params', {params: this.deckParams});
+        };
+        document.getElementById('bundled-static-path-width').oninput = (e) => {
+            deckParams.bundled.staticPathWidth = parseFloat(e.target.value);
+            this._updateSliderDisplays();
+            this.emit('update-deck-params', {params: this.deckParams});
+        };
+
+        document.getElementById('bundled-static-path-opacity').oninput = (e) => {
+            deckParams.bundled.staticPathOpacity = parseFloat(e.target.value);
             this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
         };
@@ -490,37 +409,6 @@ class MapCustomization {
 
         document.getElementById('bundled-shadow-opacity').oninput = (e) => {
             deckParams.bundled.shadowOpacity = parseFloat(e.target.value);
-            this._updateSliderDisplays();
-            this.emit('update-deck-params', {params: this.deckParams});
-        };
-
-        // Heatmap event listeners
-        document.getElementById('heatmap-radius').oninput = (e) => {
-            deckParams.heatmap.radius = parseFloat(e.target.value);
-            this._updateSliderDisplays();
-            this.emit('update-deck-params', {params: this.deckParams});
-        };
-
-        document.getElementById('heatmap-intensity').oninput = (e) => {
-            deckParams.heatmap.intensity = parseFloat(e.target.value);
-            this._updateSliderDisplays();
-            this.emit('update-deck-params', {params: this.deckParams});
-        };
-
-        document.getElementById('heatmap-threshold').oninput = (e) => {
-            deckParams.heatmap.threshold = parseFloat(e.target.value);
-            this._updateSliderDisplays();
-            this.emit('update-deck-params', {params: this.deckParams});
-        };
-
-        document.getElementById('heatmap-opacity').oninput = (e) => {
-            deckParams.heatmap.opacity = parseFloat(e.target.value);
-            this._updateSliderDisplays();
-            this.emit('update-deck-params', {params: this.deckParams});
-        };
-
-        document.getElementById('heatmap-persistence').oninput = (e) => {
-            deckParams.heatmap.persistence = parseFloat(e.target.value);
             this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
         };

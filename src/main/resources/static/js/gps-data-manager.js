@@ -10,9 +10,11 @@ class GpsDataManager {
         this._currentOffset = 0;
         this._lastOffsetCheckTs = -Infinity;
         // 1. Buffers
-        this.buffer = new Float32Array(16000 * 5); // Raw: [x, y, ts, tod, dow]
-        this.cleanedBuffer = new Float32Array(16000 * 5); // Filtered: [x, y, ts, tod, dow]
-        this.snappedBuffer = null; // Generated via bundling
+        //Memory Layout for buffer and cleaned buffer is [Lng, Lat, Alt, LinTs, Day, AggTs]
+        this.buffer = new Float32Array(16000 * 6);
+        this.cleanedBuffer = new Float32Array(16000 * 6);
+        this.snappedBuffer = null;
+        this.snappedVersion = 0;
 
         // 2. State
         this.cursor = 0;
@@ -21,6 +23,7 @@ class GpsDataManager {
         this.maxTimestamp = null;
         this.totalExpected = 0;
         this.bounds = null;
+        this._dataCache = {};
     }
 
     /**
@@ -31,6 +34,7 @@ class GpsDataManager {
      */
     async load(startUTC, endUTC, onProgress) {
         // 1. Check if we already have this data in memory
+        this._dataCache = {};
         if (this.loadingState === 'complete' &&
             startUTC >= this.minTimestamp &&
             endUTC <= this.maxTimestamp) {
@@ -67,10 +71,10 @@ class GpsDataManager {
                     return ({
                         start: startUtcSeconds,
                         end: endUtcSeconds,
-                        startAggregate: localStartTs % 86400,
-                        endAggregate: localEndTs % 86400,
-                        startDayOfWeek: new Date(localStartTs * 1000).getUTCDay(),
-                        endDayOfWeek: new Date(localEndTs * 1000).getUTCDay()
+                        startAggregate: ((localStartTs % 86400) + 86400) % 86400,
+                        endAggregate: ((localEndTs % 86400) + 86400) % 86400,
+                        startDayOfWeek: Math.pow(new Date(localStartTs * 1000).getUTCDay(), 2),
+                        endDayOfWeek: Math.pow(new Date(localEndTs * 1000).getUTCDay(), 2)
                     });
                 }).sort((a, b) => a.start - b.start),
                 originalVisits: p.visits
@@ -79,7 +83,7 @@ class GpsDataManager {
             this.minTimestamp = startUTC;
             this.maxTimestamp = endUTC;
             this.totalExpected = meta.totalPoints;
-
+            this.bounds = [meta.minLng, meta.minLat, meta.maxLng, meta.maxLat];
             // Clear old data to make room for the new range
             this.cursor = 0;
             this.cleanedCursor = 0;
@@ -93,6 +97,7 @@ class GpsDataManager {
 
             this.loadingState = 'complete';
             if (onProgress) onProgress(this.totalExpected, this.totalExpected, 'complete');
+            console.log("Load complete:", this.loadingState, 'with bounds:', this.bounds, 'and total points:', this.totalExpected, 'in range:', startUTC, 'to', endUTC, 'at', this.visits.length, 'places.');
 
         } catch (error) {
             console.error("Load failed:", error);
@@ -107,75 +112,97 @@ class GpsDataManager {
      * @param {Object} rangeIndices - Optional {start, count} from binary search
      */
     getLayerData(mode, isAggregate = false, rangeIndices = null) {
-        const stride = 20; // 5 floats * 4 bytes = 20 bytes per point
+        // 1. Generate a unique cache key based on all inputs
+        // We also include the current cursor to invalidate the cache when data is added
+        const rangeKey = rangeIndices ? `${rangeIndices.start}-${rangeIndices.count}` : 'full';
+        const cacheKey = `${mode}-${isAggregate}-${rangeKey}`;
+        const currentPointCount = mode === 'raw' ? this.cursor : this.cleanedCursor;
 
-        // Determine which time dimension to use for filtering/animation
-        // Offset 8 = Linear TS, Offset 12 = Aggregate (TOD)
-        const timeOffset = isAggregate ? 12 : 8;
-        const dayOffset = 16; // Offset 16 = Day of Week (0-6)
+        // 2. Return cached object if nothing has changed
+        if (this._dataCache[cacheKey] && this._dataCache[cacheKey].version === currentPointCount) {
+            return this._dataCache[cacheKey].payload;
+        }
 
-        // 1. RAW MODE (Used for Heatmap)
-        if (mode === 'raw') {
-            return {
-                length: this.cursor,
+        const dayOffset = 16;
+
+        let payload;
+
+        if (mode === 'bundled') {
+            const stride = 20;
+            payload = {
+                length: 1,
+                startIndices: new Uint32Array([0, this.cleanedCursor]),
                 attributes: {
-                    getPosition: {
-                        value: this.buffer,
+                    getPath: {
+                        value: this.snappedBuffer,
                         size: 2,
                         stride: stride,
                         offset: 0
                     },
-                    // filterValues expects [Time, Day] for the 2D DataFilterExtension
-                    filterValues: {
-                        value: this.buffer,
-                        size: 2,
+                    getTimestamps: {
+                        value: this.snappedBuffer,
+                        size: 1,
                         stride: stride,
-                        offset: timeOffset
+                        offset: isAggregate ? 16 : 8
+                    },
+                    filterValues: {
+                        value: this.snappedBuffer,
+                        size: 1,
+                        stride: stride,
+                        offset: 12
+                    }
+                }
+            };
+        } else {
+            payload = {
+                length: 1,
+                startIndices: new Uint32Array([0, this.cleanedCursor]),
+                attributes: {
+                    getPath: {
+                        value: this.cleanedBuffer,
+                        size: 3,
+                        stride: 24,
+                        offset: 0
+                    },
+                    getTimestamps: {
+                        value: this.cleanedBuffer,
+                        size: 1,
+                        stride: 24,
+                        offset: isAggregate ? 20 : 12
+                    },
+                    filterValues: {
+                        value: this.cleanedBuffer,
+                        size: 1,
+                        stride: 24,
+                        offset: dayOffset
                     }
                 }
             };
         }
-
-        // 2. TRIPS / BUNDLED MODE
-        const isBundled = (mode === 'bundled' && this.snappedBuffer);
-        const activePosBuffer = isBundled ? this.snappedBuffer : this.cleanedBuffer;
-
-        // Bundled buffer only stores [x, y] (8 bytes per point)
-        // Cleaned buffer stores all 5 dimensions (20 bytes per point)
-        const posStride = isBundled ? 8 : 20;
-
-        // Calculate start/count based on time-window slicing
-        const startIndex = rangeIndices ? rangeIndices.start : 0;
-        const renderCount = rangeIndices ? rangeIndices.count : this.cleanedCursor;
-
-        return {
-            // We render as a single continuous path for performance
-            length: 1,
-            startIndices: new Uint32Array([0]),
-            attributes: {
-                getPath: {
-                    value: activePosBuffer,
-                    size: 2,
-                    stride: posStride,
-                    offset: startIndex * posStride
-                },
-                getTimestamps: {
-                    value: this.cleanedBuffer,
-                    size: 1,
-                    stride: stride,
-                    offset: (startIndex * stride) + timeOffset
-                },
-                // Used by DataFilterExtension to isolate specific days (Monday, etc.)
-                filterValues: {
-                    value: this.cleanedBuffer,
-                    size: 1,
-                    stride: stride,
-                    offset: (startIndex * stride) + dayOffset
-                }
-            },
-            // Meta-information for the layer
-            _count: renderCount
+        // 3. Store in cache
+        this._dataCache[cacheKey] = {
+            version: currentPointCount,
+            payload: payload
         };
+
+        return payload;
+    }
+
+    recalculateBundledPath(precisionValue = 0.0005, weight = 0.5) {
+        return this._generateBundledPath(null, precisionValue, weight);
+    }
+
+    updateSelectionMask(selectedBitmaskSum) {
+        const count = this.cursor;
+        const buf = this.buffer;
+        const mask = this.selectionBuffer;
+
+        for (let i = 0; i < count; i++) {
+            const pointBit = buf[i * 6 + 4];
+            // Standard bitwise check: Does this point's day exist in the selection?
+            mask[i] = (pointBit & selectedBitmaskSum) ? 1.0 : 0.0;
+        }
+        this.selectionVersion++;
     }
 
     async _streamPoints(onProgress) {
@@ -184,7 +211,7 @@ class GpsDataManager {
         let leftover = null;
 
         while (true) {
-            const { done, value } = await reader.read();
+            const {done, value} = await reader.read();
             if (done) break;
 
             let combinedValue = value;
@@ -195,15 +222,15 @@ class GpsDataManager {
                 leftover = null;
             }
 
-            const pointsCount = Math.floor(combinedValue.length / 12);
+            const pointsCount = Math.floor(combinedValue.length / 16);
             if (pointsCount * 12 < combinedValue.length) {
-                leftover = combinedValue.slice(pointsCount * 12);
+                leftover = combinedValue.slice(pointsCount * 16);
             }
 
-            const floatArray = new Float32Array(combinedValue.buffer, combinedValue.byteOffset, pointsCount * 3);
+            const floatArray = new Float32Array(combinedValue.buffer, combinedValue.byteOffset, pointsCount * 4);
 
-            for (let i = 0; i < floatArray.length; i += 3) {
-                this._addPoint(floatArray[i+1], floatArray[i], floatArray[i+2]);
+            for (let i = 0; i < floatArray.length; i += 4) {
+                this._addPoint(floatArray[i + 1], floatArray[i], floatArray[i + 2], floatArray[i + 3]);
             }
 
             if (onProgress) {
@@ -212,7 +239,7 @@ class GpsDataManager {
         }
     }
 
-    _addPoint(lng, lat, tsUtc) {
+    _addPoint(lng, lat, alt, tsUtc) {
         this._ensureCapacity(this.cursor + 1);
 
         // This handles DST transitions or long-distance travel
@@ -220,39 +247,41 @@ class GpsDataManager {
             this._currentOffset = this._getOffsetSeconds(tsUtc);
             this._lastOffsetCheckTs = tsUtc;
         }
-        const tsLinear = tsUtc - this.minTimestamp;
-        const localTs = tsUtc + this._currentOffset;
+        const timestamp = tsUtc;
+        const tsLinear = timestamp;
+        const localTs = timestamp + this._currentOffset;
         const tsAggregate = ((localTs % 86400) + 86400) % 86400;
-        const dayOfWeek = new Date(localTs * 1000).getUTCDay();
+        const dayOfWeek = Math.pow(new Date(localTs * 1000).getUTCDay(), 2);
         // Write to Raw Buffer
-        this._writeToBuffer(this.buffer, this.cursor++, lng, lat, tsLinear, tsAggregate, dayOfWeek);
+        this._writeToBuffer(this.buffer, this.cursor++, lng, lat, alt, tsLinear, tsAggregate, dayOfWeek);
 
         // Write to Cleaned Buffer (Spatial Redundancy Check)
         if (!this._isRedundant(lng, lat, tsUtc)) {
-            this._writeToBuffer(this.cleanedBuffer, this.cleanedCursor++, lng, lat, tsLinear, tsAggregate, dayOfWeek);
+            this._writeToBuffer(this.cleanedBuffer, this.cleanedCursor++, lng, lat, alt, tsLinear, tsAggregate, dayOfWeek);
         }
     }
 
-    _writeToBuffer(target, idx, x, y, tl, ta, dw) {
-        const i = idx * 5;
-        target[i] = x;
-        target[i+1] = y;
-        target[i+2] = tl;
-        target[i+3] = ta;
-        target[i+4] = dw; // 5th float
+    _writeToBuffer(target, idx, lng, lat, alt, timeLinear, timeAggregate, dayOfWeek) {
+        const i = idx * 6;
+        target[i] = lng;
+        target[i + 1] = lat;
+        target[i + 2] = alt;
+        target[i + 3] = timeLinear;
+        target[i + 4] = dayOfWeek;
+        target[i + 5] = timeAggregate;
     }
 
     _isRedundant(lng, lat, ts) {
         if (this.cleanedCursor === 0) return false;
-        const lastIdx = (this.cleanedCursor - 1) * 5;
+        const lastIdx = (this.cleanedCursor - 1) * 6;
         const dx = this.cleanedBuffer[lastIdx] - lng;
-        const dy = this.cleanedBuffer[lastIdx+1] - lat;
-        const dt = ts - (this.cleanedBuffer[lastIdx+2] + this.minTimestamp);
-        return (dt < 30) && (dx*dx + dy*dy < 4e-10); // ~2m
+        const dy = this.cleanedBuffer[lastIdx + 1] - lat;
+        const dt = ts - (this.cleanedBuffer[lastIdx + 2] + this.minTimestamp);
+        return (dt < 30) && (dx * dx + dy * dy < 4e-10); // ~2m
     }
 
     _ensureCapacity() {
-        if ((this.cursor + 1) * 5 >= this.buffer.length) {
+        if ((this.cursor + 1) * 6 >= this.buffer.length) {
             const newSize = this.buffer.length * 2;
             const nb = new Float32Array(newSize);
             const ncb = new Float32Array(newSize);
@@ -271,41 +300,57 @@ class GpsDataManager {
     }
 
     async _generateBundledPath(onProgress, precisionValue = 0.0005, weight = 0.5) {
+        this._dataCache = {};
         const precision = 1 / precisionValue;
         const TABLE_SIZE = 4194304;
         const TABLE_MASK = TABLE_SIZE - 1;
         const grid = new Float64Array(TABLE_SIZE * 3);
-        this.snappedBuffer = new Float32Array(this.cleanedCursor * 2);
 
-        // Pass 1: Global Grid Accumulation
+        this.snappedBuffer = new Float32Array(this.cleanedCursor * 5);
+
+        // Pass 1: Global Grid Accumulation (Unchanged)
         for (let i = 0; i < this.cleanedCursor; i++) {
-            const idx = i * 5;
-            const x = this.cleanedBuffer[idx], y = this.cleanedBuffer[idx+1];
+            const idx = i * 6;
+            const x = this.cleanedBuffer[idx], y = this.cleanedBuffer[idx + 1];
             const h = ((Math.floor(x * precision) * 73856093) ^ (Math.floor(y * precision) * 19349663)) & TABLE_MASK;
-            grid[h*3] += x; grid[h*3+1] += y; grid[h*3+2]++;
-            if (i % 200000 === 0) {
-                if (onProgress) {
-                    onProgress(i, this.cleanedCursor, 'bundling');
-                }
+            grid[h * 3] += x;
+            grid[h * 3 + 1] += y;
+            grid[h * 3 + 2]++;
+
+            if (i % 500000 === 0) { // Increased interval for better performance
+                if (onProgress) onProgress(i, this.cleanedCursor, 'bundling');
                 await new Promise(r => setTimeout(r, 0));
             }
         }
 
-        // Pass 2: Centroid Snap
+        // Pass 2: Centroid Snap + Timestamp Injection
         for (let i = 0; i < this.cleanedCursor; i++) {
-            const idx = i * 5, s = i * 2, x = this.cleanedBuffer[idx], y = this.cleanedBuffer[idx+1];
+            const idx = i * 6; // Source (6-float stride)
+            const s = i * 5;   // Destination (4-float stride)
+
+            const x = this.cleanedBuffer[idx];
+            const y = this.cleanedBuffer[idx + 1];
             const h = ((Math.floor(x * precision) * 73856093) ^ (Math.floor(y * precision) * 19349663)) & TABLE_MASK;
-            const c = grid[h*3+2];
-            this.snappedBuffer[s] = x * (1-weight) + (grid[h*3]/c) * weight;
-            this.snappedBuffer[s+1] = y * (1-weight) + (grid[h*3+1]/c) * weight;
+            const c = grid[h * 3 + 2];
+
+            // Bundled Geometry
+            this.snappedBuffer[s] = x * (1 - weight) + (grid[h * 3] / c) * weight;
+            this.snappedBuffer[s + 1] = y * (1 - weight) + (grid[h * 3 + 1] / c) * weight;
+
+            // Inject Timestamps (Direct copy from source buffer)
+            this.snappedBuffer[s + 2] = this.cleanedBuffer[idx + 3]; // linearTs
+            this.snappedBuffer[s + 3] = this.cleanedBuffer[idx + 4]; // aggTs
+            this.snappedBuffer[s + 4] = this.cleanedBuffer[idx + 5]; // dayOfWeek (NEW)
         }
 
-        // Pass 3: Laplacian Smoothing
+        // Pass 3: Laplacian Smoothing (Adjusted for stride 4)
         for (let i = 1; i < this.cleanedCursor - 1; i++) {
-            const c = i*2, p = (i-1)*2, n = (i+1)*2;
+            const c = i * 5, p = (i - 1) * 5, n = (i + 1) * 5;
             this.snappedBuffer[c] = (this.snappedBuffer[p] + this.snappedBuffer[c] + this.snappedBuffer[n]) / 3;
-            this.snappedBuffer[c+1] = (this.snappedBuffer[p+1] + this.snappedBuffer[c+1] + this.snappedBuffer[n+1]) / 3;
+            this.snappedBuffer[c + 1] = (this.snappedBuffer[p + 1] + this.snappedBuffer[c + 1] + this.snappedBuffer[n + 1]) / 3;
         }
+
+        this.snappedVersion++;
         if (onProgress) onProgress(this.cleanedCursor, this.cleanedCursor, 'bundling');
     }
 

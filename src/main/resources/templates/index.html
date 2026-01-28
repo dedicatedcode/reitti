@@ -489,7 +489,6 @@
                 <label for="view-mode">View Mode</label>
                 <select id="view-mode">
                     <option value="LINEAR">Standard Paths</option>
-                    <option value="HEATMAP">Density Heatmap</option>
                     <option value="BUNDLED">Edge Bundling</option>
                 </select>
             </div>
@@ -513,11 +512,10 @@
     let deckParams = {
         trips: {
             trailLength: 700,
-            cometWidth: 3,
+            cometWidth: 4,
             cometOpacity: 100,
-            shadowWidth: 3,
-            shadowOpacity: 35,
-            shadowOffset: [0.00005, -0.00005] //  offset
+            shadowWidth: 4,
+            shadowOpacity: 255
         },
         visits: {
             minZoom: 12,
@@ -532,23 +530,16 @@
             opacity_static: 220
         },
         bundled: {
-            precision: 0.0002,
-            weight: 0.1,
-            coreWidth: 1,
-            coreOpacity: 225,
-            pathWidth: 2.5,
-            pathOpacity: 5,
-            cometWidth: 1.5,
-            cometOpacity: 185,
-            shadowWidth: 4,
-            shadowOpacity: 230,
-        },
-        heatmap: {
-            radius: 25,
-            intensity: 5,
-            threshold: 0.01,
-            opacity: 200,
-            persistence: 900
+            precision: 0.0005,
+            weight: 0.5,
+            pathWidth: 2,
+            pathOpacity: 35,
+            staticPathWidth: 2,
+            staticPathOpacity: 150,
+            cometWidth: 3,
+            cometOpacity: 30,
+            shadowWidth: 3,
+            shadowOpacity: 30,
         }
     };
 
@@ -652,7 +643,16 @@
     mapCustomizationControl.on('update-deck-params', (data) => {
         deckParams = data.params;
         gpsDataManagers.forEach(manager => {
-            updateTripsLayer(manager, timelineControl.getOffset())
+            if (data.field === 'bundled.weight' || data.field === 'bundled.precision') {
+                manager.recalculateBundledPath(deckParams.bundled.precision, deckParams.bundled.weight)
+                    .then(value => {
+                        console.log('test')
+                        updateTripsLayer(manager, timelineControl.getValue())
+                    });
+
+            }
+            updateTripsLayer(manager, timelineControl.getValue())
+
         })
     })
 
@@ -716,7 +716,7 @@
         if (document.getElementById('aggregate-toggle').checked) {
             timeMultiplier = 60 * 60 * 24 / 30;
         } else {
-            const totalSeconds = params.startDateUtcSeconds - params.endDateUtcSeconds;
+            const totalSeconds = params.endDateUtcSeconds - params.startDateUtcSeconds;
             const targetDuration = 30;
             timeMultiplier = totalSeconds / targetDuration;
             console.log(`Animation speed set to: ${timeMultiplier}x real time`);
@@ -746,7 +746,7 @@
         let newValue = parseFloat(timelineControl.getOffset()) + step;
 
         // 4. Loop logic
-        if (newValue > parseFloat(timelineControl.getMax())) {
+        if (newValue > parseFloat(timelineControl.getMaxOffset())) {
             newValue = 0;
         }
 
@@ -832,58 +832,80 @@
 
         const mode = isAggregate ? 'agg' : 'lin';
         const visibility = !timelineControl.isIdle();
-
-
-        layers.push(...photoClient.getLayers(offset, viewState))
-
         const state = {
             selectedDay: timelineControl.getSelectedDays(),
         }
         // --- BASE VISUALIZATION ---
-        if (viewMode === 'HEATMAP') {
-            layers.push(getHeatmapLayer(manager, offset, isAggregate));
-        } else if (viewMode === 'BUNDLED') {
-            layers.push(...getBundleLayers(manager, offset));
+        if (viewMode === 'BUNDLED') {
+            layers.push(...getBundleLayers(manager, offset, isAggregate));
         } else {
-            // STANDARD PATHS
             layers.push(new deck.PathLayer({
-                id: 'paths-static',
-                ...manager.getLayerData('cleaned', isAggregate),
-                getColor: [...manager.color, timelineControl.isIdle() ? deckParams.paths.opacity_static : deckParams.paths.opacity],
+                id: 'paths-static-fixed',
+                data: manager.getLayerData('cleaned', isAggregate),
+                positionFormat: 'XYZ',
+                extensions: [new deck.DataFilterExtension({filterSize: 1})],
+                filterRange: [0, 6],
+                getColor: [...manager.color, deckParams.paths.opacity_static],
                 getWidth: deckParams.paths.width,
                 widthMinPixels: deckParams.paths.width,
                 capRounded: true,
                 jointRounded: true,
-                // Extensions allow the path to be filtered by Day of Week even when static
-                extensions: [new deck.DataFilterExtension({filterSize: 1})],
-                filterRange: [state.selectedDay, state.selectedDay]
+                transitions: {
+                    getPath: 600
+                },
+                updateTriggers: {
+                    // Essential to re-filter when the day changes
+                    filterRange: [state.selectedDay],
+                    getTimestamps: [isAggregate],
+                    data: [manager.buffer?.length],
+                    getColor: [manager.color, deckParams.paths.opacity_static],
+                    getWidth: [deckParams.paths.width],
+                    widthMinPixels: [deckParams.paths.width]
+                }
             }));
 
             // SHADOW TRIP (Animated)
             layers.push(new deck.TripsLayer({
                 id: `trips-shadow-${mode}`,
-                ...manager.getLayerData('cleaned', isAggregate),
+                data: manager.getLayerData('cleaned', isAggregate),
+                positionFormat: 'XYZ',
                 getColor: [255, 255, 255],
                 opacity: deckParams.trips.shadowOpacity * visibility,
                 widthMinPixels: deckParams.trips.shadowWidth,
-                trailLength: calculatedTrail,
+                trailLength: calculatedTrail * 1.2,
                 currentTime: offset,
                 extensions: [new deck.DataFilterExtension({filterSize: 1})],
-                filterRange: [state.selectedDay, state.selectedDay],
-                parameters: {depthTest: false}
+                filterRange: [0, 6],
+                capRounded: true,
+                jointRounded: true,
+
+                parameters: {depthTest: false},
+
+                updateTriggers: {
+                    currentTime: [offset],
+                    getTimestamps: [isAggregate],
+                }
             }));
 
             // CORE TRIP (Animated)
             layers.push(new deck.TripsLayer({
                 id: `trips-core-${mode}`,
-                ...manager.getLayerData('cleaned', isAggregate),
+                data: manager.getLayerData('cleaned', isAggregate),
+                positionFormat: 'XYZ', // Tell deck.gl to look for the 3rd coordinate
                 getColor: manager.color,
                 opacity: deckParams.trips.cometOpacity * visibility,
                 widthMinPixels: deckParams.trips.cometWidth,
                 trailLength: calculatedTrail,
                 currentTime: offset,
                 extensions: [new deck.DataFilterExtension({filterSize: 1})],
-                filterRange: [state.selectedDay, state.selectedDay]
+                filterRange: [0, 6],
+                capRounded: true,
+                jointRounded: true,
+
+                updateTriggers: {
+                    currentTime: [offset],
+                    getTimestamps: [isAggregate],
+                }
             }));
         }
 
@@ -896,45 +918,125 @@
     function getBundleLayers(manager, offset, isAggregate) {
         const timeSpan = isAggregate ? 86400 : (manager.maxTimestamp - manager.minTimestamp);
         const calculatedTrail = Math.max(1800, timeSpan * 0.02);
-        const visibility = !timelineControl.isIdle();
 
         const state = {
             selectedDay: timelineControl.getOffset(),
         }
         // Check if bundling is complete
-        if (manager.loadingState !== 'complete' || !manager.snappedBuffer) return [];
+        if (manager.loadingState !== 'complete' || !manager.snappedBuffer) {
+            console.log('Bundling not complete yet!');
+            return [];
+        }
+        const layers = [];
+        layers.push(new deck.PathLayer({
+            id: `bundled-paths-static-${manager.id}`,
+            data: manager.getLayerData('cleaned', isAggregate),
+            positionFormat: 'XY',
+            extensions: [new deck.DataFilterExtension({filterSize: 1})],
+            filterRange: [0, 6],
+            getColor: [...manager.color, deckParams.bundled.staticPathOpacity],
+            widthMinPixels: deckParams.bundled.staticPathWidth,
+            capRounded: true,
+            jointRounded: true,
+            transitions: {
+                getPath: 600
+            },
+            updateTriggers: {
+                data: [manager.snappedVersion, isAggregate],
+                getPath: [manager.snappedVersion, deckParams.bundled.weight, deckParams.bundled.precision, isAggregate],
+                filterRange: [state.selectedDay],
+                getColor: [manager.color, deckParams.bundled.staticPathOpacity],
+                getWidth: [deckParams.bundled.staticPathWidth],
+                widthMinPixels: [deckParams.bundled.staticPathWidth]
+            }
+        }));
 
-        const binaryData = manager.getLayerData('bundled', isAggregate);
 
-        return [
-            // BUNDLED BACKGROUND
-            new deck.PathLayer({
-                id: 'bundled-static',
-                ...binaryData,
-                getColor: [...manager.color, deckParams.bundled.pathOpacity],
-                getWidth: deckParams.bundled.pathWidth,
-                widthMinPixels: deckParams.bundled.pathWidth,
-                extensions: [new deck.DataFilterExtension({filterSize: 1})],
-                filterRange: [state.selectedDay, state.selectedDay]
-            }),
+        layers.push(new deck.PathLayer({
+            id: `bundled-path-${manager.id}`,
+            data: manager.getLayerData('bundled', isAggregate),
+            positionFormat: 'XY',
+            widthMinPixels: deckParams.bundled.pathWidth,
+            getColor: [...manager.color, deckParams.bundled.pathOpacity],
+            parameters: {
+                blendFunc: [770, 1], // GL_SRC_ALPHA, GL_ONE
+                blendEquation: 32774 // GL_FUNC_ADD
+            },
+            transitions: {
+                getPath: 600
+            },
+            capRounded: true,
+            jointRounded: true,
+            extensions: [new deck.DataFilterExtension({filterSize: 1})],
+            filterRange: [0, 6],
+            updateTriggers: {
+                data: [manager.snappedVersion],
+                getPath: [manager.snappedVersion, deckParams.bundled.weight, deckParams.bundled.precision],
+                getColor: [deckParams.bundled.pathOpacity],
+                getWidth: [deckParams.bundled.pathWidth],
+                widthMinPixels: [deckParams.bundled.pathWidth],
+            }
 
-            // BUNDLED ANIMATION (Trips)
-            new deck.TripsLayer({
-                id: 'bundled-trips',
-                ...binaryData,
-                getColor: manager.color,
-                opacity: deckParams.bundled.cometOpacity * visibility,
-                trailLength: calculatedTrail / 5,
-                currentTime: offset,
-                widthMinPixels: deckParams.bundled.cometWidth,
-                extensions: [new deck.DataFilterExtension({filterSize: 1})],
-                filterRange: [state.selectedDay, state.selectedDay]
-            })
-        ];
+        }));
+
+        layers.push(new deck.TripsLayer({
+            id: `bundled-path-shadow-${manager.id}`,
+            data: manager.getLayerData('bundled', isAggregate),
+            positionFormat: 'XY',
+            getColor: [255, 255, 255],
+            opacity: deckParams.bundled.shadowOpacity,
+            visible: !timelineControl.isIdle(),
+            widthMinPixels: deckParams.bundled.shadowWidth,
+            trailLength: calculatedTrail * 1.2,
+
+            currentTime: offset,
+            extensions: [new deck.DataFilterExtension({filterSize: 1})],
+            filterRange: [0, 6],
+            capRounded: true,
+            jointRounded: true,
+
+            parameters: {depthTest: false},
+
+            updateTriggers: {
+                data: [manager.snappedVersion],
+                getPath: [manager.snappedVersion, deckParams.bundled.weight, deckParams.bundled.precision],
+                currentTime: [offset],
+                getColor: [deckParams.bundled.shadowOpacity],
+                getWidth: [deckParams.bundled.shadowWidth],
+            }
+        }));
+
+        // CORE TRIP (Animated)
+        layers.push(new deck.TripsLayer({
+            id: `bundled-path-core-${manager.id}`,
+            data: manager.getLayerData('bundled', isAggregate),
+            positionFormat: 'XY',
+            getColor: manager.color,
+            opacity: deckParams.bundled.cometOpacity,
+            visible: !timelineControl.isIdle(),
+            widthMinPixels: deckParams.bundled.cometWidth,
+            trailLength: calculatedTrail,
+            currentTime: offset,
+            extensions: [new deck.DataFilterExtension({filterSize: 1})],
+            filterRange: [0, 6],
+            capRounded: true,
+            jointRounded: true,
+            depthTest: false,
+            blendFunc: [770, 771], // Standard Alpha Blending
+            blendEquation: 32774,
+            updateTriggers: {
+                data: [manager.snappedVersion],
+                getPath: [manager.snappedVersion, deckParams.bundled.weight, deckParams.bundled.precision],
+                currentTime: [offset],
+                getColor: [deckParams.bundled.coreOpacity],
+                getWidth: [deckParams.bundled.cometWidth],
+            }
+        }));
+
+        return layers;
     }
 
     function getVisitLayers(manager, offset, isAggregate) {
-        console.log('rendering visit layers with offset:', offset)
         const isOverview = timelineControl.isIdle();
         const currentTime = offset;
         const places = manager.visits;
@@ -952,7 +1054,7 @@
                 pickable: true,
                 onHover: info => updateTooltip(info),
                 visible: isOverview && map.getZoom() > deckParams.visits.minZoom,
-                updateTripsLayer: {
+                updateTriggers: {
                     getFillColor: [deckParams.visits.polygonOpacity, currentTime],
                     visible: [isOverview, map.zoom, deckParams.visits.minZoom],
                     data: manager.visits?.length
@@ -963,9 +1065,21 @@
                 data: places,
                 getPosition: d => d.coordinates,
                 getRadius: d => {
-                    if (isOverview) return deckParams.visits.radius + (Math.pow(d.totalDurationSec || 0, 0.6) * 0.2);
-                    const seconds = getActiveVisitEffect(d, currentTime, isAggregate).seconds;
-                    return seconds > 0 ? 15 + (Math.pow(seconds, 0.6) * 0.5) : 0;
+                    const isOverview = !currentTime;
+                    const duration = isOverview
+                        ? (d.totalDurationSec || 0)
+                        : getActiveVisitEffect(d, currentTime, isAggregate).seconds;
+
+                    if (duration <= 0) return 0;
+
+                    // Logarithmic scale is the winner for 1 month of data
+                    const baseRadius = isOverview ? deckParams.visits.radius : 15;
+                    const scalingFactor = isOverview ? 12 : 8;
+                    const maxRadius = isOverview ? 120 : 60;
+
+                    const calculated = baseRadius + (Math.log10(duration + 1) * scalingFactor);
+
+                    return Math.min(calculated, maxRadius);
                 },
                 getFillColor: d => [...manager.color, isOverview ? deckParams.visits.opacity : (getActiveVisitEffect(d, currentTime, isAggregate).opacity * 140)],
                 pickable: true,
@@ -1016,36 +1130,6 @@
         ];
     }
 
-    function getHeatmapLayer(manager, offset, isAggregate) {
-        const isIdle = timelineControl.isIdle();
-        const persistence = deckParams.heatmap.persistence || 900;
-
-        const state = {
-            selectedDay: timelineControl.getOffset(),
-        }
-        // Time window logic
-        let timeRange;
-        if (isIdle) {
-            timeRange = isAggregate ? [0, 86400] : [0, manager.maxTimestamp - manager.minTimestamp];
-        } else {
-            timeRange = [offset - persistence, offset];
-        }
-
-        return new deck.HeatmapLayer({
-            id: `heatmap-${manager.id}`,
-            ...manager.getLayerData('raw', isAggregate),
-            radiusPixels: 30,
-            intensity: 1,
-            threshold: 0.05,
-            extensions: [new deck.DataFilterExtension({filterSize: 2})],
-            // Range 1: Time Window, Range 2: Day of Week
-            filterRange: [
-                timeRange,
-                [state.selectedDay, state.selectedDay]
-            ]
-        });
-    }
-
     function getActiveVisitEffect(visit, time, isAggregate) {
         const exitFadeDuration = 3000; // 5 minutes (in seconds) to shrink/fade completely
         let accumulated = 0;
@@ -1054,7 +1138,6 @@
         for (const range of visit.activeRanges) {
             const start = isAggregate ? range.startAggregate : range.start;
             const end = isAggregate ? range.endAggregate : range.end;
-            console.log('range:', range, 'start:', start, 'end:', end, 'time:', time)
             if (time < start) {
                 // Future visit: do nothing
                 break;
@@ -1275,9 +1358,6 @@
                 endDate = null;
             }
         }
-
-        console.log('Starting date:', startDate, endDate);
-        console.log('Newest data:', newestData);
 
         if (!startDate && !endDate) {
             if (window.userSettings.uiMode === 'SHARED_LIVE_MODE_ONLY') {
@@ -1661,7 +1741,6 @@
         userConfigs.forEach(config => {
             const gpsDataManager = new GpsDataManager(config, getUserTimezone());
             gpsDataManagers.push(gpsDataManager)
-            console.log('Loading timeline data for user:', JSON.stringify(config));
             gpsDataManager.load(requestedStart, requestedEnd, (current, total, stage) => {
 
                 switch (stage) {
@@ -1683,6 +1762,7 @@
                         })
                         updateStatus("Finished processing {1} points", current, total);
                         updateTripsLayer(gpsDataManager, 0)
+                        fitMapToBounds(gpsDataManager.bounds)
                         break;
                 }
             });
