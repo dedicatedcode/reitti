@@ -632,6 +632,8 @@
         pitch: 45,
     });
 
+    const aggregateToggle = document.getElementById('aggregate-toggle');
+
     const timelineControl = new TimelineControl(document.getElementById('timeline-controls'), map);
     timelineControl.on('offsetChanged', (data) => {
         gpsDataManagers.forEach(manager => {
@@ -713,7 +715,7 @@
     function calculateTimelineMultiplier() {
         const params = getTimelineParams();
 
-        if (document.getElementById('aggregate-toggle').checked) {
+        if (aggregateToggle.checked) {
             timeMultiplier = 60 * 60 * 24 / 30;
         } else {
             const totalSeconds = params.endDateUtcSeconds - params.startDateUtcSeconds;
@@ -820,12 +822,13 @@
         const viewState = {
             longitude: map.getCenter().lng,
             latitude: map.getCenter().lat,
-            zoom: map.getZoom()
+            zoom: map.getZoom(),
+            animating: !timelineControl.isIdle()
         };
         const layers = [];
 
 
-        const isAggregate = document.getElementById('aggregate-toggle')?.checked || false;
+        const isAggregate = aggregateToggle?.checked || false;
         const viewMode = document.getElementById('view-mode')?.value || 'LINEAR';
         const totalTimeSpanSec = isAggregate ? 24 * 60 * 60 : manager.maxTimestamp - manager.minTimestamp;
         const calculatedTrail = Math.max(1800, totalTimeSpanSec * 0.02);
@@ -930,7 +933,7 @@
         const layers = [];
         layers.push(new deck.PathLayer({
             id: `bundled-paths-static-${manager.id}`,
-            data: manager.getLayerData('cleaned', isAggregate),
+            data: manager.getLayerData('bundle', isAggregate),
             positionFormat: 'XY',
             extensions: [new deck.DataFilterExtension({filterSize: 1})],
             filterRange: [0, 6],
@@ -1734,32 +1737,41 @@
             link.setAttribute('href', url.toString());
         });
     }
-
     function loadTimelineData(requestedStart, requestedEnd) {
         gpsDataManagers = [];
+        const RENDER_CHUNK_SIZE = 50000; // Adjust based on your device's power
 
         userConfigs.forEach(config => {
             const gpsDataManager = new GpsDataManager(config, getUserTimezone());
+            let lastRenderedPointCount = 0;
             gpsDataManagers.push(gpsDataManager)
             gpsDataManager.load(requestedStart, requestedEnd, (current, total, stage) => {
 
                 switch (stage) {
                     case 'metadata':
                         updateStatus("Fetching metadata...", 0, 1);
+
                         break;
                     case 'streaming':
                         updateStatus("Loading point {0} / {1}", current, total);
+                        if (current - lastRenderedPointCount >= RENDER_CHUNK_SIZE) {
+                            lastRenderedPointCount = current;
+                            requestAnimationFrame(() => {
+                                updateTripsLayer(gpsDataManager, 0);
+                            });
+                        }
                         break;
                     case 'bundling':
                         updateStatus("Optimizing routes: {0} / {1} points", current, total);
                         break;
                     case 'complete':
-                        calculateTimelineMultiplier();
+                        lastRenderedPointCount = 0;
                         timelineControl.setup({
-                            aggregate: document.getElementById('aggregate-toggle').checked,
+                            aggregate: aggregateToggle.checked,
                             minTimestamp: gpsDataManager.minTimestamp,
                             maxTimestamp: gpsDataManager.maxTimestamp,
                         })
+                        calculateTimelineMultiplier();
                         updateStatus("Finished processing {1} points", current, total);
                         updateTripsLayer(gpsDataManager, 0)
                         fitMapToBounds(gpsDataManager.bounds)
@@ -1816,7 +1828,7 @@
 
                 const params = getTimelineParams();
                 photoClient.updatePhotosForRange(params.startDate, params.endDate, getUserTimezone());
-                timelineControl.setup({minTimestamp: params.startDateUtcSeconds, maxTimestamp: params.endDateUtcSeconds, aggregate: document.getElementById('aggregate-toggle').checked });
+                timelineControl.setup({minTimestamp: params.startDateUtcSeconds, maxTimestamp: params.endDateUtcSeconds, aggregate: aggregateToggle.checked });
                 loadTimelineData(params.startDateUtcSeconds, params.endDateUtcSeconds);
 
                 // Initialize scroll indicator after timeline is updated
@@ -1982,7 +1994,7 @@
 
         restoreTimelineControlsState();
 
-        document.getElementById('aggregate-toggle').onchange = (e) => {
+        aggregateToggle.onchange = (e) => {
             const isAggregate = e.target.checked;
             const params = getTimelineParams();
 
@@ -2046,7 +2058,6 @@
     }
 
     function applySettings(settings) {
-        const aggregateToggle = document.getElementById('aggregate-toggle');
         aggregateToggle.checked = settings.aggregate;
         document.getElementById('view-mode').value = settings.mapMode;
     }
