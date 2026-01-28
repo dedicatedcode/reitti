@@ -36,6 +36,30 @@ class MapCustomization {
         </div>
 
         <div style="margin-bottom: 10px;">
+            <label for="static-path-width">Static Path Width (pixels):</label>
+            <input type="range" id="static-path-width" min="1" max="20" value="8" step="1" style="width: 100%;">
+            <span id="static-path-width-value">8</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="static-path-opacity">Static Path Opacity (0-255):</label>
+            <input type="range" id="static-path-opacity" min="0" max="255" value="255" step="5" style="width: 100%;">
+            <span id="static-path-opacity-value">255</span>
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <label for="path-width">Path Width (pixels):</label>
+            <input type="range" id="path-width" min="1" max="20" value="8" step="1" style="width: 100%;">
+            <span id="path-width-value">8</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="path-opacity">Path Opacity (0-255):</label>
+            <input type="range" id="path-opacity" min="0" max="255" value="255" step="5" style="width: 100%;">
+            <span id="path-opacity-value">255</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
             <label for="comet-width">Comet Width (pixels):</label>
             <input type="range" id="comet-width" min="1" max="20" value="8" step="1" style="width: 100%;">
             <span id="comet-width-value">8</span>
@@ -129,6 +153,19 @@ class MapCustomization {
             <span id="bundled-weight-value">0.05</span>
         </div>
 
+        
+        <div style="margin-bottom: 10px;">
+            <label for="bundled-static-path-width">Static Path Width (pixels):</label>
+            <input type="range" id="bundled-static-path-width" min="0" max="20" value="6" step="0.1" style="width: 100%;">
+            <span id="bundled-static-path-width-value">6</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <label for="bundled-static-path-opacity">Static Path Opacity (0-255):</label>
+            <input type="range" id="bundled-static-path-opacity" min="0" max="255" value="30" step="5" style="width: 100%;">
+            <span id="bundled-static-path-opacity-value">30</span>
+        </div>      
+        
         <div style="margin-bottom: 10px;">
             <label for="bundled-path-width">Path Width (pixels):</label>
             <input type="range" id="bundled-path-width" min="0" max="20" value="6" step="0.1" style="width: 100%;">
@@ -140,18 +177,7 @@ class MapCustomization {
             <input type="range" id="bundled-path-opacity" min="0" max="255" value="30" step="5" style="width: 100%;">
             <span id="bundled-path-opacity-value">30</span>
         </div>       
-         
-        <div style="margin-bottom: 10px;">
-            <label for="bundled-static-path-width">Static Path Width (pixels):</label>
-            <input type="range" id="bundled-static-path-width" min="0" max="20" value="6" step="0.1" style="width: 100%;">
-            <span id="bundled-static-path-width-value">6</span>
-        </div>
-
-        <div style="margin-bottom: 10px;">
-            <label for="bundled-static-path-opacity">Static Path Opacity (0-255):</label>
-            <input type="range" id="bundled-static-path-opacity" min="0" max="255" value="30" step="5" style="width: 100%;">
-            <span id="bundled-static-path-opacity-value">30</span>
-        </div>        
+           
         
         <div style="margin-bottom: 10px;">
             <label for="bundled-comet-width">Comet Width (pixels):</label>
@@ -190,6 +216,10 @@ class MapCustomization {
     _updateSliderDisplays() {
         // Trips
         document.getElementById('trail-length-value').textContent = deckParams.trips.trailLength;
+        document.getElementById('static-path-width-value').textContent = deckParams.trips.staticPathWidth;
+        document.getElementById('static-path-opacity-value').textContent = deckParams.trips.staticPathOpacity;
+        document.getElementById('path-width-value').textContent = deckParams.trips.pathWidth;
+        document.getElementById('path-opacity-value').textContent = deckParams.trips.pathOpacity;
         document.getElementById('comet-width-value').textContent = deckParams.trips.cometWidth;
         document.getElementById('comet-opacity-value').textContent = deckParams.trips.cometOpacity;
         document.getElementById('shadow-width-value').textContent = deckParams.trips.shadowWidth;
@@ -202,16 +232,11 @@ class MapCustomization {
         document.getElementById('visit-line-width-value').textContent = deckParams.visits.lineWidth;
         document.getElementById('visit-min-zoom-value').textContent = deckParams.visits.minZoom;
 
-        // Paths
-        document.getElementById('path-width-value').textContent = deckParams.paths.width;
-        document.getElementById('path-opacity-value').textContent = deckParams.paths.opacity;
-        document.getElementById('path-opacity_static-value').textContent = deckParams.paths.opacity_static;
-
         // Bundled
         document.getElementById('bundled-precision-value').textContent = deckParams.bundled.precision;
         document.getElementById('bundled-weight-value').textContent = deckParams.bundled.weight;
         document.getElementById('bundled-static-path-width-value').textContent = deckParams.bundled.staticPathWidth;
-        document.getElementById('bundled-static-path-opacity-value').textContent = deckParams.paths.staticPathOpacity;
+        document.getElementById('bundled-static-path-opacity-value').textContent = deckParams.bundled.staticPathOpacity;
 
         document.getElementById('bundled-path-width-value').textContent = deckParams.bundled.pathWidth;
         document.getElementById('bundled-path-opacity-value').textContent = deckParams.bundled.pathOpacity;
@@ -246,6 +271,10 @@ class MapCustomization {
         document.getElementById('comet-opacity').value = deckParams.trips.cometOpacity;
         document.getElementById('shadow-width').value = deckParams.trips.shadowWidth;
         document.getElementById('shadow-opacity').value = deckParams.trips.shadowOpacity;
+        document.getElementById('static-path-width-value').value = deckParams.trips.staticPathWidth;
+        document.getElementById('static-path-opacity-value').value = deckParams.trips.staticPathOpacity;
+        document.getElementById('path-width-value').value = deckParams.trips.pathWidth;
+        document.getElementById('path-opacity-value').value = deckParams.trips.pathOpacity;
 
         // Visits
         document.getElementById('visit-radius').value = deckParams.visits.radius;
@@ -253,11 +282,6 @@ class MapCustomization {
         document.getElementById('visit-polygon-opacity').value = deckParams.visits.polygonOpacity;
         document.getElementById('visit-line-width').value = deckParams.visits.lineWidth;
         document.getElementById('visit-min-zoom').value = deckParams.visits.minZoom;
-
-        // Paths
-        document.getElementById('path-width').value = deckParams.paths.width;
-        document.getElementById('path-opacity').value = deckParams.paths.opacity;
-        document.getElementById('path-opacity_static').value = deckParams.paths.opacity_static;
 
         // Bundled
         document.getElementById('bundled-precision').value = deckParams.bundled.precision;
@@ -278,6 +302,29 @@ class MapCustomization {
             this.emit('update-deck-params', {params: this.deckParams});
         };
 
+        document.getElementById('path-width').oninput = (e) => {
+            deckParams.trips.pathWidth = parseInt(e.target.value);
+            this._updateSliderDisplays();
+            this.emit('update-deck-params', {params: this.deckParams});
+        };
+
+        document.getElementById('path-opacity').oninput = (e) => {
+            deckParams.trips.pathOpacity = parseInt(e.target.value);
+            this._updateSliderDisplays();
+            this.emit('update-deck-params', {params: this.deckParams});
+        };
+        document.getElementById('static-path-width').oninput = (e) => {
+            deckParams.trips.staticPathWidth = parseInt(e.target.value);
+            this._updateSliderDisplays();
+            this.emit('update-deck-params', {params: this.deckParams});
+        };
+
+        document.getElementById('static-path-opacity').oninput = (e) => {
+            deckParams.trips.staticPathOpacity = parseInt(e.target.value);
+            this._updateSliderDisplays();
+            this.emit('update-deck-params', {params: this.deckParams});
+        };
+
         document.getElementById('comet-width').oninput = (e) => {
             deckParams.trips.cometWidth = parseInt(e.target.value);
             this._updateSliderDisplays();
@@ -288,7 +335,6 @@ class MapCustomization {
             deckParams.trips.cometOpacity = parseInt(e.target.value);
             this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
-
         };
 
         document.getElementById('shadow-width').oninput = (e) => {
@@ -332,24 +378,6 @@ class MapCustomization {
 
         document.getElementById('visit-min-zoom').oninput = (e) => {
             deckParams.visits.minZoom = parseInt(e.target.value);
-            this._updateSliderDisplays();
-            this.emit('update-deck-params', {params: this.deckParams});
-        };
-
-        document.getElementById('path-width').oninput = (e) => {
-            deckParams.paths.width = parseInt(e.target.value);
-            this._updateSliderDisplays();
-            this.emit('update-deck-params', {params: this.deckParams});
-        };
-
-        document.getElementById('path-opacity').oninput = (e) => {
-            deckParams.paths.opacity = parseInt(e.target.value);
-            this._updateSliderDisplays();
-            this.emit('update-deck-params', {params: this.deckParams});
-        };
-
-        document.getElementById('path-opacity_static').oninput = (e) => {
-            deckParams.paths.opacity_static = parseInt(e.target.value);
             this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
         };

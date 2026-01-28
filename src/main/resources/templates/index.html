@@ -489,6 +489,7 @@
                 <label for="view-mode">View Mode</label>
                 <select id="view-mode">
                     <option value="LINEAR">Standard Paths</option>
+                    <option value="RAW">Raw Paths</option>
                     <option value="BUNDLED">Edge Bundling</option>
                 </select>
             </div>
@@ -512,10 +513,15 @@
     let deckParams = {
         trips: {
             trailLength: 700,
-            cometWidth: 4,
-            cometOpacity: 100,
-            shadowWidth: 4,
-            shadowOpacity: 255
+            cometWidth: 3,
+            cometOpacity: 155,
+            shadowWidth: 3,
+            shadowOpacity: 155,
+            pathWidth: 2,
+            pathOpacity: 35,
+            staticPathWidth: 2,
+            staticPathOpacity: 150,
+
         },
         visits: {
             minZoom: 12,
@@ -524,20 +530,16 @@
             polygonOpacity: 110,
             lineWidth: 1
         },
-        paths: {
-            width: 2,
-            opacity: 110,
-            opacity_static: 220
-        },
+
         bundled: {
             precision: 0.0005,
             weight: 0.5,
-            pathWidth: 2,
-            pathOpacity: 35,
-            staticPathWidth: 2,
-            staticPathOpacity: 150,
-            cometWidth: 3,
-            cometOpacity: 30,
+            staticPathWidth: 2.5,
+            staticPathOpacity: 200,
+            pathWidth: 1.5,
+            pathOpacity: 40,
+            cometWidth: 4,
+            cometOpacity: 15,
             shadowWidth: 3,
             shadowOpacity: 30,
         }
@@ -834,7 +836,7 @@
         const calculatedTrail = Math.max(1800, totalTimeSpanSec * 0.02);
 
         const mode = isAggregate ? 'agg' : 'lin';
-        const visibility = !timelineControl.isIdle();
+        const isAnimating = !timelineControl.isIdle();
         const state = {
             selectedDay: timelineControl.getSelectedDays(),
         }
@@ -842,40 +844,45 @@
         if (viewMode === 'BUNDLED') {
             layers.push(...getBundleLayers(manager, offset, isAggregate));
         } else {
+            const buffer = viewMode === 'LINEAR' ? 'cleaned' : 'raw';
+            const cursor =  viewMode === 'LINEAR' ? manager.cleanedCursor : manager.cursor;
             layers.push(new deck.PathLayer({
                 id: 'paths-static-fixed',
-                data: manager.getLayerData('cleaned', isAggregate),
+                data: manager.getLayerData(buffer, isAggregate),
                 positionFormat: 'XYZ',
                 extensions: [new deck.DataFilterExtension({filterSize: 1})],
                 filterRange: [0, 6],
-                getColor: [...manager.color, deckParams.paths.opacity_static],
-                getWidth: deckParams.paths.width,
-                widthMinPixels: deckParams.paths.width,
+                getColor: [...manager.color, deckParams.trips.staticPathOpacity],
+                getWidth: deckParams.trips.staticPathWidth,
+                widthMinPixels: deckParams.trips.staticPathWidth,
+                visibility: !isAnimating,
                 capRounded: true,
                 jointRounded: true,
                 transitions: {
                     getPath: 600
                 },
                 updateTriggers: {
-                    // Essential to re-filter when the day changes
+                    data: [manager.buffer?.length, buffer],
+                    getPath: [cursor, buffer],
                     filterRange: [state.selectedDay],
                     getTimestamps: [isAggregate],
-                    data: [manager.buffer?.length],
-                    getColor: [manager.color, deckParams.paths.opacity_static],
-                    getWidth: [deckParams.paths.width],
-                    widthMinPixels: [deckParams.paths.width]
+                    visibility: [isAnimating],
+                    getColor: [manager.color, deckParams.trips.staticPathOpacity],
+                    getWidth: [deckParams.trips.staticPathWidth],
+                    widthMinPixels: [deckParams.trips.staticPathWidth],
                 }
             }));
 
             // SHADOW TRIP (Animated)
             layers.push(new deck.TripsLayer({
                 id: `trips-shadow-${mode}`,
-                data: manager.getLayerData('cleaned', isAggregate),
+                data: manager.getLayerData(buffer, isAggregate),
                 positionFormat: 'XYZ',
                 getColor: [255, 255, 255],
-                opacity: deckParams.trips.shadowOpacity * visibility,
+                opacity: deckParams.trips.shadowOpacity,
                 widthMinPixels: deckParams.trips.shadowWidth,
                 trailLength: calculatedTrail * 1.2,
+                visibility: isAnimating,
                 currentTime: offset,
                 extensions: [new deck.DataFilterExtension({filterSize: 1})],
                 filterRange: [0, 6],
@@ -885,6 +892,11 @@
                 parameters: {depthTest: false},
 
                 updateTriggers: {
+                    data: [manager.buffer?.length, buffer],
+                    visibility: [isAnimating],
+                    opacity: [deckParams.trips.shadowOpacity],
+                    widthMinPixels: [deckParams.trips.shadowWidth],
+                    getPath: [cursor, buffer],
                     currentTime: [offset],
                     getTimestamps: [isAggregate],
                 }
@@ -893,10 +905,10 @@
             // CORE TRIP (Animated)
             layers.push(new deck.TripsLayer({
                 id: `trips-core-${mode}`,
-                data: manager.getLayerData('cleaned', isAggregate),
+                data: manager.getLayerData(buffer, isAggregate),
                 positionFormat: 'XYZ', // Tell deck.gl to look for the 3rd coordinate
                 getColor: manager.color,
-                opacity: deckParams.trips.cometOpacity * visibility,
+                opacity: deckParams.trips.cometOpacity * isAnimating,
                 widthMinPixels: deckParams.trips.cometWidth,
                 trailLength: calculatedTrail,
                 currentTime: offset,
@@ -906,6 +918,8 @@
                 jointRounded: true,
 
                 updateTriggers: {
+                    data: [manager.buffer?.length, buffer],
+                    getPath: [cursor, buffer],
                     currentTime: [offset],
                     getTimestamps: [isAggregate],
                 }
@@ -933,7 +947,7 @@
         const layers = [];
         layers.push(new deck.PathLayer({
             id: `bundled-paths-static-${manager.id}`,
-            data: manager.getLayerData('bundle', isAggregate),
+            data: manager.getLayerData('bundled', isAggregate),
             positionFormat: 'XY',
             extensions: [new deck.DataFilterExtension({filterSize: 1})],
             filterRange: [0, 6],
@@ -1068,12 +1082,13 @@
                 data: places,
                 getPosition: d => d.coordinates,
                 getRadius: d => {
-                    const isOverview = !currentTime;
                     const duration = isOverview
                         ? (d.totalDurationSec || 0)
                         : getActiveVisitEffect(d, currentTime, isAggregate).seconds;
 
-                    if (duration <= 0) return 0;
+                    if (duration <= 0) {
+                        return 0;
+                    }
 
                     // Logarithmic scale is the winner for 1 month of data
                     const baseRadius = isOverview ? deckParams.visits.radius : 15;

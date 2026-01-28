@@ -153,7 +153,7 @@ class GpsDataManager {
                     }
                 }
             };
-        } else {
+        } else if (mode === 'cleaned') {
             payload = {
                 length: 1,
                 startIndices: new Uint32Array([0, this.cleanedCursor]),
@@ -172,6 +172,31 @@ class GpsDataManager {
                     },
                     filterValues: {
                         value: this.cleanedBuffer,
+                        size: 1,
+                        stride: 24,
+                        offset: dayOffset
+                    }
+                }
+            };
+        } else if (mode === 'raw') {
+            payload = {
+                length: 1,
+                startIndices: new Uint32Array([0, this.cursor]),
+                attributes: {
+                    getPath: {
+                        value: this.buffer,
+                        size: 3,
+                        stride: 24,
+                        offset: 0
+                    },
+                    getTimestamps: {
+                        value: this.buffer,
+                        size: 1,
+                        stride: 24,
+                        offset: isAggregate ? 20 : 12
+                    },
+                    filterValues: {
+                        value: this.buffer,
                         size: 1,
                         stride: 24,
                         offset: dayOffset
