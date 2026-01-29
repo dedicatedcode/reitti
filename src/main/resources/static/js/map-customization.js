@@ -88,7 +88,7 @@ class MapCustomization {
     <div id="tab-visits" class="tab-content" style="display: none;">
         <div style="margin-bottom: 10px;">
             <label for="visit-radius">Visit Radius (pixels):</label>
-            <input type="range" id="visit-radius" min="5" max="50" value="50" step="1" style="width: 100%;">
+            <input type="range" id="visit-radius" min="0" max="500" value="50" step="0.1" style="width: 100%;">
             <span id="visit-radius-value">50</span>
         </div>
 
@@ -352,7 +352,7 @@ class MapCustomization {
         };
 
         document.getElementById('visit-radius').oninput = (e) => {
-            deckParams.visits.radius = parseInt(e.target.value);
+            deckParams.visits.radius = parseFloat(e.target.value);
             this._updateSliderDisplays();
             this.emit('update-deck-params', {params: this.deckParams});
 

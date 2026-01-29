@@ -547,6 +547,7 @@ tr:hover {
     pointer-events: none;
     -ms-overflow-style: none; /* IE and Edge */
     scrollbar-width: none; /* Firefox */
+    user-select: none;
 }
 
 .navigation-container {

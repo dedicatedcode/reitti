@@ -614,6 +614,7 @@ public class RawLocationPointJdbcService {
                   ST_XMax(ST_Extent(geom)) as max_lng
                 FROM raw_location_points
                 WHERE user_id = ?
+                 AND invalid = false
                  AND timestamp >= ? AND timestamp < ?;
                 """;
 

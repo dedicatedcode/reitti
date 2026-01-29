@@ -33,6 +33,7 @@ public class StreamingRawLocationPointJdbcService {
             FROM raw_location_points
             WHERE user_id = ?
               AND timestamp >= ? AND timestamp < ?
+              AND invalid = false
             ORDER BY timestamp
         """;
         int pointsPerBatch = 8192;

@@ -1,6 +1,7 @@
 class GpsDataManager {
-    constructor(userConfig, timeZone) {
+    constructor(userConfig, userSettings, timeZone) {
         this.config = userConfig;
+        this.userSettings = userSettings;
         this.color = this._hexToRgb(userConfig.color || '#3388ff');
         this.id = userConfig.id || 'default';
 
@@ -97,7 +98,7 @@ class GpsDataManager {
 
             this.loadingState = 'complete';
             if (onProgress) onProgress(this.totalExpected, this.totalExpected, 'complete');
-            console.log("Load complete:", this.loadingState, 'with bounds:', this.bounds, 'and total points:', this.totalExpected, 'in range:', startUTC, 'to', endUTC, 'at', this.visits.length, 'places.');
+            console.log("Load complete:", this.loadingState, 'with bounds:', this.bounds, 'and total points:', this.totalExpected, ' (cleaned:', this.cleanedCursor, ') in range:', startUTC, 'to', endUTC, 'at', this.visits.length, 'visits.');
 
         } catch (error) {
             console.error("Load failed:", error);
@@ -144,12 +145,6 @@ class GpsDataManager {
                         size: 1,
                         stride: stride,
                         offset: isAggregate ? 16 : 8
-                    },
-                    filterValues: {
-                        value: this.snappedBuffer,
-                        size: 1,
-                        stride: stride,
-                        offset: 12
                     }
                 }
             };
@@ -169,12 +164,6 @@ class GpsDataManager {
                         size: 1,
                         stride: 24,
                         offset: isAggregate ? 20 : 12
-                    },
-                    filterValues: {
-                        value: this.cleanedBuffer,
-                        size: 1,
-                        stride: 24,
-                        offset: dayOffset
                     }
                 }
             };
@@ -194,12 +183,6 @@ class GpsDataManager {
                         size: 1,
                         stride: 24,
                         offset: isAggregate ? 20 : 12
-                    },
-                    filterValues: {
-                        value: this.buffer,
-                        size: 1,
-                        stride: 24,
-                        offset: dayOffset
                     }
                 }
             };
@@ -217,19 +200,6 @@ class GpsDataManager {
         return this._generateBundledPath(null, precisionValue, weight);
     }
 
-    updateSelectionMask(selectedBitmaskSum) {
-        const count = this.cursor;
-        const buf = this.buffer;
-        const mask = this.selectionBuffer;
-
-        for (let i = 0; i < count; i++) {
-            const pointBit = buf[i * 6 + 4];
-            // Standard bitwise check: Does this point's day exist in the selection?
-            mask[i] = (pointBit & selectedBitmaskSum) ? 1.0 : 0.0;
-        }
-        this.selectionVersion++;
-    }
-
     async _streamPoints(onProgress) {
         const response = await fetch(window.contextPath + this.config.map.streamUrl);
         const reader = response.body.getReader();
@@ -237,7 +207,12 @@ class GpsDataManager {
 
         while (true) {
             const {done, value} = await reader.read();
-            if (done) break;
+            if (done) {
+                console.log('done')
+                break;
+            } else {
+                console.log('running');
+            }
 
             let combinedValue = value;
             if (leftover) {
@@ -245,6 +220,7 @@ class GpsDataManager {
                 combinedValue.set(leftover);
                 combinedValue.set(value, leftover.length);
                 leftover = null;
+                console.log('leftover');
             }
 
             const pointsCount = Math.floor(combinedValue.length / 16);
@@ -276,7 +252,14 @@ class GpsDataManager {
         const tsLinear = timestamp;
         const localTs = timestamp + this._currentOffset;
         const tsAggregate = ((localTs % 86400) + 86400) % 86400;
-        const dayOfWeek = Math.pow(new Date(localTs * 1000).getUTCDay(), 2);
+        let dayIndex = new Date(localTs * 1000).getUTCDay(); // Standard: Sun=0, Mon=1...
+        if (this.userSettings.weekStartsOnMonday) {
+            // Shift Sunday(0) to 6, Monday(1) to 0, etc.
+            dayIndex = (dayIndex + 6) % 7;
+        }
+        // Store as bitmask: 2^0, 2^1, 2^2...
+        // Mon=1, Tue=2, Wed=4, Thu=8, Fri=16, Sat=32, Sun=64
+        const dayOfWeek = 1 << dayIndex;
         // Write to Raw Buffer
         this._writeToBuffer(this.buffer, this.cursor++, lng, lat, alt, tsLinear, tsAggregate, dayOfWeek);
 
@@ -298,11 +281,14 @@ class GpsDataManager {
 
     _isRedundant(lng, lat, ts) {
         if (this.cleanedCursor === 0) return false;
+
         const lastIdx = (this.cleanedCursor - 1) * 6;
         const dx = this.cleanedBuffer[lastIdx] - lng;
         const dy = this.cleanedBuffer[lastIdx + 1] - lat;
-        const dt = ts - (this.cleanedBuffer[lastIdx + 2] + this.minTimestamp);
-        return (dt < 30) && (dx * dx + dy * dy < 4e-10); // ~2m
+        const dt = Math.abs(ts - this.cleanedBuffer[lastIdx + 3]);
+
+        // 3. Return true only if both time and space are close
+        return (dt < 30) && (dx * dx + dy * dy < 8e-10);
     }
 
     _ensureCapacity() {
