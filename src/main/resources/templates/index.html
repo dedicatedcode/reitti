@@ -15,6 +15,7 @@
     <link rel="stylesheet" th:href="@{/css/inline-edit.css}" href="/css/inline-edit.css">
     <link rel="stylesheet" th:href="@{/css/avatar-marker.css}" href="/css/avatar-marker.css">
     <link rel="stylesheet" th:href="@{/css/maplibre-gl.5.16.0.min.css}" href="/css/maplibre-gl.5.16.0.min.css">
+    <link rel="stylesheet" th:href="@{/css/time-control.css}" href="/css/time-control.css">
     <link th:if="${userSettings.customCssUrl}" rel="stylesheet" th:href="${userSettings.customCssUrl}">
     <script th:src="@{/js/HumanizeDuration.js}"></script>
     <script th:src="@{/js/date-picker-combined.js}"></script>
@@ -30,55 +31,6 @@
     <script th:src="@{/js/map-customization.js}"></script>
     <script th:src="@{/js/gps-data-manager.js}"></script>
     <style>
-        #timeline-controls {
-            position: absolute;
-            bottom: 170px;
-            color: var( --color-highlight);
-            display: block;
-            background: #3b3b3ba6;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 80%;
-            max-width: 800px;
-            padding: 15px 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            z-index: 10;
-            font-family: var(--serif-font);
-        }
-
-        #timeline-controls.hidden {
-            opacity: 0;
-            visibility: hidden;
-            transform: translateX(-50%) translateY(-10px);
-            pointer-events: none;
-        }
-
-        .timer-display {
-            text-align: center;
-        }
-
-        #current-date {
-            display: block;
-        }
-
-        .slider-container {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        #time-slider {
-            flex-grow: 1;
-            cursor: pointer;
-        }
-
-        .time-bounds {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 5px;
-            align-self: end;
-        }
 
         #loading-overlay {
             opacity: 0;
@@ -461,6 +413,7 @@
     <button type="button" class="btn fab-btn" id="toggle-time-control-btn" title="Show time controls">
         <i class="lni lni-stopwatch"></i>
     </button>
+    <span class="time-display" id="time-display"></span>
     <!-- Today button (hidden by default) -->
     <button type="button" class="btn fab-btn today-btn" id="today-fab" onclick="goToToday()" style="display: none;"
             th:title="#{datepicker.today.title}" title="Go to Today">
@@ -636,7 +589,10 @@
 
     const aggregateToggle = document.getElementById('aggregate-toggle');
 
-    const timelineControl = new TimelineControl(document.getElementById('timeline-controls'), map);
+    const timelineControl = new TimelineControl(
+        document.getElementById('timeline-controls'),
+        document.getElementById('time-display')
+    );
     timelineControl.on('offsetChanged', (data) => {
         gpsDataManagers.forEach(manager => {
             updateTripsLayer(manager, data.value);
@@ -2064,20 +2020,20 @@
 
         if (!timelineControls || !toggleBtn) return;
 
-        // Check if controls are currently visible
-        const isVisible = !timelineControls.classList.contains('hidden');
+        const isVisible = timelineControl.isVisible();
 
         if (isVisible) {
             // Hide the controls
-            timelineControls.classList.add('hidden');
+            timelineControl.hide();
+
             toggleBtn.classList.remove('active');
             toggleBtn.title = window.locale.timeline.state.show;
 
             // Save state to localStorage
             localStorage.setItem('timelineControlsHidden', 'true');
         } else {
+            timelineControl.show();
             // Show the controls
-            timelineControls.classList.remove('hidden');
             toggleBtn.classList.add('active');
             toggleBtn.title = window.locale.timeline.state.hide;
 

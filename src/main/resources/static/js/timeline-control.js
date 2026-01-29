@@ -1,8 +1,9 @@
 class TimelineControl {
 
 
-    constructor(timeline) {
+    constructor(timeline, timedisplay) {
         this.timeline = timeline;
+        this.timedisplay = timedisplay;
         this.timeline.innerHTML = `
              <div class="time-bounds">
                 <span id="start-label" style="align-self: end;">--</span>
@@ -15,6 +16,9 @@ class TimelineControl {
             </div>
             <div class="slider-container"><input type="range" id="time-slider" min="0" max="100" value="0" step="1"></div>
         `;
+
+        this.timedisplay.classList.add('hidden');
+        this.timedisplay.innerHTML = `<span>24.01.2026 23:00</span>`
         this.slider = timeline.getElementsByTagName('input')[0];
         this.startLabel = timeline.getElementsByTagName('span')[0];
         this.dateLabel =  timeline.getElementsByTagName('span')[1]
@@ -47,9 +51,11 @@ class TimelineControl {
         if (this.aggregate) {
             dateObj = new Date(numericOffset * 1000);
             this.dateLabel.innerText = 'Daily Pattern';
-            this.timeLabel.innerText = dateObj.toLocaleTimeString(locale, {
+            const timeText = dateObj.toLocaleTimeString(locale, {
                 hour: '2-digit', minute: '2-digit', timeZone: 'UTC'
             });
+            this.timeLabel.innerText = timeText;
+            this.timedisplay.innerText = timeText;
 
             this.startLabel.innerText = "00:00";
             this.endLabel.innerText = "23:59";
@@ -65,6 +71,8 @@ class TimelineControl {
             this.timeLabel.innerText = dateObj.toLocaleTimeString(locale, {
                 hour: '2-digit', minute: '2-digit', timeZone: tz, hour12: false
             });
+
+            this.timedisplay.innerText = this._formatDateTime(absoluteSeconds * 1000, tz);
 
             // Use your helper for the bounds
             this.startLabel.innerText = this._formatDateTime(this.minTimestamp * 1000, tz);
@@ -94,7 +102,6 @@ class TimelineControl {
             this.slider.step = 60;
             this.slider.max = 86400;
             this.setOffset(0);
-
         } else {
             this.minTimestamp = config.minTimestamp;
             this.maxTimestamp = config.maxTimestamp;
@@ -109,6 +116,8 @@ class TimelineControl {
     setOffset(offset) {
         this.slider.value = this.minTimestamp + offset;
         this._updateLabels(offset);
+        this._updateVisibility(offset);
+
     }
 
     getOffset() {
@@ -136,8 +145,22 @@ class TimelineControl {
         return (this.slider.value - this.minTimestamp) === 0;
     }
 
-    hide() {
+    isVisible() {
+        return !this.timeline.classList.contains('hidden');
+    }
 
+    hide() {
+        this.timeline.classList.add('hidden');
+        if (!this.isIdle()) {
+            this.timedisplay.classList.remove('hidden');
+        }
+    }
+
+    show() {
+        this.timeline.classList.remove('hidden');
+        if (!this.timedisplay.classList.contains('hidden')) {
+            this.timedisplay.classList.add('hidden');
+        }
     }
 
     /** Events **/
@@ -156,5 +179,15 @@ class TimelineControl {
         const list = this.eventListeners[event];
         if (!list || !list.length) return;
         list.forEach(cb => cb(data));
+    }
+
+    _updateVisibility(offset) {
+        if (!this.isVisible()) {
+            if (offset === 0) {
+                this.timedisplay.classList.add('hidden');
+            } else {
+                this.timedisplay.classList.remove('hidden');
+            }
+        }
     }
 }
