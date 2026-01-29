@@ -50,6 +50,10 @@
 
 .time-display {
     transition: all 0.3s ease;
+    height: 40px;
+    line-height: 2.6em;
+    overflow: hidden;
+    white-space: nowrap;
 }
 
 .time-display.hidden {
