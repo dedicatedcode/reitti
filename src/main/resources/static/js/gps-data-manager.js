@@ -69,15 +69,16 @@ class GpsDataManager {
                     const endOffset = this._getOffsetSeconds(endUtcSeconds);
                     const localStartTs = startUtcSeconds + startOffset;
                     const localEndTs = endUtcSeconds + endOffset;
+
                     return ({
                         start: startUtcSeconds,
                         end: endUtcSeconds,
-                        startAggregate: ((localStartTs % 86400) + 86400) % 86400,
-                        endAggregate: ((localEndTs % 86400) + 86400) % 86400,
+                        startAggregate: startUtcSeconds < startUTC ? 0 :  ((localStartTs % 86400) + 86400) % 86400,
+                        endAggregate:  endUtcSeconds > endUTC ? 86400 : ((localEndTs % 86400) + 86400) % 86400,
                         startDayOfWeek: Math.pow(new Date(localStartTs * 1000).getUTCDay(), 2),
                         endDayOfWeek: Math.pow(new Date(localEndTs * 1000).getUTCDay(), 2)
                     });
-                }).sort((a, b) => a.start - b.start),
+                }),
                 originalVisits: p.visits
             }));
             // Update internal range trackers
