@@ -491,7 +491,7 @@
             staticPathOpacity: 200,
             pathWidth: 1.5,
             pathOpacity: 40,
-            cometWidth: 4,
+            cometWidth: 2,
             cometOpacity: 15,
             shadowWidth: 3,
             shadowOpacity: 30,
@@ -984,7 +984,6 @@
 
     function getVisitLayers(manager, offset, isAggregate) {
         const isOverview = timelineControl.isIdle();
-        console.log(isOverview)
         const currentTime = offset;
         const places = manager.visits;
         if (places === undefined) {
@@ -1815,6 +1814,7 @@
                 fitMapToBounds(globalBounds);
                 highlightTimes = [];
             } else {
+                globalBounds = map.getBounds();
                 entry.classList.add('active');
 
                 const lat = parseFloat(entry.dataset.lat);
