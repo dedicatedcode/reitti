@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
@@ -14,7 +15,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +49,7 @@ public class GeoJsonImporter {
             }
 
             String type = rootNode.get("type").asText();
-            List<LocationPoint> batch = new ArrayList<>(batchProcessor.getBatchSize());
+            List<LocationPoint2> batch = new ArrayList<>(batchProcessor.getBatchSize());
 
             switch (type) {
                 case "FeatureCollection" -> {
@@ -60,7 +60,7 @@ public class GeoJsonImporter {
 
                     JsonNode features = rootNode.get("features");
                     for (JsonNode feature : features) {
-                        LocationPoint point = convertGeoJsonFeature(feature);
+                        LocationPoint2 point = convertGeoJsonFeature(feature);
                         if (point != null) {
                             batch.add(point);
                             processedCount.incrementAndGet();
@@ -74,7 +74,7 @@ public class GeoJsonImporter {
                 }
                 case "Feature" -> {
                     // Process single Feature
-                    LocationPoint point = convertGeoJsonFeature(rootNode);
+                    LocationPoint2 point = convertGeoJsonFeature(rootNode);
                     if (point != null) {
                         batch.add(point);
                         processedCount.incrementAndGet();
@@ -82,7 +82,7 @@ public class GeoJsonImporter {
                 }
                 case "Point" -> {
                     // Process single Point geometry
-                    LocationPoint point = convertGeoJsonGeometry(rootNode, null);
+                    LocationPoint2 point = convertGeoJsonGeometry(rootNode, null);
                     if (point != null) {
                         batch.add(point);
                         processedCount.incrementAndGet();
@@ -122,7 +122,7 @@ public class GeoJsonImporter {
     /**
      * Converts a GeoJSON Feature to our LocationPoint format
      */
-    private LocationPoint convertGeoJsonFeature(JsonNode feature) {
+    private LocationPoint2 convertGeoJsonFeature(JsonNode feature) {
         if (!feature.has("geometry")) {
             return null;
         }
@@ -136,7 +136,7 @@ public class GeoJsonImporter {
     /**
      * Converts a GeoJSON geometry (Point) to our LocationPoint format
      */
-    private LocationPoint convertGeoJsonGeometry(JsonNode geometry, JsonNode properties) {
+    private LocationPoint2 convertGeoJsonGeometry(JsonNode geometry, JsonNode properties) {
         if (!geometry.has("type") || !"Point".equals(geometry.get("type").asText())) {
             return null; // Only support Point geometries for location data
         }
@@ -150,7 +150,7 @@ public class GeoJsonImporter {
             return null;
         }
 
-        LocationPoint point = new LocationPoint();
+        LocationPoint2 point = new LocationPoint2();
 
         // GeoJSON coordinates are [longitude, latitude]
         double longitude = coordinates.get(0).asDouble();
@@ -178,7 +178,7 @@ public class GeoJsonImporter {
         }
 
         // Convert Unix epoch timestamp to ISO format if needed
-        String isoTimestamp = convertToIsoTimestamp(timestamp);
+        Instant isoTimestamp = convertToIsoTimestamp(timestamp);
         if (isoTimestamp == null) {
             logger.warn("Could not parse timestamp '{}' for point {}. Will discard it", timestamp, point);
             return null;
@@ -190,7 +190,7 @@ public class GeoJsonImporter {
         Double accuracy = null;
         String[] accuracyFields = {"accuracy", "acc", "precision", "hdop"};
         for (String field : accuracyFields) {
-            if (properties != null && properties.has(field)) {
+            if (properties.has(field)) {
                 accuracy = properties.get(field).asDouble();
                 break;
             }
@@ -233,13 +233,13 @@ public class GeoJsonImporter {
     /**
      * Converts timestamp to ISO format. Handles both Unix epoch seconds and ISO strings.
      */
-    private String convertToIsoTimestamp(String timestamp) {
+    private Instant convertToIsoTimestamp(String timestamp) {
         try {
             long epochSeconds = Long.parseLong(timestamp);
-            return Instant.ofEpochSecond(epochSeconds).toString();
+            return Instant.ofEpochSecond(epochSeconds);
         } catch (NumberFormatException e) {
             try {
-                return ZonedDateTime.parse(timestamp).withZoneSameInstant(java.time.ZoneOffset.UTC).truncatedTo(java.time.temporal.ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_INSTANT);
+                return ZonedDateTime.parse(timestamp).withZoneSameInstant(java.time.ZoneOffset.UTC).truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toInstant();
             } catch (Exception ex) {
                 return null;
             }

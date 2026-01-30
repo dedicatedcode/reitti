@@ -2,6 +2,8 @@ package com.dedicatedcode.reitti.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.time.Instant;
+
 public class OwntracksLocationRequest {
     
     @JsonProperty("_type")
@@ -125,16 +127,13 @@ public class OwntracksLocationRequest {
     /**
      * Converts to a LocationPoint for processing
      */
-    public LocationPoint toLocationPoint() {
-        LocationPoint point = new LocationPoint();
+    public LocationPoint2 toLocationPoint() {
+        LocationPoint2 point = new LocationPoint2();
         point.setLatitude(latitude);
         point.setLongitude(longitude);
 
-        // Convert Unix timestamp to ISO8601 format
         if (timestamp != null) {
-            // Convert seconds to milliseconds and format as ISO8601
-            String isoTimestamp = java.time.Instant.ofEpochSecond(timestamp).toString();
-            point.setTimestamp(isoTimestamp);
+            point.setTimestamp(Instant.ofEpochSecond(timestamp));
         }
         point.setElevationMeters(altitude);
         if (accuracy != null) {

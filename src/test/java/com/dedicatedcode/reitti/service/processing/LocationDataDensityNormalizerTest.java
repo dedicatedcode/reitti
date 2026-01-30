@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.service.processing;
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
@@ -52,10 +53,10 @@ class LocationDataDensityNormalizerTest {
         points.add(createAndSaveRawPoint(Instant.parse("2013-04-15T06:36:32.566000Z"), 50.0, 8.0));
 
         normalizer.normalize(testUser, points.stream().map(rlp -> {
-            LocationPoint locationPoint = new LocationPoint();
+            LocationPoint2 locationPoint = new LocationPoint2();
             locationPoint.setLatitude(rlp.getLatitude());
             locationPoint.setLongitude(rlp.getLongitude());
-            locationPoint.setTimestamp(rlp.getTimestamp().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+            locationPoint.setTimestamp(rlp.getTimestamp());
             locationPoint.setAccuracyMeters(10.0);
             locationPoint.setElevationMeters(100.0);
             return locationPoint;
@@ -79,7 +80,7 @@ class LocationDataDensityNormalizerTest {
         createAndSaveRawPoint(endTime, 50.0001, 8.0001);
 
         // When: Normalize around a new point in between
-        LocationPoint newPoint = createLocationPoint(startTime.plus(1, ChronoUnit.MINUTES), 50.0005, 8.0005);
+        LocationPoint2 newPoint = createLocationPoint(startTime.plus(1, ChronoUnit.MINUTES), 50.0005, 8.0005);
         normalizer.normalize(testUser, Collections.singletonList(newPoint));
 
         // Then: Should have generated synthetic points to fill the gaps
@@ -105,7 +106,7 @@ class LocationDataDensityNormalizerTest {
         createAndSaveRawPoint(baseTime.plus(10, ChronoUnit.SECONDS), 50.0002, 8.0002); // Too close
 
         // When: Normalize around a new point
-        LocationPoint newPoint = createLocationPoint(baseTime.plus(7, ChronoUnit.SECONDS), 50.00015, 8.00015);
+        LocationPoint2 newPoint = createLocationPoint(baseTime.plus(7, ChronoUnit.SECONDS), 50.00015, 8.00015);
         normalizer.normalize(testUser, Collections.singletonList(newPoint));
 
         // Then: Some points should be marked as ignored
@@ -127,7 +128,7 @@ class LocationDataDensityNormalizerTest {
         createAndSaveRawPoint(endTime, 50.01, 8.01); // ~1.4km apart
 
         // When: Normalize around a new point (with default 500m max distance)
-        LocationPoint newPoint = createLocationPoint(startTime.plus(1, ChronoUnit.MINUTES), 50.005, 8.005);
+        LocationPoint2 newPoint = createLocationPoint(startTime.plus(1, ChronoUnit.MINUTES), 50.005, 8.005);
         normalizer.normalize(testUser, Collections.singletonList(newPoint));
 
         // Then: Should not generate synthetic points due to distance constraint
@@ -149,7 +150,7 @@ class LocationDataDensityNormalizerTest {
         createAndSaveRawPoint(endTime, 50.001, 8.001);
 
         // When: Normalize around a new point
-        LocationPoint newPoint = createLocationPoint(startTime.plus(90, ChronoUnit.MINUTES), 50.0005, 8.0005);
+        LocationPoint2 newPoint = createLocationPoint(startTime.plus(90, ChronoUnit.MINUTES), 50.0005, 8.0005);
         normalizer.normalize(testUser, Collections.singletonList(newPoint));
 
         // Then: Should not generate synthetic points due to time gap constraint
@@ -166,7 +167,7 @@ class LocationDataDensityNormalizerTest {
         // Given: No existing points
         
         // When: Normalize around a new point
-        LocationPoint newPoint = createLocationPoint(Instant.parse("2023-01-01T10:00:00Z"), 50.0, 8.0);
+        LocationPoint2 newPoint = createLocationPoint(Instant.parse("2023-01-01T10:00:00Z"), 50.0, 8.0);
         
         // Then: Should not throw exception
         assertDoesNotThrow(() -> normalizer.normalize(testUser, Collections.singletonList(newPoint)));
@@ -178,7 +179,7 @@ class LocationDataDensityNormalizerTest {
         createAndSaveRawPoint(Instant.parse("2023-01-01T10:00:00Z"), 50.0, 8.0);
         
         // When: Normalize around a new point
-        LocationPoint newPoint = createLocationPoint(Instant.parse("2023-01-01T10:01:00Z"), 50.001, 8.001);
+        LocationPoint2 newPoint = createLocationPoint(Instant.parse("2023-01-01T10:01:00Z"), 50.001, 8.001);
         
         // Then: Should not throw exception
         assertDoesNotThrow(() -> normalizer.normalize(testUser, Collections.singletonList(newPoint)));
@@ -191,11 +192,11 @@ class LocationDataDensityNormalizerTest {
         return rawLocationPointService.create(testUser, point);
     }
 
-    private LocationPoint createLocationPoint(Instant timestamp, double lat, double lon) {
-        LocationPoint point = new LocationPoint();
+    private LocationPoint2 createLocationPoint(Instant timestamp, double lat, double lon) {
+        LocationPoint2 point = new LocationPoint2();
         point.setLatitude(lat);
         point.setLongitude(lon);
-        point.setTimestamp(timestamp.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+        point.setTimestamp(timestamp.atOffset(ZoneOffset.UTC).toInstant());
         point.setAccuracyMeters(10.0);
         point.setElevationMeters(100.0);
         return point;

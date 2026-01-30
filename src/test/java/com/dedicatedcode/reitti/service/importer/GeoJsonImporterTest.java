@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
@@ -14,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -83,22 +85,22 @@ class GeoJsonImporterTest {
         assertTrue((Boolean) result.get("success"));
         assertEquals(2, result.get("pointsReceived"));
 
-        ArgumentCaptor<List<LocationPoint>> captor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<LocationPoint2>> captor = ArgumentCaptor.forClass(List.class);
         verify(batchProcessor).processBatch(eq(user), captor.capture());
 
-        List<LocationPoint> points = captor.getValue();
+        List<LocationPoint2> points = captor.getValue();
         assertEquals(2, points.size());
 
-        LocationPoint point1 = points.get(0);
+        LocationPoint2 point1 = points.get(0);
         assertEquals(52.5200, point1.getLatitude());
         assertEquals(13.4050, point1.getLongitude());
-        assertEquals("2023-10-15T10:30:00Z", point1.getTimestamp());
+        assertEquals(Instant.parse("2023-10-15T10:30:00Z"), point1.getTimestamp());
         assertEquals(10.0, point1.getAccuracyMeters());
 
-        LocationPoint point2 = points.get(1);
+        LocationPoint2 point2 = points.get(1);
         assertEquals(52.5210, point2.getLatitude());
         assertEquals(13.4060, point2.getLongitude());
-        assertEquals("2023-10-15T10:31:00Z", point2.getTimestamp());
+        assertEquals(Instant.parse("2023-10-15T10:31:00Z"), point2.getTimestamp());
         assertEquals(15.0, point2.getAccuracyMeters());
 
         verify(stateHolder).importStarted();
@@ -144,22 +146,22 @@ class GeoJsonImporterTest {
         assertTrue((Boolean) result.get("success"));
         assertEquals(2, result.get("pointsReceived"));
 
-        ArgumentCaptor<List<LocationPoint>> captor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<LocationPoint2>> captor = ArgumentCaptor.forClass(List.class);
         verify(batchProcessor).processBatch(eq(user), captor.capture());
 
-        List<LocationPoint> points = captor.getValue();
+        List<LocationPoint2> points = captor.getValue();
         assertEquals(2, points.size());
 
-        LocationPoint point1 = points.get(0);
+        LocationPoint2 point1 = points.get(0);
         assertEquals(52.5200, point1.getLatitude());
         assertEquals(13.4050, point1.getLongitude());
-        assertEquals("2023-10-15T10:30:00Z", point1.getTimestamp());
+        assertEquals(Instant.parse("2023-10-15T10:30:00Z"), point1.getTimestamp());
         assertEquals(10.0, point1.getAccuracyMeters());
 
-        LocationPoint point2 = points.get(1);
+        LocationPoint2 point2 = points.get(1);
         assertEquals(52.5210, point2.getLatitude());
         assertEquals(13.4060, point2.getLongitude());
-        assertEquals("2023-10-15T10:31:00Z", point2.getTimestamp());
+        assertEquals(Instant.parse("2023-10-15T10:31:00Z"), point2.getTimestamp());
         assertEquals(15.0, point2.getAccuracyMeters());
     }
 
@@ -186,16 +188,16 @@ class GeoJsonImporterTest {
         assertTrue((Boolean) result.get("success"));
         assertEquals(1, result.get("pointsReceived"));
 
-        ArgumentCaptor<List<LocationPoint>> captor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<LocationPoint2>> captor = ArgumentCaptor.forClass(List.class);
         verify(batchProcessor).processBatch(eq(user), captor.capture());
 
-        List<LocationPoint> points = captor.getValue();
+        List<LocationPoint2> points = captor.getValue();
         assertEquals(1, points.size());
 
-        LocationPoint point = points.get(0);
+        LocationPoint2 point = points.get(0);
         assertEquals(52.5200, point.getLatitude());
         assertEquals(13.4050, point.getLongitude());
-        assertEquals("2023-10-15T10:30:00Z", point.getTimestamp());
+        assertEquals(Instant.parse("2023-10-15T10:30:00Z"), point.getTimestamp());
         assertEquals(10.0, point.getAccuracyMeters());
     }
 
@@ -304,11 +306,11 @@ class GeoJsonImporterTest {
         assertTrue((Boolean) result.get("success"));
         assertEquals(1, result.get("pointsReceived"));
 
-        ArgumentCaptor<List<LocationPoint>> captor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<LocationPoint2>> captor = ArgumentCaptor.forClass(List.class);
         verify(batchProcessor).processBatch(eq(user), captor.capture());
 
-        List<LocationPoint> points = captor.getValue();
-        LocationPoint point = points.get(0);
+        List<LocationPoint2> points = captor.getValue();
+        LocationPoint2 point = points.get(0);
         assertEquals(50.0, point.getAccuracyMeters());
     }
 }

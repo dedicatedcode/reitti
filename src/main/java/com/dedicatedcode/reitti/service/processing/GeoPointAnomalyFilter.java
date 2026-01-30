@@ -56,10 +56,7 @@ public class GeoPointAnomalyFilter {
         // Calculate all successive speeds
         List<Double> speeds = new ArrayList<>();
         for (int i = 0; i < points.size() - 1; i++) {
-            double speed = calculateSpeed(points.get(i), points.get(i + 1));
-            if (speed >= 0) {
-                speeds.add(speed);
-            }
+            speeds.add(calculateSpeed(points.get(i), points.get(i + 1)));
         }
 
         if (speeds.isEmpty()) return anomalies;

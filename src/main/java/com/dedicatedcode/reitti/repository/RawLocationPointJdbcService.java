@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
-import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.dto.LocationPoint2;
+import com.dedicatedcode.reitti.dto.MapMetadata;
 import com.dedicatedcode.reitti.model.ClusteredPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
@@ -15,7 +16,6 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -200,9 +200,11 @@ public class RawLocationPointJdbcService {
     public List<ClusteredPoint> findClusteredPointsInTimeRangeForUser(
             User user, Instant startTime, Instant endTime, int minimumPoints, double distanceInMeters) {
         String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.invalid, rlp.ignored, rlp.version , " +
-                "ST_ClusterDBSCAN(rlp.geom, ?, ?) over () AS cluster_id " +
+                "ST_ClusterDBSCAN(rlp.geom, ?, ?) OVER (" +
+                "           PARTITION BY ST_GeoHash(rlp.geom, 4)" +
+                "       ) AS cluster_id " +
                 "FROM raw_location_points rlp " +
-                "WHERE rlp.user_id = ? AND rlp.timestamp >= ? AND rlp.timestamp < ?";
+                "WHERE rlp.user_id = ? AND rlp.invalid = FALSE AND rlp.timestamp >= ? AND rlp.timestamp < ?";
 
         return jdbcTemplate.query(sql, (rs, rowNum) -> {
 
@@ -461,7 +463,7 @@ public class RawLocationPointJdbcService {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM raw_location_points WHERE user_id = ?", Long.class, user.getId());
     }
 
-    public int bulkInsert(User user, List<LocationPoint> points) {
+    public int bulkInsert(User user, List<LocationPoint2> points) {
         if (points.isEmpty()) {
             return -1;
         }
@@ -470,12 +472,10 @@ public class RawLocationPointJdbcService {
                 "VALUES (?, ?, ?, ?, CAST(? AS geometry), false, false, false, false) ON CONFLICT DO NOTHING;";
 
         List<Object[]> batchArgs = new ArrayList<>();
-        for (LocationPoint point : points) {
-            ZonedDateTime parse = ZonedDateTime.parse(point.getTimestamp());
-            Timestamp timestamp = Timestamp.from(parse.toInstant());
+        for (LocationPoint2 point : points) {
             batchArgs.add(new Object[]{
                     user.getId(),
-                    timestamp,
+                    Timestamp.from(point.getTimestamp()),
                     point.getAccuracyMeters(),
                     point.getElevationMeters(),
                     geometryFactory.createPoint(new Coordinate(point.getLongitude(), point.getLatitude())).toString()
@@ -575,7 +575,7 @@ public class RawLocationPointJdbcService {
         return count != null && count > 0;
     }
 
-    public int bulkInsertSynthetic(User user, List<LocationPoint> syntheticPoints) {
+    public int bulkInsertSynthetic(User user, List<LocationPoint2> syntheticPoints) {
         if (syntheticPoints.isEmpty()) {
             return 0;
         }
@@ -584,12 +584,10 @@ public class RawLocationPointJdbcService {
                 "VALUES (?, ?, ?, ?, CAST(? AS geometry), false, true, false, false) ON CONFLICT DO NOTHING;";
 
         List<Object[]> batchArgs = new ArrayList<>();
-        for (LocationPoint point : syntheticPoints) {
-            ZonedDateTime parse = ZonedDateTime.parse(point.getTimestamp());
-            Timestamp timestamp = Timestamp.from(parse.toInstant());
+        for (LocationPoint2 point : syntheticPoints) {
             batchArgs.add(new Object[]{
                     user.getId(),
-                    timestamp,
+                    Timestamp.from(point.getTimestamp()),
                     point.getAccuracyMeters(),
                     point.getElevationMeters(),
                     geometryFactory.createPoint(new Coordinate(point.getLongitude(), point.getLatitude())).toString()
@@ -602,5 +600,32 @@ public class RawLocationPointJdbcService {
     public void deleteSyntheticPointsInRange(User user, Instant start, Instant end) {
         String sql = "DELETE FROM raw_location_points WHERE user_id = ? AND timestamp >= ? AND timestamp < ? AND synthetic = true";
         jdbcTemplate.update(sql, user.getId(), Timestamp.from(start), Timestamp.from(end));
+    }
+
+    public MapMetadata getMetadata(Long userId, Instant start, Instant end) {
+        String sql = """
+                SELECT
+                  EXTRACT(EPOCH FROM MIN(timestamp)) as min_ts,
+                  EXTRACT(EPOCH FROM MAX(timestamp)) as max_ts,
+                  COUNT(*) as total_count,
+                  ST_YMin(ST_Extent(geom)) as min_lat,
+                  ST_YMax(ST_Extent(geom)) as max_lat,
+                  ST_XMin(ST_Extent(geom)) as min_lng,
+                  ST_XMax(ST_Extent(geom)) as max_lng
+                FROM raw_location_points
+                WHERE user_id = ?
+                 AND invalid = false
+                 AND timestamp >= ? AND timestamp < ?;
+                """;
+
+        return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> new MapMetadata(
+                rs.getLong("min_ts"),
+                rs.getLong("max_ts"),
+                rs.getLong("total_count"),
+                rs.getDouble("min_lat"),
+                rs.getDouble("max_lat"),
+                rs.getDouble("min_lng"),
+                rs.getDouble("max_lng")
+        ), userId, Timestamp.from(start), Timestamp.from(end));
     }
 }

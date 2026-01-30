@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
@@ -73,10 +74,10 @@ public class TestingService {
     public void processWhileImport(User user, String file) {
         GpxImporter importer = new GpxImporter(new ImportStateHolder(), new ImportProcessor() {
             @Override
-            public void processBatch(User user, List<LocationPoint> batch) {
+            public void processBatch(User user, List<LocationPoint2> batch) {
                 for (int i = 0; i < batch.size(); i += 5) {
                     int endIndex = Math.min(i + 5, batch.size());
-                    List<LocationPoint> chunk = batch.subList(i, endIndex);
+                    List<LocationPoint2> chunk = batch.subList(i, endIndex);
                     locationDataIngestPipeline.processLocationData(user.getUsername(), new ArrayList<>(chunk));
                     TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), null, UUID.randomUUID().toString());
                     trigger.handle(triggerEvent, true);

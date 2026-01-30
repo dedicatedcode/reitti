@@ -764,6 +764,10 @@ public class UnifiedLocationProcessingService {
         } else {
             tripPoints = previewRawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, previewId, tripStartTime, tripEndTime.plusMillis(1));
         }
+
+        if (tripPoints.size() < 2) {
+            throw new IllegalStateException("A trip without 2 points shoul not exist.");
+        }
         double estimatedDistanceInMeters = calculateDistanceBetweenPlaces(startVisit.getPlace(), endVisit.getPlace());
         double travelledDistanceMeters = GeoUtils.calculateTripDistance(tripPoints);
         // Create a new trip

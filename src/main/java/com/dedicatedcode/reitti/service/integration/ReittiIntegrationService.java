@@ -69,13 +69,15 @@ public class ReittiIntegrationService {
                         List<TimelineEntry> timelineEntries = loadTimeLineEntriesRange(integration, startDate, endDate, userTimezone);
                         integration = update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
                         return new UserTimelineData("remote:" + integration.getId(),
-                                remoteUser.getDisplayName(),
-                                this.avatarService.generateInitials(remoteUser.getDisplayName()),
-                                "/reitti-integration/avatar/" + integration.getId(),
-                                integration.getColor(),
-                                timelineEntries,
-                                String.format("/reitti-integration/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone),
-                                String.format("/reitti-integration/visits/%d?startDate=%s&endDate=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone));
+                                                    remoteUser.getDisplayName(),
+                                                    this.avatarService.generateInitials(remoteUser.getDisplayName()),
+                                                    "/reitti-integration/avatar/" + integration.getId(),
+                                                    integration.getColor(),
+                                                    timelineEntries,
+                                                    String.format("/reitti-integration/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone),
+                                                    String.format("/reitti-integration/visits/%d?startDate=%s&endDate=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone),
+                                                    null,
+                                                    null);
                     } catch (RequestFailedException e) {
                         log.error("couldn't fetch user info for [{}]", integration, e);
                         update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));

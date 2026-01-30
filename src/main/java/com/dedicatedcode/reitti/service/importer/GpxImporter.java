@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
@@ -15,6 +16,7 @@ import org.w3c.dom.NodeList;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.InputStream;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -51,14 +53,14 @@ public class GpxImporter {
             // Get all track points (trkpt) from the GPX file
             NodeList trackPoints = document.getElementsByTagName("trkpt");
             
-            List<LocationPoint> batch = new ArrayList<>();
+            List<LocationPoint2> batch = new ArrayList<>();
             
             // Process each track point
             for (int i = 0; i < trackPoints.getLength(); i++) {
                 Element trackPoint = (Element) trackPoints.item(i);
                 
                 try {
-                    LocationPoint point = convertGpxTrackPoint(trackPoint);
+                    LocationPoint2 point = convertGpxTrackPoint(trackPoint);
                     if (point != null) {
                         batch.add(point);
                         processedCount.incrementAndGet();
@@ -100,13 +102,13 @@ public class GpxImporter {
     /**
      * Converts a GPX track point to our LocationPoint format
      */
-    private LocationPoint convertGpxTrackPoint(Element trackPoint) {
+    private LocationPoint2 convertGpxTrackPoint(Element trackPoint) {
         // Check if we have the required attributes
         if (!trackPoint.hasAttribute("lat") || !trackPoint.hasAttribute("lon")) {
             return null;
         }
         
-        LocationPoint point = new LocationPoint();
+        LocationPoint2 point = new LocationPoint2();
         
         // Get latitude and longitude
         double latitude = Double.parseDouble(trackPoint.getAttribute("lat"));
@@ -120,7 +122,7 @@ public class GpxImporter {
         if (timeElements.getLength() > 0) {
             String timeStr = timeElements.item(0).getTextContent();
             if (StringUtils.hasText(timeStr)) {
-                point.setTimestamp(timeStr);
+                point.setTimestamp(Instant.parse(timeStr));
             } else {
                 return null;
             }

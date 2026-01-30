@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.service.processing;
 
-import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.GeoUtils;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
@@ -9,8 +9,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,7 +19,7 @@ public class SyntheticLocationPointGenerator {
     
     private static final Logger logger = LoggerFactory.getLogger(SyntheticLocationPointGenerator.class);
     
-    public List<LocationPoint> generateSyntheticPoints(
+    public List<LocationPoint2> generateSyntheticPoints(
             RawLocationPoint startPoint, 
             RawLocationPoint endPoint, 
             int targetPointsPerMinute,
@@ -32,7 +30,7 @@ public class SyntheticLocationPointGenerator {
             return List.of();
         }
         
-        List<LocationPoint> syntheticPoints = new ArrayList<>();
+        List<LocationPoint2> syntheticPoints = new ArrayList<>();
         
         // Calculate target interval in seconds
         int intervalSeconds = 60 / targetPointsPerMinute;
@@ -79,10 +77,10 @@ public class SyntheticLocationPointGenerator {
             );
             
             // Create synthetic LocationPoint
-            LocationPoint syntheticPoint = new LocationPoint();
+            LocationPoint2 syntheticPoint = new LocationPoint2();
             syntheticPoint.setLatitude(interpolatedCoords.latitude());
             syntheticPoint.setLongitude(interpolatedCoords.longitude());
-            syntheticPoint.setTimestamp(currentTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+            syntheticPoint.setTimestamp(currentTime);
             syntheticPoint.setAccuracyMeters(interpolatedAccuracy);
             syntheticPoint.setElevationMeters(interpolatedElevation);
             

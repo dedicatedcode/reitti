@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.service.importer;
 
-import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.event.LocationDataEvent;
+import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.processing.RecalculationState;
 import com.dedicatedcode.reitti.model.security.User;
@@ -11,7 +10,6 @@ import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
 import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -46,14 +44,14 @@ class GoogleAndroidTimelineImporterTest {
         assertTrue(result.containsKey("success"));
         assertTrue((Boolean) result.get("success"));
 
-        ArgumentCaptor<List<LocationPoint>> eventCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<LocationPoint2>> eventCaptor = ArgumentCaptor.forClass(List.class);
         await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> verify(mock, times(1)).processLocationData(eq("test"), eventCaptor.capture()));
 
-        List<List<LocationPoint>> capturedEvents = eventCaptor.getAllValues();
+        List<List<LocationPoint2>> capturedEvents = eventCaptor.getAllValues();
         assertEquals(1, capturedEvents.size());
 
         // Verify that all events are for the correct user
-        for (List<LocationPoint> points : capturedEvents) {
+        for (List<LocationPoint2> points : capturedEvents) {
             assertNotNull(points);
             assertFalse(points.isEmpty());
 

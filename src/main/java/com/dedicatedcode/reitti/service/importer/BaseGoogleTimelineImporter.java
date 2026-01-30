@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,18 +26,18 @@ public abstract class BaseGoogleTimelineImporter {
         this.batchProcessor = batchProcessor;
     }
 
-    protected int handleVisit(User user, ZonedDateTime startTime, ZonedDateTime endTime, LatLng latLng, List<LocationPoint> batch) {
+    protected int handleVisit(User user, ZonedDateTime startTime, ZonedDateTime endTime, LatLng latLng, List<LocationPoint2> batch) {
         logger.info("Found visit at [{}] from start [{}] to end [{}].", latLng, startTime, endTime);
         createAndScheduleLocationPoint(latLng, startTime, user, batch);
         createAndScheduleLocationPoint(latLng, endTime, user, batch);
         return 2;
     }
 
-    protected void createAndScheduleLocationPoint(LatLng latLng, ZonedDateTime timestamp, User user, List<LocationPoint> batch) {
-        LocationPoint point = new LocationPoint();
+    protected void createAndScheduleLocationPoint(LatLng latLng, ZonedDateTime timestamp, User user, List<LocationPoint2> batch) {
+        LocationPoint2 point = new LocationPoint2();
         point.setLatitude(latLng.latitude);
         point.setLongitude(latLng.longitude);
-        point.setTimestamp(timestamp.withNano(0).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+        point.setTimestamp(timestamp.withNano(0).toInstant());
         point.setAccuracyMeters(10.0);
         batch.add(point);
         logger.trace("Created location point at [{}]", point);
