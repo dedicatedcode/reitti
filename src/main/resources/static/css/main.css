@@ -151,6 +151,164 @@ header {
 }
 
 
+.loading-overlay {
+    opacity: 0;
+    position: absolute;
+    width: 100%;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.loading-overlay .progress-container {
+    width: 100%;
+    height: 6px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 5px;
+}
+
+.loading-overlay .loading-progress-bar {
+    width: 0;
+    height: 100%;
+    background: var(--color-highlight);
+    transition: width 0.2s ease-out;
+}
+
+.loading-overlay .status-text {
+    text-align: right;
+    font-size: 0.8rem;
+    font-family: sans-serif;
+    color: var(--color-background-dark-light);
+    text-shadow: 0 0 2px var(--color-highlight);
+    padding-right: 180px;
+}
+
+#tooltip::-webkit-scrollbar {
+    width: 4px;
+}
+#tooltip::-webkit-scrollbar-thumb {
+    background: #666;
+    border-radius: 2px;
+}
+#tooltip {
+    /* Ensure the tooltip doesn't stay open if the mouse moves too fast */
+    pointer-events: auto; /* Changed to auto so user can scroll the list */
+    transition: opacity 0.1s ease-out;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+
+.settings-menu {
+    position: fixed;
+    bottom: 180px;
+    right: 20px;
+    width: 300px;
+    max-height: 400px;
+    background: var(--color-background-dark);
+    color: var(--color-text-white);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    z-index: 1001;
+    overflow: hidden;
+    transform: translateY(20px);
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.settings-menu.visible {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.settings-menu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    background: var(--color-background-dark);
+    color: var(--color-text-white);
+    border-radius: 12px 12px 0 0;
+    border-bottom: 1px solid #eee;
+}
+
+.settings-menu-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    padding-left: 8px;
+}
+
+.close-settings-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.close-settings-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.settings-menu-content {
+    padding: 16px;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.settings-section {
+    margin-bottom: 20px;
+}
+
+.settings-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.settings-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.settings-overlay.visible {
+    opacity: 1;
+}
+
+.settings-menu-content .divider {
+    font-size: 1rem;
+    margin: 0;
+    margin-bottom: 8px;
+}
+
+/* Responsive adjustments for settings menu */
+@media (max-width: 768px) {
+    .settings-menu {
+        right: 10px;
+        left: 10px;
+        width: auto;
+        bottom: 160px;
+        max-height: 60vh;
+    }
+
+    .settings-menu-header {
+        padding: 12px 16px;
+    }
+
+    .settings-menu-content {
+        padding: 12px;
+    }
+}
+/* Elements */
 .btn {
     background-color: var(--color-background-dark);
     font-family: var(--sans-serif-font);
@@ -429,7 +587,6 @@ tr:hover {
     margin-right: auto;
 }
 
-
 .divider-description.left {
     margin-left: 0;
     text-align: left;
@@ -482,7 +639,7 @@ tr:hover {
 .progress-fill {
     height: 100%;
     background-color: var(--color-highlight);
-    width: 0%;
+    width: 0;
     transition: width 0.5s ease;
 }
 
@@ -507,7 +664,6 @@ tr:hover {
     color: var(--color-text-white);
 }
 
-
 .place-info {
     margin: 15px 0;
     font-size: 0.9em;
@@ -528,8 +684,6 @@ tr:hover {
     display: flex;
     gap: 10px;
 }
-
-
 
 .timeline::-webkit-scrollbar {
     display: none;
@@ -1392,42 +1546,128 @@ body.auto-update-mode .today-fab {
 
 
 }
-
-/* Today FAB Styles */
-.today-fab {
+/* FAB Container Styles */
+.fab-container {
     position: fixed;
-    bottom: 120px;
+    bottom: 117px;
     left: 50%;
-    transform: translateX(-50%);
-    z-index: 100;
-    background: var(--color-background-dark);
-    color: var(--color-highlight);
-    border: 1px solid var(--color-highlight);
-    border-radius: 25px;
-    padding: 8px 16px;
     display: flex;
     align-items: center;
-    gap: 8px;
-    cursor: pointer;
+    background: var(--color-background-dark-light);
+    color: var(--color-highlight);
+    border: 1px solid var(--color-highlight);
+    padding: 0;
+    border-radius: 24px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
     transition: all 0.3s ease;
-    font-size: 0.9rem;
-    font-weight: 500;
-    font-family: var(--serif-font);
-    backdrop-filter: blur(10px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transform: translateX(-50%);
 }
 
-.today-fab:hover {
+body.datepicker-hidden .fab-container {
+    bottom: 20px;
+}
+
+.fab-btn {
+    height: 40px;
+    min-width: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-background-dark-light);
+    color: var(--color-highlight);
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 16px;
+    padding: 0;
+}
+
+.fab-btn:first-child {
+    border-top-left-radius: 24px;
+    border-bottom-left-radius: 24px;
+}
+
+.fab-btn:last-child {
+    border-top-right-radius: 24px;
+    border-bottom-right-radius: 24px;
+}
+
+.fab-btn.active,
+.fab-btn:hover {
     background: var(--color-highlight);
     color: var(--color-background-dark);
-    transform: translateX(-50%) translateY(-2px);
     box-shadow: 0 6px 16px rgba(245, 222, 179, 0.4);
 }
 
-.today-fab i {
-    font-size: 1rem;
+/* Play button section with hover-triggered speed control */
+.play-section {
+    position: relative;
+    display: flex;
+    align-items: center;
 }
 
+.speed-control {
+    opacity: 0;
+    visibility: hidden;
+    transition: all .3s ease;
+    border-radius: 8px;
+    width: 0;
+    white-space: nowrap;
+    pointer-events: none; /* Add this to prevent interference */
+}
+
+.play-section:hover .speed-control {
+    opacity: 1;
+    visibility: visible;
+    width: 120px;
+    margin: 0 4px;
+    pointer-events: auto; /* Re-enable pointer events when visible */
+}
+
+.speed-control select {
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+/* Today button specific styles */
+.today-btn {
+    background: var(--color-background-dark-light);
+    min-width: 40px;
+    padding: 0 12px;
+}
+
+.today-btn span {
+    margin-left: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Expanded state when today button is visible */
+.fab-container.has-today {
+    padding: 8px 12px;
+    gap: 12px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .fab-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+
+    .speed-control {
+        left: 46px;
+    }
+
+    .today-btn span {
+        display: none; /* Hide text on small screens */
+    }
+}
 @media (max-width: 800px) {
     .today-fab {
         padding: 6px 12px;

@@ -13,6 +13,7 @@
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     z-index: 10;
     font-family: var(--serif-font);
+    transition: all .4s ease-in-out;
 }
 
 #timeline-controls.hidden {
@@ -39,6 +40,7 @@
 #time-slider {
     flex-grow: 1;
     cursor: pointer;
+    accent-color: var(--color-highlight);
 }
 
 .time-bounds {
@@ -61,5 +63,4 @@
     opacity: 0;
     pointer-events: none;
     transition: all 0.3s ease;
-
 }

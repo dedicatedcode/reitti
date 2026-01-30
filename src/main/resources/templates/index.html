@@ -30,323 +30,6 @@
     <script th:src="@{/js/timeline-control.js}"></script>
     <script th:src="@{/js/map-customization.js}"></script>
     <script th:src="@{/js/gps-data-manager.js}"></script>
-    <style>
-
-        #loading-overlay {
-            opacity: 0;
-            position: absolute;
-            width: 100%;
-            z-index: 1000;
-            pointer-events: none;
-        }
-
-        .progress-container {
-            width: 100%;
-            height: 6px;
-            background: rgba(0, 0, 0, 0.1);
-            border-radius: 3px;
-            overflow: hidden;
-            margin-bottom: 5px;
-        }
-
-        #progress-bar {
-            width: 0;
-            height: 100%;
-            background: var(--color-highlight);
-            transition: width 0.2s ease-out;
-        }
-
-        #status-text {
-            text-align: right;
-            font-size: 0.8rem;
-            font-family: sans-serif;
-            color: var(--color-background-dark-light);
-            text-shadow: 0 0 2px var(--color-highlight);
-            padding-right: 180px;
-        }
-
-        #tooltip::-webkit-scrollbar {
-            width: 4px;
-        }
-        #tooltip::-webkit-scrollbar-thumb {
-            background: #666;
-            border-radius: 2px;
-        }
-        #tooltip {
-            /* Ensure the tooltip doesn't stay open if the mouse moves too fast */
-            pointer-events: auto; /* Changed to auto so user can scroll the list */
-            transition: opacity 0.1s ease-out;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        }
-
-        .today-fab i {
-            font-size: 1rem;
-        }
-
-        /* FAB Container Styles */
-        .fab-container {
-            position: fixed;
-            bottom: 117px;
-            left: 50%;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: var(--color-background-dark-light);
-            color: var(--color-highlight);
-            border: 1px solid var(--color-highlight);
-            padding: 0;
-            border-radius: 24px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
-            transition: all 0.3s ease;
-            transform: translateX(-50%);
-        }
-
-        body.datepicker-hidden .fab-container {
-            bottom: 20px;
-        }
-
-        .fab-btn {
-            height: 40px;
-            min-width: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--color-background-dark-light);
-            color: var(--color-highlight);
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 16px;
-            padding: 0;
-        }
-
-        .fab-btn:first-child {
-            border-top-left-radius: 24px;
-            border-bottom-left-radius: 24px;
-        }
-
-        .fab-btn:last-child {
-            border-top-right-radius: 24px;
-            border-bottom-right-radius: 24px;
-        }
-
-        .fab-btn.active,
-        .fab-btn:hover {
-            background: var(--color-highlight);
-            color: var(--color-background-dark);
-            box-shadow: 0 6px 16px rgba(245, 222, 179, 0.4);
-        }
-
-        /* Play button section with hover-triggered speed control */
-        .play-section {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-
-        .speed-control {
-            opacity: 0;
-            visibility: hidden;
-            transition: all .3s ease;
-            border-radius: 8px;
-            width: 0;
-            white-space: nowrap;
-            pointer-events: none; /* Add this to prevent interference */
-        }
-
-        .play-section:hover .speed-control {
-            opacity: 1;
-            visibility: visible;
-            width: 120px;
-            margin: 0 4px;
-            pointer-events: auto; /* Re-enable pointer events when visible */
-        }
-
-        .speed-control select {
-            padding: 4px 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 12px;
-        }
-
-        /* Today button specific styles */
-        .today-btn {
-            background: var(--color-background-dark-light);
-            min-width: 40px;
-            padding: 0 12px;
-        }
-
-        .today-btn span {
-            margin-left: 4px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        /* Expanded state when today button is visible */
-        .fab-container.has-today {
-            padding: 8px 12px;
-            gap: 12px;
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .fab-container {
-                bottom: 15px;
-                right: 15px;
-                padding: 6px 10px;
-            }
-
-            .fab-btn {
-                width: 36px;
-                height: 36px;
-                font-size: 14px;
-            }
-
-            .speed-control {
-                left: 46px;
-            }
-
-            .today-btn span {
-                display: none; /* Hide text on small screens */
-            }
-        }
-
-        .settings-menu {
-            position: fixed;
-            bottom: 180px; /* Above the FAB container */
-            right: 20px;
-            width: 300px;
-            max-height: 400px;
-            background: var(--color-background-dark);
-            color: var(--color-text-white);
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            z-index: 1001;
-            overflow: hidden;
-            transform: translateY(20px);
-            opacity: 0;
-            transition: all 0.3s ease;
-        }
-
-        .settings-menu.visible {
-            transform: translateY(0);
-            opacity: 1;
-        }
-
-        .settings-menu-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px;
-            background: var(--color-background-dark);
-            color: var(--color-text-white);
-            border-radius: 12px 12px 0 0;
-            border-bottom: 1px solid #eee;
-        }
-
-        .settings-menu-header h3 {
-            margin: 0;
-            font-size: 18px;
-            font-weight: 600;
-            padding-left: 8px;
-        }
-
-        .close-settings-btn {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-            padding: 4px;
-            border-radius: 4px;
-            transition: background 0.2s;
-        }
-
-        .close-settings-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .settings-menu-content {
-            padding: 16px;
-            max-height: 320px;
-            overflow-y: auto;
-        }
-
-        .settings-section {
-            margin-bottom: 20px;
-        }
-
-        .settings-section:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-        }
-
-        .setting-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-            padding: 8px 0;
-        }
-
-        .settings-action-btn {
-            background: var(--color-highlight);
-            color: var(--color-text-white);
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: background 0.2s;
-            width: 100%;
-        }
-
-        .settings-action-btn:hover {
-            background: #45a049;
-        }
-
-        .settings-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .settings-overlay.visible {
-            opacity: 1;
-        }
-
-        .settings-menu-content .divider {
-            font-size: 1rem;
-            margin: 0;
-            margin-bottom: 8px;
-        }
-
-        /* Responsive adjustments for settings menu */
-        @media (max-width: 768px) {
-            .settings-menu {
-                right: 10px;
-                left: 10px;
-                width: auto;
-                bottom: 160px;
-                max-height: 60vh;
-            }
-
-            .settings-menu-header {
-                padding: 12px 16px;
-            }
-
-            .settings-menu-content {
-                padding: 12px;
-            }
-        }
-    </style>
 </head>
 <body>
 
@@ -356,11 +39,11 @@
     <div id="sse-message"></div>
 </div>
 <div id="new-map" style="display: block"></div>
-<div id="loading-overlay">
+<div id="loading-overlay" class="loading-overlay">
     <div class="progress-container">
-        <div id="progress-bar"></div>
+        <div id="progress-bar" class="loading-progress-bar"></div>
     </div>
-    <div id="status-text">Ready</div>
+    <div id="status-text" class="status-text">Ready</div>
 </div>
 <!-- Auto-update overlay -->
 <div id="auto-update-overlay" class="auto-update-overlay">
@@ -427,8 +110,7 @@
     </button>
 </div>
 
-<!-- Settings Menu (hidden by default) -->
-<div id="settings-menu" class="settings-menu visible" style="display: block">
+<div id="settings-menu" class="settings-menu">
     <div class="settings-menu-header">
         <h3 th:text="#{settings.title}">Settings</h3>
         <button class="close-settings-btn" onclick="closeSettingsMenu()">
@@ -456,8 +138,6 @@
         </div>
     </div>
 </div>
-
-<!-- Settings Overlay (for closing when clicking outside) -->
 <div id="settings-overlay" class="settings-overlay" style="display: none;" onclick="closeSettingsMenu()"></div>
 
 <script th:inline="javascript">
@@ -584,7 +264,7 @@
         style: '/map/reitti.json',
         center: [window.userSettings.homeLongitude, window.userSettings.homeLatitude],
         zoom: 3,
-        pitch: 45,
+        pitch: 0,
     });
 
     const aggregateToggle = document.getElementById('aggregate-toggle');
@@ -785,7 +465,10 @@
         };
         const layers = [];
 
-
+        if (manager.buffer.length === 0) {
+            deckOverlay.setProps({layers})
+            return;
+        }
         const isAggregate = aggregateToggle?.checked || false;
         const viewMode = document.getElementById('view-mode')?.value || 'LINEAR';
         const totalTimeSpanSec = isAggregate ? 24 * 60 * 60 : manager.maxTimestamp - manager.minTimestamp;
@@ -884,8 +567,7 @@
             selectedDay: timelineControl.getOffset(),
         }
         // Check if bundling is complete
-        if (manager.loadingState !== 'complete' || !manager.snappedBuffer) {
-            console.log('Bundling not complete yet!');
+        if (manager.loadingState !== 'complete' || !manager.snappedBuffer || manager.snappedBuffer.length === 0) {
             return [];
         }
         const layers = [];
@@ -1725,7 +1407,11 @@
                         calculateTimelineMultiplier();
                         updateStatus("Finished processing {1} points", current, total);
                         updateTripsLayer(gpsDataManager, 0)
-                        fitMapToBounds(gpsDataManager.bounds)
+                        if (gpsDataManager.cursor === 0) {
+                            flyToHomeLocation();
+                        } else {
+                            fitMapToBounds(gpsDataManager.bounds)
+                        }
                         break;
                 }
             });
