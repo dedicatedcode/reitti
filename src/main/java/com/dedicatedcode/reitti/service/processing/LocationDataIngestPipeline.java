@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
@@ -51,7 +52,7 @@ public class LocationDataIngestPipeline {
     public void shutdown() {
     }
 
-    public void processLocationData(String username, List<LocationPoint> points) {
+    public void processLocationData(String username, List<LocationPoint2> points) {
         try {
             long start = System.currentTimeMillis();
             logger.debug("starting processing");
@@ -65,16 +66,16 @@ public class LocationDataIngestPipeline {
 
             User user = userOpt.get();
 
-            List<LocationPoint> validPoints = points.stream().filter(LocationPoint::isValid).toList();
+            List<LocationPoint2> validPoints = points.stream().filter(LocationPoint2::isValid).toList();
             // Store all points first
             int updatedRows = rawLocationPointJdbcService.bulkInsert(user, validPoints);
-            List<Instant> timestamp = validPoints.stream().map(LocationPoint::getTimestamp).map(ZonedDateTime::parse).map(ChronoZonedDateTime::toInstant).sorted().toList();
-
+            List<Instant> timestamp = validPoints.stream().map(LocationPoint2::getTimestamp).sorted().toList();
             anomalyProcessingService.processAndMarkAnomalies(user, timestamp.getFirst(), timestamp.getLast());
 
             densityNormalizer.normalize(user, validPoints);
             userSettingsJdbcService.updateNewestData(user, validPoints);
-            userNotificationService.newRawLocationData(user, validPoints);
+            //todo
+//            userNotificationService.newRawLocationData(user, validPoints.stream().map(locationPoint2 -> new LocationPoint()));
             logger.info("Finished storing and normalizing points [{}] for user [{}] in [{}]ms. Filtered out [{}] after database.", validPoints.size(), user, System.currentTimeMillis() - start, validPoints.size() - updatedRows);
         } catch (Exception e) {
             logger.error("Error during processing: ", e);

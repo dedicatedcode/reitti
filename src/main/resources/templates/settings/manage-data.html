@@ -9,7 +9,7 @@
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
     <link rel="stylesheet" th:href="@{/css/main.css}">
     <link rel="stylesheet" th:href="@{/css/lineicons.css}">
-    <script th:src="@{/js/htmx.min.js}"></script>
+    <script th:src="@{/js/vendor/htmx.min.js}"></script>
     <script th:src="@{/js/util.js}"></script>
 </head>
 <body class="settings-page">
@@ -94,7 +94,7 @@
 
                         <div th:unless="${deleteAllRequiresVerification}">
                             <button class="btn btn-danger"
-                                    thhx-post="@{/settings/manage-data/remove-all-data}"
+                                    th:hx-post="@{/settings/manage-data/remove-all-data}"
                                     hx-target="#manage-data"
                                     hx-swap="innerHTML"
                                     th:attr="hx-confirm=#{data.remove.all.confirm}"

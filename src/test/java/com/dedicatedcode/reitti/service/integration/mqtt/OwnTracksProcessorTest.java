@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.service.integration.mqtt;
 
-import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.LocationBatchingService;
@@ -16,7 +16,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,7 +33,7 @@ class OwnTracksProcessorTest {
     private OwnTracksProcessor ownTracksProcessor;
 
     @Captor
-    private ArgumentCaptor<LocationPoint> locationPointCaptor;
+    private ArgumentCaptor<LocationPoint2> locationPointCaptor;
 
     private User testUser;
 
@@ -53,8 +54,8 @@ class OwnTracksProcessorTest {
         request.setLongitude(10.700927);
         request.setAccuracy(10.0);
 
-        LocationPoint expectedLocationPoint = new LocationPoint();
-        expectedLocationPoint.setTimestamp(Instant.ofEpochSecond(epochSecond).toString());
+        LocationPoint2 expectedLocationPoint = new LocationPoint2();
+        expectedLocationPoint.setTimestamp(Instant.ofEpochSecond(epochSecond));
         expectedLocationPoint.setLatitude(53.863149);
         expectedLocationPoint.setLongitude(10.700927);
         expectedLocationPoint.setAccuracyMeters(10.0);
@@ -66,7 +67,7 @@ class OwnTracksProcessorTest {
 
         // Then
         verify(locationBatchingService).addLocationPoint(eq(testUser), locationPointCaptor.capture());
-        LocationPoint capturedPoint = locationPointCaptor.getValue();
+        LocationPoint2 capturedPoint = locationPointCaptor.getValue();
         assertEquals(expectedLocationPoint.getTimestamp(), capturedPoint.getTimestamp());
         assertEquals(expectedLocationPoint.getLatitude(), capturedPoint.getLatitude());
         assertEquals(expectedLocationPoint.getLongitude(), capturedPoint.getLongitude());

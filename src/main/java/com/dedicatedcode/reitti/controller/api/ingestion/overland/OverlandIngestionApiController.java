@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller.api.ingestion.overland;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.dto.OverlandLocationRequest;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
@@ -53,7 +54,7 @@ public class OverlandIngestionApiController {
             }
             
             // Convert Overland locations to our LocationPoint format
-            List<LocationPoint> locationPoints = request.getLocations().stream()
+            List<LocationPoint2> locationPoints = request.getLocations().stream()
                     .map(OverlandLocationRequest.OverlandLocation::toLocationPoint)
                     .filter(point -> point != null && point.getTimestamp() != null && point.getAccuracyMeters() != null)
                     .toList();
@@ -66,7 +67,7 @@ public class OverlandIngestionApiController {
             }
             
             // Add each location point to the batching service
-            for (LocationPoint point : locationPoints) {
+            for (LocationPoint2 point : locationPoints) {
                 this.locationBatchingService.addLocationPoint(user, point);
             }
             logger.debug("Successfully received and queued {} Overland location points for user {}",

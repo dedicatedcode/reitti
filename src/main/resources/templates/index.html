@@ -14,27 +14,37 @@
     <link rel="stylesheet" th:href="@{/css/photo-client.css}" href="/css/photo-client.css">
     <link rel="stylesheet" th:href="@{/css/inline-edit.css}" href="/css/inline-edit.css">
     <link rel="stylesheet" th:href="@{/css/avatar-marker.css}" href="/css/avatar-marker.css">
+    <link rel="stylesheet" th:href="@{/css/maplibre-gl.5.16.0.min.css}" href="/css/maplibre-gl.5.16.0.min.css">
+    <link rel="stylesheet" th:href="@{/css/time-control.css}" href="/css/time-control.css">
     <link th:if="${userSettings.customCssUrl}" rel="stylesheet" th:href="${userSettings.customCssUrl}">
     <script th:src="@{/js/HumanizeDuration.js}"></script>
     <script th:src="@{/js/date-picker-combined.js}"></script>
     <script th:src="@{/js/timeline-scroll-indicator.js}"></script>
     <script th:src="@{/js/photo-client.js}"></script>
-    <script th:src="@{/js/raw-location-loader.js}"></script>
-    <script th:src="@{/js/canvas-visit-renderer.js}"></script>
-    <script th:src="@{/js/htmx.min.js}"></script>
-    <script th:src="@{/js/leaflet.js}"></script>
-    <script th:src="@{/js/TileLayer.Grayscale.js}"></script>
+    <script th:src="@{/js/vendor/htmx.min.js}"></script>
     <script th:src="@{/js/polygon-editor.js}"></script>
-    <script th:src="@{/js/leaflet.geodesic.2.7.2.js}"></script>
-    <script th:src="@{/js/leaflet.markercluster.js}"></script>
     <script th:src="@{/js/util.js}"></script>
+    <script th:src="@{/js/vendor/deckgl.9.2.5.min.js}"></script>
+    <script th:src="@{/js/vendor/maplibre-gl.5.16.0.min.js}"></script>
+    <script th:src="@{/js/vendor/supercluster.7.0.0.min.js}"></script>
+    <script th:src="@{/js/timeline-control.js}"></script>
+    <script th:src="@{/js/map-customization.js}"></script>
+    <script th:src="@{/js/gps-data-manager.js}"></script>
 </head>
 <body>
+
+<div id="deck-controls"
+     style="position: fixed; top: 50px; right: 20px; background: rgba(0,0,0,0.8); color: white; padding: 15px; border-radius: 8px; z-index: 10000; width: 250px; font-family: sans-serif; font-size: 12px;"></div>
 <div id="message-container">
     <div id="sse-message"></div>
 </div>
-<div id="map"></div>
-
+<div id="new-map" style="display: block"></div>
+<div id="loading-overlay" class="loading-overlay">
+    <div class="progress-container">
+        <div id="progress-bar" class="loading-progress-bar"></div>
+    </div>
+    <div id="status-text" class="status-text">Ready</div>
+</div>
 <!-- Auto-update overlay -->
 <div id="auto-update-overlay" class="auto-update-overlay">
     <button sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER', 'ROLE_MAGIC_LINK_FULL_ACCESS')" class="overlay-button exit-button" onclick="disableAutoUpdate()" th:title="#{map.auto-update.disable.title}">
@@ -46,7 +56,6 @@
     <div class="date" id="auto-update-date"></div>
     <div class="time" id="auto-update-time"></div>
 </div>
-
 <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('index')}"></div>
 <div class="timeline">
     <div class="timeline-container"
@@ -60,21 +69,115 @@
         <i class="lni lni-exit"></i>
     </button>
 </div>
-
 <button type="button" class="datepicker-toggle-btn" id="datepicker-toggle-btn" onclick="toggleDatePicker()" th:title="#{datepicker.state.hide.title}" title="Hide Date Picker">
     <i class="lni lni-exit-down"></i>
 </button>
-<div id="date-picker-container">
+<div id="date-picker-container"></div>
 
+<div id="tooltip" style="position: absolute; z-index: 10; pointer-events: none; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 4px; display: none; font-family: sans-serif; font-size: 12px; max-width: 300px;"></div>
+
+<div id="timeline-controls"></div>
+
+<div class="fab-container" id="fab-container">
+    <!-- Play button with hover-triggered speed control -->
+    <div class="play-section">
+        <button type="button" class="btn fab-btn" id="play-btn" title="Start Animation">
+            <i class="lni lni-play"></i>
+        </button>
+        <div class="speed-control" id="speed-control">
+            <select id="speed-selector">
+                <option value="1">Normal (1x)</option>
+                <option value="60">Fast (60x)</option>
+                <option value="3600">Super Fast (3600x)</option>
+                <option value="auto" selected>Auto-Adjust</option>
+            </select>
+        </div>
+    </div>
+    <button type="button" class="btn fab-btn" id="toggle-time-control-btn" title="Show time controls">
+        <i class="lni lni-stopwatch"></i>
+    </button>
+    <span class="time-display" id="time-display"></span>
+    <!-- Today button (hidden by default) -->
+    <button type="button" class="btn fab-btn today-btn" id="today-fab" onclick="goToToday()" style="display: none;"
+            th:title="#{datepicker.today.title}" title="Go to Today">
+        <i class="lni lni-calendar-days"></i>
+        <span th:text="#{datepicker.today}">Today</span>
+    </button>
+
+    <!-- Settings button -->
+    <button type="button" class="btn fab-btn settings-btn" id="settings-btn" title="Settings">
+        <i class="lni lni-gear-1"></i>
+    </button>
 </div>
 
-<!-- Today FAB button -->
-<button type="button" class="today-fab" id="today-fab" onclick="goToToday()" th:title="#{datepicker.today.title}" title="Go to Today" style="display: none;">
-    <i class="lni lni-calendar-days"></i>
-    <span th:text="#{datepicker.today}">Today</span>
-</button>
+<div id="settings-menu" class="settings-menu">
+    <div class="settings-menu-header">
+        <h3 th:text="#{settings.title}">Settings</h3>
+        <button class="close-settings-btn" onclick="closeSettingsMenu()">
+            <i class="lni lni-xmark-circle"></i>
+        </button>
+    </div>
+    <div class="settings-menu-content">
+        <div class="divider left">Map Appearance</div>
+        <div class="settings-section">
+            <div class="form-group">
+                <label for="view-mode">View Mode</label>
+                <select id="view-mode">
+                    <option value="LINEAR">Standard Paths</option>
+                    <option value="RAW">Raw Paths</option>
+                    <option value="BUNDLED">Edge Bundling</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="aggregate-toggle">24h aggregate?</label>
+                <input type="checkbox" id="aggregate-toggle">
+            </div>
+        </div>
+        <div class="divider left">Date Selection</div>
+        <div class="settings-section">
+        </div>
+    </div>
+</div>
+<div id="settings-overlay" class="settings-overlay" style="display: none;" onclick="closeSettingsMenu()"></div>
 
 <script th:inline="javascript">
+
+    ///delete later
+    let deckParams = {
+        trips: {
+            trailLength: 700,
+            cometWidth: 3,
+            cometOpacity: 155,
+            shadowWidth: 3,
+            shadowOpacity: 155,
+            pathWidth: 2,
+            pathOpacity: 35,
+            staticPathWidth: 2,
+            staticPathOpacity: 150,
+
+        },
+        visits: {
+            minZoom: 12,
+            radius: 1,
+            opacity: 140,
+            polygonOpacity: 140,
+            lineWidth: 1
+        },
+
+        bundled: {
+            precision: 0.0005,
+            weight: 0.5,
+            staticPathWidth: 2.5,
+            staticPathOpacity: 200,
+            pathWidth: 1.5,
+            pathOpacity: 40,
+            cometWidth: 2,
+            cometOpacity: 15,
+            shadowWidth: 3,
+            shadowOpacity: 30,
+        }
+    };
+
     window.contextPath = /*[[@{/}]]*/ "/";
     window.contextPath = window.contextPath.replace(/\/$/, '');
 
@@ -126,9 +229,17 @@
                 show:  /*[[#{timeline.state.show.title}]]*/ 'Show Timeline'
 
             }
+        },
+        map: {
+            popup: {
+                labels: {
+                    totalDuration:  /*[[#{map.popup.labels.total_duration}]]*/ 'Total duration:',
+                    from:  /*[[#{map.popup.labels.from}]]*/ 'From',
+                    to:  /*[[#{map.popup.labels.to}]]*/ 'To',
+                }
+            }
         }
     };
-
     window.userSettings = /*[[${userSettings}]]*/ {}
 
     const messagesDiv = document.getElementById('sse-message');
@@ -141,26 +252,576 @@
     let pendingEvents = [];
     let firstEventTime = null;
     let reconnectTimeoutId = null;
+    let globalBounds = [];
+    let highlightTimes = [];
 
-    // Store current date range selection
+    let gpsDataManagers = [];
+
     let currentDateRange = null;
 
-    // Initialize the map
-    const map = L.map('map', {zoomControl: false, attributionControl: false}).setView([window.userSettings.homeLatitude, window.userSettings.homeLongitude], 12);
+    const map = new maplibregl.Map({
+        container: 'new-map',
+        style: '/map/reitti.json',
+        center: [window.userSettings.homeLongitude, window.userSettings.homeLatitude],
+        zoom: 3,
+        pitch: 0,
+    });
 
-    // Initialize raw location loader and canvas visit renderer
-    let rawLocationLoader;
-    let canvasVisitRenderer;
+    const aggregateToggle = document.getElementById('aggregate-toggle');
 
-    /**
-     * Retrieves the selected date based on the URL parameters or application settings.
-     * If both 'startDate' and 'endDate' are present in the URL, it returns the 'startDate'.
-     * If the UI mode is set to 'SHARED_LIVE_MODE_ONLY', it returns the current local date.
-     * Otherwise, it uses the newest data from the user settings, or defaults to the current local date.
-     *
-     * This method should always return a valid **local** date in the format 'YYYY-MM-DD'.
-     * @return {string} The selected date in the format 'YYYY-MM-DD'.
-     */
+    const timelineControl = new TimelineControl(
+        document.getElementById('timeline-controls'),
+        document.getElementById('time-display')
+    );
+    timelineControl.on('offsetChanged', (data) => {
+        gpsDataManagers.forEach(manager => {
+            updateTripsLayer(manager, data.value);
+        })
+    })
+
+    const mapCustomizationControl = new MapCustomization(document.getElementById('deck-controls'), deckParams);
+    mapCustomizationControl.on('update-deck-params', (data) => {
+        deckParams = data.params;
+        gpsDataManagers.forEach(manager => {
+            if (data.field === 'bundled.weight' || data.field === 'bundled.precision') {
+                manager.recalculateBundledPath(deckParams.bundled.precision, deckParams.bundled.weight)
+                    .then(value => {
+                        console.log('test')
+                        updateTripsLayer(manager, timelineControl.getValue())
+                    });
+
+            }
+            updateTripsLayer(manager, timelineControl.getValue())
+
+        })
+    })
+
+    const deckOverlay = new deck.MapboxOverlay({
+        layers: []
+    });
+    map.addControl(deckOverlay);
+
+    map.on('move', () => {
+        const currentState = {
+            longitude: map.getCenter().lng,
+            latitude: map.getCenter().lat,
+            zoom: map.getZoom()
+        };
+
+        photoClient.updateClusters(currentState);
+        gpsDataManagers.forEach(manager => {
+            updateTripsLayer(manager, timelineControl.getValue())
+        })
+    });
+
+    const photoClient = new PhotoClient(true);
+
+    let userConfigs = [];
+    let animationId = null;
+    let lastFrameTime = null;
+
+    let isPlaying = false;
+
+    const playBtn = document.getElementById('play-btn');
+
+    playBtn.onclick = () => {
+        if (isPlaying) {
+            stopAnimation();
+        } else {
+            startAnimation();
+        }
+    };
+
+    function startAnimation() {
+        isPlaying = true;
+        playBtn.innerHTML = '<i class="lni lni-pause"></i>'; // Change icon to Pause
+        lastFrameTime = null;
+        animationId = requestAnimationFrame(animate);
+    }
+
+    function stopAnimation() {
+        isPlaying = false;
+        playBtn.innerHTML = '<i class="lni lni-play"></i>'; // Change icon to Play
+        if (animationId) {
+            cancelAnimationFrame(animationId);
+        }
+        timelineControl.setOffset(0);
+    }
+
+    let timeMultiplier = 30; // Default: 1 second = 1 minute
+
+    function calculateTimelineMultiplier() {
+        const params = getTimelineParams();
+
+        if (aggregateToggle.checked) {
+            timeMultiplier = 60 * 60 * 24 / 30;
+        } else {
+            const totalSeconds = params.endDateUtcSeconds - params.startDateUtcSeconds;
+            const targetDuration = 30;
+            timeMultiplier = totalSeconds / targetDuration;
+            console.log(`Animation speed set to: ${timeMultiplier}x real time`);
+        }
+    }
+
+    function animate(now) {
+        if (!isPlaying) return;
+        if (lastFrameTime === null) {
+            lastFrameTime = now; // Capture the start time
+            animationId = requestAnimationFrame(animate); // Request next frame
+            return; // Exit early without moving the slider
+        }
+        // 1. Calculate how much real time has passed since the last frame
+        // 'now' is provided automatically by requestAnimationFrame
+        const deltaTime = (now - lastFrameTime) / 1000; // convert ms to seconds
+        lastFrameTime = now; // Update for the next frame
+
+        // 2. Logic to prevent "jumps" (e.g., if the user changes tabs)
+        if (deltaTime > 0.1) {
+            animationId = requestAnimationFrame(animate);
+            return;
+        }
+
+        // 3. Advance the slider
+        let step = timeMultiplier * deltaTime;
+        let newValue = parseFloat(timelineControl.getOffset()) + step;
+
+        // 4. Loop logic
+        if (newValue > parseFloat(timelineControl.getMaxOffset())) {
+            newValue = 0;
+        }
+
+        // 5. Update UI and Map
+        timelineControl.setOffset(newValue);
+        gpsDataManagers.forEach(manager => {
+            updateTripsLayer(manager, timelineControl.getValue())
+        })
+
+        // 6. Request the next frame
+        animationId = requestAnimationFrame(animate);
+    }
+
+    function formatDateTime(ts) {
+        return new Date(ts).toLocaleDateString(window.userSettings.selectedLocale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function updateStatus(message, current, total) {
+        const bar = document.getElementById('progress-bar');
+        const text = document.getElementById('status-text');
+        const overlay = document.getElementById('loading-overlay');
+
+        overlay.style.transition = 'none';
+        overlay.style.opacity = '1';
+
+        const percentage = Math.min(100, Math.round((current / total) * 100));
+        bar.style.width = `${percentage}%`;
+
+        const currentFormatted = current?.toLocaleString();
+        const totalFormatted = total?.toLocaleString();
+
+        text.innerText = message
+            .replace('{0}', currentFormatted)
+            .replace('{1}', totalFormatted);
+
+        // Handle completion
+        if (current >= total && total > 0) {
+            fadeOutOverlay(overlay);
+        }
+    }
+
+    function fadeOutOverlay(overlay) {
+        setTimeout(() => {
+            overlay.style.transition = 'opacity 1s ease';
+            overlay.style.opacity = '0';
+        }, 1500);
+    }
+
+    function flyToHomeLocation() {
+        map.flyTo({
+            center: [window.userSettings.homeLongitude, window.userSettings.homeLatitude],
+            zoom: 15,
+            pitch: 45
+        });
+    }
+
+    function fitMapToBounds(bounds) {
+        map.fitBounds(bounds, {
+            padding: {
+                top: 50,
+                bottom: 100,
+                right: 100,
+                left: 450
+            },
+            duration: 2000,
+            essential: true
+        });
+    }
+
+    function updateTripsLayer(manager, offset) {
+        const viewState = {
+            longitude: map.getCenter().lng,
+            latitude: map.getCenter().lat,
+            zoom: map.getZoom(),
+            animating: !timelineControl.isIdle()
+        };
+        const layers = [];
+
+        if (manager.buffer.length === 0) {
+            deckOverlay.setProps({layers})
+            return;
+        }
+        const isAggregate = aggregateToggle?.checked || false;
+        const viewMode = document.getElementById('view-mode')?.value || 'LINEAR';
+        const totalTimeSpanSec = isAggregate ? 24 * 60 * 60 : manager.maxTimestamp - manager.minTimestamp;
+        const calculatedTrail = Math.max(1800, totalTimeSpanSec * 0.02);
+
+        const mode = isAggregate ? 'agg' : 'lin';
+        const isAnimating = !timelineControl.isIdle();
+
+        // --- BASE VISUALIZATION ---
+        if (viewMode === 'BUNDLED') {
+            layers.push(...getBundleLayers(manager, offset, isAggregate));
+        } else {
+            const buffer = viewMode === 'LINEAR' ? 'cleaned' : 'raw';
+            const cursor =  viewMode === 'LINEAR' ? manager.cleanedCursor : manager.cursor;
+            layers.push(new deck.PathLayer({
+                id: 'paths-static-fixed',
+                data: manager.getLayerData(buffer, isAggregate),
+                positionFormat: 'XYZ',
+                getColor: [...manager.color, deckParams.trips.staticPathOpacity],
+                getWidth: deckParams.trips.staticPathWidth,
+                widthMinPixels: deckParams.trips.staticPathWidth,
+                visibility: !isAnimating,
+                capRounded: true,
+                jointRounded: true,
+                updateTriggers: {
+                    data: [manager.buffer?.length, buffer],
+                    getPath: [cursor, buffer],
+                    getTimestamps: [isAggregate],
+                    visibility: [isAnimating],
+                    getColor: [manager.color, deckParams.trips.staticPathOpacity],
+                    getWidth: [deckParams.trips.staticPathWidth],
+                    widthMinPixels: [deckParams.trips.staticPathWidth],
+                }
+            }));
+
+            // SHADOW TRIP (Animated)
+            layers.push(new deck.TripsLayer({
+                id: `trips-shadow-${mode}`,
+                data: manager.getLayerData(buffer, isAggregate),
+                positionFormat: 'XYZ',
+                getColor: [255, 255, 255],
+                opacity: deckParams.trips.shadowOpacity,
+                widthMinPixels: deckParams.trips.shadowWidth,
+                trailLength: calculatedTrail * 1.2,
+                visibility: isAnimating,
+                currentTime: offset,
+                capRounded: true,
+                jointRounded: true,
+
+                parameters: {depthTest: false},
+
+                updateTriggers: {
+                    data: [manager.buffer?.length, buffer],
+                    visibility: [isAnimating],
+                    opacity: [deckParams.trips.shadowOpacity],
+                    widthMinPixels: [deckParams.trips.shadowWidth],
+                    getPath: [cursor, buffer],
+                    currentTime: [offset],
+                    getTimestamps: [isAggregate],
+                }
+            }));
+
+            // CORE TRIP (Animated)
+            layers.push(new deck.TripsLayer({
+                id: `trips-core-${mode}`,
+                data: manager.getLayerData(buffer, isAggregate),
+                positionFormat: 'XYZ', // Tell deck.gl to look for the 3rd coordinate
+                getColor: manager.color,
+                opacity: deckParams.trips.cometOpacity * isAnimating,
+                widthMinPixels: deckParams.trips.cometWidth,
+                trailLength: calculatedTrail,
+                currentTime: offset,
+                capRounded: true,
+                jointRounded: true,
+
+                updateTriggers: {
+                    data: [manager.buffer?.length, buffer],
+                    getPath: [cursor, buffer],
+                    currentTime: [offset],
+                    getTimestamps: [isAggregate],
+                }
+            }));
+        }
+
+        layers.push(...getVisitLayers(manager, offset, isAggregate));
+        layers.push(...photoClient.getLayers(offset, viewState));
+
+        deckOverlay.setProps({layers})
+    }
+
+    function getBundleLayers(manager, offset, isAggregate) {
+        const timeSpan = isAggregate ? 86400 : (manager.maxTimestamp - manager.minTimestamp);
+        const calculatedTrail = Math.max(1800, timeSpan * 0.02);
+
+        const state = {
+            selectedDay: timelineControl.getOffset(),
+        }
+        // Check if bundling is complete
+        if (manager.loadingState !== 'complete' || !manager.snappedBuffer || manager.snappedBuffer.length === 0) {
+            return [];
+        }
+        const layers = [];
+        layers.push(new deck.PathLayer({
+            id: `bundled-paths-static-${manager.id}`,
+            data: manager.getLayerData('bundled', isAggregate),
+            positionFormat: 'XY',
+            getColor: [...manager.color, deckParams.bundled.staticPathOpacity],
+            widthMinPixels: deckParams.bundled.staticPathWidth,
+            capRounded: true,
+            jointRounded: true,
+            depthTest: false,
+            updateTriggers: {
+                data: [manager.snappedVersion, isAggregate],
+                getPath: [manager.snappedVersion, deckParams.bundled.weight, deckParams.bundled.precision, isAggregate],
+                filterRange: [state.selectedDay],
+                getColor: [manager.color, deckParams.bundled.staticPathOpacity],
+                getWidth: [deckParams.bundled.staticPathWidth],
+                widthMinPixels: [deckParams.bundled.staticPathWidth]
+            }
+        }));
+
+
+        layers.push(new deck.PathLayer({
+            id: `bundled-path-${manager.id}`,
+            data: manager.getLayerData('bundled', isAggregate),
+            positionFormat: 'XY',
+            widthMinPixels: deckParams.bundled.pathWidth,
+            getColor: [...manager.color, deckParams.bundled.pathOpacity],
+            parameters: {
+                blendFunc: [770, 1], // GL_SRC_ALPHA, GL_ONE
+                blendEquation: 32774, // GL_FUNC_ADD
+                depthTest: false
+            },
+            capRounded: true,
+            jointRounded: true,
+            updateTriggers: {
+                data: [manager.snappedVersion],
+                getPath: [manager.snappedVersion, deckParams.bundled.weight, deckParams.bundled.precision],
+                getColor: [deckParams.bundled.pathOpacity],
+                getWidth: [deckParams.bundled.pathWidth],
+                widthMinPixels: [deckParams.bundled.pathWidth],
+            }
+
+        }));
+
+        layers.push(new deck.TripsLayer({
+            id: `bundled-path-shadow-${manager.id}`,
+            data: manager.getLayerData('bundled', isAggregate),
+            positionFormat: 'XY',
+            getColor: [255, 255, 255],
+            opacity: deckParams.bundled.shadowOpacity,
+            visible: !timelineControl.isIdle(),
+            widthMinPixels: deckParams.bundled.shadowWidth,
+            trailLength: calculatedTrail * 1.2,
+            currentTime: offset,
+            capRounded: true,
+            jointRounded: true,
+            parameters: {depthTest: false},
+            updateTriggers: {
+                data: [manager.snappedVersion],
+                getPath: [manager.snappedVersion, deckParams.bundled.weight, deckParams.bundled.precision],
+                currentTime: [offset],
+                getColor: [deckParams.bundled.shadowOpacity],
+                getWidth: [deckParams.bundled.shadowWidth],
+            }
+        }));
+
+        // CORE TRIP (Animated)
+        layers.push(new deck.TripsLayer({
+            id: `bundled-path-core-${manager.id}`,
+            data: manager.getLayerData('bundled', isAggregate),
+            positionFormat: 'XY',
+            getColor: manager.color,
+            opacity: deckParams.bundled.cometOpacity,
+            visible: !timelineControl.isIdle(),
+            widthMinPixels: deckParams.bundled.cometWidth,
+            trailLength: calculatedTrail,
+            currentTime: offset,
+            capRounded: true,
+            jointRounded: true,
+            depthTest: false,
+            blendFunc: [770, 771], // Standard Alpha Blending
+            blendEquation: 32774,
+            updateTriggers: {
+                data: [manager.snappedVersion],
+                getPath: [manager.snappedVersion, deckParams.bundled.weight, deckParams.bundled.precision],
+                currentTime: [offset],
+                getColor: [deckParams.bundled.coreOpacity],
+                getWidth: [deckParams.bundled.cometWidth],
+            }
+        }));
+
+        return layers;
+    }
+
+    function getVisitLayers(manager, offset, isAggregate) {
+        const isOverview = timelineControl.isIdle();
+        const currentTime = offset;
+        const places = manager.visits;
+        if (places === undefined) {
+            return [];
+        }
+        return [
+            // 1. Polygon Layer
+            new deck.PolygonLayer({
+                id: 'visit-polygons',
+                data: places.filter(p => p.polygon),
+                getPolygon: d => d.polygon.coordinates,
+                getFillColor: d => [...manager.color, deckParams.visits.polygonOpacity],
+                getLineColor: d => [...manager.color, 255],
+                pickable: true,
+                depthTest: false,
+
+                onHover: info => updateTooltip(info),
+                visible: isOverview && map.getZoom() > deckParams.visits.minZoom,
+                updateTriggers: {
+                    getFillColor: [deckParams.visits.polygonOpacity, currentTime],
+                    visible: [isOverview, map.zoom, deckParams.visits.minZoom],
+                    data: manager.visits?.length
+                }
+            }),
+            new deck.ScatterplotLayer({
+                id: 'place-outer-circles',
+                data: places,
+                getPosition: d => d.coordinates,
+                getRadius: d => {
+                    const duration = isOverview
+                        ? (d.totalDurationSec || 0)
+                        : getActiveVisitEffect(d, currentTime, isAggregate).seconds;
+
+                    if (duration <= 0) {
+                        return 0;
+                    }
+
+                    const minRadius = isOverview ? deckParams.visits.radius : (deckParams.visits.radius * 1.5);
+                    const maxRadius = isOverview ? 500 : 600;
+
+                    // This treats the duration as the "Area" of the circle
+                    // Adjusted so 1 day (86400s) hits a reasonable size
+                    const scalingFactor = isOverview ? 0.8 : 1.2;
+
+                    const calculated = minRadius + (Math.sqrt(duration) * scalingFactor);
+
+                    return Math.min(calculated, maxRadius);
+                },
+                getFillColor: d => [...manager.color, isOverview ? deckParams.visits.opacity : (getActiveVisitEffect(d, currentTime, isAggregate).opacity * deckParams.visits.opacity)],
+                pickable: true,
+                depthTest: false,
+                onHover: info => updateTooltip(info),
+                visible: !isOverview || map.getZoom() > deckParams.visits.minZoom,
+                updateTriggers: {
+                    getRadius: [currentTime, isOverview, deckParams.visits.radius, deckParams.visits.opacity],
+                    getFillColor: [currentTime, isOverview],
+                    data: manager.visits?.length
+                },
+                // Optional: Smooth the appearance/disappearance
+                transitions: {
+                    getRadius: {
+                        type: 'spring',
+                        stiffness: 0.1,
+                        damping: 0.15,
+                        enter: d => [0] // Starts at 0 radius when appearing
+                    }
+                }
+            }),
+
+            new deck.ScatterplotLayer({
+                id: 'place-inner-circles',
+                data: places,
+                getPosition: d => d.coordinates,
+                getRadius: 8,
+                stroked: true,
+                lineWidthMinPixels: deckParams.visits.lineWidth,
+                depthTest: false,
+                getLineColor: d => {
+                    const isActive = d.activeRanges.some(r => currentTime >= r.start && currentTime <= r.end);
+                    const alpha = (isOverview || isActive) ? 255 : 0;
+                    return [0,0,0 , alpha];
+                },
+                getFillColor: d => {
+                    const isActive = d.activeRanges.some(r => currentTime >= r.start && currentTime <= r.end);
+                    const alpha = (isOverview || isActive) ? 255 : 0;
+                    return [255,255,255, alpha];
+                },
+                updateTriggers: {
+                    getFillColor: [currentTime, isOverview],
+                    getLineColor: [currentTime, isOverview],
+                    lineWidth: [deckParams.visits.lineWidth],
+                    data: manager.visits?.length
+                },
+                pickable: true,
+                onHover: info => updateTooltip(info),
+            })
+        ];
+    }
+
+    function getActiveVisitEffect(visit, time, isAggregate) {
+        const exitFadeDuration = 3000; // 5 minutes (in seconds) to shrink/fade completely
+        let accumulated = 0;
+        let multiplier = 0;
+
+        for (const range of visit.activeRanges) {
+            const start = isAggregate ? range.startAggregate : range.start;
+            const end = isAggregate ? range.endAggregate : range.end;
+            if (time < start) {
+                // Future visit: do nothing
+                break;
+            } else if (time >= start && time <= end) {
+                // Currently visiting: Full size
+                accumulated += (time - start);
+                multiplier = 1.0;
+            } else if (time > end) {
+                // Past visit: Add full duration
+                accumulated += (end - start);
+
+                // Calculate decay: how recently did we leave?
+                const timeSinceLeft = time - end;
+                const decay = 1.0 - (timeSinceLeft / exitFadeDuration);
+
+                // We take the "freshest" decay. If we just left, multiplier is near 1.
+                // If we left a long time ago, multiplier is 0.
+                multiplier = Math.max(multiplier, Math.min(1, decay));
+            }
+        }
+
+        return { seconds: accumulated, opacity: multiplier };
+    }
+
+    function updateTooltip({x, y, object}) {
+        const tooltip = document.getElementById('tooltip');
+        if (object) {
+            const visitListHtml = object.originalVisits.map(v => `
+            <div style="border-top: 1px solid #444; margin-top: 5px; padding-top: 5px;">
+                <b>${locale.map.popup.labels.from}</b> ${formatDateTime(v.startTime)}<br>
+                <b>${locale.map.popup.labels.to}</b> ${formatDateTime(v.endTime)}
+            </div>
+        `).join('');
+
+            tooltip.innerHTML = `
+            <div style="font-size: 14px; font-weight: bold; margin-bottom: 5px;">${object.name}</div>
+            <div><b>${window.locale.map.popup.labels.totalDuration}</b> ${humanizeDuration(object.totalDurationSec * 1000)}</div>
+            <div style="max-height: 150px; overflow-y: auto; margin-top: 10px;">
+                ${visitListHtml}
+            </div>
+        `;
+            tooltip.style.display = 'block';
+            tooltip.style.left = `${x + 15}px`;
+            tooltip.style.top = `${y + 15}px`;
+        } else {
+            tooltip.style.display = 'none';
+        }
+    }
+
     function getSelectedDate() {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('startDate') && urlParams.has('endDate')) {
@@ -174,28 +835,27 @@
         }
     }
 
-    function getUserTimezone() {
-        if (window.userSettings.timezoneOverride) {
-            return window.userSettings.timezoneOverride;
-        } else {
-            return Intl.DateTimeFormat().resolvedOptions().timeZone;
-        }
-    }
-
     function getTimelineParams() {
         const timezone = getUserTimezone();
         if (currentDateRange && currentDateRange.startDate && currentDateRange.endDate) {
             // Range mode - use actual range
+            const startDate = new Date(currentDateRange.startDate);
+            startDate.setHours(0, 0, 0, 0);
+            const requestedStartUTCSeconds = Math.floor(startDate.getTime() / 1000);
+            const endDate = new Date(currentDateRange.endDate);
+            endDate.setHours(23, 59, 59);
+            const requestedEndUTCSeconds = Math.floor(endDate.getTime() / 1000);
             return {
                 startDate: currentDateRange.startDate,
+                startDateUtcSeconds: requestedStartUTCSeconds,
                 endDate: currentDateRange.endDate,
+                endDateUtcSeconds: requestedEndUTCSeconds,
                 timezone: timezone
             };
         } else {
             throw new Error('Invalid date range');
         }
     }
-
 
     function selectUser(userHeader) {
         // Remove active class from all user headers
@@ -225,7 +885,7 @@
     function toggleTimeline() {
         const body = document.body;
         const isHidden = body.classList.contains('timeline-hidden');
-        
+
         if (isHidden) {
             body.classList.remove('timeline-hidden');
             localStorage.setItem('timelineHidden', 'false');
@@ -238,15 +898,15 @@
             body.classList.add('timeline-hidden');
             localStorage.setItem('timelineHidden', 'true');
         }
-        
+
         updateTimelineToggleButton();
     }
-    
+
     function updateTimelineToggleButton() {
         const btn = document.getElementById('timeline-toggle-btn');
         const icon = btn.querySelector('i');
         const isHidden = document.body.classList.contains('timeline-hidden');
-        
+
         if (isHidden) {
             icon.className = 'lni lni-enter';
             btn.title = window.locale.timeline.state.show;
@@ -255,7 +915,7 @@
             btn.title = window.locale.timeline.state.hide;
         }
     }
-    
+
     // Restore timeline visibility state from localStorage
     function restoreTimelineState() {
         const timelineHidden = localStorage.getItem('timelineHidden');
@@ -264,12 +924,12 @@
         }
         updateTimelineToggleButton();
     }
-    
+
     // Date picker visibility functions
     function toggleDatePicker() {
         const body = document.body;
         const isHidden = body.classList.contains('datepicker-hidden');
-        
+
         if (isHidden) {
             body.classList.remove('datepicker-hidden');
             localStorage.setItem('datepickerHidden', 'false');
@@ -277,15 +937,15 @@
             body.classList.add('datepicker-hidden');
             localStorage.setItem('datepickerHidden', 'true');
         }
-        
+
         updateDatePickerToggleButton();
     }
-    
+
     function updateDatePickerToggleButton() {
         const btn = document.getElementById('datepicker-toggle-btn');
         const icon = btn.querySelector('i');
         const isHidden = document.body.classList.contains('datepicker-hidden');
-        
+
         if (isHidden) {
             icon.className = 'lni lni-exit-up';
             btn.title = window.locale.datepicker.state.show;
@@ -297,7 +957,7 @@
         // Update today FAB visibility when date picker visibility changes
         updateTodayFabVisibility();
     }
-    
+
     // Restore date picker visibility state from localStorage
     function restoreDatePickerState() {
         const datepickerHidden = localStorage.getItem('datepickerHidden');
@@ -314,326 +974,6 @@
         url.searchParams.delete('date');
         window.history.pushState({}, '', url);
     }
-
-    document.addEventListener('DOMContentLoaded', function () {
-        if (window.userSettings.uiMode !== 'SHARED_LIVE_MODE_ONLY') {
-            // Restore timeline state on page load
-            restoreTimelineState();
-            // Restore date picker state on page load
-            restoreDatePickerState();
-        } else {
-            document.body.classList.add('datepicker-hidden')
-            document.body.classList.add('timeline-hidden')
-        }
-
-        const tilesUrl = window.userSettings.tiles.service;
-        const tilesAttribution = window.userSettings.tiles.attribution;
-
-        const tileLayer = window.userSettings.preferColoredMap ? L.tileLayer : L.tileLayer.grayscale;
-        tileLayer(tilesUrl, {
-            maxZoom: 19,
-            attribution:  tilesAttribution
-        }).addTo(map);
-        L.control.attribution({position: 'topright'}).addAttribution(tilesAttribution)
-            .addTo(map)
-
-        // Initialize photo client
-        const photoClient = new PhotoClient(map, window.userSettings.photoMode === 'ENABLED');
-        
-        // Initialize raw location loader
-        rawLocationLoader = new RawLocationLoader(map, window.userSettings, {
-            paddingTopLeft: [100,0],
-            paddingBottomRight: [100, 300],
-            zoomSnap: 0.1
-        });
-
-        // Initialize raw location loader with user configurations
-        initializeRawLocationLoader();
-        
-        // Initialize canvas visit renderer with higher z-index to render above raw location data
-        canvasVisitRenderer = new CanvasVisitRenderer(map);
-        
-        // Ensure visit renderer is above raw location data by setting higher z-index
-        if (canvasVisitRenderer.canvasRenderer && canvasVisitRenderer.canvasRenderer.getPane()) {
-            canvasVisitRenderer.canvasRenderer.getPane().style.zIndex = 450;
-        }
-
-        // Listen for map move/zoom events to update photo markers
-        map.on('moveend zoomend', () => {
-            photoClient.onMapMoveEnd();
-        });
-
-        function loadTimelineData(startDate, endDate) {
-            if (startDate && endDate && startDate !== endDate) {
-                // Range mode
-                photoClient.updatePhotosForRange(startDate, endDate, getUserTimezone());
-            } else {
-                const date = startDate || getSelectedDate();
-                photoClient.updatePhotosForRange(date, date, getUserTimezone());
-            }
-            
-            // Load raw location data using the loader
-            rawLocationLoader.loadForDateRange(autoUpdateMode, false);
-        }
-
-        // Function to initialize raw location loader with user configurations
-        function initializeRawLocationLoader() {
-            const userConfigs = [];
-            const timelineContainers = document.querySelectorAll('.user-timeline-section');
-
-            timelineContainers.forEach(container => {
-                const config = {
-                    respectBounds: true,
-                    url: container.dataset.rawLocationPointsUrl,
-                    color: container.dataset.baseColor,
-                    avatarUrl: container.dataset.userAvatarUrl,
-                    avatarFallback: container.dataset.avatarFallback,
-                    displayName: container.dataset.displayName
-                };
-                userConfigs.push(config);
-            });
-
-            rawLocationLoader.init(userConfigs);
-        }
-
-        // Add HTMX event handlers for timeline updates
-        document.body.addEventListener('htmx:afterSwap', function(event) {
-            if (event.detail.target.classList.contains('timeline-container')) {
-                // Re-initialize raw location loader with updated user configurations
-                initializeRawLocationLoader();
-
-                // Timeline content has been updated, update map markers
-                const params = getTimelineParams();
-                loadTimelineData(params.startDate, params.endDate);
-                updateMapFromTimeline();
-                // Initialize scroll indicator after timeline is updated
-                if (window.timelineScrollIndicator) {
-                    window.timelineScrollIndicator.cleanup();
-                }
-                window.timelineScrollIndicator = new TimelineScrollIndicator();
-                window.timelineScrollIndicator.init();
-                
-                // Update edit place links with current URL
-                updateEditPlaceLinks();
-            }
-        });
-        // Function to update map markers from processed visits API
-        function updateMapFromTimeline() {
-            const bounds = L.latLngBounds();
-
-            // Clear existing markers and paths (except tile layer)
-            map.eachLayer(layer => {
-                if (!layer._url) {
-                    map.removeLayer(layer);
-                }
-            });
-
-            const allVisits = [];
-            
-            // Get current map bounds for API request
-            const mapBounds = map.getBounds();
-
-            // Get user configurations for colors
-            const userConfigs = new Map();
-            const timelineUserSections = document.querySelectorAll('.user-timeline-section');
-            
-            timelineUserSections.forEach(container => {
-                const userId = container.dataset.userId;
-                const color = container.dataset.baseColor;
-                userConfigs.set(userId, { color: color });
-            });
-
-            // Fetch processed visits for each user
-            const fetchPromises = [];
-            timelineUserSections.forEach(container => {
-                const userId = container.dataset.userId;
-                const baseUrl = container.dataset.processedVisitsUrl;
-                
-                if (!baseUrl) {
-                    console.warn(`No processed visits URL found for user ${userId}`);
-                    return;
-                }
-                
-                const urlParams = new URLSearchParams({
-                    minLat: mapBounds.getSouth(),
-                    maxLat: mapBounds.getNorth(),
-                    minLng: mapBounds.getWest(),
-                    maxLng: mapBounds.getEast()
-                });
-
-                const fullUrl = baseUrl.includes('?') ? `${baseUrl}&${urlParams}` : `${baseUrl}?${urlParams}`;
-
-                fetchPromises.push(
-                    fetch(window.contextPath + fullUrl)
-                        .then(response => response.json())
-                        .then(data => ({ userId, data, color: userConfigs.get(userId)?.color }))
-                        .catch(error => {
-                            console.error(`Error fetching visits for user ${userId}:`, error);
-                            return { userId, data: { places: [] }, color: userConfigs.get(userId)?.color };
-                        })
-                );
-            });
-
-            Promise.all(fetchPromises).then(results => {
-                results.forEach(({ userId, data, color }) => {
-                    if (data.places) {
-                        data.places.forEach(placeSummary => {
-                            const place = placeSummary.place;
-                            if (place.lat && place.lng) {
-                                const visitData = {
-                                    lat: place.lat,
-                                    lng: place.lng,
-                                    totalDurationMs: placeSummary.totalDurationMs,
-                                    visits: placeSummary.visits.map(v => ({ id: v.id })),
-                                    place: {
-                                        name: place.name || 'Unknown Place',
-                                        address: place.address || '',
-                                        polygon: place.polygon || null
-                                    },
-                                    color: color
-                                };
-                                
-                                allVisits.push(visitData);
-                                bounds.extend([place.lat, place.lng]);
-                            }
-                        });
-                    }
-                });
-
-                // Update canvas renderer with all visits
-                if (canvasVisitRenderer) {
-                    canvasVisitRenderer.setVisits(allVisits);
-                }
-            }).catch(error => {
-                console.error('Error fetching processed visits:', error);
-                // Fallback to empty visits if API fails
-                if (canvasVisitRenderer) {
-                    canvasVisitRenderer.setVisits([]);
-                }
-            });
-
-            return bounds;
-        }
-
-        // Handle clicks on timeline entries
-        document.querySelector('.timeline-container').addEventListener('click', function (event) {
-            const entry = event.target.closest('.timeline-entry');
-            if (!entry) return;
-
-            const editingElement = event.target.closest('.editing');
-            if (editingElement || event.target.classList.contains('edit-icon')) {
-                return;
-            }
-            // Check if this entry is already active (deselection case)
-            const isCurrentlyActive = entry.classList.contains('active');
-            
-            // Remove active class from all entries
-            document.querySelectorAll('.timeline-container .timeline-entry')
-                .forEach(e => e.classList.remove('active'));
-            const isTrip = entry.classList.contains('trip');
-
-            if (isCurrentlyActive) {
-                // Deselection: clear selected time range and zoom back to original bounds
-                rawLocationLoader.clearSelectedTimeRange();
-                if (window.originalBounds && window.originalBounds.isValid()) {
-                    map.flyToBounds(window.originalBounds, rawLocationLoader.fitToBoundsConfig);
-                }
-            } else {
-                // Selection: set time range and zoom to specific entry
-                entry.classList.add('active');
-                const newBounds = L.latLngBounds();
-
-                const lat = parseFloat(entry.dataset.lat);
-                const lng = parseFloat(entry.dataset.lng);
-                const startTime = entry.dataset.start;
-                const endTime = entry.dataset.end;
-
-                // Set selected time range in raw location loader
-                if (isTrip && startTime && endTime) {
-                    rawLocationLoader.setSelectedTimeRange(startTime, endTime).then(selectedRangeBounds => {
-                        if (selectedRangeBounds && selectedRangeBounds.isValid()) {
-                            newBounds.extend(selectedRangeBounds);
-                        }
-                        
-                        if (!isNaN(lat) && !isNaN(lng)) {
-                            newBounds.extend([lat, lng]);
-                        }
-
-                        if (newBounds.isValid()) {
-                            map.flyToBounds(newBounds, rawLocationLoader.fitToBoundsConfig);
-                        }
-                    });
-                    return; // Exit early since we handle bounds in the promise
-                }
-
-                if (!isNaN(lat) && !isNaN(lng)) {
-                    newBounds.extend([lat, lng]);
-                }
-
-                if (newBounds.isValid()) {
-                    map.flyToBounds(newBounds, rawLocationLoader.fitToBoundsConfig);
-                }
-            }
-        });
-
-        window.horizontalDatePicker = new DatePicker('date-picker-container', {
-            daysToShow: 14,
-            prefetchDays: 25,
-            allowRangeSelection: true,
-            singleDateMode: true, // Enable single date mode with locking
-            dateFormat: 'YYYY-MM-DD',
-            locale: navigator.language,
-            strings: {
-                clickToUnlockDate: /*[[#{datepicker.click-to-unlock-date}]]*/ 'Click to unlock date',
-                clickToLockDate: /*[[#{datepicker.click-to-lock-date}]]*/ 'Click to lock date',
-                clickToClearSelection: /*[[#{datepicker.click-to-clear-selection}]]*/ 'Click to clear selection',
-                clickToCreateRange: /*[[#{datepicker.click-to-create-range}]]*/ 'Click to create range',
-                clickToExpandRangeBackward: /*[[#{datepicker.click-to-expand-range-backward}]]*/ 'Click to expand range backward',
-                clickToExpandRangeForward: /*[[#{datepicker.click-to-expand-range-forward}]]*/ 'Click to expand range forward',
-                clickToAdjustRangeStart: /*[[#{datepicker.click-to-adjust-range-start}]]*/ 'Click to adjust range start',
-                clickToUnlockMonth: /*[[#{datepicker.click-to-unlock-month}]]*/ 'Click to unlock month',
-                clickToLockMonth: /*[[#{datepicker.click-to-lock-month}]]*/ 'Click to lock month',
-                clickToUnlockYear: /*[[#{datepicker.click-to-unlock-year}]]*/ 'Click to unlock year',
-                clickToLockYear: /*[[#{datepicker.click-to-lock-year}]]*/ 'Click to lock year',
-                select: /*[[#{datepicker.select}]]*/ 'Select',
-                to: /*[[#{datepicker.to}]]*/ 'to'
-            }
-        });
-
-        window.horizontalDatePicker.on('selectionChange', function (data) {
-            console.log(`Selection changed`, data);
-            const startDate = new Date(data.startDate + 'T00:00:00');
-            let endDate;
-            if (data.endDate) {
-                endDate = new Date(data.endDate + 'T00:00:00');
-            } else {
-                switch (data.timeband) {
-                    case 'day': endDate = startDate; break;
-                    case 'month': endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0); break;
-                    case 'year': endDate = new Date(startDate.getFullYear(), 11, 31); break;
-                }
-            }
-            currentDateRange = {
-                startDate: window.horizontalDatePicker.formatDate(startDate),
-                endDate: window.horizontalDatePicker.formatDate(endDate)
-            };
-            updateUrlWithDate(currentDateRange);
-            // Trigger HTMX reload of timeline
-            document.body.dispatchEvent(new CustomEvent('dateChanged'));
-
-            // Check if today FAB should be shown
-            updateTodayFabVisibility();
-        });
-
-        // Listen for date picker view changes to update FAB visibility
-        window.horizontalDatePicker.on('viewChange', function() {
-            updateTodayFabVisibility();
-        });
-
-        const startingDate = loadStartingDate();
-        console.log(`Starting date: ${startingDate[0]} - ${startingDate[1]}`)
-        window.horizontalDatePicker.setSelectedRange(startingDate[0], startingDate[1]);
-    });
 
     function loadStartingDate() {
         const urlParams = new URLSearchParams(window.location.search);
@@ -653,9 +993,6 @@
                 endDate = null;
             }
         }
-
-        console.log('Starting date:', startDate, endDate);
-        console.log('Newest data:', newestData);
 
         if (!startDate && !endDate) {
             if (window.userSettings.uiMode === 'SHARED_LIVE_MODE_ONLY') {
@@ -677,14 +1014,10 @@
         }
     }
 
-
-    if (window.userSettings.uiMode === "SHARED_LIVE_MODE_ONLY") {
-        toggleAutoUpdate();
-    }
     function toggleAutoUpdate() {
         const btn = document.getElementById('auto-update-btn');
         const icon = btn ? btn.querySelector('i') : null;
-        
+
         if (!autoUpdateMode) {
             document.body.classList.add('auto-update-mode');
 
@@ -698,10 +1031,10 @@
 
             // Hide timeline and date picker smoothly
             hideUIElements();
-            
+
             // Show auto-update overlay
             showAutoUpdateOverlay();
-            
+
             // Update the date picker to today
             if (window.horizontalDatePicker) {
                 window.horizontalDatePicker.setSelectedRange(getCurrentLocalDate(), null);
@@ -721,54 +1054,54 @@
 
     function disableAutoUpdate() {
         autoUpdateMode = false;
-        
+
         // Clear the timer
         if (autoUpdateTimer) {
             clearInterval(autoUpdateTimer);
             autoUpdateTimer = null;
         }
-        
+
         // Clear time update interval
         if (autoUpdateTimeInterval) {
             clearInterval(autoUpdateTimeInterval);
             autoUpdateTimeInterval = null;
         }
-        
+
         // Clear any pending reload timeout
         if (reloadTimeoutId) {
             clearTimeout(reloadTimeoutId);
             reloadTimeoutId = null;
         }
-        
+
         // Clear max wait timeout
         if (maxWaitTimeoutId) {
             clearTimeout(maxWaitTimeoutId);
             maxWaitTimeoutId = null;
         }
-        
+
         // Clear pending events
         pendingEvents = [];
         firstEventTime = null;
-        
+
         // Clear reconnect timeout
         if (reconnectTimeoutId) {
             clearTimeout(reconnectTimeoutId);
             reconnectTimeoutId = null;
         }
-        
+
         if (eventSource) {
             eventSource.close();
             eventSource = null;
         }
-        
+
         rawLocationLoader.removePulsatingMarkers();
-        
+
         // Hide auto-update overlay
         hideAutoUpdateOverlay();
-        
+
         // Show timeline and date picker again
         showUIElements();
-        
+
         const btn = document.getElementById('auto-update-btn');
         const icon = btn.querySelector('i');
         icon.className = 'lni lni-play';
@@ -787,7 +1120,7 @@
             if (!autoUpdateMode) {
                 return; // Exit if auto-update mode was disabled
             }
-            
+
             // If the selected date is not today, switch to today
             if (!isSelectedDateToday()) {
                 console.log('Auto-update: Switching to today\'s date');
@@ -804,14 +1137,13 @@
         return selectedDate === today;
     }
 
-
     function scheduleTimelineReload(eventData) {
         // Add event to pending events
         pendingEvents.push(eventData);
-        
+
         if (firstEventTime === null) {
             firstEventTime = Date.now();
-            
+
             // Set maximum wait timeout (30 seconds from first event)
             maxWaitTimeoutId = setTimeout(() => {
                 if (autoUpdateMode && pendingEvents.length > 0) {
@@ -820,11 +1152,11 @@
                 }
             }, 30000);
         }
-        
+
         if (reloadTimeoutId) {
             clearTimeout(reloadTimeoutId);
         }
-        
+
         reloadTimeoutId = setTimeout(() => {
             if (autoUpdateMode && pendingEvents.length > 0) {
                 console.log(`Auto-update: Reloading timeline data after 5s settle time with ${pendingEvents.length} accumulated events`);
@@ -832,7 +1164,7 @@
             }
         }, 5000);
     }
-    
+
     function executeTimelineReload() {
         // Clear all timeouts
         if (reloadTimeoutId) {
@@ -843,10 +1175,10 @@
             clearTimeout(maxWaitTimeoutId);
             maxWaitTimeoutId = null;
         }
-        
+
         // Reload timeline
         document.body.dispatchEvent(new CustomEvent('dateChanged'));
-        
+
         // Clear pending events and reset first event time
         pendingEvents = [];
         firstEventTime = null;
@@ -864,7 +1196,7 @@
             console.log('SSE connection opened.');
             messagesDiv.innerHTML = ''; // Clear any error messages
             messagesDiv.classList.remove('active');
-            
+
             // Clear any pending reconnect timeout since we're connected
             if (reconnectTimeoutId) {
                 clearTimeout(reconnectTimeoutId);
@@ -876,13 +1208,13 @@
             console.error('EventSource failed:', error);
             messagesDiv.innerHTML = `<p><strong>${window.locale.sse.error}</strong></p>`;
             messagesDiv.classList.add('active');
-            
+
             // Close the current connection
             if (eventSource) {
                 eventSource.close();
                 eventSource = null;
             }
-            
+
             // Schedule reconnection after 5 seconds if still in auto-update mode
             if (autoUpdateMode && !reconnectTimeoutId) {
                 console.log('Scheduling SSE reconnection in 5 seconds...');
@@ -895,28 +1227,28 @@
 
         eventSource.onmessage = function(event) {
             console.log('Received generic event:', event.data);
-            
+
             // Clear error messages on successful message receipt (fallback for onopen)
             if (messagesDiv.classList.contains('active')) {
                 messagesDiv.innerHTML = '';
                 messagesDiv.classList.remove('active');
             }
-            
+
             // Clear any pending reconnect timeout since we're receiving messages
             if (reconnectTimeoutId) {
                 clearTimeout(reconnectTimeoutId);
                 reconnectTimeoutId = null;
             }
-            
+
             // Parse the event data
             try {
                 const eventData = JSON.parse(event.data);
-                
+
                 // Check if the event has a date field and it matches today
                 if (eventData.date) {
                     const today = getCurrentLocalDate(); // YYYY-MM-DD format
                     const eventDate = eventData.date;
-                    
+
                     // If event date matches today and we're in auto-update mode, schedule reload
                     if (eventDate === today && autoUpdateMode) {
                         console.log('Auto-update: Scheduling timeline reload due to SSE event for today');
@@ -940,20 +1272,20 @@
     function showUIElements() {
         const timeline = document.querySelector('.timeline');
         const datePicker = document.getElementById('date-picker-container');
-        
+
         timeline.classList.remove('hidden');
         datePicker.classList.remove('hidden');
     }
 
     function showAutoUpdateOverlay() {
         const overlay = document.getElementById('auto-update-overlay');
-        
+
         // Update initial time
         updateAutoUpdateTime();
-        
+
         // Show overlay
         overlay.classList.add('visible');
-        
+
         // Start updating time every second
         autoUpdateTimeInterval = setInterval(updateAutoUpdateTime, 1000);
     }
@@ -967,24 +1299,24 @@
         const now = new Date();
         const dateElement = document.getElementById('auto-update-date');
         const timeElement = document.getElementById('auto-update-time');
-        
+
         // Use browser locale for date formatting
-        const dateOptions = { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
+        const dateOptions = {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
         };
         const formattedDate = now.toLocaleDateString(navigator.language, dateOptions);
-        
+
         // Use browser locale for time formatting
-        const timeOptions = { 
-            hour: '2-digit', 
+        const timeOptions = {
+            hour: '2-digit',
             minute: '2-digit',
             hour12: false
         };
         const formattedTime = now.toLocaleTimeString(navigator.language, timeOptions);
-        
+
         dateElement.textContent = formattedDate;
         timeElement.textContent = formattedTime;
     }
@@ -1029,7 +1361,7 @@
     function updateEditPlaceLinks() {
         const currentUrl = window.location.href;
         const editLinks = document.querySelectorAll('.timeline-container .edit-icon[href*="/settings/places/"]');
-        
+
         editLinks.forEach(link => {
             const href = link.getAttribute('href');
             const url = new URL(href, window.location.origin);
@@ -1037,6 +1369,384 @@
             link.setAttribute('href', url.toString());
         });
     }
+    function loadTimelineData(requestedStart, requestedEnd) {
+        console.log('loadTimelineData', requestedStart, requestedEnd);
+        gpsDataManagers = [];
+        const RENDER_CHUNK_SIZE = 50000; // Adjust based on your device's power
+
+        userConfigs.forEach(config => {
+            const gpsDataManager = new GpsDataManager(config, window.userSettings, getUserTimezone());
+            let lastRenderedPointCount = 0;
+            gpsDataManagers.push(gpsDataManager)
+            gpsDataManager.load(requestedStart, requestedEnd, (current, total, stage) => {
+
+                switch (stage) {
+                    case 'metadata':
+                        updateStatus("Fetching metadata...", 10, 100);
+
+                        break;
+                    case 'streaming':
+                        updateStatus("Loading point {0} / {1}", current, total);
+                        if (current - lastRenderedPointCount >= RENDER_CHUNK_SIZE) {
+                            lastRenderedPointCount = current;
+                            requestAnimationFrame(() => {
+                                updateTripsLayer(gpsDataManager, 0);
+                            });
+                        }
+                        break;
+                    case 'bundling':
+                        updateStatus("Optimizing routes: {0} / {1} points", current, total);
+                        break;
+                    case 'complete':
+                        lastRenderedPointCount = 0;
+                        timelineControl.setup({
+                            aggregate: aggregateToggle.checked,
+                            minTimestamp: gpsDataManager.minTimestamp,
+                            maxTimestamp: gpsDataManager.maxTimestamp,
+                        })
+                        calculateTimelineMultiplier();
+                        updateStatus("Finished processing {1} points", current, total);
+                        updateTripsLayer(gpsDataManager, 0)
+                        if (gpsDataManager.cursor === 0) {
+                            flyToHomeLocation();
+                        } else {
+                            fitMapToBounds(gpsDataManager.bounds)
+                        }
+                        break;
+                }
+            });
+        });
+    }
+
+    if (window.userSettings.uiMode === "SHARED_LIVE_MODE_ONLY") {
+        toggleAutoUpdate();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.userSettings.uiMode !== 'SHARED_LIVE_MODE_ONLY') {
+            // Restore timeline state on page load
+            restoreTimelineState();
+            // Restore date picker state on page load
+            restoreDatePickerState();
+        } else {
+            document.body.classList.add('datepicker-hidden')
+            document.body.classList.add('timeline-hidden')
+        }
+
+        function calculateUserConfigs() {
+            const timelineContainers = document.querySelectorAll('.user-timeline-section');
+            const configs = [];
+            timelineContainers.forEach(container => {
+                const config = {
+                    id: container.dataset.userId,
+                    respectBounds: true,
+                    url: container.dataset.rawLocationPointsUrl,
+                    color: container.dataset.baseColor,
+                    avatarUrl: container.dataset.userAvatarUrl,
+                    avatarFallback: container.dataset.avatarFallback,
+                    displayName: container.dataset.displayName,
+                    map: {
+                        metaDataUrl: container.dataset.locationMetadataUrl,
+                        streamUrl: container.dataset.locationStreamUrl,
+                        visitsUrl: container.dataset.processedVisitsUrl
+                    }
+                };
+                configs.push(config);
+            });
+            return configs;
+        }
+
+        // Add HTMX event handlers for timeline updates
+        document.body.addEventListener('htmx:afterSwap', function (event) {
+            if (event.detail.target.classList.contains('timeline-container')) {
+                userConfigs = calculateUserConfigs();
+
+                stopAnimation();
+
+                const params = getTimelineParams();
+                photoClient.updatePhotosForRange(params.startDate, params.endDate, getUserTimezone());
+                timelineControl.setup({minTimestamp: params.startDateUtcSeconds, maxTimestamp: params.endDateUtcSeconds, aggregate: aggregateToggle.checked });
+                loadTimelineData(params.startDateUtcSeconds, params.endDateUtcSeconds);
+
+                // Initialize scroll indicator after timeline is updated
+                if (window.timelineScrollIndicator) {
+                    window.timelineScrollIndicator.cleanup();
+                }
+                window.timelineScrollIndicator = new TimelineScrollIndicator();
+                window.timelineScrollIndicator.init();
+
+                updateEditPlaceLinks();
+            }
+        });
+        // Handle clicks on timeline entries
+        document.querySelector('.timeline-container').addEventListener('click', function (event) {
+            const entry = event.target.closest('.timeline-entry');
+            if (!entry) return;
+
+            const editingElement = event.target.closest('.editing');
+            if (editingElement || event.target.classList.contains('edit-icon')) {
+                return;
+            }
+            // Check if this entry is already active (deselection case)
+            const isCurrentlyActive = entry.classList.contains('active');
+
+            // Remove active class from all entries
+            document.querySelectorAll('.timeline-container .timeline-entry')
+                .forEach(e => e.classList.remove('active'));
+
+            const isTrip = entry.classList.contains('trip');
+
+            if (isCurrentlyActive) {
+                fitMapToBounds(globalBounds);
+                highlightTimes = [];
+            } else {
+                globalBounds = map.getBounds();
+                entry.classList.add('active');
+
+                const lat = parseFloat(entry.dataset.lat);
+                const lng = parseFloat(entry.dataset.lng);
+                const startTime = entry.dataset.start;
+                const endTime = entry.dataset.end;
+
+                if (isTrip) {
+                    highlightTimes = [Math.floor(new Date(startTime).getTime() / 1000), Math.floor(new Date(endTime).getTime() / 1000 )];
+                    gpsDataManagers.forEach(manager => {
+                        updateTripsLayer(manager, 0)
+                    })
+                } else {
+                    highlightTimes = [];
+                    map.flyTo({
+                        center: [lng, lat],
+                        zoom: 15,
+                        pitch: 45
+                    });
+                }
+            }
+        });
+
+        window.horizontalDatePicker = new DatePicker('date-picker-container', {
+            daysToShow: 14,
+            prefetchDays: 25,
+            allowRangeSelection: true,
+            singleDateMode: true, // Enable single date mode with locking
+            dateFormat: 'YYYY-MM-DD',
+            locale: navigator.language,
+            strings: {
+                clickToUnlockDate: /*[[#{datepicker.click-to-unlock-date}]]*/ 'Click to unlock date',
+                clickToLockDate: /*[[#{datepicker.click-to-lock-date}]]*/ 'Click to lock date',
+                clickToClearSelection: /*[[#{datepicker.click-to-clear-selection}]]*/ 'Click to clear selection',
+                clickToCreateRange: /*[[#{datepicker.click-to-create-range}]]*/ 'Click to create range',
+                clickToExpandRangeBackward: /*[[#{datepicker.click-to-expand-range-backward}]]*/ 'Click to expand range backward',
+                clickToExpandRangeForward: /*[[#{datepicker.click-to-expand-range-forward}]]*/ 'Click to expand range forward',
+                clickToAdjustRangeStart: /*[[#{datepicker.click-to-adjust-range-start}]]*/ 'Click to adjust range start',
+                clickToUnlockMonth: /*[[#{datepicker.click-to-unlock-month}]]*/ 'Click to unlock month',
+                clickToLockMonth: /*[[#{datepicker.click-to-lock-month}]]*/ 'Click to lock month',
+                clickToUnlockYear: /*[[#{datepicker.click-to-unlock-year}]]*/ 'Click to unlock year',
+                clickToLockYear: /*[[#{datepicker.click-to-lock-year}]]*/ 'Click to lock year',
+                select: /*[[#{datepicker.select}]]*/ 'Select',
+                to: /*[[#{datepicker.to}]]*/ 'to'
+            }
+        });
+
+        window.horizontalDatePicker.on('selectionChange', function (data) {
+            console.log(`Selection changed`, data);
+            const startDate = new Date(data.startDate + 'T00:00:00');
+            let endDate;
+            if (data.endDate) {
+                endDate = new Date(data.endDate + 'T00:00:00');
+            } else {
+                switch (data.timeband) {
+                    case 'day':
+                        endDate = startDate;
+                        break;
+                    case 'month':
+                        endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+                        break;
+                    case 'year':
+                        endDate = new Date(startDate.getFullYear(), 11, 31);
+                        break;
+                }
+            }
+            currentDateRange = {
+                startDate: window.horizontalDatePicker.formatDate(startDate),
+                endDate: window.horizontalDatePicker.formatDate(endDate)
+            };
+            updateUrlWithDate(currentDateRange);
+            // Trigger HTMX reload of timeline
+            document.body.dispatchEvent(new CustomEvent('dateChanged'));
+        });
+
+        // Listen for date picker view changes to update FAB visibility
+        window.horizontalDatePicker.on('viewChange', function () {
+            updateTodayFabVisibility();
+        });
+
+        const startingDate = loadStartingDate();
+
+        console.log(`Starting date: ${startingDate[0]} - ${startingDate[1]}`)
+        window.horizontalDatePicker.setSelectedRange(startingDate[0], startingDate[1]);
+
+        document.getElementById('speed-selector').onchange = function(e) {
+            if (e.target.value === 'auto') {
+                calculateTimelineMultiplier();
+            } else {
+                timeMultiplier = parseInt(e.target.value);
+            }
+        };
+
+        const settingsBtn = document.getElementById('settings-btn');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', function(e) {
+                e.stopPropagation(); // Prevent event bubbling
+                openSettingsMenu();
+            });
+        }
+
+        // Close settings menu when clicking outside
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('settings-menu');
+            const overlay = document.getElementById('settings-overlay');
+            const settingsBtn = document.getElementById('settings-btn');
+
+            if (menu && overlay && menu.classList.contains('visible')) {
+                // Check if click is outside menu and not on settings button
+                if (!menu.contains(e.target) && !settingsBtn.contains(e.target)) {
+                    closeSettingsMenu();
+                }
+            }
+        });
+
+        // Load and apply settings on page load
+        const savedSettings = loadSettings();
+        applySettings(savedSettings);
+        const toggleTimeControlsBtn = document.getElementById('toggle-time-control-btn');
+        if (toggleTimeControlsBtn) {
+            toggleTimeControlsBtn.addEventListener('click', function() {
+                toggleTimeControls();
+            });
+        }
+
+        document.getElementById('view-mode').onchange = function(e) {
+            updateMapMode(e.target.value);
+        };
+
+        restoreTimelineControlsState();
+
+        aggregateToggle.onchange = (e) => {
+            const isAggregate = e.target.checked;
+            const params = getTimelineParams();
+
+            timelineControl.setup({
+                minTimestamp: params.startDateUtcSeconds,
+                maxTimestamp: params.endDateUtcSeconds,
+                aggregate: isAggregate
+            });
+            localStorage.setItem('aggregate', isAggregate);
+            calculateTimelineMultiplier();
+            gpsDataManagers.forEach(manager => {
+                updateTripsLayer(manager, timelineControl.getValue())
+            })
+        };
+    })
+
+    function updateMapMode(value) {
+        localStorage.setItem('view-mode', value);
+        gpsDataManagers.forEach(manager => {
+            updateTripsLayer(manager, 0)
+        })
+    }
+
+    function openSettingsMenu() {
+        const menu = document.getElementById('settings-menu');
+        const overlay = document.getElementById('settings-overlay');
+
+        if (menu && overlay) {
+            menu.style.display = 'block';
+            overlay.style.display = 'block';
+
+            // Trigger reflow to enable transition
+            setTimeout(() => {
+                menu.classList.add('visible');
+                overlay.classList.add('visible');
+            }, 10);
+        }
+    }
+
+    function closeSettingsMenu() {
+        const menu = document.getElementById('settings-menu');
+        const overlay = document.getElementById('settings-overlay');
+
+        if (menu && overlay) {
+            menu.classList.remove('visible');
+            overlay.classList.remove('visible');
+
+            // Wait for transition to complete before hiding
+            setTimeout(() => {
+                menu.style.display = 'none';
+                overlay.style.display = 'none';
+            }, 300);
+        }
+    }
+
+    function loadSettings() {
+        return  {
+            aggregate: localStorage.getItem('aggregate') === 'true',
+            mapMode: localStorage.getItem('view-mode') || 'LINEAR',
+        };
+    }
+
+    function applySettings(settings) {
+        aggregateToggle.checked = settings.aggregate;
+        document.getElementById('view-mode').value = settings.mapMode;
+    }
+
+    function toggleTimeControls() {
+        const timelineControls = document.getElementById('timeline-controls');
+        const toggleBtn = document.getElementById('toggle-time-control-btn');
+
+        if (!timelineControls || !toggleBtn) return;
+
+        const isVisible = timelineControl.isVisible();
+
+        if (isVisible) {
+            // Hide the controls
+            timelineControl.hide();
+
+            toggleBtn.classList.remove('active');
+            toggleBtn.title = window.locale.timeline.state.show;
+
+            // Save state to localStorage
+            localStorage.setItem('timelineControlsHidden', 'true');
+        } else {
+            timelineControl.show();
+            // Show the controls
+            toggleBtn.classList.add('active');
+            toggleBtn.title = window.locale.timeline.state.hide;
+
+            // Save state to localStorage
+            localStorage.setItem('timelineControlsHidden', 'false');
+        }
+    }
+
+    function restoreTimelineControlsState() {
+        const timelineControls = document.getElementById('timeline-controls');
+        const toggleBtn = document.getElementById('toggle-time-control-btn');
+
+        if (!timelineControls || !toggleBtn) return;
+
+        const isHidden = localStorage.getItem('timelineControlsHidden') === 'true';
+
+        if (isHidden) {
+            timelineControls.classList.add('hidden');
+            toggleBtn.title = window.locale.timeline.state.show;
+            toggleBtn.classList.remove('active');
+        } else {
+            timelineControls.classList.remove('hidden');
+            toggleBtn.title = window.locale.timeline.state.hide;
+            toggleBtn.classList.add('active');
+        }
+    }
 </script>
+
 </body>
 </html>

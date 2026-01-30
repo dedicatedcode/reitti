@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.model.Language;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
@@ -234,9 +235,9 @@ public class UserSettingsJdbcServiceTest {
         assertThat(this.userSettingsJdbcService.findByUserId(user.getId()).get().getLatestData()).isEqualTo(latest.plusNanos(500).truncatedTo(ChronoUnit.MICROS));
     }
 
-    private LocationPoint createLocationPoint(Instant timestamp) {
-        LocationPoint locationPoint = new LocationPoint();
-        locationPoint.setTimestamp(DateTimeFormatter.ISO_INSTANT.format(timestamp));
+    private LocationPoint2 createLocationPoint(Instant timestamp) {
+        LocationPoint2 locationPoint = new LocationPoint2();
+        locationPoint.setTimestamp(timestamp);
         locationPoint.setLatitude(1.0);
         locationPoint.setLongitude(2.0);
         locationPoint.setAccuracyMeters(10.0);

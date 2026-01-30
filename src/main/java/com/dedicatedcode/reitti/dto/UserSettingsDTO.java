@@ -6,10 +6,12 @@ import com.dedicatedcode.reitti.model.UnitSystem;
 
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.Locale;
 
 public record UserSettingsDTO(
         boolean preferColoredMap,
         Language selectedLanguage,
+        Locale selectedLocale,
         Instant newestData,
         UnitSystem unitSystem,
         Double homeLatitude,
