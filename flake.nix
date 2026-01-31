@@ -73,6 +73,7 @@
             pkgs
             self
             license
+            gitInfo
             ;
         };
 
