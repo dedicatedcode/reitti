@@ -9,6 +9,10 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
     utils.url = "github:numtide/flake-utils";
+    treefmt-nix = {
+      url = "github:numtide/treefmt-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -16,6 +20,7 @@
       self,
       nixpkgs,
       utils,
+      treefmt-nix,
     }:
     utils.lib.eachDefaultSystem (
       system:
@@ -62,8 +67,20 @@
             inherit jdk pkgs self license;
         };
 
+        formatting =
+          let
+            treefmtEval = treefmt-nix.lib.evalModule pkgs ({ pkgs, ... }: {
+              projectRootFile = "flake.nix";
+              programs.nixfmt.enable = true;
+            });
+          in
+          {
+            formatter = treefmtEval.config.build.wrapper;
+          };
       in
       {
+        inherit (formatting) formatter;
+
         devShells.default = pkgs.mkShell {
           packages = [ jdk pkgs.maven pkgs.jq pkgs.curl pkgs.git ];
           JAVA_HOME = jdk;
