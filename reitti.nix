@@ -76,7 +76,7 @@ maven.buildMavenPackage {
     runHook postInstall
   '';
 
-  meta = with lib; {
+  meta = {
     inherit license description;
   };
 
