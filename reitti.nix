@@ -9,16 +9,19 @@
   jdk,
   pkgs,
   lib,
-  contributors-json
+  contributors-json,
 }:
 let
-    jarName = "${artifactId}-app.jar";
+  jarName = "${artifactId}-app.jar";
 in
 maven.buildMavenPackage rec {
   pname = artifactId;
   inherit version;
 
-  nativeBuildInputs = [ pkgs.xmlstarlet pkgs.jq ];
+  nativeBuildInputs = [
+    pkgs.xmlstarlet
+    pkgs.jq
+  ];
 
   src = ./.;
   mvnHash = "sha256-zSufKXEs3kNPOubpjTMuhJwaMyXJ0lDkQ7sq143YvH4=";

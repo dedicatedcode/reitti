@@ -31,16 +31,22 @@
         license = pkgs.lib.licenses.mit; # TODO: read from pom?
 
         gitInfo = {
-            shortRev = self.shortRev or "${self.dirtyShortRev or "unknown"}";
-            rev = self.rev or "${self.dirtyRev or "unknown"}";
-            formattedTime = (builtins.substring 0 4 self.lastModifiedDate) + "-" +
-                                                  (builtins.substring 4 2 self.lastModifiedDate) + "-" +
-                                                  (builtins.substring 6 2 self.lastModifiedDate) + "T" +
-                                                  (builtins.substring 8 2 self.lastModifiedDate) + ":" +
-                                                  (builtins.substring 10 2 self.lastModifiedDate) + ":" +
-                                                  (builtins.substring 12 2 self.lastModifiedDate) + "Z";
+          shortRev = self.shortRev or "${self.dirtyShortRev or "unknown"}";
+          rev = self.rev or "${self.dirtyRev or "unknown"}";
+          formattedTime =
+            (builtins.substring 0 4 self.lastModifiedDate)
+            + "-"
+            + (builtins.substring 4 2 self.lastModifiedDate)
+            + "-"
+            + (builtins.substring 6 2 self.lastModifiedDate)
+            + "T"
+            + (builtins.substring 8 2 self.lastModifiedDate)
+            + ":"
+            + (builtins.substring 10 2 self.lastModifiedDate)
+            + ":"
+            + (builtins.substring 12 2 self.lastModifiedDate)
+            + "Z";
         };
-
 
         pomJson = pkgs.runCommand "pom-json" { nativeBuildInputs = [ pkgs.yq-go ]; } ''
           yq -p xml -o json . ${./pom.xml} > $out
@@ -61,18 +67,26 @@
         };
 
         dockerImage = pkgs.callPackage ./reitti.docker.nix {
-            reitti = jar;
-            reittiImageName = "reitti";
-            reittiImageTag = "latest";
-            inherit jdk pkgs self license;
+          reitti = jar;
+          reittiImageName = "reitti";
+          reittiImageTag = "latest";
+          inherit
+            jdk
+            pkgs
+            self
+            license
+            ;
         };
 
         formatting =
           let
-            treefmtEval = treefmt-nix.lib.evalModule pkgs ({ pkgs, ... }: {
-              projectRootFile = "flake.nix";
-              programs.nixfmt.enable = true;
-            });
+            treefmtEval = treefmt-nix.lib.evalModule pkgs (
+              { pkgs, ... }:
+              {
+                projectRootFile = "flake.nix";
+                programs.nixfmt.enable = true;
+              }
+            );
           in
           {
             formatter = treefmtEval.config.build.wrapper;
@@ -82,7 +96,13 @@
         inherit (formatting) formatter;
 
         devShells.default = pkgs.mkShell {
-          packages = [ jdk pkgs.maven pkgs.jq pkgs.curl pkgs.git ];
+          packages = [
+            jdk
+            pkgs.maven
+            pkgs.jq
+            pkgs.curl
+            pkgs.git
+          ];
           JAVA_HOME = jdk;
           shellHook = ''
             export PATH="${jdk}/bin:${pkgs.maven}/bin:$PATH"
