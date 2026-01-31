@@ -35,7 +35,6 @@ class GpsDataManager {
      */
     async load(startUTC, endUTC, onProgress) {
         // 1. Check if we already have this data in memory
-        this._dataCache = {};
         if (this.loadingState === 'complete' &&
             startUTC >= this.minTimestamp &&
             endUTC <= this.maxTimestamp) {
@@ -46,9 +45,17 @@ class GpsDataManager {
         }
 
         try {
+            this._dataCache = {};
+            this.cursor = 0;
+            this.cleanedCursor = 0;
+            this.buffer = new Float32Array(16000 * 6);
+            this.cleanedBuffer = new Float32Array(16000 * 6);
+            this.snappedBuffer = null;
+            this.bounds = null;
+
             this.loadingState = 'metadata';
 
-            if (onProgress) onProgress(this.cursor, this.totalExpected, this.loadingState);
+            if (onProgress) onProgress(0, 0, this.loadingState);
             const [metaRes, visitsRes] = await Promise.all([
                 fetch(window.contextPath + this.config.map.metaDataUrl),
                 fetch(window.contextPath + this.config.map.visitsUrl)
@@ -85,7 +92,9 @@ class GpsDataManager {
             this.minTimestamp = startUTC;
             this.maxTimestamp = endUTC;
             this.totalExpected = meta.totalPoints;
-            this.bounds = [meta.minLng, meta.minLat, meta.maxLng, meta.maxLat];
+            if (this.totalExpected > 0) {
+                this.bounds = [meta.minLng, meta.minLat, meta.maxLng, meta.maxLat];
+            }
             // Clear old data to make room for the new range
             this.cursor = 0;
             this.cleanedCursor = 0;
@@ -124,8 +133,6 @@ class GpsDataManager {
         if (this._dataCache[cacheKey] && this._dataCache[cacheKey].version === currentPointCount) {
             return this._dataCache[cacheKey].payload;
         }
-
-        const dayOffset = 16;
 
         let payload;
 
@@ -197,10 +204,6 @@ class GpsDataManager {
         return payload;
     }
 
-    recalculateBundledPath(precisionValue = 0.0005, weight = 0.5) {
-        return this._generateBundledPath(null, precisionValue, weight);
-    }
-
     async _streamPoints(onProgress) {
         const response = await fetch(window.contextPath + this.config.map.streamUrl);
         const reader = response.body.getReader();
@@ -209,10 +212,7 @@ class GpsDataManager {
         while (true) {
             const {done, value} = await reader.read();
             if (done) {
-                console.log('done')
                 break;
-            } else {
-                console.log('running');
             }
 
             let combinedValue = value;
@@ -221,7 +221,6 @@ class GpsDataManager {
                 combinedValue.set(leftover);
                 combinedValue.set(value, leftover.length);
                 leftover = null;
-                console.log('leftover');
             }
 
             const pointsCount = Math.floor(combinedValue.length / 16);
