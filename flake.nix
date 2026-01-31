@@ -34,18 +34,16 @@
           shortRev = self.shortRev or "${self.dirtyShortRev or "unknown"}";
           rev = self.rev or "${self.dirtyRev or "unknown"}";
           formattedTime =
-            (builtins.substring 0 4 self.lastModifiedDate)
-            + "-"
-            + (builtins.substring 4 2 self.lastModifiedDate)
-            + "-"
-            + (builtins.substring 6 2 self.lastModifiedDate)
-            + "T"
-            + (builtins.substring 8 2 self.lastModifiedDate)
-            + ":"
-            + (builtins.substring 10 2 self.lastModifiedDate)
-            + ":"
-            + (builtins.substring 12 2 self.lastModifiedDate)
-            + "Z";
+            let
+              sub = from: len: builtins.substring from len self.lastModifiedDate;
+              year = sub 0 4;
+              month = sub 4 2;
+              day = sub 6 2;
+              hour = sub 8 2;
+              minute = sub 10 2;
+              second = sub 12 2;
+            in
+            "${year}-${month}-${day}T${hour}:${minute}:${second}Z";
         };
 
         pomJson = pkgs.runCommand "pom-json" { nativeBuildInputs = [ pkgs.yq-go ]; } ''
