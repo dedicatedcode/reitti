@@ -14,7 +14,7 @@
 let
   jarName = "${artifactId}-app.jar";
 in
-maven.buildMavenPackage rec {
+maven.buildMavenPackage {
   pname = artifactId;
   inherit version;
 
