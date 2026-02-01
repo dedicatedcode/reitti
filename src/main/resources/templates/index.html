@@ -17,83 +17,6 @@
     <link rel="stylesheet" th:href="@{/css/maplibre-gl.5.16.0.min.css}" href="/css/maplibre-gl.5.16.0.min.css">
     <link rel="stylesheet" th:href="@{/css/time-control.css}" href="/css/time-control.css">
     <link th:if="${userSettings.customCssUrl}" rel="stylesheet" th:href="${userSettings.customCssUrl}">
-    <style>
-        .map-controls-section {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-
-        .map-controls {
-            position: absolute;
-            right: 100%;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 8px;
-            padding: 8px;
-            margin-right: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.2s ease, visibility 0.2s ease;
-            z-index: 1000;
-        }
-
-        .map-controls-section:hover .map-controls {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .map-control-btn {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 12px;
-            border: none;
-            background: transparent;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            color: #333;
-            transition: background-color 0.2s ease;
-            white-space: nowrap;
-        }
-
-        .map-control-btn:hover {
-            background-color: rgba(0, 0, 0, 0.1);
-        }
-
-        .map-control-btn i {
-            font-size: 16px;
-        }
-
-        .map-controls-btn {
-            transition: background-color 0.2s ease;
-        }
-
-        .map-controls-section:hover .map-controls-btn {
-            background-color: rgba(255, 255, 255, 0.2);
-        }
-
-        /* Dark mode support */
-        @media (prefers-color-scheme: dark) {
-            .map-controls {
-                background: rgba(40, 40, 40, 0.95);
-            }
-            
-            .map-control-btn {
-                color: #fff;
-            }
-            
-            .map-control-btn:hover {
-                background-color: rgba(255, 255, 255, 0.1);
-            }
-        }
-    </style>
     <script th:src="@{/js/HumanizeDuration.js}"></script>
     <script th:src="@{/js/date-picker-combined.js}"></script>
     <script th:src="@{/js/timeline-scroll-indicator.js}"></script>
@@ -183,7 +106,7 @@
     <!-- Map controls button -->
     <div class="map-controls-section">
         <button type="button" class="btn fab-btn map-controls-btn" id="map-controls-btn" title="Map Controls">
-            <i class="lni lni-map"></i>
+            <i class="lni lni-map-marker-1"></i>
         </button>
         <div class="map-controls" id="map-controls">
             <button type="button" class="btn map-control-btn" id="toggle-3d-btn" title="Toggle 2D/3D View">
@@ -1020,7 +943,7 @@
                         if (current - lastRenderedPointCount >= RENDER_CHUNK_SIZE) {
                             lastRenderedPointCount = current;
                             requestAnimationFrame(() => {
-                                mapRenderer.update(0);
+                                mapRenderer.updateViewState(createViewState());
                             });
                         }
                         break;
@@ -1036,7 +959,7 @@
                         })
                         calculateTimelineMultiplier();
                         updateStatus("Finished processing {1} points", current, total);
-                        mapRenderer.update(0);
+                        mapRenderer.updateViewState(createViewState());
                         if (index === gpsDataManagers.length - 1) {
                             mapRenderer.finishedLoading();
                         }
@@ -1049,7 +972,7 @@
         toggleAutoUpdate();
     }
 
-    function createViewState(highlightTimes) {
+    function createViewState(highlightTimes = []) {
         return {
             aggregated: aggregateToggleElement.checked,
             viewMode: viewModeElement.value,
