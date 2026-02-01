@@ -110,7 +110,7 @@
         </button>
         <div class="map-controls" id="map-controls">
             <button type="button" class="btn map-control-btn" id="toggle-3d-btn" title="Toggle 2D/3D View">
-                <i class="lni lni-3d-rotate"></i>
+                <i class="lni lni-map-marker-1"></i>
                 <span>3D</span>
             </button>
             <button type="button" class="btn map-control-btn" id="compass-btn" title="Reset North Up">
@@ -1230,17 +1230,18 @@
             // Switch to 2D
             localStorage.setItem('3d', false)
             toggle3dBtn.classList.remove('active');
-            icon.className = 'lni lni-3d-rotate';
             span.textContent = '3D';
             toggle3dBtn.title = 'Switch to 3D View';
+            icon.classList.add('is-3d')
+
         } else {
             // Switch to 3D
             localStorage.setItem('3d', true)
 
             toggle3dBtn.classList.add('active');
-            icon.className = 'lni lni-layers';
             span.textContent = '2D';
             toggle3dBtn.title = 'Switch to 2D View';
+            icon.classList.remove('is-3d')
         }
         mapRenderer.updateViewState(createViewState([]));
     }
@@ -1255,14 +1256,14 @@
         
         if (is3D) {
             toggle3dBtn.classList.add('active');
-            icon.className = 'lni lni-layers';
             span.textContent = '2D';
             toggle3dBtn.title = 'Switch to 2D View';
+            icon.classList.remove('is-3d')
         } else {
             toggle3dBtn.classList.remove('active');
-            icon.className = 'lni lni-3d-rotate';
             span.textContent = '3D';
             toggle3dBtn.title = 'Switch to 3D View';
+            icon.classList.add('is-3d')
         }
     }
     

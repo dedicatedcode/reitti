@@ -1737,8 +1737,18 @@ body.datepicker-hidden .fab-container {
 .map-controls-section .fab-btn {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
-    background: transparent;
     border: none;
+}
+
+.map-controls button {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    padding: 4px 8px;
+}
+
+.map-controls #toggle-3d-btn {
+    perspective: 500px;
 }
 
 /* Responsive adjustments */
