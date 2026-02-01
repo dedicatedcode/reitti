@@ -1548,6 +1548,7 @@ body.auto-update-mode .today-fab {
     .navigation-container {
         background-color: rgba(59, 59, 59, 0.68);
         backdrop-filter: blur(10px);
+        user-select: none;
 
     }
     .navigation-container,
@@ -1727,6 +1728,7 @@ body.datepicker-hidden .fab-container {
     visibility: hidden;
     transition: opacity 0.2s ease, visibility 0.2s ease;
     z-index: 1000;
+    width: 8rem;
 }
 
 .map-controls-section:hover .map-controls {
