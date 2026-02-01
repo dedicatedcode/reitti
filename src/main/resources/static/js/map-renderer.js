@@ -98,7 +98,7 @@ class MapRenderer {
                 this.map.easeTo({
                     pitch: switchTo3D ? 45 : 0,
                     bearing: switchTo3D? this.map.getBearing() : 0,
-                    duration: 1000, // Mapbox uses 'duration' in ms
+                    duration: 500, // Mapbox uses 'duration' in ms
                     essential: true
                 });
             }
