@@ -1205,6 +1205,11 @@
             });
         }
 
+        // Initialize 3D button state when map is ready
+        mapRenderer.onReady(() => {
+            initialize3DButtonState();
+        });
+
         aggregateToggleElement.onchange = (e) => {
             const isAggregate = e.target.checked;
             const params = getTimelineParams();
@@ -1233,15 +1238,39 @@
         if (is3D) {
             // Switch to 2D
             mapRenderer.setPitch(0);
+            toggle3dBtn.classList.remove('active');
             icon.className = 'lni lni-3d-rotate';
             span.textContent = '3D';
             toggle3dBtn.title = 'Switch to 3D View';
         } else {
             // Switch to 3D
             mapRenderer.setPitch(45);
+            toggle3dBtn.classList.add('active');
             icon.className = 'lni lni-layers';
             span.textContent = '2D';
             toggle3dBtn.title = 'Switch to 2D View';
+        }
+    }
+
+    function initialize3DButtonState() {
+        const toggle3dBtn = document.getElementById('toggle-3d-btn');
+        const icon = toggle3dBtn.querySelector('i');
+        const span = toggle3dBtn.querySelector('span');
+        
+        // Check initial map state
+        const currentPitch = mapRenderer.getCurrentPitch();
+        const is3D = currentPitch > 0;
+        
+        if (is3D) {
+            toggle3dBtn.classList.add('active');
+            icon.className = 'lni lni-layers';
+            span.textContent = '2D';
+            toggle3dBtn.title = 'Switch to 2D View';
+        } else {
+            toggle3dBtn.classList.remove('active');
+            icon.className = 'lni lni-3d-rotate';
+            span.textContent = '3D';
+            toggle3dBtn.title = 'Switch to 3D View';
         }
     }
     
