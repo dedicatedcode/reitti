@@ -500,4 +500,7 @@ class MapRenderer {
         }
     }
 
+    reset() {
+        this.deckOverlay.setProps([]);
+    }
 }

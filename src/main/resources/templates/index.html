@@ -341,7 +341,7 @@
             .replace('{1}', totalFormatted);
 
         // Handle completion
-        if (current >= total && total > 0) {
+        if (current >= total) {
             fadeOutOverlay(overlay);
         }
     }
@@ -1008,6 +1008,7 @@
                 stopAnimation();
 
                 const params = getTimelineParams();
+                mapRenderer.reset();
                 photoClient.updatePhotosForRange(params.startDate, params.endDate, getUserTimezone());
                 timelineControl.setup({minTimestamp: params.startDateUtcSeconds, maxTimestamp: params.endDateUtcSeconds, aggregate: aggregateToggleElement.checked });
                 loadTimelineData(params.startDateUtcSeconds, params.endDateUtcSeconds);

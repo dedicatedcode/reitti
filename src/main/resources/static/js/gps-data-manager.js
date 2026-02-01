@@ -44,6 +44,14 @@ class GpsDataManager {
             return;
         }
 
+        // If a controller exists, it means a previous load is still running.
+        if (this.abortController) {
+            this.abortController.abort();
+        }
+
+        this.abortController = new AbortController();
+        const { signal } = this.abortController;
+
         try {
             this._dataCache = {};
             this.cursor = 0;
@@ -57,8 +65,8 @@ class GpsDataManager {
 
             if (onProgress) onProgress(0, 0, this.loadingState);
             const [metaRes, visitsRes] = await Promise.all([
-                fetch(window.contextPath + this.config.map.metaDataUrl),
-                fetch(window.contextPath + this.config.map.visitsUrl)
+                fetch(window.contextPath + this.config.map.metaDataUrl, { signal }),
+                fetch(window.contextPath + this.config.map.visitsUrl, { signal })
             ]);
 
             const meta = await metaRes.json();
@@ -101,7 +109,12 @@ class GpsDataManager {
             this.snappedBuffer = null;
 
             this.loadingState = 'streaming';
-            await this._streamPoints(onProgress);
+            await this._streamPoints(onProgress, signal);
+
+            // Security check: If aborted during stream, stop here
+            if (signal.aborted) {
+                throw new DOMException('Aborted', 'AbortError');
+            }
 
             this.loadingState = 'bundling';
             await this._generateBundledPath(onProgress);
@@ -111,6 +124,12 @@ class GpsDataManager {
             console.log("Load complete:", this.loadingState, 'with bounds:', this.bounds, 'and total points:', this.totalExpected, ' (cleaned:', this.cleanedCursor, ') in range:', startUTC, 'to', endUTC, 'at', this.visits.length, 'visits.');
 
         } catch (error) {
+            if (error.name === 'AbortError') {
+                console.warn("Previous load cancelled by new selection.");
+                if (onProgress) onProgress(0, 0, 'aborted');
+
+                return;
+            }
             console.error("Load failed:", error);
             this.loadingState = 'error';
         }
@@ -204,7 +223,7 @@ class GpsDataManager {
         return payload;
     }
 
-    async _streamPoints(onProgress) {
+    async _streamPoints(onProgress, signal) {
         const response = await fetch(window.contextPath + this.config.map.streamUrl);
         const reader = response.body.getReader();
         let leftover = null;
@@ -214,7 +233,10 @@ class GpsDataManager {
             if (done) {
                 break;
             }
-
+            if (signal.aborted) {
+                await reader.cancel();
+                break;
+            }
             let combinedValue = value;
             if (leftover) {
                 combinedValue = new Uint8Array(leftover.length + value.length);
