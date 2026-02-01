@@ -35,7 +35,6 @@ class GpsDataManager {
      */
     async load(startUTC, endUTC, onProgress) {
         // 1. Check if we already have this data in memory
-        this._dataCache = {};
         if (this.loadingState === 'complete' &&
             startUTC >= this.minTimestamp &&
             endUTC <= this.maxTimestamp) {
@@ -45,13 +44,29 @@ class GpsDataManager {
             return;
         }
 
+        // If a controller exists, it means a previous load is still running.
+        if (this.abortController) {
+            this.abortController.abort();
+        }
+
+        this.abortController = new AbortController();
+        const { signal } = this.abortController;
+
         try {
+            this._dataCache = {};
+            this.cursor = 0;
+            this.cleanedCursor = 0;
+            this.buffer = new Float32Array(16000 * 6);
+            this.cleanedBuffer = new Float32Array(16000 * 6);
+            this.snappedBuffer = null;
+            this.bounds = null;
+
             this.loadingState = 'metadata';
 
-            if (onProgress) onProgress(this.cursor, this.totalExpected, this.loadingState);
+            if (onProgress) onProgress(0, 0, this.loadingState);
             const [metaRes, visitsRes] = await Promise.all([
-                fetch(window.contextPath + this.config.map.metaDataUrl),
-                fetch(window.contextPath + this.config.map.visitsUrl)
+                fetch(window.contextPath + this.config.map.metaDataUrl, { signal }),
+                fetch(window.contextPath + this.config.map.visitsUrl, { signal })
             ]);
 
             const meta = await metaRes.json();
@@ -85,14 +100,21 @@ class GpsDataManager {
             this.minTimestamp = startUTC;
             this.maxTimestamp = endUTC;
             this.totalExpected = meta.totalPoints;
-            this.bounds = [meta.minLng, meta.minLat, meta.maxLng, meta.maxLat];
+            if (this.totalExpected > 0) {
+                this.bounds = [meta.minLng, meta.minLat, meta.maxLng, meta.maxLat];
+            }
             // Clear old data to make room for the new range
             this.cursor = 0;
             this.cleanedCursor = 0;
             this.snappedBuffer = null;
 
             this.loadingState = 'streaming';
-            await this._streamPoints(onProgress);
+            await this._streamPoints(onProgress, signal);
+
+            // Security check: If aborted during stream, stop here
+            if (signal.aborted) {
+                throw new DOMException('Aborted', 'AbortError');
+            }
 
             this.loadingState = 'bundling';
             await this._generateBundledPath(onProgress);
@@ -102,6 +124,12 @@ class GpsDataManager {
             console.log("Load complete:", this.loadingState, 'with bounds:', this.bounds, 'and total points:', this.totalExpected, ' (cleaned:', this.cleanedCursor, ') in range:', startUTC, 'to', endUTC, 'at', this.visits.length, 'visits.');
 
         } catch (error) {
+            if (error.name === 'AbortError') {
+                console.warn("Previous load cancelled by new selection.");
+                if (onProgress) onProgress(0, 0, 'aborted');
+
+                return;
+            }
             console.error("Load failed:", error);
             this.loadingState = 'error';
         }
@@ -124,8 +152,6 @@ class GpsDataManager {
         if (this._dataCache[cacheKey] && this._dataCache[cacheKey].version === currentPointCount) {
             return this._dataCache[cacheKey].payload;
         }
-
-        const dayOffset = 16;
 
         let payload;
 
@@ -197,11 +223,7 @@ class GpsDataManager {
         return payload;
     }
 
-    recalculateBundledPath(precisionValue = 0.0005, weight = 0.5) {
-        return this._generateBundledPath(null, precisionValue, weight);
-    }
-
-    async _streamPoints(onProgress) {
+    async _streamPoints(onProgress, signal) {
         const response = await fetch(window.contextPath + this.config.map.streamUrl);
         const reader = response.body.getReader();
         let leftover = null;
@@ -209,19 +231,18 @@ class GpsDataManager {
         while (true) {
             const {done, value} = await reader.read();
             if (done) {
-                console.log('done')
                 break;
-            } else {
-                console.log('running');
             }
-
+            if (signal.aborted) {
+                await reader.cancel();
+                break;
+            }
             let combinedValue = value;
             if (leftover) {
                 combinedValue = new Uint8Array(leftover.length + value.length);
                 combinedValue.set(leftover);
                 combinedValue.set(value, leftover.length);
                 leftover = null;
-                console.log('leftover');
             }
 
             const pointsCount = Math.floor(combinedValue.length / 16);

@@ -766,7 +766,7 @@ public class UnifiedLocationProcessingService {
         }
 
         if (tripPoints.size() < 2) {
-            throw new IllegalStateException("A trip without 2 points shoul not exist.");
+            throw new IllegalStateException("A trip without 2 points should not exist.");
         }
         double estimatedDistanceInMeters = calculateDistanceBetweenPlaces(startVisit.getPlace(), endVisit.getPlace());
         double travelledDistanceMeters = GeoUtils.calculateTripDistance(tripPoints);

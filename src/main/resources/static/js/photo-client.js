@@ -6,13 +6,19 @@ class PhotoClient {
         this.clusters = [];
         this.iconCache = new Map(); // Cache to store the generated circular icons
         this.iconSize = 64;
+        this.state = {loading: false};
     }
 
     async updatePhotosForRange(start, end, timezone) {
         if (!this.enabled) return;
+        this.clusters = [];
+        this.iconCache = new Map();
+        this.index = null;
+        this.state = {loading: true};
         try {
             const response = await fetch(`${window.contextPath}/api/v1/photos/immich/range?timezone=${timezone}&startDate=${start}&endDate=${end}`);
             this.photos = response.ok ? await response.json() : [];
+            this.state = {loading: false};
         } catch (error) {
             this.photos = [];
         }
@@ -117,9 +123,10 @@ class PhotoClient {
                 getPosition: d => d.geometry.coordinates,
                 getIcon: d => {
                     const photo = d.properties.cluster
-                        ? this.index.getLeaves(d.properties.cluster_id, 1)[0].properties.photoData
+                        ? this.index?.getLeaves(d.properties.cluster_id, 1)[0].properties.photoData
                         : d.properties.photoData;
 
+                    if (!photo) return;
                     const url = window.contextPath + photo.thumbnailUrl;
 
                     return {

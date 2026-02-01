@@ -30,11 +30,10 @@
     <script th:src="@{/js/timeline-control.js}"></script>
     <script th:src="@{/js/map-customization.js}"></script>
     <script th:src="@{/js/gps-data-manager.js}"></script>
+    <script th:src="@{/js/map-renderer.js}"></script>
 </head>
 <body>
 
-<div id="deck-controls"
-     style="position: fixed; top: 50px; right: 20px; background: rgba(0,0,0,0.8); color: white; padding: 15px; border-radius: 8px; z-index: 10000; width: 250px; font-family: sans-serif; font-size: 12px;"></div>
 <div id="message-container">
     <div id="sse-message"></div>
 </div>
@@ -104,6 +103,22 @@
         <span th:text="#{datepicker.today}">Today</span>
     </button>
 
+    <!-- Map controls button -->
+    <div class="map-controls-section">
+        <button type="button" class="btn fab-btn map-controls-btn" id="map-controls-btn" title="Map Controls">
+            <i class="lni lni-map-marker-1"></i>
+        </button>
+        <div class="map-controls" id="map-controls">
+            <button type="button" class="btn map-control-btn" id="toggle-3d-btn" title="Toggle 2D/3D View">
+                <i class="lni lni-map-marker-1"></i>
+                <span>3D</span>
+            </button>
+            <button type="button" class="btn map-control-btn" id="compass-btn" title="Reset North Up">
+                <i class="lni lni-compass"></i>
+            </button>
+        </div>
+    </div>
+
     <!-- Settings button -->
     <button type="button" class="btn fab-btn settings-btn" id="settings-btn" title="Settings">
         <i class="lni lni-gear-1"></i>
@@ -141,43 +156,6 @@
 <div id="settings-overlay" class="settings-overlay" style="display: none;" onclick="closeSettingsMenu()"></div>
 
 <script th:inline="javascript">
-
-    ///delete later
-    let deckParams = {
-        trips: {
-            trailLength: 700,
-            cometWidth: 3,
-            cometOpacity: 155,
-            shadowWidth: 3,
-            shadowOpacity: 155,
-            pathWidth: 2,
-            pathOpacity: 35,
-            staticPathWidth: 2,
-            staticPathOpacity: 150,
-
-        },
-        visits: {
-            minZoom: 12,
-            radius: 1,
-            opacity: 140,
-            polygonOpacity: 140,
-            lineWidth: 1
-        },
-
-        bundled: {
-            precision: 0.0005,
-            weight: 0.5,
-            staticPathWidth: 2.5,
-            staticPathOpacity: 200,
-            pathWidth: 1.5,
-            pathOpacity: 40,
-            cometWidth: 2,
-            cometOpacity: 15,
-            shadowWidth: 3,
-            shadowOpacity: 30,
-        }
-    };
-
     window.contextPath = /*[[@{/}]]*/ "/";
     window.contextPath = window.contextPath.replace(/\/$/, '');
 
@@ -252,69 +230,28 @@
     let pendingEvents = [];
     let firstEventTime = null;
     let reconnectTimeoutId = null;
-    let globalBounds = [];
-    let highlightTimes = [];
 
     let gpsDataManagers = [];
 
     let currentDateRange = null;
 
-    const map = new maplibregl.Map({
-        container: 'new-map',
-        style: '/map/reitti.json',
-        center: [window.userSettings.homeLongitude, window.userSettings.homeLatitude],
-        zoom: 3,
-        pitch: 0,
-    });
-
-    const aggregateToggle = document.getElementById('aggregate-toggle');
+    const aggregateToggleElement = document.getElementById('aggregate-toggle');
+    const viewModeElement = document.getElementById('view-mode');
+    const toggle3dBtn = document.getElementById('toggle-3d-btn');
+    const compassBtn = document.getElementById('compass-btn');
 
     const timelineControl = new TimelineControl(
         document.getElementById('timeline-controls'),
         document.getElementById('time-display')
     );
+
     timelineControl.on('offsetChanged', (data) => {
-        gpsDataManagers.forEach(manager => {
-            updateTripsLayer(manager, data.value);
-        })
+        mapRenderer.updateViewState(createViewState([]))
     })
-
-    const mapCustomizationControl = new MapCustomization(document.getElementById('deck-controls'), deckParams);
-    mapCustomizationControl.on('update-deck-params', (data) => {
-        deckParams = data.params;
-        gpsDataManagers.forEach(manager => {
-            if (data.field === 'bundled.weight' || data.field === 'bundled.precision') {
-                manager.recalculateBundledPath(deckParams.bundled.precision, deckParams.bundled.weight)
-                    .then(value => {
-                        console.log('test')
-                        updateTripsLayer(manager, timelineControl.getValue())
-                    });
-
-            }
-            updateTripsLayer(manager, timelineControl.getValue())
-
-        })
-    })
-
-    const deckOverlay = new deck.MapboxOverlay({
-        layers: []
-    });
-    map.addControl(deckOverlay);
-
-    map.on('move', () => {
-        const currentState = {
-            longitude: map.getCenter().lng,
-            latitude: map.getCenter().lat,
-            zoom: map.getZoom()
-        };
-
-        photoClient.updateClusters(currentState);
-        gpsDataManagers.forEach(manager => {
-            updateTripsLayer(manager, timelineControl.getValue())
-        })
-    });
 
     const photoClient = new PhotoClient(true);
+    const mapRenderer = new MapRenderer('new-map', userSettings, photoClient);
+
 
     let userConfigs = [];
     let animationId = null;
@@ -346,6 +283,7 @@
             cancelAnimationFrame(animationId);
         }
         timelineControl.setOffset(0);
+        mapRenderer.updateViewState(createViewState([]));
     }
 
     let timeMultiplier = 30; // Default: 1 second = 1 minute
@@ -353,7 +291,7 @@
     function calculateTimelineMultiplier() {
         const params = getTimelineParams();
 
-        if (aggregateToggle.checked) {
+        if (aggregateToggleElement.checked) {
             timeMultiplier = 60 * 60 * 24 / 30;
         } else {
             const totalSeconds = params.endDateUtcSeconds - params.startDateUtcSeconds;
@@ -392,9 +330,7 @@
 
         // 5. Update UI and Map
         timelineControl.setOffset(newValue);
-        gpsDataManagers.forEach(manager => {
-            updateTripsLayer(manager, timelineControl.getValue())
-        })
+        mapRenderer.updateViewState(createViewState([]));
 
         // 6. Request the next frame
         animationId = requestAnimationFrame(animate);
@@ -423,7 +359,7 @@
             .replace('{1}', totalFormatted);
 
         // Handle completion
-        if (current >= total && total > 0) {
+        if (current >= total) {
             fadeOutOverlay(overlay);
         }
     }
@@ -433,393 +369,6 @@
             overlay.style.transition = 'opacity 1s ease';
             overlay.style.opacity = '0';
         }, 1500);
-    }
-
-    function flyToHomeLocation() {
-        map.flyTo({
-            center: [window.userSettings.homeLongitude, window.userSettings.homeLatitude],
-            zoom: 15,
-            pitch: 45
-        });
-    }
-
-    function fitMapToBounds(bounds) {
-        map.fitBounds(bounds, {
-            padding: {
-                top: 50,
-                bottom: 100,
-                right: 100,
-                left: 450
-            },
-            duration: 2000,
-            essential: true
-        });
-    }
-
-    function updateTripsLayer(manager, offset) {
-        const viewState = {
-            longitude: map.getCenter().lng,
-            latitude: map.getCenter().lat,
-            zoom: map.getZoom(),
-            animating: !timelineControl.isIdle()
-        };
-        const layers = [];
-
-        if (manager.buffer.length === 0) {
-            deckOverlay.setProps({layers})
-            return;
-        }
-        const isAggregate = aggregateToggle?.checked || false;
-        const viewMode = document.getElementById('view-mode')?.value || 'LINEAR';
-        const totalTimeSpanSec = isAggregate ? 24 * 60 * 60 : manager.maxTimestamp - manager.minTimestamp;
-        const calculatedTrail = Math.max(1800, totalTimeSpanSec * 0.02);
-
-        const mode = isAggregate ? 'agg' : 'lin';
-        const isAnimating = !timelineControl.isIdle();
-
-        // --- BASE VISUALIZATION ---
-        if (viewMode === 'BUNDLED') {
-            layers.push(...getBundleLayers(manager, offset, isAggregate));
-        } else {
-            const buffer = viewMode === 'LINEAR' ? 'cleaned' : 'raw';
-            const cursor =  viewMode === 'LINEAR' ? manager.cleanedCursor : manager.cursor;
-            layers.push(new deck.PathLayer({
-                id: 'paths-static-fixed',
-                data: manager.getLayerData(buffer, isAggregate),
-                positionFormat: 'XYZ',
-                getColor: [...manager.color, deckParams.trips.staticPathOpacity],
-                getWidth: deckParams.trips.staticPathWidth,
-                widthMinPixels: deckParams.trips.staticPathWidth,
-                visibility: !isAnimating,
-                capRounded: true,
-                jointRounded: true,
-                updateTriggers: {
-                    data: [manager.buffer?.length, buffer],
-                    getPath: [cursor, buffer],
-                    getTimestamps: [isAggregate],
-                    visibility: [isAnimating],
-                    getColor: [manager.color, deckParams.trips.staticPathOpacity],
-                    getWidth: [deckParams.trips.staticPathWidth],
-                    widthMinPixels: [deckParams.trips.staticPathWidth],
-                }
-            }));
-
-            // SHADOW TRIP (Animated)
-            layers.push(new deck.TripsLayer({
-                id: `trips-shadow-${mode}`,
-                data: manager.getLayerData(buffer, isAggregate),
-                positionFormat: 'XYZ',
-                getColor: [255, 255, 255],
-                opacity: deckParams.trips.shadowOpacity,
-                widthMinPixels: deckParams.trips.shadowWidth,
-                trailLength: calculatedTrail * 1.2,
-                visibility: isAnimating,
-                currentTime: offset,
-                capRounded: true,
-                jointRounded: true,
-
-                parameters: {depthTest: false},
-
-                updateTriggers: {
-                    data: [manager.buffer?.length, buffer],
-                    visibility: [isAnimating],
-                    opacity: [deckParams.trips.shadowOpacity],
-                    widthMinPixels: [deckParams.trips.shadowWidth],
-                    getPath: [cursor, buffer],
-                    currentTime: [offset],
-                    getTimestamps: [isAggregate],
-                }
-            }));
-
-            // CORE TRIP (Animated)
-            layers.push(new deck.TripsLayer({
-                id: `trips-core-${mode}`,
-                data: manager.getLayerData(buffer, isAggregate),
-                positionFormat: 'XYZ', // Tell deck.gl to look for the 3rd coordinate
-                getColor: manager.color,
-                opacity: deckParams.trips.cometOpacity * isAnimating,
-                widthMinPixels: deckParams.trips.cometWidth,
-                trailLength: calculatedTrail,
-                currentTime: offset,
-                capRounded: true,
-                jointRounded: true,
-
-                updateTriggers: {
-                    data: [manager.buffer?.length, buffer],
-                    getPath: [cursor, buffer],
-                    currentTime: [offset],
-                    getTimestamps: [isAggregate],
-                }
-            }));
-        }
-
-        layers.push(...getVisitLayers(manager, offset, isAggregate));
-        layers.push(...photoClient.getLayers(offset, viewState));
-
-        deckOverlay.setProps({layers})
-    }
-
-    function getBundleLayers(manager, offset, isAggregate) {
-        const timeSpan = isAggregate ? 86400 : (manager.maxTimestamp - manager.minTimestamp);
-        const calculatedTrail = Math.max(1800, timeSpan * 0.02);
-
-        const state = {
-            selectedDay: timelineControl.getOffset(),
-        }
-        // Check if bundling is complete
-        if (manager.loadingState !== 'complete' || !manager.snappedBuffer || manager.snappedBuffer.length === 0) {
-            return [];
-        }
-        const layers = [];
-        layers.push(new deck.PathLayer({
-            id: `bundled-paths-static-${manager.id}`,
-            data: manager.getLayerData('bundled', isAggregate),
-            positionFormat: 'XY',
-            getColor: [...manager.color, deckParams.bundled.staticPathOpacity],
-            widthMinPixels: deckParams.bundled.staticPathWidth,
-            capRounded: true,
-            jointRounded: true,
-            depthTest: false,
-            updateTriggers: {
-                data: [manager.snappedVersion, isAggregate],
-                getPath: [manager.snappedVersion, deckParams.bundled.weight, deckParams.bundled.precision, isAggregate],
-                filterRange: [state.selectedDay],
-                getColor: [manager.color, deckParams.bundled.staticPathOpacity],
-                getWidth: [deckParams.bundled.staticPathWidth],
-                widthMinPixels: [deckParams.bundled.staticPathWidth]
-            }
-        }));
-
-
-        layers.push(new deck.PathLayer({
-            id: `bundled-path-${manager.id}`,
-            data: manager.getLayerData('bundled', isAggregate),
-            positionFormat: 'XY',
-            widthMinPixels: deckParams.bundled.pathWidth,
-            getColor: [...manager.color, deckParams.bundled.pathOpacity],
-            parameters: {
-                blendFunc: [770, 1], // GL_SRC_ALPHA, GL_ONE
-                blendEquation: 32774, // GL_FUNC_ADD
-                depthTest: false
-            },
-            capRounded: true,
-            jointRounded: true,
-            updateTriggers: {
-                data: [manager.snappedVersion],
-                getPath: [manager.snappedVersion, deckParams.bundled.weight, deckParams.bundled.precision],
-                getColor: [deckParams.bundled.pathOpacity],
-                getWidth: [deckParams.bundled.pathWidth],
-                widthMinPixels: [deckParams.bundled.pathWidth],
-            }
-
-        }));
-
-        layers.push(new deck.TripsLayer({
-            id: `bundled-path-shadow-${manager.id}`,
-            data: manager.getLayerData('bundled', isAggregate),
-            positionFormat: 'XY',
-            getColor: [255, 255, 255],
-            opacity: deckParams.bundled.shadowOpacity,
-            visible: !timelineControl.isIdle(),
-            widthMinPixels: deckParams.bundled.shadowWidth,
-            trailLength: calculatedTrail * 1.2,
-            currentTime: offset,
-            capRounded: true,
-            jointRounded: true,
-            parameters: {depthTest: false},
-            updateTriggers: {
-                data: [manager.snappedVersion],
-                getPath: [manager.snappedVersion, deckParams.bundled.weight, deckParams.bundled.precision],
-                currentTime: [offset],
-                getColor: [deckParams.bundled.shadowOpacity],
-                getWidth: [deckParams.bundled.shadowWidth],
-            }
-        }));
-
-        // CORE TRIP (Animated)
-        layers.push(new deck.TripsLayer({
-            id: `bundled-path-core-${manager.id}`,
-            data: manager.getLayerData('bundled', isAggregate),
-            positionFormat: 'XY',
-            getColor: manager.color,
-            opacity: deckParams.bundled.cometOpacity,
-            visible: !timelineControl.isIdle(),
-            widthMinPixels: deckParams.bundled.cometWidth,
-            trailLength: calculatedTrail,
-            currentTime: offset,
-            capRounded: true,
-            jointRounded: true,
-            depthTest: false,
-            blendFunc: [770, 771], // Standard Alpha Blending
-            blendEquation: 32774,
-            updateTriggers: {
-                data: [manager.snappedVersion],
-                getPath: [manager.snappedVersion, deckParams.bundled.weight, deckParams.bundled.precision],
-                currentTime: [offset],
-                getColor: [deckParams.bundled.coreOpacity],
-                getWidth: [deckParams.bundled.cometWidth],
-            }
-        }));
-
-        return layers;
-    }
-
-    function getVisitLayers(manager, offset, isAggregate) {
-        const isOverview = timelineControl.isIdle();
-        const currentTime = offset;
-        const places = manager.visits;
-        if (places === undefined) {
-            return [];
-        }
-        return [
-            // 1. Polygon Layer
-            new deck.PolygonLayer({
-                id: 'visit-polygons',
-                data: places.filter(p => p.polygon),
-                getPolygon: d => d.polygon.coordinates,
-                getFillColor: d => [...manager.color, deckParams.visits.polygonOpacity],
-                getLineColor: d => [...manager.color, 255],
-                pickable: true,
-                depthTest: false,
-
-                onHover: info => updateTooltip(info),
-                visible: isOverview && map.getZoom() > deckParams.visits.minZoom,
-                updateTriggers: {
-                    getFillColor: [deckParams.visits.polygonOpacity, currentTime],
-                    visible: [isOverview, map.zoom, deckParams.visits.minZoom],
-                    data: manager.visits?.length
-                }
-            }),
-            new deck.ScatterplotLayer({
-                id: 'place-outer-circles',
-                data: places,
-                getPosition: d => d.coordinates,
-                getRadius: d => {
-                    const duration = isOverview
-                        ? (d.totalDurationSec || 0)
-                        : getActiveVisitEffect(d, currentTime, isAggregate).seconds;
-
-                    if (duration <= 0) {
-                        return 0;
-                    }
-
-                    const minRadius = isOverview ? deckParams.visits.radius : (deckParams.visits.radius * 1.5);
-                    const maxRadius = isOverview ? 500 : 600;
-
-                    // This treats the duration as the "Area" of the circle
-                    // Adjusted so 1 day (86400s) hits a reasonable size
-                    const scalingFactor = isOverview ? 0.8 : 1.2;
-
-                    const calculated = minRadius + (Math.sqrt(duration) * scalingFactor);
-
-                    return Math.min(calculated, maxRadius);
-                },
-                getFillColor: d => [...manager.color, isOverview ? deckParams.visits.opacity : (getActiveVisitEffect(d, currentTime, isAggregate).opacity * deckParams.visits.opacity)],
-                pickable: true,
-                depthTest: false,
-                onHover: info => updateTooltip(info),
-                visible: !isOverview || map.getZoom() > deckParams.visits.minZoom,
-                updateTriggers: {
-                    getRadius: [currentTime, isOverview, deckParams.visits.radius, deckParams.visits.opacity],
-                    getFillColor: [currentTime, isOverview],
-                    data: manager.visits?.length
-                },
-                // Optional: Smooth the appearance/disappearance
-                transitions: {
-                    getRadius: {
-                        type: 'spring',
-                        stiffness: 0.1,
-                        damping: 0.15,
-                        enter: d => [0] // Starts at 0 radius when appearing
-                    }
-                }
-            }),
-
-            new deck.ScatterplotLayer({
-                id: 'place-inner-circles',
-                data: places,
-                getPosition: d => d.coordinates,
-                getRadius: 8,
-                stroked: true,
-                lineWidthMinPixels: deckParams.visits.lineWidth,
-                depthTest: false,
-                getLineColor: d => {
-                    const isActive = d.activeRanges.some(r => currentTime >= r.start && currentTime <= r.end);
-                    const alpha = (isOverview || isActive) ? 255 : 0;
-                    return [0,0,0 , alpha];
-                },
-                getFillColor: d => {
-                    const isActive = d.activeRanges.some(r => currentTime >= r.start && currentTime <= r.end);
-                    const alpha = (isOverview || isActive) ? 255 : 0;
-                    return [255,255,255, alpha];
-                },
-                updateTriggers: {
-                    getFillColor: [currentTime, isOverview],
-                    getLineColor: [currentTime, isOverview],
-                    lineWidth: [deckParams.visits.lineWidth],
-                    data: manager.visits?.length
-                },
-                pickable: true,
-                onHover: info => updateTooltip(info),
-            })
-        ];
-    }
-
-    function getActiveVisitEffect(visit, time, isAggregate) {
-        const exitFadeDuration = 3000; // 5 minutes (in seconds) to shrink/fade completely
-        let accumulated = 0;
-        let multiplier = 0;
-
-        for (const range of visit.activeRanges) {
-            const start = isAggregate ? range.startAggregate : range.start;
-            const end = isAggregate ? range.endAggregate : range.end;
-            if (time < start) {
-                // Future visit: do nothing
-                break;
-            } else if (time >= start && time <= end) {
-                // Currently visiting: Full size
-                accumulated += (time - start);
-                multiplier = 1.0;
-            } else if (time > end) {
-                // Past visit: Add full duration
-                accumulated += (end - start);
-
-                // Calculate decay: how recently did we leave?
-                const timeSinceLeft = time - end;
-                const decay = 1.0 - (timeSinceLeft / exitFadeDuration);
-
-                // We take the "freshest" decay. If we just left, multiplier is near 1.
-                // If we left a long time ago, multiplier is 0.
-                multiplier = Math.max(multiplier, Math.min(1, decay));
-            }
-        }
-
-        return { seconds: accumulated, opacity: multiplier };
-    }
-
-    function updateTooltip({x, y, object}) {
-        const tooltip = document.getElementById('tooltip');
-        if (object) {
-            const visitListHtml = object.originalVisits.map(v => `
-            <div style="border-top: 1px solid #444; margin-top: 5px; padding-top: 5px;">
-                <b>${locale.map.popup.labels.from}</b> ${formatDateTime(v.startTime)}<br>
-                <b>${locale.map.popup.labels.to}</b> ${formatDateTime(v.endTime)}
-            </div>
-        `).join('');
-
-            tooltip.innerHTML = `
-            <div style="font-size: 14px; font-weight: bold; margin-bottom: 5px;">${object.name}</div>
-            <div><b>${window.locale.map.popup.labels.totalDuration}</b> ${humanizeDuration(object.totalDurationSec * 1000)}</div>
-            <div style="max-height: 150px; overflow-y: auto; margin-top: 10px;">
-                ${visitListHtml}
-            </div>
-        `;
-            tooltip.style.display = 'block';
-            tooltip.style.left = `${x + 15}px`;
-            tooltip.style.top = `${y + 15}px`;
-        } else {
-            tooltip.style.display = 'none';
-        }
     }
 
     function getSelectedDate() {
@@ -1369,15 +918,21 @@
             link.setAttribute('href', url.toString());
         });
     }
+
     function loadTimelineData(requestedStart, requestedEnd) {
         console.log('loadTimelineData', requestedStart, requestedEnd);
         gpsDataManagers = [];
-        const RENDER_CHUNK_SIZE = 50000; // Adjust based on your device's power
+        const RENDER_CHUNK_SIZE = 50000;
 
         userConfigs.forEach(config => {
             const gpsDataManager = new GpsDataManager(config, window.userSettings, getUserTimezone());
-            let lastRenderedPointCount = 0;
             gpsDataManagers.push(gpsDataManager)
+        });
+
+
+        mapRenderer.setGpsDataManagers(gpsDataManagers);
+        gpsDataManagers.forEach((gpsDataManager, index) => {
+            let lastRenderedPointCount = 0;
             gpsDataManager.load(requestedStart, requestedEnd, (current, total, stage) => {
 
                 switch (stage) {
@@ -1390,7 +945,7 @@
                         if (current - lastRenderedPointCount >= RENDER_CHUNK_SIZE) {
                             lastRenderedPointCount = current;
                             requestAnimationFrame(() => {
-                                updateTripsLayer(gpsDataManager, 0);
+                                mapRenderer.updateViewState(createViewState());
                             });
                         }
                         break;
@@ -1400,19 +955,16 @@
                     case 'complete':
                         lastRenderedPointCount = 0;
                         timelineControl.setup({
-                            aggregate: aggregateToggle.checked,
+                            aggregate: aggregateToggleElement.checked,
                             minTimestamp: gpsDataManager.minTimestamp,
                             maxTimestamp: gpsDataManager.maxTimestamp,
                         })
                         calculateTimelineMultiplier();
                         updateStatus("Finished processing {1} points", current, total);
-                        updateTripsLayer(gpsDataManager, 0)
-                        if (gpsDataManager.cursor === 0) {
-                            flyToHomeLocation();
-                        } else {
-                            fitMapToBounds(gpsDataManager.bounds)
+                        mapRenderer.updateViewState(createViewState());
+                        if (index === gpsDataManagers.length - 1) {
+                            mapRenderer.finishedLoading();
                         }
-                        break;
                 }
             });
         });
@@ -1420,6 +972,17 @@
 
     if (window.userSettings.uiMode === "SHARED_LIVE_MODE_ONLY") {
         toggleAutoUpdate();
+    }
+
+    function createViewState(highlightTimes = []) {
+        return {
+            aggregated: aggregateToggleElement.checked,
+            viewMode: viewModeElement.value,
+            currentTime: timelineControl.getValue(),
+            animating: !timelineControl.isIdle(),
+            highlightTimes: highlightTimes,
+            is3d: toggle3dBtn.classList.contains('active'),
+        };
     }
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -1464,8 +1027,9 @@
                 stopAnimation();
 
                 const params = getTimelineParams();
+                mapRenderer.reset();
                 photoClient.updatePhotosForRange(params.startDate, params.endDate, getUserTimezone());
-                timelineControl.setup({minTimestamp: params.startDateUtcSeconds, maxTimestamp: params.endDateUtcSeconds, aggregate: aggregateToggle.checked });
+                timelineControl.setup({minTimestamp: params.startDateUtcSeconds, maxTimestamp: params.endDateUtcSeconds, aggregate: aggregateToggleElement.checked });
                 loadTimelineData(params.startDateUtcSeconds, params.endDateUtcSeconds);
 
                 // Initialize scroll indicator after timeline is updated
@@ -1497,10 +1061,8 @@
             const isTrip = entry.classList.contains('trip');
 
             if (isCurrentlyActive) {
-                fitMapToBounds(globalBounds);
-                highlightTimes = [];
+                mapRenderer.updateViewState(createViewState([]))
             } else {
-                globalBounds = map.getBounds();
                 entry.classList.add('active');
 
                 const lat = parseFloat(entry.dataset.lat);
@@ -1509,17 +1071,13 @@
                 const endTime = entry.dataset.end;
 
                 if (isTrip) {
-                    highlightTimes = [Math.floor(new Date(startTime).getTime() / 1000), Math.floor(new Date(endTime).getTime() / 1000 )];
-                    gpsDataManagers.forEach(manager => {
-                        updateTripsLayer(manager, 0)
-                    })
+                    mapRenderer.updateViewState(createViewState([Math.floor(new Date(startTime).getTime() / 1000), Math.floor(new Date(endTime).getTime() / 1000)]));
                 } else {
-                    highlightTimes = [];
-                    map.flyTo({
+                    mapRenderer.updateViewState(createViewState([]))
+                    mapRenderer.flyTo({
                         center: [lng, lat],
-                        zoom: 15,
-                        pitch: 45
-                    });
+                        zoom: 15
+                    })
                 }
             }
         });
@@ -1626,13 +1184,28 @@
             });
         }
 
-        document.getElementById('view-mode').onchange = function(e) {
+        viewModeElement.onchange = function(e) {
             updateMapMode(e.target.value);
         };
 
         restoreTimelineControlsState();
 
-        aggregateToggle.onchange = (e) => {
+        if (toggle3dBtn) {
+            toggle3dBtn.addEventListener('click', function() {
+                toggle3DView();
+            });
+        }
+        
+        if (compassBtn) {
+            compassBtn.addEventListener('click', function() {
+                resetNorthUp();
+            });
+        }
+
+        // Initialize 3D button state when map is ready
+        initialize3DButtonState();
+
+        aggregateToggleElement.onchange = (e) => {
             const isAggregate = e.target.checked;
             const params = getTimelineParams();
 
@@ -1643,17 +1216,65 @@
             });
             localStorage.setItem('aggregate', isAggregate);
             calculateTimelineMultiplier();
-            gpsDataManagers.forEach(manager => {
-                updateTripsLayer(manager, timelineControl.getValue())
-            })
+            mapRenderer.updateViewState(createViewState([]));
         };
+        mapRenderer.updateViewState(createViewState([]));
     })
+
+    function toggle3DView() {
+        const icon = toggle3dBtn.querySelector('i');
+        const span = toggle3dBtn.querySelector('span');
+        const is3D = toggle3dBtn.classList.contains('active');
+        
+        if (is3D) {
+            // Switch to 2D
+            localStorage.setItem('3d', false)
+            toggle3dBtn.classList.remove('active');
+            span.textContent = '3D';
+            toggle3dBtn.title = 'Switch to 3D View';
+            icon.classList.add('is-3d')
+
+        } else {
+            // Switch to 3D
+            localStorage.setItem('3d', true)
+
+            toggle3dBtn.classList.add('active');
+            span.textContent = '2D';
+            toggle3dBtn.title = 'Switch to 2D View';
+            icon.classList.remove('is-3d')
+        }
+        mapRenderer.updateViewState(createViewState([]));
+    }
+
+    function initialize3DButtonState() {
+        const toggle3dBtn = document.getElementById('toggle-3d-btn');
+        const icon = toggle3dBtn.querySelector('i');
+        const span = toggle3dBtn.querySelector('span');
+        
+        // Check initial map state
+        const is3D = localStorage.getItem('3d') === 'true';
+        
+        if (is3D) {
+            toggle3dBtn.classList.add('active');
+            span.textContent = '2D';
+            toggle3dBtn.title = 'Switch to 2D View';
+            icon.classList.remove('is-3d')
+        } else {
+            toggle3dBtn.classList.remove('active');
+            span.textContent = '3D';
+            toggle3dBtn.title = 'Switch to 3D View';
+            icon.classList.add('is-3d')
+        }
+    }
+    
+    function resetNorthUp() {
+        // Reset bearing to 0 (north up)
+        mapRenderer.setBearing(0);
+    }
 
     function updateMapMode(value) {
         localStorage.setItem('view-mode', value);
-        gpsDataManagers.forEach(manager => {
-            updateTripsLayer(manager, 0)
-        })
+        mapRenderer.updateViewState(createViewState([]));
     }
 
     function openSettingsMenu() {
@@ -1680,7 +1301,6 @@
             menu.classList.remove('visible');
             overlay.classList.remove('visible');
 
-            // Wait for transition to complete before hiding
             setTimeout(() => {
                 menu.style.display = 'none';
                 overlay.style.display = 'none';
@@ -1696,8 +1316,8 @@
     }
 
     function applySettings(settings) {
-        aggregateToggle.checked = settings.aggregate;
-        document.getElementById('view-mode').value = settings.mapMode;
+        aggregateToggleElement.checked = settings.aggregate;
+        viewModeElement.value = settings.mapMode;
     }
 
     function toggleTimeControls() {
