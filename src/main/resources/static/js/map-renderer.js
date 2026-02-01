@@ -4,25 +4,29 @@ class MapRenderer {
         this.photoClient = photoClient;
         this.gpsDataManagers = [];
 
-        this.map = new maplibregl.Map({
-            container: 'new-map',
-            style: '/map/reitti.json',
-            center: [userSettings.homeLongitude, userSettings.homeLatitude],
-            zoom: 3,
-            pitch: 0,
-        });
 
-        this.deckOverlay = new deck.MapboxOverlay({
-            layers: []
-        });
-        this.map.addControl(this.deckOverlay);
         this.viewState = {
             aggregated: false,
             viewMode: 'LINEAR',
             currentTime: 0,
             animating: false,
-            highlightTimes: []
+            highlightTimes: [],
+            is3d: true
         }
+
+
+        this.map = new maplibregl.Map({
+            container: 'new-map',
+            style: '/map/reitti.json',
+            center: [userSettings.homeLongitude, userSettings.homeLatitude],
+            pitch: 45,
+        });
+
+
+        this.deckOverlay = new deck.MapboxOverlay({
+            layers: []
+        });
+        this.map.addControl(this.deckOverlay);
         this.currentTime = 0;
 
         this.deckParams = {
@@ -65,30 +69,56 @@ class MapRenderer {
     }
 
     updateViewState(viewState) {
+        let switchTo3D = false;
+        let switchTo2D = false;
+        if (this.viewState.is3d && !viewState.is3d) {
+            switchTo2D = true;
+        } else if (!this.viewState.is3d && viewState.is3d) {
+            switchTo3D = true;
+        }
+
         this.viewState = viewState;
+        if (switchTo3D || switchTo2D) {
+            if (this.map.isStyleLoaded()) {
+                this._switchMapBuildingLayer(switchTo3D);
+            } else {
+                this.map.once('style.load', () => {
+                    this._switchMapBuildingLayer(switchTo3D);
+                });
+            }
+
+            if (this.map) {
+                if (switchTo2D) {
+                    this.map.dragRotate.disable();
+                    this.map.touchZoomRotate.disableRotation();
+                } else {
+                    this.map.dragRotate.enable();
+                    this.map.touchZoomRotate.enableRotation();
+                }
+                this.map.easeTo({
+                    pitch: switchTo3D ? 45 : 0,
+                    bearing: switchTo3D? this.map.getBearing() : 0,
+                    duration: 1000, // Mapbox uses 'duration' in ms
+                    essential: true
+                });
+            }
+        }
         this.gpsDataManagers.forEach(manager => {
             this._updateLayers(manager)
         })
     }
 
-    update(time) {
-        this.viewState.currentTime = time;
-        this.gpsDataManagers.forEach(manager => {
-            this._updateLayers(manager)
-        })
+    _switchMapBuildingLayer(is3d) {
+        if (is3d) {
+            this.map.setLayoutProperty('building-3d', 'visibility', 'visible');
+        } else {
+            this.map.setLayoutProperty('building-3d', 'visibility', 'none');
+        }
     }
 
     setGpsDataManagers(managers) {
         this.gpsDataManagers = managers;
         this.bounds = [];
-    }
-
-    _flyToHomeLocation() {
-        this.map.flyTo({
-            center: [window.userSettings.homeLongitude, window.userSettings.homeLatitude],
-            zoom: 15,
-            pitch: 45
-        });
     }
 
     fitMapToBounds(bounds) {
@@ -117,6 +147,9 @@ class MapRenderer {
         }
     }
 
+    reset() {
+        this.deckOverlay.setProps([]);
+    }
     _updateLayers(manager) {
         const layers = [];
 
@@ -201,14 +234,16 @@ class MapRenderer {
         }
 
         layers.push(...this._getVisitLayers(manager));
-        layers.push(...photoClient.getLayers(this.viewState.currentTime, {
-            longitude: this.map.getCenter().lng,
-            latitude: this.map.getCenter().lat,
-            zoom: this.map.getZoom(),
-            animating: this.viewState.animating
-        }));
+        // layers.push(...photoClient.getLayers(this.viewState.currentTime, {
+        //     longitude: this.map.getCenter().lng,
+        //     latitude: this.map.getCenter().lat,
+        //     zoom: this.map.getZoom(),
+        //     animating: this.viewState.animating
+        // }));
 
-        this.deckOverlay.setProps({layers})
+        this.deckOverlay.setProps({
+            layers: layers
+        })
     }
 
     _getBundleLayers(manager) {
@@ -411,7 +446,6 @@ class MapRenderer {
         ];
     }
 
-
     _setup = () => {
         this.map.on('move', () => {
             const currentState = {
@@ -500,7 +534,11 @@ class MapRenderer {
         }
     }
 
-    reset() {
-        this.deckOverlay.setProps([]);
+    _flyToHomeLocation() {
+        this.map.flyTo({
+            center: [window.userSettings.homeLongitude, window.userSettings.homeLatitude],
+            zoom: 15,
+            pitch: 45
+        });
     }
 }

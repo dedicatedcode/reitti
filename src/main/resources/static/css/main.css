@@ -1704,6 +1704,43 @@ body.datepicker-hidden .fab-container {
     gap: 12px;
 }
 
+.map-controls-section {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.map-controls {
+    position: absolute;
+    left: 50%;
+    bottom: 54px;
+    transform: translateX(-50%);
+    background: var(--color-background-dark-light);
+    border-radius: 8px;
+    padding: 8px;
+    margin-right: 8px;
+    box-shadow: var(--box-shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    z-index: 1000;
+}
+
+.map-controls-section:hover .map-controls {
+    opacity: 1;
+    visibility: visible;
+}
+
+.map-controls-section .fab-btn {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    background: transparent;
+    border: none;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .fab-btn {

@@ -17,93 +17,6 @@
     <link rel="stylesheet" th:href="@{/css/maplibre-gl.5.16.0.min.css}" href="/css/maplibre-gl.5.16.0.min.css">
     <link rel="stylesheet" th:href="@{/css/time-control.css}" href="/css/time-control.css">
     <link th:if="${userSettings.customCssUrl}" rel="stylesheet" th:href="${userSettings.customCssUrl}">
-    <style>
-        .map-controls-section {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-
-        .map-controls {
-            position: absolute;
-            right: 100%;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 8px;
-            padding: 8px;
-            margin-right: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.2s ease, visibility 0.2s ease;
-            z-index: 1000;
-        }
-
-        .map-controls-section:hover .map-controls {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .map-control-btn {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 12px;
-            border: none;
-            background: transparent;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            color: #333;
-            transition: all 0.2s ease;
-            white-space: nowrap;
-            position: relative;
-        }
-
-        .map-control-btn:hover {
-            background-color: rgba(0, 0, 0, 0.1);
-        }
-
-        .map-control-btn.active {
-            background-color: #007bff;
-            color: white;
-        }
-
-        .map-control-btn.active:hover {
-            background-color: #0056b3;
-        }
-
-        .map-control-btn i {
-            font-size: 16px;
-        }
-
-        .map-controls-btn {
-            transition: background-color 0.2s ease;
-        }
-
-        .map-controls-section:hover .map-controls-btn {
-            background-color: rgba(255, 255, 255, 0.2);
-        }
-
-        /* Dark mode support */
-        @media (prefers-color-scheme: dark) {
-            .map-controls {
-                background: rgba(40, 40, 40, 0.95);
-            }
-            
-            .map-control-btn {
-                color: #fff;
-            }
-            
-            .map-control-btn:hover {
-                background-color: rgba(255, 255, 255, 0.1);
-            }
-        }
-    </style>
     <script th:src="@{/js/HumanizeDuration.js}"></script>
     <script th:src="@{/js/date-picker-combined.js}"></script>
     <script th:src="@{/js/timeline-scroll-indicator.js}"></script>
@@ -324,6 +237,8 @@
 
     const aggregateToggleElement = document.getElementById('aggregate-toggle');
     const viewModeElement = document.getElementById('view-mode');
+    const toggle3dBtn = document.getElementById('toggle-3d-btn');
+    const compassBtn = document.getElementById('compass-btn');
 
     const timelineControl = new TimelineControl(
         document.getElementById('timeline-controls'),
@@ -1065,7 +980,8 @@
             viewMode: viewModeElement.value,
             currentTime: timelineControl.getValue(),
             animating: !timelineControl.isIdle(),
-            highlightTimes: highlightTimes
+            highlightTimes: highlightTimes,
+            is3d: toggle3dBtn.classList.contains('active'),
         };
     }
 
@@ -1160,10 +1076,8 @@
                     mapRenderer.updateViewState(createViewState([]))
                     mapRenderer.flyTo({
                         center: [lng, lat],
-                        zoom: 15,
-                        pitch: 45
+                        zoom: 15
                     })
-
                 }
             }
         });
@@ -1276,10 +1190,6 @@
 
         restoreTimelineControlsState();
 
-        // Map controls functionality
-        const toggle3dBtn = document.getElementById('toggle-3d-btn');
-        const compassBtn = document.getElementById('compass-btn');
-        
         if (toggle3dBtn) {
             toggle3dBtn.addEventListener('click', function() {
                 toggle3DView();
@@ -1293,9 +1203,7 @@
         }
 
         // Initialize 3D button state when map is ready
-        mapRenderer.onReady(() => {
-            initialize3DButtonState();
-        });
+        initialize3DButtonState();
 
         aggregateToggleElement.onchange = (e) => {
             const isAggregate = e.target.checked;
@@ -1314,29 +1222,27 @@
     })
 
     function toggle3DView() {
-        const toggle3dBtn = document.getElementById('toggle-3d-btn');
         const icon = toggle3dBtn.querySelector('i');
         const span = toggle3dBtn.querySelector('span');
-        
-        // Get current pitch from map renderer
-        const currentPitch = mapRenderer.getCurrentPitch();
-        const is3D = currentPitch > 0;
+        const is3D = toggle3dBtn.classList.contains('active');
         
         if (is3D) {
             // Switch to 2D
-            mapRenderer.setPitch(0);
+            localStorage.setItem('3d', false)
             toggle3dBtn.classList.remove('active');
             icon.className = 'lni lni-3d-rotate';
             span.textContent = '3D';
             toggle3dBtn.title = 'Switch to 3D View';
         } else {
             // Switch to 3D
-            mapRenderer.setPitch(45);
+            localStorage.setItem('3d', true)
+
             toggle3dBtn.classList.add('active');
             icon.className = 'lni lni-layers';
             span.textContent = '2D';
             toggle3dBtn.title = 'Switch to 2D View';
         }
+        mapRenderer.updateViewState(createViewState([]));
     }
 
     function initialize3DButtonState() {
@@ -1345,8 +1251,7 @@
         const span = toggle3dBtn.querySelector('span');
         
         // Check initial map state
-        const currentPitch = mapRenderer.getCurrentPitch();
-        const is3D = currentPitch > 0;
+        const is3D = localStorage.getItem('3d') === 'true';
         
         if (is3D) {
             toggle3dBtn.classList.add('active');
