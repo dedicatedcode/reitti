@@ -114,7 +114,8 @@
                 <span>3D</span>
             </button>
             <button type="button" class="btn map-control-btn" id="compass-btn" title="Reset North Up">
-                <i class="lni lni-compass"></i>
+                <i class="lni lni-location-arrow-right"></i>
+                <span>North up</span>
             </button>
         </div>
     </div>
@@ -1268,7 +1269,6 @@
     }
     
     function resetNorthUp() {
-        // Reset bearing to 0 (north up)
         mapRenderer.setBearing(0);
     }
 

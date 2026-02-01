@@ -541,4 +541,12 @@ class MapRenderer {
             pitch: 45
         });
     }
+
+    setBearing(number) {
+        this.map.easeTo({
+            bearing: number,
+            duration: 500, // Mapbox uses 'duration' in ms
+            essential: true
+        });
+    }
 }
