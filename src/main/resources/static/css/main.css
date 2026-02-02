@@ -753,6 +753,7 @@ tr:hover {
     pointer-events: none;
     -ms-overflow-style: none; /* IE and Edge */
     scrollbar-width: none; /* Firefox */
+    -webkit-user-select: none; /* Safari */
     user-select: none;
 }
 
@@ -1548,6 +1549,7 @@ body.auto-update-mode .today-fab {
     .navigation-container {
         background-color: rgba(59, 59, 59, 0.68);
         backdrop-filter: blur(10px);
+        -webkit-user-select: none; /* Safari */
         user-select: none;
 
     }

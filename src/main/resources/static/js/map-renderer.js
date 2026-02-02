@@ -11,15 +11,39 @@ class MapRenderer {
             currentTime: 0,
             animating: false,
             highlightTimes: [],
-            is3d: true
+            is3d: true,
+            renderTerrain: true
         }
 
-
         this.map = new maplibregl.Map({
+            interleaved: true,
             container: 'new-map',
             style: '/map/reitti.json',
             center: [userSettings.homeLongitude, userSettings.homeLatitude],
             pitch: 45,
+            maxPitch: 85,
+        });
+
+        this.map.on('load', () => {
+            this.map.setSourceTileLodParams(1, 10);
+        });
+
+        this.terrainLayer = new deck.TerrainLayer({
+            id: 'terrain-loader',
+            // Use the same Mapterhorn/MapLibre source
+            elevationData: 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp',
+            elevationDecoder: {
+                rScaler: 256,
+                gScaler: 1,
+                bScaler: 1 / 256,
+                offset: -32768
+            },
+            minZoom: 0,
+            maxZoom: 14,
+            elevationScale: 1.5,
+            meshMaxError: 1.0, // Lower = higher resolution (default is 4.0)
+            bounds: [-180, -90, 180, 90], // Global bounds help with alignment
+            operation: 'terrain',
         });
 
 
@@ -27,6 +51,13 @@ class MapRenderer {
             layers: []
         });
         this.map.addControl(this.deckOverlay);
+        this.map.on('render', () => {
+            // This keeps the two engines in tighter synchronization
+            // by forcing deck.gl to re-check the terrain buffer every frame
+            if (this.viewState.renderTerrain) {
+                this.deckOverlay.setProps({ _needsRedraw: true });
+            }
+        });
         this.currentTime = 0;
 
         this.deckParams = {
@@ -71,10 +102,18 @@ class MapRenderer {
     updateViewState(viewState) {
         let switchTo3D = false;
         let switchTo2D = false;
+        let switchTerrainOn = false;
+        let switchTerrainOff = false;
         if (this.viewState.is3d && !viewState.is3d) {
             switchTo2D = true;
         } else if (!this.viewState.is3d && viewState.is3d) {
             switchTo3D = true;
+        }
+
+        if (this.viewState.renderTerrain && !viewState.renderTerrain) {
+            switchTerrainOff = true;
+        } else if (!this.viewState.renderTerrain && viewState.renderTerrain) {
+            switchTerrainOn = true;
         }
 
         this.viewState = viewState;
@@ -103,6 +142,17 @@ class MapRenderer {
                 });
             }
         }
+
+        if (switchTerrainOn || switchTerrainOff) {
+            if (this.map.isStyleLoaded()) {
+                this._switchTerrainLayer(switchTerrainOn);
+            } else {
+                this.map.once('style.load', () => {
+                    this._switchTerrainLayer(switchTerrainOn);
+                });
+            }
+        }
+
         this.gpsDataManagers.forEach(manager => {
             this._updateLayers(manager)
         })
@@ -150,6 +200,7 @@ class MapRenderer {
     reset() {
         this.deckOverlay.setProps([]);
     }
+
     _updateLayers(manager) {
         const layers = [];
 
@@ -162,12 +213,16 @@ class MapRenderer {
 
         const mode = this.viewState.aggregated ? 'agg' : 'lin';
 
+        if (this.viewState.renderTerrain) {
+            layers.push(this.terrainLayer)
+        }
         // --- BASE VISUALIZATION ---
         if (this.viewState.viewMode === 'BUNDLED') {
             layers.push(...this._getBundleLayers(manager));
         } else {
             const buffer = this.viewState.viewMode === 'LINEAR' ? 'cleaned' : 'raw';
             const cursor = this.viewState.viewMode === 'LINEAR' ? manager.cleanedCursor : manager.cursor;
+            const terrainExtension = new deck._TerrainExtension();
             layers.push(new deck.PathLayer({
                 id: 'paths-static-fixed',
                 data: manager.getLayerData(buffer, this.viewState.aggregated),
@@ -178,6 +233,12 @@ class MapRenderer {
                 visibility: !this.viewState.animating,
                 capRounded: true,
                 jointRounded: true,
+                extensions: [terrainExtension],
+                terrainDrawMode: 'offset',
+                parameters: {
+                    depthTest: true,
+                    polygonOffsetFill: true
+                },
                 updateTriggers: {
                     data: [manager.buffer?.length, buffer],
                     getPath: [cursor, buffer],
@@ -202,7 +263,8 @@ class MapRenderer {
                 jointRounded: true,
 
                 parameters: {depthTest: false},
-
+                extensions: [terrainExtension],
+                terrainDrawMode: 'offset',
                 updateTriggers: {
                     data: [manager.buffer?.length, buffer],
                     visibility: [this.viewState.animating],
@@ -224,6 +286,8 @@ class MapRenderer {
                 currentTime: this.viewState.currentTime,
                 capRounded: true,
                 jointRounded: true,
+                extensions: [terrainExtension],
+                terrainDrawMode: 'offset',
                 updateTriggers: {
                     data: [manager.buffer?.length, buffer],
                     getPath: [cursor, buffer],
@@ -255,6 +319,7 @@ class MapRenderer {
             return [];
         }
         const layers = [];
+        const terrainExtension = new deck._TerrainExtension();
         layers.push(new deck.PathLayer({
             id: `bundled-paths-static-${manager.id}`,
             data: manager.getLayerData('bundled', this.viewState.aggregated),
@@ -264,6 +329,8 @@ class MapRenderer {
             capRounded: true,
             jointRounded: true,
             depthTest: false,
+            extensions: [terrainExtension],
+            terrainDrawMode: 'offset',
             updateTriggers: {
                 data: [
                     manager.snappedVersion,
@@ -293,6 +360,8 @@ class MapRenderer {
             },
             capRounded: true,
             jointRounded: true,
+            extensions: [terrainExtension],
+            terrainDrawMode: 'offset',
             updateTriggers: {
                 data: [manager.snappedVersion],
                 getPath: [manager.snappedVersion],
@@ -313,6 +382,8 @@ class MapRenderer {
             capRounded: true,
             jointRounded: true,
             parameters: {depthTest: false},
+            extensions: [terrainExtension],
+            terrainDrawMode: 'offset',
             updateTriggers: {
                 data: [manager.snappedVersion],
                 getPath: [manager.snappedVersion],
@@ -336,6 +407,8 @@ class MapRenderer {
             depthTest: false,
             blendFunc: [770, 771], // Standard Alpha Blending
             blendEquation: 32774,
+            extensions: [terrainExtension],
+            terrainDrawMode: 'offset',
             updateTriggers: {
                 data: [manager.snappedVersion],
                 getPath: [manager.snappedVersion],
@@ -354,6 +427,7 @@ class MapRenderer {
         if (places === undefined) {
             return [];
         }
+        const terrainExtension = new deck._TerrainExtension();
         return [
             // 1. Polygon Layer
             new deck.PolygonLayer({
@@ -366,6 +440,8 @@ class MapRenderer {
                 depthTest: false,
                 onHover: info => this._updateTooltip(info),
                 visible: isOverview && this.map.getZoom() > this.deckParams.visits.minZoom,
+                extensions: [terrainExtension],
+                terrainDrawMode: 'offset',
                 updateTriggers: {
                     getFillColor: [currentTime],
                     visible: [isOverview, this.map.zoom],
@@ -401,6 +477,8 @@ class MapRenderer {
                 depthTest: false,
                 onHover: info => this._updateTooltip(info),
                 visible: !isOverview || this.map.getZoom() > this.deckParams.visits.minZoom,
+                extensions: [terrainExtension],
+                terrainDrawMode: 'offset',
                 updateTriggers: {
                     getRadius: [currentTime, isOverview],
                     getFillColor: [currentTime, isOverview],
@@ -435,6 +513,8 @@ class MapRenderer {
                     const alpha = (isOverview || isActive) ? 255 : 0;
                     return [255, 255, 255, alpha];
                 },
+                extensions: [terrainExtension],
+                terrainDrawMode: 'offset',
                 updateTriggers: {
                     getFillColor: [currentTime, isOverview],
                     getLineColor: [currentTime, isOverview],
@@ -548,5 +628,18 @@ class MapRenderer {
             duration: 500, // Mapbox uses 'duration' in ms
             essential: true
         });
+    }
+
+    _switchTerrainLayer(enable) {
+        if (enable) {
+            this.map.setLayoutProperty('hillshading', 'visibility', 'visible');
+            this.map.setTerrain({
+                source: 'terrain-source',
+                exaggeration: 1.5
+            });
+        } else {
+            this.map.setLayoutProperty('hillshading', 'visibility', 'none');
+            this.map.setTerrain(null);
+        }
     }
 }
