@@ -24,8 +24,8 @@
     <script th:src="@{/js/vendor/htmx.min.js}"></script>
     <script th:src="@{/js/polygon-editor.js}"></script>
     <script th:src="@{/js/util.js}"></script>
-    <script th:src="@{/js/vendor/deckgl.9.2.5.min.js}"></script>
-    <script th:src="@{/js/vendor/maplibre-gl.5.16.0.min.js}"></script>
+    <script th:src="@{/js/vendor/deckgl.9.2.6.min.js}"></script>
+    <script th:src="@{/js/vendor/maplibre-gl.5.17.0.min.js}"></script>
     <script th:src="@{/js/vendor/supercluster.7.0.0.min.js}"></script>
     <script th:src="@{/js/timeline-control.js}"></script>
     <script th:src="@{/js/map-customization.js}"></script>
@@ -84,15 +84,15 @@
             <i class="lni lni-play"></i>
         </button>
         <div class="speed-control" id="speed-control">
-            <select id="speed-selector">
-                <option value="1">Normal (1x)</option>
-                <option value="60">Fast (60x)</option>
-                <option value="3600">Super Fast (3600x)</option>
-                <option value="auto" selected>Auto-Adjust</option>
+            <select id="speed-selector" th:title="#{map.time-control.speed.title}">
+                <option value="1" th:text="#{map.time-control.speed.normal}">Normal (1x)</option>
+                <option value="60" th:text="#{map.time-control.speed.fast}">Fast (60x)</option>
+                <option value="3600" th:text="#{map.time-control.speed.super_fast}">Super Fast (3600x)</option>
+                <option value="auto" selected th:text="#{map.time-control.speed.auto}">Auto-Adjust</option>
             </select>
         </div>
     </div>
-    <button type="button" class="btn fab-btn" id="toggle-time-control-btn" title="Show time controls">
+    <button type="button" class="btn fab-btn" id="toggle-time-control-btn"  th:title="#{map.time-control.speed.show.title}" title="Show time controls">
         <i class="lni lni-stopwatch"></i>
     </button>
     <span class="time-display" id="time-display"></span>
@@ -105,23 +105,27 @@
 
     <!-- Map controls button -->
     <div class="map-controls-section">
-        <button type="button" class="btn fab-btn map-controls-btn" id="map-controls-btn" title="Map Controls">
+        <button type="button" class="btn fab-btn map-controls-btn" id="map-controls-btn" th:title="#{map.display-control.title}" title="Map Controls">
             <i class="lni lni-map-marker-1"></i>
         </button>
         <div class="map-controls" id="map-controls">
             <button type="button" class="btn map-control-btn" id="toggle-3d-btn" title="Toggle 2D/3D View">
                 <i class="lni lni-map-marker-1"></i>
-                <span>3D</span>
+                <span th:title="#{map.display-control.mode.3d.text}">3D</span>
             </button>
-            <button type="button" class="btn map-control-btn" id="compass-btn" title="Reset North Up">
+            <button type="button" class="btn map-control-btn" id="compass-btn" th:title="#{map.display-control.north-up.title}" title="Reset North Up">
                 <i class="lni lni-location-arrow-right"></i>
-                <span>North up</span>
+                <span th:title="#{map.display-control.north-up}">North up</span>
+            </button>
+            <button type="button" class="btn map-control-btn active" id="toggle-terrain-btn" th:title="#{map.display-control.terrain.disable.title}" title="Switch terrain mode">
+                <i class="lni lni-mountains-2"></i>
+                <span th:title="#{map.display-control.terrain.disable.text}">Disable Terrain</span>
             </button>
         </div>
     </div>
 
     <!-- Settings button -->
-    <button type="button" class="btn fab-btn settings-btn" id="settings-btn" title="Settings">
+    <button type="button" class="btn fab-btn settings-btn" id="settings-btn" th:title="#{map.map-settings.button.title}" title="Settings">
         <i class="lni lni-gear-1"></i>
     </button>
 </div>
@@ -134,22 +138,22 @@
         </button>
     </div>
     <div class="settings-menu-content">
-        <div class="divider left">Map Appearance</div>
+        <div class="divider left" th:title="#{map.settings.dialog.appearance.title}">Map Appearance</div>
         <div class="settings-section">
             <div class="form-group">
-                <label for="view-mode">View Mode</label>
+                <label for="view-mode" th:text="#{map.settings.dialog.appearance.view-mode.title}">View Mode</label>
                 <select id="view-mode">
-                    <option value="LINEAR">Standard Paths</option>
-                    <option value="RAW">Raw Paths</option>
-                    <option value="BUNDLED">Edge Bundling</option>
+                    <option value="LINEAR" th:text="#{map.settings.dialog.appearance.view-mode.standard}">Standard Paths</option>
+                    <option value="RAW" th:text="#{map.settings.dialog.appearance.view-mode.raw}">Raw Paths</option>
+                    <option value="BUNDLED" th:text="#{map.settings.dialog.appearance.view-mode.edged_bundling}">Edge Bundling</option>
                 </select>
             </div>
             <div class="form-group">
-                <label for="aggregate-toggle">24h aggregate?</label>
+                <label for="aggregate-toggle" th:text="#{map.settings.dialog.appearance.view-mode.24h_aggregate}">24h aggregate?</label>
                 <input type="checkbox" id="aggregate-toggle">
             </div>
         </div>
-        <div class="divider left">Date Selection</div>
+        <div class="divider left" th:title="#{map.settings.dialog.date-picker.title}">Date Selection</div>
         <div class="settings-section">
         </div>
     </div>
@@ -216,6 +220,28 @@
                     from:  /*[[#{map.popup.labels.from}]]*/ 'From',
                     to:  /*[[#{map.popup.labels.to}]]*/ 'To',
                 }
+            },
+            displayControl: {
+                mode: {
+                    "2D": {
+                        text:  /*[[#{map.display-control.mode.2d.text}]]*/ '2D',
+                        title:  /*[[#{map.display-control.mode.2d.title}]]*/ 'Switch to 2D view',
+                    },
+                    "3D": {
+                        text:  /*[[#{map.display-control.mode.3d.text}]]*/ '3D',
+                        title:  /*[[#{map.display-control.mode.3d.title}]]*/ 'Switch to 3D view',
+                    }
+                },
+                terrain: {
+                    enable: {
+                        text: /*[[#{map.display-control.terrain.enable.text}]]*/ 'Enable Terrain',
+                        title: /*[[#{map.display-control.terrain.enable.title}]]*/ 'Enable Terrain',
+                    },
+                    disable: {
+                        text: /*[[#{map.display-control.terrain.disable.text}]]*/ 'Disable Terrain',
+                        title: /*[[#{map.display-control.terrain.disable.title}]]*/ 'Disable Terrain',
+                    }
+                }
             }
         }
     };
@@ -239,6 +265,7 @@
     const aggregateToggleElement = document.getElementById('aggregate-toggle');
     const viewModeElement = document.getElementById('view-mode');
     const toggle3dBtn = document.getElementById('toggle-3d-btn');
+    const toggleTerrainModeBtn = document.getElementById('toggle-terrain-btn');
     const compassBtn = document.getElementById('compass-btn');
 
     const timelineControl = new TimelineControl(
@@ -983,6 +1010,7 @@
             animating: !timelineControl.isIdle(),
             highlightTimes: highlightTimes,
             is3d: toggle3dBtn.classList.contains('active'),
+            renderTerrain: toggleTerrainModeBtn.classList.contains('active'),
         };
     }
 
@@ -1196,7 +1224,12 @@
                 toggle3DView();
             });
         }
-        
+         if (toggleTerrainModeBtn) {
+            toggleTerrainModeBtn.addEventListener('click', function() {
+                toggleTerrainMode();
+            });
+        }
+
         if (compassBtn) {
             compassBtn.addEventListener('click', function() {
                 resetNorthUp();
@@ -1222,49 +1255,65 @@
         mapRenderer.updateViewState(createViewState([]));
     })
 
-    function toggle3DView() {
-        const icon = toggle3dBtn.querySelector('i');
-        const span = toggle3dBtn.querySelector('span');
-        const is3D = toggle3dBtn.classList.contains('active');
-        
+    function toggleTerrainMode() {
+        const icon = toggleTerrainModeBtn.querySelector('i');
+        const span = toggleTerrainModeBtn.querySelector('span');
+        const is3D = toggleTerrainModeBtn.classList.contains('active');
+
         if (is3D) {
             // Switch to 2D
-            localStorage.setItem('3d', false)
-            toggle3dBtn.classList.remove('active');
-            span.textContent = '3D';
-            toggle3dBtn.title = 'Switch to 3D View';
+            localStorage.setItem('displayTerrain', 'false')
+            toggleTerrainModeBtn.classList.remove('active');
+            span.textContent = locale.map.displayControl.terrain.enable.text;
+            toggleTerrainModeBtn.title = locale.map.displayControl.terrain.enable.title;
             icon.classList.add('is-3d')
 
         } else {
             // Switch to 3D
-            localStorage.setItem('3d', true)
-
-            toggle3dBtn.classList.add('active');
-            span.textContent = '2D';
-            toggle3dBtn.title = 'Switch to 2D View';
+            localStorage.setItem('displayTerrain', 'true')
+            toggleTerrainModeBtn.classList.add('active');
+            span.textContent = locale.map.displayControl.terrain.disable.text;
+            toggleTerrainModeBtn.title = locale.map.displayControl.terrain.disable.title;
             icon.classList.remove('is-3d')
+        }
+        mapRenderer.updateViewState(createViewState([]));
+    }
+
+    function toggle3DView() {
+        const span = toggle3dBtn.querySelector('span');
+        const is3D = toggle3dBtn.classList.contains('active');
+
+        if (is3D) {
+            // Switch to 2D
+            localStorage.setItem('3d', 'false')
+            toggle3dBtn.classList.remove('active');
+            span.textContent = locale.map.displayControl.mode["2D"].text;
+            toggle3dBtn.title = locale.map.displayControl.mode["2D"].title;
+
+        } else {
+            // Switch to 3D
+            localStorage.setItem('3d', 'true')
+            toggle3dBtn.classList.add('active');
+            span.textContent = locale.map.displayControl.mode["3D"].text;
+            toggle3dBtn.title = locale.map.displayControl.mode["3D"].title;
         }
         mapRenderer.updateViewState(createViewState([]));
     }
 
     function initialize3DButtonState() {
         const toggle3dBtn = document.getElementById('toggle-3d-btn');
-        const icon = toggle3dBtn.querySelector('i');
         const span = toggle3dBtn.querySelector('span');
         
         // Check initial map state
         const is3D = localStorage.getItem('3d') === 'true';
-        
         if (is3D) {
             toggle3dBtn.classList.add('active');
-            span.textContent = '2D';
-            toggle3dBtn.title = 'Switch to 2D View';
-            icon.classList.remove('is-3d')
+            span.textContent = locale.map.displayControl.mode["3D"].text;
+            toggle3dBtn.title = locale.map.displayControl.mode["3D"].title;
         } else {
             toggle3dBtn.classList.remove('active');
-            span.textContent = '3D';
-            toggle3dBtn.title = 'Switch to 3D View';
-            icon.classList.add('is-3d')
+            span.textContent = locale.map.displayControl.mode["2D"].text;
+            toggle3dBtn.title = locale.map.displayControl.mode["2D"].title;
         }
     }
     
