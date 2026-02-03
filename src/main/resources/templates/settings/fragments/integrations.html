@@ -549,6 +549,17 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                         <div class="form-group">
                             <label>
                                 <input type="checkbox"
+                                       name="useBestGuessLocation"
+                                       value="true"
+                                       th:checked="${hasIntegration && immichIntegration.useBestGuessLocation}">
+                                <span th:text="#{integrations.immich.useBestGuessLocation}">Enable Use-Best-Guess</span>
+                            </label>
+                            <small th:text="#{integrations.immich.useBestGuessLocation.description}">When enabled, Reitti will match photos without location data to the closest location on the map.</small>
+
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox"
                                        name="enabled"
                                        value="true"
                                        th:checked="${hasIntegration && immichIntegration.enabled}">

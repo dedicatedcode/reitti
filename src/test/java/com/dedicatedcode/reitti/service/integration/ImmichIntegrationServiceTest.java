@@ -357,17 +357,7 @@ class ImmichIntegrationServiceTest {
         
         // Create a raw location point for matching
         Instant photoTime = Instant.parse("2024-01-01T12:00:00Z");
-        rawLocationPointJdbcService.save(user, new RawLocationPoint(
-                null,
-                photoTime,
-                10.0,
-                100.0,
-                new GeoPoint(40.7128, -74.0060),
-                false,
-                false,
-                false,
-                false
-        ));
+        rawLocationPointJdbcService.create(user, new RawLocationPoint(photoTime,new GeoPoint(40.7128, -74.0060),10.0));
         
         LocalDate start = LocalDate.of(2024, 1, 1);
         LocalDate end = LocalDate.of(2024, 1, 2);
@@ -419,18 +409,9 @@ class ImmichIntegrationServiceTest {
         
         // Create a raw location point for matching
         Instant photoTime = Instant.parse("2024-01-01T12:00:00Z");
-        rawLocationPointJdbcService.save(user, new RawLocationPoint(
-                null,
-                photoTime,
-                10.0,
-                100.0,
-                new GeoPoint(40.7128, -74.0060),
-                false,
-                false,
-                false,
-                false
-        ));
-        
+        rawLocationPointJdbcService.create(user, new RawLocationPoint(photoTime,new GeoPoint(40.7128, -74.0060),10.0));
+
+
         LocalDate start = LocalDate.of(2024, 1, 1);
         LocalDate end = LocalDate.of(2024, 1, 2);
         String timezone = "UTC";

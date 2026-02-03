@@ -9,7 +9,9 @@ public class ImmichIntegration {
     private final String serverUrl;
     
     private final String apiToken;
-    
+
+    private final boolean useBestGuessLocation;
+
     private final boolean enabled;
     
     private final Instant createdAt;
@@ -19,14 +21,15 @@ public class ImmichIntegration {
     private final Long version;
     
 
-    public ImmichIntegration(String serverUrl, String apiToken, boolean enabled) {
-        this(null, serverUrl, apiToken, enabled, null, null, 1L);
+    public ImmichIntegration(String serverUrl, String apiToken, boolean useBestGuessLocation, boolean enabled) {
+        this(null, serverUrl, apiToken, useBestGuessLocation, enabled, null, null, 1L);
     }
-    
-    public ImmichIntegration(Long id, String serverUrl, String apiToken, boolean enabled, Instant createdAt, Instant updatedAt, Long version) {
+
+    public ImmichIntegration(Long id, String serverUrl, String apiToken, boolean useBestGuessLocation, boolean enabled, Instant createdAt, Instant updatedAt, Long version) {
         this.id = id;
         this.serverUrl = serverUrl;
         this.apiToken = apiToken;
+        this.useBestGuessLocation = useBestGuessLocation;
         this.enabled = enabled;
         this.createdAt = createdAt != null ? createdAt : Instant.now();
         this.updatedAt = updatedAt != null ? updatedAt : Instant.now();
@@ -45,7 +48,11 @@ public class ImmichIntegration {
     public String getApiToken() {
         return apiToken;
     }
-    
+
+    public boolean isUseBestGuessLocation() {
+        return useBestGuessLocation;
+    }
+
     public boolean isEnabled() {
         return enabled;
     }
@@ -64,18 +71,22 @@ public class ImmichIntegration {
     
     // Wither methods
     public ImmichIntegration withEnabled(boolean enabled) {
-        return new ImmichIntegration(this.id, this.serverUrl, this.apiToken, enabled, this.createdAt, Instant.now(), this.version);
+        return new ImmichIntegration(this.id, this.serverUrl, this.apiToken, this.useBestGuessLocation, enabled, this.createdAt, Instant.now(), this.version);
+    }
+
+    public ImmichIntegration withUseBestGuessLocation(boolean useBestGuessLocation) {
+        return new ImmichIntegration(this.id, this.serverUrl, this.apiToken, useBestGuessLocation, this.enabled, this.createdAt, Instant.now(), this.version);
     }
 
     public ImmichIntegration withServerUrl(String serverUrl) {
-        return new ImmichIntegration(this.id, serverUrl, this.apiToken, this.enabled, this.createdAt, this.updatedAt, version);
+        return new ImmichIntegration(this.id, serverUrl, this.apiToken, this.useBestGuessLocation, this.enabled, this.createdAt, this.updatedAt, version);
     }
 
     public ImmichIntegration withApiToken(String apiToken) {
-        return new ImmichIntegration(this.id, this.serverUrl, apiToken, this.enabled, this.createdAt, Instant.now(), this.version);
+        return new ImmichIntegration(this.id, this.serverUrl, apiToken, this.useBestGuessLocation, this.enabled, this.createdAt, Instant.now(), this.version);
     }
 
     public ImmichIntegration withId(Long id) {
-        return new ImmichIntegration(id, this.serverUrl, this.apiToken, this.enabled, this.createdAt, this.updatedAt, version);
+        return new ImmichIntegration(id, this.serverUrl, this.apiToken, this.useBestGuessLocation, this.enabled, this.createdAt, this.updatedAt, version);
     }
 }
