@@ -248,6 +248,8 @@ header {
     pointer-events: auto; /* Changed to auto so user can scroll the list */
     transition: opacity 0.1s ease-out;
     box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .settings-menu {
@@ -765,6 +767,8 @@ tr:hover {
     overflow-y: auto;
     -ms-overflow-style: none; /* IE and Edge */
     scrollbar-width: none; /* Firefox */
+    -webkit-user-select: none; /* Safari */
+    user-select: none;
 }
 
 .timeline-container {
@@ -774,6 +778,8 @@ tr:hover {
     padding-top: 64px;
     padding-bottom: 140px;
     transition: opacity 0.3s ease;
+    -webkit-user-select: none; /* Safari */
+    user-select: none;
 }
 
 .timeline-entry {
@@ -1730,7 +1736,7 @@ body.datepicker-hidden .fab-container {
     visibility: hidden;
     transition: opacity 0.2s ease, visibility 0.2s ease;
     z-index: 1000;
-    width: 8rem;
+    width: 11rem;
 }
 
 .map-controls-section:hover .map-controls {
@@ -1749,6 +1755,10 @@ body.datepicker-hidden .fab-container {
     gap: 4px;
     align-items: center;
     padding: 4px 8px;
+}
+
+.map-control-btn.active {
+    background: var(--color-background-dark-light);
 }
 
 .map-controls #toggle-3d-btn {

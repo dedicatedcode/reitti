@@ -41,9 +41,13 @@ class MapRenderer {
             minZoom: 0,
             maxZoom: 14,
             elevationScale: 1.5,
-            meshMaxError: 1.0, // Lower = higher resolution (default is 4.0)
             bounds: [-180, -90, 180, 90], // Global bounds help with alignment
             operation: 'terrain',
+            loadOptions: {
+                fetch: {
+                    priority: 'high'
+                }
+            }
         });
 
 
@@ -51,13 +55,7 @@ class MapRenderer {
             layers: []
         });
         this.map.addControl(this.deckOverlay);
-        this.map.on('render', () => {
-            // This keeps the two engines in tighter synchronization
-            // by forcing deck.gl to re-check the terrain buffer every frame
-            if (this.viewState.renderTerrain) {
-                this.deckOverlay.setProps({ _needsRedraw: true });
-            }
-        });
+
         this.currentTime = 0;
 
         this.deckParams = {
@@ -208,6 +206,7 @@ class MapRenderer {
             this.deckOverlay.setProps({layers})
             return;
         }
+        const layerKey = `-${manager.id}-${this.viewState.aggregated ? 'agg' : 'lin'}-${this.viewState.renderTerrain ? 'terrain' : 'flat'}`;
         const totalTimeSpanSec = this.viewState.aggregated ? 24 * 60 * 60 : manager.maxTimestamp - manager.minTimestamp;
         const calculatedTrail = Math.max(1800, totalTimeSpanSec * 0.02);
 
@@ -218,13 +217,13 @@ class MapRenderer {
         }
         // --- BASE VISUALIZATION ---
         if (this.viewState.viewMode === 'BUNDLED') {
-            layers.push(...this._getBundleLayers(manager));
+            layers.push(...this._getBundleLayers(layerKey, manager));
         } else {
             const buffer = this.viewState.viewMode === 'LINEAR' ? 'cleaned' : 'raw';
             const cursor = this.viewState.viewMode === 'LINEAR' ? manager.cleanedCursor : manager.cursor;
-            const terrainExtension = new deck._TerrainExtension();
+            const extensions = this.viewState.renderTerrain ? [new deck._TerrainExtension()] : [];
             layers.push(new deck.PathLayer({
-                id: 'paths-static-fixed',
+                id: `paths-static-fixed-${layerKey}`,
                 data: manager.getLayerData(buffer, this.viewState.aggregated),
                 positionFormat: 'XYZ',
                 getColor: [...manager.color, this.deckParams.trips.staticPathOpacity],
@@ -233,15 +232,16 @@ class MapRenderer {
                 visibility: !this.viewState.animating,
                 capRounded: true,
                 jointRounded: true,
-                extensions: [terrainExtension],
-                terrainDrawMode: 'offset',
+                extensions: extensions,
+                terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
                 parameters: {
                     depthTest: true,
                     polygonOffsetFill: true
                 },
                 updateTriggers: {
                     data: [manager.buffer?.length, buffer],
-                    getPath: [cursor, buffer],
+                    getPath: [cursor, buffer, this.viewState.renderTerrain],
+                    extensions: [this.viewState.renderTerrain],
                     getTimestamps: [this.viewState.aggregated],
                     visibility: [this.viewState.animating],
                     getColor: [manager.color],
@@ -250,7 +250,7 @@ class MapRenderer {
 
             // SHADOW TRIP (Animated)
             layers.push(new deck.TripsLayer({
-                id: `trips-shadow-${mode}`,
+                id: `trips-shadow-${layerKey}`,
                 data: manager.getLayerData(buffer, this.viewState.aggregated),
                 positionFormat: 'XYZ',
                 getColor: [255, 255, 255],
@@ -263,12 +263,13 @@ class MapRenderer {
                 jointRounded: true,
 
                 parameters: {depthTest: false},
-                extensions: [terrainExtension],
-                terrainDrawMode: 'offset',
+                extensions: extensions,
+                terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
                 updateTriggers: {
                     data: [manager.buffer?.length, buffer],
+                    extensions: [this.viewState.renderTerrain],
                     visibility: [this.viewState.animating],
-                    getPath: [cursor, buffer],
+                    getPath: [cursor, buffer, this.viewState.renderTerrain],
                     currentTime: [this.viewState.currentTime],
                     getTimestamps: [this.viewState.aggregated],
                 }
@@ -276,7 +277,7 @@ class MapRenderer {
 
             // CORE TRIP (Animated)
             layers.push(new deck.TripsLayer({
-                id: `trips-core-${mode}`,
+                id: `trips-core-${layerKey}`,
                 data: manager.getLayerData(buffer, this.viewState.aggregated),
                 positionFormat: 'XYZ',
                 getColor: manager.color,
@@ -286,18 +287,19 @@ class MapRenderer {
                 currentTime: this.viewState.currentTime,
                 capRounded: true,
                 jointRounded: true,
-                extensions: [terrainExtension],
-                terrainDrawMode: 'offset',
+                extensions: extensions,
+                terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
                 updateTriggers: {
                     data: [manager.buffer?.length, buffer],
-                    getPath: [cursor, buffer],
+                    extensions: [this.viewState.renderTerrain],
+                    getPath: [cursor, buffer, this.viewState.renderTerrain],
                     currentTime: [this.viewState.currentTime],
                     getTimestamps: [this.viewState.aggregated],
                 }
             }));
         }
 
-        layers.push(...this._getVisitLayers(manager));
+        layers.push(...this._getVisitLayers(layerKey, manager));
         // layers.push(...photoClient.getLayers(this.viewState.currentTime, {
         //     longitude: this.map.getCenter().lng,
         //     latitude: this.map.getCenter().lat,
@@ -310,7 +312,7 @@ class MapRenderer {
         })
     }
 
-    _getBundleLayers(manager) {
+    _getBundleLayers(layerKey, manager) {
         const timeSpan = this.viewState.aggregated ? 86400 : (manager.maxTimestamp - manager.minTimestamp);
         const calculatedTrail = Math.max(1800, timeSpan * 0.02);
 
@@ -319,9 +321,9 @@ class MapRenderer {
             return [];
         }
         const layers = [];
-        const terrainExtension = new deck._TerrainExtension();
+        const extensions = this.viewState.renderTerrain ? [new deck._TerrainExtension()] : [];
         layers.push(new deck.PathLayer({
-            id: `bundled-paths-static-${manager.id}`,
+            id: `bundled-paths-static-${layerKey}`,
             data: manager.getLayerData('bundled', this.viewState.aggregated),
             positionFormat: 'XY',
             getColor: [...manager.color, this.deckParams.bundled.staticPathOpacity],
@@ -329,7 +331,7 @@ class MapRenderer {
             capRounded: true,
             jointRounded: true,
             depthTest: false,
-            extensions: [terrainExtension],
+            extensions: extensions,
             terrainDrawMode: 'offset',
             updateTriggers: {
                 data: [
@@ -348,7 +350,7 @@ class MapRenderer {
 
 
         layers.push(new deck.PathLayer({
-            id: `bundled-path-${manager.id}`,
+            id: `bundled-path-${layerKey}`,
             data: manager.getLayerData('bundled', this.viewState.aggregated),
             positionFormat: 'XY',
             widthMinPixels: this.deckParams.bundled.pathWidth,
@@ -360,7 +362,7 @@ class MapRenderer {
             },
             capRounded: true,
             jointRounded: true,
-            extensions: [terrainExtension],
+            extensions: extensions,
             terrainDrawMode: 'offset',
             updateTriggers: {
                 data: [manager.snappedVersion],
@@ -370,7 +372,7 @@ class MapRenderer {
         }));
 
         layers.push(new deck.TripsLayer({
-            id: `bundled-path-shadow-${manager.id}`,
+            id: `bundled-path-shadow-${layerKey}`,
             data: manager.getLayerData('bundled', this.viewState.aggregated),
             positionFormat: 'XY',
             getColor: [255, 255, 255],
@@ -382,7 +384,7 @@ class MapRenderer {
             capRounded: true,
             jointRounded: true,
             parameters: {depthTest: false},
-            extensions: [terrainExtension],
+            extensions: extensions,
             terrainDrawMode: 'offset',
             updateTriggers: {
                 data: [manager.snappedVersion],
@@ -393,7 +395,7 @@ class MapRenderer {
 
         // CORE TRIP (Animated)
         layers.push(new deck.TripsLayer({
-            id: `bundled-path-core-${manager.id}`,
+            id: `bundled-path-core-${layerKey}`,
             data: manager.getLayerData('bundled', this.viewState.aggregated),
             positionFormat: 'XY',
             getColor: manager.color,
@@ -407,7 +409,7 @@ class MapRenderer {
             depthTest: false,
             blendFunc: [770, 771], // Standard Alpha Blending
             blendEquation: 32774,
-            extensions: [terrainExtension],
+            extensions: extensions,
             terrainDrawMode: 'offset',
             updateTriggers: {
                 data: [manager.snappedVersion],
@@ -419,7 +421,7 @@ class MapRenderer {
         return layers;
     }
 
-    _getVisitLayers(manager) {
+    _getVisitLayers(layerKey, manager) {
         const isOverview = !this.viewState.animating;
         const currentTime = this.viewState.currentTime;
 
@@ -427,11 +429,11 @@ class MapRenderer {
         if (places === undefined) {
             return [];
         }
-        const terrainExtension = new deck._TerrainExtension();
+        const extensions = this.viewState.renderTerrain ? [new deck._TerrainExtension()] : [];
         return [
             // 1. Polygon Layer
             new deck.PolygonLayer({
-                id: 'visit-polygons',
+                id: `visit-polygons-${layerKey}`,
                 data: places.filter(p => p.polygon),
                 getPolygon: d => d.polygon.coordinates,
                 getFillColor: d => [...manager.color, this.deckParams.visits.polygonOpacity],
@@ -440,8 +442,8 @@ class MapRenderer {
                 depthTest: false,
                 onHover: info => this._updateTooltip(info),
                 visible: isOverview && this.map.getZoom() > this.deckParams.visits.minZoom,
-                extensions: [terrainExtension],
-                terrainDrawMode: 'offset',
+                extensions: extensions,
+                terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
                 updateTriggers: {
                     getFillColor: [currentTime],
                     visible: [isOverview, this.map.zoom],
@@ -449,7 +451,7 @@ class MapRenderer {
                 }
             }),
             new deck.ScatterplotLayer({
-                id: 'place-outer-circles',
+                id: `place-outer-circles-${layerKey}`,
                 data: places,
                 getPosition: d => d.coordinates,
                 getRadius: d => {
@@ -477,8 +479,8 @@ class MapRenderer {
                 depthTest: false,
                 onHover: info => this._updateTooltip(info),
                 visible: !isOverview || this.map.getZoom() > this.deckParams.visits.minZoom,
-                extensions: [terrainExtension],
-                terrainDrawMode: 'offset',
+                extensions: extensions,
+                terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
                 updateTriggers: {
                     getRadius: [currentTime, isOverview],
                     getFillColor: [currentTime, isOverview],
@@ -496,7 +498,7 @@ class MapRenderer {
             }),
 
             new deck.ScatterplotLayer({
-                id: 'place-inner-circles',
+                id: `place-inner-circles-${layerKey}`,
                 data: places,
                 getPosition: d => d.coordinates,
                 getRadius: 8,
@@ -513,8 +515,8 @@ class MapRenderer {
                     const alpha = (isOverview || isActive) ? 255 : 0;
                     return [255, 255, 255, alpha];
                 },
-                extensions: [terrainExtension],
-                terrainDrawMode: 'offset',
+                extensions: extensions,
+                terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
                 updateTriggers: {
                     getFillColor: [currentTime, isOverview],
                     getLineColor: [currentTime, isOverview],
@@ -633,9 +635,30 @@ class MapRenderer {
     _switchTerrainLayer(enable) {
         if (enable) {
             this.map.setLayoutProperty('hillshading', 'visibility', 'visible');
+            this.terrainLayer = new deck.TerrainLayer({
+                id: 'terrain-loader',
+                // Use the same Mapterhorn/MapLibre source
+                elevationData: 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp',
+                elevationDecoder: {
+                    rScaler: 256,
+                    gScaler: 1,
+                    bScaler: 1 / 256,
+                    offset: -32768
+                },
+                minZoom: 0,
+                maxZoom: 14,
+                elevationScale: 1.5,
+                bounds: [-180, -90, 180, 90], // Global bounds help with alignment
+                operation: 'terrain',
+                loadOptions: {
+                    fetch: {
+                        priority: 'high'
+                    }
+                }
+            });
             this.map.setTerrain({
                 source: 'terrain-source',
-                exaggeration: 1.5
+                exaggeration: 1
             });
         } else {
             this.map.setLayoutProperty('hillshading', 'visibility', 'none');

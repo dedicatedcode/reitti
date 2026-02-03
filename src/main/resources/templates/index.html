@@ -1278,48 +1278,42 @@
         }
         mapRenderer.updateViewState(createViewState([]));
     }
+
     function toggle3DView() {
-        const icon = toggle3dBtn.querySelector('i');
         const span = toggle3dBtn.querySelector('span');
         const is3D = toggle3dBtn.classList.contains('active');
-        
+
         if (is3D) {
             // Switch to 2D
-            localStorage.setItem('3d', false)
+            localStorage.setItem('3d', 'false')
             toggle3dBtn.classList.remove('active');
-            span.textContent = locale.map.displayControl.mode["3D"].text;
-            toggle3dBtn.title = locale.map.displayControl.mode["3D"].title;
-            icon.classList.add('is-3d')
+            span.textContent = locale.map.displayControl.mode["2D"].text;
+            toggle3dBtn.title = locale.map.displayControl.mode["2D"].title;
 
         } else {
             // Switch to 3D
-            localStorage.setItem('3d', true)
+            localStorage.setItem('3d', 'true')
             toggle3dBtn.classList.add('active');
-            span.textContent = locale.map.displayControl.mode["2D"].text;
-            toggle3dBtn.title = locale.map.displayControl.mode["2D"].title;
-            icon.classList.remove('is-3d')
+            span.textContent = locale.map.displayControl.mode["3D"].text;
+            toggle3dBtn.title = locale.map.displayControl.mode["3D"].title;
         }
         mapRenderer.updateViewState(createViewState([]));
     }
 
     function initialize3DButtonState() {
         const toggle3dBtn = document.getElementById('toggle-3d-btn');
-        const icon = toggle3dBtn.querySelector('i');
         const span = toggle3dBtn.querySelector('span');
         
         // Check initial map state
         const is3D = localStorage.getItem('3d') === 'true';
-        
         if (is3D) {
             toggle3dBtn.classList.add('active');
-            span.textContent = '2D';
-            toggle3dBtn.title = 'Switch to 2D View';
-            icon.classList.remove('is-3d')
+            span.textContent = locale.map.displayControl.mode["3D"].text;
+            toggle3dBtn.title = locale.map.displayControl.mode["3D"].title;
         } else {
             toggle3dBtn.classList.remove('active');
-            span.textContent = '3D';
-            toggle3dBtn.title = 'Switch to 3D View';
-            icon.classList.add('is-3d')
+            span.textContent = locale.map.displayControl.mode["2D"].text;
+            toggle3dBtn.title = locale.map.displayControl.mode["2D"].title;
         }
     }
     
