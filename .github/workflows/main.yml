@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - next
 
 permissions:
   packages: write
@@ -54,6 +55,7 @@ jobs:
             ghcr.io/${{ github.repository }}
           tags: |
             type=raw,value=develop,enable={{is_default_branch}}
+            type=raw,value=next,enable=enable=${{ branch == 'next' }}
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
