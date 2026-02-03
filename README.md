@@ -238,7 +238,7 @@ The included `docker-compose.yml` provides a complete setup with:
 
 ### Tags
 
-- `next` - **Alpha**: This is an alpha build that is recreated on every push to the `next` branch. It is mainly intended to have a release before the next version goes into the testing phase. **It is not intended for use outside of development and should not be attached to your important data.** It is guaranteed to have bugs and is considered WIP. It is not guaranteed that it will not only delete your database but probably can break something else.
+- `next` - **⚠️ DANGER: ALPHA BUILD ⚠️** This is an alpha build that is recreated on every push to the `next` branch. **DO NOT USE THIS TAG** unless you are a developer testing the next version. It is guaranteed to have bugs, may delete your database, and can break your data. **NOT FOR PRODUCTION OR IMPORTANT DATA.**
 - `develop` - **Bleeding Edge**: Built from every push to the main branch. For developers and early adopters who want the newest features and don't mind potential instability.
 - `latest` - **Stable Release**: Updated with each stable release. For most users who want reliable, tested functionality with new features.
 - `x.y.z` - **Conservative**: Specific version releases for users who want full control over updates and prefer to manually choose when to upgrade.
