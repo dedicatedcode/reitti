@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.service.integration;
 
+import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.dto.ImmichAsset;
 import com.dedicatedcode.reitti.dto.ImmichSearchResponse;
@@ -34,15 +35,11 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 
-@SpringBootTest
-@ActiveProfiles("test")
+@IntegrationTest
 class ImmichIntegrationServiceTest {
 
     @Autowired
     private ImmichIntegrationService immichIntegrationService;
-
-    @Autowired
-    private ImmichIntegrationJdbcService immichIntegrationJdbcService;
 
     @Autowired
     private RawLocationPointJdbcService rawLocationPointJdbcService;
@@ -349,25 +346,14 @@ class ImmichIntegrationServiceTest {
     void testSearchPhotosForRange_WithMatchingLocation() throws Exception {
         // Given
         User user = testingService.randomUser();
-        String serverUrl = IMMICH_BASE_URL;
         String apiToken = "test-token";
         
         // Create integration
-        immichIntegrationService.saveIntegration(user, serverUrl, apiToken, true, true);
+        immichIntegrationService.saveIntegration(user, IMMICH_BASE_URL, apiToken, true, true);
         
         // Create a raw location point for matching
         Instant photoTime = Instant.parse("2024-01-01T12:00:00Z");
-        rawLocationPointJdbcService.save(user, new RawLocationPoint(
-                null,
-                photoTime,
-                10.0,
-                100.0,
-                new GeoPoint(40.7128, -74.0060),
-                false,
-                false,
-                false,
-                false
-        ));
+        rawLocationPointJdbcService.create(user, new RawLocationPoint(photoTime,new GeoPoint(40.7128, -74.0060), 10.0));
         
         LocalDate start = LocalDate.of(2024, 1, 1);
         LocalDate end = LocalDate.of(2024, 1, 2);
