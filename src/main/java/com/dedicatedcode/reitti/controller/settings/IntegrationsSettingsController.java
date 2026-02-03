@@ -168,10 +168,11 @@ public class IntegrationsSettingsController {
     public String saveImmichIntegration(@RequestParam String serverUrl,
                                         @RequestParam String apiToken,
                                         @RequestParam(defaultValue = "false") boolean enabled,
+                                        @RequestParam(defaultValue = "false") boolean useBestGuessLocation,
                                         @AuthenticationPrincipal User currentUser,
                                         RedirectAttributes model) {
         try {
-            immichIntegrationService.saveIntegration(currentUser, serverUrl, apiToken, enabled);
+            immichIntegrationService.saveIntegration(currentUser, serverUrl, apiToken, useBestGuessLocation, enabled);
             model.addFlashAttribute("successMessage", i18n.translate("integrations.immich.config.saved"));
         } catch (Exception e) {
             model.addFlashAttribute("errorMessage", i18n.translate("integrations.immich.config.error", e.getMessage()));
