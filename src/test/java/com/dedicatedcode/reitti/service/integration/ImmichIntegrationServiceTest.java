@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.service.integration;
 
-import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.dto.ImmichAsset;
 import com.dedicatedcode.reitti.dto.ImmichSearchResponse;
@@ -35,11 +34,15 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 
-@IntegrationTest
+@SpringBootTest
+@ActiveProfiles("test")
 class ImmichIntegrationServiceTest {
 
     @Autowired
     private ImmichIntegrationService immichIntegrationService;
+
+    @Autowired
+    private ImmichIntegrationJdbcService immichIntegrationJdbcService;
 
     @Autowired
     private RawLocationPointJdbcService rawLocationPointJdbcService;
@@ -346,14 +349,25 @@ class ImmichIntegrationServiceTest {
     void testSearchPhotosForRange_WithMatchingLocation() throws Exception {
         // Given
         User user = testingService.randomUser();
+        String serverUrl = IMMICH_BASE_URL;
         String apiToken = "test-token";
         
         // Create integration
-        immichIntegrationService.saveIntegration(user, IMMICH_BASE_URL, apiToken, true, true);
+        immichIntegrationService.saveIntegration(user, serverUrl, apiToken, true, true);
         
         // Create a raw location point for matching
         Instant photoTime = Instant.parse("2024-01-01T12:00:00Z");
-        rawLocationPointJdbcService.create(user, new RawLocationPoint(photoTime,new GeoPoint(40.7128, -74.0060), 10.0));
+        rawLocationPointJdbcService.save(user, new RawLocationPoint(
+                null,
+                photoTime,
+                10.0,
+                100.0,
+                new GeoPoint(40.7128, -74.0060),
+                false,
+                false,
+                false,
+                false
+        ));
         
         LocalDate start = LocalDate.of(2024, 1, 1);
         LocalDate end = LocalDate.of(2024, 1, 2);
@@ -390,6 +404,62 @@ class ImmichIntegrationServiceTest {
         assertTrue(photo.isTimeMatched());
         assertEquals(40.7128, photo.getLatitude());
         assertEquals(-74.0060, photo.getLongitude());
+        mockServer.verify();
+    }
+
+    @Test
+    void testSearchPhotosForRange_BestGuessLocationDisabled_PhotoWithoutExifNotReturned() throws Exception {
+        // Given
+        User user = testingService.randomUser();
+        String serverUrl = IMMICH_BASE_URL;
+        String apiToken = "test-token";
+        
+        // Create integration with useBestGuessLocation = false
+        immichIntegrationService.saveIntegration(user, serverUrl, apiToken, false, true);
+        
+        // Create a raw location point for matching
+        Instant photoTime = Instant.parse("2024-01-01T12:00:00Z");
+        rawLocationPointJdbcService.save(user, new RawLocationPoint(
+                null,
+                photoTime,
+                10.0,
+                100.0,
+                new GeoPoint(40.7128, -74.0060),
+                false,
+                false,
+                false,
+                false
+        ));
+        
+        LocalDate start = LocalDate.of(2024, 1, 1);
+        LocalDate end = LocalDate.of(2024, 1, 2);
+        String timezone = "UTC";
+        
+        // Create mock asset without EXIF location
+        ImmichAsset asset = new ImmichAsset();
+        asset.setId("photo-1");
+        asset.setOriginalFileName("test.jpg");
+        asset.setLocalDateTime("2024-01-01T12:00:00Z");
+        asset.setExifInfo(new ImmichAsset.ExifInfo());
+        
+        // Mock the search endpoint
+        ImmichSearchResponse searchResponse = new ImmichSearchResponse();
+        ImmichSearchResponse.AssetsResult assetsResult = new ImmichSearchResponse.AssetsResult();
+        assetsResult.setItems(List.of(asset));
+        assetsResult.setTotal(1);
+        searchResponse.setAssets(assetsResult);
+        
+        mockServer.expect(requestTo(IMMICH_BASE_URL + "/api/search/metadata"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("x-api-key", apiToken))
+                .andRespond(withSuccess(objectMapper.writeValueAsString(searchResponse), MediaType.APPLICATION_JSON));
+        
+        // When
+        List<PhotoResponse> photos = immichIntegrationService.searchPhotosForRange(user, start, end, timezone);
+        
+        // Then
+        assertNotNull(photos);
+        assertEquals(0, photos.size());
         mockServer.verify();
     }
 
