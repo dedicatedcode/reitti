@@ -29,34 +29,26 @@ public class StatisticsController {
     }
 
     @GetMapping
-    public String statistics(Model model) {
-        return "statistics";
-    }
-
-    @GetMapping("/years-navigation")
-    public String yearsNavigation(@AuthenticationPrincipal User user, Model model) {
+    public String statistics(@AuthenticationPrincipal User user, Model model) {
+        model.addAttribute("activeSection", "overall");
         model.addAttribute("years", statisticsService.getAvailableYears(user));
-        return "fragments/statistics :: years-navigation";
-    }
-
-    @GetMapping("/overall")
-    public String overallStatistics(@AuthenticationPrincipal User user, Model model) {
         model.addAttribute("statisticsType", "overall");
         model.addAttribute("title", i18nService.translate("statistics.title.overall"));
         model.addAttribute("topVisits", statisticsService.getOverallTopVisits(user));
-        
+
         try {
             String transportStatsJson = objectMapper.writeValueAsString(statisticsService.getOverallTransportStatistics(user));
             model.addAttribute("transportStats", transportStatsJson);
         } catch (JsonProcessingException e) {
             model.addAttribute("transportStats", "[]");
         }
-        
-        return "fragments/statistics :: statistics-content";
+        return "statistics";
     }
 
     @GetMapping("/{year}")
     public String yearStatistics(@PathVariable Integer year, @AuthenticationPrincipal User user, Model model) {
+        model.addAttribute("activeSection", year);
+        model.addAttribute("years", statisticsService.getAvailableYears(user));
         model.addAttribute("statisticsType", "year");
         model.addAttribute("year", year);
         model.addAttribute("title", i18nService.translate("statistics.title.year", year + ""));
@@ -76,8 +68,8 @@ public class StatisticsController {
         // Add months for the year
         java.util.List<Integer> months = java.util.Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
         model.addAttribute("months", months);
-        
-        return "fragments/statistics :: statistics-content";
+
+        return "statistics";
     }
     
     @GetMapping("/{year}/{month}")

@@ -15,19 +15,113 @@
     <script th:src="@{/js/vendor/leaflet.js}"></script>
     <script th:src="@{/js/vendor/TileLayer.Grayscale.js}"></script>
 </head>
-<body class="background-dark statistics-page">
-<div id="statistics-panel"></div>
+<body class="settings-page">
 <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('statistics')}"></div>
+<div class="settings-container">
+    <div th:replace="~{fragments/statistics :: years-navigation(${activeSection})}"></div>
+    <div id="statistics-panel" class="settings-content-area"
+         th:attr="data-statistics-type=${statisticsType},
+              data-year=${year},
+              data-month=${month},
+              data-transport-stats=${transportStats != null ? transportStats : '[]'},
+              data-breakdown-transport=${breakdownTransportData != null ? breakdownTransportData : '[]'}">
 
-<div class="timeline">
-    <div class="timeline-container">
-        <div id="years-navigation" 
-             th:hx-get="@{/statistics/years-navigation}"
-             hx-trigger="load">
-            <div class="photo-modal-loading-spinner htmx-indicator" th:text="#{timeline.loading}">Loading...</div>
+        <h2 th:text="${title}">Statistics</h2>
+
+        <!-- Check if there's any data available -->
+        <div th:if="${topVisits == null or topVisits.isEmpty()} and ${transportStats == null or transportStats == '[]'}"
+             class="no-data-message" th:text="#{statistics.no.data}">No data available</div>
+
+        <!-- Top Visits Section -->
+        <div th:if="${topVisits != null and !topVisits.isEmpty()}" class="statistics-section">
+            <h3 th:text="#{statistics.top.places}">Top Places by Stay Time</h3>
+            <div class="places-stats-grid">
+                <div class="place-stats-card" th:each="visit, visitStat : ${topVisits}">
+                    <div class="place-map-container">
+                        <div class="place-map"
+                             th:id="'place-map-' + ${visitStat.index}"
+                             th:data-lat="${visit.latitude}"
+                             th:data-lng="${visit.longitude}"></div>
+                    </div>
+                    <div class="place-name" th:text="${visit.placeName}">Home</div>
+                    <div class="place-stats">
+                        <div class="place-stat-item">
+                            <span class="place-stat-label" th:text="#{statistics.total.hours}">Total Hours</span>
+                            <span class="place-stat-value" th:text="${#numbers.formatDecimal(visit.totalStayTimeHours, 1, 2)} + 'h'">2400.00h</span>
+                        </div>
+                        <div class="place-stat-item">
+                            <span class="place-stat-label" th:text="#{statistics.visits}">Visits</span>
+                            <span class="place-stat-value" th:text="${visit.visitCount}">365</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
+
+        <!-- Transport Statistics Section -->
+        <div th:if="${transportStats != null and transportStats != '[]'}" class="statistics-section">
+            <h3 th:text="#{statistics.transport.distance}">Distance by Transport Mode</h3>
+
+            <div th:if="${statisticsType == 'overall'}" class="pie-chart-container">
+                <canvas id="transportPieChart_overall"></canvas>
+            </div>
+
+            <div th:if="${statisticsType == 'year'}" class="transport-charts-container">
+                <div class="transport-chart-section">
+                    <div class="transport-chart-title" th:text="#{statistics.transport.distribution}">Transport Distribution</div>
+                    <div class="pie-chart-container">
+                        <canvas th:id="'transportPieChart_' + ${year}"></canvas>
+                    </div>
+                </div>
+                <div class="transport-chart-section">
+                    <div class="transport-chart-title" th:text="#{statistics.monthly.breakdown}">Monthly Breakdown</div>
+                    <div class="chart-container">
+                        <canvas th:id="'monthlyTransportChart_' + ${year}"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div th:if="${statisticsType == 'month'}" class="transport-charts-container">
+                <div class="transport-chart-section">
+                    <div class="transport-chart-title" th:text="#{statistics.transport.distribution}">Transport Distribution</div>
+                    <div class="pie-chart-container">
+                        <canvas th:id="'transportPieChart_' + ${year} + '_' + ${month}"></canvas>
+                    </div>
+                </div>
+                <div class="transport-chart-section">
+                    <div class="transport-chart-title" th:text="#{statistics.daily.breakdown}">Daily Breakdown</div>
+                    <div class="chart-container">
+                        <canvas th:id="'dailyTransportChart_' + ${year} + '_' + ${month}"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monthly breakdown for year view -->
+        <div th:if="${statisticsType == 'year' and months != null and !months.isEmpty()}" class="statistics-section">
+            <h3 th:text="#{statistics.monthly.breakdown}">Monthly Breakdown</h3>
+            <div class="months-grid">
+                <div class="month-item" th:each="month, iterStats : ${months}"
+                     th:attr="hx-get=@{'/statistics/' + ${year} + '/' + ${month}},
+                          hx-target='#month-details-' + ${month},
+                          data-year=${year},
+                          data-month=${month},
+                          hx-trigger=${iterStats.index == 0 ? 'intersect once' : 'load'}">
+                    <div th:id="'month-details-' + ${month}" class="month-details"></div>
+                </div>
+            </div>
+        </div>
+
+        <script th:inline="javascript">
+            window.setTimeout(() => {
+                initializePlaceMaps();
+                renderCharts();
+            }, 100)
+        </script>
+
     </div>
-</div>
+
+    </div>
 <script th:inline="javascript">
     window.userSettings = /*[[${userSettings}]]*/ {}
     window.contextPath = /*[[@{/}]]*/ "/";
