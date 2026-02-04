@@ -291,8 +291,8 @@
     </div>
 </div>
 
-<div class="years-navigation" th:fragment="years-navigation">
-    <div class="timeline-entry trip active" id="overall-entry" data-year="overall"
+<div class="year-nav" th:fragment="years-navigation">
+    <div class="year-nav-item active" id="overall-entry" data-year="overall"
          th:hx-get="@{/memories/all}"
          hx-target=".memories-overview"
          hx-trigger="load, click[shouldTrigger(this)]"
@@ -300,7 +300,7 @@
          hx-swap="outerHTML">
         <div class="entry-description" th:text="#{memory.list.all}">All</div>
     </div>
-    <div class="timeline-entry trip" th:each="year : ${years}"
+    <div class="year-nav-item" th:each="year : ${years}"
          th:attr="hx-get=@{'/memories/year/'+ ${year}}, data-year=${year}"
          hx-target=".memories-overview"
          hx-trigger="click[shouldTrigger(this)]"
@@ -310,14 +310,14 @@
     </div>
     <script>
         new function () {
-            document.querySelector('.years-navigation').addEventListener('click', function (event) {
-                const entry = event.target.closest('.timeline-entry');
+            document.querySelector('.year-nav').addEventListener('click', function (event) {
+                const entry = event.target.closest('.year-nav-item');
                 if (!entry) return;
                 const isCurrentlyActive = entry.classList.contains('active');
                 if (isCurrentlyActive) {
                     return;
                 }
-                document.querySelectorAll('.timeline-container .timeline-entry')
+                document.querySelectorAll('.year-nav .year-nav-item')
                     .forEach(e => e.classList.remove('active'));
                 entry.classList.add('active');
             });

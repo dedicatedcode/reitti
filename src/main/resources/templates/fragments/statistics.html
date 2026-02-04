@@ -2,26 +2,6 @@
 <html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
 <body>
 
-<div class="settings-nav" th:fragment="years-navigation(activeSection)">
-    <a th:href="@{/statistics}" class="settings-nav-item"
-       th:classappend="${activeSection == 'overall'} ? 'active' : ''"
-       th:text="#{statistics.overall}">Overall</a>
-    <a class="settings-nav-item" th:each="year : ${years}"
-         th:href="@{'/statistics/'+ ${year}}"
-       th:classappend="${activeSection == year} ? 'active' : ''"
-       th:text="${year}">2024</a>
-    <script>
-        // Initialize global chart data storage
-        if (!window.chartData) {
-            window.chartData = {
-                transport: {},
-                monthlyTransport: {},
-                dailyTransport: {}
-            };
-        }
-    </script>
-</div>
-
 
 <div th:fragment="month-content" class="month-content"
      th:attr="data-year=${year},
@@ -79,7 +59,6 @@
             </div>
         </div>
     </div>
-
     <script th:inline="javascript">
         window.setTimeout(() => {
             initializePlaceMaps();

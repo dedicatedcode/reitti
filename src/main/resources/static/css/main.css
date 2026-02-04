@@ -1,3 +1,5 @@
+@import "year-navigation.css";
+
 /* fraunces-100 - latin_latin-ext_vietnamese */
 @font-face {
     font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
@@ -1437,6 +1439,7 @@ body.auto-update-mode .today-fab {
     display: block;
     margin-bottom: 0;
     border-bottom: none;
+    font-size: 1.1rem;
 }
 
 .settings-page .navigation-container {
@@ -1467,6 +1470,7 @@ body.auto-update-mode .today-fab {
     border-bottom: none;
     font-weight: bold;
     color: var(--color-highlight);
+    font-size: 1.2rem;
 }
 
 .settings-content-area {
@@ -1864,8 +1868,6 @@ button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
 }
-
-
 
 .connected-account-row {
     display: flex;
@@ -2345,7 +2347,6 @@ button:disabled {
 }
 
 .memories-overview {
-    margin-left: 30rem;
     color: var(--color-text-white);
     font-family: var(--serif-font);
     background: transparent;
@@ -2941,3 +2942,4 @@ button:disabled {
         z-index: 1;
     }
 }
+

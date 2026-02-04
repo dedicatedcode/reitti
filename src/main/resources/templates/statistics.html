@@ -18,7 +18,15 @@
 <body class="settings-page">
 <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('statistics')}"></div>
 <div class="settings-container">
-    <div th:replace="~{fragments/statistics :: years-navigation(${activeSection})}"></div>
+    <div class="settings-nav">
+        <a th:href="@{/statistics}" class="settings-nav-item"
+           th:classappend="${activeSection == 'overall'} ? 'active' : ''"
+           th:text="#{statistics.overall}">Overall</a>
+        <a class="settings-nav-item" th:each="year : ${years}"
+           th:href="@{'/statistics/'+ ${year}}"
+           th:classappend="${activeSection == year} ? 'active' : ''"
+           th:text="${year}">2024</a>
+    </div>
     <div id="statistics-panel" class="settings-content-area"
          th:attr="data-statistics-type=${statisticsType},
               data-year=${year},
@@ -127,9 +135,6 @@
     window.contextPath = /*[[@{/}]]*/ "/";
     window.contextPath = window.contextPath.replace(/\/$/, '');
 
-    function shouldTrigger(element) {
-        return !element.classList.contains('active');
-    }
     function initializePlaceMaps() {
         const mapContainers = document.querySelectorAll('.place-map:not([data-map-initialized])');
         mapContainers.forEach((container, index) => {
@@ -185,7 +190,7 @@
             return 'km';
         }
         
-        const statisticsContainers = document.querySelectorAll('.statistics-content:not([data-charts-initialized])');
+        const statisticsContainers = document.querySelectorAll('.settings-content-area:not([data-charts-initialized])');
 
         statisticsContainers.forEach(container => {
             container.setAttribute('data-charts-initialized', 'true');

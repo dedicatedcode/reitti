@@ -17,19 +17,19 @@
     <script th:src="@{/js/datetime-picker.js}"></script>
     <script th:src="@{/js/util.js}"></script>
 </head>
-<body class="memories-page">
-    <div id="memories-panel" class="memories-overview"></div>
+<body class="memories-page settings-page">
     <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('memories')}"></div>
+    <div class="settings-container">
 
-    <div class="timeline">
-        <div class="timeline-container">
-            <div id="years-navigation"
-                 th:hx-get="@{/memories/years-navigation}"
-                 hx-trigger="load">
-                <div class="photo-modal-loading-spinner htmx-indicator" th:text="#{timeline.loading}">Loading...</div>
-            </div>
+    <div class="year-nav-container">
+        <div id="years-navigation"
+             th:hx-get="@{/memories/years-navigation}"
+             hx-trigger="load"
+            hx-target=".year-nav-container">
+            <div class="photo-modal-loading-spinner htmx-indicator" th:text="#{timeline.loading}">Loading...</div>
         </div>
     </div>
+    <div id="memories-panel" class="memories-overview"></div>
 
     <!-- Memory Processing Overlay -->
     <div id="memory-processing-overlay" class="memory-processing-overlay">
