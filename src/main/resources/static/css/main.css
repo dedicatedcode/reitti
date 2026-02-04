@@ -1154,7 +1154,6 @@ body.auto-update-mode .today-fab {
 }
 
 .statistics-content {
-    flex: 1;
     color: var(--color-text-white);
     font-family: var(--serif-font);
     background: transparent;
@@ -1323,7 +1322,6 @@ body.auto-update-mode .today-fab {
     border: 1px solid var(--color-highlight);
     border-radius: 12px;
     padding: 1.5rem;
-    overflow: hidden;
 }
 
 .transport-chart-title {
@@ -1476,7 +1474,8 @@ body.auto-update-mode .today-fab {
 
 .settings-content-area {
     flex: 1;
-    padding: 24px;
+    padding-bottom: 24px;
+    padding-right: 24px;
     line-height: 1.4;
 }
 
@@ -1596,6 +1595,10 @@ body.auto-update-mode .today-fab {
     .settings-page .settings-nav-item.active {
         border-left: none;
         border-bottom-color: var(--color-highlight);
+    }
+
+    .settings-content-area {
+        padding: 20px;
     }
 
     .settings-header {

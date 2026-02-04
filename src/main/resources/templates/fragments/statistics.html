@@ -2,6 +2,147 @@
 <html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
 <body>
 
+<div class="years-navigation" th:fragment="years-navigation">
+    <div class="timeline-entry trip active" id="overall-entry" data-year="overall"
+         th:hx-get="@{/statistics/overall}"
+         hx-target="#statistics-panel"
+         hx-trigger="load, click[shouldTrigger(this)]"
+         hx-swap="outerHTML">
+        <div class="entry-description" th:text="#{statistics.overall}">Overall</div>
+    </div>
+    <div class="timeline-entry trip" th:each="year : ${years}"
+         th:attr="hx-get=@{'/statistics/'+ ${year}}, data-year=${year}"
+         hx-target="#statistics-panel"
+         hx-trigger="click[shouldTrigger(this)]"
+         hx-swap="outerHTML">
+        <div class="entry-description" th:text="${year}">2024</div>
+    </div>
+    <script>
+        // Initialize global chart data storage
+        if (!window.chartData) {
+            window.chartData = {
+                transport: {},
+                monthlyTransport: {},
+                dailyTransport: {}
+            };
+        }
+
+        document.querySelector('.years-navigation').addEventListener('click', function (event) {
+            const entry = event.target.closest('.timeline-entry');
+            if (!entry) return;
+            const isCurrentlyActive = entry.classList.contains('active');
+            if (isCurrentlyActive) {
+                return;
+            }
+            document.querySelectorAll('.timeline-container .timeline-entry')
+                .forEach(e => e.classList.remove('active'));
+                entry.classList.add('active');
+
+        });
+    </script>
+</div>
+
+<div th:fragment="statistics-content" id="statistics-panel" class="statistics-content"
+     th:attr="data-statistics-type=${statisticsType},
+              data-year=${year},
+              data-month=${month},
+              data-transport-stats=${transportStats != null ? transportStats : '[]'},
+              data-breakdown-transport=${breakdownTransportData != null ? breakdownTransportData : '[]'}">
+
+    <h2 th:text="${title}">Statistics</h2>
+
+    <!-- Check if there's any data available -->
+    <div th:if="${topVisits == null or topVisits.isEmpty()} and ${transportStats == null or transportStats == '[]'}"
+         class="no-data-message" th:text="#{statistics.no.data}">No data available</div>
+
+    <!-- Top Visits Section -->
+    <div th:if="${topVisits != null and !topVisits.isEmpty()}" class="statistics-section">
+        <h3 th:text="#{statistics.top.places}">Top Places by Stay Time</h3>
+        <div class="places-stats-grid">
+            <div class="place-stats-card" th:each="visit, visitStat : ${topVisits}">
+                <div class="place-map-container">
+                    <div class="place-map"
+                         th:id="'place-map-' + ${visitStat.index}"
+                         th:data-lat="${visit.latitude}"
+                         th:data-lng="${visit.longitude}"></div>
+                </div>
+                <div class="place-name" th:text="${visit.placeName}">Home</div>
+                <div class="place-stats">
+                    <div class="place-stat-item">
+                        <span class="place-stat-label" th:text="#{statistics.total.hours}">Total Hours</span>
+                        <span class="place-stat-value" th:text="${#numbers.formatDecimal(visit.totalStayTimeHours, 1, 2)} + 'h'">2400.00h</span>
+                    </div>
+                    <div class="place-stat-item">
+                        <span class="place-stat-label" th:text="#{statistics.visits}">Visits</span>
+                        <span class="place-stat-value" th:text="${visit.visitCount}">365</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transport Statistics Section -->
+    <div th:if="${transportStats != null and transportStats != '[]'}" class="statistics-section">
+        <h3 th:text="#{statistics.transport.distance}">Distance by Transport Mode</h3>
+
+        <div th:if="${statisticsType == 'overall'}" class="pie-chart-container">
+            <canvas id="transportPieChart_overall"></canvas>
+        </div>
+
+        <div th:if="${statisticsType == 'year'}" class="transport-charts-container">
+            <div class="transport-chart-section">
+                <div class="transport-chart-title" th:text="#{statistics.transport.distribution}">Transport Distribution</div>
+                <div class="pie-chart-container">
+                    <canvas th:id="'transportPieChart_' + ${year}"></canvas>
+                </div>
+            </div>
+            <div class="transport-chart-section">
+                <div class="transport-chart-title" th:text="#{statistics.monthly.breakdown}">Monthly Breakdown</div>
+                <div class="chart-container">
+                    <canvas th:id="'monthlyTransportChart_' + ${year}"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${statisticsType == 'month'}" class="transport-charts-container">
+            <div class="transport-chart-section">
+                <div class="transport-chart-title" th:text="#{statistics.transport.distribution}">Transport Distribution</div>
+                <div class="pie-chart-container">
+                    <canvas th:id="'transportPieChart_' + ${year} + '_' + ${month}"></canvas>
+                </div>
+            </div>
+            <div class="transport-chart-section">
+                <div class="transport-chart-title" th:text="#{statistics.daily.breakdown}">Daily Breakdown</div>
+                <div class="chart-container">
+                    <canvas th:id="'dailyTransportChart_' + ${year} + '_' + ${month}"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly breakdown for year view -->
+    <div th:if="${statisticsType == 'year' and months != null and !months.isEmpty()}" class="statistics-section">
+        <h3 th:text="#{statistics.monthly.breakdown}">Monthly Breakdown</h3>
+        <div class="months-grid">
+            <div class="month-item" th:each="month, iterStats : ${months}"
+                 th:attr="hx-get=@{'/statistics/' + ${year} + '/' + ${month}},
+                          hx-target='#month-details-' + ${month},
+                          data-year=${year},
+                          data-month=${month},
+                          hx-trigger=${iterStats.index == 0 ? 'intersect once' : 'load'}">
+                <div th:id="'month-details-' + ${month}" class="month-details"></div>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        window.setTimeout(() => {
+            initializePlaceMaps();
+            renderCharts();
+        }, 100)
+    </script>
+
+</div>
 
 <div th:fragment="month-content" class="month-content"
      th:attr="data-year=${year},
@@ -59,6 +200,7 @@
             </div>
         </div>
     </div>
+
     <script th:inline="javascript">
         window.setTimeout(() => {
             initializePlaceMaps();
