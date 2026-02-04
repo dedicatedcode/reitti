@@ -1,0 +1,27 @@
+.memories-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-direction: column-reverse;
+    align-items: normal;
+    gap: 16px;
+}
+
+.memories-page .memories-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+@media (min-width: 801px) {
+    .memories-page .memories-grid {
+        grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+    }
+
+    .memories-actions {
+        justify-content: space-between;
+        margin-bottom: 20px;
+        flex-direction: row;
+    }
+}

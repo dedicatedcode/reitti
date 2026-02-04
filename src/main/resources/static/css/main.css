@@ -1,4 +1,5 @@
 @import "year-navigation.css";
+@import "memories.css";
 
 /* fraunces-100 - latin_latin-ext_vietnamese */
 @font-face {
@@ -2403,14 +2404,6 @@ button:disabled {
     width: 100%;
     max-width: 1280px;
 }
-
-.memories-page .memories-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
-    gap: 20px;
-    margin-top: 20px;
-}
-
 
 .memories-page .memory-card {
     background: var(--color-background-dark);
