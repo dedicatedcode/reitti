@@ -33,11 +33,14 @@ public class WebViewController {
 
         return "index";
     }
-    
+
     @GetMapping("/login")
     public String login(Model model) {
-        model.addAttribute("oidcEnabled", oidcEnabled);
+        if (!localLoginEnabled && oidcEnabled) {
+            return "redirect:/oauth2/authorization/oauth";
+        }
         model.addAttribute("localLoginEnabled", localLoginEnabled);
+        model.addAttribute("oidcEnabled", oidcEnabled);
         return "login";
     }
 
