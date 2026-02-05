@@ -2,20 +2,20 @@
 <html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
 <body>
 
-<div class="years-navigation" th:fragment="years-navigation">
-    <div class="timeline-entry trip active" id="overall-entry" data-year="overall"
+<div class="year-nav" th:fragment="years-navigation">
+    <div class="year-nav-item active" id="overall-entry" data-year="overall"
          th:hx-get="@{/statistics/overall}"
          hx-target="#statistics-panel"
          hx-trigger="load, click[shouldTrigger(this)]"
          hx-swap="outerHTML">
-        <div class="entry-description" th:text="#{statistics.overall}">Overall</div>
+        <div th:text="#{statistics.overall}">Overall</div>
     </div>
-    <div class="timeline-entry trip" th:each="year : ${years}"
+    <div class="year-nav-item" th:each="year : ${years}"
          th:attr="hx-get=@{'/statistics/'+ ${year}}, data-year=${year}"
          hx-target="#statistics-panel"
          hx-trigger="click[shouldTrigger(this)]"
          hx-swap="outerHTML">
-        <div class="entry-description" th:text="${year}">2024</div>
+        <div th:text="${year}">2024</div>
     </div>
     <script>
         // Initialize global chart data storage
@@ -27,18 +27,19 @@
             };
         }
 
-        document.querySelector('.years-navigation').addEventListener('click', function (event) {
-            const entry = event.target.closest('.timeline-entry');
-            if (!entry) return;
-            const isCurrentlyActive = entry.classList.contains('active');
-            if (isCurrentlyActive) {
-                return;
-            }
-            document.querySelectorAll('.timeline-container .timeline-entry')
-                .forEach(e => e.classList.remove('active'));
+        new function () {
+            document.querySelector('.year-nav').addEventListener('click', function (event) {
+                const entry = event.target.closest('.year-nav-item');
+                if (!entry) return;
+                const isCurrentlyActive = entry.classList.contains('active');
+                if (isCurrentlyActive) {
+                    return;
+                }
+                document.querySelectorAll('.year-nav .year-nav-item')
+                    .forEach(e => e.classList.remove('active'));
                 entry.classList.add('active');
-
-        });
+            });
+        }()
     </script>
 </div>
 
@@ -84,9 +85,13 @@
     <!-- Transport Statistics Section -->
     <div th:if="${transportStats != null and transportStats != '[]'}" class="statistics-section">
         <h3 th:text="#{statistics.transport.distance}">Distance by Transport Mode</h3>
+        <div th:if="${statisticsType == 'overall'}" class="transport-charts-container">
+            <div class="transport-chart-section">
+                <div class="pie-chart-container">
+                    <canvas id="transportPieChart_overall"></canvas>
 
-        <div th:if="${statisticsType == 'overall'}" class="pie-chart-container">
-            <canvas id="transportPieChart_overall"></canvas>
+                </div>
+            </div>
         </div>
 
         <div th:if="${statisticsType == 'year'}" class="transport-charts-container">
