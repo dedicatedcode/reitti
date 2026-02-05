@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -33,11 +34,14 @@ public class WebViewController {
 
         return "index";
     }
-    
+
     @GetMapping("/login")
     public String login(Model model) {
-        model.addAttribute("oidcEnabled", oidcEnabled);
+        if (!localLoginEnabled && oidcEnabled) {
+            return "redirect:/oauth2/authorization/oauth";
+        }
         model.addAttribute("localLoginEnabled", localLoginEnabled);
+        model.addAttribute("oidcEnabled", oidcEnabled);
         return "login";
     }
 

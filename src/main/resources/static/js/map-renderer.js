@@ -67,9 +67,8 @@ class MapRenderer {
                 shadowOpacity: 155,
                 pathWidth: 2,
                 pathOpacity: 35,
-                staticPathWidth: 2,
-                staticPathOpacity: 150,
-
+                staticPathWidth: 4,
+                staticPathOpacity: 200,
             },
             visits: {
                 minZoom: 12,
@@ -177,7 +176,8 @@ class MapRenderer {
                 right: 100,
                 left: 450
             },
-            duration: 2000,
+            maxZoom: 15,
+            duration: 1000,
             essential: true
         });
     }
