@@ -1,8 +1,8 @@
 package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.H3JdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
@@ -16,10 +16,8 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.chrono.ChronoZonedDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 @Service
 public class LocationDataIngestPipeline {
@@ -31,6 +29,7 @@ public class LocationDataIngestPipeline {
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final UserNotificationService userNotificationService;
     private final LocationDataDensityNormalizer densityNormalizer;
+    private final H3JdbcService h3JdbcService;
 
     @Autowired
     public LocationDataIngestPipeline(AnomalyProcessingService anomalyProcessingService,
@@ -38,13 +37,15 @@ public class LocationDataIngestPipeline {
                                       RawLocationPointJdbcService rawLocationPointJdbcService,
                                       UserSettingsJdbcService userSettingsJdbcService,
                                       UserNotificationService userNotificationService,
-                                      LocationDataDensityNormalizer densityNormalizer) {
+                                      LocationDataDensityNormalizer densityNormalizer,
+                                      H3JdbcService h3JdbcService) {
         this.anomalyProcessingService = anomalyProcessingService;
         this.userJdbcService = userJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.userNotificationService = userNotificationService;
         this.densityNormalizer = densityNormalizer;
+        this.h3JdbcService = h3JdbcService;
     }
 
     @PreDestroy
