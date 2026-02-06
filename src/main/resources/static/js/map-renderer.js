@@ -12,7 +12,8 @@ class MapRenderer {
             animating: false,
             highlightTimes: [],
             is3d: true,
-            renderTerrain: true
+            renderTerrain: true,
+            renderBuildings: true
         }
 
         this.map = new maplibregl.Map({
@@ -101,6 +102,9 @@ class MapRenderer {
         let switchTo2D = false;
         let switchTerrainOn = false;
         let switchTerrainOff = false;
+        let switchBuildingsOn = false;
+        let switchBuildingsOff = false;
+
         if (this.viewState.is3d && !viewState.is3d) {
             switchTo2D = true;
         } else if (!this.viewState.is3d && viewState.is3d) {
@@ -113,13 +117,28 @@ class MapRenderer {
             switchTerrainOn = true;
         }
 
+        if (this.viewState.renderBuildings && (!viewState.renderBuildings || !viewState.is3d)) {
+            switchBuildingsOff = true;
+        } else if (!this.viewState.renderBuildings && viewState.renderBuildings && viewState.is3d) {
+            switchBuildingsOn = true;
+        }
+
         this.viewState = viewState;
-        if (switchTo3D || switchTo2D) {
+        if (switchBuildingsOn || switchBuildingsOff) {
             if (this.map.isStyleLoaded()) {
-                this._switchMapBuildingLayer(switchTo3D);
+                this._switchMapBuildingLayer(switchBuildingsOn && this.viewState.is3d);
             } else {
                 this.map.once('style.load', () => {
-                    this._switchMapBuildingLayer(switchTo3D);
+                    this._switchMapBuildingLayer(switchBuildingsOn && this.viewState.is3d);
+                });
+            }
+        }
+        if (switchTo3D || switchTo2D) {
+            if (this.map.isStyleLoaded()) {
+                this._switchMapBuildingLayer(switchTo3D && this.viewState.renderBuildings);
+            } else {
+                this.map.once('style.load', () => {
+                    this._switchMapBuildingLayer(switchTo3D && this.viewState.renderBuildings);
                 });
             }
 
