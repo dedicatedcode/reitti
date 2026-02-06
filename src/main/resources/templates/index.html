@@ -31,6 +31,7 @@
     <script th:src="@{/js/map-customization.js}"></script>
     <script th:src="@{/js/gps-data-manager.js}"></script>
     <script th:src="@{/js/map-renderer.js}"></script>
+    <script th:src="@{/js/map-controls.js}"></script>
 </head>
 <body>
 
@@ -103,26 +104,7 @@
         <span th:text="#{datepicker.today}">Today</span>
     </button>
 
-    <!-- Map controls button -->
-    <div class="map-controls-section">
-        <button type="button" class="btn fab-btn map-controls-btn" id="map-controls-btn" th:title="#{map.display-control.title}" title="Map Controls">
-            <i class="lni lni-map-marker-1"></i>
-        </button>
-        <div class="map-controls" id="map-controls">
-            <button type="button" class="btn map-control-btn" id="toggle-3d-btn" title="Toggle 2D/3D View">
-                <i class="lni lni-map-marker-1"></i>
-                <span th:title="#{map.display-control.mode.3d.text}">3D</span>
-            </button>
-            <button type="button" class="btn map-control-btn" id="compass-btn" th:title="#{map.display-control.north-up.title}" title="Reset North Up">
-                <i class="lni lni-location-arrow-right"></i>
-                <span th:title="#{map.display-control.north-up}">North up</span>
-            </button>
-            <button type="button" class="btn map-control-btn active" id="toggle-terrain-btn" th:title="#{map.display-control.terrain.disable.title}" title="Switch terrain mode">
-                <i class="lni lni-mountains-2"></i>
-                <span th:title="#{map.display-control.terrain.disable.text}">Disable Terrain</span>
-            </button>
-        </div>
-    </div>
+    <div id="map-controls-section"></div>
 
     <!-- Settings button -->
     <button type="button" class="btn fab-btn settings-btn" id="settings-btn" th:title="#{map.map-settings.button.title}" title="Settings">
@@ -232,6 +214,10 @@
                         title:  /*[[#{map.display-control.mode.3d.title}]]*/ 'Switch to 3D view',
                     }
                 },
+                northUp: {
+                    text:  /*[[#{map.display-control.north-up.text}]]*/ '3D',
+                    title:  /*[[#{map.display-control.north-up.title}]]*/ 'Switch to 3D view',
+                },
                 terrain: {
                     enable: {
                         text: /*[[#{map.display-control.terrain.enable.text}]]*/ 'Enable Terrain',
@@ -240,6 +226,16 @@
                     disable: {
                         text: /*[[#{map.display-control.terrain.disable.text}]]*/ 'Disable Terrain',
                         title: /*[[#{map.display-control.terrain.disable.title}]]*/ 'Disable Terrain',
+                    }
+                },
+                buildings: {
+                    enable: {
+                        text: /*[[#{map.display-control.buildings.enable.text}]]*/ 'Enable Terrain',
+                        title: /*[[#{map.display-control.buildings.enable.title}]]*/ 'Enable Terrain',
+                    },
+                    disable: {
+                        text: /*[[#{map.display-control.buildings.disable.text}]]*/ 'Disable Terrain',
+                        title: /*[[#{map.display-control.buildings.disable.title}]]*/ 'Disable Terrain',
                     }
                 }
             }
@@ -264,9 +260,6 @@
 
     const aggregateToggleElement = document.getElementById('aggregate-toggle');
     const viewModeElement = document.getElementById('view-mode');
-    const toggle3dBtn = document.getElementById('toggle-3d-btn');
-    const toggleTerrainModeBtn = document.getElementById('toggle-terrain-btn');
-    const compassBtn = document.getElementById('compass-btn');
 
     const timelineControl = new TimelineControl(
         document.getElementById('timeline-controls'),
@@ -279,7 +272,7 @@
 
     const photoClient = new PhotoClient(true);
     const mapRenderer = new MapRenderer('new-map', userSettings, photoClient);
-
+    const mapControls = new MapControls('map-controls-section', mapRenderer, window.locale);
 
     let userConfigs = [];
     let animationId = null;
@@ -1009,8 +1002,9 @@
             currentTime: timelineControl.getValue(),
             animating: !timelineControl.isIdle(),
             highlightTimes: highlightTimes,
-            is3d: toggle3dBtn.classList.contains('active'),
-            renderTerrain: toggleTerrainModeBtn.classList.contains('active'),
+            is3d: mapControls.is3d(),
+            renderTerrain: mapControls.isTerrainEnabled(),
+            renderBuildings: mapControls.isBuildingsEnabled(),
         };
     }
 
@@ -1219,26 +1213,6 @@
 
         restoreTimelineControlsState();
 
-        if (toggle3dBtn) {
-            toggle3dBtn.addEventListener('click', function() {
-                toggle3DView();
-            });
-        }
-         if (toggleTerrainModeBtn) {
-            toggleTerrainModeBtn.addEventListener('click', function() {
-                toggleTerrainMode();
-            });
-        }
-
-        if (compassBtn) {
-            compassBtn.addEventListener('click', function() {
-                resetNorthUp();
-            });
-        }
-
-        // Initialize 3D button state when map is ready
-        initialize3DButtonState();
-
         aggregateToggleElement.onchange = (e) => {
             const isAggregate = e.target.checked;
             const params = getTimelineParams();
@@ -1254,72 +1228,6 @@
         };
         mapRenderer.updateViewState(createViewState([]));
     })
-
-    function toggleTerrainMode() {
-        const icon = toggleTerrainModeBtn.querySelector('i');
-        const span = toggleTerrainModeBtn.querySelector('span');
-        const is3D = toggleTerrainModeBtn.classList.contains('active');
-
-        if (is3D) {
-            // Switch to 2D
-            localStorage.setItem('displayTerrain', 'false')
-            toggleTerrainModeBtn.classList.remove('active');
-            span.textContent = locale.map.displayControl.terrain.enable.text;
-            toggleTerrainModeBtn.title = locale.map.displayControl.terrain.enable.title;
-            icon.classList.add('is-3d')
-
-        } else {
-            // Switch to 3D
-            localStorage.setItem('displayTerrain', 'true')
-            toggleTerrainModeBtn.classList.add('active');
-            span.textContent = locale.map.displayControl.terrain.disable.text;
-            toggleTerrainModeBtn.title = locale.map.displayControl.terrain.disable.title;
-            icon.classList.remove('is-3d')
-        }
-        mapRenderer.updateViewState(createViewState([]));
-    }
-
-    function toggle3DView() {
-        const span = toggle3dBtn.querySelector('span');
-        const is3D = toggle3dBtn.classList.contains('active');
-
-        if (is3D) {
-            // Switch to 2D
-            localStorage.setItem('3d', 'false')
-            toggle3dBtn.classList.remove('active');
-            span.textContent = locale.map.displayControl.mode["2D"].text;
-            toggle3dBtn.title = locale.map.displayControl.mode["2D"].title;
-
-        } else {
-            // Switch to 3D
-            localStorage.setItem('3d', 'true')
-            toggle3dBtn.classList.add('active');
-            span.textContent = locale.map.displayControl.mode["3D"].text;
-            toggle3dBtn.title = locale.map.displayControl.mode["3D"].title;
-        }
-        mapRenderer.updateViewState(createViewState([]));
-    }
-
-    function initialize3DButtonState() {
-        const toggle3dBtn = document.getElementById('toggle-3d-btn');
-        const span = toggle3dBtn.querySelector('span');
-        
-        // Check initial map state
-        const is3D = localStorage.getItem('3d') === 'true';
-        if (is3D) {
-            toggle3dBtn.classList.add('active');
-            span.textContent = locale.map.displayControl.mode["3D"].text;
-            toggle3dBtn.title = locale.map.displayControl.mode["3D"].title;
-        } else {
-            toggle3dBtn.classList.remove('active');
-            span.textContent = locale.map.displayControl.mode["2D"].text;
-            toggle3dBtn.title = locale.map.displayControl.mode["2D"].title;
-        }
-    }
-    
-    function resetNorthUp() {
-        mapRenderer.setBearing(0);
-    }
 
     function updateMapMode(value) {
         localStorage.setItem('view-mode', value);
