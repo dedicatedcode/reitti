@@ -7,9 +7,6 @@ class GpsDataManager {
 
         this.timeZone = timeZone || "UTC";
 
-        // Offset Caching to keep the loop fast
-        this._currentOffset = 0;
-        this._lastOffsetCheckTs = -Infinity;
         // 1. Buffers
         //Memory Layout for buffer and cleaned buffer is [Lng, Lat, Alt, LinTs, Day, AggTs]
         this.buffer = new Float32Array(16000 * 6);
@@ -264,14 +261,9 @@ class GpsDataManager {
 
     _addPoint(lng, lat, alt, tsUtc, offsetSeconds) {
         this._ensureCapacity(this.cursor + 1);
-        // This handles DST transitions or long-distance travel
-        if (Math.abs(tsUtc - this._lastOffsetCheckTs) > 3600) {
-            this._currentOffset = this._getOffsetSeconds(tsUtc);
-            this._lastOffsetCheckTs = tsUtc;
-        }
         const timestamp = tsUtc;
         const tsLinear = timestamp;
-        const localTs = timestamp + this._currentOffset;
+        const localTs = timestamp + offsetSeconds;
         const tsAggregate = ((localTs % 86400) + 86400) % 86400;
         let dayIndex = new Date(localTs * 1000).getUTCDay(); // Standard: Sun=0, Mon=1...
         if (this.userSettings.weekStartsOnMonday) {
