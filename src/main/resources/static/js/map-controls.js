@@ -100,7 +100,6 @@ class MapControls {
             this.mapRenderer.setBearing(0);
         });
 
-        debugger
         const is3d = localStorage.getItem('is3d') === 'true';
         if (is3d) {
             this._enable3d();

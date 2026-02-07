@@ -245,15 +245,15 @@ class GpsDataManager {
                 leftover = null;
             }
 
-            const pointsCount = Math.floor(combinedValue.length / 16);
-            if (pointsCount * 12 < combinedValue.length) {
-                leftover = combinedValue.slice(pointsCount * 16);
+            const pointsCount = Math.floor(combinedValue.length / 20);
+            if (pointsCount * 16 < combinedValue.length) {
+                leftover = combinedValue.slice(pointsCount * 20);
             }
 
-            const floatArray = new Float32Array(combinedValue.buffer, combinedValue.byteOffset, pointsCount * 4);
+            const floatArray = new Float32Array(combinedValue.buffer, combinedValue.byteOffset, pointsCount * 5);
 
-            for (let i = 0; i < floatArray.length; i += 4) {
-                this._addPoint(floatArray[i + 1], floatArray[i], floatArray[i + 2], floatArray[i + 3]);
+            for (let i = 0; i < floatArray.length; i += 5) {
+                this._addPoint(floatArray[i + 1], floatArray[i], floatArray[i + 2], floatArray[i + 3], floatArray[i + 4]);
             }
 
             if (onProgress) {
@@ -262,9 +262,8 @@ class GpsDataManager {
         }
     }
 
-    _addPoint(lng, lat, alt, tsUtc) {
+    _addPoint(lng, lat, alt, tsUtc, offsetSeconds) {
         this._ensureCapacity(this.cursor + 1);
-
         // This handles DST transitions or long-distance travel
         if (Math.abs(tsUtc - this._lastOffsetCheckTs) > 3600) {
             this._currentOffset = this._getOffsetSeconds(tsUtc);
