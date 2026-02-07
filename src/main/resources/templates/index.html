@@ -237,6 +237,16 @@
                         text: /*[[#{map.display-control.buildings.disable.text}]]*/ 'Disable Terrain',
                         title: /*[[#{map.display-control.buildings.disable.title}]]*/ 'Disable Terrain',
                     }
+                },
+                satellite: {
+                    enable: {
+                        text: /*[[#{map.display-control.satellite.enable.text}]]*/ 'Enable Terrain',
+                        title: /*[[#{map.display-control.satellite.enable.title}]]*/ 'Enable Terrain',
+                    },
+                    disable: {
+                        text: /*[[#{map.display-control.satellite.disable.text}]]*/ 'Disable Terrain',
+                        title: /*[[#{map.display-control.satellite.disable.title}]]*/ 'Disable Terrain',
+                    }
                 }
             }
         }
@@ -271,8 +281,13 @@
     })
 
     const photoClient = new PhotoClient(true);
-    const mapRenderer = new MapRenderer('new-map', userSettings, photoClient);
-    const mapControls = new MapControls('map-controls-section', mapRenderer, window.locale);
+    const mapControls = new MapControls('map-controls-section', window.locale);
+    const mapRenderer = new MapRenderer('new-map', userSettings, photoClient, createViewState());
+
+    mapControls.on('selectionChanged', (state) => {
+        mapRenderer.updateViewState(createViewState([]));
+    });
+    mapControls.on('compassClicked', () => mapRenderer.setBearing(0));
 
     let userConfigs = [];
     let animationId = null;
@@ -547,7 +562,6 @@
 
     function loadStartingDate() {
         const urlParams = new URLSearchParams(window.location.search);
-        const newestData = window.userSettings.newestData;
 
         let startDate = urlParams.get('startDate');
         let endDate = urlParams.get('endDate');
@@ -997,14 +1011,12 @@
 
     function createViewState(highlightTimes = []) {
         return {
+            ...mapControls.getState(),
             aggregated: aggregateToggleElement.checked,
             viewMode: viewModeElement.value,
             currentTime: timelineControl.getValue(),
             animating: !timelineControl.isIdle(),
             highlightTimes: highlightTimes,
-            is3d: mapControls.is3d(),
-            renderTerrain: mapControls.isTerrainEnabled(),
-            renderBuildings: mapControls.isBuildingsEnabled(),
         };
     }
 

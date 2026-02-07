@@ -1,6 +1,6 @@
 class MapControls {
-    constructor(element, mapRenderer, locale) {
-        this.mapRenderer = mapRenderer;
+    constructor(element, locale) {
+        this.eventListeners = [];
         const defaultLocale = {
             map: {
                 displayControl: {
@@ -56,6 +56,10 @@ class MapControls {
                     <i class="lni lni-buildings-1"></i>
                     <span>${this.locale.map.displayControl.buildings.disable.text}</span>
                 </button>
+                <button type="button" class="btn map-control-btn" id="toggle-satellite-btn" title="${this.locale.map.displayControl.satellite.disable.title}">
+                    <i class="lni lni-globe-stand"></i>
+                    <span>${this.locale.map.displayControl.satellite.disable.text}</span>
+                </button>
             </div>
         </div>
 `
@@ -63,6 +67,7 @@ class MapControls {
         this.toggle3dBtn = document.getElementById('toggle-3d-btn');
         this.toggleTerrainModeBtn = document.getElementById('toggle-terrain-btn');
         this.toggleBuildingsModeBtn = document.getElementById('toggle-buildings-btn');
+        this.toggleSatelliteModeBtn = document.getElementById('toggle-satellite-btn');
         this.compassBtn = document.getElementById('compass-btn');
         this._setup();
     }
@@ -75,7 +80,7 @@ class MapControls {
             } else {
                 this._enable3d();
             }
-            mapRenderer.updateViewState(createViewState([]));
+            this.emit('selectionChanged', this.getState());
         });
         this.toggleTerrainModeBtn.addEventListener('click', () => {
             const isEnabled = this.toggleTerrainModeBtn.classList.contains('active');
@@ -84,7 +89,7 @@ class MapControls {
             } else {
                 this._enableTerrain();
             }
-            mapRenderer.updateViewState(createViewState([]));
+            this.emit('selectionChanged', this.getState());
         });
         this.toggleBuildingsModeBtn.addEventListener('click', () => {
             const isEnabled = this.toggleBuildingsModeBtn.classList.contains('active');
@@ -93,11 +98,20 @@ class MapControls {
             } else {
                 this._enableBuildings();
             }
-            mapRenderer.updateViewState(createViewState([]));
+            this.emit('selectionChanged', this.getState());
+        });
+        this.toggleSatelliteModeBtn.addEventListener('click', () => {
+            const isEnabled = this.toggleSatelliteModeBtn.classList.contains('active');
+            if (isEnabled) {
+                this._disableSatellite();
+            } else {
+                this._enableSatellite();
+            }
+            this.emit('selectionChanged', this.getState());
         });
 
         this.compassBtn.addEventListener('click', () => {
-            this.mapRenderer.setBearing(0);
+            this.emit('compassClicked');
         });
 
         const is3d = localStorage.getItem('is3d') === 'true';
@@ -118,8 +132,22 @@ class MapControls {
         } else {
             this._disableBuildings();
         }
+        const isSatelliteEnabled = localStorage.getItem('displaySatelliteView') === 'true';
+        if (isSatelliteEnabled) {
+            this._enableSatellite()
+        } else {
+            this._disableSatellite();
+        }
     }
 
+    getState() {
+        return {
+            is3d: this.toggle3dBtn.classList.contains('active'),
+            renderTerrain: this.toggleTerrainModeBtn.classList.contains('active'),
+            renderBuildings: this.toggleBuildingsModeBtn.classList.contains('active'),
+            renderSatelliteView: this.toggleSatelliteModeBtn.classList.contains('active'),
+        }
+    }
     _enable3d() {
         const span = this.toggle3dBtn.querySelector('span');
         localStorage.setItem('is3d', 'true')
@@ -162,11 +190,26 @@ class MapControls {
 
     _disableBuildings() {
         const span = this.toggleBuildingsModeBtn.querySelector('span');
-
         localStorage.setItem('displayBuildings', 'false')
         this.toggleBuildingsModeBtn.classList.remove('active');
         span.textContent = this.locale.map.displayControl.buildings.enable.text;
         this.toggleBuildingsModeBtn.title = this.locale.map.displayControl.buildings.enable.title;
+    }
+
+    _enableSatellite() {
+        const span = this.toggleSatelliteModeBtn.querySelector('span');
+        localStorage.setItem('displaySatelliteView', 'true')
+        this.toggleSatelliteModeBtn.classList.add('active');
+        span.textContent = this.locale.map.displayControl.satellite.disable.text;
+        this.toggleSatelliteModeBtn.title = this.locale.map.displayControl.satellite.disable.title;
+    }
+
+    _disableSatellite() {
+        const span = this.toggleSatelliteModeBtn.querySelector('span');
+        localStorage.setItem('displaySatelliteView', 'false')
+        this.toggleSatelliteModeBtn.classList.remove('active');
+        span.textContent = this.locale.map.displayControl.satellite.enable.text;
+        this.toggleSatelliteModeBtn.title = this.locale.map.displayControl.satellite.enable.title;
     }
 
     _deepMerge(target, source) {
@@ -191,5 +234,27 @@ class MapControls {
 
     isBuildingsEnabled() {
         return this.toggleBuildingsModeBtn.classList.contains('active');
+    }
+
+    isSatelliteViewEnabled() {
+        return this.toggleSatelliteModeBtn.classList.contains('active');
+    }
+
+    /** Events **/
+    on(event, callback) {
+        if (!this.eventListeners[event]) this.eventListeners[event] = [];
+        this.eventListeners[event].push(callback);
+    }
+
+    off(event, callback) {
+        if (!this.eventListeners[event]) return;
+        this.eventListeners[event] =
+            this.eventListeners[event].filter(cb => cb !== callback);
+    }
+
+    emit(event, data) {
+        const list = this.eventListeners[event];
+        if (!list || !list.length) return;
+        list.forEach(cb => cb(data));
     }
 }

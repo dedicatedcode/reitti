@@ -1,32 +1,23 @@
 class MapRenderer {
-    constructor(element, userSettings, photoClient) {
+    constructor(element, userSettings, photoClient, initialViewState) {
         this.userSettings = userSettings;
         this.photoClient = photoClient;
         this.gpsDataManagers = [];
 
 
-        this.viewState = {
-            aggregated: false,
-            viewMode: 'LINEAR',
-            currentTime: 0,
-            animating: false,
-            highlightTimes: [],
-            is3d: true,
-            renderTerrain: true,
-            renderBuildings: true
-        }
+        this.viewState = initialViewState
 
         this.map = new maplibregl.Map({
             interleaved: true,
             container: 'new-map',
             style: '/map/reitti.json',
             center: [userSettings.homeLongitude, userSettings.homeLatitude],
-            pitch: 45,
+            pitch: this.viewState.is3d ? 45 : 0,
             maxPitch: 85,
         });
 
         this.map.on('load', () => {
-            this.map.setSourceTileLodParams(1, 10);
+            this.map.setSourceTileLodParams(1, 10); //effectively disabling LOD
         });
 
         this.terrainLayer = new deck.TerrainLayer({
@@ -94,6 +85,16 @@ class MapRenderer {
         };
 
         this.bounds = [];
+
+        this.map.once('style.load', () => {
+            this._switchMapBuildingLayer(this.viewState.renderBuildings && this.viewState.is3d);
+            this._switchTerrainLayer(this.viewState.renderTerrain);
+        });
+        if (!this.viewState.is3d) {
+            this.map.dragRotate.disable();
+            this.map.touchZoomRotate.disableRotation();
+        }
+
         this._setup();
     }
 
@@ -122,7 +123,15 @@ class MapRenderer {
         } else if (!this.viewState.renderBuildings && viewState.renderBuildings && viewState.is3d) {
             switchBuildingsOn = true;
         }
-
+        console.table({
+            ...viewState,
+            "switchTo3D": switchTo3D,
+            "switchTo2D": switchTo2D,
+            "switchTerrainOn": switchTerrainOn,
+            "switchTerrainOff": switchTerrainOff,
+            "switchBuildingsOn": switchBuildingsOn,
+            "switchBuildingsOff": switchBuildingsOff
+        });
         this.viewState = viewState;
         if (switchBuildingsOn || switchBuildingsOff) {
             if (this.map.isStyleLoaded()) {
@@ -638,8 +647,7 @@ class MapRenderer {
     _flyToHomeLocation() {
         this.map.flyTo({
             center: [window.userSettings.homeLongitude, window.userSettings.homeLatitude],
-            zoom: 15,
-            pitch: 45
+            zoom: 15
         });
     }
 
