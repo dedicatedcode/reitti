@@ -89,6 +89,8 @@ class MapRenderer {
         this.map.once('style.load', () => {
             this._switchMapBuildingLayer(this.viewState.renderBuildings && this.viewState.is3d);
             this._switchTerrainLayer(this.viewState.renderTerrain);
+            this._switchSatelliteLayer(this.viewState.renderSatelliteView);
+
         });
         if (!this.viewState.is3d) {
             this.map.dragRotate.disable();
@@ -105,6 +107,8 @@ class MapRenderer {
         let switchTerrainOff = false;
         let switchBuildingsOn = false;
         let switchBuildingsOff = false;
+        let switchSatelliteOn = false;
+        let switchSatelliteOff = false;
 
         if (this.viewState.is3d && !viewState.is3d) {
             switchTo2D = true;
@@ -123,6 +127,13 @@ class MapRenderer {
         } else if (!this.viewState.renderBuildings && viewState.renderBuildings && viewState.is3d) {
             switchBuildingsOn = true;
         }
+
+        if (this.viewState.renderSatelliteView && !viewState.renderSatelliteView) {
+            switchSatelliteOff = true;
+        } else if (!this.viewState.renderSatelliteView && viewState.renderSatelliteView) {
+            switchSatelliteOn = true;
+        }
+
         console.table({
             ...viewState,
             "switchTo3D": switchTo3D,
@@ -130,26 +141,20 @@ class MapRenderer {
             "switchTerrainOn": switchTerrainOn,
             "switchTerrainOff": switchTerrainOff,
             "switchBuildingsOn": switchBuildingsOn,
-            "switchBuildingsOff": switchBuildingsOff
+            "switchBuildingsOff": switchBuildingsOff,
+            "switchSatelliteOn": switchSatelliteOn,
+            "switchSatelliteOff": switchSatelliteOff,
         });
         this.viewState = viewState;
         if (switchBuildingsOn || switchBuildingsOff) {
-            if (this.map.isStyleLoaded()) {
+            this._awaitStyleLoaded(() => {
                 this._switchMapBuildingLayer(switchBuildingsOn && this.viewState.is3d);
-            } else {
-                this.map.once('style.load', () => {
-                    this._switchMapBuildingLayer(switchBuildingsOn && this.viewState.is3d);
-                });
-            }
+            });
         }
         if (switchTo3D || switchTo2D) {
-            if (this.map.isStyleLoaded()) {
+            this._awaitStyleLoaded(() => {
                 this._switchMapBuildingLayer(switchTo3D && this.viewState.renderBuildings);
-            } else {
-                this.map.once('style.load', () => {
-                    this._switchMapBuildingLayer(switchTo3D && this.viewState.renderBuildings);
-                });
-            }
+            });
 
             if (this.map) {
                 if (switchTo2D) {
@@ -161,7 +166,7 @@ class MapRenderer {
                 }
                 this.map.easeTo({
                     pitch: switchTo3D ? 45 : 0,
-                    bearing: switchTo3D? this.map.getBearing() : 0,
+                    bearing: switchTo3D ? this.map.getBearing() : 0,
                     duration: 500, // Mapbox uses 'duration' in ms
                     essential: true
                 });
@@ -169,13 +174,15 @@ class MapRenderer {
         }
 
         if (switchTerrainOn || switchTerrainOff) {
-            if (this.map.isStyleLoaded()) {
-                this._switchTerrainLayer(switchTerrainOn);
-            } else {
-                this.map.once('style.load', () => {
-                    this._switchTerrainLayer(switchTerrainOn);
-                });
-            }
+            this._awaitStyleLoaded(() => {
+                this._switchTerrainLayer(switchTerrainOn)
+            });
+        }
+
+        if (switchSatelliteOn || switchSatelliteOff) {
+            this._awaitStyleLoaded(() => {
+                this._switchSatelliteLayer(switchSatelliteOn && !switchTerrainOn);
+            })
         }
 
         this.gpsDataManagers.forEach(manager => {
@@ -183,11 +190,13 @@ class MapRenderer {
         })
     }
 
-    _switchMapBuildingLayer(is3d) {
-        if (is3d) {
-            this.map.setLayoutProperty('building-3d', 'visibility', 'visible');
+    _awaitStyleLoaded(func) {
+        if (this.map.isStyleLoaded()) {
+            func();
         } else {
-            this.map.setLayoutProperty('building-3d', 'visibility', 'none');
+            this.map.once('style.load', () => {
+                func()
+            });
         }
     }
 
@@ -659,12 +668,52 @@ class MapRenderer {
         });
     }
 
+    _switchSatelliteLayer(enable) {
+        if (this.map.getLayer('satellite-layer')) {
+            this.map.setPaintProperty(
+                'satellite-layer',
+                'raster-opacity',
+                enable ? 1 : 0
+            );
+        }
+        //hide all layers which are not desired
+        const style = this.map.getStyle();
+        if (!style || !style.layers) return;
+
+        // Types of layers that usually look like "ground" or "cartoons"
+        const targetTypes = ['fill', 'background', 'fill-extrusion', 'line'];
+
+        // Layers we NEVER want to hide (like the satellite itself or transparent overlays)
+        const protectedLayers = ['satellite-layer', 'sky', 'building-3d'];
+
+        style.layers.forEach(layer => {
+            if (targetTypes.includes(layer.type) && !protectedLayers.includes(layer.id)) {
+
+                // Determine the correct property name based on layer type
+                let opacityProp = '';
+                if (layer.type === 'line') opacityProp = 'line-opacity';
+                if (layer.type === 'fill') opacityProp = 'fill-opacity';
+                if (layer.type === 'fill-extrusion') opacityProp = 'fill-extrusion-opacity';
+                if (layer.type === 'background') opacityProp = 'background-opacity';
+
+                // Apply the Toggle
+                // If showing satellite -> Opacity 0
+                // If hiding satellite -> Opacity null (Resets to style.json default)
+                this.map.setPaintProperty(
+                    layer.id,
+                    opacityProp,
+                    enable ? 0 : null
+                );
+            }
+        });
+        this.map.setPaintProperty('building-3d', 'fill-extrusion-opacity', enable ? 0.6 : null)
+    }
+
     _switchTerrainLayer(enable) {
         if (enable) {
             this.map.setLayoutProperty('hillshading', 'visibility', 'visible');
             this.terrainLayer = new deck.TerrainLayer({
                 id: 'terrain-loader',
-                // Use the same Mapterhorn/MapLibre source
                 elevationData: 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp',
                 elevationDecoder: {
                     rScaler: 256,
@@ -690,6 +739,14 @@ class MapRenderer {
         } else {
             this.map.setLayoutProperty('hillshading', 'visibility', 'none');
             this.map.setTerrain(null);
+        }
+    }
+
+    _switchMapBuildingLayer(is3d) {
+        if (is3d) {
+            this.map.setLayoutProperty('building-3d', 'visibility', 'visible');
+        } else {
+            this.map.setLayoutProperty('building-3d', 'visibility', 'none');
         }
     }
 }

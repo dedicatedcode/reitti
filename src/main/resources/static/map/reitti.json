@@ -49,6 +49,32 @@
     "source": "terrain-source",
     "exaggeration": 1
   },
+  "fog": {
+    "range": [0.5, 10],
+    "color": "#144272",
+    "high-color": "#010b19",
+    "space-color": "#010b19",
+    "horizon-blend": 0.1
+  },
+  "light": {
+    "anchor": "viewport",
+    "color": "#f0f9ff",
+    "intensity": 0.3,
+    "position": [1.15, 210, 30]
+  },
+  "sky": {
+    "sky-color": [
+      "interpolate", ["linear"], ["zoom"],
+      0, "#010b19",
+      10, "#144272"
+    ],
+    "horizon-color": "#205295",
+    "fog-color": "#144272",
+    "fog-ground-blend": 0.5,
+    "horizon-fog-blend": 0.8,
+    "sky-horizon-blend": 0.8,
+    "atmosphere-blend": 0.8
+  },
   "sprite": "",
   "glyphs": "/fonts/{fontstack}/{range}.pbf",
   "layers": [
@@ -225,12 +251,12 @@
       "type": "raster",
       "source": "satellite-source",
       "paint": {
-        "raster-opacity": 1,
+        "raster-opacity": 0,
         "raster-opacity-transition": {
           "duration": 500
         }
       },
-      "layout": {"visibility": "none"}
+      "layout": {"visibility": "visible"}
     },
     {
       "id": "water_name",
