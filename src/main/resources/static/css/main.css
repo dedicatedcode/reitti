@@ -199,6 +199,11 @@ header {
 
 #new-map,
 #map {
+    background-image: url('../img/stardust.png'),
+    radial-gradient(circle at center, #0a2647 0%, #010409 100%);
+    background-color: #010409;
+    background-size: cover;
+    background-attachment: fixed; /* Keeps stars still while panning the globe */
     position: absolute;
     top: 0;
     left: 0;

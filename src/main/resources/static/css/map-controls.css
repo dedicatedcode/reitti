@@ -29,7 +29,7 @@
     visibility: visible;
 }
 
-.map-controls-section .fab-btn {
+#map-controls-section .map-controls-section .fab-btn {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
     border: none;
@@ -41,6 +41,10 @@
     align-items: center;
     padding: 4px 8px;
     white-space: nowrap;
+}
+
+.map-controls button i {
+    font-size: 1.3rem;
 }
 
 .map-control-btn.active {

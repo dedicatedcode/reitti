@@ -14,6 +14,7 @@ class MapRenderer {
             center: [userSettings.homeLongitude, userSettings.homeLatitude],
             pitch: this.viewState.is3d ? 45 : 0,
             maxPitch: 85,
+            minZoom: 2,
         });
 
         this.map.on('load', () => {
@@ -90,6 +91,7 @@ class MapRenderer {
             this._switchMapBuildingLayer(this.viewState.renderBuildings && this.viewState.is3d);
             this._switchTerrainLayer(this.viewState.renderTerrain);
             this._switchSatelliteLayer(this.viewState.renderSatelliteView);
+            this._switchProjection(this.viewState.renderGlobe);
 
         });
         if (!this.viewState.is3d) {
@@ -109,6 +111,7 @@ class MapRenderer {
         let switchBuildingsOff = false;
         let switchSatelliteOn = false;
         let switchSatelliteOff = false;
+        let toggleGlobeMode = false;
 
         if (this.viewState.is3d && !viewState.is3d) {
             switchTo2D = true;
@@ -134,17 +137,10 @@ class MapRenderer {
             switchSatelliteOn = true;
         }
 
-        console.table({
-            ...viewState,
-            "switchTo3D": switchTo3D,
-            "switchTo2D": switchTo2D,
-            "switchTerrainOn": switchTerrainOn,
-            "switchTerrainOff": switchTerrainOff,
-            "switchBuildingsOn": switchBuildingsOn,
-            "switchBuildingsOff": switchBuildingsOff,
-            "switchSatelliteOn": switchSatelliteOn,
-            "switchSatelliteOff": switchSatelliteOff,
-        });
+        if ((this.viewState.renderGlobe && !viewState.renderGlobe) || (!this.viewState.renderGlobe && viewState.renderGlobe)) {
+            toggleGlobeMode = true;
+        }
+
         this.viewState = viewState;
         if (switchBuildingsOn || switchBuildingsOff) {
             this._awaitStyleLoaded(() => {
@@ -183,6 +179,10 @@ class MapRenderer {
             this._awaitStyleLoaded(() => {
                 this._switchSatelliteLayer(switchSatelliteOn && !switchTerrainOn);
             })
+        }
+
+        if (toggleGlobeMode) {
+            this._switchProjection(this.viewState.renderGlobe);
         }
 
         this.gpsDataManagers.forEach(manager => {
@@ -665,6 +665,12 @@ class MapRenderer {
             bearing: number,
             duration: 500, // Mapbox uses 'duration' in ms
             essential: true
+        });
+    }
+
+    _switchProjection(renderGlobe) {
+        this.map.setProjection({
+            type: renderGlobe ? 'globe' : 'mercator'
         });
     }
 
