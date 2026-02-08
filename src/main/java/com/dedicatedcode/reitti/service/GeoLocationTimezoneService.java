@@ -65,4 +65,12 @@ public class GeoLocationTimezoneService {
         }
         return zoneId;
     }
+
+    public Optional<ZoneId> getTimezone(Double latitude, Double longitude) {
+        Optional<ZoneId> zoneId = this.engine.query(latitude, longitude);
+        if (zoneId.isEmpty()) {
+            log.warn("Unable to find timezone for [{},{}]", latitude, longitude);
+        }
+        return zoneId;
+    }
 }

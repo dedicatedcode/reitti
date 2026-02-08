@@ -17,15 +17,13 @@
       }
     },
     "mapbox:type": "template",
-    "openmaptiles:mapbox:owner": "openmaptiles",
-    "openmaptiles:mapbox:source:url": "mapbox://openmaptiles.4qljc88t",
-    "openmaptiles:version": "3.x",
     "maputnik:renderer": "mbgljs"
   },
   "sources": {
     "openmaptiles": {
       "type": "vector",
-      "url": "https://tiles.openfreemap.org/planet"
+      "url": "https://tiles.openfreemap.org/planet",
+      "attribution": "© <a href='https://openfreemap.org' target='_blank'>OpenFreeMap</a> © <a href='https://www.openstreetmap.org/copyright' target='_blank'>OSM</a>"
     },
     "terrain-source": {
       "type": "raster-dem",
@@ -34,12 +32,48 @@
       ],
       "tileSize": 256,
       "encoding": "terrarium",
-      "maxzoom": 14
+      "maxzoom": 14,
+      "attribution": "© <a href='https://mapterhorn.com' target='_blank'>Mapterhorn</a>"
+    },
+    "satellite-source": {
+      "type": "raster",
+      "tiles": [
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+      ],
+      "tileSize": 256,
+      "maxzoom": 18,
+      "attribution": "Powered by <a href='https://www.esri.com' target='_blank'>Esri</a> | Sources: Esri, Maxar, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community"
     }
   },
   "terrain": {
     "source": "terrain-source",
     "exaggeration": 1
+  },
+  "fog": {
+    "range": [0.5, 10],
+    "color": "#144272",
+    "high-color": "#010b19",
+    "space-color": "#010b19",
+    "horizon-blend": 0.1
+  },
+  "light": {
+    "anchor": "viewport",
+    "color": "#f0f9ff",
+    "intensity": 0.3,
+    "position": [1.15, 210, 30]
+  },
+  "sky": {
+    "sky-color": [
+      "interpolate", ["linear"], ["zoom"],
+      0, "#010b19",
+      10, "#144272"
+    ],
+    "horizon-color": "#205295",
+    "fog-color": "#144272",
+    "fog-ground-blend": 0.5,
+    "horizon-fog-blend": 0.8,
+    "sky-horizon-blend": 0.8,
+    "atmosphere-blend": 0.8
   },
   "sprite": "",
   "glyphs": "/fonts/{fontstack}/{range}.pbf",
@@ -211,6 +245,18 @@
       },
       "source": "terrain-source",
       "maxzoom": 24
+    },
+    {
+      "id": "satellite-layer",
+      "type": "raster",
+      "source": "satellite-source",
+      "paint": {
+        "raster-opacity": 0,
+        "raster-opacity-transition": {
+          "duration": 500
+        }
+      },
+      "layout": {"visibility": "visible"}
     },
     {
       "id": "water_name",
@@ -502,7 +548,7 @@
       },
       "paint": {
         "line-color": "rgb(234, 234, 234)",
-        "line-opacity": 0.9,
+        "line-opacity": 0,
         "line-width": {
           "base": 1.2,
           "stops": [[13, 1], [20, 10]]
@@ -567,7 +613,7 @@
       "layout": {
         "line-cap": "butt",
         "line-join": "miter",
-        "visibility": "visible"
+        "visibility": "none"
       },
       "paint": {
         "line-color": "rgb(213, 213, 213)",
@@ -602,7 +648,7 @@
       "layout": {
         "line-cap": "round",
         "line-join": "round",
-        "visibility": "visible"
+        "visibility": "none"
       },
       "paint": {
         "line-color": "#fff",
@@ -636,7 +682,7 @@
       "layout": {
         "line-cap": "round",
         "line-join": "round",
-        "visibility": "visible"
+        "visibility": "none"
       },
       "paint": {
         "line-color": "hsla(0, 0%, 85%, 0.69)",
@@ -669,12 +715,11 @@
       "layout": {
         "line-cap": "butt",
         "line-join": "miter",
-        "visibility": "visible"
+        "visibility": "none"
       },
       "paint": {
-        "line-color": "rgb(213, 213, 213)",
+        "line-color": "rgba(255, 255, 255, 1)",
         "line-dasharray": [2, 0],
-        "line-opacity": 1,
         "line-width": {
           "base": 1.4,
           "stops": [
@@ -682,7 +727,8 @@
             [6, 3],
             [20, 40]
           ]
-        }
+        },
+        "line-opacity": 1
       }
     },
     {
@@ -711,19 +757,10 @@
       "layout": {
         "line-cap": "round",
         "line-join": "round",
-        "visibility": "visible"
+        "visibility": "none"
       },
       "paint": {
-        "line-color": {
-          "base": 1,
-          "stops": [
-            [
-              5.8,
-              "hsla(0, 0%, 85%, 0.53)"
-            ],
-            [6, "#fff"]
-          ]
-        },
+        "line-color": "#fff",
         "line-width": {
           "base": 1.4,
           "stops": [
@@ -731,7 +768,16 @@
             [6, 1.3],
             [20, 30]
           ]
-        }
+        },
+        "line-opacity": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          6,
+          1,
+          10,
+          1
+        ]
       }
     },
     {
@@ -751,14 +797,15 @@
       "layout": {
         "line-cap": "round",
         "line-join": "round",
-        "visibility": "visible"
+        "visibility": "none"
       },
       "paint": {
         "line-color": "hsla(0, 0%, 85%, 0.53)",
         "line-width": {
           "base": 1.4,
           "stops": [[4, 2], [6, 1.3]]
-        }
+        },
+        "line-opacity": 0.3
       }
     },
     {
@@ -950,7 +997,7 @@
       "layout": {
         "line-cap": "butt",
         "line-join": "miter",
-        "visibility": "visible"
+        "visibility": "none"
       },
       "paint": {
         "line-color": "rgb(213, 213, 213)",
@@ -987,7 +1034,7 @@
       "layout": {
         "line-cap": "round",
         "line-join": "round",
-        "visibility": "visible"
+        "visibility": "none"
       },
       "paint": {
         "line-color": {
@@ -1034,7 +1081,7 @@
         "text-pitch-alignment": "viewport",
         "text-rotation-alignment": "viewport",
         "text-size": 10,
-        "visibility": "visible"
+        "visibility": "none"
       },
       "paint": {
         "text-color": "rgb(117, 129, 145)",
@@ -1170,10 +1217,10 @@
         "visibility": "visible"
       },
       "paint": {
-        "text-color": "rgb(117, 129, 145)",
-        "text-halo-blur": 1,
-        "text-halo-color": "rgb(242,243,240)",
-        "text-halo-width": 1
+        "text-color": "rgba(32, 32, 32, 1)",
+        "text-halo-color": "rgba(255, 255, 255, 1)",
+        "text-halo-width": 1.4,
+        "text-halo-blur": 0
       }
     },
     {
@@ -1184,7 +1231,7 @@
       },
       "source": "openmaptiles",
       "source-layer": "place",
-      "maxzoom": 15,
+      "maxzoom": 11,
       "filter": [
         "all",
         ["==", "$type", "Point"],
@@ -1204,10 +1251,10 @@
         "visibility": "visible"
       },
       "paint": {
-        "text-color": "rgb(117, 129, 145)",
-        "text-halo-blur": 1,
-        "text-halo-color": "rgb(242,243,240)",
-        "text-halo-width": 1
+        "text-color": "rgba(20, 20, 20, 1)",
+        "text-halo-blur": 0,
+        "text-halo-color": "rgba(255, 255, 255, 1)",
+        "text-halo-width": 1.4
       }
     },
     {
@@ -1240,10 +1287,10 @@
       },
       "paint": {
         "icon-opacity": 0.7,
-        "text-color": "rgb(117, 129, 145)",
-        "text-halo-blur": 1,
-        "text-halo-color": "rgb(242,243,240)",
-        "text-halo-width": 1
+        "text-color": "rgba(0, 0, 0, 1)",
+        "text-halo-blur": 0,
+        "text-halo-color": "rgba(255, 255, 255, 1)",
+        "text-halo-width": 1.4
       }
     },
     {
@@ -1288,11 +1335,11 @@
         "visibility": "visible"
       },
       "paint": {
-        "icon-opacity": 0.7,
-        "text-color": "rgb(117, 129, 145)",
-        "text-halo-blur": 1,
-        "text-halo-color": "rgb(242,243,240)",
-        "text-halo-width": 1
+        "icon-opacity": 1,
+        "text-color": "rgba(20, 20, 20, 1)",
+        "text-halo-color": "rgba(255, 255, 255, 1)",
+        "text-halo-width": 1.4,
+        "text-halo-blur": 1
       }
     },
     {
@@ -1342,11 +1389,11 @@
         "visibility": "visible"
       },
       "paint": {
-        "icon-opacity": 0.7,
-        "text-color": "rgba(98, 98, 98, 1)",
-        "text-halo-blur": 1,
+        "icon-opacity": 1,
+        "text-color": "rgba(20, 20, 20, 1)",
         "text-halo-color": "rgba(255, 255, 255, 1)",
-        "text-halo-width": 1
+        "text-halo-blur": 0,
+        "text-halo-width": 2
       }
     },
     {
@@ -1397,9 +1444,9 @@
       "paint": {
         "icon-opacity": 0.7,
         "text-color": "rgba(0, 0, 0, 1)",
-        "text-halo-blur": 1,
-        "text-halo-color": "rgb(242,243,240)",
-        "text-halo-width": 1
+        "text-halo-blur": 0,
+        "text-halo-color": "rgba(255, 255, 255, 1)",
+        "text-halo-width": 1.4
       }
     },
     {
@@ -1449,11 +1496,11 @@
         "visibility": "visible"
       },
       "paint": {
-        "icon-opacity": 0.7,
-        "text-color": "rgb(117, 129, 145)",
-        "text-halo-blur": 1,
-        "text-halo-color": "rgb(242,243,240)",
-        "text-halo-width": 1
+        "icon-opacity": 1,
+        "text-color": "rgba(0, 0, 0, 1)",
+        "text-halo-blur": 0,
+        "text-halo-color": "rgba(255, 255, 255, 1)",
+        "text-halo-width": 1.4
       }
     },
     {
@@ -1606,11 +1653,11 @@
         "text-color": {
           "base": 1,
           "stops": [
-            [3, "rgb(157,169,177)"],
-            [4, "rgb(153, 153, 153)"]
+            [3, "rgba(28, 29, 29, 1)"],
+            [4, "rgba(29, 28, 28, 1)"]
           ]
         },
-        "text-halo-color": "rgba(236,236,234,0.7)",
+        "text-halo-color": "rgba(253, 253, 250, 0.7)",
         "text-halo-width": 1.4
       }
     },
