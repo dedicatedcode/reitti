@@ -20,7 +20,6 @@
     <script th:src="@{/js/HumanizeDuration.js}"></script>
     <script th:src="@{/js/date-picker-combined.js}"></script>
     <script th:src="@{/js/timeline-scroll-indicator.js}"></script>
-    <script th:src="@{/js/photo-client.js}"></script>
     <script th:src="@{/js/vendor/htmx.min.js}"></script>
     <script th:src="@{/js/polygon-editor.js}"></script>
     <script th:src="@{/js/util.js}"></script>
@@ -32,6 +31,7 @@
     <script th:src="@{/js/gps-data-manager.js}"></script>
     <script th:src="@{/js/map-renderer.js}"></script>
     <script th:src="@{/js/map-controls.js}"></script>
+    <script th:src="@{/js/PhotoClusterManager.js}"></script>
 </head>
 <body>
 
@@ -247,6 +247,16 @@
                         text: /*[[#{map.display-control.satellite.disable.text}]]*/ 'Disable Terrain',
                         title: /*[[#{map.display-control.satellite.disable.title}]]*/ 'Disable Terrain',
                     }
+                },
+                globeProjection: {
+                    enable: {
+                        text: /*[[#{map.display-control.globe_projection.enable.text}]]*/ 'Enable Terrain',
+                        title: /*[[#{map.display-control.globe_projection.enable.title}]]*/ 'Enable Terrain',
+                    },
+                    disable: {
+                        text: /*[[#{map.display-control.globe_projection.disable.text}]]*/ 'Disable Terrain',
+                        title: /*[[#{map.display-control.globe_projection.disable.title}]]*/ 'Disable Terrain',
+                    }
                 }
             }
         }
@@ -280,9 +290,8 @@
         mapRenderer.updateViewState(createViewState([]))
     })
 
-    const photoClient = new PhotoClient(true);
     const mapControls = new MapControls('map-controls-section', window.locale);
-    const mapRenderer = new MapRenderer('new-map', userSettings, photoClient, createViewState());
+    const mapRenderer = new MapRenderer('new-map', userSettings, createViewState());
 
     mapControls.on('selectionChanged', (state) => {
         mapRenderer.updateViewState(createViewState([]));
@@ -1063,7 +1072,19 @@
 
                 const params = getTimelineParams();
                 mapRenderer.reset();
-                photoClient.updatePhotosForRange(params.startDate, params.endDate, getUserTimezone());
+                try {
+                    fetch(`${window.contextPath}/api/v1/photos/immich/range?timezone=${getUserTimezone()}&startDate=${params.startDate}&endDate=${params.endDate}`)
+                        .then(response => {
+                                if (response.ok) {
+                                    return response.json()
+                                } else {
+                                    reject(response)
+                                }
+                            }
+                        ).then(value => mapRenderer.setPhotos(value), error => mapRenderer.setPhotos([]));
+                } catch (error) {
+                    mapRenderer.setPhotos([]);
+                }
                 timelineControl.setup({minTimestamp: params.startDateUtcSeconds, maxTimestamp: params.endDateUtcSeconds, aggregate: aggregateToggleElement.checked });
                 loadTimelineData(params.startDateUtcSeconds, params.endDateUtcSeconds);
 

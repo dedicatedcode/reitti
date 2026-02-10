@@ -63,17 +63,17 @@
     "position": [1.15, 210, 30]
   },
   "sky": {
-    "sky-color": [
-      "interpolate", ["linear"], ["zoom"],
-      0, "#010b19",
-      10, "#144272"
-    ],
-    "horizon-color": "#205295",
-    "fog-color": "#144272",
+    "sky-color": "#010409",
+    "horizon-color": "#144272",
+    "fog-color": "#010409",
     "fog-ground-blend": 0.5,
-    "horizon-fog-blend": 0.8,
-    "sky-horizon-blend": 0.8,
-    "atmosphere-blend": 0.8
+    "horizon-fog-blend": 0.95,
+    "sky-horizon-blend": 0.7,
+    "atmosphere-blend": [
+      "interpolate", ["linear"], ["zoom"],
+      2, 1.0,
+      6, 0.0
+    ]
   },
   "sprite": "",
   "glyphs": "/fonts/{fontstack}/{range}.pbf",
