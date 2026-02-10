@@ -1,231 +1,262 @@
-class PhotoClient {
-    constructor(enabled) {
-        this.enabled = enabled;
-        this.photos = [];
-        this.index = null;
-        this.clusters = [];
-        this.iconCache = new Map(); // Cache to store the generated circular icons
-        this.iconSize = 64;
-        this.state = {loading: false};
-    }
-
-    async updatePhotosForRange(start, end, timezone) {
-        if (!this.enabled) return;
-        this.clusters = [];
-        this.iconCache = new Map();
-        this.index = null;
-        this.state = {loading: true};
-        try {
-            const response = await fetch(`${window.contextPath}/api/v1/photos/immich/range?timezone=${timezone}&startDate=${start}&endDate=${end}`);
-            this.photos = response.ok ? await response.json() : [];
-            this.state = {loading: false};
-        } catch (error) {
-            this.photos = [];
-        }
-        this.initializeIndex();
-    }
-
-    initializeIndex() {
-        this.index = new Supercluster({radius: 128});
-        const points = this.photos
-            .filter(p => p.latitude && p.longitude)
-            .map(photo => ({
-                type: 'Feature',
-                properties: {photoData: photo},
-                geometry: {type: 'Point', coordinates: [parseFloat(photo.longitude), parseFloat(photo.latitude)]}
-            }));
-        this.index.load(points);
-    }
-
-    updateClusters(viewState) {
-        if (!this.index || !viewState) return;
-        this.clusters = this.index.getClusters([-180, -85, 180, 85], Math.floor(viewState.zoom));
-    }
-
-    getCircularIcon(url) {
-        // 1. Return cached version if available (Prevents flickering)
-        if (this.iconCache.has(url)) {
-            return this.iconCache.get(url);
-        }
-
-        // 2. Return a temporary placeholder while loading
-        // (A simple white circle SVG)
-        const placeholder = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><circle cx="64" cy="64" r="60" fill="white" stroke="#ccc" stroke-width="2"/></svg>');
-
-        // 3. Asynchronously load and process the image
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.src = url;
-
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const size = 128; // Higher res for sharp icons
-            canvas.width = size;
-            canvas.height = size;
-            const ctx = canvas.getContext('2d');
-
-            // A. Draw the "Mask" (Circle)
-            ctx.beginPath();
-            ctx.arc(size / 2, size / 2, 60, 0, Math.PI * 2);
-            ctx.closePath();
-            ctx.clip(); // Everything drawn after this is clipped to the circle
-
-            // B. Draw the Image (Aspect Fill)
-            // This math ensures the image covers the circle completely without stretching
-            const aspect = img.width / img.height;
-            let drawW = size, drawH = size, offX = 0, offY = 0;
-
-            if (aspect > 1) { // Wide image
-                drawH = size;
-                drawW = size * aspect;
-                offX = -(drawW - size) / 2;
-            } else { // Tall image
-                drawW = size;
-                drawH = size / aspect;
-                offY = -(drawH - size) / 2;
-            }
-            ctx.drawImage(img, offX, offY, drawW, drawH);
-
-            // C. Draw the Border (Stroke) inside the circle
-            ctx.beginPath();
-            ctx.arc(size / 2, size / 2, 58, 0, Math.PI * 2); // Slightly smaller to sit inside
-            ctx.lineWidth = 14;
-            ctx.strokeStyle = 'white';
-            ctx.stroke();
-
-            // D. Save to cache and trigger a re-render
-            const finalDataUrl = canvas.toDataURL('image/png');
-            this.iconCache.set(url, finalDataUrl);
+class PhotoClusterManager {
+    constructor(map, options = {}) {
+        this.map = map;
+        this.options = {
+            clusterRadius: options.clusterRadius || 80,
+            clusterMaxZoom: options.clusterMaxZoom || 22,
+            iconSize: options.iconSize || 56,
+            borderWidth: options.borderWidth || 3,
+            badgeFontSize: options.badgeFontSize || 11,
+            showPhotoGridModal: options.showPhotoGridModal || this.showPhotoGridModal,
+            showPhotoModal: options.showPhotoModal || this.showPhotoModal,
         };
 
-        return placeholder;
+        this.index = null;
+        this.photos = [];
+        this.markers = new Map();
+        this._imageCache = new Map();
+
+        var self = this;
+        this._moveHandler = function () {
+            self._doUpdate();
+        };
+        this._moveEndHandler = function () {
+            self._doUpdate();
+        };
+
+        map.on('move', this._moveHandler);
+        map.on('moveend', this._moveEndHandler);
     }
 
-    getLayers(offset, viewState) {
-        if (!this.enabled || this.clusters.length === 0) return [];
+    setPhotos(photos) {
+        this.photos = (photos || []).filter(function (p) {
+            return p.latitude != null && p.longitude != null &&
+                isFinite(p.latitude) && isFinite(p.longitude);
+        });
+        this._buildIndex();
+        this._doUpdate();
+    }
 
-        const zoom = Math.floor(viewState.zoom);
-        const dynamicScale = Math.max(1, 1 + (zoom - 10) * 0.1);
-        const size = this.iconSize * dynamicScale;
-        // Shared sizing for the badge (the red circle)
-        const badgeSize = 36 * dynamicScale;
-        // Calculate the position offset for the badge (top-right of the photo)
-        const badgeOffset = [
-            (this.iconSize * dynamicScale) / 3.5,
-            -(this.iconSize * dynamicScale) * 0.9
-        ];
-        const layers = [
-            // SINGLE ICON LAYER (Handles everything)
-            new deck.IconLayer({
-                id: 'photo-icons',
-                data: this.clusters,
-                pickable: true,
-                getPosition: d => d.geometry.coordinates,
-                getIcon: d => {
-                    const photo = d.properties.cluster
-                        ? this.index?.getLeaves(d.properties.cluster_id, 1)[0].properties.photoData
-                        : d.properties.photoData;
-
-                    if (!photo) return;
-                    const url = window.contextPath + photo.thumbnailUrl;
-
-                    return {
-                        url: this.getCircularIcon(url), // Returns placeholder or processed PNG
-                        width: 128, height: 128,
-                        anchorX: 64,
-                        anchorY: 128, // Sits on the ground
-                        mask: false
-                    };
-                },
-                getSize: size,
-                billboard: true,
-                parameters: {
-                    depthTest: false,
-                    depthMask: false
-                },
-                // Trigger update when cache size changes (images loaded)
-                updateTriggers: {
-                    getIcon: [zoom, this.iconCache.size]
-                },
-                onClick: info => this.handlePointClick(info)
-            })
-        ];
-        const clusterData = this.clusters.filter(d => d.properties.cluster);
-        if (clusterData.length > 0) {
-            layers.push(
-                // 2. BADGE BACKGROUND (Red Circle with White Border)
-                new deck.IconLayer({
-                    id: 'photo-badge-circles',
-                    data: clusterData,
-                    getPosition: d => d.geometry.coordinates,
-                    getIcon: d => ({
-                        // We increase the viewBox to 120x120 but keep the circle centered at 50.
-                        // This provides 10 units of "safety padding" on every side.
-                        url: 'data:image/svg+xml;base64,' + btoa(`
-                            <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="-10 -10 120 120">
-                                <circle cx="50" cy="50" r="45" fill="#dc3545" stroke="white" stroke-width="8" />
-                            </svg>`),
-                        // We MUST increase these to 120 to match the viewBox
-                        // so the internal scaling remains 1:1
-                        width: 120,
-                        height: 120,
-                        // The anchor is now 60 (half of 120) to keep it perfectly centered
-                        anchorX: 60,
-                        anchorY: 60,
-                        mask: false
-                    }),
-                    getSize: 1,
-                    sizeScale: badgeSize,
-                    getPixelOffset: badgeOffset,
-                    billboard: true,
-                    parameters: {
-                        depthTest: false,
-                        depthMask: false
-                    },
-                    updateTriggers: {
-                        getPixelOffset: [zoom],
-                        sizeScale: [zoom]
-                    }
-                }),
-
-                // 3. BADGE TEXT (The Number)
-                new deck.TextLayer({
-                    id: 'photo-badge-text',
-                    data: clusterData,
-                    getPosition: d => d.geometry.coordinates,
-                    getText: d => `${d.properties.point_count}`,
-                    getSize: 12,
-                    sizeScale: dynamicScale,
-                    getPixelOffset: badgeOffset, // Matches the red circle exactly
-                    getColor: [255, 255, 255, 255],
-                    fontWeight: 'bold',
-                    // Center the text within the badge
-                    getTextAnchor: 'middle',
-                    getAlignmentBaseline: 'center',
-                    billboard: true,
-                    parameters: {
-                        depthTest: false,
-                        depthMask: false
-                    },
-                    updateTriggers: {
-                        getPixelOffset: [zoom],
-                        sizeScale: [zoom]
-                    }
-                })
-            );
+    _buildIndex() {
+        if (!this.photos.length) {
+            this.index = null;
+            this._clearMarkers();
+            return;
         }
-        return layers;
+
+        var features = this.photos.map(function (photo) {
+            return {
+                type: 'Feature',
+                geometry: {type: 'Point', coordinates: [photo.longitude, photo.latitude]},
+                properties: {photo: photo},
+            };
+        });
+
+        this.index = new Supercluster({
+            radius: this.options.clusterRadius,
+            maxZoom: this.options.clusterMaxZoom,
+            map: function (props) {
+                return {photos: [props.photo]};
+            },
+            reduce: function (acc, props) {
+                acc.photos = acc.photos.concat(props.photos);
+            },
+        });
+
+        this.index.load(features);
     }
 
-    handlePointClick(info) {
-        if (!info.object) return;
-        const {properties} = info.object;
-        if (properties.cluster) {
-            const leaves = this.index.getLeaves(properties.cluster_id, Infinity);
-            this.showPhotoGridModal(leaves.map(l => l.properties.photoData));
+    _doUpdate() {
+        if (!this.index) return;
+
+        var bounds = this.map.getBounds();
+        var zoom = Math.round(this.map.getZoom());
+        var pad = 0.05;
+
+        var raw = this.index.getClusters(
+            [bounds.getWest() - pad, bounds.getSouth() - pad,
+                bounds.getEast() + pad, bounds.getNorth() + pad],
+            zoom
+        );
+
+        var newClusters = new Map();
+
+        for (var i = 0; i < raw.length; i++) {
+            var feature = raw[i];
+            var lng = feature.geometry.coordinates[0];
+            var lat = feature.geometry.coordinates[1];
+            var isCluster = feature.properties.cluster === true;
+            var id, cluster;
+
+            if (isCluster) {
+                id = 'cluster-' + feature.properties.cluster_id;
+                cluster = {
+                    id: id,
+                    clusterId: feature.properties.cluster_id,
+                    longitude: lng,
+                    latitude: lat,
+                    isCluster: true,
+                    count: feature.properties.point_count,
+                    photos: feature.properties.photos || [],
+                    thumbnailUrl: (feature.properties.photos && feature.properties.photos[0])
+                        ? feature.properties.photos[0].thumbnailUrl : '',
+                };
+            } else {
+                var photo = feature.properties.photo;
+                id = 'photo-' + photo.id;
+                cluster = {
+                    id: id,
+                    longitude: lng,
+                    latitude: lat,
+                    isCluster: false,
+                    count: 1,
+                    photo: photo,
+                    photos: [photo],
+                    thumbnailUrl: photo.thumbnailUrl || '',
+                };
+            }
+
+            newClusters.set(id, cluster);
+        }
+
+        this._reconcileMarkers(newClusters);
+    }
+
+    _reconcileMarkers(newClusters) {
+        for (var entry of this.markers) {
+            if (!newClusters.has(entry[0])) {
+                entry[1].remove();
+                this.markers.delete(entry[0]);
+            }
+        }
+
+        for (var entry of newClusters) {
+            var id = entry[0];
+            var cluster = entry[1];
+            var existing = this.markers.get(id);
+            if (existing) {
+                existing.setLngLat([cluster.longitude, cluster.latitude]);
+            } else {
+                var el = this._createMarkerElement(cluster);
+                var m = new maplibregl.Marker({element: el, anchor: 'center'})
+                    .setLngLat([cluster.longitude, cluster.latitude])
+                    .addTo(this.map);
+                this.markers.set(id, m);
+            }
+        }
+    }
+
+    _clearMarkers() {
+        for (var entry of this.markers) {
+            entry[1].remove();
+        }
+        this.markers.clear();
+    }
+
+    _createMarkerElement(cluster) {
+        var SIZE = this.options.iconSize;
+        var BORDER = this.options.borderWidth;
+        var self = this;
+
+        // Outer container - NO position:relative, MapLibre controls this
+        var container = document.createElement('div');
+        container.style.cssText =
+            'width:' + SIZE + 'px;height:' + SIZE + 'px;cursor:pointer;';
+
+        // Inner wrapper for badge positioning
+        var inner = document.createElement('div');
+        inner.style.cssText =
+            'width:' + SIZE + 'px;height:' + SIZE + 'px;position:relative;';
+
+        var circle = document.createElement('div');
+        circle.style.cssText =
+            'width:' + SIZE + 'px;height:' + SIZE + 'px;border-radius:50%;' +
+            'border:' + BORDER + 'px solid #ffffff;' +
+            'box-shadow:0 2px 6px rgba(0,0,0,0.35);overflow:hidden;' +
+            'background:#ddd;box-sizing:border-box;';
+
+        var placeholderSVG =
+            '<svg viewBox="0 0 24 24" style="width:60%;height:60%;margin:20%;opacity:0.4;fill:#999;">' +
+            '<path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2z' +
+            'M8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>';
+
+        if (cluster.thumbnailUrl) {
+            var cached = this._imageCache.get(cluster.thumbnailUrl);
+            if (cached) {
+                circle.style.backgroundImage = 'url(' + cached + ')';
+                circle.style.backgroundSize = 'cover';
+                circle.style.backgroundPosition = 'center';
+            } else {
+                circle.innerHTML = placeholderSVG;
+                var img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = function () {
+                    var c = document.createElement('canvas');
+                    c.width = img.naturalWidth;
+                    c.height = img.naturalHeight;
+                    c.getContext('2d').drawImage(img, 0, 0);
+                    c.toBlob(function (blob) {
+                        if (blob) {
+                            var blobUrl = URL.createObjectURL(blob);
+                            self._imageCache.set(cluster.thumbnailUrl, blobUrl);
+                            circle.style.backgroundImage = 'url(' + blobUrl + ')';
+                            circle.style.backgroundSize = 'cover';
+                            circle.style.backgroundPosition = 'center';
+                            circle.innerHTML = '';
+                        }
+                    });
+                };
+                img.onerror = function () {
+                };
+                img.src = cluster.thumbnailUrl;
+            }
         } else {
-            this.showPhotoModal(properties.photoData);
+            circle.innerHTML = placeholderSVG;
         }
+
+        inner.appendChild(circle);
+
+        if (cluster.isCluster && cluster.count > 1) {
+            var badge = document.createElement('div');
+            badge.textContent = cluster.count > 99 ? '99+' : String(cluster.count);
+            badge.style.cssText =
+                'position:absolute;top:-4px;right:-4px;' +
+                'background:#ff4444;color:#ffffff;' +
+                'font-size:' + this.options.badgeFontSize + 'px;font-weight:bold;' +
+                'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;' +
+                'min-width:18px;height:18px;line-height:18px;text-align:center;' +
+                'border-radius:9px;padding:0 5px;' +
+                'border:1.5px solid #ffffff;box-sizing:border-box;' +
+                'box-shadow:0 1px 3px rgba(0,0,0,0.3);';
+            inner.appendChild(badge);
+        }
+
+        container.appendChild(inner);
+
+        container.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (cluster.isCluster) {
+                if (self.options.showPhotoGridModal) {
+                    self.options.showPhotoGridModal(cluster.photos);
+                }
+            } else {
+                if (self.options.showPhotoModal) {
+                    self.options.showPhotoModal(cluster.photo, null, null, 0);
+                }
+            }
+        });
+
+        return container;
+    }
+
+    destroy() {
+        this._clearMarkers();
+        this.map.off('move', this._moveHandler);
+        this.map.off('moveend', this._moveEndHandler);
+        for (var entry of this._imageCache) {
+            URL.revokeObjectURL(entry[1]);
+        }
+        this._imageCache.clear();
     }
 
     showPhotoGridModal(photos) {
@@ -326,11 +357,11 @@ class PhotoClient {
 
         closeButton.addEventListener('click', (e) => {
             e.preventDefault();
-            handleEscape({ key: 'Escape' });
+            handleEscape({key: 'Escape'});
         });
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
-                handleEscape({ key: 'Escape' });
+                handleEscape({key: 'Escape'});
             }
         });
 
