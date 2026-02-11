@@ -22,27 +22,8 @@ class MapRenderer {
         });
         this.avatarMarkers = new Map(); // Store markers by user ID
         this.showAvatars = false;
-        this.terrainLayer = new deck.TerrainLayer({
-            id: 'terrain-loader',
-            // Use the same Mapterhorn/MapLibre source
-            elevationData: 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp',
-            elevationDecoder: {
-                rScaler: 256,
-                gScaler: 1,
-                bScaler: 1 / 256,
-                offset: -32768
-            },
-            minZoom: 0,
-            maxZoom: 14,
-            elevationScale: 1.5,
-            bounds: [-180, -90, 180, 90], // Global bounds help with alignment
-            operation: 'terrain',
-            loadOptions: {
-                fetch: {
-                    priority: 'high'
-                }
-            }
-        });
+
+        this.terrainLayer = null;
         this.deckOverlay = new deck.MapboxOverlay({
             layers: []
         });
@@ -91,6 +72,7 @@ class MapRenderer {
             this._switchTerrainLayer(this.viewState.renderTerrain);
             this._switchSatelliteLayer(this.viewState.renderSatelliteView);
             this._switchProjection(this.viewState.renderGlobe);
+
 
         });
         if (!this.viewState.is3d) {
@@ -728,12 +710,15 @@ class MapRenderer {
         this.map.setPaintProperty('building-3d', 'fill-extrusion-opacity', enable ? 0.6 : null)
     }
 
+    _extractTerrainUrl() {
+        return this.map.getSource('terrain-source').tiles[0];
+    }
     _switchTerrainLayer(enable) {
         if (enable) {
             this.map.setLayoutProperty('hillshading', 'visibility', 'visible');
             this.terrainLayer = new deck.TerrainLayer({
                 id: 'terrain-loader',
-                elevationData: 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp',
+                elevationData: this._extractTerrainUrl(),
                 elevationDecoder: {
                     rScaler: 256,
                     gScaler: 1,
