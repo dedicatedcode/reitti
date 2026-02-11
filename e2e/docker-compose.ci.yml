@@ -13,6 +13,8 @@ services:
         condition: service_healthy
       postgis_init:
         condition: service_completed_successfully
+      tile-cache:
+        condition: service_healthy
     environment:
       POSTGIS_USER: reitti
       POSTGIS_PASSWORD: reitti
@@ -60,3 +62,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  tile-cache:
+    build:
+      context: ../docker/tiles-cache
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/osm/0/0/0.png"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

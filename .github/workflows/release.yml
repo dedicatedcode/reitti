@@ -57,7 +57,7 @@ jobs:
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Docker meta
+      - name: Docker meta for reitti
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -69,7 +69,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-      - name: Build and push
+      - name: Build and push reitti image
         uses: docker/build-push-action@v6
         with:
           platforms: linux/amd64,linux/arm64
@@ -77,6 +77,26 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+      - name: Docker meta for tile-cache
+        id: meta-tile-cache
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            dedicatedcode/reitti-tile-cache
+            ghcr.io/${{ github.repository }}-tile-cache
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+      - name: Build and push tile-cache image
+        uses: docker/build-push-action@v6
+        with:
+          platforms: linux/amd64,linux/arm64
+          context: ./docker/tiles-cache
+          push: true
+          tags: ${{ steps.meta-tile-cache.outputs.tags }}
+          labels: ${{ steps.meta-tile-cache.outputs.labels }}
       - name: Release
         uses: softprops/action-gh-release@v2
         if: github.ref_type == 'tag'
