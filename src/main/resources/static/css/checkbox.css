@@ -1,0 +1,58 @@
+.slide-reveal-container input[type="checkbox"] {
+    display: none;
+}
+
+.slide-reveal {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+}
+
+.slide-reveal:hover {
+    background: var(--color-background-dark-light);
+}
+
+.slide-reveal .slide-box {
+    position: relative;
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--color-highlight);
+    border-radius: 4px;
+    margin-right: 8px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.slide-reveal .slide-box::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--color-highlight);
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-reveal .slide-box::before {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 2px;
+    width: 5px;
+    height: 11px;
+    border: solid var(--color-background-dark);
+    border-width: 0 2.5px 2.5px 0;
+    transform: rotate(45deg) scale(0);
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.1s;
+    z-index: 1;
+}
+
+input[type="checkbox"]:checked + .slide-reveal .slide-box::after {
+    transform: translateX(0);
+}
+
+input[type="checkbox"]:checked + .slide-reveal .slide-box::before {
+    transform: rotate(45deg) scale(1);
+}

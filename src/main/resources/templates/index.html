@@ -33,6 +33,7 @@
     <script th:src="@{/js/map-controls.js}"></script>
     <script th:src="@{/js/PhotoClusterManager.js}"></script>
     <script th:src="@{/js/LiveModeController.js}"></script>
+    <script th:src="@{/js/SettingsMenu.js}"></script>
 </head>
 <body>
 <div id="new-map" style="display: block"></div>
@@ -63,15 +64,8 @@
          hx-indicator="#loading-indicator">
         <div id="loading-indicator" class="timeline-entry" th:text="#{timeline.loading}">Loading...</div>
     </div>
-    <button type="button" class="timeline-toggle-btn" id="timeline-toggle-btn" onclick="toggleTimeline()" th:title="#{timeline.state.hide.title}" title="Hide Timeline">
-        <i class="lni lni-exit"></i>
-    </button>
 </div>
-<button type="button" class="datepicker-toggle-btn" id="datepicker-toggle-btn" onclick="toggleDatePicker()" th:title="#{datepicker.state.hide.title}" title="Hide Date Picker">
-    <i class="lni lni-exit-down"></i>
-</button>
 <div id="date-picker-container"></div>
-
 <div id="tooltip" style="position: absolute; z-index: 10; pointer-events: none; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 4px; display: none; font-family: sans-serif; font-size: 12px; max-width: 300px;"></div>
 
 <div id="timeline-controls"></div>
@@ -110,35 +104,7 @@
     </button>
 </div>
 
-<div id="settings-menu" class="settings-menu">
-    <div class="settings-menu-header">
-        <h3 th:text="#{settings.title}">Settings</h3>
-        <button class="close-settings-btn" onclick="closeSettingsMenu()">
-            <i class="lni lni-xmark-circle"></i>
-        </button>
-    </div>
-    <div class="settings-menu-content">
-        <div class="divider left" th:title="#{map.settings.dialog.appearance.title}">Map Appearance</div>
-        <div class="settings-section">
-            <div class="form-group">
-                <label for="view-mode" th:text="#{map.settings.dialog.appearance.view-mode.title}">View Mode</label>
-                <select id="view-mode">
-                    <option value="LINEAR" th:text="#{map.settings.dialog.appearance.view-mode.standard}">Standard Paths</option>
-                    <option value="RAW" th:text="#{map.settings.dialog.appearance.view-mode.raw}">Raw Paths</option>
-                    <option value="BUNDLED" th:text="#{map.settings.dialog.appearance.view-mode.edged_bundling}">Edge Bundling</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="aggregate-toggle" th:text="#{map.settings.dialog.appearance.view-mode.24h_aggregate}">24h aggregate?</label>
-                <input type="checkbox" id="aggregate-toggle">
-            </div>
-        </div>
-        <div class="divider left" th:title="#{map.settings.dialog.date-picker.title}">Date Selection</div>
-        <div class="settings-section">
-        </div>
-    </div>
-</div>
-<div id="settings-overlay" class="settings-overlay" style="display: none;" onclick="closeSettingsMenu()"></div>
+<div id="settings-menu-container"></div>
 
 <script th:inline="javascript">
     window.contextPath = /*[[@{/}]]*/ "/";
@@ -256,7 +222,33 @@
                         title: /*[[#{map.display-control.globe_projection.disable.title}]]*/ 'Disable Terrain',
                     }
                 }
+            },
+            settings: {
+                title: /*[[#{settings.title}]]*/ 'Settings',
+                dialog: {
+                    appearance: {
+                        title: /*[[#{map.settings.dialog.appearance.title}]]*/ 'Map Appearance',
+                        viewMode: {
+                            title: /*[[#{map.settings.dialog.appearance.view-mode.title}]]*/ 'View Mode',
+                            standard: /*[[#{map.settings.dialog.appearance.view-mode.standard}]]*/ 'Standard Paths',
+                            raw: /*[[#{map.settings.dialog.appearance.view-mode.raw}]]*/ 'Raw Paths',
+                            edgedBundling: /*[[#{map.settings.dialog.appearance.view-mode.edged_bundling}]]*/ 'Edge Bundling',
+                            aggregate24h: /*[[#{map.settings.dialog.appearance.view-mode.24h_aggregate}]]*/ '24h aggregate?'
+                        }
+                    },
+                    interface: {
+                        title: /*[[#{map.settings.dialog.interface.title}]]*/ 'Interface',
+                        timelineVisible: /*[[#{map.settings.dialog.interface.timeline-visible}]]*/ 'Timeline Visible',
+                        datepickerVisible: /*[[#{map.settings.dialog.interface.datepicker-visible}]]*/ 'Date Selection Visible'
+                    }
+                }
             }
+        },
+        common: {
+            user: /*[[#{common.user}]]*/ 'User',
+            time: /*[[#{common.time}]]*/ 'Time',
+            position: /*[[#{common.position}]]*/ 'Position',
+            unknown: /*[[#{common.unknown}]]*/ 'Unknown'
         }
     };
     window.userSettings = /*[[${userSettings}]]*/ {}
@@ -264,8 +256,6 @@
     let gpsDataManagers = [];
     let currentDateRange = null;
 
-    const aggregateToggleElement = document.getElementById('aggregate-toggle');
-    const viewModeElement = document.getElementById('view-mode');
 
     const timelineControl = new TimelineControl(
         document.getElementById('timeline-controls'),
@@ -277,6 +267,7 @@
     })
 
     const liveModeController = new LiveModeController('auto-update-btn', 'auto-update-overlay', window.locale);
+    const settingsMenu = new SettingsMenu('settings-menu-container', window.locale);
 
     liveModeController.on('autoUpdateModeChanged', (autoUpdateMode) => {
         const timeline = document.querySelector('.timeline');
@@ -342,8 +333,9 @@
 
     function calculateTimelineMultiplier() {
         const params = getTimelineParams();
+        const aggregateToggle = document.getElementById('aggregate-toggle');
 
-        if (aggregateToggleElement.checked) {
+        if (aggregateToggle && aggregateToggle.checked) {
             timeMultiplier = 60 * 60 * 24 / 30;
         } else {
             const totalSeconds = params.endDateUtcSeconds - params.startDateUtcSeconds;
@@ -480,88 +472,6 @@
         if (targetSection) {
             targetSection.classList.add('active');
         }
-    }
-
-    function toggleTimeline() {
-        const body = document.body;
-        const isHidden = body.classList.contains('timeline-hidden');
-
-        if (isHidden) {
-            body.classList.remove('timeline-hidden');
-            localStorage.setItem('timelineHidden', 'false');
-        } else {
-            // Scroll timeline back to top before hiding to ensure navbar is accessible
-            const timeline = document.querySelector('.timeline');
-            if (timeline) {
-                timeline.scrollTop = 0;
-            }
-            body.classList.add('timeline-hidden');
-            localStorage.setItem('timelineHidden', 'true');
-        }
-
-        updateTimelineToggleButton();
-    }
-
-    function updateTimelineToggleButton() {
-        const btn = document.getElementById('timeline-toggle-btn');
-        const icon = btn.querySelector('i');
-        const isHidden = document.body.classList.contains('timeline-hidden');
-
-        if (isHidden) {
-            icon.className = 'lni lni-enter';
-            btn.title = window.locale.timeline.state.show;
-        } else {
-            icon.className = 'lni lni-exit';
-            btn.title = window.locale.timeline.state.hide;
-        }
-    }
-
-    function restoreTimelineState() {
-        const timelineHidden = localStorage.getItem('timelineHidden');
-        if (timelineHidden === 'true') {
-            document.body.classList.add('timeline-hidden');
-        }
-        updateTimelineToggleButton();
-    }
-
-    function toggleDatePicker() {
-        const body = document.body;
-        const isHidden = body.classList.contains('datepicker-hidden');
-
-        if (isHidden) {
-            body.classList.remove('datepicker-hidden');
-            localStorage.setItem('datepickerHidden', 'false');
-        } else {
-            body.classList.add('datepicker-hidden');
-            localStorage.setItem('datepickerHidden', 'true');
-        }
-
-        updateDatePickerToggleButton();
-    }
-
-    function updateDatePickerToggleButton() {
-        const btn = document.getElementById('datepicker-toggle-btn');
-        const icon = btn.querySelector('i');
-        const isHidden = document.body.classList.contains('datepicker-hidden');
-
-        if (isHidden) {
-            icon.className = 'lni lni-exit-up';
-            btn.title = window.locale.datepicker.state.show;
-        } else {
-            icon.className = 'lni lni-enter-down';
-            btn.title = window.locale.datepicker.state.hide;
-        }
-
-        // Update today FAB visibility when date picker visibility changes
-        updateTodayFabVisibility();
-    }
-
-    function restoreDatePickerState() {
-        const datepickerHidden = localStorage.getItem('datepickerHidden');
-        if (datepickerHidden === 'true') {
-            document.body.classList.add('datepicker-hidden');
-        }
-        updateDatePickerToggleButton();
     }
 
     function updateUrlWithDate(currentDateRange) {
@@ -724,8 +634,9 @@
                         break;
                     case 'complete':
                         lastRenderedPointCount = 0;
+                        const aggregateToggle = document.getElementById('aggregate-toggle');
                         timelineControl.setup({
-                            aggregate: aggregateToggleElement.checked,
+                            aggregate: aggregateToggle ? aggregateToggle.checked : false,
                             minTimestamp: gpsDataManager.minTimestamp,
                             maxTimestamp: gpsDataManager.maxTimestamp,
                         })
@@ -745,10 +656,13 @@
     }
 
     function createViewState(highlightTimes = []) {
+        const aggregateToggle = document.getElementById('aggregate-toggle');
+        const viewModeSelect = document.getElementById('view-mode');
+        
         return {
             ...mapControls.getState(),
-            aggregated: aggregateToggleElement.checked,
-            viewMode: viewModeElement.value,
+            aggregated: aggregateToggle ? aggregateToggle.checked : false,
+            viewMode: viewModeSelect ? viewModeSelect.value : 'LINEAR',
             currentTime: timelineControl.getValue(),
             animating: !timelineControl.isIdle(),
             highlightTimes: highlightTimes,
@@ -757,10 +671,8 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         if (window.userSettings.uiMode !== 'SHARED_LIVE_MODE_ONLY') {
-            // Restore timeline state on page load
-            restoreTimelineState();
-            // Restore date picker state on page load
-            restoreDatePickerState();
+            // Restore timeline and datepicker state on page load
+            settingsMenu.restoreState();
         } else {
             document.body.classList.add('datepicker-hidden')
             document.body.classList.add('timeline-hidden')
@@ -811,7 +723,12 @@
                 } catch (error) {
                     mapRenderer.setPhotos([]);
                 }
-                timelineControl.setup({minTimestamp: params.startDateUtcSeconds, maxTimestamp: params.endDateUtcSeconds, aggregate: aggregateToggleElement.checked });
+                const aggregateToggle = document.getElementById('aggregate-toggle');
+                timelineControl.setup({
+                    minTimestamp: params.startDateUtcSeconds,
+                    maxTimestamp: params.endDateUtcSeconds,
+                    aggregate: aggregateToggle ? aggregateToggle.checked : false
+                });
                 loadTimelineData(params.startDateUtcSeconds, params.endDateUtcSeconds);
 
                 // Initialize scroll indicator after timeline is updated
@@ -938,103 +855,44 @@
         if (settingsBtn) {
             settingsBtn.addEventListener('click', function(e) {
                 e.stopPropagation(); // Prevent event bubbling
-                openSettingsMenu();
+                settingsMenu.open();
             });
         }
 
-        // Close settings menu when clicking outside
-        document.addEventListener('click', function(e) {
-            const menu = document.getElementById('settings-menu');
-            const overlay = document.getElementById('settings-overlay');
-            const settingsBtn = document.getElementById('settings-btn');
+        // Add settings change listener
+        document.addEventListener('settingsChanged', function (event) {
+            const {setting, value} = event.detail;
 
-            if (menu && overlay && menu.classList.contains('visible')) {
-                // Check if click is outside menu and not on settings button
-                if (!menu.contains(e.target) && !settingsBtn.contains(e.target)) {
-                    closeSettingsMenu();
-                }
+            switch (setting) {
+                case 'viewMode':
+                    mapRenderer.updateViewState(createViewState([]));
+                    break;
+                case 'aggregate':
+                    const params = getTimelineParams();
+
+                    timelineControl.setup({
+                        minTimestamp: params.startDateUtcSeconds,
+                        maxTimestamp: params.endDateUtcSeconds,
+                        aggregate: value
+                    });
+                    calculateTimelineMultiplier();
+                    mapRenderer.updateViewState(createViewState([]));
+                    break;
+                case 'timelineVisible':
+                    document.body.classList.toggle('timeline-hidden', !value);
+                    break;
+                case 'datepickerVisible':
+                    document.body.classList.toggle('datepicker-hidden', !value);
+                    break;
             }
         });
+        mapRenderer.updateViewState(createViewState([]));
 
-        // Load and apply settings on page load
-        const savedSettings = loadSettings();
-        applySettings(savedSettings);
-        const toggleTimeControlsBtn = document.getElementById('toggle-time-control-btn');
-        if (toggleTimeControlsBtn) {
-            toggleTimeControlsBtn.addEventListener('click', function() {
-                toggleTimeControls();
-            });
-        }
-
-        viewModeElement.onchange = function(e) {
-            updateMapMode(e.target.value);
-        };
-
+        document.getElementById('toggle-time-control-btn').addEventListener('click', function () {
+            toggleTimeControls();
+        });
         restoreTimelineControlsState();
-
-        aggregateToggleElement.onchange = (e) => {
-            const isAggregate = e.target.checked;
-            const params = getTimelineParams();
-
-            timelineControl.setup({
-                minTimestamp: params.startDateUtcSeconds,
-                maxTimestamp: params.endDateUtcSeconds,
-                aggregate: isAggregate
-            });
-            localStorage.setItem('aggregate', isAggregate);
-            calculateTimelineMultiplier();
-            mapRenderer.updateViewState(createViewState([]));
-        };
-        mapRenderer.updateViewState(createViewState([]));
     })
-
-    function updateMapMode(value) {
-        localStorage.setItem('view-mode', value);
-        mapRenderer.updateViewState(createViewState([]));
-    }
-
-    function openSettingsMenu() {
-        const menu = document.getElementById('settings-menu');
-        const overlay = document.getElementById('settings-overlay');
-
-        if (menu && overlay) {
-            menu.style.display = 'block';
-            overlay.style.display = 'block';
-
-            // Trigger reflow to enable transition
-            setTimeout(() => {
-                menu.classList.add('visible');
-                overlay.classList.add('visible');
-            }, 10);
-        }
-    }
-
-    function closeSettingsMenu() {
-        const menu = document.getElementById('settings-menu');
-        const overlay = document.getElementById('settings-overlay');
-
-        if (menu && overlay) {
-            menu.classList.remove('visible');
-            overlay.classList.remove('visible');
-
-            setTimeout(() => {
-                menu.style.display = 'none';
-                overlay.style.display = 'none';
-            }, 300);
-        }
-    }
-
-    function loadSettings() {
-        return  {
-            aggregate: localStorage.getItem('aggregate') === 'true',
-            mapMode: localStorage.getItem('view-mode') || 'LINEAR',
-        };
-    }
-
-    function applySettings(settings) {
-        aggregateToggleElement.checked = settings.aggregate;
-        viewModeElement.value = settings.mapMode;
-    }
 
     function toggleTimeControls() {
         const timelineControls = document.getElementById('timeline-controls');

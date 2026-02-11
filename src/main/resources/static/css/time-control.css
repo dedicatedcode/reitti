@@ -18,6 +18,11 @@
     --webkit-user-select: none;
 }
 
+
+body.datepicker-hidden #timeline-controls {
+    bottom: 70px;
+}
+
 #timeline-controls.hidden {
     opacity: 0;
     visibility: hidden;
