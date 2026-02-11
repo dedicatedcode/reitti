@@ -124,7 +124,7 @@ public class LocationDataApiController {
                 start = System.nanoTime();
                 result = segments.stream().map(s -> {
                     List<LocationPoint> simplifiedPoints = simplificationService.simplifyPoints(s, zoom);
-                    return new RawLocationDataResponse.Segment(s);
+                    return new RawLocationDataResponse.Segment(simplifiedPoints);
                 }).toList();
                 logger.trace("Simplified segments in [{}]ms", (System.nanoTime() - start) / 1_000_000);
             } else {

@@ -1,8 +1,6 @@
 package com.dedicatedcode.reitti.service.processing;
 
-import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.LocationPoint2;
-import com.dedicatedcode.reitti.event.LocationDataEvent;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
@@ -15,12 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.time.ZonedDateTime;
-import java.time.chrono.ChronoZonedDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 @Service
 public class LocationDataIngestPipeline {
@@ -74,8 +68,7 @@ public class LocationDataIngestPipeline {
 
             densityNormalizer.normalize(user, validPoints);
             userSettingsJdbcService.updateNewestData(user, validPoints);
-            //todo
-//            userNotificationService.newRawLocationData(user, validPoints.stream().map(locationPoint2 -> new LocationPoint()));
+            userNotificationService.newRawLocationData(user, validPoints);
             logger.info("Finished storing and normalizing points [{}] for user [{}] in [{}]ms. Filtered out [{}] after database.", validPoints.size(), user, System.currentTimeMillis() - start, validPoints.size() - updatedRows);
         } catch (Exception e) {
             logger.error("Error during processing: ", e);
