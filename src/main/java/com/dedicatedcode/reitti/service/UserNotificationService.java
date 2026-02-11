@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
-import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.event.SSEEvent;
 import com.dedicatedcode.reitti.event.SSEType;
@@ -19,7 +18,6 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -62,10 +60,10 @@ public class UserNotificationService {
         notifyReittiSubscriptions(user, eventType, dates);
     }
 
-    public void newRawLocationData(User user, List<LocationPoint> filtered) {
+    public void newRawLocationData(User user, List<LocationPoint2> filtered) {
         SSEType eventType = SSEType.RAW_DATA;
         log.debug("New RawLocationPoints for user [{}]", user.getId());
-        Set<LocalDate> dates = calculateAffectedDates(filtered.stream().map(LocationPoint::getTimestamp).map(s -> ZonedDateTime.parse(s).toInstant()).toList());
+        Set<LocalDate> dates = calculateAffectedDates(filtered.stream().map(LocationPoint2::getTimestamp).toList());
         sendToQueue(user, dates, eventType, null);
         notifyReittiSubscriptions(user, eventType, dates);
     }

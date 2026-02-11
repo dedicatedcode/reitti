@@ -22,6 +22,7 @@ class GpsDataManager {
         this.totalExpected = 0;
         this.bounds = null;
         this._dataCache = {};
+        this.lastLocation = null;
     }
 
     /**
@@ -67,6 +68,7 @@ class GpsDataManager {
             ]);
 
             const meta = await metaRes.json();
+            this.lastLocation = meta.latestLocation;
             const receivedVisits = await visitsRes.json();
             this.visits = receivedVisits.places.map(p => ({
                 id: p.place.id,

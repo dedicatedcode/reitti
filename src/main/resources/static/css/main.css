@@ -1436,6 +1436,11 @@ body.auto-update-mode .today-fab {
     transform: translateX(-50%);
 }
 
+.fab-container.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
 body.datepicker-hidden .fab-container {
     bottom: 20px;
 }

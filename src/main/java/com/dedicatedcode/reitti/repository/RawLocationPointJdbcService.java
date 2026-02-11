@@ -602,7 +602,7 @@ public class RawLocationPointJdbcService {
         jdbcTemplate.update(sql, user.getId(), Timestamp.from(start), Timestamp.from(end));
     }
 
-    public MapMetadata getMetadata(Long userId, Instant start, Instant end) {
+    public MapMetadata getMetadata(User user, Instant start, Instant end) {
         String sql = """
                 SELECT
                   EXTRACT(EPOCH FROM MIN(timestamp)) as min_ts,
@@ -625,7 +625,17 @@ public class RawLocationPointJdbcService {
                 rs.getDouble("min_lat"),
                 rs.getDouble("max_lat"),
                 rs.getDouble("min_lng"),
-                rs.getDouble("max_lng")
-        ), userId, Timestamp.from(start), Timestamp.from(end));
+                rs.getDouble("max_lng"),
+                this.findLatest(user).map(rawLocationPoint -> {
+                    LocationPoint2 locationPoint = new LocationPoint2();
+                    locationPoint.setTimestamp(rawLocationPoint.getTimestamp());
+                    locationPoint.setLatitude(rawLocationPoint.getLatitude());
+                    locationPoint.setLongitude(rawLocationPoint.getLongitude());
+                    locationPoint.setAccuracyMeters(rawLocationPoint.getAccuracyMeters());
+                    locationPoint.setElevationMeters(rawLocationPoint.getElevationMeters());
+                    return locationPoint;
+                })
+
+        ), user.getId(), Timestamp.from(start), Timestamp.from(end));
     }
 }

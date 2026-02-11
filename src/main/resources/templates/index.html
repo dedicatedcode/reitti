@@ -32,12 +32,9 @@
     <script th:src="@{/js/map-renderer.js}"></script>
     <script th:src="@{/js/map-controls.js}"></script>
     <script th:src="@{/js/PhotoClusterManager.js}"></script>
+    <script th:src="@{/js/LiveModeController.js}"></script>
 </head>
 <body>
-
-<div id="message-container">
-    <div id="sse-message"></div>
-</div>
 <div id="new-map" style="display: block"></div>
 <div id="loading-overlay" class="loading-overlay">
     <div class="progress-container">
@@ -47,7 +44,8 @@
 </div>
 <!-- Auto-update overlay -->
 <div id="auto-update-overlay" class="auto-update-overlay">
-    <button sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER', 'ROLE_MAGIC_LINK_FULL_ACCESS')" class="overlay-button exit-button" onclick="disableAutoUpdate()" th:title="#{map.auto-update.disable.title}">
+    <button sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER', 'ROLE_MAGIC_LINK_FULL_ACCESS')"
+            class="overlay-button exit-button" th:title="#{map.auto-update.disable.title}">
         <i class="lni lni-pause"></i>
     </button>
     <button class="overlay-button fullscreen-button" onclick="toggleFullscreen()" th:title="#{map.fullscreen.toggle.title}" title="Toggle Fullscreen">
@@ -263,19 +261,7 @@
     };
     window.userSettings = /*[[${userSettings}]]*/ {}
 
-    const messagesDiv = document.getElementById('sse-message');
-    let autoUpdateMode = false;
-    let autoUpdateTimer = null;
-    let autoUpdateTimeInterval = null;
-    let eventSource = null;
-    let reloadTimeoutId = null;
-    let maxWaitTimeoutId = null;
-    let pendingEvents = [];
-    let firstEventTime = null;
-    let reconnectTimeoutId = null;
-
     let gpsDataManagers = [];
-
     let currentDateRange = null;
 
     const aggregateToggleElement = document.getElementById('aggregate-toggle');
@@ -286,10 +272,33 @@
         document.getElementById('time-display')
     );
 
-    timelineControl.on('offsetChanged', (data) => {
+    timelineControl.on('offsetChanged', () => {
         mapRenderer.updateViewState(createViewState([]))
     })
 
+    const liveModeController = new LiveModeController('auto-update-btn', 'auto-update-overlay', window.locale);
+
+    liveModeController.on('autoUpdateModeChanged', (autoUpdateMode) => {
+        const timeline = document.querySelector('.timeline');
+        const datePicker = document.getElementById('date-picker-container');
+        const fabContainer = document.getElementById('fab-container');
+
+        if (autoUpdateMode) {
+            timeline.classList.add('hidden');
+            datePicker.classList.add('hidden');
+            fabContainer.classList.add('hidden');
+            if (window.horizontalDatePicker) {
+                window.horizontalDatePicker.setSelectedRange(getCurrentLocalDate(), null);
+            }
+            mapRenderer.enableAvatars();
+        } else {
+            timeline.classList.remove('hidden');
+            datePicker.classList.remove('hidden');
+            fabContainer.classList.remove('hidden');
+            mapRenderer.disableAvatars();
+        }
+        handleAutoTodaySelectionTimer(autoUpdateMode)
+    })
     const mapControls = new MapControls('map-controls-section', window.locale);
     const mapRenderer = new MapRenderer('new-map', userSettings, createViewState());
 
@@ -301,8 +310,8 @@
     let userConfigs = [];
     let animationId = null;
     let lastFrameTime = null;
-
     let isPlaying = false;
+    let timeMultiplier = 30; // Default: 1 second = 1 minute
 
     const playBtn = document.getElementById('play-btn');
 
@@ -330,8 +339,6 @@
         timelineControl.setOffset(0);
         mapRenderer.updateViewState(createViewState([]));
     }
-
-    let timeMultiplier = 30; // Default: 1 second = 1 minute
 
     function calculateTimelineMultiplier() {
         const params = getTimelineParams();
@@ -475,7 +482,6 @@
         }
     }
 
-    // Timeline visibility functions
     function toggleTimeline() {
         const body = document.body;
         const isHidden = body.classList.contains('timeline-hidden');
@@ -510,7 +516,6 @@
         }
     }
 
-    // Restore timeline visibility state from localStorage
     function restoreTimelineState() {
         const timelineHidden = localStorage.getItem('timelineHidden');
         if (timelineHidden === 'true') {
@@ -519,7 +524,6 @@
         updateTimelineToggleButton();
     }
 
-    // Date picker visibility functions
     function toggleDatePicker() {
         const body = document.body;
         const isHidden = body.classList.contains('datepicker-hidden');
@@ -552,7 +556,6 @@
         updateTodayFabVisibility();
     }
 
-    // Restore date picker visibility state from localStorage
     function restoreDatePickerState() {
         const datepickerHidden = localStorage.getItem('datepickerHidden');
         if (datepickerHidden === 'true') {
@@ -607,311 +610,34 @@
         }
     }
 
-    function toggleAutoUpdate() {
-        const btn = document.getElementById('auto-update-btn');
-        const icon = btn ? btn.querySelector('i') : null;
-
-        if (!autoUpdateMode) {
-            document.body.classList.add('auto-update-mode');
-
-            // Enable auto-update mode
-            autoUpdateMode = true;
-
-            if (btn) {
-                icon.className = 'lni lni-pause';
-                btn.title = window.locale.autoupdate.state.disable;
-            }
-
-            // Hide timeline and date picker smoothly
-            hideUIElements();
-
-            // Show auto-update overlay
-            showAutoUpdateOverlay();
-
-            // Update the date picker to today
-            if (window.horizontalDatePicker) {
-                window.horizontalDatePicker.setSelectedRange(getCurrentLocalDate(), null);
-            }
-
-            // Start the timer to check for date changes every 30 seconds
-            startAutoUpdateTimer();
-
-            // Connect to SSE with automatic reconnection
-            connectSSE();
-
-        } else {
-            // Disable auto-update mode
-            disableAutoUpdate();
-        }
-    }
-
-    function disableAutoUpdate() {
-        autoUpdateMode = false;
-
-        // Clear the timer
-        if (autoUpdateTimer) {
-            clearInterval(autoUpdateTimer);
-            autoUpdateTimer = null;
-        }
-
-        // Clear time update interval
-        if (autoUpdateTimeInterval) {
-            clearInterval(autoUpdateTimeInterval);
-            autoUpdateTimeInterval = null;
-        }
-
-        // Clear any pending reload timeout
-        if (reloadTimeoutId) {
-            clearTimeout(reloadTimeoutId);
-            reloadTimeoutId = null;
-        }
-
-        // Clear max wait timeout
-        if (maxWaitTimeoutId) {
-            clearTimeout(maxWaitTimeoutId);
-            maxWaitTimeoutId = null;
-        }
-
-        // Clear pending events
-        pendingEvents = [];
-        firstEventTime = null;
-
-        // Clear reconnect timeout
-        if (reconnectTimeoutId) {
-            clearTimeout(reconnectTimeoutId);
-            reconnectTimeoutId = null;
-        }
-
-        if (eventSource) {
-            eventSource.close();
-            eventSource = null;
-        }
-
-        rawLocationLoader.removePulsatingMarkers();
-
-        // Hide auto-update overlay
-        hideAutoUpdateOverlay();
-
-        // Show timeline and date picker again
-        showUIElements();
-
-        const btn = document.getElementById('auto-update-btn');
-        const icon = btn.querySelector('i');
-        icon.className = 'lni lni-play';
-        btn.title = window.locale.autoupdate.state.enable;
-        if (window.horizontalDatePicker) {
-            window.horizontalDatePicker.setSelectedRange(getSelectedDate(), null);
-        }
-
-        document.body.classList.remove('auto-update-mode');
-
-    }
-
-    function startAutoUpdateTimer() {
+    function handleAutoTodaySelectionTimer(autoUpdateMode) {
         // Check every 30 seconds if we need to switch to today's date
-        autoUpdateTimer = setInterval(() => {
-            if (!autoUpdateMode) {
-                return; // Exit if auto-update mode was disabled
+        if (!autoUpdateMode) {
+            if (autoUpdateTimer) {
+                clearInterval(autoUpdateTimer);
+                autoUpdateTimer = null;
             }
-
-            // If the selected date is not today, switch to today
-            if (!isSelectedDateToday()) {
-                console.log('Auto-update: Switching to today\'s date');
-                if (window.horizontalDatePicker) {
-                    window.horizontalDatePicker.setSelectedRange(getCurrentLocalDate());
+        } else {
+            autoUpdateTimer = setInterval(() => {
+                if (!autoUpdateMode) {
+                    return; // Exit if auto-update mode was disabled
                 }
-            }
-        }, 30000); // 30 seconds
+
+                // If the selected date is not today, switch to today
+                if (!isSelectedDateToday()) {
+                    console.log('Auto-update: Switching to today\'s date');
+                    if (window.horizontalDatePicker) {
+                        window.horizontalDatePicker.setSelectedRange(getCurrentLocalDate());
+                    }
+                }
+            }, 30000); // 30 seconds
+        }
     }
 
     function isSelectedDateToday() {
         const today = getCurrentLocalDate();
         const selectedDate = getSelectedDate();
         return selectedDate === today;
-    }
-
-    function scheduleTimelineReload(eventData) {
-        // Add event to pending events
-        pendingEvents.push(eventData);
-
-        if (firstEventTime === null) {
-            firstEventTime = Date.now();
-
-            // Set maximum wait timeout (30 seconds from first event)
-            maxWaitTimeoutId = setTimeout(() => {
-                if (autoUpdateMode && pendingEvents.length > 0) {
-                    console.log(`Auto-update: Reloading timeline data after max wait time (30s) with ${pendingEvents.length} accumulated events`);
-                    executeTimelineReload();
-                }
-            }, 30000);
-        }
-
-        if (reloadTimeoutId) {
-            clearTimeout(reloadTimeoutId);
-        }
-
-        reloadTimeoutId = setTimeout(() => {
-            if (autoUpdateMode && pendingEvents.length > 0) {
-                console.log(`Auto-update: Reloading timeline data after 5s settle time with ${pendingEvents.length} accumulated events`);
-                executeTimelineReload();
-            }
-        }, 5000);
-    }
-
-    function executeTimelineReload() {
-        // Clear all timeouts
-        if (reloadTimeoutId) {
-            clearTimeout(reloadTimeoutId);
-            reloadTimeoutId = null;
-        }
-        if (maxWaitTimeoutId) {
-            clearTimeout(maxWaitTimeoutId);
-            maxWaitTimeoutId = null;
-        }
-
-        // Reload timeline
-        document.body.dispatchEvent(new CustomEvent('dateChanged'));
-
-        // Clear pending events and reset first event time
-        pendingEvents = [];
-        firstEventTime = null;
-    }
-
-    function connectSSE() {
-        if (!autoUpdateMode) {
-            return; // Don't connect if auto-update is disabled
-        }
-
-        console.log('Connecting to SSE...');
-        eventSource = new EventSource(window.contextPath + '/events');
-
-        eventSource.onopen = function() {
-            console.log('SSE connection opened.');
-            messagesDiv.innerHTML = ''; // Clear any error messages
-            messagesDiv.classList.remove('active');
-
-            // Clear any pending reconnect timeout since we're connected
-            if (reconnectTimeoutId) {
-                clearTimeout(reconnectTimeoutId);
-                reconnectTimeoutId = null;
-            }
-        };
-
-        eventSource.onerror = function(error) {
-            console.error('EventSource failed:', error);
-            messagesDiv.innerHTML = `<p><strong>${window.locale.sse.error}</strong></p>`;
-            messagesDiv.classList.add('active');
-
-            // Close the current connection
-            if (eventSource) {
-                eventSource.close();
-                eventSource = null;
-            }
-
-            // Schedule reconnection after 5 seconds if still in auto-update mode
-            if (autoUpdateMode && !reconnectTimeoutId) {
-                console.log('Scheduling SSE reconnection in 5 seconds...');
-                reconnectTimeoutId = setTimeout(() => {
-                    reconnectTimeoutId = null;
-                    connectSSE();
-                }, 5000);
-            }
-        };
-
-        eventSource.onmessage = function(event) {
-            console.log('Received generic event:', event.data);
-
-            // Clear error messages on successful message receipt (fallback for onopen)
-            if (messagesDiv.classList.contains('active')) {
-                messagesDiv.innerHTML = '';
-                messagesDiv.classList.remove('active');
-            }
-
-            // Clear any pending reconnect timeout since we're receiving messages
-            if (reconnectTimeoutId) {
-                clearTimeout(reconnectTimeoutId);
-                reconnectTimeoutId = null;
-            }
-
-            // Parse the event data
-            try {
-                const eventData = JSON.parse(event.data);
-
-                // Check if the event has a date field and it matches today
-                if (eventData.date) {
-                    const today = getCurrentLocalDate(); // YYYY-MM-DD format
-                    const eventDate = eventData.date;
-
-                    // If event date matches today and we're in auto-update mode, schedule reload
-                    if (eventDate === today && autoUpdateMode) {
-                        console.log('Auto-update: Scheduling timeline reload due to SSE event for today');
-                        scheduleTimelineReload(eventData);
-                    }
-                }
-            } catch (error) {
-                console.warn('Could not parse SSE event data:', error);
-            }
-        };
-    }
-
-    function hideUIElements() {
-        const timeline = document.querySelector('.timeline');
-        const datePicker = document.getElementById('date-picker-container');
-
-        timeline.classList.add('hidden');
-        datePicker.classList.add('hidden');
-    }
-
-    function showUIElements() {
-        const timeline = document.querySelector('.timeline');
-        const datePicker = document.getElementById('date-picker-container');
-
-        timeline.classList.remove('hidden');
-        datePicker.classList.remove('hidden');
-    }
-
-    function showAutoUpdateOverlay() {
-        const overlay = document.getElementById('auto-update-overlay');
-
-        // Update initial time
-        updateAutoUpdateTime();
-
-        // Show overlay
-        overlay.classList.add('visible');
-
-        // Start updating time every second
-        autoUpdateTimeInterval = setInterval(updateAutoUpdateTime, 1000);
-    }
-
-    function hideAutoUpdateOverlay() {
-        const overlay = document.getElementById('auto-update-overlay');
-        overlay.classList.remove('visible');
-    }
-
-    function updateAutoUpdateTime() {
-        const now = new Date();
-        const dateElement = document.getElementById('auto-update-date');
-        const timeElement = document.getElementById('auto-update-time');
-
-        // Use browser locale for date formatting
-        const dateOptions = {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        };
-        const formattedDate = now.toLocaleDateString(navigator.language, dateOptions);
-
-        // Use browser locale for time formatting
-        const timeOptions = {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-        };
-        const formattedTime = now.toLocaleTimeString(navigator.language, timeOptions);
-
-        dateElement.textContent = formattedDate;
-        timeElement.textContent = formattedTime;
     }
 
     function toggleFullscreen() {
@@ -1015,7 +741,7 @@
     }
 
     if (window.userSettings.uiMode === "SHARED_LIVE_MODE_ONLY") {
-        toggleAutoUpdate();
+        liveModeController.enterLiveMode();
     }
 
     function createViewState(highlightTimes = []) {
