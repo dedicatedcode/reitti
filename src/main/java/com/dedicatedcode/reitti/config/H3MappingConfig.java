@@ -21,6 +21,22 @@ public class H3MappingConfig
     private boolean enableH3Mapping;
 
     /**
+     * Whether to enable the mapping part of the h3 system.
+     * <p>
+     * The area mapping is used to generate coverage statistics for areas: e.g., 1.45% of Berlin, 0.1% of Germany, ...
+     * <p>
+     * Same as the entire H3 system, this can be enabled at any time in the future and will catch up with existing
+     * data.
+     * <p>
+     * Disabling the area mapping will <b>NOT</b> remove any data and simply stop further mappings.
+     * <p>
+     * After enabling the area mapping will take some time on startup. This time depends on visited locations and
+     * available geocoding capabilities. Before enabling it is highly recommended to set up your own nominatim service.
+     */
+    @Value("${reitti.h3.area-mapping.enabled:false}")
+    private boolean enableAreaMapping;
+
+    /**
      * Resolution to use for H3 indices.
      * <p>
      * For more on size and area see: <a href="https://h3geo.org/docs/core-library/restable/">H3 documentation</a>
@@ -67,6 +83,39 @@ public class H3MappingConfig
     @Value("${reitti.h3.mapping-interval-ms:10000}")
     private int h3MappingIntervalMs;
 
+    /**
+     * How many h3 indices to map to their corresponding boundaries per batch.
+     * <p>
+     * Bigger values yield faster mapping but require more memory.
+     * <p>
+     * This is mostly used during initial ingestion, after that only small batch sizes are expected depending on
+     * {@link H3MappingConfig#areaMappingDelayMs}.
+     */
+    @Value("${reitti.h3.area-mapping.batch-size:1000}")
+    private int areaMappingBatchSize;
+
+    /**
+     * How long to wait between each batch of area mappings.
+     * <p>
+     * Area mappings are the process of checking which area an h3 index belongs to. This includes all types: country,
+     * city, ...
+     * <p>
+     * This value is only used during initial ingestion on application startup and should reduce database pressure.
+     * Afterward mapping is done on demand.
+     */
+    @Value("${reitti.h3.area-mapping.delay-ms:1000}")
+    private int areaMappingDelayMs;
+
+    public boolean isEnableH3Mapping()
+    {
+        return enableH3Mapping;
+    }
+
+    public boolean isEnableAreaMapping()
+    {
+        return enableAreaMapping;
+    }
+
     public int getH3RevealNeighbours()
     {
         return h3RevealNeighbours;
@@ -87,8 +136,13 @@ public class H3MappingConfig
         return h3MappingBatchSize;
     }
 
-    public boolean isEnableH3Mapping()
+    public int getAreaMappingDelayMs()
     {
-        return enableH3Mapping;
+        return areaMappingDelayMs;
+    }
+
+    public int getAreaMappingBatchSize()
+    {
+        return areaMappingBatchSize;
     }
 }
