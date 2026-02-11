@@ -10,6 +10,7 @@
     align-items: center;
     justify-content: center;
     animation: avatar-pulse 5s infinite;
+    cursor:pointer;
 }
 
 .avatar-marker-img {
@@ -17,10 +18,7 @@
     height: 100%;
     object-fit: cover;
     border-radius: 50%;
-
-    background: var(--color-highlight);
 }
-
 
 .avatar-marker-img:after {
     content: attr(alt);

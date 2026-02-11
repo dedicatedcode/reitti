@@ -20,7 +20,8 @@ class MapRenderer {
             clusterRadius: 80,
             iconSize: 56
         });
-        this.avatarMarkers = [];
+        this.avatarMarkers = new Map(); // Store markers by user ID
+        this.showAvatars = false;
         this.terrainLayer = new deck.TerrainLayer({
             id: 'terrain-loader',
             // Use the same Mapterhorn/MapLibre source
@@ -186,6 +187,9 @@ class MapRenderer {
         this.gpsDataManagers.forEach(manager => {
             this._updateLayers(manager)
         })
+        if (this.showAvatars) {
+            this.updateAvatarPositions();
+        }
     }
 
     setGpsDataManagers(managers) {
@@ -237,12 +241,14 @@ class MapRenderer {
     }
 
     enableAvatars() {
+        this.showAvatars = true;
         this.gpsDataManagers.forEach(manager => {
             const userConfig = manager.config;
             const latestLocation = manager.lastLocation;
             
             if (latestLocation && userConfig) {
                 this.addAvatarMarker(
+                    manager.id, // Add user ID
                     latestLocation.latitude, 
                     latestLocation.longitude, 
                     {
@@ -257,6 +263,7 @@ class MapRenderer {
     }
 
     disableAvatars() {
+        this.showAvatars = false;
         this.removeAvatarMarkers();
     }
 
@@ -588,12 +595,6 @@ class MapRenderer {
 
     _setup = () => {
         this.map.on('move', () => {
-            const currentState = {
-                longitude: this.map.getCenter().lng,
-                latitude: this.map.getCenter().lat,
-                zoom: this.map.getZoom()
-            };
-
             gpsDataManagers.forEach(manager => {
                 this._updateLayers(manager)
             })
@@ -771,7 +772,7 @@ class MapRenderer {
     /**
      * Add an avatar marker at the specified coordinates
      */
-    addAvatarMarker(lat, lng, userData) {
+    addAvatarMarker(userId, lat, lng, userData) {
         const SIZE = 40;
         
         // Outer container - NO position:relative, MapLibre controls this
@@ -840,17 +841,104 @@ class MapRenderer {
 
         marker.setPopup(popup);
 
-        // Add hover events to show popup
-        container.addEventListener('mouseenter', () => {
-            popup.addTo(this.map);
+        // Use MapLibre's built-in hover events for better reliability
+        marker.getElement().addEventListener('mouseenter', () => {
+            marker.getPopup().addTo(this.map);
         });
 
-        container.addEventListener('mouseleave', () => {
-            popup.remove();
+        marker.getElement().addEventListener('mouseleave', () => {
+            marker.getPopup().remove();
         });
 
-        // Store the marker for cleanup later
-        this.avatarMarkers.push(marker);
+        // Store the marker by user ID for updates
+        this.avatarMarkers.set(userId, marker);
+    }
+
+    /**
+     * Update avatar positions to latest known locations
+     */
+    updateAvatarPositions() {
+        const activeUserIds = new Set();
+        
+        // Update existing markers or create new ones
+        this.gpsDataManagers.forEach(manager => {
+            const userConfig = manager.config;
+            const latestLocation = manager.lastLocation;
+            
+            if (latestLocation && userConfig) {
+                activeUserIds.add(manager.id);
+                
+                const existingMarker = this.avatarMarkers.get(manager.id);
+                if (existingMarker) {
+                    // Move existing marker to new position
+                    existingMarker.setLngLat([latestLocation.longitude, latestLocation.latitude]);
+                    
+                    // Update popup content with new timestamp
+                    this.updateMarkerPopup(existingMarker, latestLocation.latitude, latestLocation.longitude, {
+                        avatarUrl: userConfig.avatarUrl,
+                        avatarFallback: userConfig.avatarFallback,
+                        displayName: userConfig.displayName,
+                        timestamp: latestLocation.timestamp
+                    });
+                } else {
+                    debugger
+                    // Create new marker for this user
+                    this.addAvatarMarker(
+                        manager.id,
+                        latestLocation.latitude, 
+                        latestLocation.longitude, 
+                        {
+                            avatarUrl: userConfig.avatarUrl,
+                            avatarFallback: userConfig.avatarFallback,
+                            displayName: userConfig.displayName,
+                            timestamp: latestLocation.timestamp
+                        }
+                    );
+                }
+            }
+        });
+        
+        // Remove markers for users that no longer have location data
+        for (const [userId, marker] of this.avatarMarkers) {
+            if (!activeUserIds.has(userId)) {
+                marker.remove();
+                this.avatarMarkers.delete(userId);
+            }
+        }
+    }
+
+    /**
+     * Update marker popup content
+     */
+    updateMarkerPopup(marker, lat, lng, userData) {
+        const formatTimestamp = (timestamp) => {
+            if (!timestamp) return window.locale?.common?.unknown || 'Unknown';
+            const date = new Date(timestamp);
+            return date.toLocaleString();
+        };
+
+        const formatCoordinates = (lat, lng) => {
+            return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        };
+
+        const popupContent = `
+            <div style="font-family: var(--sans-font); min-width: 200px;">
+                <div style="font-weight: bold; margin-bottom: 8px; color: var(--color-primary);">
+                    ${window.locale?.autoupdate?.latestLocation || 'Latest Known Location'}
+                </div>
+                <div style="margin-bottom: 6px;">
+                    <strong>${window.locale?.common?.user || 'User'}:</strong> ${userData.displayName}
+                </div>
+                <div style="margin-bottom: 6px;">
+                    <strong>${window.locale?.common?.time || 'Time'}:</strong> ${formatTimestamp(userData.timestamp)}
+                </div>
+                <div style="margin-bottom: 4px;">
+                    <strong>${window.locale?.common?.position || 'Position'}:</strong> ${formatCoordinates(lat, lng)}
+                </div>
+            </div>
+        `;
+
+        marker.getPopup().setHTML(popupContent);
     }
 
     /**
@@ -860,7 +948,7 @@ class MapRenderer {
         this.avatarMarkers.forEach(marker => {
             marker.remove();
         });
-        this.avatarMarkers = [];
+        this.avatarMarkers.clear();
     }
 
 }
