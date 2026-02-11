@@ -16,7 +16,7 @@ class PhotoClusterManager {
         this.markers = new Map();
         this._imageCache = new Map();
 
-        var self = this;
+        const self = this;
         this._moveHandler = function () {
             self._doUpdate();
         };
@@ -44,7 +44,7 @@ class PhotoClusterManager {
             return;
         }
 
-        var features = this.photos.map(function (photo) {
+        const features = this.photos.map(function (photo) {
             return {
                 type: 'Feature',
                 geometry: {type: 'Point', coordinates: [photo.longitude, photo.latitude]},
@@ -69,24 +69,24 @@ class PhotoClusterManager {
     _doUpdate() {
         if (!this.index) return;
 
-        var bounds = this.map.getBounds();
-        var zoom = Math.round(this.map.getZoom());
-        var pad = 0.05;
+        const bounds = this.map.getBounds();
+        const zoom = Math.round(this.map.getZoom());
+        const pad = 0.05;
 
-        var raw = this.index.getClusters(
+        const raw = this.index.getClusters(
             [bounds.getWest() - pad, bounds.getSouth() - pad,
                 bounds.getEast() + pad, bounds.getNorth() + pad],
             zoom
         );
 
-        var newClusters = new Map();
+        const newClusters = new Map();
 
-        for (var i = 0; i < raw.length; i++) {
-            var feature = raw[i];
-            var lng = feature.geometry.coordinates[0];
-            var lat = feature.geometry.coordinates[1];
-            var isCluster = feature.properties.cluster === true;
-            var id, cluster;
+        for (let i = 0; i < raw.length; i++) {
+            const feature = raw[i];
+            const lng = feature.geometry.coordinates[0];
+            const lat = feature.geometry.coordinates[1];
+            const isCluster = feature.properties.cluster === true;
+            let id, cluster;
 
             if (isCluster) {
                 id = 'cluster-' + feature.properties.cluster_id;
@@ -102,7 +102,7 @@ class PhotoClusterManager {
                         ? feature.properties.photos[0].thumbnailUrl : '',
                 };
             } else {
-                var photo = feature.properties.photo;
+                const photo = feature.properties.photo;
                 id = 'photo-' + photo.id;
                 cluster = {
                     id: id,
@@ -123,22 +123,22 @@ class PhotoClusterManager {
     }
 
     _reconcileMarkers(newClusters) {
-        for (var entry of this.markers) {
+        for (const entry of this.markers) {
             if (!newClusters.has(entry[0])) {
                 entry[1].remove();
                 this.markers.delete(entry[0]);
             }
         }
 
-        for (var entry of newClusters) {
-            var id = entry[0];
-            var cluster = entry[1];
-            var existing = this.markers.get(id);
+        for (const entry of newClusters) {
+            const id = entry[0];
+            const cluster = entry[1];
+            const existing = this.markers.get(id);
             if (existing) {
                 existing.setLngLat([cluster.longitude, cluster.latitude]);
             } else {
-                var el = this._createMarkerElement(cluster);
-                var m = new maplibregl.Marker({element: el, anchor: 'center'})
+                const el = this._createMarkerElement(cluster);
+                const m = new maplibregl.Marker({element: el, anchor: 'center'})
                     .setLngLat([cluster.longitude, cluster.latitude])
                     .addTo(this.map);
                 this.markers.set(id, m);
@@ -147,57 +147,57 @@ class PhotoClusterManager {
     }
 
     _clearMarkers() {
-        for (var entry of this.markers) {
+        for (let entry of this.markers) {
             entry[1].remove();
         }
         this.markers.clear();
     }
 
     _createMarkerElement(cluster) {
-        var SIZE = this.options.iconSize;
-        var BORDER = this.options.borderWidth;
-        var self = this;
+        const SIZE = this.options.iconSize;
+        const BORDER = this.options.borderWidth;
+        const self = this;
 
         // Outer container - NO position:relative, MapLibre controls this
-        var container = document.createElement('div');
+        const container = document.createElement('div');
         container.style.cssText =
             'width:' + SIZE + 'px;height:' + SIZE + 'px;cursor:pointer;';
 
         // Inner wrapper for badge positioning
-        var inner = document.createElement('div');
+        const inner = document.createElement('div');
         inner.style.cssText =
             'width:' + SIZE + 'px;height:' + SIZE + 'px;position:relative;';
 
-        var circle = document.createElement('div');
+        const circle = document.createElement('div');
         circle.style.cssText =
             'width:' + SIZE + 'px;height:' + SIZE + 'px;border-radius:50%;' +
             'border:' + BORDER + 'px solid #ffffff;' +
             'box-shadow:0 2px 6px rgba(0,0,0,0.35);overflow:hidden;' +
             'background:#ddd;box-sizing:border-box;';
 
-        var placeholderSVG =
+        const placeholderSVG =
             '<svg viewBox="0 0 24 24" style="width:60%;height:60%;margin:20%;opacity:0.4;fill:#999;">' +
             '<path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2z' +
             'M8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>';
 
         if (cluster.thumbnailUrl) {
-            var cached = this._imageCache.get(cluster.thumbnailUrl);
+            const cached = this._imageCache.get(cluster.thumbnailUrl);
             if (cached) {
                 circle.style.backgroundImage = 'url(' + cached + ')';
                 circle.style.backgroundSize = 'cover';
                 circle.style.backgroundPosition = 'center';
             } else {
                 circle.innerHTML = placeholderSVG;
-                var img = new Image();
+                const img = new Image();
                 img.crossOrigin = 'anonymous';
                 img.onload = function () {
-                    var c = document.createElement('canvas');
+                    const c = document.createElement('canvas');
                     c.width = img.naturalWidth;
                     c.height = img.naturalHeight;
                     c.getContext('2d').drawImage(img, 0, 0);
                     c.toBlob(function (blob) {
                         if (blob) {
-                            var blobUrl = URL.createObjectURL(blob);
+                            const blobUrl = URL.createObjectURL(blob);
                             self._imageCache.set(cluster.thumbnailUrl, blobUrl);
                             circle.style.backgroundImage = 'url(' + blobUrl + ')';
                             circle.style.backgroundSize = 'cover';
@@ -217,7 +217,7 @@ class PhotoClusterManager {
         inner.appendChild(circle);
 
         if (cluster.isCluster && cluster.count > 1) {
-            var badge = document.createElement('div');
+            const badge = document.createElement('div');
             badge.textContent = cluster.count > 99 ? '99+' : String(cluster.count);
             badge.style.cssText =
                 'position:absolute;top:-4px;right:-4px;' +
@@ -253,7 +253,7 @@ class PhotoClusterManager {
         this._clearMarkers();
         this.map.off('move', this._moveHandler);
         this.map.off('moveend', this._moveEndHandler);
-        for (var entry of this._imageCache) {
+        for (let entry of this._imageCache) {
             URL.revokeObjectURL(entry[1]);
         }
         this._imageCache.clear();

@@ -13,18 +13,14 @@ class MapRenderer {
             maxPitch: 85,
             minZoom: 2,
         });
-
+        this.map.on('load', () => {
+            this.map.setSourceTileLodParams(1, 10); //effectively disabling LOD
+        });
         this.photosManager = new PhotoClusterManager(this.map,  {
             clusterRadius: 80,
             iconSize: 56
         });
-
-        this.map.on('load', () => {
-            this.map.setSourceTileLodParams(1, 10); //effectively disabling LOD
-
-
-        });
-
+        this.avatarMarkers = [];
         this.terrainLayer = new deck.TerrainLayer({
             id: 'terrain-loader',
             // Use the same Mapterhorn/MapLibre source
@@ -46,8 +42,6 @@ class MapRenderer {
                 }
             }
         });
-
-
         this.deckOverlay = new deck.MapboxOverlay({
             layers: []
         });
@@ -194,16 +188,6 @@ class MapRenderer {
         })
     }
 
-    _awaitStyleLoaded(func) {
-        if (this.map.isStyleLoaded()) {
-            func();
-        } else {
-            this.map.once('style.load', () => {
-                func()
-            });
-        }
-    }
-
     setGpsDataManagers(managers) {
         this.gpsDataManagers = managers;
         this.bounds = [];
@@ -238,6 +222,52 @@ class MapRenderer {
 
     reset() {
         this.deckOverlay.setProps([]);
+    }
+
+    setBearing(number) {
+        this.map.easeTo({
+            bearing: number,
+            duration: 500, // Mapbox uses 'duration' in ms
+            essential: true
+        });
+    }
+
+    setPhotos(photos) {
+        this.photosManager.setPhotos(photos);
+    }
+
+    enableAvatars() {
+        this.gpsDataManagers.forEach(manager => {
+            const userConfig = manager.config;
+            const latestLocation = manager.lastLocation;
+            
+            if (latestLocation && userConfig) {
+                this.addAvatarMarker(
+                    latestLocation.latitude, 
+                    latestLocation.longitude, 
+                    {
+                        avatarUrl: userConfig.avatarUrl,
+                        avatarFallback: userConfig.avatarFallback,
+                        displayName: userConfig.displayName,
+                        timestamp: latestLocation.timestamp
+                    }
+                );
+            }
+        });
+    }
+
+    disableAvatars() {
+        this.removeAvatarMarkers();
+    }
+
+    _awaitStyleLoaded(func) {
+        if (this.map.isStyleLoaded()) {
+            func();
+        } else {
+            this.map.once('style.load', () => {
+                func()
+            });
+        }
     }
 
     _updateLayers(manager) {
@@ -650,14 +680,6 @@ class MapRenderer {
         });
     }
 
-    setBearing(number) {
-        this.map.easeTo({
-            bearing: number,
-            duration: 500, // Mapbox uses 'duration' in ms
-            essential: true
-        });
-    }
-
     _switchProjection(renderGlobe) {
         this.map.setProjection({
             type: renderGlobe ? 'globe' : 'mercator'
@@ -746,7 +768,99 @@ class MapRenderer {
         }
     }
 
-    setPhotos(photos) {
-        this.photosManager.setPhotos(photos);
+    /**
+     * Add an avatar marker at the specified coordinates
+     */
+    addAvatarMarker(lat, lng, userData) {
+        const SIZE = 40;
+        
+        // Outer container - NO position:relative, MapLibre controls this
+        const container = document.createElement('div');
+        container.style.cssText = 
+            'width:' + SIZE + 'px;height:' + SIZE + 'px;cursor:pointer;z-index:1000;';
+
+        // Inner wrapper for proper positioning
+        const inner = document.createElement('div');
+        inner.style.cssText = 
+            'width:' + SIZE + 'px;height:' + SIZE + 'px;position:relative;';
+
+        const circle = document.createElement('div');
+        circle.className = 'avatar-marker';
+        
+        const img = document.createElement('img');
+        img.src = userData.avatarUrl;
+        img.alt = userData.avatarFallback;
+        img.className = 'avatar-marker-img';
+        
+        circle.appendChild(img);
+        inner.appendChild(circle);
+        container.appendChild(inner);
+
+        // Create MapLibre GL marker
+        const marker = new maplibregl.Marker({
+            element: container,
+            anchor: 'center'
+        })
+        .setLngLat([lng, lat])
+        .addTo(this.map);
+
+        // Create detailed popup content
+        const formatTimestamp = (timestamp) => {
+            if (!timestamp) return window.locale?.common?.unknown || 'Unknown';
+            const date = new Date(timestamp);
+            return date.toLocaleString();
+        };
+
+        const formatCoordinates = (lat, lng) => {
+            return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        };
+
+        const popupContent = `
+            <div style="font-family: var(--sans-font); min-width: 200px;">
+                <div style="font-weight: bold; margin-bottom: 8px; color: var(--color-primary);">
+                    ${window.locale?.autoupdate?.latestLocation || 'Latest Known Location'}
+                </div>
+                <div style="margin-bottom: 6px;">
+                    <strong>${window.locale?.common?.user || 'User'}:</strong> ${userData.displayName}
+                </div>
+                <div style="margin-bottom: 6px;">
+                    <strong>${window.locale?.common?.time || 'Time'}:</strong> ${formatTimestamp(userData.timestamp)}
+                </div>
+                <div style="margin-bottom: 4px;">
+                    <strong>${window.locale?.common?.position || 'Position'}:</strong> ${formatCoordinates(lat, lng)}
+                </div>
+            </div>
+        `;
+
+        // Add popup with detailed user info
+        const popup = new maplibregl.Popup({
+            offset: 25,
+            closeButton: false
+        }).setHTML(popupContent);
+
+        marker.setPopup(popup);
+
+        // Add hover events to show popup
+        container.addEventListener('mouseenter', () => {
+            popup.addTo(this.map);
+        });
+
+        container.addEventListener('mouseleave', () => {
+            popup.remove();
+        });
+
+        // Store the marker for cleanup later
+        this.avatarMarkers.push(marker);
     }
+
+    /**
+     * Remove all avatar markers from the map
+     */
+    removeAvatarMarkers() {
+        this.avatarMarkers.forEach(marker => {
+            marker.remove();
+        });
+        this.avatarMarkers = [];
+    }
+
 }
