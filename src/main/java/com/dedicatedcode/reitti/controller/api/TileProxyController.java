@@ -30,7 +30,7 @@ public class TileProxyController {
 
     private final HttpClient httpClient;
     private final String tileCacheUrl;
-    
+
     // Maps source names to internal paths and coordinate ordering
     private record SourceConfig(String path, boolean swapXY, String contentType) {}
     
