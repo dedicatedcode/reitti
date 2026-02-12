@@ -35,7 +35,8 @@ public class TileProxyController {
     private record SourceConfig(String path, boolean swapXY, String contentType) {}
     
     private static final Map<String, SourceConfig> SOURCES = Map.of(
-        "osm", new SourceConfig("/osm/", false, MediaType.IMAGE_PNG_VALUE),
+        "raster", new SourceConfig("/osm/", false, MediaType.IMAGE_PNG_VALUE),
+        "osm", new SourceConfig("/osm/", false, "application/x-protobuf"),
         "vector", new SourceConfig("/vector/", false, "application/x-protobuf"),
         "terrain", new SourceConfig("/terrain/", false, "image/webp"),
         "satellite", new SourceConfig("/satellite/", true, "image/jpeg")
@@ -46,6 +47,15 @@ public class TileProxyController {
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
+    }
+
+    @GetMapping("/{z}/{x}/{y}.png")
+    public ResponseEntity<byte[]> getTileLegacy(
+            @PathVariable int z,
+            @PathVariable int x,
+            @PathVariable int y,
+            HttpServletRequest request) {
+        return getTile("raster", z, x, y, "png", request);
     }
 
     @GetMapping("/{source}/{z}/{x}/{y}.{ext}")
