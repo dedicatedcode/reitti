@@ -255,18 +255,72 @@ public class OwnTracksRecorderIntegrationService {
 
     private List<OwntracksLocationRequest> fetchLocationData(OwnTracksRecorderIntegration integration, Instant fromTime) {
         try {
-            String apiUrl;
             if (fromTime == null) {
                 fromTime = Instant.ofEpochSecond(0);
             }
-            LocalDateTime fromDate = fromTime.atOffset(ZoneOffset.UTC).toLocalDateTime();
-            String fromDateString = fromDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-            apiUrl = String.format("%s/api/0/locations?user=%s&device=%s&from=%s&limit=500", integration.getBaseUrl(), integration.getUsername(), integration.getDeviceId(), fromDateString);
-            return fetchData(apiUrl, integration);
+            return fetchAllLocationDataWithPagination(integration, fromTime, null, 10000);
         } catch (Exception e) {
             logger.error("Failed to fetch location data from OwnTracks Recorder: {}", e.getMessage());
             return Collections.emptyList();
         }
+    }
+
+    private List<OwntracksLocationRequest> fetchAllLocationDataWithPagination(OwnTracksRecorderIntegration integration, 
+                                                                               Instant fromTime, Instant toTime, int limit) {
+        List<OwntracksLocationRequest> allData = new ArrayList<>();
+        Instant currentFromTime = fromTime;
+        
+        while (true) {
+            LocalDateTime fromDate = currentFromTime.atOffset(ZoneOffset.UTC).toLocalDateTime();
+            String fromDateString = fromDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            
+            StringBuilder apiUrlBuilder = new StringBuilder();
+            apiUrlBuilder.append(String.format("%s/api/0/locations?user=%s&device=%s&from=%s&limit=%d", 
+                integration.getBaseUrl(), 
+                integration.getUsername(), 
+                integration.getDeviceId(), 
+                fromDateString, 
+                limit));
+            
+            // Add 'to' parameter if specified (for historical data queries)
+            if (toTime != null) {
+                LocalDateTime toDate = toTime.atOffset(ZoneOffset.UTC).toLocalDateTime();
+                String toDateString = toDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                apiUrlBuilder.append("&to=").append(toDateString);
+            }
+            
+            String apiUrl = apiUrlBuilder.toString();
+            List<OwntracksLocationRequest> pageData = fetchData(apiUrl, integration);
+            
+            if (pageData.isEmpty()) {
+                break;
+            }
+            
+            allData.addAll(pageData);
+            
+            // If we received less than limit records, we've reached the end
+            if (pageData.size() < limit) {
+                break;
+            }
+            
+            // Find the oldest timestamp in this batch (OwnTracks returns newest to oldest)
+            Instant oldestTimestamp = pageData.stream()
+                    .map(OwntracksLocationRequest::getTimestamp)
+                    .filter(Objects::nonNull)
+                    .map(Instant::ofEpochSecond)
+                    .min(Instant::compareTo)
+                    .orElse(null);
+            
+            if (oldestTimestamp == null) {
+                // No valid timestamps found, stop pagination
+                break;
+            }
+            
+            // Set fromTime to the oldest timestamp for the next request
+            currentFromTime = oldestTimestamp;
+        }
+        
+        return allData;
     }
 
     private List<OwntracksLocationRequest> fetchData(String apiUrl, OwnTracksRecorderIntegration integration) {
@@ -336,17 +390,10 @@ public class OwnTracksRecorderIntegrationService {
             LocalDateTime fromDate = month.atDay(1).atStartOfDay();
             LocalDateTime toDate = month.atEndOfMonth().atTime(23, 59, 59);
             
-            String fromDateString = fromDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-            String toDateString = toDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            Instant fromInstant = fromDate.toInstant(ZoneOffset.UTC);
+            Instant toInstant = toDate.toInstant(ZoneOffset.UTC);
             
-            String apiUrl = String.format("%s/api/0/locations?user=%s&device=%s&from=%s&to=%s&limit=10000", 
-                                        integration.getBaseUrl(), 
-                                        integration.getUsername(), 
-                                        integration.getDeviceId(), 
-                                        fromDateString, 
-                                        toDateString);
-            
-            return fetchData(apiUrl, integration);
+            return fetchAllLocationDataWithPagination(integration, fromInstant, toInstant, 10000);
         } catch (Exception e) {
             logger.error("Failed to fetch location data for month {}: {}", month, e.getMessage());
             return Collections.emptyList();
