@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,9 +27,9 @@ public class MapStyleController {
     
     public MapStyleController(
             ObjectMapper objectMapper,
-            @Value("${reitti.ui.tiles.cache.enabled:false}") boolean tileCacheEnabled) {
+            @Value("${reitti.ui.tiles.cache.url:}") String cacheUrl) {
         this.objectMapper = objectMapper;
-        this.tileCacheEnabled = tileCacheEnabled;
+        this.tileCacheEnabled = StringUtils.hasText(cacheUrl);
     }
 
     @GetMapping(value = "/reitti.json", produces = MediaType.APPLICATION_JSON_VALUE)

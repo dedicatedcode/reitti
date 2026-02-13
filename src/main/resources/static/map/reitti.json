@@ -23,7 +23,9 @@
     "openmaptiles": {
       "type": "vector",
       "url": "https://tiles.dedicatedcode.com/planet",
-      "attribution": "© <a href='https://openfreemap.org' target='_blank'>OpenFreeMap</a> © <a href='https://www.openstreetmap.org/copyright' target='_blank'>OSM</a>"
+      "attribution": "© <a href='https://openfreemap.org' target='_blank'>OpenFreeMap</a> © <a href='https://www.openstreetmap.org/copyright' target='_blank'>OSM</a>",
+      "maxzoom":14,
+      "minzoom":0
     },
     "terrain-source": {
       "type": "raster-dem",
@@ -41,7 +43,7 @@
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
       ],
       "tileSize": 256,
-      "maxzoom": 18,
+      "maxzoom": 13,
       "attribution": "Powered by <a href='https://www.esri.com' target='_blank'>Esri</a> | Sources: Esri, Maxar, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community"
     }
   },

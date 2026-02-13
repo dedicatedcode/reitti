@@ -86,12 +86,6 @@ public class TileProxyController {
                     .timeout(Duration.ofSeconds(30))
                     .GET();
 
-            // Forward referer if present
-            String referer = request.getHeader("Referer");
-            if (referer != null) {
-                requestBuilder.header("Referer", referer);
-            }
-
             HttpResponse<byte[]> response = httpClient.send(
                 requestBuilder.build(), 
                 HttpResponse.BodyHandlers.ofByteArray()
