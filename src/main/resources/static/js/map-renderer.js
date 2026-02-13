@@ -67,7 +67,7 @@ class MapRenderer {
 
         this.bounds = [];
 
-        this.map.once('style.load', () => {
+        this.map.once('style.loaded', () => {
             this._switchMapBuildingLayer(this.viewState.renderBuildings && this.viewState.is3d);
             this._switchTerrainLayer(this.viewState.renderTerrain);
             this._switchSatelliteLayer(this.viewState.renderSatelliteView);
