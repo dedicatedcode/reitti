@@ -104,7 +104,7 @@ jobs:
           restore-keys: |
             docker-${{ runner.os }}-                                                                                                                                                                                                                                                  
 
-      - name: Build docker image
+      - name: Build reitti docker image
         uses: docker/build-push-action@v6
         with:
           platforms: linux/amd64
@@ -114,6 +114,17 @@ jobs:
           tags: dedicatedcode/reitti:latest
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      - name: Build tile-cache docker image
+        uses: docker/build-push-action@v6
+        with:
+          platforms: linux/amd64
+          context: ./docker/tiles-cache
+          push: false
+          load: true
+          tags: dedicatedcode/reitti-tile-cache:latest
+          cache-from: type=local,src=/tmp/.buildx-cache-tile-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-tile-cache-new,mode=max
 
       - name: Move Docker cache
         run: |

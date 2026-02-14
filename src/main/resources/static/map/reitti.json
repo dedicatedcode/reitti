@@ -22,8 +22,10 @@
   "sources": {
     "openmaptiles": {
       "type": "vector",
-      "url": "https://tiles.openfreemap.org/planet",
-      "attribution": "© <a href='https://openfreemap.org' target='_blank'>OpenFreeMap</a> © <a href='https://www.openstreetmap.org/copyright' target='_blank'>OSM</a>"
+      "url": "https://tiles.dedicatedcode.com/planet",
+      "attribution": "© <a href='https://openfreemap.org' target='_blank'>OpenFreeMap</a> © <a href='https://www.openstreetmap.org/copyright' target='_blank'>OSM</a>",
+      "maxzoom":14,
+      "minzoom":0
     },
     "terrain-source": {
       "type": "raster-dem",

@@ -4,6 +4,8 @@ class MapRenderer {
         this.gpsDataManagers = []
 
         this.viewState = initialViewState
+        this._pitchBearingAllowed = true;
+
         this.map = new maplibregl.Map({
             interleaved: true,
             container: 'new-map',
@@ -13,36 +15,17 @@ class MapRenderer {
             maxPitch: 85,
             minZoom: 2,
         });
-        this.map.on('load', () => {
-            this.map.setSourceTileLodParams(1, 10); //effectively disabling LOD
-        });
+        // this.map.on('load', () => {
+        //     this.map.setSourceTileLodParams(1, 10); //effectively disabling LOD
+        // });
         this.photosManager = new PhotoClusterManager(this.map,  {
             clusterRadius: 80,
             iconSize: 56
         });
         this.avatarMarkers = new Map(); // Store markers by user ID
         this.showAvatars = false;
-        this.terrainLayer = new deck.TerrainLayer({
-            id: 'terrain-loader',
-            // Use the same Mapterhorn/MapLibre source
-            elevationData: 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp',
-            elevationDecoder: {
-                rScaler: 256,
-                gScaler: 1,
-                bScaler: 1 / 256,
-                offset: -32768
-            },
-            minZoom: 0,
-            maxZoom: 14,
-            elevationScale: 1.5,
-            bounds: [-180, -90, 180, 90], // Global bounds help with alignment
-            operation: 'terrain',
-            loadOptions: {
-                fetch: {
-                    priority: 'high'
-                }
-            }
-        });
+
+        this.terrainLayer = null;
         this.deckOverlay = new deck.MapboxOverlay({
             layers: []
         });
@@ -91,12 +74,8 @@ class MapRenderer {
             this._switchTerrainLayer(this.viewState.renderTerrain);
             this._switchSatelliteLayer(this.viewState.renderSatelliteView);
             this._switchProjection(this.viewState.renderGlobe);
-
+            this._syncPitchBearingState(false);
         });
-        if (!this.viewState.is3d) {
-            this.map.dragRotate.disable();
-            this.map.touchZoomRotate.disableRotation();
-        }
 
         this._setup();
     }
@@ -150,24 +129,7 @@ class MapRenderer {
             this._awaitStyleLoaded(() => {
                 this._switchMapBuildingLayer(switchTo3D && this.viewState.renderBuildings);
             });
-
-            if (this.map) {
-                if (switchTo2D) {
-                    this.map.dragRotate.disable();
-                    this.map.touchZoomRotate.disableRotation();
-                } else {
-                    this.map.dragRotate.enable();
-                    this.map.touchZoomRotate.enableRotation();
-                }
-                this.map.easeTo({
-                    pitch: switchTo3D ? 45 : 0,
-                    bearing: switchTo3D ? this.map.getBearing() : 0,
-                    duration: 500, // Mapbox uses 'duration' in ms
-                    essential: true
-                });
-            }
         }
-
         if (switchTerrainOn || switchTerrainOff) {
             this._awaitStyleLoaded(() => {
                 this._switchTerrainLayer(switchTerrainOn)
@@ -183,6 +145,8 @@ class MapRenderer {
         if (toggleGlobeMode) {
             this._switchProjection(this.viewState.renderGlobe);
         }
+
+        this._syncPitchBearingState();
 
         this.gpsDataManagers.forEach(manager => {
             this._updateLayers(manager)
@@ -267,6 +231,35 @@ class MapRenderer {
         this.removeAvatarMarkers();
     }
 
+    _shouldAllowPitchAndBearing() {
+        return this.viewState.is3d && !(this.viewState.renderGlobe && this.map.getZoom() < 12);
+    }
+
+    _syncPitchBearingState(animate = true) {
+        if (!this.map) return;
+
+        const shouldAllow = this._shouldAllowPitchAndBearing();
+        const wasAllowed = this._pitchBearingAllowed;
+
+        if (shouldAllow === wasAllowed) return;
+
+        this._pitchBearingAllowed = shouldAllow;
+
+        if (shouldAllow) {
+            this.map.dragRotate.enable();
+            this.map.touchZoomRotate.enableRotation();
+        } else {
+            this.map.dragRotate.disable();
+            this.map.touchZoomRotate.disableRotation();
+            if (this.map.getPitch() !== 0 || this.map.getBearing() !== 0) {
+                if (animate) {
+                    this.map.easeTo({ pitch: 0, bearing: 0, duration: 500, essential: true });
+                } else {
+                    this.map.jumpTo({ pitch: 0, bearing: 0 });
+                }
+            }
+        }
+    }
     _awaitStyleLoaded(func) {
         if (this.map.isStyleLoaded()) {
             func();
@@ -599,6 +592,20 @@ class MapRenderer {
                 this._updateLayers(manager)
             })
         });
+
+        this.map.on('zoomend', () => {
+            this._syncPitchBearingState();
+        });
+
+        // ── ADDED: hard-enforce while constrained (safety net) ──
+        this.map.on('zoom', () => {
+            if (!this._pitchBearingAllowed) {
+                if (this.map.getPitch() !== 0 || this.map.getBearing() !== 0) {
+                    this.map.jumpTo({ pitch: 0, bearing: 0 });
+                }
+            }
+        });
+
     }
 
     _getActiveVisitEffect(visit) {
@@ -728,33 +735,39 @@ class MapRenderer {
         this.map.setPaintProperty('building-3d', 'fill-extrusion-opacity', enable ? 0.6 : null)
     }
 
+    _extractTerrainUrl() {
+        return this.map.getSource('terrain-source').tiles[0];
+    }
     _switchTerrainLayer(enable) {
         if (enable) {
-            this.map.setLayoutProperty('hillshading', 'visibility', 'visible');
-            this.terrainLayer = new deck.TerrainLayer({
-                id: 'terrain-loader',
-                elevationData: 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp',
-                elevationDecoder: {
-                    rScaler: 256,
-                    gScaler: 1,
-                    bScaler: 1 / 256,
-                    offset: -32768
-                },
-                minZoom: 0,
-                maxZoom: 14,
-                elevationScale: 1.5,
-                bounds: [-180, -90, 180, 90], // Global bounds help with alignment
-                operation: 'terrain',
-                loadOptions: {
-                    fetch: {
-                        priority: 'high'
+            this._awaitStyleLoaded(() => {
+                this.map.setLayoutProperty('hillshading', 'visibility', 'visible');
+                this.terrainLayer = new deck.TerrainLayer({
+                    id: 'terrain-loader',
+                    elevationData: this._extractTerrainUrl(),
+                    elevationDecoder: {
+                        rScaler: 256,
+                        gScaler: 1,
+                        bScaler: 1 / 256,
+                        offset: -32768
+                    },
+                    minZoom: 0,
+                    maxZoom: 14,
+                    elevationScale: 1.5,
+                    bounds: [-180, -90, 180, 90], // Global bounds help with alignment
+                    operation: 'terrain',
+                    loadOptions: {
+                        fetch: {
+                            priority: 'high'
+                        }
                     }
-                }
-            });
-            this.map.setTerrain({
-                source: 'terrain-source',
-                exaggeration: 1
-            });
+                });
+                this.map.setTerrain({
+                    source: 'terrain-source',
+                    exaggeration: 1
+                });
+            })
+
         } else {
             this.map.setLayoutProperty('hillshading', 'visibility', 'none');
             this.map.setTerrain(null);

@@ -19,6 +19,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @RestController
@@ -30,6 +31,17 @@ public class TileProxyController {
     private final HttpClient httpClient;
     private final String tileCacheUrl;
 
+    // Maps source names to internal paths and coordinate ordering
+    private record SourceConfig(String path, boolean swapXY, String contentType) {}
+    
+    private static final Map<String, SourceConfig> SOURCES = Map.of(
+        "raster", new SourceConfig("/osm/", false, MediaType.IMAGE_PNG_VALUE),
+        "osm", new SourceConfig("/osm/", false, "application/x-protobuf"),
+        "vector", new SourceConfig("/vector/", false, "application/x-protobuf"),
+        "terrain", new SourceConfig("/terrain/", false, "image/webp"),
+        "satellite", new SourceConfig("/satellite/", true, "image/jpeg")
+    );
+
     public TileProxyController(@Value("${reitti.ui.tiles.cache.url}") String tileCacheUrl) {
         this.tileCacheUrl = tileCacheUrl;
         this.httpClient = HttpClient.newBuilder()
@@ -38,48 +50,63 @@ public class TileProxyController {
     }
 
     @GetMapping("/{z}/{x}/{y}.png")
-    public ResponseEntity<byte[]> getTile(
+    public ResponseEntity<byte[]> getTileLegacy(
             @PathVariable int z,
             @PathVariable int x,
             @PathVariable int y,
             HttpServletRequest request) {
+        return getTile("raster", z, x, y, "png", request);
+    }
 
-        String tileUrl = String.format("%s/%d/%d/%d.png", tileCacheUrl, z, x, y);
+    @GetMapping("/{source}/{z}/{x}/{y}.{ext}")
+    public ResponseEntity<byte[]> getTile(
+            @PathVariable String source,
+            @PathVariable int z,
+            @PathVariable int x,
+            @PathVariable int y,
+            @PathVariable String ext,
+            HttpServletRequest request) {
+
+        SourceConfig config = SOURCES.get(source);
+        if (config == null) {
+            return ResponseEntity.notFound().build();
+        }
 
         try {
-            log.trace("Fetching tile: {}/{}/{}", z, x, y);
+            // ArcGIS uses z/y/x order, others use z/x/y
+            String coordPath = config.swapXY() 
+                ? String.format("%d/%d/%d", z, y, x)
+                : String.format("%d/%d/%d.%s", z, x, y, ext);
 
-            // Build HTTP request
+            String tileUrl = tileCacheUrl + config.path() + coordPath;
+            log.trace("Fetching tile [{}]: {}", source, coordPath);
+
             HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                     .uri(URI.create(tileUrl))
                     .timeout(Duration.ofSeconds(30))
                     .GET();
 
-            // Add referer header if present
-            String referer = request.getHeader("Referer");
-            if (referer != null) {
-                requestBuilder.header("Referer", referer);
-            }
-
-            HttpRequest httpRequest = requestBuilder.build();
-            HttpResponse<byte[]> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofByteArray());
+            HttpResponse<byte[]> response = httpClient.send(
+                requestBuilder.build(), 
+                HttpResponse.BodyHandlers.ofByteArray()
+            );
 
             if (response.statusCode() == 200) {
                 HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.IMAGE_PNG);
+                headers.setContentType(MediaType.parseMediaType(config.contentType()));
                 headers.setCacheControl(CacheControl.maxAge(30, TimeUnit.DAYS).cachePublic());
                 headers.add("Access-Control-Allow-Origin", "*");
-
+                
                 return ResponseEntity.ok()
                         .headers(headers)
                         .body(response.body());
             } else {
-                log.warn("Failed to fetch tile {}/{}/{}: HTTP {}", z, x, y, response.statusCode());
+                log.warn("Failed to fetch tile {}/{}/{} from {}: HTTP {}", x, y, z, source, response.statusCode());
                 return ResponseEntity.notFound().build();
             }
 
         } catch (Exception e) {
-            log.warn("Failed to fetch tile {}/{}/{}: {}", z, x, y, e.getMessage());
+            log.warn("Failed to fetch tile {}/{}/{} from {}: {}", x, y, z, source, e.getMessage());
             return ResponseEntity.notFound().build();
         }
     }
