@@ -15,9 +15,6 @@ class MapRenderer {
             maxPitch: 85,
             minZoom: 2,
         });
-        // this.map.on('load', () => {
-        //     this.map.setSourceTileLodParams(1, 10); //effectively disabling LOD
-        // });
         this.photosManager = new PhotoClusterManager(this.map,  {
             clusterRadius: 80,
             iconSize: 56
@@ -47,6 +44,7 @@ class MapRenderer {
             },
             visits: {
                 minZoom: 12,
+                polygonMinZoom: 16,
                 radius: 1,
                 opacity: 140,
                 polygonOpacity: 140,
@@ -180,15 +178,44 @@ class MapRenderer {
     }
 
     finishedLoading() {
-        this.gpsDataManagers.forEach(manager => this._extendBounds(manager.bounds));
-        if (this.bounds.length === 0) {
-            this._flyToHomeLocation();
-        } else {
-            this.fitMapToBounds(this.bounds);
-        }
-    }
+        console.log('Finished loading map data');
 
-    reset() {
+        const performFit = () => {
+            try {
+                console.log('Attempting to fit bounds...');
+                this.gpsDataManagers.forEach(manager => this._extendBounds(manager.bounds));
+
+                console.log('Bounds calculated:', this.bounds);
+                if (this.bounds.length === 0) {
+                    this._flyToHomeLocation();
+                } else {
+                    this.fitMapToBounds(this.bounds);
+                }
+            } catch (error) {
+                console.error("Error during performFit:", error);
+            }
+        };
+
+        // Check if style is already loaded
+        if (this.map.isStyleLoaded()) {
+            console.log('Style already loaded, fitting immediately.');
+            performFit();
+        } else {
+            console.log('Style not loaded yet, waiting...');
+            // Use 'load' event which is more robust for "fully ready" state
+            // It fires after style.load and ensures the map is ready for camera moves
+            this.map.once('load', performFit);
+
+            // Safety fallback: In rare cases if 'load' doesn't fire (e.g. error), check again after 2 seconds
+            setTimeout(() => {
+                if (this.map.isStyleLoaded()) {
+                    // If we are here, 'load' event likely fired but we want to be sure performFit ran
+                    // You can check if bounds were already set, or just call performFit again if needed
+                    // console.log('Safety fallback triggered');
+                }
+            }, 2000);
+        }
+    }    reset() {
         this.deckOverlay.setProps([]);
     }
 
@@ -493,18 +520,21 @@ class MapRenderer {
             new deck.PolygonLayer({
                 id: `visit-polygons-${layerKey}`,
                 data: places.filter(p => p.polygon),
-                getPolygon: d => d.polygon.coordinates,
+                getPolygon: d => {
+                    if (!d.polygon || !Array.isArray(d.polygon)) return [];
+                    return d.polygon.map(point => [point.longitude, point.latitude]);
+                },
                 getFillColor: d => [...manager.color, this.deckParams.visits.polygonOpacity],
                 getLineColor: d => [...manager.color, 255],
                 pickable: true,
-                depthTest: false,
+                depthTest: true,
                 onHover: info => this._updateTooltip(info),
-                visible: isOverview && this.map.getZoom() > this.deckParams.visits.minZoom,
+                visible: isOverview && this.map.getZoom() > this.deckParams.visits.polygonMinZoom,
                 extensions: extensions,
                 terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
                 updateTriggers: {
                     getFillColor: [currentTime],
-                    visible: [isOverview, this.map.zoom],
+                    visible: [isOverview, this.map.getZoom()],
                     data: manager.visits?.length
                 }
             }),
@@ -513,6 +543,10 @@ class MapRenderer {
                 data: places,
                 getPosition: d => d.coordinates,
                 getRadius: d => {
+                    if (isOverview && this.map.getZoom() > this.deckParams.visits.polygonMinZoom && d.polygon) {
+                        return 0;
+                    }
+
                     const duration = isOverview
                         ? (d.totalDurationSec || 0)
                         : this._getActiveVisitEffect(d).seconds;
@@ -534,13 +568,13 @@ class MapRenderer {
                 },
                 getFillColor: d => [...manager.color, isOverview ? this.deckParams.visits.opacity : (this._getActiveVisitEffect(d).opacity * this.deckParams.visits.opacity)],
                 pickable: true,
-                depthTest: false,
+                depthTest: true,
                 onHover: info => this._updateTooltip(info),
-                visible: !isOverview || this.map.getZoom() > this.deckParams.visits.minZoom,
+                visible: !isOverview || (isOverview && this.map.getZoom() > this.deckParams.visits.minZoom),
                 extensions: extensions,
                 terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
                 updateTriggers: {
-                    getRadius: [currentTime, isOverview],
+                    getRadius: [currentTime, isOverview, this.map.getZoom()],
                     getFillColor: [currentTime, isOverview],
                     data: manager.visits?.length
                 },
@@ -559,7 +593,13 @@ class MapRenderer {
                 id: `place-inner-circles-${layerKey}`,
                 data: places,
                 getPosition: d => d.coordinates,
-                getRadius: 8,
+                getRadius: d =>{
+                    if (isOverview && this.map.getZoom() > this.deckParams.visits.polygonMinZoom && d.polygon) {
+                        return 0;
+                    } else {
+                        return 8;
+                    }
+                },
                 stroked: true,
                 lineWidthMinPixels: this.deckParams.visits.lineWidth,
                 depthTest: false,
@@ -576,6 +616,7 @@ class MapRenderer {
                 extensions: extensions,
                 terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
                 updateTriggers: {
+                    getRadius: [currentTime, isOverview, this.map.getZoom()],
                     getFillColor: [currentTime, isOverview],
                     getLineColor: [currentTime, isOverview],
                     data: manager.visits?.length

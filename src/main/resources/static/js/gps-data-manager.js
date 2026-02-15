@@ -276,11 +276,11 @@ class GpsDataManager {
         // Mon=1, Tue=2, Wed=4, Thu=8, Fri=16, Sat=32, Sun=64
         const dayOfWeek = 1 << dayIndex;
         // Write to Raw Buffer
-        this._writeToBuffer(this.buffer, this.cursor++, lng, lat, alt, tsLinear, tsAggregate, dayOfWeek);
+        this._writeToBuffer(this.buffer, this.cursor++, lng, lat, 0, tsLinear, tsAggregate, dayOfWeek);
 
         // Write to Cleaned Buffer (Spatial Redundancy Check)
         if (!this._isRedundant(lng, lat, tsUtc)) {
-            this._writeToBuffer(this.cleanedBuffer, this.cleanedCursor++, lng, lat, alt, tsLinear, tsAggregate, dayOfWeek);
+            this._writeToBuffer(this.cleanedBuffer, this.cleanedCursor++, lng, lat, 0, tsLinear, tsAggregate, dayOfWeek);
         }
     }
 
