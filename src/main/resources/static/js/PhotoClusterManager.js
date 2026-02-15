@@ -141,6 +141,7 @@ class PhotoClusterManager {
                 const m = new maplibregl.Marker({element: el, anchor: 'center'})
                     .setLngLat([cluster.longitude, cluster.latitude])
                     .addTo(this.map);
+                m.getElement().style.zIndex = 1000;
                 this.markers.set(id, m);
             }
         }
