@@ -3,9 +3,8 @@ package com.dedicatedcode.reitti.service.h3;
 import com.dedicatedcode.reitti.dto.area.AreaBounds;
 import com.dedicatedcode.reitti.dto.area.AreaDescription;
 import com.dedicatedcode.reitti.dto.area.AreaType;
-import com.dedicatedcode.reitti.model.geo.GeoPoint;
-import com.dedicatedcode.reitti.model.geo.H3Hexagon;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -13,7 +12,6 @@ import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,14 +20,14 @@ import java.util.Optional;
 @ConditionalOnProperty(name = "reitti.h3.area-mapping.enabled", havingValue = "true")
 public class AreaJdbcService
 {
-    private final JdbcTemplate jdbcTemplate;
+    private final JdbcTemplate h3JdbcTemplate;
     private final RowMapper<SignificantPlace> significantPlaceRowMapper;
     private final RowMapper<AreaBounds> areaBoundsRowMapper;
     private final RowMapper<AreaDescription> areaDescriptionRowMapper;
 
-    public AreaJdbcService(JdbcTemplate jdbcTemplate, RowMapper<SignificantPlace> significantPlaceRowMapper)
+    public AreaJdbcService(@Qualifier("h3JdbcTemplate") JdbcTemplate h3JdbcTemplate, RowMapper<SignificantPlace> significantPlaceRowMapper)
     {
-        this.jdbcTemplate = jdbcTemplate;
+        this.h3JdbcTemplate = h3JdbcTemplate;
         this.significantPlaceRowMapper = significantPlaceRowMapper;
         areaBoundsRowMapper =
             (rs, _) -> new AreaBounds(rs.getDouble("min_lat"), rs.getDouble("max_lat"), rs.getDouble("min_lon"),
@@ -47,7 +45,7 @@ public class AreaJdbcService
               AND parent IS NULL
             """;
         var results =
-            jdbcTemplate.queryForList(sql, Long.class, areaDescription.type().toString(), areaDescription.name());
+            h3JdbcTemplate.queryForList(sql, Long.class, areaDescription.type().toString(), areaDescription.name());
         if (results.isEmpty())
         {
             return Optional.empty();
@@ -65,7 +63,7 @@ public class AreaJdbcService
                   AND parent = ?
             """;
         var results =
-            jdbcTemplate.queryForList(sql, Long.class, areaDescription.type().toString(), areaDescription.name(),
+            h3JdbcTemplate.queryForList(sql, Long.class, areaDescription.type().toString(), areaDescription.name(),
                 parentId);
         if (results.isEmpty())
         {
@@ -90,7 +88,7 @@ public class AreaJdbcService
         var sql = """
             INSERT INTO area_significant_place_mapping(area_id, place_id) VALUES (?, ?) ON CONFLICT DO NOTHING;
             """;
-        jdbcTemplate.update(sql, areaId, placeId);
+        h3JdbcTemplate.update(sql, areaId, placeId);
     }
 
     public long storeUnmappedArea(AreaDescription areaDescription, @Nullable Long parentId)
@@ -99,7 +97,7 @@ public class AreaJdbcService
             INSERT INTO area (type, name, boundary, parent) VALUES (CAST(? AS area_type), ?, NULL, ?) RETURNING id;
             """;
         var areaId =
-            jdbcTemplate.queryForObject(sql, Long.class, areaDescription.type().toString(), areaDescription.name(),
+            h3JdbcTemplate.queryForObject(sql, Long.class, areaDescription.type().toString(), areaDescription.name(),
                 parentId);
         if (areaId == null)
         {
@@ -115,13 +113,13 @@ public class AreaJdbcService
             var sql = """
                 UPDATE area SET boundaries_checked = true, last_checked = now() WHERE id = ? AND id != -1;
                 """;
-            jdbcTemplate.update(sql, areaId);
+            h3JdbcTemplate.update(sql, areaId);
         } else
         {
             var sql = """
                 UPDATE area SET boundaries_checked = true, boundary = ST_GeomFromGeoJSON(?), last_checked = now() WHERE id = ? AND id != -1;
                 """;
-            jdbcTemplate.update(sql, boundary, areaId);
+            h3JdbcTemplate.update(sql, boundary, areaId);
         }
     }
 
@@ -156,7 +154,7 @@ public class AreaJdbcService
                     ST_SetSRID(h3_cell_to_latlng(h3_mapping.h3_index)::geometry, 4326)
                 );
             """;
-        jdbcTemplate.update(setAreaForUnmapped, areaId);
+        h3JdbcTemplate.update(setAreaForUnmapped, areaId);
     }
 
     public List<SignificantPlace> findSignificantPlacesWithoutAreaMapping()
@@ -179,7 +177,7 @@ public class AreaJdbcService
              FROM significant_places sp
              WHERE id NOT IN (SELECT place_id FROM area_significant_place_mapping)
             """;
-        return jdbcTemplate.query(sql, significantPlaceRowMapper);
+        return h3JdbcTemplate.query(sql, significantPlaceRowMapper);
     }
 
     public int updatePointsAreaBatch(int limit)
@@ -215,7 +213,7 @@ public class AreaJdbcService
             ) AS updates ON TRUE
             WHERE h3_mapping.h3_index = target.h3_index;
             """;
-        return jdbcTemplate.update(sql, limit);
+        return h3JdbcTemplate.update(sql, limit);
     }
 
     public int getUnmappedH3IndexCount()
@@ -227,7 +225,7 @@ public class AreaJdbcService
                OR state_id IS NULL
                OR county_id IS NULL;
             """;
-        var count = jdbcTemplate.queryForObject(sql, Integer.class);
+        var count = h3JdbcTemplate.queryForObject(sql, Integer.class);
         if (count == null)
         {
             //Should not be possible
@@ -260,7 +258,7 @@ public class AreaJdbcService
             WHERE boundaries_checked = false AND id != -1
             ORDER BY depth;
             """;
-        return jdbcTemplate.queryForList(sql, Long.class);
+        return h3JdbcTemplate.queryForList(sql, Long.class);
     }
 
     /**
@@ -294,7 +292,7 @@ public class AreaJdbcService
             LIMIT 1;
             """;
 
-        var maybeArea = jdbcTemplate.query(sql, areaBoundsRowMapper, areaId);
+        var maybeArea = h3JdbcTemplate.query(sql, areaBoundsRowMapper, areaId);
         if (maybeArea.isEmpty()) {
             return Optional.empty();
         }
@@ -308,7 +306,7 @@ public class AreaJdbcService
             FROM area
             WHERE id = ? AND id != -1;
             """;
-        var maybeArea = jdbcTemplate.query(sql, areaDescriptionRowMapper, areaId);
+        var maybeArea = h3JdbcTemplate.query(sql, areaDescriptionRowMapper, areaId);
         if (maybeArea.isEmpty()) {
             return Optional.empty();
         }
@@ -333,7 +331,7 @@ public class AreaJdbcService
             FROM parents
             WHERE id != ? AND id != -1;
             """;
-        return jdbcTemplate.queryForList(sql, AreaDescription.class, areaId, areaId);
+        return h3JdbcTemplate.queryForList(sql, AreaDescription.class, areaId, areaId);
     }
 
     public double getAreaSize(long areaId)
@@ -343,6 +341,6 @@ public class AreaJdbcService
         String sql = """
                 SELECT ST_AREA(boundary, true) FROM area WHERE id = ? AND id != -1;
             """;
-        return jdbcTemplate.queryForObject(sql, Double.class, areaId);
+        return h3JdbcTemplate.queryForObject(sql, Double.class, areaId);
     }
 }

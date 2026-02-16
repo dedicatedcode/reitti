@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.config.H3MappingConfig;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.H3Hexagon;
 import com.dedicatedcode.reitti.model.security.User;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -20,15 +21,15 @@ import java.util.List;
 @Transactional
 public class H3JdbcService
 {
-    private final JdbcTemplate jdbcTemplate;
+    private final JdbcTemplate h3JdbcTemplate;
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     private final RowMapper<H3Hexagon> hexagonRowMapper;
     private final H3MappingConfig config;
 
-    public H3JdbcService(JdbcTemplate jdbcTemplate, NamedParameterJdbcTemplate namedParameterJdbcTemplate,
+    public H3JdbcService(@Qualifier("h3JdbcTemplate") JdbcTemplate h3JdbcTemplate, NamedParameterJdbcTemplate namedParameterJdbcTemplate,
                          PointReaderWriter pointReaderWriter, H3MappingConfig config)
     {
-        this.jdbcTemplate = jdbcTemplate;
+        this.h3JdbcTemplate = h3JdbcTemplate;
         this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
         this.hexagonRowMapper = (rs, _) ->
         {
@@ -151,9 +152,9 @@ public class H3JdbcService
 
         namedParameterJdbcTemplate.update(createBatch, namedParameters);
         namedParameterJdbcTemplate.update(insertIntoH3Mappings, namedParameters);
-        jdbcTemplate.update(updateProcessed);
-        long actualBatchSize = jdbcTemplate.queryForObject(getActualBatchSize, Long.class);
-        jdbcTemplate.update(dropBatch);
+        h3JdbcTemplate.update(updateProcessed);
+        long actualBatchSize = h3JdbcTemplate.queryForObject(getActualBatchSize, Long.class);
+        h3JdbcTemplate.update(dropBatch);
         return actualBatchSize;
     }
 
@@ -165,7 +166,7 @@ public class H3JdbcService
                      INNER JOIN raw_location_points as rlp ON h3_mapping.first_seen = rlp.id
             where rlp.user_id = ?;
             """;
-        return jdbcTemplate.queryForObject(sql, Double.class, user.getId());
+        return h3JdbcTemplate.queryForObject(sql, Double.class, user.getId());
     }
 
     public Double getCoveredAreaDuring(User user, Instant startTime, Instant endTime)
@@ -176,7 +177,7 @@ public class H3JdbcService
                      INNER JOIN raw_location_points as rlp ON h3_mapping.first_seen = rlp.id
             where rlp.user_id = ? AND rlp.timestamp >= ? AND rlp.timestamp < ?;
             """;
-        return jdbcTemplate.queryForObject(sql, Double.class, user.getId(), Timestamp.from(startTime),
+        return h3JdbcTemplate.queryForObject(sql, Double.class, user.getId(), Timestamp.from(startTime),
             Timestamp.from(endTime));
     }
 
@@ -185,7 +186,7 @@ public class H3JdbcService
         var sql = """
             SELECT COUNT(*) from (SELECT DISTINCT h3_get_resolution(h3_index) from h3_mapping)
             """;
-        var numberOfDifferentResolutions = jdbcTemplate.queryForObject(sql, Integer.class);
+        var numberOfDifferentResolutions = h3JdbcTemplate.queryForObject(sql, Integer.class);
         return numberOfDifferentResolutions <= 1;
     }
 
@@ -193,7 +194,7 @@ public class H3JdbcService
         var sql = """
             SELECT count(*) from raw_location_points where h3_done = false AND processed = true AND invalid = false;
             """;
-        var missingMappings = jdbcTemplate.queryForObject(sql, Long.class);
+        var missingMappings = h3JdbcTemplate.queryForObject(sql, Long.class);
         if (missingMappings == null) {
             // Actually, this should not be possible
             throw new RuntimeException("Invalid state exception");
@@ -212,7 +213,7 @@ public class H3JdbcService
         var sql = """
             SELECT h3_get_hexagon_area_avg(?, 'm^2');
             """;
-        return jdbcTemplate.queryForObject(sql, Double.class, resolution);
+        return h3JdbcTemplate.queryForObject(sql, Double.class, resolution);
     }
 
     public double getConfiguredHexAvgSizeM2()
