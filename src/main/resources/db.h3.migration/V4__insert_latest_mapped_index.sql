@@ -1,0 +1,1 @@
+INSERT INTO latest_mapped_index VALUES ('significant_place_id', -1);

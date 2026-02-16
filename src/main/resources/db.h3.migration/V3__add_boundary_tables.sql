@@ -37,3 +37,5 @@ ALTER TABLE h3_mapping
     ADD COLUMN country_id BIGINT REFERENCES area (id) ON DELETE SET NULL,
     ADD COLUMN state_id   BIGINT REFERENCES area (id) ON DELETE SET NULL,
     ADD COLUMN county_id  BIGINT REFERENCES area (id) ON DELETE SET NULL;
+
+ALTER TYPE mapping_index_type ADD VALUE 'significant_place_id';

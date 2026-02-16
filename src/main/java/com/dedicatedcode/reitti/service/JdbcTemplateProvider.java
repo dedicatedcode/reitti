@@ -9,6 +9,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.JdbcTransactionManager;
+import org.springframework.transaction.TransactionManager;
 
 import javax.sql.DataSource;
 
@@ -25,27 +27,40 @@ public class JdbcTemplateProvider
 
     @Bean
     @Primary
-    public JdbcTemplate mainJdbcTemplate(DataSource mainDataSource) {
+    public JdbcTemplate mainJdbcTemplate(DataSource mainDataSource)
+    {
         return new JdbcTemplate(mainDataSource);
     }
 
-    @Bean(name ="h3DataSource")
-    @ConfigurationProperties(prefix="reitti.h3.datasource")
+    @Bean
+    @Primary
+    public TransactionManager transactionManager(DataSource mainDataSource)
+    {
+        return new JdbcTransactionManager(mainDataSource);
+    }
+
+    @Bean(name = "h3DataSource")
+    @ConfigurationProperties(prefix = "reitti.h3.datasource")
     @ConditionalOnProperty(name = "reitti.h3.enabled", havingValue = "true")
-    public DataSource h3DataSource() {
+    public DataSource h3DataSource()
+    {
         return DataSourceBuilder.create().build();
     }
 
     @Bean(name = "h3JdbcTemplate")
     @ConditionalOnProperty(name = "reitti.h3.enabled", havingValue = "true")
-    public JdbcTemplate h3JdbcTemplate(@Qualifier("h3DataSource") DataSource h3DataSource) {
-        Flyway flyway = Flyway.configure()
-            .dataSource(h3DataSource)
-            .locations("db.h3.migration")
-            .load();
+    public JdbcTemplate h3JdbcTemplate(@Qualifier("h3DataSource") DataSource h3DataSource)
+    {
+        Flyway flyway = Flyway.configure().dataSource(h3DataSource).locations("db.h3.migration").load();
         flyway.migrate();
 
         return new JdbcTemplate(h3DataSource);
     }
 
+    @Bean(name = "h3TransactionManager")
+    @ConditionalOnProperty(name = "reitti.h3.enabled", havingValue = "true")
+    public TransactionManager h3TransactionManager(@Qualifier("h3DataSource") DataSource h3DataSource)
+    {
+        return new JdbcTransactionManager(h3DataSource);
+    }
 }

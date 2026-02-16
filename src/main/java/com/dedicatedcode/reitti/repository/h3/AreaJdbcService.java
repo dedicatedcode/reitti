@@ -16,23 +16,27 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-@Transactional
+@Transactional("h3TransactionManager")
 @ConditionalOnProperty(name = "reitti.h3.area-mapping.enabled", havingValue = "true")
 public class AreaJdbcService
 {
     private final JdbcTemplate h3JdbcTemplate;
+    private final JdbcTemplate jdbcTemplate;
     private final RowMapper<SignificantPlace> significantPlaceRowMapper;
     private final RowMapper<AreaBounds> areaBoundsRowMapper;
     private final RowMapper<AreaDescription> areaDescriptionRowMapper;
 
-    public AreaJdbcService(@Qualifier("h3JdbcTemplate") JdbcTemplate h3JdbcTemplate, RowMapper<SignificantPlace> significantPlaceRowMapper)
+    public AreaJdbcService(@Qualifier("h3JdbcTemplate") JdbcTemplate h3JdbcTemplate, JdbcTemplate jdbcTemplate,
+                           RowMapper<SignificantPlace> significantPlaceRowMapper)
     {
         this.h3JdbcTemplate = h3JdbcTemplate;
+        this.jdbcTemplate = jdbcTemplate;
         this.significantPlaceRowMapper = significantPlaceRowMapper;
         areaBoundsRowMapper =
             (rs, _) -> new AreaBounds(rs.getDouble("min_lat"), rs.getDouble("max_lat"), rs.getDouble("min_lon"),
                 rs.getDouble("max_lon"));
-        areaDescriptionRowMapper = (rs, _) -> new AreaDescription(AreaType.fromString(rs.getString("type")).get(), rs.getString("name"));
+        areaDescriptionRowMapper =
+            (rs, _) -> new AreaDescription(AreaType.fromString(rs.getString("type")).get(), rs.getString("name"));
     }
 
     public Optional<Long> getAreaId(AreaDescription areaDescription)
@@ -157,8 +161,21 @@ public class AreaJdbcService
         h3JdbcTemplate.update(setAreaForUnmapped, areaId);
     }
 
+    public long getLatestMappedSignificantPlaceId()
+    {
+        String findLatestMappedIndexSql = """
+            SELECT latest_mapped_index
+            FROM latest_mapped_index
+            WHERE mapping_index_type = 'significant_place_id'
+            """;
+        var latestMappedIndex = h3JdbcTemplate.queryForList(findLatestMappedIndexSql, Long.class);
+        return latestMappedIndex.stream().findFirst().orElse(-1L);
+    }
+
     public List<SignificantPlace> findSignificantPlacesWithoutAreaMapping()
     {
+        var latestMappedIndex = getLatestMappedSignificantPlaceId();
+
         String sql = """
             SELECT sp.id,
                    sp.address,
@@ -175,9 +192,9 @@ public class AreaJdbcService
                    sp.geocoded,
                    sp.version
              FROM significant_places sp
-             WHERE id NOT IN (SELECT place_id FROM area_significant_place_mapping)
+             WHERE id > ?
             """;
-        return h3JdbcTemplate.query(sql, significantPlaceRowMapper);
+        return jdbcTemplate.query(sql, significantPlaceRowMapper, latestMappedIndex);
     }
 
     public int updatePointsAreaBatch(int limit)
@@ -293,7 +310,8 @@ public class AreaJdbcService
             """;
 
         var maybeArea = h3JdbcTemplate.query(sql, areaBoundsRowMapper, areaId);
-        if (maybeArea.isEmpty()) {
+        if (maybeArea.isEmpty())
+        {
             return Optional.empty();
         }
         return Optional.of(maybeArea.getFirst());
@@ -307,7 +325,8 @@ public class AreaJdbcService
             WHERE id = ? AND id != -1;
             """;
         var maybeArea = h3JdbcTemplate.query(sql, areaDescriptionRowMapper, areaId);
-        if (maybeArea.isEmpty()) {
+        if (maybeArea.isEmpty())
+        {
             return Optional.empty();
         }
         return Optional.of(maybeArea.getFirst());
