@@ -31,12 +31,12 @@ public class LocationDataApiController {
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final LocationPointsSimplificationService simplificationService;
     private final UserJdbcService userJdbcService;
-    private final H3JdbcService h3JdbcService;
+    private final Optional<H3JdbcService> h3JdbcService;
 
     @Autowired
     public LocationDataApiController(RawLocationPointJdbcService rawLocationPointJdbcService,
                                      LocationPointsSimplificationService simplificationService,
-                                     UserJdbcService userJdbcService, H3JdbcService h3JdbcService) {
+                                     UserJdbcService userJdbcService, Optional<H3JdbcService> h3JdbcService) {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.simplificationService = simplificationService;
         this.userJdbcService = userJdbcService;
@@ -49,9 +49,12 @@ public class LocationDataApiController {
                                                          @RequestParam(required = false) Double maxLat,
                                                          @RequestParam(required = false) Double minLng,
                                                          @RequestParam(required = false) Double maxLng) {
+        if (this.h3JdbcService.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
         try
         {
-            return ResponseEntity.ok(this.h3JdbcService.findH3PolygonsByUser(user, minLat, maxLat, minLng, maxLng));
+            return ResponseEntity.ok(this.h3JdbcService.get().findH3PolygonsByUser(user, minLat, maxLat, minLng, maxLng));
         } catch (Exception e) {
             logger.error("Error fetching hexagons", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -79,7 +82,9 @@ public class LocationDataApiController {
                                                                              @RequestParam(required = false)
                                                                              Double maxLng)
     {
-
+        if (this.h3JdbcService.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
         try
         {
             var timeRange = ParsedTimeRange.fromTimeRange(date, startDate, endDate, timezone);
@@ -91,7 +96,7 @@ public class LocationDataApiController {
             }
 
             return ResponseEntity.ok(
-                this.h3JdbcService.findH3PolygonsByUserDiscoveredDuringTime(user, timeRange.startOfRange(),
+                this.h3JdbcService.get().findH3PolygonsByUserDiscoveredDuringTime(user, timeRange.startOfRange(),
                     timeRange.endOfRange(), minLat, maxLat, minLng, maxLng));
         } catch (DateTimeParseException _)
         {
