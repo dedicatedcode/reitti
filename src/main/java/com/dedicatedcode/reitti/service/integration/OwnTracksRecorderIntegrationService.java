@@ -298,26 +298,25 @@ public class OwnTracksRecorderIntegrationService {
             
             allData.addAll(pageData);
             
+
+            logger.info("Returned {} points from OwnTracks; most recent point {}", pageData.size(), pageData.get(0).getTimestamp());
+
             // If we received less than limit records, we've reached the end
             if (pageData.size() < limit) {
                 break;
             }
             
-            // Find the oldest timestamp in this batch (OwnTracks returns newest to oldest)
-            Instant oldestTimestamp = pageData.stream()
-                    .map(OwntracksLocationRequest::getTimestamp)
-                    .filter(Objects::nonNull)
-                    .map(Instant::ofEpochSecond)
-                    .min(Instant::compareTo)
-                    .orElse(null);
+            // Find the most recent timestamp in this batch (first item, since OwnTracks returns newest to oldest)
+            Instant newestTimestamp = pageData.isEmpty() ? null : 
+               Instant.ofEpochSecond(pageData.get(0).getTimestamp());
             
-            if (oldestTimestamp == null) {
+            if (newestTimestamp == null) {
                 // No valid timestamps found, stop pagination
                 break;
             }
             
             // Set fromTime to the oldest timestamp for the next request
-            currentFromTime = oldestTimestamp;
+            currentFromTime = newestTimestamp;
         }
         
         return allData;
