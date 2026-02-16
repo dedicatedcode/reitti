@@ -2,7 +2,6 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.H3JdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
@@ -29,7 +28,6 @@ public class LocationDataIngestPipeline {
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final UserNotificationService userNotificationService;
     private final LocationDataDensityNormalizer densityNormalizer;
-    private final H3JdbcService h3JdbcService;
 
     @Autowired
     public LocationDataIngestPipeline(AnomalyProcessingService anomalyProcessingService,
@@ -37,15 +35,13 @@ public class LocationDataIngestPipeline {
                                       RawLocationPointJdbcService rawLocationPointJdbcService,
                                       UserSettingsJdbcService userSettingsJdbcService,
                                       UserNotificationService userNotificationService,
-                                      LocationDataDensityNormalizer densityNormalizer,
-                                      H3JdbcService h3JdbcService) {
+                                      LocationDataDensityNormalizer densityNormalizer) {
         this.anomalyProcessingService = anomalyProcessingService;
         this.userJdbcService = userJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.userNotificationService = userNotificationService;
         this.densityNormalizer = densityNormalizer;
-        this.h3JdbcService = h3JdbcService;
     }
 
     @PreDestroy

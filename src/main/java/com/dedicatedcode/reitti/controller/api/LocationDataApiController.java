@@ -6,7 +6,7 @@ import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.H3JdbcService;
+import com.dedicatedcode.reitti.repository.h3.H3JdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.LocationPointsSimplificationService;

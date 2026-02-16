@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.service.h3;
 
 import com.dedicatedcode.reitti.config.H3MappingConfig;
-import com.dedicatedcode.reitti.repository.H3JdbcService;
+import com.dedicatedcode.reitti.repository.h3.H3JdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

@@ -4,7 +4,6 @@ import com.dedicatedcode.reitti.event.LocationProcessEvent;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.H3JdbcService;
 import com.dedicatedcode.reitti.repository.PreviewRawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
@@ -33,22 +32,19 @@ public class ProcessingPipelineTrigger {
     private final UnifiedLocationProcessingService unifiedLocationProcessingService;
     private final int batchSize;
     private final ThreadPoolExecutor executorService = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
-    private final H3JdbcService h3JdbcService;
 
     public ProcessingPipelineTrigger(ImportStateHolder stateHolder,
                                      RawLocationPointJdbcService rawLocationPointJdbcService,
                                      PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService,
                                      UserJdbcService userJdbcService,
                                      UnifiedLocationProcessingService unifiedLocationProcessingService,
-                                     @Value("${reitti.import.batch-size:100}") int batchSize,
-                                     H3JdbcService h3JdbcService) {
+                                     @Value("${reitti.import.batch-size:100}") int batchSize) {
         this.stateHolder = stateHolder;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
         this.userJdbcService = userJdbcService;
         this.unifiedLocationProcessingService = unifiedLocationProcessingService;
         this.batchSize = batchSize;
-        this.h3JdbcService = h3JdbcService;
     }
 
     @Scheduled(cron = "${reitti.process-data.schedule}")

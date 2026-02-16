@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.h3;
 
 import com.dedicatedcode.reitti.dto.area.AreaBounds;
 import com.dedicatedcode.reitti.dto.area.AreaDescription;
+import com.dedicatedcode.reitti.repository.h3.AreaJdbcService;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.lang.Nullable;

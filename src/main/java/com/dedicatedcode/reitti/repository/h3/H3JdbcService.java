@@ -1,9 +1,10 @@
-package com.dedicatedcode.reitti.repository;
+package com.dedicatedcode.reitti.repository.h3;
 
 import com.dedicatedcode.reitti.config.H3MappingConfig;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.H3Hexagon;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.PointReaderWriter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;

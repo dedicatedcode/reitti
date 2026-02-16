@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.area.AreaDescription;
 import com.dedicatedcode.reitti.dto.area.AreaMappingRequest;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
+import com.dedicatedcode.reitti.repository.h3.AreaJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;

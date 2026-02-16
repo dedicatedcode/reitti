@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.service.h3;
+package com.dedicatedcode.reitti.repository.h3;
 
 import com.dedicatedcode.reitti.dto.area.AreaBounds;
 import com.dedicatedcode.reitti.dto.area.AreaDescription;
