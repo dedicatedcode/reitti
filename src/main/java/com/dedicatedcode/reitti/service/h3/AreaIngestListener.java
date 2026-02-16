@@ -59,6 +59,7 @@ public class AreaIngestListener
             } else
             {
                 lastId = Optional.of(areaJdbcService.storeUnmappedArea(boundary, lastId.orElse(null)));
+                areaJdbcService.connectAreaWithPlace(lastId.get(), request.significantPlaceId());
             }
             lastId.ifPresent(aLong -> rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME,
                 RabbitMQConfig.AREA_BOUNDARY_INGESTION_QUEUE, aLong));
