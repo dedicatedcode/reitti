@@ -1,12 +1,16 @@
 CREATE TABLE h3_mapping
 (
     h3_index   h3index NOT NULL UNIQUE,
-    first_seen BIGINT  NOT NULL REFERENCES raw_location_points (id) ON DELETE CASCADE
+    first_seen_index BIGINT  NOT NULL, -- this 'references' raw_location_points
+    first_seen  TIMESTAMP WITH TIME ZONE NOT NULL -- this is a copy of the first seen indexes data for fast local lookups
 );
 
-ALTER TABLE raw_location_points
-    ADD COLUMN h3_done BOOLEAN DEFAULT FALSE;
-CREATE INDEX ON raw_location_points (h3_done);
+-- Stores which index we last mapped to h3, this is used as a simple persistent datastore
+-- normally this should only have one row, if not, always use highest values. This marks the last raw_location_points index we mapped to h3
+CREATE TABLE latest_mapped_index
+(
+    latest_mapped_index BIGINT NOT NULL
+);
 
 --TODO: we might need to update h3_indices on point deletion.
 --        This can have various reasons:

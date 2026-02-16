@@ -27,7 +27,7 @@ VALUES (-1,
 CREATE TABLE area_significant_place_mapping
 (
     area_id  BIGINT NOT NULL REFERENCES area (id) ON DELETE CASCADE,
-    place_id BIGINT NOT NULL REFERENCES significant_places (id) ON DELETE CASCADE,
+    place_id BIGINT NOT NULL, -- references significant_places(id), on deletion can be cascaded
     PRIMARY KEY (area_id, place_id)
 );
 

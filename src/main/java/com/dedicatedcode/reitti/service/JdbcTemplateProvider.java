@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.service;
 
+import org.flywaydb.core.Flyway;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -38,6 +39,12 @@ public class JdbcTemplateProvider
     @Bean(name = "h3JdbcTemplate")
     @ConditionalOnProperty(name = "reitti.h3.enabled", havingValue = "true")
     public JdbcTemplate h3JdbcTemplate(@Qualifier("h3DataSource") DataSource h3DataSource) {
+        Flyway flyway = Flyway.configure()
+            .dataSource(h3DataSource)
+            .locations("db.h3.migration")
+            .load();
+        flyway.migrate();
+
         return new JdbcTemplate(h3DataSource);
     }
 
