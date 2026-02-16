@@ -299,7 +299,7 @@ public class OwnTracksRecorderIntegrationService {
             allData.addAll(pageData);
             
 
-            logger.info("Returned {} points from OwnTracks; most recent point {}", pageData.size(), pageData.get(0).getTimestamp());
+            logger.info("Returned {} points from OwnTracks; most recent timestamp: {}", pageData.size(), pageData.get(0).getTimestamp());
 
             // If we received less than limit records, we've reached the end
             if (pageData.size() < limit) {
