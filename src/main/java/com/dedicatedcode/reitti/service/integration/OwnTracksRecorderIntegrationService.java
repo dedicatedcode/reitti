@@ -268,10 +268,10 @@ public class OwnTracksRecorderIntegrationService {
     private List<OwntracksLocationRequest> fetchAllLocationDataWithPagination(OwnTracksRecorderIntegration integration, 
                                                                                Instant fromTime, Instant toTime, int limit) {
         List<OwntracksLocationRequest> allData = new ArrayList<>();
-        Instant currentFromTime = fromTime;
+        Instant currentToTime = toTime;
         
         while (true) {
-            LocalDateTime fromDate = currentFromTime.atOffset(ZoneOffset.UTC).toLocalDateTime();
+            LocalDateTime fromDate = fromTime.atOffset(ZoneOffset.UTC).toLocalDateTime();
             String fromDateString = fromDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
             
             StringBuilder apiUrlBuilder = new StringBuilder();
@@ -283,8 +283,8 @@ public class OwnTracksRecorderIntegrationService {
                 limit));
             
             // Add 'to' parameter if specified (for historical data queries)
-            if (toTime != null) {
-                LocalDateTime toDate = toTime.atOffset(ZoneOffset.UTC).toLocalDateTime();
+            if (currentToTime != null) {
+                LocalDateTime toDate = currentToTime.atOffset(ZoneOffset.UTC).toLocalDateTime();
                 String toDateString = toDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
                 apiUrlBuilder.append("&to=").append(toDateString);
             }
@@ -298,25 +298,23 @@ public class OwnTracksRecorderIntegrationService {
             
             allData.addAll(pageData);
             
-
-            logger.info("Returned {} points from OwnTracks; most recent timestamp: {}", pageData.size(), pageData.get(0).getTimestamp());
-
+            logger.info("Returned {} points from OwnTracks; most recent timestamp {}", pageData.size(), pageData.get(0).getTimestamp());
             // If we received less than limit records, we've reached the end
             if (pageData.size() < limit) {
                 break;
             }
             
-            // Find the most recent timestamp in this batch (first item, since OwnTracks returns newest to oldest)
+            // Find the most recent timestamp in this batch (last item, since OwnTracks returns newest to oldest) - this will be the new "to"-timestamp.
             Instant newestTimestamp = pageData.isEmpty() ? null : 
-               Instant.ofEpochSecond(pageData.get(0).getTimestamp());
+               Instant.ofEpochSecond(pageData.get(limit-1).getTimestamp());
             
             if (newestTimestamp == null) {
                 // No valid timestamps found, stop pagination
                 break;
             }
             
-            // Set fromTime to the oldest timestamp for the next request
-            currentFromTime = newestTimestamp;
+            // Set currentToTime to the newest timestamp for the next request
+            currentToTime = newestTimestamp;
         }
         
         return allData;
