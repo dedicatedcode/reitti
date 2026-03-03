@@ -325,7 +325,7 @@
                                         }
                                     }, window.userSettings, getUserTimezone());
                                     mapRenderer.setGpsDataManagers([gpsDataManager]);
-                                    gpsDataManager.loadFixedWithVisits(visits, (current, total, stage) => {
+                                    gpsDataManager.loadFixedWithVisits([], (current, total, stage) => {
                                         if (stage === 'complete') {
                                             mapRenderer.updateViewState(viewState)
                                             mapRenderer.finishedLoading();

@@ -30,7 +30,13 @@ class GpsDataManager {
     }
 
     async loadFixedWithVisits(visits, onProgress) {
-        debugger
+        this.visits = visits.map(p => ({
+                id: p.id,
+                coordinates: [p.longitudeCentroid, p.latitudeCentroid],
+                totalDurationSec: 6000,
+                name: p.name,
+                activeRanges: []
+        }));
         return  this.load(0, Number.MAX_SAFE_INTEGER, onProgress)
     }
 
