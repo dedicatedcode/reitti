@@ -25,12 +25,15 @@ class GpsDataManager {
         this.lastLocation = null;
     }
 
-    /**
-     * Range-Aware Load
-     * @param {number} startUTC - Unix timestamp
-     * @param {number} endUTC - Unix timestamp
-     * @param {Function} onProgress - Progress callback
-     */
+    async loadFixed(onProgress) {
+        return this.load(0, Number.MAX_SAFE_INTEGER, onProgress)
+    }
+
+    async loadFixedWithVisits(visits, onProgress) {
+        debugger
+        return  this.load(0, Number.MAX_SAFE_INTEGER, onProgress)
+    }
+
     async load(startUTC, endUTC, onProgress) {
         // 1. Check if we already have this data in memory
         if (this.loadingState === 'complete' &&
@@ -62,39 +65,44 @@ class GpsDataManager {
             this.loadingState = 'metadata';
 
             if (onProgress) onProgress(0, 0, this.loadingState);
-            const [metaRes, visitsRes] = await Promise.all([
-                fetch(window.contextPath + this.config.map.metaDataUrl, { signal }),
-                fetch(window.contextPath + this.config.map.visitsUrl, { signal })
-            ]);
+            const requests = [];
+            requests.push(fetch(window.contextPath + this.config.map.metaDataUrl, {signal}))
+            if (this.config.map.visitsUrl) {
+                requests.push(fetch(window.contextPath + this.config.map.visitsUrl, {signal}))
+            }
+            const responses = await Promise.all(requests);
 
-            const meta = await metaRes.json();
+            const meta = await responses[0].json();
             this.lastLocation = meta.latestLocation;
-            const receivedVisits = await visitsRes.json();
-            this.visits = receivedVisits.places.map(p => ({
-                id: p.place.id,
-                coordinates: [p.lng, p.lat],
-                polygon: p.place.polygon,
-                totalDurationSec: p.totalDurationMs / 1000,
-                name: p.place.name,
-                activeRanges: p.visits.map(v => {
-                    const startUtcSeconds = Math.floor(new Date(v.startTime).getTime() / 1000);
-                    const startOffset = this._getOffsetSeconds(startUtcSeconds);
-                    const endUtcSeconds = Math.floor(new Date(v.endTime).getTime() / 1000);
-                    const endOffset = this._getOffsetSeconds(endUtcSeconds);
-                    const localStartTs = startUtcSeconds + startOffset;
-                    const localEndTs = endUtcSeconds + endOffset;
+            if (this.config.map.visitsUrl) {
+                const receivedVisits = await responses[1].json();
+                this.visits = receivedVisits.places.map(p => ({
+                    id: p.place.id,
+                    coordinates: [p.lng, p.lat],
+                    polygon: p.place.polygon,
+                    totalDurationSec: p.totalDurationMs / 1000,
+                    name: p.place.name,
+                    activeRanges: p.visits.map(v => {
+                        const startUtcSeconds = Math.floor(new Date(v.startTime).getTime() / 1000);
+                        const startOffset = this._getOffsetSeconds(startUtcSeconds);
+                        const endUtcSeconds = Math.floor(new Date(v.endTime).getTime() / 1000);
+                        const endOffset = this._getOffsetSeconds(endUtcSeconds);
+                        const localStartTs = startUtcSeconds + startOffset;
+                        const localEndTs = endUtcSeconds + endOffset;
 
-                    return ({
-                        start: startUtcSeconds,
-                        end: endUtcSeconds,
-                        startAggregate: startUtcSeconds < startUTC ? 0 :  ((localStartTs % 86400) + 86400) % 86400,
-                        endAggregate:  endUtcSeconds > endUTC ? 86400 : ((localEndTs % 86400) + 86400) % 86400,
-                        startDayOfWeek: Math.pow(new Date(localStartTs * 1000).getUTCDay(), 2),
-                        endDayOfWeek: Math.pow(new Date(localEndTs * 1000).getUTCDay(), 2)
-                    });
-                }),
-                originalVisits: p.visits
-            }));
+                        return ({
+                            start: startUtcSeconds,
+                            end: endUtcSeconds,
+                            startAggregate: startUtcSeconds < startUTC ? 0 :  ((localStartTs % 86400) + 86400) % 86400,
+                            endAggregate:  endUtcSeconds > endUTC ? 86400 : ((localEndTs % 86400) + 86400) % 86400,
+                            startDayOfWeek: Math.pow(new Date(localStartTs * 1000).getUTCDay(), 2),
+                            endDayOfWeek: Math.pow(new Date(localEndTs * 1000).getUTCDay(), 2)
+                        });
+                    }),
+                    originalVisits: p.visits
+                }));
+            }
+
             // Update internal range trackers
             this.minTimestamp = startUTC;
             this.maxTimestamp = endUTC;
@@ -120,7 +128,11 @@ class GpsDataManager {
 
             this.loadingState = 'complete';
             if (onProgress) onProgress(this.totalExpected, this.totalExpected, 'complete');
-            console.log("Load complete:", this.loadingState, 'with bounds:', this.bounds, 'and total points:', this.totalExpected, ' (cleaned:', this.cleanedCursor, ') in range:', startUTC, 'to', endUTC, 'at', this.visits.length, 'visits.');
+            if (this.config.map.visitsUrl) {
+                console.log("Load complete:", this.loadingState, 'with bounds:', this.bounds, 'and total points:', this.totalExpected, ' (cleaned:', this.cleanedCursor, ') in range:', startUTC, 'to', endUTC, 'at', this.visits.length, 'visits.');
+            } else {
+                console.log("Load complete:", this.loadingState, 'with bounds:', this.bounds, 'and total points:', this.totalExpected, ' (cleaned:', this.cleanedCursor, ') in range:', startUTC, 'to', endUTC);
+            }
 
         } catch (error) {
             if (error.name === 'AbortError') {

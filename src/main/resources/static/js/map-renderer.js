@@ -6,19 +6,27 @@ class MapRenderer {
         this.viewState = initialViewState
         this._pitchBearingAllowed = true;
 
-        this.map = new maplibregl.Map({
+        const mapOptions = {
             interleaved: true,
-            container: 'new-map',
+            container: element,
             style: '/map/reitti.json',
             center: [userSettings.homeLongitude, userSettings.homeLatitude],
             pitch: this.viewState.is3d ? 45 : 0,
             maxPitch: 85,
-            minZoom: 2,
-        });
-        this.photosManager = new PhotoClusterManager(this.map,  {
-            clusterRadius: 80,
-            iconSize: 56
-        });
+            minZoom: 2
+        };
+        if (this.viewState.fixed) {
+            mapOptions.interactive = false;
+            mapOptions.attributionControl = false;
+        }
+        this.map = new maplibregl.Map(mapOptions);
+
+        if (this.viewState.showPhotos) {
+            this.photosManager = new PhotoClusterManager(this.map, {
+                clusterRadius: 80,
+                iconSize: 56
+            });
+        }
         this.avatarMarkers = new Map(); // Store markers by user ID
         this.showAvatars = false;
 
@@ -629,9 +637,11 @@ class MapRenderer {
 
     _setup = () => {
         this.map.on('move', () => {
-            gpsDataManagers.forEach(manager => {
-                this._updateLayers(manager)
-            })
+            if (this.gpsDataManagers) {
+                this.gpsDataManagers.forEach(manager => {
+                    this._updateLayers(manager)
+                })
+            }
         });
 
         this.map.on('zoomend', () => {

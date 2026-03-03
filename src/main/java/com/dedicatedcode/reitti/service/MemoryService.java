@@ -285,10 +285,14 @@ public class MemoryService {
             long completeTime = first.map(trip -> Duration.between(trip.getStartTime(), lastTrip.get().getEndTime()).toSeconds()).orElse(0L);
             LocalDateTime adjustedStartTime = first.map(t -> adjustTime(settings, t.getStartTime(), t.getStartVisit().getTimezone(), timezone)).orElse(null);
             LocalDateTime adjustedEndTime = lastTrip.map(t -> adjustTime(settings, t.getEndTime(), t.getEndVisit().getTimezone(), timezone)).orElse(null);
+            String streamUrl = String.format("/api/v2/locations/stream/%d?start=%s&end=%s&timezone=%s", user.getId(), first.get().getStartTime(), lastTrip.get().getEndTime(), "UTC");
+            String metaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", user.getId(), first.get().getStartTime(), lastTrip.get().getEndTime(), "UTC");
+
             return new MemoryTripClusterBlockDTO(
                     memoryClusterBlock,
                     trips,
-                    "/api/v1/raw-location-points?startDate=" + adjustedStartTime + "&endDate=" + adjustedEndTime + "&timezone=" + timezone.getId(),
+                    streamUrl,
+                    metaDataUrl,
                     adjustedStartTime,
                     adjustedEndTime,
                     completeTime,
@@ -307,11 +311,13 @@ public class MemoryService {
             LocalDateTime adjustedStartTime = first.map(t -> adjustTime(settings, t.getStartTime(), t.getTimezone(), timezone)).orElse(null);
             LocalDateTime adjustedEndTime = last.map(t -> adjustTime(settings, t.getEndTime(), t.getTimezone(), timezone)).orElse(null);
             Long completeDuration = 0L;
-            String rawLocationPointsUrl = first.map(processedVisit -> "/api/v1/raw-location-points?startDate=" + processedVisit.getStartTime().atZone(timezone).toLocalDateTime() + "&endDate=" + last.get().getEndTime().atZone(timezone).toLocalDateTime() + "&timezone=" + timezone).orElse(null);
+            String streamUrl = String.format("/api/v2/locations/stream/%d?start=%s&end=%s&timezone=%s", user.getId(), first.get().getStartTime(), last.get().getEndTime(), "UTC");
+            String metaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", user.getId(), first.get().getStartTime(), last.get().getEndTime(), "UTC");
             return new MemoryVisitClusterBlockDTO(
                     memoryClusterBlock,
                     visits,
-                    rawLocationPointsUrl,
+                    streamUrl,
+                    metaDataUrl,
                     adjustedStartTime,
                     adjustedEndTime,
                     completeDuration);

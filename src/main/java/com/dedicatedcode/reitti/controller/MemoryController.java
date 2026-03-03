@@ -123,11 +123,10 @@ public class MemoryController {
         List<MemoryBlockPart> blocks = memoryService.getBlockPartsForMemory(user, id, timezone);
         model.addAttribute("blocks", blocks);
         
-        String startDateLocal = memory.getStartDate().atZone(timezone).toLocalDate().toString();
-        String endDateLocal = memory.getEndDate().atZone(timezone).toLocalDate().toString();
-        
-        String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + startDateLocal + "&endDate=" + endDateLocal;
-        model.addAttribute("rawLocationUrl", rawLocationUrl);
+        String streamUrl = String.format("/api/v2/locations/stream/%d?start=%s&end=%s&timezone=%s", user.getId(), memory.getStartDate(), memory.getEndDate(), "UTC");
+        String metaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", user.getId(), memory.getStartDate(), memory.getEndDate(), "UTC");
+        model.addAttribute("streamUrl", streamUrl);
+        model.addAttribute("metaDataUrl", metaDataUrl);
         model.addAttribute("canEdit", canEdit(memory, user));
         model.addAttribute("isOwner", isOwner(memory, user));
         return "memories/view";

@@ -17,6 +17,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -96,16 +97,20 @@ public class LocationApiController {
         LocalDateTime dateTime = null;
         try {
             dateTime = LocalDateTime.parse(input);
-        } catch (Exception ignores) {
-        }
+        } catch (Exception ignored) {}
 
         if (dateTime == null) {
             try {
                 dateTime = LocalDateTime.parse(input + "T00:00:00");
-            } catch (Exception e) {
-                throw new IllegalArgumentException("Unable to parse date: " + input);
-            }
+                return dateTime.atZone(timezone).toInstant();
+            } catch (Exception ignored) {}
         }
-        return dateTime.atZone(timezone).toInstant();
+        if (dateTime == null) {
+            try {
+                dateTime = ZonedDateTime.parse(input).toLocalDateTime();
+                return dateTime.atZone(timezone).toInstant();
+            } catch (Exception ignored) {}
+        }
+        throw new IllegalArgumentException("Invalid date format");
     }
 }
