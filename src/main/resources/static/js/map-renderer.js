@@ -1,6 +1,33 @@
 class MapRenderer {
-    constructor(element, userSettings, initialViewState) {
+    constructor(element, userSettings, initialViewState, viewConfig = {}) {
         this.userSettings = userSettings;
+        this.element = document.getElementById(element);
+        const defaultViewConfig = {
+            fitConfig: {
+                padding: {
+                    top: 50,
+                    bottom: 100,
+                    right: 100,
+                    left: 450
+                },
+                maxZoom: 15,
+                duration: 1000,
+                essential: true
+            }
+        }
+
+        this.viewConfig = {
+            ...defaultViewConfig,
+            ...viewConfig,
+            fitConfig: {
+                ...defaultViewConfig.fitConfig,
+                ...(viewConfig.fitConfig || {}),
+                padding: {
+                    ...defaultViewConfig.fitConfig.padding,
+                    ...(viewConfig.fitConfig?.padding || {})
+                }
+            }
+        };
         this.gpsDataManagers = []
 
         this.viewState = initialViewState
@@ -35,7 +62,6 @@ class MapRenderer {
             layers: []
         });
         this.map.addControl(this.deckOverlay);
-
         this.currentTime = 0;
 
         this.deckParams = {
@@ -168,17 +194,7 @@ class MapRenderer {
     }
 
     fitMapToBounds(bounds) {
-        this.map.fitBounds(bounds, {
-            padding: {
-                top: 50,
-                bottom: 100,
-                right: 100,
-                left: 450
-            },
-            maxZoom: 15,
-            duration: 1000,
-            essential: true
-        });
+        this.map.fitBounds(bounds, this.viewConfig.fitConfig);
     }
 
     flyTo(config) {
@@ -192,13 +208,14 @@ class MapRenderer {
             try {
                 console.log('Attempting to fit bounds...');
                 this.gpsDataManagers.forEach(manager => this._extendBounds(manager.bounds));
-
                 console.log('Bounds calculated:', this.bounds);
                 if (this.bounds.length === 0) {
                     this._flyToHomeLocation();
                 } else {
                     this.fitMapToBounds(this.bounds);
                 }
+                this.element.classList.remove('is-loading');
+                this.element.classList.add('is-loaded');
             } catch (error) {
                 console.error("Error during performFit:", error);
             }
@@ -223,7 +240,9 @@ class MapRenderer {
                 }
             }, 2000);
         }
-    }    reset() {
+    }
+
+    reset() {
         this.deckOverlay.setProps([]);
     }
 
@@ -266,6 +285,11 @@ class MapRenderer {
         this.removeAvatarMarkers();
     }
 
+    destroy() {
+        this.map.remove();
+        this.gpsDataManagers.forEach(manager => manager.destroy());
+    }
+
     _shouldAllowPitchAndBearing() {
         return this.viewState.is3d && !(this.viewState.renderGlobe && this.map.getZoom() < 12);
     }
@@ -295,6 +319,7 @@ class MapRenderer {
             }
         }
     }
+
     _awaitStyleLoaded(func) {
         if (this.map.isStyleLoaded()) {
             func();
@@ -789,6 +814,7 @@ class MapRenderer {
     _extractTerrainUrl() {
         return this.map.getSource('terrain-source').tiles[0];
     }
+
     _switchTerrainLayer(enable) {
         if (enable) {
             this._awaitStyleLoaded(() => {

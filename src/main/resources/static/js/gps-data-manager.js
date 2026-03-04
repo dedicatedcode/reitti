@@ -40,6 +40,16 @@ class GpsDataManager {
         return  this.load(0, Number.MAX_SAFE_INTEGER, onProgress)
     }
 
+    destroy() {
+        this.abortController?.abort();
+        this.abortController = null;
+        this.buffer = null;
+        this.cleanedBuffer = null;
+        this.snappedBuffer = null;
+        this.visits = null;
+        this.lastLocation = null;
+    }
+
     async load(startUTC, endUTC, onProgress) {
         // 1. Check if we already have this data in memory
         if (this.loadingState === 'complete' &&
