@@ -586,9 +586,9 @@
         container.classList.add('is-loading');
         const viewState = {
             is3d: true,
-            renderTerrain: true,
-            renderBuildings: false,
-            renderSatelliteView: false,
+            renderTerrain: false,
+            renderBuildings: true,
+            renderSatelliteView: true,
             renderGlobe: false,
             aggregated: false,
             viewMode: 'LINEAR',
@@ -601,12 +601,12 @@
         const mapRenderer = new MapRenderer(elementId, window.userSettings, viewState, {
             fitConfig: {
                 padding: {
-                    top: 0,
-                    bottom: 0,
-                    right: 0,
-                    left: 0
+                    top: 10,
+                    bottom: 10,
+                    right: 10,
+                    left: 10
                 },
-                maxZoom: 20,
+                maxZoom: 18,
                 duration: 0,
                 essential: true
             }
@@ -618,6 +618,7 @@
                 metaDataUrl: metaDataUrl
             }
         }, window.userSettings, getUserTimezone());
+        console.log(`Initializing Map: ${elementId} with ${rawLocationUrl}`);
         mapRenderer.setGpsDataManagers([gpsDataManager]);
         gpsDataManager.loadFixedWithVisits([], (current, total, stage) => {
             if (stage === 'complete') {
