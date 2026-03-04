@@ -12,15 +12,24 @@ public class MemoryVisitClusterBlockDTO implements MemoryBlockPart, Serializable
     private final List<MemoryVisit> visits;
     private final String rawLocationPointsUrl;
     private final String metaDataUrl;
+    private final String visitsUrl;
     private final LocalDateTime adjustedStartTime;
     private final LocalDateTime adjustedEndTime;
     private final Long completeDuration;
 
-    public MemoryVisitClusterBlockDTO(MemoryClusterBlock clusterBlock, List<MemoryVisit> visits, String rawLocationPointsUrl, String metaDataUrl, LocalDateTime adjustedStartTime, LocalDateTime adjustedEndTime, Long completeDuration) {
+    public MemoryVisitClusterBlockDTO(MemoryClusterBlock clusterBlock,
+                                      List<MemoryVisit> visits,
+                                      String rawLocationPointsUrl,
+                                      String metaDataUrl,
+                                      String visitsUrl,
+                                      LocalDateTime adjustedStartTime,
+                                      LocalDateTime adjustedEndTime,
+                                      Long completeDuration) {
         this.clusterBlock = clusterBlock;
         this.visits = visits != null ? List.copyOf(visits) : List.of();
         this.rawLocationPointsUrl = rawLocationPointsUrl;
         this.metaDataUrl = metaDataUrl;
+        this.visitsUrl = visitsUrl;
         this.adjustedStartTime = adjustedStartTime;
         this.adjustedEndTime = adjustedEndTime;
         this.completeDuration = completeDuration;
@@ -79,16 +88,20 @@ public class MemoryVisitClusterBlockDTO implements MemoryBlockPart, Serializable
         return rawLocationPointsUrl;
     }
 
+    public String getMetaDataUrl() {
+        return metaDataUrl;
+    }
+
+    public String getVisitsUrl() {
+        return visitsUrl;
+    }
+
     public LocalDateTime getAdjustedEndTime() {
         return adjustedEndTime;
     }
 
     public LocalDateTime getAdjustedStartTime() {
         return adjustedStartTime;
-    }
-
-    public String getMetaDataUrl() {
-        return metaDataUrl;
     }
 
     @Override

@@ -286,106 +286,19 @@
                                 <div class="time">
                                     <i class="lni lni-timer"></i>
                                     <span th:text="${#temporals.format(block.adjustedStartTime, 'MMM d, yyyy HH:mm')}">Start Time</span>
-                                    <span> - </span>
+                                    <span> &dash; </span>
                                     <span th:text="${#temporals.format(block.adjustedEndTime, 'HH:mm')}">End Time</span>
                                 </div>
                                 <i class="lni lni-layers"></i>
                                 <div class="title" th:text="${block.title}">Cluster Title</div>
                             </div>
                             <p th:if="${block.description != null}" class="cluster-description" th:text="${block.description}">Description</p>
-                            <div th:if="${block.trips.isEmpty()}" th:text="#{memory.block.trip.empty}">There a now Trips selected for this block.</div>
-                            <div th:unless="${block.trips.isEmpty()}" class="cluster-map" th:id="${'map_cluster_' + block.blockId}"></div>
-                            <script th:inline="javascript">
-                                (function() {
-                                    const userSettings =  /*[[${userSettings}]]*/  {};
-                                    const blockId =  /*[[${'map_cluster_' + block.blockId}]]*/  'map_cluster_99';
-                                    const trips =  /*[[${block.trips}]]*/  [];
-                                    const rawLocationUrl =  /*[[${block.rawLocationPointsUrl}]]*/  '';
-                                    const metaDataUrl =  /*[[${block.metaDataUrl}]]*/  '';
-
-                                    const viewState = {
-                                        is3d: true,
-                                        renderTerrain: true,
-                                        renderBuildings: false,
-                                        renderSatelliteView: false,
-                                        renderGlobe: false,
-                                        aggregated: false,
-                                        viewMode: 'LINEAR',
-                                        currentTime: 0,
-                                        animating: false,
-                                        showPhotos: false,
-                                        fixed: true
-                                    };
-                                    const mapRenderer = new MapRenderer(blockId, userSettings, viewState);
-                                    const gpsDataManager = new GpsDataManager({
-                                        color: '#F5DEB3FF',
-                                        map: {
-                                            streamUrl: rawLocationUrl,
-                                            metaDataUrl: metaDataUrl
-                                        }
-                                    }, window.userSettings, getUserTimezone());
-                                    mapRenderer.setGpsDataManagers([gpsDataManager]);
-                                    gpsDataManager.loadFixedWithVisits([], (current, total, stage) => {
-                                        if (stage === 'complete') {
-                                            mapRenderer.updateViewState(viewState)
-                                            mapRenderer.finishedLoading();
-                                        }
-                                    })
-
-                                    // Add markers for start, stops, and end using default filled circle markers
-                                    let bounds = [];
-                                    if (false && trips.length > 0) {
-                                        // Start marker
-                                        const startTrip = trips[0];
-                                        if (startTrip.startVisit) {
-                                            const startLat = startTrip.startVisit.latitudeCentroid;
-                                            const startLon = startTrip.startVisit.longitudeCentroid;
-                                            const startName = startTrip.startVisit.name;
-                                            const startTimeFormatted = combinedStartTime ? new Date(combinedStartTime).toLocaleTimeString() : 'unknown';
-                                            L.circleMarker([startLat, startLon], {
-                                                color: '#4a9fdc',
-                                                fillColor: '#59bcff',
-                                                fillOpacity: 0.2
-                                            }).addTo(clusterMap).bindPopup('Start: ' + startName + '<br>Departed at: ' + startTimeFormatted);
-                                            bounds.push([startLat, startLon]);
-                                        }
-
-                                        // Intermediate stops (end of each trip except last)
-                                        for (let i = 0; i < trips.length - 1; i++) {
-                                            const trip = trips[i];
-                                            if (trip.endVisit) {
-                                                const lat = trip.endVisit.latitudeCentroid;
-                                                const lon = trip.endVisit.longitudeCentroid;
-                                                const name = trip.endVisit.name;
-                                                const seconds = new Date(trip.endTime) - new Date(combinedStartTime);
-                                                const arrivedAfter = combinedStartTime && trip.endTime ? humanizeDuration(seconds,{units: ["h", "m"], round: true}) : 'unknown';
-                                                L.circleMarker([lat, lon], {
-                                                    color: '#6a6a6a',
-                                                    fillColor: '#ff984f',
-                                                    fillOpacity: 0.1
-                                                }).addTo(clusterMap).bindPopup('Stop: ' + name + '<br>Arrived after: ' + arrivedAfter);
-                                                bounds.push([lat, lon]);
-                                            }
-                                        }
-
-                                        // End marker
-                                        const endTrip = trips[trips.length - 1];
-                                        if (endTrip.endVisit) {
-                                            const endLat = endTrip.endVisit.latitudeCentroid;
-                                            const endLon = endTrip.endVisit.longitudeCentroid;
-                                            const endName = endTrip.endVisit.name;
-                                            const arrivedAfter = combinedStartTime && endTrip.endTime ? humanizeDuration((new Date(endTrip.endTime) - new Date(combinedStartTime)),{units: ["h", "m"], round: true}) : 'unknown';
-                                            L.circleMarker([endLat, endLon], {
-                                                color: '#37bd57',
-                                                fillColor: '#55ea7a',
-                                                fillOpacity: 0.2
-                                            }).addTo(clusterMap).bindPopup('End: ' + endName + '<br>Arrived after: ' + arrivedAfter);
-                                            bounds.push([endLat, endLon]);
-                                        }
-                                    }
-
-                                })();
-                            </script>
+                            <div th:unless="${block.trips.isEmpty()}" class="cluster-map"
+                                 th:id="${'map_cluster_' + block.blockId}"
+                                 th:data-type="trips"
+                                 th:data-stream-url="${block.rawLocationPointsUrl}"
+                                 th:data-meta-data-url="${block.metaDataUrl}"
+                                 th:data-trips-url="${block.tripsUrl}"></div>
                             <div class="cluster-summary" th:if="${block.combinedStartTime != null && block.combinedEndTime != null}">
                                 <div class="cluster-duration" th:if="${block.completeDuration != null}">
                                     <span th:text="
@@ -408,7 +321,7 @@
                                 <div class="time">
                                     <i class="lni lni-timer"></i>
                                     <span th:text="${#temporals.format(block.adjustedStartTime, 'MMM d, yyyy HH:mm')}">Start Time</span>
-                                    <span> - </span>
+                                    <span> &dash; </span>
                                     <span th:text="${#temporals.format(block.adjustedEndTime, 'HH:mm')}">End Time</span>
                                 </div>
                                 <i class="lni lni-layers"></i>
@@ -416,46 +329,12 @@
                             </div>
                             <p th:if="${block.description != null}" class="cluster-description" th:text="${block.description}">Description</p>
                             <div th:if="${block.visits.isEmpty()}" th:text="#{memory.block.visit.empty}">There a now Visits selected for this block.</div>
-                            <div th:unless="${block.visits.isEmpty()}" class="cluster-map" th:id="${'map_cluster_' + block.blockId}"></div>
-                            <script th:inline="javascript">
-                                (function() {
-                                    const userSettings =  /*[[${userSettings}]]*/  {};
-                                    const blockId =  /*[[${'map_cluster_' + block.blockId}]]*/  'map_cluster_99';
-                                    const visits =  /*[[${block.visits}]]*/  [];
-                                    const rawLocationUrl =  /*[[${block.rawLocationPointsUrl}]]*/  '';
-                                    const metaDataUrl =  /*[[${block.metaDataUrl}]]*/  '';
-
-                                    // { id: 13, connected: true, name: "Heli´s place", startTime: "2025-08-17T12:10:45Z", endTime: "2025-08-18T01:49:27Z", latitudeCentroid: 36.646942303268595, longitudeCentroid: -4.811901467352043, timezone: "Europe/Madrid", durationSeconds: 49122 }
-                                    const viewState = {
-                                        is3d: true,
-                                        renderTerrain: true,
-                                        renderBuildings: false,
-                                        renderSatelliteView: false,
-                                        renderGlobe: false,
-                                        aggregated: false,
-                                        viewMode: 'LINEAR',
-                                        currentTime: 0,
-                                        animating: false,
-                                        showPhotos: false,
-                                        fixed: true
-                                    };
-                                    const mapRenderer = new MapRenderer(blockId, userSettings, viewState);
-                                    const gpsDataManager = new GpsDataManager({
-                                        color: '#F5DEB3FF',
-                                        map: {
-                                            streamUrl: rawLocationUrl,
-                                            metaDataUrl: metaDataUrl
-                                        }
-                                    }, window.userSettings, getUserTimezone());
-                                    mapRenderer.setGpsDataManagers([gpsDataManager]);
-                                    gpsDataManager.loadFixedWithVisits(visits, (current, total, stage) => {
-                                        if (stage === 'complete') {
-                                            mapRenderer.updateViewState(viewState)
-                                            mapRenderer.finishedLoading();
-                                        }
-                                    })
-                                })();
-                            </script>
+                            <div th:unless="${block.visits.isEmpty()}" class="cluster-map"
+                                 th:id="${'map_cluster_' + block.blockId}"
+                                 th:data-type="visits"
+                                 th:data-stream-url="${block.rawLocationPointsUrl}"
+                                 th:data-meta-data-url="${block.metaDataUrl}"
+                                 th:data-visits-url="${block.visitsUrl}"></div>
                             <div class="cluster-trips" th:if="${!block.visits.isEmpty()}">
                                 <h4>Visits in this Journey:</h4>
                                 <ul>
@@ -652,6 +531,81 @@
 
 
 <script th:inline="javascript">
+    const mapRegistry = new Map();
+
+    const observerOptions = {
+        root: null,
+        rootMargin: '200px',
+        threshold: 0.01
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            const container = entry.target;
+            const elementId = container.id;
+
+            if (entry.isIntersecting) {
+                if (!mapRegistry.has(elementId)) {
+                    console.log(`Initializing Map: ${elementId}`);
+                    initializeMapForBlock(container, elementId);
+                }
+            } else {
+                // SCROLLED OUT: Destroy Map to free WebGL context
+                if (mapRegistry.has(elementId)) {
+                    console.log(`Destroying Map: ${elementId}`);
+                    const renderer = mapRegistry.get(elementId);
+
+                    if (renderer.map) {
+                        renderer.map.remove();
+                    }
+                    mapRegistry.delete(elementId);
+                    document.getElementById(elementId).innerHTML = '';
+                }
+            }
+        });
+    }, observerOptions);
+
+    function initializeMapForBlock(container, elementId) {
+        const rawLocationUrl = container.dataset.streamUrl;
+        const visitsUrl = container.dataset.visitsUrl;
+        const tripsUrl = container.dataset.tripsUrl;
+        const metaDataUrl = container.dataset.metaDataUrl;
+
+        const viewState = {
+            is3d: true,
+            renderTerrain: true,
+            renderBuildings: false,
+            renderSatelliteView: false,
+            renderGlobe: false,
+            aggregated: false,
+            viewMode: 'LINEAR',
+            currentTime: 0,
+            animating: false,
+            showPhotos: false,
+            fixed: true
+        };
+
+        const mapRenderer = new MapRenderer(elementId, window.userSettings, viewState);
+        const gpsDataManager = new GpsDataManager({
+            color: '#F5DEB3FF',
+            map: {
+                streamUrl: rawLocationUrl,
+                metaDataUrl: metaDataUrl
+            }
+        }, window.userSettings, getUserTimezone());
+        mapRenderer.setGpsDataManagers([gpsDataManager]);
+        gpsDataManager.loadFixedWithVisits([], (current, total, stage) => {
+            if (stage === 'complete') {
+                mapRenderer.updateViewState(viewState)
+                mapRenderer.finishedLoading();
+            }
+        })
+
+        mapRegistry.set(container.dataset.blockId, mapRenderer);
+    }
+
+    // Start watching all map containers
+    document.querySelectorAll('.cluster-map').forEach(el => observer.observe(el));
     // Memory processing animation
     document.addEventListener('htmx:beforeRequest', function (event) {
         if (event.detail.target.id === 'memory-processing-overlay' ||

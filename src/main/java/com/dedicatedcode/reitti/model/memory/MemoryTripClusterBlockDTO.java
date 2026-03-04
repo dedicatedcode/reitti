@@ -13,16 +13,26 @@ public class MemoryTripClusterBlockDTO implements MemoryBlockPart, Serializable 
     private final List<MemoryTrip> trips;
     private final String rawLocationPointsUrl;
     private final String metaDataUrl;
+    private final String tripsUrl;
     private final LocalDateTime adjustedStartTime;
     private final LocalDateTime adjustedEndTime;
     private final Long completeDuration;
     private final Long movingDuration;
 
-    public MemoryTripClusterBlockDTO(MemoryClusterBlock clusterBlock, List<MemoryTrip> trips, String rawLocationPointsUrl, String metaDataUrl, LocalDateTime adjustedStartTime, LocalDateTime adjustedEndTime, Long completeDuration, Long movingDuration) {
+    public MemoryTripClusterBlockDTO(MemoryClusterBlock clusterBlock,
+                                     List<MemoryTrip> trips,
+                                     String rawLocationPointsUrl,
+                                     String metaDataUrl,
+                                     String tripsUrl,
+                                     LocalDateTime adjustedStartTime,
+                                     LocalDateTime adjustedEndTime,
+                                     Long completeDuration,
+                                     Long movingDuration) {
         this.clusterBlock = clusterBlock;
         this.trips = trips != null ? List.copyOf(trips) : List.of();
         this.rawLocationPointsUrl = rawLocationPointsUrl;
         this.metaDataUrl = metaDataUrl;
+        this.tripsUrl = tripsUrl;
         this.adjustedStartTime = adjustedStartTime;
         this.adjustedEndTime = adjustedEndTime;
         this.completeDuration = completeDuration;
@@ -58,8 +68,16 @@ public class MemoryTripClusterBlockDTO implements MemoryBlockPart, Serializable 
         return movingDuration;
     }
 
+    public String getRawLocationPointsUrl() {
+        return rawLocationPointsUrl;
+    }
+
     public String getMetaDataUrl() {
         return metaDataUrl;
+    }
+
+    public String getTripsUrl() {
+        return tripsUrl;
     }
 
     // Combined info methods
@@ -98,10 +116,6 @@ public class MemoryTripClusterBlockDTO implements MemoryBlockPart, Serializable 
         return trips.stream()
                 .map(trip -> trip.getEndVisit().getName())
                 .toList();
-    }
-
-    public String getRawLocationPointsUrl() {
-        return rawLocationPointsUrl;
     }
 
     public LocalDateTime getAdjustedEndTime() {
