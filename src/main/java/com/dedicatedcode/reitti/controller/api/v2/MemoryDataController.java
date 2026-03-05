@@ -6,15 +6,13 @@ import com.dedicatedcode.reitti.repository.MemoryTripJdbcService;
 import com.dedicatedcode.reitti.repository.MemoryVisitJdbcService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.User;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.time.ZoneId;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v2/memmories")
+@RequestMapping("/api/v2/memories")
 public class MemoryDataController {
     private final MemoryTripJdbcService memoryTripJdbcService;
     private final MemoryVisitJdbcService memoryVisitJdbcService;
@@ -24,13 +22,13 @@ public class MemoryDataController {
         this.memoryVisitJdbcService = memoryVisitJdbcService;
     }
 
-    @RequestMapping("/trips/{memoryId}/{blockId}")
-    public List<MemoryTrip> loadTrips(@AuthenticationPrincipal User user, @PathVariable Long memoryId, @PathVariable Long blockId) {
+    @GetMapping("/trips/{memoryId}/{blockId}")
+    public List<MemoryTrip> loadTrips(@AuthenticationPrincipal User user, @PathVariable Long memoryId, @PathVariable Long blockId, @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
         return memoryTripJdbcService.findByMemoryBlockId(blockId);
     }
 
-    @RequestMapping("/visits/{memoryId}/{blockId}")
-    public List<MemoryVisit> loadVisits(@AuthenticationPrincipal User user, @PathVariable Long memoryId, @PathVariable Long blockId) {
+    @GetMapping("/visits/{memoryId}/{blockId}")
+    public List<MemoryVisit> loadVisits(@AuthenticationPrincipal User user, @PathVariable Long memoryId, @PathVariable Long blockId, @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
         return memoryVisitJdbcService.findByMemoryBlockId(blockId);
     }
 }

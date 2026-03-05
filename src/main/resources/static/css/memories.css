@@ -624,3 +624,139 @@
         width: 30%;
     }
 }
+.map-marker-ring {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 3px solid var(--color-background-dark-light);
+    background-color: var(--color-highlight-transparent);
+    cursor: pointer;
+
+    box-shadow: var(--box-shadow);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    transition: transform 0.2s ease-in-out;
+    z-index: 2000;
+}
+
+.map-marker-ring:hover {
+    transform: scale(1.2);
+    border-color: var(--color-background-dark);
+}
+
+.map-popup-card {
+    padding: 8px 4px;
+    font-family: sans-serif;
+    color: var(--color-text-white);
+    background: var(--color-background-dark-light);
+    min-width: 140px;
+    z-index: 2000;
+}
+
+.custom-map-popup {
+    z-index: 2000;
+    box-shadow: var(--box-shadow);
+}
+
+.map-popup-card-header {
+    border-bottom: 1px solid #eee;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    color: var(--color-text-white);
+    font-size: 1.2rem;
+    font-family: var(--serif-font);
+    font-weight: lighter;
+
+}
+
+.popup-body p {
+    margin: 4px 0;
+    font-size: 12px;
+}
+
+.popup-body span {
+    font-weight: bold;
+    color: var(--color-text-white);
+}
+
+.custom-map-popup .maplibregl-popup-content {
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    padding: 10px;
+    background: var(--color-background-dark-light);
+}
+
+/* Base shared style */
+.marker-start, .marker-end, .marker-waypoint {
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    z-index: 1000;
+}
+
+/* Hero Markers */
+.marker-start {
+    width: 18px;
+    height: 18px;
+    background-color: var(--color-highlight);
+    border: 3px solid var(--color-background-dark-light);
+    z-index: 2000;
+}
+
+.marker-end {
+    width: 18px;
+    height: 18px;
+    background-color: var(--color-highlight);
+    border: 3px solid var(--color-background-dark-light);
+    z-index: 2000;
+}
+
+/* Small subtle dots for the middle */
+.marker-waypoint {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 3px solid var(--color-background-dark-light);
+    background-color: var(--color-highlight-transparent);
+    cursor: pointer;
+
+    box-shadow: var(--box-shadow);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    transition: transform 0.2s ease-in-out;
+    z-index: 2000;
+}
+
+/* Label for start/end */
+.marker-start span, .marker-end span {
+    pointer-events: none;
+}
+
+.journey-footer {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border-color);
+    font-size: 11px;
+    color: var(--color-text-white);
+}
+
+.map-popup-card p span {
+    color: var(--color-highlight); /* Highlight the labels */
+    font-weight: 600;
+    margin-right: 4px;
+}
+
+.maplibregl-popup-anchor-top .maplibregl-popup-tip {
+    border-bottom-color: var(--color-background-dark-light);
+}

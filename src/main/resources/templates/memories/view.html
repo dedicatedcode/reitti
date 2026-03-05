@@ -24,6 +24,7 @@
     <script th:src="@{/js/vendor/maplibre-gl.5.17.0.min.js}"></script>
     <script th:src="@{/js/gps-data-manager.js}"></script>
     <script th:src="@{/js/map-renderer.js}"></script>
+    <script th:src="@{/js/memories-data-providers.js}"></script>
 
 
     <script type="application/javascript" th:inline="javascript">
@@ -595,28 +596,39 @@
             currentTime: 0,
             animating: false,
             showPhotos: false,
-            fixed: true
+            fixed: false,
+            hideAttribution: true
         };
+
+        const additionalProviders = [];
+        if (visitsUrl) {
+            additionalProviders.push(new VisitDataProvider(visitsUrl));
+        }
+        if (tripsUrl) {
+            additionalProviders.push(new TripDataProvider(tripsUrl));
+        }
 
         const mapRenderer = new MapRenderer(elementId, window.userSettings, viewState, {
             fitConfig: {
                 padding: {
-                    top: 10,
-                    bottom: 10,
-                    right: 10,
-                    left: 10
+                    top: 50,
+                    bottom: 50,
+                    right: 100,
+                    left: 100
                 },
                 maxZoom: 18,
                 duration: 0,
                 essential: true
-            }
+            },
+            mapDataProviders: additionalProviders
         });
         const gpsDataManager = new GpsDataManager({
             color: '#f5deb3',
             map: {
                 streamUrl: rawLocationUrl,
                 metaDataUrl: metaDataUrl
-            }
+            },
+            mapDataProviders: additionalProviders
         }, window.userSettings, getUserTimezone());
         console.log(`Initializing Map: ${elementId} with ${rawLocationUrl}`);
         mapRenderer.setGpsDataManagers([gpsDataManager]);

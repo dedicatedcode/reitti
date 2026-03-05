@@ -26,7 +26,8 @@ class MapRenderer {
                     ...defaultViewConfig.fitConfig.padding,
                     ...(viewConfig.fitConfig?.padding || {})
                 }
-            }
+            },
+            mapDataProviders: viewConfig.mapDataProviders || []
         };
         this.gpsDataManagers = []
 
@@ -44,6 +45,8 @@ class MapRenderer {
         };
         if (this.viewState.fixed) {
             mapOptions.interactive = false;
+        }
+        if (this.viewState.fixed || this.viewState.hideAttribution) {
             mapOptions.attributionControl = false;
         }
         this.map = new maplibregl.Map(mapOptions);
@@ -186,6 +189,9 @@ class MapRenderer {
         if (this.showAvatars) {
             this.updateAvatarPositions();
         }
+        this.viewConfig.mapDataProviders.forEach(provider => {
+            provider.render(this.map);
+        })
     }
 
     setGpsDataManagers(managers) {
@@ -227,18 +233,7 @@ class MapRenderer {
             performFit();
         } else {
             console.log('Style not loaded yet, waiting...');
-            // Use 'load' event which is more robust for "fully ready" state
-            // It fires after style.load and ensures the map is ready for camera moves
             this.map.once('load', performFit);
-
-            // Safety fallback: In rare cases if 'load' doesn't fire (e.g. error), check again after 2 seconds
-            setTimeout(() => {
-                if (this.map.isStyleLoaded()) {
-                    // If we are here, 'load' event likely fired but we want to be sure performFit ran
-                    // You can check if bounds were already set, or just call performFit again if needed
-                    // console.log('Safety fallback triggered');
-                }
-            }, 2000);
         }
     }
 

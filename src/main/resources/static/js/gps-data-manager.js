@@ -4,7 +4,6 @@ class GpsDataManager {
         this.userSettings = userSettings;
         this.color = this._hexToRgb(userConfig.color || '#3388ff');
         this.id = userConfig.id || 'default';
-
         this.timeZone = timeZone || "UTC";
 
         // 1. Buffers
@@ -85,6 +84,11 @@ class GpsDataManager {
             requests.push(fetch(window.contextPath + this.config.map.metaDataUrl, {signal}))
             if (this.config.map.visitsUrl) {
                 requests.push(fetch(window.contextPath + this.config.map.visitsUrl, {signal}))
+            }
+            if (this.config.mapDataProviders) {
+                this.config.mapDataProviders.forEach(provider => {
+                    requests.push(provider.load({signal}))
+                });
             }
             const responses = await Promise.all(requests);
 
