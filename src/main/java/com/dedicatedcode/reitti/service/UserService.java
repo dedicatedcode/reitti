@@ -30,6 +30,7 @@ public class UserService {
     private final TransportModeJdbcService transportModeJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final SignificantPlaceJdbcService significantPlaceJdbcService;
+    private final SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final GeocodingResponseJdbcService geocodingResponseJdbcService;
     private final ApiTokenJdbcService apiTokenJdbcService;
@@ -42,7 +43,7 @@ public class UserService {
                        VisitDetectionParametersJdbcService visitDetectionParametersJdbcService,
                        TransportModeJdbcService transportModeJdbcService,
                        RawLocationPointJdbcService rawLocationPointJdbcService,
-                       SignificantPlaceJdbcService significantPlaceJdbcService,
+                       SignificantPlaceJdbcService significantPlaceJdbcService, SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
                        ProcessedVisitJdbcService processedVisitJdbcService,
                        GeocodingResponseJdbcService geocodingResponseJdbcService,
                        ApiTokenJdbcService apiTokenJdbcService,
@@ -55,6 +56,7 @@ public class UserService {
         this.transportModeJdbcService = transportModeJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.significantPlaceJdbcService = significantPlaceJdbcService;
+        this.significantPlaceOverrideJdbcService = significantPlaceOverrideJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.geocodingResponseJdbcService = geocodingResponseJdbcService;
         this.apiTokenJdbcService = apiTokenJdbcService;
@@ -155,7 +157,7 @@ public class UserService {
         this.geocodingResponseJdbcService.deleteAllForUser(user);
         this.processedVisitJdbcService.deleteAllForUser(user);
         this.significantPlaceJdbcService.deleteForUser(user);
-        this.significantPlaceJdbcService.deleteForUser(user);
+        this.significantPlaceOverrideJdbcService.deleteForUser(user);
         this.rawLocationPointJdbcService.deleteAllForUser(user);
         this.rawLocationPointJdbcService.deleteAllForUser(user);
         this.apiTokenJdbcService.deleteForUser(user);

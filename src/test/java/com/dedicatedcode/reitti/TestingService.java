@@ -1,9 +1,9 @@
 package com.dedicatedcode.reitti;
 
 import com.dedicatedcode.reitti.config.RabbitMQConfig;
-import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
+import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.ImportProcessor;
@@ -54,6 +54,8 @@ public class TestingService {
     private UserService userService;
     @Autowired
     private ImportProcessor importBatchProcessor;
+    @Autowired
+    private SignificantPlaceJdbcService significantPlaceJdbcService;
 
     @Autowired
     private LocationDataIngestPipeline locationDataIngestPipeline;
@@ -168,5 +170,9 @@ public class TestingService {
     public void importAndProcess(User user, String path) {
         importData(user, path);
         awaitDataImport(100);
+    }
+
+    public SignificantPlace newSignificantPlace(User user) {
+        return this.significantPlaceJdbcService.create(user, SignificantPlace.create(53.48278089848833, 9.32412809124706));
     }
 }
