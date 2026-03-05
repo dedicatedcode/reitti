@@ -1,27 +1,62 @@
 class MapRenderer {
-    constructor(element, userSettings, initialViewState) {
+    constructor(element, userSettings, initialViewState, viewConfig = {}) {
         this.userSettings = userSettings;
+        this.element = document.getElementById(element);
+        const defaultViewConfig = {
+            fitConfig: {
+                padding: {
+                    top: 50,
+                    bottom: 100,
+                    right: 100,
+                    left: 450
+                },
+                maxZoom: 15,
+                duration: 1000,
+                essential: true
+            }
+        }
+
+        this.viewConfig = {
+            ...defaultViewConfig,
+            ...viewConfig,
+            fitConfig: {
+                ...defaultViewConfig.fitConfig,
+                ...(viewConfig.fitConfig || {}),
+                padding: {
+                    ...defaultViewConfig.fitConfig.padding,
+                    ...(viewConfig.fitConfig?.padding || {})
+                }
+            },
+            mapDataProviders: viewConfig.mapDataProviders || []
+        };
         this.gpsDataManagers = []
 
         this.viewState = initialViewState
         this._pitchBearingAllowed = true;
 
-        this.map = new maplibregl.Map({
+        const mapOptions = {
             interleaved: true,
-            container: 'new-map',
+            container: element,
             style: '/map/reitti.json',
             center: [userSettings.homeLongitude, userSettings.homeLatitude],
             pitch: this.viewState.is3d ? 45 : 0,
             maxPitch: 85,
-            minZoom: 2,
-        });
-        // this.map.on('load', () => {
-        //     this.map.setSourceTileLodParams(1, 10); //effectively disabling LOD
-        // });
-        this.photosManager = new PhotoClusterManager(this.map,  {
-            clusterRadius: 80,
-            iconSize: 56
-        });
+            minZoom: 2
+        };
+        if (this.viewState.fixed) {
+            mapOptions.interactive = false;
+        }
+        if (this.viewState.fixed || this.viewState.hideAttribution) {
+            mapOptions.attributionControl = false;
+        }
+        this.map = new maplibregl.Map(mapOptions);
+
+        if (this.viewState.showPhotos) {
+            this.photosManager = new PhotoClusterManager(this.map, {
+                clusterRadius: 80,
+                iconSize: 56
+            });
+        }
         this.avatarMarkers = new Map(); // Store markers by user ID
         this.showAvatars = false;
 
@@ -30,10 +65,9 @@ class MapRenderer {
             layers: []
         });
         this.map.addControl(this.deckOverlay);
-
         this.currentTime = 0;
 
-        this.deckParams = {
+        const defaultDeckParams = {
             trips: {
                 trailLength: 700,
                 cometWidth: 3,
@@ -47,12 +81,12 @@ class MapRenderer {
             },
             visits: {
                 minZoom: 12,
+                polygonMinZoom: 16,
                 radius: 1,
                 opacity: 140,
                 polygonOpacity: 140,
                 lineWidth: 1
             },
-
             bundled: {
                 precision: 0.0005,
                 weight: 0.5,
@@ -67,6 +101,20 @@ class MapRenderer {
             }
         };
 
+        this.deckParams = {
+            trips: {
+                ...defaultDeckParams.trips,
+                ...(this.viewConfig.deckParams?.trips || {})
+            },
+            visits: {
+                ...defaultDeckParams.visits,
+                ...(this.viewConfig.deckParams?.visits || {})
+            },
+            bundled: {
+                ...defaultDeckParams.bundled,
+                ...(this.viewConfig.deckParams?.bundled || {})
+            }
+        };
         this.bounds = [];
 
         this.map.once('style.load', () => {
@@ -154,6 +202,9 @@ class MapRenderer {
         if (this.showAvatars) {
             this.updateAvatarPositions();
         }
+        this.viewConfig.mapDataProviders.forEach(provider => {
+            provider.render(this.map);
+        })
     }
 
     setGpsDataManagers(managers) {
@@ -162,17 +213,7 @@ class MapRenderer {
     }
 
     fitMapToBounds(bounds) {
-        this.map.fitBounds(bounds, {
-            padding: {
-                top: 50,
-                bottom: 100,
-                right: 100,
-                left: 450
-            },
-            maxZoom: 15,
-            duration: 1000,
-            essential: true
-        });
+        this.map.fitBounds(bounds, this.viewConfig.fitConfig);
     }
 
     flyTo(config) {
@@ -180,11 +221,32 @@ class MapRenderer {
     }
 
     finishedLoading() {
-        this.gpsDataManagers.forEach(manager => this._extendBounds(manager.bounds));
-        if (this.bounds.length === 0) {
-            this._flyToHomeLocation();
+        console.log('Finished loading map data');
+
+        const performFit = () => {
+            try {
+                console.log('Attempting to fit bounds...');
+                this.gpsDataManagers.forEach(manager => this._extendBounds(manager.bounds));
+                console.log('Bounds calculated:', this.bounds);
+                if (this.bounds.length === 0) {
+                    this._flyToHomeLocation();
+                } else {
+                    this.fitMapToBounds(this.bounds);
+                }
+                this.element.classList.remove('is-loading');
+                this.element.classList.add('is-loaded');
+            } catch (error) {
+                console.error("Error during performFit:", error);
+            }
+        };
+
+        // Check if style is already loaded
+        if (this.map.isStyleLoaded()) {
+            console.log('Style already loaded, fitting immediately.');
+            performFit();
         } else {
-            this.fitMapToBounds(this.bounds);
+            console.log('Style not loaded yet, waiting...');
+            this.map.once('load', performFit);
         }
     }
 
@@ -231,6 +293,11 @@ class MapRenderer {
         this.removeAvatarMarkers();
     }
 
+    destroy() {
+        this.map.remove();
+        this.gpsDataManagers.forEach(manager => manager.destroy());
+    }
+
     _shouldAllowPitchAndBearing() {
         return this.viewState.is3d && !(this.viewState.renderGlobe && this.map.getZoom() < 12);
     }
@@ -260,6 +327,7 @@ class MapRenderer {
             }
         }
     }
+
     _awaitStyleLoaded(func) {
         if (this.map.isStyleLoaded()) {
             func();
@@ -493,18 +561,21 @@ class MapRenderer {
             new deck.PolygonLayer({
                 id: `visit-polygons-${layerKey}`,
                 data: places.filter(p => p.polygon),
-                getPolygon: d => d.polygon.coordinates,
+                getPolygon: d => {
+                    if (!d.polygon || !Array.isArray(d.polygon)) return [];
+                    return d.polygon.map(point => [point.longitude, point.latitude]);
+                },
                 getFillColor: d => [...manager.color, this.deckParams.visits.polygonOpacity],
                 getLineColor: d => [...manager.color, 255],
                 pickable: true,
-                depthTest: false,
+                depthTest: true,
                 onHover: info => this._updateTooltip(info),
-                visible: isOverview && this.map.getZoom() > this.deckParams.visits.minZoom,
+                visible: isOverview && this.map.getZoom() > this.deckParams.visits.polygonMinZoom,
                 extensions: extensions,
                 terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
                 updateTriggers: {
                     getFillColor: [currentTime],
-                    visible: [isOverview, this.map.zoom],
+                    visible: [isOverview, this.map.getZoom()],
                     data: manager.visits?.length
                 }
             }),
@@ -513,6 +584,10 @@ class MapRenderer {
                 data: places,
                 getPosition: d => d.coordinates,
                 getRadius: d => {
+                    if (isOverview && this.map.getZoom() > this.deckParams.visits.polygonMinZoom && d.polygon) {
+                        return 0;
+                    }
+
                     const duration = isOverview
                         ? (d.totalDurationSec || 0)
                         : this._getActiveVisitEffect(d).seconds;
@@ -534,13 +609,13 @@ class MapRenderer {
                 },
                 getFillColor: d => [...manager.color, isOverview ? this.deckParams.visits.opacity : (this._getActiveVisitEffect(d).opacity * this.deckParams.visits.opacity)],
                 pickable: true,
-                depthTest: false,
+                depthTest: true,
                 onHover: info => this._updateTooltip(info),
-                visible: !isOverview || this.map.getZoom() > this.deckParams.visits.minZoom,
+                visible: !isOverview || (isOverview && this.map.getZoom() > this.deckParams.visits.minZoom),
                 extensions: extensions,
                 terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
                 updateTriggers: {
-                    getRadius: [currentTime, isOverview],
+                    getRadius: [currentTime, isOverview, this.map.getZoom()],
                     getFillColor: [currentTime, isOverview],
                     data: manager.visits?.length
                 },
@@ -559,7 +634,13 @@ class MapRenderer {
                 id: `place-inner-circles-${layerKey}`,
                 data: places,
                 getPosition: d => d.coordinates,
-                getRadius: 8,
+                getRadius: d =>{
+                    if (isOverview && this.map.getZoom() > this.deckParams.visits.polygonMinZoom && d.polygon) {
+                        return 0;
+                    } else {
+                        return 8;
+                    }
+                },
                 stroked: true,
                 lineWidthMinPixels: this.deckParams.visits.lineWidth,
                 depthTest: false,
@@ -576,6 +657,7 @@ class MapRenderer {
                 extensions: extensions,
                 terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
                 updateTriggers: {
+                    getRadius: [currentTime, isOverview, this.map.getZoom()],
                     getFillColor: [currentTime, isOverview],
                     getLineColor: [currentTime, isOverview],
                     data: manager.visits?.length
@@ -588,9 +670,11 @@ class MapRenderer {
 
     _setup = () => {
         this.map.on('move', () => {
-            gpsDataManagers.forEach(manager => {
-                this._updateLayers(manager)
-            })
+            if (this.gpsDataManagers) {
+                this.gpsDataManagers.forEach(manager => {
+                    this._updateLayers(manager)
+                })
+            }
         });
 
         this.map.on('zoomend', () => {
@@ -738,6 +822,7 @@ class MapRenderer {
     _extractTerrainUrl() {
         return this.map.getSource('terrain-source').tiles[0];
     }
+
     _switchTerrainLayer(enable) {
         if (enable) {
             this._awaitStyleLoaded(() => {

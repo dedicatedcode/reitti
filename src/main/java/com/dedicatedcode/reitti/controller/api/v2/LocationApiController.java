@@ -17,6 +17,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -47,7 +48,34 @@ public class LocationApiController {
                            @RequestParam String end,
                            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) throws IllegalAccessException {
         User userToFetchDataFrom = loadUserToFetchDataFrom(user, userId);
-        return this.jdbcService.getMetadata(userToFetchDataFrom, parseInstant(start, timezone), parseInstant(end, timezone).plus(1, ChronoUnit.DAYS));
+        Instant startInstant = parseInstant(start, timezone, false);
+        Instant endInstant = parseInstant(end, timezone, true).plus(1, ChronoUnit.SECONDS);
+        return this.jdbcService.getMetadata(userToFetchDataFrom, startInstant, endInstant);
+    }
+
+    @GetMapping(value = "/stream/{userId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public ResponseEntity<ResponseBodyEmitter> stream(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long userId,
+            @RequestParam String start,
+            @RequestParam String end,
+            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) throws IllegalAccessException {
+        User userToFetchDataFrom = loadUserToFetchDataFrom(user, userId);
+        ResponseBodyEmitter emitter = new ResponseBodyEmitter(0L);
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                streamingRawLocationPointJdbcService.streamPoints(userToFetchDataFrom.getId(), parseInstant(start, timezone, false), parseInstant(end, timezone, true).plus(1, ChronoUnit.SECONDS), emitter);
+                emitter.complete();
+            } catch (Exception e) {
+                emitter.completeWithError(e);
+            }
+        });
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE)
+                .header(HttpHeaders.CONTENT_ENCODING, "identity")
+                .body(emitter);
     }
 
     private User loadUserToFetchDataFrom(User user, Long userId) throws IllegalAccessException {
@@ -66,46 +94,24 @@ public class LocationApiController {
         return userJdbcService.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
-
-    @GetMapping(value = "/stream/{userId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public ResponseEntity<ResponseBodyEmitter> stream(
-            @AuthenticationPrincipal User user,
-            @PathVariable Long userId,
-            @RequestParam String start,
-            @RequestParam String end,
-            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) throws IllegalAccessException {
-        User userToFetchDataFrom = loadUserToFetchDataFrom(user, userId);
-        ResponseBodyEmitter emitter = new ResponseBodyEmitter(0L);
-
-        CompletableFuture.runAsync(() -> {
-            try {
-                streamingRawLocationPointJdbcService.streamPoints(userToFetchDataFrom.getId(), parseInstant(start, timezone), parseInstant(end, timezone).plus(1, ChronoUnit.DAYS), emitter);
-                emitter.complete();
-            } catch (Exception e) {
-                emitter.completeWithError(e);
-            }
-        });
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE)
-                .header(HttpHeaders.CONTENT_ENCODING, "identity")
-                .body(emitter);
-    }
-
-    private Instant parseInstant(String input, ZoneId timezone) {
+    private Instant parseInstant(String input, ZoneId timezone, boolean end) {
         LocalDateTime dateTime = null;
         try {
             dateTime = LocalDateTime.parse(input);
-        } catch (Exception ignores) {
-        }
+        } catch (Exception ignored) {}
 
         if (dateTime == null) {
             try {
-                dateTime = LocalDateTime.parse(input + "T00:00:00");
-            } catch (Exception e) {
-                throw new IllegalArgumentException("Unable to parse date: " + input);
-            }
+                dateTime = LocalDateTime.parse(input + (end ? "T23:59:59" : "T00:00:00"));
+                return dateTime.atZone(timezone).toInstant();
+            } catch (Exception ignored) {}
         }
-        return dateTime.atZone(timezone).toInstant();
+        if (dateTime == null) {
+            try {
+                dateTime = ZonedDateTime.parse(input).toLocalDateTime();
+                return dateTime.atZone(timezone).toInstant();
+            } catch (Exception ignored) {}
+        }
+        throw new IllegalArgumentException("Invalid date format");
     }
 }
