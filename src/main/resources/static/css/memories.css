@@ -324,6 +324,7 @@
     height: 100%;
     opacity: 0;
     transition: opacity 1.5s cubic-bezier(0.25, 1, 0.5, 1);
+    scroll-margin-top: 24px;
 }
 
 .cluster-map.is-loaded {

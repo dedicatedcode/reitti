@@ -235,6 +235,8 @@ public class MemoryBlockController {
         model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, blockId).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
         model.addAttribute("isOwner", isOwner(memory, user));
         model.addAttribute("canEdit", canEdit(memory, user));
+        model.addAttribute("update", "true");
+
         return "memories/view :: view-block";
     }
 

@@ -67,7 +67,7 @@ class MapRenderer {
         this.map.addControl(this.deckOverlay);
         this.currentTime = 0;
 
-        this.deckParams = {
+        const defaultDeckParams = {
             trips: {
                 trailLength: 700,
                 cometWidth: 3,
@@ -87,7 +87,6 @@ class MapRenderer {
                 polygonOpacity: 140,
                 lineWidth: 1
             },
-
             bundled: {
                 precision: 0.0005,
                 weight: 0.5,
@@ -102,6 +101,20 @@ class MapRenderer {
             }
         };
 
+        this.deckParams = {
+            trips: {
+                ...defaultDeckParams.trips,
+                ...(this.viewConfig.deckParams?.trips || {})
+            },
+            visits: {
+                ...defaultDeckParams.visits,
+                ...(this.viewConfig.deckParams?.visits || {})
+            },
+            bundled: {
+                ...defaultDeckParams.bundled,
+                ...(this.viewConfig.deckParams?.bundled || {})
+            }
+        };
         this.bounds = [];
 
         this.map.once('style.load', () => {

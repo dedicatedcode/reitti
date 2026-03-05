@@ -318,6 +318,18 @@
                                     </li>
                                 </ul>
                             </div>
+                            <script th:if="${update != NULL && update}" th:inline="javascript">
+                                window.setTimeout(() => {
+                                    const blockId = /*[[${'map_cluster_' + block.blockId}]]*/ 'map-id';
+                                    const container = document.getElementById(blockId);
+                                    container.scrollIntoView({
+                                        behavior: "smooth",
+                                        inline: "nearest"
+                                    })
+                                    initializeMapForBlock(container, blockId);
+                                }, 150);
+
+                            </script>
                         </div>
                         <div th:if="${block.type.name() == 'CLUSTER_VISIT'}" class="cluster-block">
                             <div class="block-header">
@@ -349,6 +361,18 @@
                                     </li>
                                 </ul>
                             </div>
+                            <script th:if="${update != NULL && update}" th:inline="javascript">
+                                window.setTimeout(() => {
+                                    const blockId = /*[[${'map_cluster_' + block.blockId}]]*/ 'map-id';
+                                    const container = document.getElementById(blockId);
+                                    container.scrollIntoView({
+                                        behavior: "smooth",
+                                        inline: "nearest"
+                                    })
+                                    initializeMapForBlock(container, blockId);
+                                }, 150);
+
+                            </script>
                         </div>
                     </div>
                     <div th:if="${canEdit}" class="block-actions">
@@ -405,7 +429,6 @@
     let memoryMap = null;
 
     function initializeMemoryMap() {
-        // Only initialize if header type is MAP and map container exists
         if (memory.headerType === 'MAP' && document.getElementById('memory-map')) {
             if (memoryMap && typeof memoryMap.getContainer === 'function') {
                 memoryMap.remove();
@@ -457,7 +480,7 @@
                     }
                 });
             }, {
-                rootMargin: '50px 0px', // Start loading 50px before the image enters viewport
+                rootMargin: '50px 0px',
                 threshold: 0.01
             });
 
@@ -466,7 +489,6 @@
                 imageObserver.observe(img);
             });
         } else {
-            // Fallback for browsers without Intersection Observer support
             document.querySelectorAll('.lazy-image').forEach(img => {
                 const dataSrc = img.getAttribute('data-src');
                 if (dataSrc) {
@@ -477,19 +499,13 @@
         }
     }
 
-    // Initialize map on page load
     initializeMemoryMap();
-    
-    // Initialize lazy loading on page load
     initializeLazyLoading();
 
-    // Listen for htmx events to reinitialize map and lazy loading when content is updated
     document.body.addEventListener('htmx:afterSwap', function (event) {
         if (event.detail.target.classList.contains('memory-header')) {
             initializeMemoryMap()
         }
-
-        // Reinitialize lazy loading for any new images added via HTMX
         initializeLazyLoading();
     });
 </script>
@@ -559,7 +575,6 @@
                 }, 150); // 150ms delay
                 loadTimeouts.set(elementId, timeout);
             } else {
-                // SCROLLED OUT: Destroy Map to free WebGL context
                 if (loadTimeouts.has(elementId)) {
                     clearTimeout(loadTimeouts.get(elementId));
                     loadTimeouts.delete(elementId);
@@ -572,7 +587,10 @@
 
                     renderer.destroy();
                     mapRegistry.delete(elementId);
-                    document.getElementById(elementId).innerHTML = '';
+                    const elementById = document.getElementById(elementId);
+                    if (elementById) {
+                        elementById.innerHTML = '';
+                    }
                 }
             }
         });
@@ -589,7 +607,7 @@
             is3d: true,
             renderTerrain: false,
             renderBuildings: true,
-            renderSatelliteView: true,
+            renderSatelliteView: false,
             renderGlobe: false,
             aggregated: false,
             viewMode: 'LINEAR',
@@ -620,10 +638,16 @@
                 duration: 0,
                 essential: true
             },
+            deckParams: {
+                trips: {
+                    staticPathWidth: 1.5,
+                    staticPathOpacity: 255,
+                }
+            },
             mapDataProviders: additionalProviders
         });
         const gpsDataManager = new GpsDataManager({
-            color: '#f5deb3',
+            color: '#fddca1',
             map: {
                 streamUrl: rawLocationUrl,
                 metaDataUrl: metaDataUrl
