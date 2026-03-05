@@ -60,8 +60,12 @@ public class CustomOidcUserService extends OidcUserService {
         if (preferredUsername == null) {
             preferredUsername = oidcUser.getEmail();
         }
-        if (preferredUsername == null) {
+        if (preferredUsername == null && oidcUser.getFamilyName() != null && oidcUser.getGivenName() != null){
             preferredUsername = oidcUser.getGivenName().toLowerCase() + "." + oidcUser.getFamilyName().toLowerCase();
+        }
+        if (preferredUsername == null) {
+            log.warn("No preferred username found for user: {}. Will fallback to OIDC subject", oidcUser);
+            preferredUsername = userRequest.getIdToken().getSubject();
         }
         String oidcUserId = userRequest.getIdToken().getIssuer().toString() + ":" + userRequest.getIdToken().getSubject();
 
