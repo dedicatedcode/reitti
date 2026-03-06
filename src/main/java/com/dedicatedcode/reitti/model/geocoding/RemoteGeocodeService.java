@@ -13,12 +13,15 @@ public class RemoteGeocodeService implements GeocodeService {
     private final int errorCount;
     private final Instant lastUsed;
     private final Instant lastError;
+    private final GeocoderType type;
+    private final int priority;
     private final Long version;
     
-    public RemoteGeocodeService(String name, String urlTemplate, boolean enabled, int errorCount, Instant lastUsed, Instant lastError) {
-        this(null, name, urlTemplate, enabled, errorCount, lastUsed, lastError, 1L);
+    public RemoteGeocodeService(String name, String urlTemplate, boolean enabled, int errorCount, Instant lastUsed, Instant lastError, GeocoderType type, int priority) {
+        this(null, name, urlTemplate, enabled, errorCount, lastUsed, lastError, type, priority, 1L);
     }
-    public RemoteGeocodeService(Long id, String name, String urlTemplate, boolean enabled, int errorCount, Instant lastUsed, Instant lastError, Long version) {
+
+    public RemoteGeocodeService(Long id, String name, String urlTemplate, boolean enabled, int errorCount, Instant lastUsed, Instant lastError, GeocoderType type, int priority, Long version) {
         this.id = id;
         this.name = name;
         this.urlTemplate = urlTemplate;
@@ -26,6 +29,8 @@ public class RemoteGeocodeService implements GeocodeService {
         this.errorCount = errorCount;
         this.lastUsed = lastUsed;
         this.lastError = lastError;
+        this.type = type;
+        this.priority = priority;
         this.version = version;
     }
     
@@ -37,29 +42,30 @@ public class RemoteGeocodeService implements GeocodeService {
     public Instant getLastUsed() { return lastUsed; }
     public Instant getLastError() { return lastError; }
     public Long getVersion() { return version; }
-
+    public GeocoderType getType() { return type; }
+    public int getPriority() { return priority; }
     // Wither methods
     public RemoteGeocodeService withEnabled(boolean enabled) {
-        return new RemoteGeocodeService(this.id, this.name, this.urlTemplate, enabled, this.errorCount, this.lastUsed, this.lastError, this.version);
+        return new RemoteGeocodeService(this.id, this.name, this.urlTemplate, enabled, this.errorCount, this.lastUsed, this.lastError, this.type, this.priority, this.version);
     }
 
     public RemoteGeocodeService withIncrementedErrorCount() {
-        return new RemoteGeocodeService(this.id, this.name, this.urlTemplate, this.enabled, this.errorCount + 1, this.lastUsed, Instant.now(), this.version);
+        return new RemoteGeocodeService(this.id, this.name, this.urlTemplate, this.enabled, this.errorCount + 1, this.lastUsed, Instant.now(), this.type, this.priority, this.version);
     }
 
     public RemoteGeocodeService withLastUsed(Instant lastUsed) {
-        return new RemoteGeocodeService(this.id, this.name, this.urlTemplate, this.enabled, this.errorCount, lastUsed, this.lastError, this.version);
+        return new RemoteGeocodeService(this.id, this.name, this.urlTemplate, this.enabled, this.errorCount, lastUsed, this.lastError, this.type, this.priority, this.version);
     }
 
     public RemoteGeocodeService withLastError(Instant lastError) {
-        return new RemoteGeocodeService(this.id, this.name, this.urlTemplate, this.enabled, this.errorCount, this.lastUsed, lastError, this.version);
+        return new RemoteGeocodeService(this.id, this.name, this.urlTemplate, this.enabled, this.errorCount, this.lastUsed, lastError, this.type, this.priority, this.version);
     }
 
     public RemoteGeocodeService withId(Long id) {
-        return new RemoteGeocodeService(id, this.name, this.urlTemplate, this.enabled, this.errorCount, this.lastUsed, lastError, this.version);
+        return new RemoteGeocodeService(id, this.name, this.urlTemplate, this.enabled, this.errorCount, this.lastUsed, lastError, this.type, this.priority, this.version);
     }
 
     public RemoteGeocodeService resetErrorCount() {
-        return new RemoteGeocodeService(id, name, urlTemplate, this.enabled, 0, this.lastUsed, null, this.version);
+        return new RemoteGeocodeService(id, name, urlTemplate, this.enabled, 0, this.lastUsed, null, this.type, this.priority, this.version);
     }
 }

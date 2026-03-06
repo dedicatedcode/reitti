@@ -28,20 +28,17 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
 
     private final GeocodeServiceJdbcService geocodeServiceJdbcService;
     private final GeocodingResponseJdbcService geocodingResponseJdbcService;
-    private final List<GeocodeService> fixedGeocodeServices;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final int maxErrors;
 
     public DefaultGeocodeServiceManager(GeocodeServiceJdbcService geocodeServiceJdbcService,
                                         GeocodingResponseJdbcService geocodingResponseJdbcService,
-                                        List<GeocodeService> fixedGeocodeServices,
                                         RestTemplate restTemplate,
                                         ObjectMapper objectMapper,
                                         @Value("${reitti.geocoding.max-errors}") int maxErrors) {
         this.geocodeServiceJdbcService = geocodeServiceJdbcService;
         this.geocodingResponseJdbcService = geocodingResponseJdbcService;
-        this.fixedGeocodeServices = fixedGeocodeServices;
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
         this.maxErrors = maxErrors;
@@ -52,28 +49,21 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
     public Optional<GeocodeResult> reverseGeocode(SignificantPlace significantPlace, boolean recordResponse) {
         double latitude = significantPlace.getLatitudeCentroid();
         double longitude = significantPlace.getLongitudeCentroid();
-        if (!fixedGeocodeServices.isEmpty()) {
-            logger.debug("Fixed geocode-service available, will first try this.");
-            Optional<GeocodeResult> geocodeResult = callGeocodeService(fixedGeocodeServices, latitude, longitude, true, significantPlace, recordResponse);
-            if (geocodeResult.isPresent()) {
-                return geocodeResult;
-            }
-        }
         List<RemoteGeocodeService> availableServices = geocodeServiceJdbcService.findByEnabledTrueOrderByLastUsedAsc();
 
         if (availableServices.isEmpty()) {
             logger.warn("No enabled geocoding services available");
             return Optional.empty();
         }
-        return callGeocodeService(availableServices, latitude, longitude, false, significantPlace, recordResponse);
+        return callGeocodeService(availableServices, latitude, longitude, significantPlace, recordResponse);
     }
 
-    private Optional<GeocodeResult> callGeocodeService(List<? extends GeocodeService> availableServices, double latitude, double longitude, boolean photon, SignificantPlace significantPlace, boolean recordResponse) {
+    private Optional<GeocodeResult> callGeocodeService(List<? extends GeocodeService> availableServices, double latitude, double longitude, SignificantPlace significantPlace, boolean recordResponse) {
         Collections.shuffle(availableServices);
 
         for (GeocodeService service : availableServices) {
             try {
-                Optional<GeocodeResult> result = performGeocode(service, latitude, longitude, photon, significantPlace, recordResponse);
+                Optional<GeocodeResult> result = performGeocode(service, latitude, longitude, significantPlace, recordResponse);
                 if (result.isPresent()) {
                     if (recordResponse) {
                         recordSuccess(service);
@@ -91,7 +81,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
         return Optional.empty();
     }
 
-    private Optional<GeocodeResult> performGeocode(GeocodeService service, double latitude, double longitude, boolean photon, SignificantPlace significantPlace, boolean recordResponse) {
+    private Optional<GeocodeResult> performGeocode(GeocodeService service, double latitude, double longitude, SignificantPlace significantPlace, boolean recordResponse) {
         String url = service.getUrlTemplate()
                 .replace("{lat}", String.valueOf(latitude))
                 .replace("{lng}", String.valueOf(longitude));
@@ -100,7 +90,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
 
         try {
             String response = restTemplate.getForObject(url, String.class);
-            Optional<GeocodeResult> geocodeResult = photon ? extractPhotonResult(response) : extractGeoCodeResult(response);
+            Optional<GeocodeResult> geocodeResult = extractGeoCodeResult(response);
             if (recordResponse && geocodeResult.isPresent()) {
                 geocodingResponseJdbcService.insert(new GeocodingResponse(
                         significantPlace.getId(),
@@ -162,8 +152,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
             case "office", "commercial", "industrial", "warehouse", "retail" -> SignificantPlace.PlaceType.WORK;
             case "restaurant", "fast_food", "food_court" -> SignificantPlace.PlaceType.RESTAURANT;
             case "cafe", "bar", "pub" -> SignificantPlace.PlaceType.CAFE;
-            case "shop", "supermarket", "mall", "marketplace", "department_store", "convenience" ->
-                    SignificantPlace.PlaceType.SHOP;
+            case "shop", "supermarket", "mall", "marketplace", "department_store", "convenience" -> SignificantPlace.PlaceType.SHOP;
             case "hospital", "clinic", "doctors", "dentist", "veterinary" -> SignificantPlace.PlaceType.HOSPITAL;
             case "pharmacy" -> SignificantPlace.PlaceType.PHARMACY;
             case "school", "university", "college", "kindergarten" -> SignificantPlace.PlaceType.SCHOOL;
@@ -174,8 +163,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
             case "fuel", "charging_station" -> SignificantPlace.PlaceType.GAS_STATION;
             case "bank", "atm", "bureau_de_change" -> SignificantPlace.PlaceType.BANK;
             case "place_of_worship", "church", "mosque", "synagogue", "temple" -> SignificantPlace.PlaceType.CHURCH;
-            case "bus_stop", "bus_station", "railway_station", "subway_entrance", "tram_stop" ->
-                    SignificantPlace.PlaceType.TRAIN_STATION;
+            case "bus_stop", "bus_station", "railway_station", "subway_entrance", "tram_stop" -> SignificantPlace.PlaceType.TRAIN_STATION;
             case "airport", "terminal" -> SignificantPlace.PlaceType.AIRPORT;
             case "hotel", "motel", "guest_house" -> SignificantPlace.PlaceType.HOTEL;
             default -> SignificantPlace.PlaceType.OTHER;

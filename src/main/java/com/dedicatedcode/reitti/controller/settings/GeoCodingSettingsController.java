@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
+import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.model.geocoding.RemoteGeocodeService;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
@@ -124,9 +125,11 @@ public class GeoCodingSettingsController {
     @PostMapping
     public String createGeocodeService(@RequestParam String name,
                                        @RequestParam String urlTemplate,
+                                       @RequestParam GeocoderType type,
+                                       @RequestParam int priority,
                                        Model model) {
         try {
-            RemoteGeocodeService service = new RemoteGeocodeService(name, urlTemplate, true, 0, null, null);
+            RemoteGeocodeService service = new RemoteGeocodeService(name, urlTemplate, true, 0, null, null, type, priority);
             geocodeServiceJdbcService.save(service);
             model.addAttribute("successMessage", i18n.translate("message.success.geocode.created"));
         } catch (Exception e) {
@@ -184,13 +187,11 @@ public class GeoCodingSettingsController {
             User currentUser = userJdbcService.findByUsername(username)
                     .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
-            // Find all non-geocoded significant places for the user
             List<SignificantPlace> nonGeocodedPlaces = placeJdbcService.findNonGeocodedByUser(currentUser);
 
             if (nonGeocodedPlaces.isEmpty()) {
                 model.addAttribute("successMessage", i18n.translate("geocoding.no.places"));
             } else {
-                // Send SignificantPlaceCreatedEvent for each non-geocoded place
                 for (SignificantPlace place : nonGeocodedPlaces) {
                     SignificantPlaceCreatedEvent event = new SignificantPlaceCreatedEvent(
                             username,
@@ -223,20 +224,17 @@ public class GeoCodingSettingsController {
             User currentUser = userJdbcService.findByUsername(username)
                     .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
-            // Find all significant places for the user
             List<SignificantPlace> allPlaces = placeJdbcService.findAllByUser(currentUser);
 
             if (allPlaces.isEmpty()) {
                 model.addAttribute("successMessage", i18n.translate("geocoding.no.places"));
             } else {
-                // Clear geocoding data for all places
                 for (SignificantPlace place : allPlaces) {
                     SignificantPlace clearedPlace = place.withGeocoded(false).withAddress(null);
                     this.significantPlaceOverrideJdbcService.clear(currentUser, clearedPlace);
                     placeJdbcService.update(clearedPlace);
                 }
 
-                // Send SignificantPlaceCreatedEvent for each place
                 for (SignificantPlace place : allPlaces) {
                     SignificantPlaceCreatedEvent event = new SignificantPlaceCreatedEvent(
                             username,

@@ -1,7 +1,8 @@
 package com.dedicatedcode.reitti.service.geocoding;
 
-import com.dedicatedcode.reitti.model.geocoding.RemoteGeocodeService;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
+import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
+import com.dedicatedcode.reitti.model.geocoding.RemoteGeocodeService;
 import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
 import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,9 +34,6 @@ class DefaultGeocodeServiceManagerTest {
     @Mock
     private RestTemplate restTemplate;
 
-    @Mock
-    private GeocodeService fixedGeocodeService;
-
     private DefaultGeocodeServiceManager geocodeServiceManager;
     private ObjectMapper objectMapper;
 
@@ -45,7 +43,6 @@ class DefaultGeocodeServiceManagerTest {
         geocodeServiceManager = new DefaultGeocodeServiceManager(
                 geocodeServiceJdbcService,
                 geocodingResponseJdbcService,
-                Collections.emptyList(),
                 restTemplate,
                 objectMapper,
                 3
@@ -72,8 +69,8 @@ class DefaultGeocodeServiceManagerTest {
         double longitude = 10.700927;
         
         RemoteGeocodeService service = new RemoteGeocodeService(
-                1L, "Test Service", "http://test.com?lat={lat}&lng={lng}", 
-                true, 0, null, null, 1L
+                1L, "Test Service", "http://test.com?lat={lat}&lng={lng}",
+                true, 0, null, null, GeocoderType.GEOCODE_JSON, 1, 1L
         );
         
         when(geocodeServiceJdbcService.findByEnabledTrueOrderByLastUsedAsc())
@@ -121,7 +118,7 @@ class DefaultGeocodeServiceManagerTest {
 
         RemoteGeocodeService service = new RemoteGeocodeService(
                 1L, "Test Service", "http://test.com?lat={lat}&lng={lng}",
-                true, 0, null, null, 1L
+                true, 0, null, null, GeocoderType.GEOCODE_JSON, 1, 1L
         );
 
         when(geocodeServiceJdbcService.findByEnabledTrueOrderByLastUsedAsc())
@@ -156,7 +153,7 @@ class DefaultGeocodeServiceManagerTest {
 
         RemoteGeocodeService service = new RemoteGeocodeService(
                 1L, "Test Service", "http://test.com?lat={lat}&lng={lng}",
-                true, 0, null, null, 1L
+                true, 0, null, null, GeocoderType.GEOCODE_JSON, 1, 1L
         );
 
         when(geocodeServiceJdbcService.findByEnabledTrueOrderByLastUsedAsc())
@@ -231,66 +228,14 @@ class DefaultGeocodeServiceManagerTest {
     }
 
     @Test
-    void shouldUseFixedGeocodeServiceWhenAvailable() {
-        // Given
-        double latitude = 53.863149;
-        double longitude = 10.700927;
-        
-        DefaultGeocodeServiceManager managerWithFixedService = new DefaultGeocodeServiceManager(
-                geocodeServiceJdbcService,
-                geocodingResponseJdbcService,
-                List.of(fixedGeocodeService),
-                restTemplate,
-                objectMapper,
-                3
-        );
-        
-        when(fixedGeocodeService.getName()).thenReturn("Photon Service");
-        when(fixedGeocodeService.getUrlTemplate()).thenReturn("http://photon.test?lat={lat}&lng={lng}");
-        
-        String photonResponse = """
-                {
-                    "features": [
-                        {
-                            "properties": {
-                                "name": "Photon Location",
-                                "street": "Photon Street",
-                                "city": "Photon City",
-                                "district": "Photon District",
-                                "housenumber": "123",
-                                "postcode": "12345"
-                            }
-                        }
-                    ]
-                }
-                """;
-        
-        when(restTemplate.getForObject(anyString(), eq(String.class)))
-                .thenReturn(photonResponse);
-
-        // When
-        Optional<GeocodeResult> result = managerWithFixedService.reverseGeocode(SignificantPlace.create(latitude, longitude), true);
-
-        // Then
-        assertThat(result).isPresent();
-        GeocodeResult geocodeResult = result.get();
-        assertThat(geocodeResult.label()).isEqualTo("Photon Location");
-        assertThat(geocodeResult.street()).isEqualTo("Photon Street");
-        assertThat(geocodeResult.city()).isEqualTo("Photon City");
-        assertThat(geocodeResult.district()).isEqualTo("Photon District");
-        assertThat(geocodeResult.houseNumber()).isEqualTo("123");
-        assertThat(geocodeResult.postcode()).isEqualTo("12345");
-    }
-
-    @Test
     void shouldHandleServiceErrorAndRecordIt() {
         // Given
         double latitude = 53.863149;
         double longitude = 10.700927;
         
         RemoteGeocodeService service = new RemoteGeocodeService(
-                1L, "Failing Service", "http://fail.com?lat={lat}&lng={lng}", 
-                true, 0, null, null, 1L
+                1L, "Failing Service", "http://fail.com?lat={lat}&lng={lng}",
+                true, 0, null, null, GeocoderType.GEOCODE_JSON, 1, 1L
         );
         
         when(geocodeServiceJdbcService.findByEnabledTrueOrderByLastUsedAsc())
