@@ -18,10 +18,10 @@ public class V83__Add_legacy_photon_instance extends BaseJavaMigration {
         // we only want to insert the entry when the SystemEnv is set
         String photonBaseUrl = context.getConfiguration().getPlaceholders().get("photon.baseUrl");
         if (StringUtils.hasText(photonBaseUrl)) {
-            String sql = "INSERT INTO geocode_services(name, url_template, enabled, type, priority, version) VALUES(?,?,?,?,?,1)";
+            String sql = "INSERT INTO geocode_services(name, url, enabled, type, priority, version) VALUES(?,?,?,?,?,1)";
             try (PreparedStatement insertStmt = context.getConnection().prepareStatement(sql)) {
                 insertStmt.setString(1, "Photon");
-                insertStmt.setString(2, photonBaseUrl + "/reverse?lon={lng}&lat={lat}&limit=10&layer=house&layer=locality&radius=0.03");
+                insertStmt.setString(2, photonBaseUrl);
                 insertStmt.setBoolean(3, true);
                 insertStmt.setString(4, "PHOTON");
                 insertStmt.setInt(5, 1);

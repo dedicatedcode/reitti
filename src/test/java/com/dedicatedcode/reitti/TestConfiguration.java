@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti;
 
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
+import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeServiceManager;
 import org.springframework.context.annotation.Bean;
@@ -15,9 +16,17 @@ public class TestConfiguration {
 
     @Bean
     public GeocodeServiceManager geocodeServiceManager() {
-        return (significantPlace, b) -> {
-            String label = significantPlace.getLatitudeCentroid() + "," + significantPlace.getLongitudeCentroid();
-            return Optional.of(new GeocodeResult(label, "Test Street " + geocodes.getAndIncrement(), "1", "Test City", "12345","Test District", "de", SignificantPlace.PlaceType.OTHER));
+        return new GeocodeServiceManager() {
+            @Override
+            public Optional<GeocodeResult> reverseGeocode(SignificantPlace significantPlace, boolean recordResponse) {
+                String label = significantPlace.getLatitudeCentroid() + "," + significantPlace.getLongitudeCentroid();
+                return Optional.of(new GeocodeResult(label, "Test Street " + geocodes.getAndIncrement(), "1", "Test City", "12345","Test District", "de", SignificantPlace.PlaceType.OTHER));
+            }
+
+            @Override
+            public GeocodeResult test(GeocoderType type, String url, String apiKey, String lang, double testLat, double testLng) {
+                return null;
+            }
         };
     }
 }

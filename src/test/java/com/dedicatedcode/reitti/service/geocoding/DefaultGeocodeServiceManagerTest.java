@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -69,8 +70,8 @@ class DefaultGeocodeServiceManagerTest {
         
         GeocodeService service = new GeocodeService(
                 1L, "Test Service", "http://test.com?lat={lat}&lng={lng}",
-                true, 0, null, null, GeocoderType.GEOCODE_JSON, 1, 1L
-        );
+                true, 0, null, null, GeocoderType.GEOCODE_JSON, Collections.emptyMap(), 1,
+                1L);
         
         when(geocodeServiceJdbcService.findByEnabledTrueOrderByPriority())
                 .thenReturn(List.of(service));
@@ -117,8 +118,8 @@ class DefaultGeocodeServiceManagerTest {
 
         GeocodeService service = new GeocodeService(
                 1L, "Test Service", "http://test.com?lat={lat}&lng={lng}",
-                true, 0, null, null, GeocoderType.GEOCODE_JSON, 1, 1L
-        );
+                true, 0, null, null, GeocoderType.GEOCODE_JSON, Collections.emptyMap(), 1,
+                1L);
 
         when(geocodeServiceJdbcService.findByEnabledTrueOrderByPriority())
                 .thenReturn(List.of(service));
@@ -152,8 +153,8 @@ class DefaultGeocodeServiceManagerTest {
 
         GeocodeService service = new GeocodeService(
                 1L, "Test Service", "http://test.com?lat={lat}&lng={lng}",
-                true, 0, null, null, GeocoderType.GEOCODE_JSON, 1, 1L
-        );
+                true, 0, null, null, GeocoderType.GEOCODE_JSON, Collections.emptyMap(), 1,
+                1L);
 
         when(geocodeServiceJdbcService.findByEnabledTrueOrderByPriority())
                 .thenReturn(List.of(service));
@@ -234,8 +235,8 @@ class DefaultGeocodeServiceManagerTest {
         
         GeocodeService service = new GeocodeService(
                 1L, "Failing Service", "http://fail.com?lat={lat}&lng={lng}",
-                true, 0, null, null, GeocoderType.GEOCODE_JSON, 1, 1L
-        );
+                true, 0, null, null, GeocoderType.GEOCODE_JSON, Collections.emptyMap(), 1,
+                1L);
         
         when(geocodeServiceJdbcService.findByEnabledTrueOrderByPriority())
                 .thenReturn(List.of(service));

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<html xmlns:th="http://www.thymeleaf.org" xmlns="http://www.w3.org/1999/html" th:lang="${#locale.toLanguageTag()}">
 <body>
 <div th:fragment="type-fields(type)">
     <!-- Description Section -->
@@ -41,6 +41,29 @@
     <div class="form-group" th:if="${type.name() == 'PAIKKA'}">
         <label for="limit" th:text="#{geocoding.service.limit}">Limit (Optional)</label>
         <input type="number" id="limit" name="limit" placeholder="10">
+    </div>
+
+    <div class="form-group">
+        <label for="priority" th:text="#{geocoding.service.priority}">Priority</label>
+        <select id="priority" name="priority">
+            <option th:text="#{'priority.1.label'}">Highest</option>
+            <option th:text="#{'priority.2.label'}">High</option>
+            <option th:text="#{'priority.3.label'}">Medium</option>
+            <option th:text="#{'priority.4.label'}">Low</option>
+            <option th:text="#{'priority.5.label'}">Lower</option>
+        </select>
+    </div>
+</div>
+<div th:fragment="test-result-display">
+    <div th:if="${testResult}" class="alert alert-success">
+        <strong>Success!</strong> Service returned a valid location:
+        <pre style="background: #eee; padding: 10px; border-radius: 4px; font-size: 0.85em;"
+             th:text="${testResult.toString()}"></pre>
+    </div>
+
+    <div th:if="${testError}" class="alert alert-danger">
+        <strong>Test Failed:</strong>
+        <span th:text="${testError}">Error message</span>
     </div>
 </div>
 </body>

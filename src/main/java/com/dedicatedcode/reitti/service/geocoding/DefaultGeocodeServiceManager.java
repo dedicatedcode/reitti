@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service.geocoding;
 
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
+import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.model.geocoding.GeocodingResponse;
 import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
 import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
@@ -55,6 +56,11 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
             return Optional.empty();
         }
         return callGeocodeService(availableServices, latitude, longitude, significantPlace, recordResponse);
+    }
+
+    @Override
+    public GeocodeResult test(GeocoderType type, String url, String apiKey, String lang, double testLat, double testLng) {
+        return null;
     }
 
     private Optional<GeocodeResult> callGeocodeService(List<? extends GeocodeService> availableServices, double latitude, double longitude, SignificantPlace significantPlace, boolean recordResponse) {

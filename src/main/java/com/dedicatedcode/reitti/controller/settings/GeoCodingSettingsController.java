@@ -11,7 +11,9 @@ import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceOverrideJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
+import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeService;
+import com.dedicatedcode.reitti.service.geocoding.GeocodeServiceManager;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -21,18 +23,15 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
 
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Controller
 @RequestMapping("/settings/geocode-services")
 public class GeoCodingSettingsController {
 
     private final GeocodeServiceJdbcService geocodeServiceJdbcService;
+    private final GeocodeServiceManager geocodeServiceManager;
     private final SignificantPlaceJdbcService placeJdbcService;
     private final SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
     private final UserJdbcService userJdbcService;
@@ -44,6 +43,7 @@ public class GeoCodingSettingsController {
     private final String photonBaseUrl;
 
     public GeoCodingSettingsController(GeocodeServiceJdbcService geocodeServiceJdbcService,
+                                       GeocodeServiceManager geocodeServiceManager,
                                        SignificantPlaceJdbcService placeJdbcService,
                                        SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
                                        UserJdbcService userJdbcService,
@@ -53,6 +53,7 @@ public class GeoCodingSettingsController {
                                        @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                                        @Value("${reitti.geocoding.max-errors}") int maxErrors) {
         this.geocodeServiceJdbcService = geocodeServiceJdbcService;
+        this.geocodeServiceManager = geocodeServiceManager;
         this.placeJdbcService = placeJdbcService;
         this.significantPlaceOverrideJdbcService = significantPlaceOverrideJdbcService;
         this.userJdbcService = userJdbcService;
@@ -86,47 +87,54 @@ public class GeoCodingSettingsController {
         model.addAttribute("maxErrors", maxErrors);
         return "settings/geocode-services :: geocode-services-content";
     }
+
     @GetMapping("/type-fields")
     public String getTypeFields(@RequestParam GeocoderType type, Model model) {
         model.addAttribute("type", type);
         return "settings/fragments/geocoding :: type-fields";
     }
-    //Todo: make this generic
-    @PostMapping("/test-photon")
-    public String testPhotonConnection(Model model) {
+
+    @PostMapping("/test-config")
+    public String testConfiguration(@RequestParam GeocoderType type,
+                                    @RequestParam String url,
+                                    @RequestParam(required = false) String apiKey,
+                                    @RequestParam(required = false) String lang,
+                                    Model model) {
         try {
-            if (!photonConfigured || !StringUtils.hasText(photonBaseUrl)) {
-                model.addAttribute("errorMessage", i18n.translate("geocoding.photon.not.configured"));
-            } else {
-                // Use RestTemplate to test the connection
-                RestTemplate restTemplate = new RestTemplate();
-                String response = restTemplate.getForObject(null, String.class);
+            double testLat = 48.8584;
+            double testLng = 2.2945;
+            verifySelection(type, url, apiKey);
 
-                if (response != null && response.contains("\"type\":\"FeatureCollection\"")) {
-                    model.addAttribute("successMessage", i18n.translate("geocoding.photon.test.success"));
-                } else {
-                    model.addAttribute("errorMessage", i18n.translate("geocoding.photon.test.invalid.response"));
-                }
-            }
+            GeocodeResult result = geocodeServiceManager.test(type, url, apiKey, lang, testLat, testLng);
+            model.addAttribute("testResult", result);
         } catch (Exception e) {
-            model.addAttribute("errorMessage", i18n.translate("geocoding.photon.test.error", e.getMessage()));
+            model.addAttribute("testError", e.getMessage());
         }
-
-        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
-        model.addAttribute("photonConfigured", photonConfigured);
-        model.addAttribute("photonBaseUrl", photonBaseUrl);
-        model.addAttribute("maxErrors", maxErrors);
-        return "settings/geocode-services :: geocode-services-content";
+        return "settings/fragments/geocoding :: test-result-display";
     }
 
+    private void verifySelection(GeocoderType type, String url, String apiKey) {
+        if (type != GeocoderType.GEO_APIFY && (url == null || url.isEmpty())) {
+            throw new IllegalArgumentException("Url must not be empty");
+        }
+        if (Objects.requireNonNull(type) == GeocoderType.GEO_APIFY) {
+            if (apiKey == null || apiKey.isEmpty()) {
+                throw new IllegalArgumentException("Api key must not be empty");
+            }
+        }
+    }
     @PostMapping
     public String createGeocodeService(@RequestParam String name,
-                                       @RequestParam String urlTemplate,
+                                       @RequestParam String url,
                                        @RequestParam GeocoderType type,
+                                       @RequestParam(required = false) String apiKey,
+                                       @RequestParam(required = false) String language,
+                                       @RequestParam(required = false) Integer limit,
                                        @RequestParam int priority,
                                        Model model) {
         try {
-            GeocodeService service = new GeocodeService(name, urlTemplate, true, 0, null, null, type, priority);
+            Map<String, String> params = new HashMap<>();
+            GeocodeService service = new GeocodeService(name, url, true, 0, null, null, type, priority, params);
             geocodeServiceJdbcService.save(service);
             model.addAttribute("successMessage", i18n.translate("message.success.geocode.created"));
         } catch (Exception e) {
