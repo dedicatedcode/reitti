@@ -86,7 +86,11 @@ public class GeoCodingSettingsController {
         model.addAttribute("maxErrors", maxErrors);
         return "settings/geocode-services :: geocode-services-content";
     }
-
+    @GetMapping("/type-fields")
+    public String getTypeFields(@RequestParam GeocoderType type, Model model) {
+        model.addAttribute("type", type);
+        return "settings/fragments/geocoding :: type-fields";
+    }
     //Todo: make this generic
     @PostMapping("/test-photon")
     public String testPhotonConnection(Model model) {
