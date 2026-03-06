@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
-import com.dedicatedcode.reitti.model.geocoding.RemoteGeocodeService;
+import com.dedicatedcode.reitti.service.geocoding.GeocodeService;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -18,7 +18,7 @@ public class GeocodeServiceJdbcService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    private static final RowMapper<RemoteGeocodeService> GEOCODE_SERVICE_ROW_MAPPER = (rs, _) -> new RemoteGeocodeService(
+    private static final RowMapper<GeocodeService> GEOCODE_SERVICE_ROW_MAPPER = (rs, _) -> new GeocodeService(
             rs.getLong("id"),
             rs.getString("name"),
             rs.getString("url_template"),
@@ -31,28 +31,28 @@ public class GeocodeServiceJdbcService {
             rs.getLong("version")
     );
 
-    public List<RemoteGeocodeService> findByEnabledTrueOrderByLastUsedAsc() {
+    public List<GeocodeService> findByEnabledTrueOrderByLastUsedAsc() {
         String sql = "SELECT * FROM geocode_services WHERE enabled = true ORDER BY last_used  NULLS FIRST";
         return jdbcTemplate.query(sql, GEOCODE_SERVICE_ROW_MAPPER);
     }
 
-    public List<RemoteGeocodeService> findByEnabledTrueOrderByPriority() {
+    public List<GeocodeService> findByEnabledTrueOrderByPriority() {
         String sql = "SELECT * FROM geocode_services WHERE enabled = true ORDER BY priority, name  NULLS FIRST";
         return jdbcTemplate.query(sql, GEOCODE_SERVICE_ROW_MAPPER);
     }
 
-    public List<RemoteGeocodeService> findAllByOrderByNameAsc() {
+    public List<GeocodeService> findAllByOrderByNameAsc() {
         String sql = "SELECT * FROM geocode_services ORDER BY name";
         return jdbcTemplate.query(sql, GEOCODE_SERVICE_ROW_MAPPER);
     }
 
-    public Optional<RemoteGeocodeService> findById(Long id) {
+    public Optional<GeocodeService> findById(Long id) {
         String sql = "SELECT * FROM geocode_services WHERE id = ?";
-        List<RemoteGeocodeService> results = jdbcTemplate.query(sql, GEOCODE_SERVICE_ROW_MAPPER, id);
+        List<GeocodeService> results = jdbcTemplate.query(sql, GEOCODE_SERVICE_ROW_MAPPER, id);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
-    public RemoteGeocodeService save(RemoteGeocodeService geocodeService) {
+    public GeocodeService save(GeocodeService geocodeService) {
         if (geocodeService.getId() == null) {
             String sql = "INSERT INTO geocode_services (name, url_template, enabled, error_count, last_used, last_error, type, priority, version) " +
                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
@@ -86,7 +86,7 @@ public class GeocodeServiceJdbcService {
         }
     }
 
-    public void delete(RemoteGeocodeService geocodeService) {
+    public void delete(GeocodeService geocodeService) {
         String sql = "DELETE FROM geocode_services WHERE id = ?";
         jdbcTemplate.update(sql, geocodeService.getId());
     }

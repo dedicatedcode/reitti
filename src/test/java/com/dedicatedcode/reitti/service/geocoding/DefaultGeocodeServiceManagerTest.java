@@ -2,7 +2,6 @@ package com.dedicatedcode.reitti.service.geocoding;
 
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
-import com.dedicatedcode.reitti.model.geocoding.RemoteGeocodeService;
 import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
 import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -68,7 +67,7 @@ class DefaultGeocodeServiceManagerTest {
         double latitude = 53.863149;
         double longitude = 10.700927;
         
-        RemoteGeocodeService service = new RemoteGeocodeService(
+        GeocodeService service = new GeocodeService(
                 1L, "Test Service", "http://test.com?lat={lat}&lng={lng}",
                 true, 0, null, null, GeocoderType.GEOCODE_JSON, 1, 1L
         );
@@ -107,7 +106,7 @@ class DefaultGeocodeServiceManagerTest {
         assertThat(geocodeResult.city()).isEqualTo("Test City");
         assertThat(geocodeResult.district()).isEqualTo("Test District");
         
-        verify(geocodeServiceJdbcService).save(any(RemoteGeocodeService.class));
+        verify(geocodeServiceJdbcService).save(any(GeocodeService.class));
     }
 
     @Test
@@ -116,7 +115,7 @@ class DefaultGeocodeServiceManagerTest {
         double latitude = 53.863149;
         double longitude = 10.700927;
 
-        RemoteGeocodeService service = new RemoteGeocodeService(
+        GeocodeService service = new GeocodeService(
                 1L, "Test Service", "http://test.com?lat={lat}&lng={lng}",
                 true, 0, null, null, GeocoderType.GEOCODE_JSON, 1, 1L
         );
@@ -142,7 +141,7 @@ class DefaultGeocodeServiceManagerTest {
         assertThat(geocodeResult.city()).isEqualTo("Kansas City");
         assertThat(geocodeResult.district()).isEqualTo("Waldo");
 
-        verify(geocodeServiceJdbcService).save(any(RemoteGeocodeService.class));
+        verify(geocodeServiceJdbcService).save(any(GeocodeService.class));
     }
 
     @Test
@@ -151,7 +150,7 @@ class DefaultGeocodeServiceManagerTest {
         double latitude = 53.863149;
         double longitude = 10.700927;
 
-        RemoteGeocodeService service = new RemoteGeocodeService(
+        GeocodeService service = new GeocodeService(
                 1L, "Test Service", "http://test.com?lat={lat}&lng={lng}",
                 true, 0, null, null, GeocoderType.GEOCODE_JSON, 1, 1L
         );
@@ -224,7 +223,7 @@ class DefaultGeocodeServiceManagerTest {
         assertThat(geocodeResult.city()).isEqualTo("Kansas City");
         assertThat(geocodeResult.district()).isEqualTo("Waldo");
 
-        verify(geocodeServiceJdbcService).save(any(RemoteGeocodeService.class));
+        verify(geocodeServiceJdbcService).save(any(GeocodeService.class));
     }
 
     @Test
@@ -233,7 +232,7 @@ class DefaultGeocodeServiceManagerTest {
         double latitude = 53.863149;
         double longitude = 10.700927;
         
-        RemoteGeocodeService service = new RemoteGeocodeService(
+        GeocodeService service = new GeocodeService(
                 1L, "Failing Service", "http://fail.com?lat={lat}&lng={lng}",
                 true, 0, null, null, GeocoderType.GEOCODE_JSON, 1, 1L
         );
@@ -249,6 +248,6 @@ class DefaultGeocodeServiceManagerTest {
 
         // Then
         assertThat(result).isEmpty();
-        verify(geocodeServiceJdbcService).save(any(RemoteGeocodeService.class));
+        verify(geocodeServiceJdbcService).save(any(GeocodeService.class));
     }
 }

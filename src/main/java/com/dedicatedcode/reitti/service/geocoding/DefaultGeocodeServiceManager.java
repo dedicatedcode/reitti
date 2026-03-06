@@ -1,8 +1,7 @@
 package com.dedicatedcode.reitti.service.geocoding;
 
-import com.dedicatedcode.reitti.model.geocoding.GeocodingResponse;
-import com.dedicatedcode.reitti.model.geocoding.RemoteGeocodeService;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
+import com.dedicatedcode.reitti.model.geocoding.GeocodingResponse;
 import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
 import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -49,7 +48,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
     public Optional<GeocodeResult> reverseGeocode(SignificantPlace significantPlace, boolean recordResponse) {
         double latitude = significantPlace.getLatitudeCentroid();
         double longitude = significantPlace.getLongitudeCentroid();
-        List<RemoteGeocodeService> availableServices = geocodeServiceJdbcService.findByEnabledTrueOrderByLastUsedAsc();
+        List<GeocodeService> availableServices = geocodeServiceJdbcService.findByEnabledTrueOrderByPriority();
 
         if (availableServices.isEmpty()) {
             logger.warn("No enabled geocoding services available");
@@ -277,9 +276,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
     }
 
     private void recordSuccess(GeocodeService service) {
-        if (service instanceof RemoteGeocodeService) {
-            geocodeServiceJdbcService.save(((RemoteGeocodeService) service).withLastUsed(Instant.now()));
-        }
+        geocodeServiceJdbcService.save(service.withLastUsed(Instant.now()));
     }
 
     private GeocodingResponse.GeocodingStatus determineErrorStatus(Exception e) {
@@ -299,8 +296,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
     }
 
     private void recordError(GeocodeService service) {
-        if (service instanceof RemoteGeocodeService) {
-            RemoteGeocodeService update = ((RemoteGeocodeService) service)
+            GeocodeService update = service
                     .withIncrementedErrorCount()
                     .withLastError(Instant.now());
 
@@ -311,6 +307,5 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
             }
 
             geocodeServiceJdbcService.save(update);
-        }
     }
 }

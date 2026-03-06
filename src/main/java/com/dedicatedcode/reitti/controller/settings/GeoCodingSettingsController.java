@@ -5,20 +5,15 @@ import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
-import com.dedicatedcode.reitti.model.geocoding.RemoteGeocodeService;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceOverrideJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
-import com.dedicatedcode.reitti.service.geocoding.PhotonGeocodeService;
+import com.dedicatedcode.reitti.service.geocoding.GeocodeService;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.MessageSource;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.i18n.LocaleContextHolder;
-import org.springframework.lang.Nullable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -41,7 +36,6 @@ public class GeoCodingSettingsController {
     private final UserJdbcService userJdbcService;
     private final RabbitTemplate rabbitTemplate;
     private final I18nService i18n;
-    private final PhotonGeocodeService photonGeocodeService;
     private final boolean dataManagementEnabled;
     private final int maxErrors;
     private final boolean photonConfigured;
@@ -53,7 +47,6 @@ public class GeoCodingSettingsController {
                                        UserJdbcService userJdbcService,
                                        RabbitTemplate rabbitTemplate,
                                        I18nService i18n,
-                                       @Nullable PhotonGeocodeService photonGeocodeService,
                                        @Value("${reitti.geocoding.photon.base-url:}") String photonBaseUrl,
                                        @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                                        @Value("${reitti.geocoding.max-errors}") int maxErrors) {
@@ -63,7 +56,6 @@ public class GeoCodingSettingsController {
         this.userJdbcService = userJdbcService;
         this.rabbitTemplate = rabbitTemplate;
         this.i18n = i18n;
-        this.photonGeocodeService = photonGeocodeService;
         this.dataManagementEnabled = dataManagementEnabled;
         this.maxErrors = maxErrors;
         this.photonConfigured = StringUtils.hasText(photonBaseUrl);
@@ -91,19 +83,16 @@ public class GeoCodingSettingsController {
         return "settings/geocode-services :: geocode-services-content";
     }
 
+    //Todo: make this generic
     @PostMapping("/test-photon")
     public String testPhotonConnection(Model model) {
         try {
             if (!photonConfigured || !StringUtils.hasText(photonBaseUrl)) {
                 model.addAttribute("errorMessage", i18n.translate("geocoding.photon.not.configured"));
             } else {
-                String testUrl = photonGeocodeService.getUrlTemplate()
-                        .replace("{lat}", "52.5200")
-                        .replace("{lng}", "13.4050");
-
                 // Use RestTemplate to test the connection
                 RestTemplate restTemplate = new RestTemplate();
-                String response = restTemplate.getForObject(testUrl, String.class);
+                String response = restTemplate.getForObject(null, String.class);
 
                 if (response != null && response.contains("\"type\":\"FeatureCollection\"")) {
                     model.addAttribute("successMessage", i18n.translate("geocoding.photon.test.success"));
@@ -129,7 +118,7 @@ public class GeoCodingSettingsController {
                                        @RequestParam int priority,
                                        Model model) {
         try {
-            RemoteGeocodeService service = new RemoteGeocodeService(name, urlTemplate, true, 0, null, null, type, priority);
+            GeocodeService service = new GeocodeService(name, urlTemplate, true, 0, null, null, type, priority);
             geocodeServiceJdbcService.save(service);
             model.addAttribute("successMessage", i18n.translate("message.success.geocode.created"));
         } catch (Exception e) {
@@ -145,7 +134,7 @@ public class GeoCodingSettingsController {
 
     @PostMapping("/{id}/toggle")
     public String toggleGeocodeService(@PathVariable Long id, Model model) {
-        RemoteGeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
+        GeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
         service = service.withEnabled(!service.isEnabled());
         if (service.isEnabled()) {
             service = service.resetErrorCount();
@@ -160,7 +149,7 @@ public class GeoCodingSettingsController {
 
     @PostMapping("/{id}/delete")
     public String deleteGeocodeService(@PathVariable Long id, Model model) {
-        RemoteGeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
+        GeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
         geocodeServiceJdbcService.delete(service);
         model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
         model.addAttribute("photonConfigured", photonConfigured);
@@ -171,7 +160,7 @@ public class GeoCodingSettingsController {
 
     @PostMapping("/{id}/reset-errors")
     public String resetGeocodeServiceErrors(@PathVariable Long id, Model model) {
-        RemoteGeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
+        GeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
         geocodeServiceJdbcService.save(service.resetErrorCount().withEnabled(true));
         model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByNameAsc());
         model.addAttribute("photonConfigured", photonConfigured);
