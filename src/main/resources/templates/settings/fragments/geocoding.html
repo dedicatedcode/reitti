@@ -18,7 +18,7 @@
     <div class="form-group" th:if="${type.name() == 'PHOTON' || type.name() == 'NOMINATIM' || type.name() == 'PAIKKA'}">
         <label for="serviceUrl" th:text="#{geocoding.service.base_url}">URL / Base URL</label>
         <input type="text" id="serviceUrl" name="url" required
-               th:value="${type.name() == 'NOMINATIM' ? 'https://nominatim.openstreetmap.org/' : (type.name() == 'PAIKKA' ? 'https://geo.dedicatedcode.com/' : '')}"
+               th:value="${type.name() == 'NOMINATIM' ? 'https://nominatim.openstreetmap.org' : (type.name() == 'PAIKKA' ? 'https://geo.dedicatedcode.com' : '')}"
                placeholder="https://api.example.com/">
     </div>
 
@@ -46,19 +46,18 @@
     <div class="form-group">
         <label for="priority" th:text="#{geocoding.service.priority}">Priority</label>
         <select id="priority" name="priority">
-            <option th:text="#{'priority.1.label'}">Highest</option>
-            <option th:text="#{'priority.2.label'}">High</option>
-            <option th:text="#{'priority.3.label'}">Medium</option>
-            <option th:text="#{'priority.4.label'}">Low</option>
-            <option th:text="#{'priority.5.label'}">Lower</option>
+            <option th:text="#{'priority.1.label'}" value="1">Highest</option>
+            <option th:text="#{'priority.2.label'}" value="2">High</option>
+            <option th:text="#{'priority.3.label'}" value="3">Medium</option>
+            <option th:text="#{'priority.4.label'}" value="4">Low</option>
+            <option th:text="#{'priority.5.label'}" value="5">Lower</option>
         </select>
     </div>
 </div>
 <div th:fragment="test-result-display">
     <div th:if="${testResult}" class="alert alert-success">
         <strong>Success!</strong> Service returned a valid location:
-        <pre style="background: #eee; padding: 10px; border-radius: 4px; font-size: 0.85em;"
-             th:text="${testResult.toString()}"></pre>
+        <pre th:text="${testResult.toString()}"></pre>
     </div>
 
     <div th:if="${testError}" class="alert alert-danger">

@@ -26,6 +26,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 
+import static com.dedicatedcode.reitti.model.geocoding.GeocoderType.GEO_APIFY;
+
 @Controller
 @RequestMapping("/settings/geocode-services")
 public class GeoCodingSettingsController {
@@ -96,16 +98,17 @@ public class GeoCodingSettingsController {
 
     @PostMapping("/test-config")
     public String testConfiguration(@RequestParam GeocoderType type,
-                                    @RequestParam String url,
+                                    @RequestParam(required = false) String url,
                                     @RequestParam(required = false) String apiKey,
                                     @RequestParam(required = false) String lang,
+                                    @RequestParam(required = false) Integer limit,
                                     Model model) {
         try {
             double testLat = 48.8584;
             double testLng = 2.2945;
-            verifySelection(type, url, apiKey);
+            GeocodeService tmpService = verifySelection(type, url, apiKey, lang, limit);
 
-            GeocodeResult result = geocodeServiceManager.test(type, url, apiKey, lang, testLat, testLng);
+            GeocodeResult result = geocodeServiceManager.test(tmpService, testLat, testLng);
             model.addAttribute("testResult", result);
         } catch (Exception e) {
             model.addAttribute("testError", e.getMessage());
@@ -113,15 +116,30 @@ public class GeoCodingSettingsController {
         return "settings/fragments/geocoding :: test-result-display";
     }
 
-    private void verifySelection(GeocoderType type, String url, String apiKey) {
-        if (type != GeocoderType.GEO_APIFY && (url == null || url.isEmpty())) {
+    private GeocodeService verifySelection(GeocoderType type, String url, String apiKey, String lang, Integer limit) {
+        if (type != GEO_APIFY && (url == null || url.isEmpty())) {
             throw new IllegalArgumentException("Url must not be empty");
         }
-        if (Objects.requireNonNull(type) == GeocoderType.GEO_APIFY) {
+        if (Objects.requireNonNull(type) == GEO_APIFY) {
             if (apiKey == null || apiKey.isEmpty()) {
                 throw new IllegalArgumentException("Api key must not be empty");
             }
         }
+        url = type == GEO_APIFY ? "https://api.geoapify.com/" : url;
+        Map<String, String> params = new HashMap<>();
+        if (lang != null && !lang.isEmpty()) {
+            params.put("language", lang);
+        }
+        if (limit != null) {
+            params.put("limit", limit.toString());
+        }
+        if (apiKey != null && !apiKey.isEmpty()) {
+            params.put("apiKey", apiKey);
+        }
+        if (url.endsWith("/")) {
+            url = url.substring(0, url.length() - 1);
+        }
+        return new GeocodeService("TMP", url, false, 0, null, null, type, 0, params);
     }
     @PostMapping
     public String createGeocodeService(@RequestParam String name,
@@ -134,6 +152,18 @@ public class GeoCodingSettingsController {
                                        Model model) {
         try {
             Map<String, String> params = new HashMap<>();
+            if (language != null && !language.isEmpty()) {
+                params.put("language", language);
+            }
+            if (limit != null) {
+                params.put("limit", limit.toString());
+            }
+            if (apiKey != null && !apiKey.isEmpty()) {
+                params.put("apiKey", apiKey);
+            }
+            if (url.endsWith("/")) {
+                url = url.substring(0, url.length() - 1);
+            }
             GeocodeService service = new GeocodeService(name, url, true, 0, null, null, type, priority, params);
             geocodeServiceJdbcService.save(service);
             model.addAttribute("successMessage", i18n.translate("message.success.geocode.created"));

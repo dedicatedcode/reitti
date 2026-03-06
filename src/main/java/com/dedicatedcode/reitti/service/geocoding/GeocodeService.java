@@ -84,7 +84,7 @@ public class GeocodeService {
         return switch (type) {
             case PHOTON -> this.url + "/reverse?lon={lng}&lat={lat}&limit=10&layer=house&layer=locality&radius=0.03";
             case PAIKKA -> {
-                String urlTemplate = this.url + "?lat=(lat)&lon={lng}";
+                String urlTemplate = this.url + "/api/v1/reverse?lat={lat}&lon={lng}";
                 if (this.additionalParameters.containsKey("language")) {
                     urlTemplate += "&lang=" + this.additionalParameters.get("language");
                 }
@@ -94,13 +94,13 @@ public class GeocodeService {
                 yield urlTemplate;
             }
             case GEO_APIFY -> {
-                String urlTemplate = "https://api.geoapify.com/v1/geocode/reverse?lat={lat}&lon={lng}&apiKey=" + this.additionalParameters.get("apiKey");
+                String urlTemplate = this.url + "/v1/geocode/reverse?lat={lat}&lon={lng}&apiKey=" + this.additionalParameters.get("apiKey");
                 if (this.additionalParameters.containsKey("language")) {
                     urlTemplate += "&lang=" + this.additionalParameters.get("language");
                 }
                 yield urlTemplate;
             }
-            case NOMINATIM -> "https://nominatim.openstreetmap.org/reverse?format=geocodejson&lat={lat}&lon={lng}";
+            case NOMINATIM -> this.url + "/reverse?format=geocodejson&lat={lat}&lon={lng}";
             case GEOCODE_JSON -> url;
         };
     }

@@ -22,6 +22,7 @@ public class GeocodeServiceJdbcService {
         this.objectMapper = objectMapper;
         this.geocodeServiceRowMapper = (rs, _) -> {
             try {
+                String additionalParams = rs.getString("additional_params");
                 return new GeocodeService(
                         rs.getLong("id"),
                         rs.getString("name"),
@@ -31,7 +32,7 @@ public class GeocodeServiceJdbcService {
                         rs.getTimestamp("last_used") != null ? rs.getTimestamp("last_used").toInstant() : null,
                         rs.getTimestamp("last_error") != null ? rs.getTimestamp("last_error").toInstant() : null,
                         GeocoderType.valueOf(rs.getString("type")),
-                        objectMapper.readerForMapOf(String.class).readValue(rs.getString("additional_params")),
+                        additionalParams != null ? objectMapper.readerForMapOf(String.class).readValue(additionalParams) : null,
                         rs.getInt("priority"),
                         rs.getLong("version"));
             } catch (JsonProcessingException e) {
@@ -43,7 +44,7 @@ public class GeocodeServiceJdbcService {
     private final RowMapper<GeocodeService> geocodeServiceRowMapper;
 
     public List<GeocodeService> findByEnabledTrueOrderByPriority() {
-        String sql = "SELECT * FROM geocode_services WHERE enabled = true ORDER BY priority, name  NULLS FIRST";
+        String sql = "SELECT * FROM geocode_services WHERE enabled = true ORDER BY priority, name";
         return jdbcTemplate.query(sql, geocodeServiceRowMapper);
     }
 
@@ -72,13 +73,13 @@ public class GeocodeServiceJdbcService {
                   geocodeService.getLastError() != null ? java.sql.Timestamp.from(geocodeService.getLastError()) : null,
                   geocodeService.getType().name(),
                   geocodeService.getPriority(),
-                  this.objectMapper.writeValueAsString(geocodeService.getAdditionalParameters()),
+                  geocodeService.getAdditionalParameters() != null ? this.objectMapper.writeValueAsString(geocodeService.getAdditionalParameters()) : null,
                   geocodeService.getVersion()
                 );
 
             return geocodeService.withId(id);
         } else {
-                String sql = "UPDATE geocode_services SET name = ?, url = ?, enabled = ?, error_count = ?, last_used = ?, last_error = ?, type = ?, priority = ?, additional_params = ?, version = ? WHERE id = ?";
+            String sql = "UPDATE geocode_services SET name = ?, url = ?, enabled = ?, error_count = ?, last_used = ?, last_error = ?, type = ?, priority = ?, additional_params = ?, version = ? WHERE id = ?";
             jdbcTemplate.update(sql,
                     geocodeService.getName(),
                     geocodeService.getUrl(),
@@ -88,7 +89,7 @@ public class GeocodeServiceJdbcService {
                     geocodeService.getLastError() != null ? java.sql.Timestamp.from(geocodeService.getLastError()) : null,
                     geocodeService.getType().name(),
                     geocodeService.getPriority(),
-                    this.objectMapper.writeValueAsString(geocodeService.getAdditionalParameters()),
+                    geocodeService.getAdditionalParameters() != null ? this.objectMapper.writeValueAsString(geocodeService.getAdditionalParameters()) : null,
                     geocodeService.getVersion(),
                     geocodeService.getId()
             );

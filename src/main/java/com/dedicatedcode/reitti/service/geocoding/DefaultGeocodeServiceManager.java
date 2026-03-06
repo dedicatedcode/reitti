@@ -17,9 +17,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
@@ -59,8 +57,9 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
     }
 
     @Override
-    public GeocodeResult test(GeocoderType type, String url, String apiKey, String lang, double testLat, double testLng) {
-        return null;
+    public GeocodeResult test(GeocodeService service, double testLat, double testLng) {
+        Optional<GeocodeResult> geocodeResult = performGeocode(service, testLat, testLng, null, false);
+        return geocodeResult.orElseThrow(() -> new RuntimeException("Failed to call geocoding service: " + service.getName()));
     }
 
     private Optional<GeocodeResult> callGeocodeService(List<? extends GeocodeService> availableServices, double latitude, double longitude, SignificantPlace significantPlace, boolean recordResponse) {
@@ -95,7 +94,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
 
         try {
             String response = restTemplate.getForObject(url, String.class);
-            Optional<GeocodeResult> geocodeResult = extractGeoCodeResult(response);
+            Optional<GeocodeResult> geocodeResult = extractGeoCodeResult(service.getType(), response);
             if (recordResponse && geocodeResult.isPresent()) {
                 geocodingResponseJdbcService.insert(new GeocodingResponse(
                         significantPlace.getId(),
@@ -134,26 +133,10 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
         }
     }
 
-    private Optional<GeocodeResult> extractPhotonResult(String response) throws JsonProcessingException {
-        JsonNode root = objectMapper.readTree(response);
-        JsonNode features = root.path("features");
-        if (features.isArray() && !features.isEmpty()) {
-            JsonNode properties = features.get(0).path("properties");
-            String name = properties.path("name").asText();
-            String city = properties.path("city").asText();
-            String street = properties.path("street").asText();
-            String district = properties.path("district").asText();
-            String housenumber = properties.path("housenumber").asText();
-            String postcode = properties.path("postcode").asText();
-            String countryCode = properties.path("countrycode").asText().toLowerCase();
-            SignificantPlace.PlaceType type = determinPlaceType(properties.path("osm_value").asText());
-            return Optional.of(new GeocodeResult(name, street, housenumber, city, postcode, district, countryCode, type));
-        }
-        return Optional.empty();
-    }
+    private SignificantPlace.PlaceType determinPlaceType(String osmValue, String subtype) {
+        String valueToCheck = (subtype != null && !subtype.isBlank()) ? subtype : osmValue;
 
-    private SignificantPlace.PlaceType determinPlaceType(String osmValue) {
-        return switch (osmValue) {
+        return switch (valueToCheck) {
             case "office", "commercial", "industrial", "warehouse", "retail" -> SignificantPlace.PlaceType.WORK;
             case "restaurant", "fast_food", "food_court" -> SignificantPlace.PlaceType.RESTAURANT;
             case "cafe", "bar", "pub" -> SignificantPlace.PlaceType.CAFE;
@@ -174,109 +157,167 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
             default -> SignificantPlace.PlaceType.OTHER;
         };
     }
- 
-    private Optional<GeocodeResult> extractGeoCodeResult(String response) throws JsonProcessingException {
+
+    private Optional<GeocodeResult> extractGeoCodeResult(GeocoderType type, String response) throws JsonProcessingException {
         JsonNode root = objectMapper.readTree(response);
-        JsonNode features = root.path("features");
-
-        if (features.isArray() && !features.isEmpty()) {
-            JsonNode properties = features.get(0).path("properties");
-
-            String label;
-            String street;
-            String city;
-            String district;
-            String countryCode;
-            String osmTypeValue;
-
-            //try to find elements from address;
-            JsonNode address = properties.path("address");
-            JsonNode geocoding = properties.path("geocoding");
-            if (geocoding.isObject()) {
-                label = geocoding.path("name").asText();
-                if (label.isBlank()) {
-                    label = geocoding.path("label").asText();
-                }
-                street = geocoding.path("street").asText();
-                if (street.isBlank()) {
-                    street = geocoding.path("road").asText();
-                }
-                if (geocoding.has("housenumber")) {
-                    street = street + " " + geocoding.path("housenumber").asText();
-                }
-                city = geocoding.path("city").asText();
-                district = geocoding.path("city_district").asText();
-                if (district.isBlank()) {
-                    district = geocoding.path("district").asText();
-                }
-                if (district.isBlank()) {
-                    district = geocoding.path("locality").asText();
-                }
-                countryCode = geocoding.path("country_code").asText().toLowerCase();
-                osmTypeValue = geocoding.path("osm_value").asText();
-                if (osmTypeValue.isBlank()) {
-                    osmTypeValue = geocoding.path("category").asText();
-                }
-            } else if  (address.isMissingNode()) {
-                //try to find it directly under the root node
-                label = properties.path("formatted").asText("");
-                street = properties.path("street").asText("");
-                city = properties.path("city").asText("");
-                district = properties.path("city_district").asText("");
-                countryCode = properties.path("country_code").asText("").toLowerCase();
-                osmTypeValue = geocoding.path("osm_value").asText();
-                if (osmTypeValue.isBlank()) {
-                    osmTypeValue = geocoding.path("category").asText();
-                }
-
-            } else {
-                //there is an address, find it there
-                label = properties.path("name").asText("");
-                street = address.path("road").asText("");
-                city = address.path("city").asText("");
-                district = address.path("city_district").asText("");
-                countryCode = address.path("country_code").asText("").toLowerCase();
-                osmTypeValue = geocoding.path("osm_value").asText();
-                if (osmTypeValue.isBlank()) {
-                    osmTypeValue = geocoding.path("category").asText();
-                }
-            }
-
-            Optional<GeocodeResult> result = createGeoCodeResult(label, street, city, district, countryCode, osmTypeValue);
-            if (result.isPresent()) {
-                return result;
-            }
-        }
-
-        if (root.has("name") && root.has("address")) {
-            String label = root.get("name").asText();
-            String street = root.path("address").path("street").asText();
-            if (street.isBlank()) {
-                street = root.path("address").path("road").asText();
-            }
-            if (root.path("address").path("house_number").isTextual()) {
-                street = street + " " + root.path("address").path("house_number").asText();
-            }
-            String city = root.path("address").path("city").asText();
-            String district =  root.path("address").path("district").asText();
-            if (district.isBlank()) {
-                district = root.path("address").path("neighbourhood").asText();
-            }
-            String countryCode = root.path("address").path("country_code").asText();
-            Optional<GeocodeResult> result = createGeoCodeResult(label, street, city, district, countryCode, root.path("osm_value").asText());
-            if (result.isPresent()) {
-                return result;
-            }
-        }
-        return Optional.empty();
+        return switch (type) {
+            case PAIKKA -> extractPaikkaResult(root);
+            case NOMINATIM -> extractNominatimResult(root);
+            case GEO_APIFY -> extractGeoApifyResult(root);
+            case PHOTON -> extractPhotonResult(root);
+            case GEOCODE_JSON -> extractGeocodeJsonResult(root);
+        };
     }
 
-    private Optional<GeocodeResult> createGeoCodeResult(String label, String street, String city, String district, String countryCode, String placeTypeValue) {
+    private Optional<GeocodeResult> extractPaikkaResult(JsonNode root) {
+        JsonNode resultsNode = root.path("results");
+        if (!resultsNode.isArray() || resultsNode.isEmpty()) return Optional.empty();
+
+        List<JsonNode> resultList = new ArrayList<>();
+        resultsNode.forEach(resultList::add);
+
+        JsonNode best = resultList.stream()
+                .min(Comparator.comparingInt((JsonNode n) -> getPaikkaTypePriority(n.path("type").asText()))
+                             .thenComparing((JsonNode n) -> !n.path("display_name").asText().isEmpty(), Comparator.reverseOrder())
+                             .thenComparingDouble(n -> n.path("distance_km").asDouble()))
+                .orElse(null);
+
+        if (best == null) return Optional.empty();
+
+        String label = best.path("display_name").asText();
+        if (label.isBlank()) label = best.path("names").path("default").asText();
+
+        JsonNode addr = best.path("address");
+        String street = addr.path("street").asText("");
+        String houseNumber = addr.path("house_number").asText("");
+        String postcode = addr.path("postcode").asText("");
+        String city = addr.path("city").asText("");
+
+        String district = "";
+        String countryCode = "";
+        for (JsonNode level : best.path("hierarchy")) {
+            if (level.path("level").asInt() == 10) district = level.path("name").asText();
+            if (level.path("level").asInt() == 2) countryCode = level.path("country_code").asText();
+        }
+
+        return createGeoCodeResult(
+                label,
+                street.trim(),
+                houseNumber,
+                postcode,
+                city,
+                district,
+                countryCode,
+                best.path("type").asText(),
+                best.path("subtype").asText()
+        );
+    }
+
+    private Optional<GeocodeResult> extractNominatimResult(JsonNode root) {
+        if (!root.isArray() || root.isEmpty()) return Optional.empty();
+
+        List<JsonNode> resultList = new ArrayList<>();
+        root.forEach(resultList::add);
+
+        JsonNode best = resultList.stream()
+                .max(Comparator.comparingDouble((JsonNode n) -> n.path("importance").asDouble()))
+                .orElse(root.get(0));
+
+        JsonNode addr = best.path("address");
+        String label = best.path("display_name").asText();
+        String street = addr.path("road").asText("");
+        String city = addr.path("city").asText(addr.path("town").asText(addr.path("village").asText("")));
+        String district = addr.path("suburb").asText(addr.path("neighbourhood").asText(""));
+        String countryCode = addr.path("country_code").asText();
+
+        return createGeoCodeResult(label, street.trim(), addr.path("house_number").asText("").trim(), addr.path("post_code").asText("").trim(), city, district, countryCode, best.path("type").asText(), null);
+    }
+
+    private Optional<GeocodeResult> extractGeoApifyResult(JsonNode root) {
+        JsonNode features = root.path("features");
+        if (!features.isArray() || features.isEmpty()) return Optional.empty();
+
+        // Geoapify provides a "rank" object (match_type, confidence)
+        List<JsonNode> featureList = new ArrayList<>();
+        features.forEach(featureList::add);
+
+        JsonNode best = featureList.stream()
+                .max(Comparator.comparingDouble((JsonNode n) -> n.path("properties").path("rank").path("confidence").asDouble()))
+                .orElse(features.get(0));
+
+        JsonNode props = best.path("properties");
+        return createGeoCodeResult(
+                props.path("formatted").asText(),
+                props.path("street").asText(""),
+                props.path("housenumber").asText(""),
+                props.path("postcode").asText(""),
+                props.path("city").asText(),
+                props.path("district").asText(),
+                props.path("country_code").asText(),
+                props.path("category").asText(), null
+        );
+    }
+
+    private Optional<GeocodeResult> extractPhotonResult(JsonNode root) {
+        JsonNode features = root.path("features");
+        if (!features.isArray() || features.isEmpty()) return Optional.empty();
+
+        JsonNode props = features.get(0).path("properties");
+        String street = props.path("street").asText("") + " " + props.path("housenumber").asText("").trim();
+
+        return createGeoCodeResult(
+                props.path("name").asText(props.path("street").asText()),
+                street.trim(),
+                props.path("city").asText(),
+                props.path("district").asText(),
+                props.path("countrycode").asText(),
+                props.path("osm_value").asText(), null, "", ""
+        );
+    }
+
+    private Optional<GeocodeResult> extractGeocodeJsonResult(JsonNode root) {
+        JsonNode feature = root.path("features").path(0);
+        if (feature.isMissingNode()) return Optional.empty();
+
+        JsonNode geocoding = feature.path("properties").path("geocoding");
+        String label = geocoding.path("label").asText(geocoding.path("name").asText());
+        String street = geocoding.path("street").asText("") + " " + geocoding.path("housenumber").asText("").trim();
+
+        return createGeoCodeResult(
+                label,
+                street.trim(),
+                geocoding.path("city").asText(),
+                geocoding.path("district").asText(),
+                geocoding.path("country_code").asText(),
+                geocoding.path("type").asText(), null, "", ""
+        );
+    }
+
+    private int getPaikkaTypePriority(String type) {
+        return switch (type) {
+            case "building" -> 1;
+            case "tourism" -> 2;
+            case "place" -> 3;
+            case "amenity" -> 4;
+            default -> 10;
+        };
+    }
+
+    private Optional<GeocodeResult> createGeoCodeResult(String label, String street, String houseNumber, String postcode, String city, String district, String countryCode, String placeTypeValue, String subtypeValue) {
         if (label.isEmpty() && !street.isEmpty()) {
             label = street;
         }
         if (StringUtils.hasText(label)) {
-            return Optional.of(new GeocodeResult(label, street, "", city, "", district, countryCode, determinPlaceType(placeTypeValue)));
+            return Optional.of(new GeocodeResult(
+                    label,
+                    street,
+                    houseNumber,
+                    city,
+                    postcode,
+                    district,
+                    countryCode,
+                    determinPlaceType(placeTypeValue, subtypeValue))
+            );
         }
         return Optional.empty();
     }

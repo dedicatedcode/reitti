@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
+import com.dedicatedcode.reitti.service.geocoding.GeocodeService;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeServiceManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,7 +25,7 @@ public class TestConfiguration {
             }
 
             @Override
-            public GeocodeResult test(GeocoderType type, String url, String apiKey, String lang, double testLat, double testLng) {
+            public GeocodeResult test(GeocodeService service, double testLat, double testLng) {
                 return null;
             }
         };
