@@ -115,10 +115,18 @@
                           class="geocode-service-form" style="margin-bottom: 20px;">
                         <h3 th:text="#{geocoding.add.title}">Add New Geocoding Service</h3>
                         <div class="form-group">
+                            <label for="type" th:text="#{geocoding.service.type}">Type</label>
+                            <select id="type" name="type" required>
+                                <option th:each="type : ${geocodeServiceTypes}" th:value="${type}" th:text="#{'geocoding.service.type.' + ${type} + '.name'}"></option>
+                            </select>
+                        </div>
+                        <div id="geocoding-type-specific-fields"></div>
+                        <div class="form-group">
                             <label for="serviceName" th:text="#{geocoding.service.name}">Service Name</label>
                             <input type="text" id="serviceName" name="name" required
                                    th:placeholder="#{geocoding.service.name.placeholder}" placeholder="Enter name for the service">
                         </div>
+
                         <div class="form-group">
                             <label for="serviceUrl" th:text="#{geocoding.service.url}">URL Template</label>
                             <input type="text" id="serviceUrl" name="urlTemplate" required
