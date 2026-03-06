@@ -48,24 +48,9 @@
                 </div>
                 <div class="settings-card">
                     <h3 th:text="#{geocoding.available.services}">Available Services</h3>
-                    <div class="divider">Photon</div>
-                    <div th:if="${photonConfigured}">
-                        <p th:text="#{geocoding.photon.address(${photonBaseUrl})}">Photon Reverse Geocoding service is configured to connect to http://photon</p>
-                        <button class="btn"
-                                th:hx-post="@{/settings/geocode-services/test-photon}"
-                                hx-target="#geocode-services"
-                                hx-swap="innerHTML"
-                                th:text="#{geocoding.test.connection}">Test Connection
-                        </button>
-                    </div>
-                    <div th:unless="${photonConfigured}">
-                        <p th:text="#{geocoding.photon.not.configured}">Photon Reverse Geocoding service is not configured.</p>
-                    </div>
-
                     <div th:if="${geocodeServices.isEmpty()}">
                         <p th:text="#{geocoding.no.services}">No geocoding services configured.</p>
                     </div>
-                    <div class="divider" th:text="#{geocoding.external.services}">External Services</div>
                     <table th:if="${!geocodeServices.isEmpty()}">
                         <thead>
                         <tr>
@@ -83,11 +68,14 @@
                             <td style="max-width: 300px; word-break: break-all; font-family: monospace;"
                                 th:text="${service.urlTemplate}"></td>
                             <td>
-                    <span th:if="${service.enabled}"><i class="lni lni-check"></i> <span
-                            th:text="#{geocoding.status.enabled}">Enabled</span></span>
-                                <span th:if="${!service.enabled}" style="color: red;"><i
-                                        class="lni lni-xmark"></i> <span
-                                        th:text="#{geocoding.status.disabled}">Disabled</span></span>
+                                <span th:if="${service.enabled}">
+                                    <i class="lni lni-check"></i>
+                                    <span th:text="#{geocoding.status.enabled}">Enabled</span>
+                                </span>
+                                <span th:if="${!service.enabled}" style="color: red;">
+                                    <i class="lni lni-xmark"></i>
+                                    <span th:text="#{geocoding.status.disabled}">Disabled</span>
+                                </span>
                             </td>
                             <td>
                                 <span th:text="${service.errorCount + '/' + maxErrors}"></span>
