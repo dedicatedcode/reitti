@@ -31,11 +31,6 @@ public class GeocodeServiceJdbcService {
             rs.getLong("version")
     );
 
-    public List<GeocodeService> findByEnabledTrueOrderByLastUsedAsc() {
-        String sql = "SELECT * FROM geocode_services WHERE enabled = true ORDER BY last_used  NULLS FIRST";
-        return jdbcTemplate.query(sql, GEOCODE_SERVICE_ROW_MAPPER);
-    }
-
     public List<GeocodeService> findByEnabledTrueOrderByPriority() {
         String sql = "SELECT * FROM geocode_services WHERE enabled = true ORDER BY priority, name  NULLS FIRST";
         return jdbcTemplate.query(sql, GEOCODE_SERVICE_ROW_MAPPER);
@@ -49,7 +44,7 @@ public class GeocodeServiceJdbcService {
     public Optional<GeocodeService> findById(Long id) {
         String sql = "SELECT * FROM geocode_services WHERE id = ?";
         List<GeocodeService> results = jdbcTemplate.query(sql, GEOCODE_SERVICE_ROW_MAPPER, id);
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
     public GeocodeService save(GeocodeService geocodeService) {

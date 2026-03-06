@@ -51,7 +51,7 @@ class DefaultGeocodeServiceManagerTest {
     @Test
     void shouldReturnEmptyWhenNoServicesAvailable() {
         // Given
-        when(geocodeServiceJdbcService.findByEnabledTrueOrderByLastUsedAsc())
+        when(geocodeServiceJdbcService.findByEnabledTrueOrderByPriority())
                 .thenReturn(Collections.emptyList());
 
         // When
@@ -72,7 +72,7 @@ class DefaultGeocodeServiceManagerTest {
                 true, 0, null, null, GeocoderType.GEOCODE_JSON, 1, 1L
         );
         
-        when(geocodeServiceJdbcService.findByEnabledTrueOrderByLastUsedAsc())
+        when(geocodeServiceJdbcService.findByEnabledTrueOrderByPriority())
                 .thenReturn(List.of(service));
         
         String mockResponse = """
@@ -120,7 +120,7 @@ class DefaultGeocodeServiceManagerTest {
                 true, 0, null, null, GeocoderType.GEOCODE_JSON, 1, 1L
         );
 
-        when(geocodeServiceJdbcService.findByEnabledTrueOrderByLastUsedAsc())
+        when(geocodeServiceJdbcService.findByEnabledTrueOrderByPriority())
                 .thenReturn(List.of(service));
 
         String mockResponse = """
@@ -155,7 +155,7 @@ class DefaultGeocodeServiceManagerTest {
                 true, 0, null, null, GeocoderType.GEOCODE_JSON, 1, 1L
         );
 
-        when(geocodeServiceJdbcService.findByEnabledTrueOrderByLastUsedAsc())
+        when(geocodeServiceJdbcService.findByEnabledTrueOrderByPriority())
                 .thenReturn(List.of(service));
 
         String mockResponse = """
@@ -237,7 +237,7 @@ class DefaultGeocodeServiceManagerTest {
                 true, 0, null, null, GeocoderType.GEOCODE_JSON, 1, 1L
         );
         
-        when(geocodeServiceJdbcService.findByEnabledTrueOrderByLastUsedAsc())
+        when(geocodeServiceJdbcService.findByEnabledTrueOrderByPriority())
                 .thenReturn(List.of(service));
         
         when(restTemplate.getForObject(anyString(), eq(String.class)))
