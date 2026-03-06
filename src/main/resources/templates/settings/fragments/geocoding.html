@@ -2,33 +2,17 @@
 <html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
 <body>
 <div th:fragment="type-fields(type)">
-    <div>
-        <p th:if="${type.name() == 'PHOTON'}">
-            <strong><span th:text="#{'geocoding.service.type.' + ${type} + '.name'}"></span>:</strong> An open-source geocoder built for OpenStreetMap data.
-            Visit <a href="https://photon.komoot.io/" target="_blank">photon.komoot.io</a> for more info.
-        </p>
-        <p th:if="${type.name() == 'PAIKKA'}">
-            <strong><span th:text="#{'geocoding.service.type.' + ${type} + '.name'}"></span>:</strong> A specialized geocoding service.
-            Visit <a href="https://geo.dedicatedcode.com/" target="_blank">geo.dedicatedcode.com</a>.
-        </p>
-        <p th:if="${type.name() == 'GEO_APIFY'}">
-            <strong><span th:text="#{'geocoding.service.type.' + ${type} + '.name'}"></span>:</strong> Professional geocoding API.
-            Get an API key at <a href="https://www.geoapify.com/" target="_blank">geoapify.com</a>.
-        </p>
-        <p th:if="${type.name() == 'NOMINATIM'}">
-            <strong><span th:text="#{'geocoding.service.type.' + ${type} + '.name'}"></span>:</strong> The default OSM search engine.
-            Usage policy at <a href="https://nominatim.org/" target="_blank">nominatim.org</a>.
-        </p>
-        <p th:if="${type.name() == 'GEOCODE_JSON'}">
-            <strong><span th:text="#{'geocoding.service.type.' + ${type} + '.name'}"></span>:</strong> A generic implementation for any service following the GeocodeJSON spec.
-        </p>
+    <!-- Description Section -->
+    <div class="settings-card">
+        <p th:utext="#{'geocoding.service.type.' + ${type} + '.description'}"></p>
     </div>
+
     <div class="form-group">
         <label for="serviceName" th:text="#{geocoding.service.name}">Service Name</label>
         <input type="text" id="serviceName" name="name" required
-               th:placeholder="#{geocoding.service.name.placeholder}" th:value="#{'geocoding.service.type.' + ${type} + '.name'}" placeholder="Enter name for the service">
+               th:placeholder="#{geocoding.service.name.placeholder}"
+               th:value="#{'geocoding.service.type.' + ${type} + '.name'}">
     </div>
-
 
     <!-- Dynamic Fields -->
     <div class="form-group" th:if="${type.name() == 'PHOTON' || type.name() == 'NOMINATIM' || type.name() == 'PAIKKA'}">
@@ -37,6 +21,7 @@
                th:value="${type.name() == 'NOMINATIM' ? 'https://nominatim.openstreetmap.org/' : (type.name() == 'PAIKKA' ? 'https://geo.dedicatedcode.com/' : '')}"
                placeholder="https://api.example.com/">
     </div>
+
     <div class="form-group" th:if="${type.name() == 'GEOCODE_JSON'}">
         <label for="serviceUrl" th:text="#{geocoding.service.url}">URL / Base URL</label>
         <input type="text" id="serviceUrl" name="url" required
@@ -44,17 +29,17 @@
     </div>
 
     <div class="form-group" th:if="${type.name() == 'GEO_APIFY'}">
-        <label for="apiKey">API Key</label>
+        <label for="apiKey" th:text="#{geocoding.service.api_key}">API Key</label>
         <input type="text" id="apiKey" name="apiKey" required placeholder="Enter your Geoapify API Key">
     </div>
 
     <div class="form-group" th:if="${type.name() == 'PAIKKA' || type.name() == 'GEO_APIFY' || type.name() == 'NOMINATIM'}">
-        <label for="lang">Language (Optional)</label>
+        <label for="lang" th:text="#{geocoding.service.language}">Language (Optional)</label>
         <input type="text" id="lang" name="lang" placeholder="e.g. en, de, fi">
     </div>
 
     <div class="form-group" th:if="${type.name() == 'PAIKKA'}">
-        <label for="limit">Limit (Optional)</label>
+        <label for="limit" th:text="#{geocoding.service.limit}">Limit (Optional)</label>
         <input type="number" id="limit" name="limit" placeholder="10">
     </div>
 </div>
