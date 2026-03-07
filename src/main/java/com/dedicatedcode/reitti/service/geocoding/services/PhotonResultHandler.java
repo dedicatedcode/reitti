@@ -20,15 +20,20 @@ public class PhotonResultHandler implements ResultHandler {
         if (!features.isArray() || features.isEmpty()) return Optional.empty();
 
         JsonNode props = features.get(0).path("properties");
-        String street = props.path("street").asText("") + " " + props.path("housenumber").asText("").trim();
+        String street = props.path("street").asText("");
+        String housenumber =  props.path("housenumber").asText("").trim();
+        String postcode =  props.path("postcode").asText("").trim();
 
         return createGeoCodeResult(
-                props.path("name").asText(props.path("street").asText()),
-                street.trim(),
+                props.path("name").asText(""),
+                street,
+                housenumber,
+                postcode,
                 props.path("city").asText(),
                 props.path("district").asText(),
                 props.path("countrycode").asText(),
-                props.path("osm_value").asText(), null, "", ""
+                props.path("osm_value").asText(),
+                ""
         );
 
     }
