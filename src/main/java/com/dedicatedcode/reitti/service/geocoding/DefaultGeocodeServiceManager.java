@@ -110,6 +110,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
         logger.info("Geocoding with service [{}] using URL: [{}]", service.getName(), url);
 
         try {
+            // i need to add a user-agent in the form of "Reitti/1.0 (+https://github.com/dedicatedcode/reitti; contact: reitti@dedicatedcode.com)"; to the request AI!
             String response = restTemplate.getForObject(url, String.class);
             Optional<GeocodeResult> geocodeResult = extractGeoCodeResult(service.getType(), response);
             if (recordResponse && geocodeResult.isPresent()) {
