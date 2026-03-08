@@ -9,12 +9,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -70,7 +73,7 @@ class DefaultGeocodeServiceManagerTest {
         
         GeocodeService service = new GeocodeService(
                 1L, "Failing Service", "http://fail.com?lat={lat}&lng={lng}",
-                true, 0, null, null, GeocoderType.GEOCODE_JSON, Collections.emptyMap(), 1,
+                true, 0, null, null, GeocoderType.PAIKKA, Map.of(), 1,
                 1L);
         
         when(geocodeServiceJdbcService.findByEnabledTrueOrderByPriority())
@@ -85,5 +88,50 @@ class DefaultGeocodeServiceManagerTest {
         // Then
         assertThat(result).isEmpty();
         verify(geocodeServiceJdbcService).save(any(GeocodeService.class));
+    }
+
+    @Test
+    void shouldTryHigherPriorityServicesFirst() {
+        // Given
+        GeocodeService priority1 = new GeocodeService(1L, "P1", "http://p1.com?lat={lat}&lng={lng}", true, 0, null, null, GeocoderType.PAIKKA, Map.of(), 1, 1L);
+        GeocodeService priority2 = new GeocodeService(2L, "P2", "http://p2.com?lat={lat}&lng={lng}", true, 0, null, null, GeocoderType.PAIKKA, Map.of(), 2, 1L);
+
+        when(geocodeServiceJdbcService.findByEnabledTrueOrderByPriority()).thenReturn(List.of(priority1, priority2));
+        
+        // Mock successful response for P1
+        String successJson = "{\"results\": [{\"display_name\": \"Found\", \"type\": \"building\", \"address\": {\"street\": \"S\", \"city\": \"C\"}, \"hierarchy\": [{\"country_code\": \"FI\"}]}]}";
+        when(restTemplate.getForObject(startsWith("http://p1.com"), eq(String.class))).thenReturn(successJson);
+
+        // When
+        geocodeServiceManager.reverseGeocode(SignificantPlace.create(53.0, 10.0), true);
+
+        // Then
+        verify(restTemplate).getForObject(startsWith("http://p1.com"), eq(String.class));
+        verify(restTemplate, Mockito.never()).getForObject(startsWith("http://p2.com"), eq(String.class));
+    }
+
+    @Test
+    void shouldMoveToNextPriorityIfFirstGroupFails() {
+        // Given
+        GeocodeService priority1 = new GeocodeService(1L, "P1", "http://p1.com?lat={lat}&lng={lng}", true, 0, null, null, GeocoderType.PAIKKA, Map.of(), 1, 1L);
+        GeocodeService priority2 = new GeocodeService(2L, "P2", "http://p2.com?lat={lat}&lng={lng}", true, 0, null, null, GeocoderType.PAIKKA, Map.of(), 2, 1L);
+
+        when(geocodeServiceJdbcService.findByEnabledTrueOrderByPriority()).thenReturn(List.of(priority1, priority2));
+
+        // P1 fails
+        when(restTemplate.getForObject(startsWith("http://p1.com"), eq(String.class))).thenThrow(new RuntimeException("P1 Down"));
+        
+        // P2 succeeds
+        String successJson = "{\"results\": [{\"display_name\": \"Found\", \"type\": \"building\", \"address\": {\"street\": \"S\", \"city\": \"C\"}, \"hierarchy\": [{\"country_code\": \"FI\"}]}]}";
+        when(restTemplate.getForObject(startsWith("http://p2.com"), eq(String.class))).thenReturn(successJson);
+
+        // When
+        Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(SignificantPlace.create(53.0, 10.0), true);
+
+        // Then
+        assertThat(result).isPresent();
+        InOrder inOrder = Mockito.inOrder(restTemplate);
+        inOrder.verify(restTemplate).getForObject(startsWith("http://p1.com"), eq(String.class));
+        inOrder.verify(restTemplate).getForObject(startsWith("http://p2.com"), eq(String.class));
     }
 }

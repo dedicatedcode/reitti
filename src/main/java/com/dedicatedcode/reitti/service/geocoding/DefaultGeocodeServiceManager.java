@@ -18,6 +18,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
@@ -56,7 +57,19 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
             logger.warn("No enabled geocoding services available");
             return Optional.empty();
         }
-        return callGeocodeService(availableServices, latitude, longitude, significantPlace, recordResponse);
+
+        Map<Integer, List<GeocodeService>> servicesByPriority = availableServices.stream()
+                .collect(Collectors.groupingBy(GeocodeService::getPriority, TreeMap::new, Collectors.toList()));
+
+        for (Map.Entry<Integer, List<GeocodeService>> entry : servicesByPriority.entrySet()) {
+            List<GeocodeService> priorityGroup = entry.getValue();
+            Optional<GeocodeResult> result = callGeocodeService(priorityGroup, latitude, longitude, significantPlace, recordResponse);
+            if (result.isPresent()) {
+                return result;
+            }
+        }
+
+        return Optional.empty();
     }
 
     @Override
@@ -66,9 +79,10 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
     }
 
     private Optional<GeocodeResult> callGeocodeService(List<? extends GeocodeService> availableServices, double latitude, double longitude, SignificantPlace significantPlace, boolean recordResponse) {
-        Collections.shuffle(availableServices);
+        List<? extends GeocodeService> shuffledServices = new ArrayList<>(availableServices);
+        Collections.shuffle(shuffledServices);
 
-        for (GeocodeService service : availableServices) {
+        for (GeocodeService service : shuffledServices) {
             try {
                 Optional<GeocodeResult> result = performGeocode(service, latitude, longitude, significantPlace, recordResponse);
                 if (result.isPresent()) {
