@@ -25,7 +25,7 @@ public class MemoryDTO {
         this.title = memory.getTitle();
         this.description = memory.getDescription();
         this.startDate = TimeUtil.adjustInstant(memory.getStartDate(), timezone);
-        this.endDate = TimeUtil.adjustInstant(memory.getEndDate(), timezone);
+        this.endDate = TimeUtil.adjustInstant(memory.getEndDate() != null ? memory.getEndDate() : Instant.now(), timezone);
         this.headerType = memory.getHeaderType();
         this.headerImageUrl = memory.getHeaderImageUrl();
         this.createdAt = memory.getCreatedAt();

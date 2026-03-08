@@ -62,7 +62,9 @@ public class MemoryBlockGenerationService {
 
     public List<MemoryBlockPart> generate(User user, Memory memory, ZoneId timeZone) {
         Instant startDate = memory.getStartDate();
-        Instant endDate = memory.getEndDate();
+        boolean openEnded = memory.getEndDate() == null;
+
+        Instant endDate = openEnded ? Instant.now() : memory.getEndDate();
 
         List<ProcessedVisit> allVisitsInRange = this.processedVisitJdbcService.findByUserAndTimeOverlap(user, startDate, endDate);
         List<Trip> allTripsInRange = this.tripJdbcService.findByUserAndTimeOverlap(user, startDate, endDate);
@@ -70,7 +72,7 @@ public class MemoryBlockGenerationService {
         // Step 1: Data Pre-processing & Filtering
         Optional<ProcessedVisit> accommodation = homeDetectionService.findAccommodation(allVisitsInRange, startDate, endDate);
         Optional<ProcessedVisit> homeBefore = homeDetectionService.findAccommodation(this.processedVisitJdbcService.findByUserAndTimeOverlap(user, startDate.minus(7, ChronoUnit.DAYS), startDate), startDate.minus(7, ChronoUnit.DAYS), startDate);
-        Optional<ProcessedVisit> homeAfter = homeDetectionService.findAccommodation(this.processedVisitJdbcService.findByUserAndTimeOverlap(user, endDate, endDate.plus(7, ChronoUnit.DAYS)), endDate, endDate.plus(7, ChronoUnit.DAYS));
+        Optional<ProcessedVisit> homeAfter = openEnded ? Optional.empty() : homeDetectionService.findAccommodation(this.processedVisitJdbcService.findByUserAndTimeOverlap(user, endDate, endDate.plus(7, ChronoUnit.DAYS)), endDate, endDate.plus(7, ChronoUnit.DAYS));
 
         // Find first and last accommodation visits
         Instant firstAccommodationArrival = accommodation.flatMap(p -> allVisitsInRange.stream()
@@ -105,7 +107,7 @@ public class MemoryBlockGenerationService {
         
         // Add introduction text block
         if (!clusters.isEmpty() && accommodation.isPresent() && homeBefore.isPresent()) {
-            String introText = generateIntroductionText(memory, clusters, accommodation.orElse(null), homeBefore.orElse(null), startDate, endDate, timeZone);
+            String introText = generateIntroductionText(clusters, accommodation.orElse(null), homeBefore.orElse(null), startDate, endDate, timeZone);
             MemoryBlockText introBlock = new MemoryBlockText(null, i18n.translate("memory.generator.headline.text"), introText);
             blockParts.add(introBlock);
         }
@@ -219,7 +221,7 @@ public class MemoryBlockGenerationService {
             imagesByDay.remove(today);
         }
         
-        if (lastAccommodationDeparture != null) {
+        if (lastAccommodationDeparture != null && !openEnded) {
             List<Trip> tripsFromAccommodation = allTripsInRange.stream()
                     .filter(trip -> trip.getStartTime() != null && !trip.getStartTime().isBefore(lastAccommodationDeparture))
                     .filter(trip -> trip.getEndTime() != null && !trip.getEndTime().isAfter(endDate))
@@ -288,9 +290,9 @@ public class MemoryBlockGenerationService {
                 title, null, BlockType.CLUSTER_TRIP);
     }
 
-    private String generateIntroductionText(Memory memory, List<VisitCluster> clusters, ProcessedVisit accommodation, ProcessedVisit homePlace,
+    private String generateIntroductionText(List<VisitCluster> clusters, ProcessedVisit accommodation, ProcessedVisit homePlace,
                                             Instant startDate, Instant endDate, ZoneId timeZone) {
-        long totalDays = Duration.between(memory.getStartDate(), memory.getEndDate()).toDays() + 1;
+        long totalDays = Duration.between(startDate, endDate).toDays() + 1;
         int totalVisits = clusters.stream().mapToInt(c -> c.getVisits().size()).sum();
         SignificantPlace accommodationPlace = accommodation.getPlace();
         String country;
