@@ -48,8 +48,8 @@ public class GeocodeServiceJdbcService {
         return jdbcTemplate.query(sql, geocodeServiceRowMapper);
     }
 
-    public List<GeocodeService> findAllByOrderByNameAsc() {
-        String sql = "SELECT * FROM geocode_services ORDER BY name";
+    public List<GeocodeService> findAllByOrderByPriorityAndNameAsc() {
+        String sql = "SELECT * FROM geocode_services ORDER BY priority, name";
         return jdbcTemplate.query(sql, geocodeServiceRowMapper);
     }
 
